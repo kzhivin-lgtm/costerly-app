@@ -1,7 +1,17 @@
 from __future__ import annotations
 
+import base64
+from pathlib import Path
+
 import streamlit as st
 
+FONT_DIR = Path("assets/fonts")
+
+
+def _font_data_uri(file_name: str) -> str:
+    font_bytes = (FONT_DIR / file_name).read_bytes()
+    encoded = base64.b64encode(font_bytes).decode("ascii")
+    return f"data:font/woff2;base64,{encoded}"
 
 def apply_base_css() -> None:
     """Install global Costerly design tokens and Streamlit base overrides.
@@ -9,10 +19,30 @@ def apply_base_css() -> None:
     Called once from app.py before routing to a screen. Screen-specific CSS
     belongs in styles/upload.py, styles/post_upload.py, or screen modules.
     """
+
+    garet_book_src = _font_data_uri("Garet-Book.woff2")
+    garet_heavy_src = _font_data_uri("Garet-Heavy.woff2")
+
     st.markdown(
         """
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+        @font-face {
+            font-family: "Garet";
+            src: url("__GARET_BOOK_SRC__") format("woff2");
+            font-weight: 400 600;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: "Garet";
+            src: url("__GARET_HEAVY_SRC__") format("woff2");
+            font-weight: 700 900;
+            font-style: normal;
+            font-display: swap;
+        }
 
         :root {
             /* Primitive brand palette */
@@ -145,10 +175,22 @@ def apply_base_css() -> None:
             font-family: var(--font-sans) !important;
         }
 
-        [data-testid="stHeader"],
-        [data-testid="stToolbar"],
-        [data-testid="stDecoration"] {
-            background: transparent !important;
+        #MainMenu,
+        footer,
+        header[data-testid="stHeader"],
+        div[data-testid="stToolbar"],
+        div[data-testid="stDecoration"],
+        div[data-testid="stStatusWidget"],
+        div[data-testid="stDeployButton"],
+        .viewerBadge_container__1QSob,
+        .viewerBadge_link__1S137,
+        .viewerBadge_text__1JaDK,
+        .styles_viewerBadge__1yB5_ {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            max-height: 0 !important;
         }
 
         [data-testid="stSidebar"] {
@@ -182,6 +224,9 @@ def apply_base_css() -> None:
             }
         }
         </style>
-        """,
+        """
+
+        .replace("__GARET_BOOK_SRC__", garet_book_src)
+        .replace("__GARET_HEAVY_SRC__", garet_heavy_src),
         unsafe_allow_html=True,
     )

@@ -1,15 +1,58 @@
 from __future__ import annotations
 
+import base64
+from pathlib import Path
+from textwrap import dedent
+
 import streamlit as st
 
+from styles.upload import apply_upload_css
+
+
+LOGO_PATH = Path("assets/brand/costelry_logo_full_cropped.svg")
+
+def _read_logo_data_uri() -> str:
+    """Return the brand logo as an inline image source for the upload screen.
+
+    Called during upload screen rendering. Keeping the SVG inline avoids layout
+    differences from Streamlit's image wrapper.
+    """
+    svg_bytes = LOGO_PATH.read_bytes()
+    encoded = base64.b64encode(svg_bytes).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
+
+def _render_upload_hero() -> None:
+    """Render the static brand and hero block above the uploader."""
+    logo_src = _read_logo_data_uri()
+
+    html = (
+        '<div class="upload-screen-active" style="display:none"></div>'
+        '<div class="upload-screen">'
+        '<div class="upload-screen__stack">'
+        f'<img class="upload-screen__logo" src="{logo_src}" alt="costerly.ai" />'
+        '<div class="upload-screen__hero">'
+        'AI estimating<br>'
+        'Quote request to proposal<br>'
+        'In minutes, not days'
+        '</div>'
+        '</div>'
+        '</div>'
+    )
+
+    st.markdown(html, unsafe_allow_html=True)
 
 def render_upload_screen(company_id: str) -> None:
-    st.markdown("# costerly.ai")
-    st.markdown("Upload an RFQ, drawing, PDF, sketch or technical file.")
+    """Render the first screen and move to processing after a file is accepted.
+
+    This screen owns only UI state and the Streamlit upload action. Processing
+    will later move into a use case outside the Streamlit screen layer.
+    """
+    apply_upload_css()
+    _render_upload_hero()
 
     uploaded_file = st.file_uploader(
-        "Upload file",
-        type=["pdf", "png", "jpg", "jpeg", "webp", "csv", "xlsx"],
+        "📎 Drop or upload",
+        type=["pdf", "png", "jpg", "jpeg"],
         label_visibility="collapsed",
     )
 
