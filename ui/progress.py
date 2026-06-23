@@ -4,38 +4,8 @@ import streamlit as st
 
 
 def apply_progress_css() -> None:
-    """Install the shared Costerly progress bar styling."""
-    st.markdown(
-        """
-        <style>
-        .custom-progress-track {
-            width: 100%;
-            height: var(--progress-height);
-            border-radius: 999px;
-            background: #D85A5A;
-            overflow: hidden;
-        }
-
-        .custom-progress-fill {
-            height: 100%;
-            min-width: 0;
-            border-radius: 999px;
-            background: var(--color-progress-blue);
-            transition: width 140ms linear;
-        }
-
-        .custom-progress-fill.is-running {
-            background: linear-gradient(
-                90deg,
-                var(--color-progress-blue) 0%,
-                #68A7FF 52%,
-                var(--color-progress-blue) 100%
-            );
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    """Keep progress styling explicit while CSS lives in styles/base.py."""
+    return None
 
 
 def render_progress_bar(progress_value: float, *, running: bool = True) -> None:

@@ -6,7 +6,8 @@ from pathlib import Path
 import streamlit as st
 
 from styles.upload import apply_upload_css
-from ui.js_guards import install_upload_dragover_guard
+from ui.js_guards import install_upload_dragover_guard, install_upload_processing_shell
+from ui.processing_stage import processing_stage_html
 
 
 LOGO_PATH = Path("assets/brand/costelry_logo_full_cropped.svg")
@@ -56,6 +57,7 @@ def render_upload_screen(company_id: str) -> None:
         label_visibility="collapsed",
     )
     install_upload_dragover_guard()
+    install_upload_processing_shell(processing_stage_html())
 
     if uploaded_file is not None:
         st.session_state.uploaded_file_name = uploaded_file.name

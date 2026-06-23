@@ -7,7 +7,12 @@ import streamlit as st
 from styles.post_upload import apply_post_upload_css
 
 
-def render_post_upload_header(title: str, subtitle: str | None = None) -> None:
+def render_post_upload_header(
+    title: str,
+    subtitle: str | None = None,
+    *,
+    marker_id: str | None = None,
+) -> None:
     """Render the fixed-origin header used after the Upload screen.
 
     Processing, File Review, and future detail screens should use this helper
@@ -19,8 +24,13 @@ def render_post_upload_header(title: str, subtitle: str | None = None) -> None:
     if subtitle:
         subtitle_html = f'<div class="post-upload-subtitle">{html.escape(subtitle)}</div>'
 
+    marker_html = ""
+    if marker_id:
+        marker_html = f'<div id="{html.escape(marker_id)}" style="display:none"></div>'
+
     st.markdown(
         '<div class="post-upload-shell">'
+        f'{marker_html}'
         f'<h1 class="post-upload-title">{html.escape(title)}</h1>'
         f'{subtitle_html}'
         '</div>',

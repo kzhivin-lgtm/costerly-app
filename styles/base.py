@@ -224,6 +224,105 @@ def apply_base_css() -> None:
             padding-bottom: 56px;
         }
 
+        .stApp:not(:has(.upload-screen-active)) .block-container {
+            width: var(--post-upload-width) !important;
+            max-width: none !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            padding-top: var(--post-upload-top) !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            padding-bottom: var(--post-upload-bottom) !important;
+            background: var(--color-bg) !important;
+        }
+
+        .post-upload-shell {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: var(--color-bg);
+        }
+
+        .post-upload-stage {
+            position: fixed;
+            inset: 0;
+            z-index: 2147482500;
+            background: var(--color-bg);
+            color: var(--color-text-strong);
+            box-sizing: border-box;
+            overflow: auto;
+        }
+
+        .post-upload-stage__inner {
+            width: var(--post-upload-width);
+            max-width: none;
+            margin-left: auto;
+            margin-right: auto;
+            padding-top: var(--post-upload-top);
+            padding-left: 0;
+            padding-right: 0;
+            padding-bottom: var(--post-upload-bottom);
+            box-sizing: border-box;
+            background: var(--color-bg);
+        }
+
+        .post-upload-stage__slow {
+            display: none;
+            margin-top: var(--space-5);
+            color: rgba(42, 31, 44, 0.62);
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .post-upload-stage[data-slow="true"] .post-upload-stage__slow {
+            display: block;
+        }
+
+        .post-upload-title {
+            font-family: var(--font-mono) !important;
+            color: var(--color-accent) !important;
+            font-size: var(--post-upload-title-size) !important;
+            line-height: var(--post-upload-title-line-height) !important;
+            font-weight: 500 !important;
+            letter-spacing: -0.02em !important;
+            margin: 0 0 var(--post-upload-title-margin-bottom) 0 !important;
+            padding: 0 !important;
+        }
+
+        .post-upload-subtitle {
+            color: var(--color-text-muted) !important;
+            font-family: var(--font-sans) !important;
+            font-size: 14px !important;
+            line-height: 1.5 !important;
+            margin: var(--post-upload-subtitle-margin-top) 0 var(--post-upload-subtitle-margin-bottom) 0 !important;
+            max-width: var(--post-upload-subtitle-width) !important;
+        }
+
+        .custom-progress-track {
+            width: 100%;
+            height: var(--progress-height);
+            border-radius: 999px;
+            background: #D85A5A;
+            overflow: hidden;
+        }
+
+        .custom-progress-fill {
+            height: 100%;
+            min-width: 0;
+            border-radius: 999px;
+            background: var(--color-progress-blue);
+            transition: width 140ms linear;
+        }
+
+        .custom-progress-fill.is-running {
+            background: linear-gradient(
+                90deg,
+                var(--color-progress-blue) 0%,
+                #68A7FF 52%,
+                var(--color-progress-blue) 100%
+            );
+        }
+
         button,
         input,
         textarea,
