@@ -97,10 +97,12 @@ def apply_base_css() -> None:
             --upload-height: 200px;
             --post-upload-width: min(960px, calc(100vw - 56px));
             --post-upload-top: 73px;
+            --post-upload-screen-top: 42px;
             --post-upload-bottom: 72px;
             --post-upload-title-size: 40px;
             --post-upload-title-line-height: 1.1;
             --post-upload-title-margin-bottom: var(--space-5);
+            --post-upload-heading-gap: 28px;
             --post-upload-subtitle-margin-top: calc(-1 * var(--space-3));
             --post-upload-subtitle-margin-bottom: var(--space-3);
             --post-upload-subtitle-width: 760px;
@@ -218,18 +220,20 @@ def apply_base_css() -> None:
             display: none;
         }
 
-        .block-container {
+        .block-container,
+        [data-testid="stMainBlockContainer"] {
             max-width: 960px;
             padding-top: 56px;
             padding-bottom: 56px;
         }
 
-        .stApp:not(:has(.upload-screen-active)) .block-container {
+        .stApp:not(:has(.upload-screen-active)) .block-container,
+        .stApp:not(:has(.upload-screen-active)) [data-testid="stMainBlockContainer"] {
             width: var(--post-upload-width) !important;
             max-width: none !important;
             margin-left: auto !important;
             margin-right: auto !important;
-            padding-top: var(--post-upload-top) !important;
+            padding-top: var(--post-upload-screen-top) !important;
             padding-left: 0 !important;
             padding-right: 0 !important;
             padding-bottom: var(--post-upload-bottom) !important;
@@ -289,6 +293,10 @@ def apply_base_css() -> None:
             padding: 0 !important;
         }
 
+        .post-upload-shell:not(:has(.post-upload-subtitle)) .post-upload-title {
+            margin-bottom: 0 !important;
+        }
+
         .post-upload-subtitle {
             color: var(--color-text-muted) !important;
             font-family: var(--font-sans) !important;
@@ -339,7 +347,8 @@ def apply_base_css() -> None:
                 --post-upload-title-size: clamp(30px, 9vw, 40px);
             }
 
-            .block-container {
+            .block-container,
+            [data-testid="stMainBlockContainer"] {
                 max-width: 100% !important;
                 padding-left: var(--space-4) !important;
                 padding-right: var(--space-4) !important;

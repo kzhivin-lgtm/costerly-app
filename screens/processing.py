@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import streamlit as st
 
 from ui.processing_stage import PROCESSING_MARKER_ID, processing_stage_html
@@ -15,3 +17,8 @@ def render_processing_screen(company_id: str) -> None:
         processing_stage_html(marker_id=PROCESSING_MARKER_ID),
         unsafe_allow_html=True,
     )
+
+    # TEMP: visual handoff while the real RFQ processing use case is not wired.
+    time.sleep(1.2)
+    st.session_state.screen = "file_review"
+    st.rerun()

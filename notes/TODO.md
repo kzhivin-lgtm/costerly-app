@@ -5,10 +5,10 @@ keeps important follow-up work visible without mixing it into the active scope.
 
 ## Current
 
-### v1.0.1 - Upload dragover state
-- Add dragover state for the custom upload box.
-- On dragover: lilac fill/border and a large white plus.
-- Do not depend on dynamic Streamlit/Emotion class names.
+### v1.2.0 - File Review screen
+- Rebuild the old File Review layout in the new screen structure.
+- Use a dev-only visual fixture until the real detection use case is connected.
+- Remove the temporary Processing -> File Review handoff when RFQ processing is wired.
 
 ## Backlog
 
@@ -26,6 +26,11 @@ Priority: medium
 - Store usage metrics in Supabase to track RFQ processing cost.
 
 ## Done
+
+### v1.0.1 - Upload dragover state
+- Added dragover state for the custom upload box.
+- On dragover: lilac fill/border and a large white plus.
+- Avoided dynamic Streamlit/Emotion class names.
 
 ### v1.0.0 - Upload screen foundation
 - Built the first upload screen: logo, hero, upload box, hover, responsive base.

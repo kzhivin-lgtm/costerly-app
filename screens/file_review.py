@@ -1,20 +1,154 @@
 from __future__ import annotations
 
+import html
+
 import streamlit as st
+
+from dev.fixtures.file_review import FILE_REVIEW_FIXTURE
+from styles.file_review import apply_file_review_css
+from ui.layout import render_post_upload_header
+
+
+def _escape(value: object) -> str:
+    """Return escaped text for compact HTML card rendering."""
+    if value is None or value == "":
+        return "—"
+    return html.escape(str(value))
+
+
+def _list_html(items: list[str], *, class_name: str) -> str:
+    """Render a plain bullet list for review-card text sections."""
+    if not items:
+        return f'<div class="{class_name}">No major missing information detected.</div>'
+
+    list_items = "".join(f"<li>{_escape(item)}</li>" for item in items)
+    return f'<ul class="{class_name}">{list_items}</ul>'
+
+
+def _metadata_rows_html(run: dict[str, object]) -> str:
+    """Render the compact technical metadata rows."""
+    rows = [
+        ("Project name", run.get("project_name")),
+        ("Partner", run.get("partner")),
+        ("File name", run.get("file_name")),
+        ("Pages detected", run.get("pages_detected")),
+        ("Source type", run.get("source_type")),
+        ("Author", run.get("author")),
+        ("Document date", run.get("document_date")),
+        ("Language", run.get("language")),
+        ("File quality confidence", run.get("file_quality_confidence")),
+        ("Run ID", run.get("run_id")),
+        ("Status", run.get("status")),
+    ]
+
+    return "".join(
+        '<div class="file-review-meta-row">'
+        f'<div class="file-review-meta-key">{_escape(key)}</div>'
+        f'<div class="file-review-meta-value">{_escape(value)}</div>'
+        '</div>'
+        for key, value in rows
+    )
+
+
+def _render_review_card(run: dict[str, object]) -> None:
+    """Render the top File Review summary card."""
+    missing_html = _list_html(
+        run.get("missing_information", []),
+        class_name="file-review-missing-list",
+    )
+
+    card_html = (
+        '<div class="file-review-card">'
+        '<div class="file-review-summary-grid">'
+        '<div class="file-review-label">Project name:</div>'
+        f'<div class="file-review-value">{_escape(run.get("project_name"))}</div>'
+        '<div class="file-review-label">Partner:</div>'
+        f'<div class="file-review-value">{_escape(run.get("partner"))}</div>'
+        '<div class="file-review-label">File quality:</div>'
+        f'<div class="file-review-value">{_escape(run.get("file_quality"))}</div>'
+        '</div>'
+        '<div class="file-review-divider"></div>'
+        '<div class="file-review-section-title">Missing information:</div>'
+        f'{missing_html}'
+        '<div class="file-review-divider"></div>'
+        '<details class="file-review-meta-details">'
+        '<summary class="file-review-meta-summary">'
+        '<span class="file-review-meta-title">Technical metadata:</span>'
+        '</summary>'
+        '<div class="file-review-meta-table">'
+        f'{_metadata_rows_html(run)}'
+        '</div>'
+        '</details>'
+        '</div>'
+    )
+
+    st.markdown(card_html, unsafe_allow_html=True)
+
+
+def _render_object_card(item: dict[str, object]) -> None:
+    """Render one detected object card."""
+    notes_html = _list_html(
+        item.get("notes", []),
+        class_name="file-review-object-notes-list",
+    )
+
+    card_html = (
+        '<div class="file-review-object-card">'
+        '<div class="file-review-object-top">'
+        f'<div class="file-review-object-name">{_escape(item.get("name"))}</div>'
+        '<div>'
+        '<div class="file-review-object-metric-label">Qty</div>'
+        f'<div class="file-review-object-metric-value">{_escape(item.get("quantity"))}</div>'
+        '</div>'
+        '<div>'
+        '<div class="file-review-object-metric-label">Confidence</div>'
+        f'<div class="file-review-object-metric-value">{_escape(item.get("confidence"))}</div>'
+        '</div>'
+        '</div>'
+        '<div class="file-review-object-grid">'
+        '<div>'
+        '<div class="file-review-object-field-label">Dimensions</div>'
+        f'<div class="file-review-object-field-value">{_escape(item.get("dimensions"))}</div>'
+        '</div>'
+        '<div>'
+        '<div class="file-review-object-field-label">Materials</div>'
+        f'<div class="file-review-object-field-value">{_escape(item.get("materials"))}</div>'
+        '</div>'
+        '</div>'
+        '<div class="file-review-object-notes-title">Notes</div>'
+        f'{notes_html}'
+        '</div>'
+    )
+
+    st.markdown(card_html, unsafe_allow_html=True)
 
 
 def render_file_review_screen(company_id: str) -> None:
-    st.markdown("# File review")
-    st.markdown("Clean architecture placeholder.")
+    """Render File Review with temporary visual fixture data.
 
-    st.write(
-        {
-            "company_id": company_id,
-            "uploaded_file_name": st.session_state.get("uploaded_file_name"),
-            "bytes_loaded": bool(st.session_state.get("uploaded_file_bytes")),
-        }
+    The fixture is only for screen construction while the detection use case is
+    not connected. Production data will later arrive as a DetectionResult.
+    """
+    apply_file_review_css()
+    render_post_upload_header("File Review")
+
+    data = FILE_REVIEW_FIXTURE
+    _render_review_card(data["run"])
+
+    st.markdown(
+        '<h1 class="file-review-detected-title">Detected objects</h1>',
+        unsafe_allow_html=True,
     )
 
-    if st.button("Back to upload"):
+    for item in data["objects"]:
+        _render_object_card(item)
+
+    col_back, col_next = st.columns(2)
+
+    if col_back.button("Back to upload"):
         st.session_state.screen = "upload"
+        st.rerun()
+
+    if col_next.button("Continue to objects", disabled=True):
+        st.session_state.screen = "objects"
         st.rerun()

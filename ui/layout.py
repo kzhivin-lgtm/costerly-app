@@ -29,7 +29,7 @@ def render_post_upload_header(
         marker_html = f'<div id="{html.escape(marker_id)}" style="display:none"></div>'
 
     st.markdown(
-        '<div class="post-upload-shell">'
+        '<div class="post-upload-shell post-upload-screen-shell">'
         f'{marker_html}'
         f'<h1 class="post-upload-title">{html.escape(title)}</h1>'
         f'{subtitle_html}'
