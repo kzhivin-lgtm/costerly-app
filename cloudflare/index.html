@@ -27,6 +27,16 @@
         display: block;
         background: #F1EFEF;
       }
+
+      .embed-footer-mask {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 42px;
+        background: #F1EFEF;
+        z-index: 2;
+      }
     </style>
   </head>
 
@@ -36,5 +46,6 @@
       title="costerly.ai"
       allow="clipboard-write; clipboard-read; fullscreen"
     ></iframe>
+    <div class="embed-footer-mask" aria-hidden="true"></div>
   </body>
 </html>
