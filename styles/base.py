@@ -186,7 +186,12 @@ def apply_base_css() -> None:
         .viewerBadge_container__1QSob,
         .viewerBadge_link__1S137,
         .viewerBadge_text__1JaDK,
-        .styles_viewerBadge__1yB5_ {
+        .styles_viewerBadge__1yB5_,
+        [class*="_container_"][class*="_1upux_"],
+        [class*="_hostedName_"],
+        [class*="_linkOutText_"],
+        [class*="_linkOutIcon_"],
+        a[href*="utm_medium=oembed"] {
             display: none !important;
             visibility: hidden !important;
             height: 0 !important;
