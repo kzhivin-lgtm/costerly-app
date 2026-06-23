@@ -26,7 +26,7 @@ def apply_base_css() -> None:
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
         @font-face {
             font-family: "Garet";
@@ -70,6 +70,7 @@ def apply_base_css() -> None:
             --primitive-upload-lilac: #E8D9FF;
             --primitive-upload-peach: #FFE1D2;
             --primitive-upload-orange: #FF8A3D;
+            --primitive-progress-blue: #2F80ED;
 
             /* Typography */
             --font-hero: "Archivo Black", "Arial Black", sans-serif;
@@ -95,7 +96,15 @@ def apply_base_css() -> None:
             --upload-width: 600px;
             --upload-height: 200px;
             --post-upload-width: min(960px, calc(100vw - 56px));
-            --post-upload-top: 45px;
+            --post-upload-top: 73px;
+            --post-upload-bottom: 72px;
+            --post-upload-title-size: 40px;
+            --post-upload-title-line-height: 1.1;
+            --post-upload-title-margin-bottom: var(--space-5);
+            --post-upload-subtitle-margin-top: calc(-1 * var(--space-3));
+            --post-upload-subtitle-margin-bottom: var(--space-3);
+            --post-upload-subtitle-width: 760px;
+            --progress-height: 12px;
         }
 
         :root,
@@ -117,6 +126,7 @@ def apply_base_css() -> None:
             --color-upload-lilac: var(--primitive-upload-lilac);
             --color-upload-peach: var(--primitive-upload-peach);
             --color-upload-orange: var(--primitive-upload-orange);
+            --color-progress-blue: var(--primitive-progress-blue);
         }
 
         [data-costerly-theme="dark"] {
@@ -138,6 +148,7 @@ def apply_base_css() -> None:
             --color-upload-lilac: var(--primitive-upload-lilac);
             --color-upload-peach: var(--primitive-upload-peach);
             --color-upload-orange: var(--primitive-upload-orange);
+            --color-progress-blue: var(--primitive-progress-blue);
         }
 
         :root {
@@ -225,6 +236,8 @@ def apply_base_css() -> None:
                 --upload-width: min(92vw, 600px);
                 --upload-height: 180px;
                 --post-upload-width: calc(100vw - 32px);
+                --post-upload-top: 56px;
+                --post-upload-title-size: clamp(30px, 9vw, 40px);
             }
 
             .block-container {
