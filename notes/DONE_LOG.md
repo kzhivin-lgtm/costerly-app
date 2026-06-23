@@ -14,3 +14,5 @@ Shared processing stage renderer added, завершена 23.06 15:11
 Done log created, завершена 23.06 15:33
 File Review screen foundation and aligned post-upload layout, завершена 23.06 16:04
 Backup V1.2.0_before_file_review_foundation created, завершена 23.06 16:04
+Detected object card edit layout, завершена 23.06 16:26
+Backup V1.3.0_before_detected_object_card_edit_layout created, завершена 23.06 16:26

@@ -5,10 +5,7 @@ keeps important follow-up work visible without mixing it into the active scope.
 
 ## Current
 
-### v1.2.0 - File Review screen
-- Rebuild the old File Review layout in the new screen structure.
-- Use a dev-only visual fixture until the real detection use case is connected.
-- Remove the temporary Processing -> File Review handoff when RFQ processing is wired.
+No active task. Next task starts as v1.4.0.
 
 ## Backlog
 
@@ -26,6 +23,16 @@ Priority: medium
 - Store usage metrics in Supabase to track RFQ processing cost.
 
 ## Done
+
+### v1.3.0 - Detected object card edit layout
+- Reworked the detected object card with editable object name and QTY fields.
+- Added CONF display and Ignore visual control.
+- Aligned Dimensions, Materials, and Missing information with File Review card style.
+
+### v1.2.0 - File Review screen
+- Rebuilt the old File Review layout in the new screen structure.
+- Used a dev-only visual fixture until the real detection use case is connected.
+- Aligned the post-upload screen title origin with Processing.
 
 ### v1.0.1 - Upload dragover state
 - Added dragover state for the custom upload box.
