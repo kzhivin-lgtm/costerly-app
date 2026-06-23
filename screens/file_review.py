@@ -179,7 +179,7 @@ def render_file_review_screen(company_id: str) -> None:
 
     _render_missing_object_search()
 
-    col_back, col_next, col_gap = st.columns([1, 1, 3.5])
+    col_back, col_next = st.columns(2, gap="small")
 
     if col_back.button("BACK TO UPLOAD", type="secondary", use_container_width=True):
         st.session_state.screen = "upload"
@@ -187,7 +187,6 @@ def render_file_review_screen(company_id: str) -> None:
 
     if col_next.button(
         "CONTINUE TO OBJECTS",
-        disabled=True,
         type="primary",
         use_container_width=True,
     ):

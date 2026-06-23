@@ -7,6 +7,7 @@ from styles.base import apply_base_css
 from screens.upload import render_upload_screen
 from screens.processing import render_processing_screen
 from screens.file_review import render_file_review_screen
+from screens.objects import render_objects_screen
 
 
 st.set_page_config(
@@ -30,6 +31,8 @@ def main() -> None:
         render_processing_screen(company_id)
     elif screen == "file_review":
         render_file_review_screen(company_id)
+    elif screen == "objects":
+        render_objects_screen(company_id)
     else:
         st.session_state.screen = "upload"
         st.rerun()
