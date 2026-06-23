@@ -16,3 +16,4 @@ File Review screen foundation and aligned post-upload layout, завершена
 Backup V1.2.0_before_file_review_foundation created, завершена 23.06 16:04
 Detected object card edit layout, завершена 23.06 16:26
 Backup V1.3.0_before_detected_object_card_edit_layout created, завершена 23.06 16:26
+Missing objects UI + shared input/button tokens, завершена 23.06 21:44

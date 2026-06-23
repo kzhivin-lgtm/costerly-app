@@ -107,6 +107,46 @@ def apply_base_css() -> None:
             --post-upload-subtitle-margin-bottom: var(--space-3);
             --post-upload-subtitle-width: 760px;
             --progress-height: 12px;
+
+            /* Shared button tokens */
+            --button-height-md: 44px;
+            --button-height-lg: 56px;
+            --button-radius: 10px;
+            --button-font-size: 16px;
+            --button-font-weight: 700;
+            --button-primary-bg: var(--color-accent);
+            --button-primary-bg-hover: #6F3CB4;
+            --button-primary-text: #FFFFFF;
+            --button-secondary-bg: #FFFFFF;
+            --button-secondary-bg-hover: #FAF8FC;
+            --button-secondary-text: rgba(42, 31, 44, 0.74);
+            --button-secondary-border: rgba(42, 31, 44, 0.18);
+            --button-danger-bg-hover: var(--color-danger-bg);
+            --button-danger-text-hover: var(--color-danger);
+            --button-danger-border-hover: rgba(214, 69, 63, 0.48);
+
+            /* Shared input tokens */
+            --input-height-md: 46px;
+            --input-radius: 10px;
+            --input-bg: #FFFFFF;
+            --input-border: rgba(42, 31, 44, 0.18);
+            --input-text: #17131C;
+            --input-placeholder: rgba(42, 31, 44, 0.42);
+            --input-focus-border: rgba(128, 73, 198, 0.72);
+            --input-focus-ring: rgba(128, 73, 198, 0.14);
+            --input-font-size: 18px;
+            --input-font-weight: 500;
+            --input-line-height: 1.2;
+            --input-padding-y: 8px;
+            --input-padding-x: 12px;
+            --input-strong-font-size: 24px;
+            --input-strong-font-weight: 800;
+            --input-strong-letter-spacing: -0.035em;
+            --input-compact-font-size: 22px;
+            --input-compact-font-weight: 700;
+
+            /* Shared review card rhythm */
+            --review-card-gap: 20px;
         }
 
         :root,
@@ -336,6 +376,52 @@ def apply_base_css() -> None:
         textarea,
         select {
             font-family: var(--font-sans) !important;
+        }
+
+        div[data-testid="stButton"] button,
+        div[data-testid="stFormSubmitButton"] button {
+            min-height: var(--button-height-lg) !important;
+            border-radius: var(--button-radius) !important;
+            font-family: var(--font-mono) !important;
+            font-size: var(--button-font-size) !important;
+            font-weight: var(--button-font-weight) !important;
+            text-transform: uppercase !important;
+            border: 1px solid var(--button-secondary-border) !important;
+            transition: background 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease !important;
+        }
+
+        div[data-testid="stButton"] button[kind="primary"] {
+            background: var(--button-primary-bg) !important;
+            color: var(--button-primary-text) !important;
+            border-color: var(--button-primary-bg) !important;
+        }
+
+        div[data-testid="stButton"] button[kind="primary"]:hover {
+            background: var(--button-primary-bg-hover) !important;
+            border-color: var(--button-primary-bg-hover) !important;
+            color: var(--button-primary-text) !important;
+        }
+
+        div[data-testid="stButton"] button[kind="secondary"],
+        div[data-testid="stFormSubmitButton"] button {
+            background: var(--button-secondary-bg) !important;
+            color: var(--button-secondary-text) !important;
+            border-color: var(--button-secondary-border) !important;
+        }
+
+        div[data-testid="stButton"] button[kind="secondary"]:hover,
+        div[data-testid="stFormSubmitButton"] button:hover {
+            background: var(--button-secondary-bg-hover) !important;
+            color: var(--color-text-strong) !important;
+            border-color: rgba(128, 73, 198, 0.34) !important;
+        }
+
+        div[data-testid="stButton"] button:disabled,
+        div[data-testid="stButton"] button[disabled],
+        div[data-testid="stFormSubmitButton"] button:disabled,
+        div[data-testid="stFormSubmitButton"] button[disabled] {
+            opacity: 0.56 !important;
+            cursor: not-allowed !important;
         }
 
         @media (max-width: 760px) {

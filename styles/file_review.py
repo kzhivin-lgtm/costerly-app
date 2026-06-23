@@ -152,7 +152,7 @@ def apply_file_review_css() -> None:
             padding: 32px 34px 26px 34px;
             box-sizing: border-box;
             color: var(--color-text-strong);
-            margin: 0 0 20px 0;
+            margin: 0 0 var(--review-card-gap) 0;
         }
 
         .file-review-object-edit-grid {
@@ -182,37 +182,37 @@ def apply_file_review_css() -> None:
         .file-review-object-name-input,
         .file-review-object-qty-input {
             width: 100%;
-            min-height: 46px;
+            min-height: var(--input-height-md);
             box-sizing: border-box;
-            border: 1px solid rgba(42, 31, 44, 0.18);
-            border-radius: 10px;
-            background: #FFFFFF;
-            color: #17131C;
+            border: 1px solid var(--input-border);
+            border-radius: var(--input-radius);
+            background: var(--input-bg);
+            color: var(--input-text);
             font-family: var(--font-sans);
             outline: none;
             transition: border-color 140ms ease, box-shadow 140ms ease;
         }
 
         .file-review-object-name-input {
-            font-size: 24px;
-            line-height: 1.2;
-            font-weight: 800;
-            letter-spacing: -0.035em;
-            padding: 8px 12px;
+            font-size: var(--input-strong-font-size);
+            line-height: var(--input-line-height);
+            font-weight: var(--input-strong-font-weight);
+            letter-spacing: var(--input-strong-letter-spacing);
+            padding: var(--input-padding-y) var(--input-padding-x);
         }
 
         .file-review-object-qty-input {
-            font-size: 22px;
+            font-size: var(--input-compact-font-size);
             line-height: 1.1;
-            font-weight: 700;
+            font-weight: var(--input-compact-font-weight);
             padding: 8px 10px;
             text-align: center;
         }
 
         .file-review-object-name-input:focus,
         .file-review-object-qty-input:focus {
-            border-color: rgba(128, 73, 198, 0.72);
-            box-shadow: 0 0 0 3px rgba(128, 73, 198, 0.14);
+            border-color: var(--input-focus-border);
+            box-shadow: 0 0 0 3px var(--input-focus-ring);
         }
 
         .file-review-object-confidence {
@@ -228,14 +228,15 @@ def apply_file_review_css() -> None:
         }
 
         .file-review-object-ignore-button {
-            min-height: 46px;
+            min-height: var(--button-height-md);
             border: 1px solid rgba(42, 31, 44, 0.18);
-            border-radius: 10px;
-            background: #FFFFFF;
+            border-radius: var(--button-radius);
+            background: var(--button-secondary-bg);
             color: rgba(42, 31, 44, 0.72);
             font-family: var(--font-sans);
-            font-size: 14px;
-            font-weight: 700;
+            font-size: var(--button-font-size);
+            font-weight: var(--button-font-weight);
+            text-transform: uppercase;
             cursor: pointer;
             transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
         }
@@ -261,9 +262,139 @@ def apply_file_review_css() -> None:
             padding-left: 2px;
         }
 
+        .file-review-missing-card {
+            width: 100%;
+            border: 1px solid rgba(42, 31, 44, 0.12);
+            border-radius: 16px;
+            background: var(--color-surface);
+            box-shadow: 0 14px 28px rgba(0, 0, 0, 0.055);
+            padding: 26px 34px 24px 34px;
+            margin: 0 0 var(--review-card-gap) 0;
+        }
+
+        .file-review-missing-toggle {
+            display: none;
+        }
+
+        .file-review-missing-collapsed {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+        }
+
+        .file-review-missing-expanded {
+            display: none;
+        }
+
+        .file-review-missing-toggle:checked
+            ~ .file-review-missing-collapsed {
+            display: none;
+        }
+
+        .file-review-missing-toggle:checked
+            ~ .file-review-missing-expanded {
+            display: block;
+        }
+
+        .file-review-missing-title {
+            color: rgba(42, 31, 44, 0.58);
+            font-size: 18px;
+            line-height: 1.25;
+            font-weight: 700;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+        }
+
+        .file-review-search-label {
+            color: rgba(42, 31, 44, 0.58);
+            font-size: 18px;
+            line-height: 1.25;
+            font-weight: 700;
+            letter-spacing: 0.10em;
+            text-transform: uppercase;
+        }
+
+        .file-review-search-row {
+            display: grid;
+            grid-template-columns: max-content minmax(0, 1fr);
+            column-gap: 22px;
+            align-items: center;
+            margin: 0 0 14px 0;
+        }
+
+        .file-review-search-label {
+            min-width: 150px;
+        }
+
+        .file-review-search-input {
+            width: 100%;
+            min-height: var(--input-height-md);
+            box-sizing: border-box;
+            border: 1px solid var(--input-border);
+            border-radius: var(--input-radius);
+            background: var(--input-bg);
+            color: var(--input-text);
+            font-family: var(--font-sans);
+            font-size: var(--input-font-size);
+            line-height: var(--input-line-height);
+            font-weight: var(--input-font-weight);
+            padding: var(--input-padding-y) var(--input-padding-x);
+            outline: none;
+            transition: border-color 140ms ease, box-shadow 140ms ease;
+        }
+
+        .file-review-search-input::placeholder {
+            color: var(--input-placeholder);
+            opacity: 1;
+        }
+
+        .file-review-search-input:focus {
+            border-color: var(--input-focus-border);
+            box-shadow: 0 0 0 3px var(--input-focus-ring);
+        }
+
+        .file-review-search-actions {
+            display: flex;
+            gap: 16px;
+            margin: 22px 0 0 172px;
+        }
+
+        .file-review-search-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 150px;
+            min-height: var(--button-height-md);
+            box-sizing: border-box;
+            border: 1px solid var(--button-secondary-border);
+            border-radius: var(--button-radius);
+            background: var(--button-secondary-bg);
+            color: var(--button-secondary-text);
+            font-family: var(--font-mono);
+            font-size: var(--button-font-size);
+            font-weight: var(--button-font-weight);
+            text-transform: uppercase;
+            cursor: pointer;
+            text-decoration: none;
+            transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+        }
+
+        .file-review-search-button:hover {
+            background: var(--button-secondary-bg-hover);
+            color: var(--color-accent);
+            border-color: rgba(128, 73, 198, 0.42);
+        }
+
+        .file-review-search-button--cancel:hover {
+            background: var(--button-danger-bg-hover);
+            color: var(--button-danger-text-hover);
+            border-color: var(--button-danger-border-hover);
+        }
+
         @media (max-width: 760px) {
             .file-review-card,
-            .file-review-object-card {
+            .file-review-object-card,
+            .file-review-missing-card {
                 padding: 26px 22px 24px 22px;
                 border-radius: 14px;
             }
@@ -271,9 +402,14 @@ def apply_file_review_css() -> None:
             .file-review-summary-grid,
             .file-review-meta-row,
             .file-review-object-edit-grid,
-            .file-review-object-detail-grid {
+            .file-review-object-detail-grid,
+            .file-review-search-row {
                 grid-template-columns: 1fr;
                 row-gap: 8px;
+            }
+
+            .file-review-search-actions {
+                margin-left: 0;
             }
 
             .file-review-value {

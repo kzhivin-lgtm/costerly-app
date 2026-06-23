@@ -125,6 +125,38 @@ def _render_object_card(item: dict[str, object]) -> None:
     st.markdown(card_html, unsafe_allow_html=True)
 
 
+def _render_missing_object_search() -> None:
+    """Render second-pass object search controls as app-owned HTML."""
+    card_html = (
+        '<div class="file-review-missing-card">'
+        '<input class="file-review-missing-toggle" id="file-review-missing-toggle" type="checkbox" />'
+        '<div class="file-review-missing-collapsed">'
+        '<div class="file-review-missing-title">Missing objects:</div>'
+        '<label class="file-review-search-button" for="file-review-missing-toggle">Search again</label>'
+        '</div>'
+        '<div class="file-review-missing-expanded">'
+        '<div class="file-review-search-row">'
+        '<div class="file-review-search-label">Object name:</div>'
+        '<input class="file-review-search-input" type="text" '
+        'placeholder="Example: wall shelf, reception desk, curtain rod system" />'
+        '</div>'
+        '<div class="file-review-search-row">'
+        '<div class="file-review-search-label">Search hint:</div>'
+        '<input class="file-review-search-input" type="text" '
+        'placeholder="Example: check page 3, small metal bracket near ceiling detail." />'
+        '</div>'
+        '<div class="file-review-search-actions">'
+        '<button class="file-review-search-button" type="button">Search again</button>'
+        '<label class="file-review-search-button file-review-search-button--cancel" '
+        'for="file-review-missing-toggle">Cancel</label>'
+        '</div>'
+        '</div>'
+        '</div>'
+    )
+
+    st.markdown(card_html, unsafe_allow_html=True)
+
+
 def render_file_review_screen(company_id: str) -> None:
     """Render File Review with temporary visual fixture data.
 
@@ -145,12 +177,19 @@ def render_file_review_screen(company_id: str) -> None:
     for item in data["objects"]:
         _render_object_card(item)
 
-    col_back, col_next = st.columns(2)
+    _render_missing_object_search()
 
-    if col_back.button("Back to upload"):
+    col_back, col_next, col_gap = st.columns([1, 1, 3.5])
+
+    if col_back.button("BACK TO UPLOAD", type="secondary", use_container_width=True):
         st.session_state.screen = "upload"
         st.rerun()
 
-    if col_next.button("Continue to objects", disabled=True):
+    if col_next.button(
+        "CONTINUE TO OBJECTS",
+        disabled=True,
+        type="primary",
+        use_container_width=True,
+    ):
         st.session_state.screen = "objects"
         st.rerun()
