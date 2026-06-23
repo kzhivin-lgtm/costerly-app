@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import base64
 from pathlib import Path
-from textwrap import dedent
 
 import streamlit as st
 
 from styles.upload import apply_upload_css
+from ui.js_guards import install_upload_dragover_guard
 
 
 LOGO_PATH = Path("assets/brand/costelry_logo_full_cropped.svg")
@@ -55,6 +55,7 @@ def render_upload_screen(company_id: str) -> None:
         type=["pdf", "png", "jpg", "jpeg"],
         label_visibility="collapsed",
     )
+    install_upload_dragover_guard()
 
     if uploaded_file is not None:
         st.session_state.uploaded_file_name = uploaded_file.name

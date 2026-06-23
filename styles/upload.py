@@ -8,7 +8,8 @@ def apply_upload_css() -> None:
 
     Called only by screens/upload.py. The native file uploader remains the real
     input; this CSS replaces its visual layer with the Costerly upload block.
-    Dragover is added later by a separate JS helper.
+    Dragover uses ui/js_guards.py to toggle stable class names on Streamlit's
+    native dropzone.
     """
     st.markdown(
         """
@@ -129,9 +130,31 @@ def apply_upload_css() -> None:
             background: transparent !important;
         }
 
+        div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover {
+            background: var(--color-upload-lilac) !important;
+            border-color: var(--color-accent) !important;
+        }
+
+        div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover::before {
+            content: "" !important;
+            width: 94px !important;
+            height: 94px !important;
+            margin: auto !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 21 V79 M21 50 H79' stroke='white' stroke-width='8' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: center center !important;
+            background-size: contain !important;
+            transform: none !important;
+        }
+
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"]:hover {
             background: var(--color-upload-peach) !important;
             border-color: var(--color-upload-orange) !important;
+        }
+
+        div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover:hover {
+            background: var(--color-upload-lilac) !important;
+            border-color: var(--color-accent) !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] *,
@@ -166,9 +189,15 @@ def apply_upload_css() -> None:
                 content: "📎 Upload file" !important;
                 font-size: 22px !important;
             }
+
+            div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover::before {
+                content: "" !important;
+                width: 82px !important;
+                height: 82px !important;
+            }
         }
 
-                @media (max-height: 760px) and (max-width: 760px) {
+        @media (max-height: 760px) and (max-width: 760px) {
             .stApp:has(.upload-screen-active) .block-container {
                 transform: translateY(16px);
             }

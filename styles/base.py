@@ -182,6 +182,7 @@ def apply_base_css() -> None:
         div[data-testid="stDecoration"],
         div[data-testid="stStatusWidget"],
         div[data-testid="stDeployButton"],
+        #GithubIcon,
         .viewerBadge_container__1QSob,
         .viewerBadge_link__1S137,
         .viewerBadge_text__1JaDK,
@@ -191,6 +192,15 @@ def apply_base_css() -> None:
             height: 0 !important;
             min-height: 0 !important;
             max-height: 0 !important;
+        }
+
+        button[title="View fullscreen"],
+        button[title="Fullscreen"],
+        button[aria-label="View fullscreen"],
+        button[aria-label="Fullscreen"],
+        div[data-testid="stImage"] button {
+            display: none !important;
+            visibility: hidden !important;
         }
 
         [data-testid="stSidebar"] {
