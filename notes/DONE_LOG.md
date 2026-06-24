@@ -21,3 +21,5 @@ Objects pricing screen foundation, завершена 23.06 23:11
 Backup V1.5.0_before_next_task created, завершена 23.06 23:11
 Object detail screen and final pre-agent UI polish, завершена 24.06 11:05
 Backup V1.6.0_before_next_task created, завершена 24.06 11:05
+Claude Detection Agent connected to Processing and File Review via Supabase, завершена 24.06 12:54
+Backup V1.7.0_before_next_task created, завершена 24.06 12:54

@@ -7,6 +7,7 @@ import streamlit as st
 from dev.fixtures.file_review import FILE_REVIEW_FIXTURE
 from styles.file_review import apply_file_review_css
 from ui.layout import render_post_upload_header
+from use_cases.rfq_processing import load_file_review_data
 
 
 def _escape(value: object) -> str:
@@ -158,15 +159,29 @@ def _render_missing_object_search() -> None:
 
 
 def render_file_review_screen(company_id: str) -> None:
-    """Render File Review with temporary visual fixture data.
-
-    The fixture is only for screen construction while the detection use case is
-    not connected. Production data will later arrive as a DetectionResult.
-    """
+    """Render File Review from the persisted detection result when available."""
     apply_file_review_css()
     render_post_upload_header("File Review")
 
-    data = FILE_REVIEW_FIXTURE
+    processing_error = st.session_state.get("processing_error")
+    if processing_error:
+        st.error(f"RFQ processing failed: {processing_error}")
+        if st.button("BACK TO UPLOAD", type="secondary"):
+            st.session_state.screen = "upload"
+            st.session_state.processing_error = None
+            st.rerun()
+        return
+
+    run_id = st.session_state.get("current_run_id")
+    if run_id:
+        try:
+            data = load_file_review_data(run_id)
+        except Exception as exc:
+            st.error(f"Could not load RFQ run from Supabase: {exc}")
+            return
+    else:
+        data = FILE_REVIEW_FIXTURE
+
     _render_review_card(data["run"])
 
     st.markdown(

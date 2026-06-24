@@ -16,7 +16,8 @@ This file explains where code belongs so the project stays understandable.
 
 ## Application Layer
 
-- `use_cases/` will contain product flows such as processing an uploaded RFQ.
+- `use_cases/` contains product flows such as processing an uploaded RFQ.
+- `use_cases/rfq_processing.py` runs detection, writes the result to Supabase, and loads File Review data.
 - A screen calls a use case. It should not call Claude, Supabase, or file parsing directly.
 
 ## Domain / Data Layer
@@ -26,8 +27,8 @@ This file explains where code belongs so the project stays understandable.
 
 ## External Integrations
 
-- `agents/` will contain LLM detection orchestration.
-- `db/` will contain Supabase client and repositories.
+- `agents/` contains LLM detection orchestration, prompt loading, and detection schema validation.
+- `db/` contains Supabase client and repositories.
 - `engine/` will contain estimating/routing logic when we bring that part back.
 
 ## Project Notes

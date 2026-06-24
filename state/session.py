@@ -28,6 +28,12 @@ def init_state() -> None:
     if "uploaded_file_bytes" not in st.session_state:
         st.session_state.uploaded_file_bytes = None
 
+    if "processed_file_name" not in st.session_state:
+        st.session_state.processed_file_name = None
+
+    if "processing_error" not in st.session_state:
+        st.session_state.processing_error = None
+
 
 def go_to(screen: str) -> None:
     st.session_state.screen = screen
