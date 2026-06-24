@@ -18,6 +18,7 @@ This file explains where code belongs so the project stays understandable.
 
 - `use_cases/` contains product flows such as processing an uploaded RFQ.
 - `use_cases/rfq_processing.py` runs detection, writes the result to Supabase, and loads File Review data.
+- `use_cases/estimation.py` starts object estimation by creating pending estimate records from detected objects.
 - A screen calls a use case. It should not call Claude, Supabase, or file parsing directly.
 
 ## Domain / Data Layer

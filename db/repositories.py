@@ -97,3 +97,46 @@ def fetch_rfq_detected_objects(client: Client, run_id: str) -> pd.DataFrame:
         order_by="object_id",
         filters={"run_id": run_id},
     )
+
+
+def upsert_rfq_estimate_shell(
+    client: Client,
+    *,
+    estimate_id: str,
+    run_id: str,
+    company_id: str,
+    object_estimates: list[dict],
+) -> None:
+    """Create the estimation work shell without running the Estimation Agent."""
+    client.table("rfq_estimates").upsert(
+        {
+            "estimate_id": estimate_id,
+            "run_id": run_id,
+            "company_id": company_id,
+            "status": "pending",
+        },
+        on_conflict="estimate_id",
+    ).execute()
+
+    if object_estimates:
+        client.table("rfq_object_estimates").upsert(
+            object_estimates,
+            on_conflict="estimate_id,object_id",
+        ).execute()
+
+
+def fetch_rfq_estimate(client: Client, estimate_id: str) -> pd.DataFrame:
+    return fetch_table(
+        client,
+        "rfq_estimates",
+        filters={"estimate_id": estimate_id},
+    )
+
+
+def fetch_rfq_object_estimates(client: Client, estimate_id: str) -> pd.DataFrame:
+    return fetch_table(
+        client,
+        "rfq_object_estimates",
+        order_by="object_id",
+        filters={"estimate_id": estimate_id},
+    )

@@ -1,43 +1,38 @@
-# TODO
+# Done Log
 
-Working task log for Costerly. The top section is the current focus; backlog
-keeps important follow-up work visible without mixing it into the active scope.
+App skeleton, завершена 22.06 18:54
+Local backups ignored by git, завершена 22.06 19:13
+Brand assets and Cloudflare wrapper added, завершена 22.06 22:03
+Design foundation added, завершена 22.06 22:19
+Upload screen foundation built, завершена 22.06 23:41
+Upload dragover state added, завершена 23.06 10:33
+Streamlit embed controls hidden in app UI, завершена 23.06 10:33
+Current Streamlit embed badge hidden, завершена 23.06 10:41
+Streamlit embed footer hidden in Cloudflare wrapper, завершена 23.06 10:50
+Post-upload processing layout foundation added, завершена 23.06 11:51
+Shared processing stage renderer added, завершена 23.06 15:11
+Done log created, завершена 23.06 15:33
+File Review screen foundation and aligned post-upload layout, завершена 23.06 16:04
+Backup V1.2.0_before_file_review_foundation created, завершена 23.06 16:04
+Detected object card edit layout, завершена 23.06 16:26
+Backup V1.3.0_before_detected_object_card_edit_layout created, завершена 23.06 16:26
+Missing objects UI + shared input/button tokens, завершена 23.06 21:44
+Objects pricing screen foundation, завершена 23.06 23:11
+Backup V1.5.0_before_next_task created, завершена 23.06 23:11
+Object detail screen and final pre-agent UI polish, завершена 24.06 11:05
+Backup V1.6.0_before_next_task created, завершена 24.06 11:05
+Claude Detection Agent connected to Processing and File Review via Supabase, завершена 24.06 12:54
+Backup V1.7.0_before_next_task created, завершена 24.06 12:54
+Objects Estimation subtitle arrows normalized, завершена 24.06 14:12
+Backup V1.7.1_before_next_task created, завершена 24.06 14:12
+Processing screen soft progress restored and aligned without moving post-upload screens, завершена 24.06 17:19
+Backup V1.7.2_before_next_task created, завершена 24.06 17:19
+Agent usage ledger with token and USD cost tracking, завершена 24.06 19:19
+Backup V1.8.0_before_estimation_agent_foundation created, завершена 24.06 19:19
+Estimation foundation shell connected to File Review, завершена 24.06 20:12
+Backup V1.9.0_before_estimation_agent_contract created, завершена 24.06 20:12
 
-## Current
-
-No active task. Next task starts as v1.9.0.
-
-## Backlog
-
-### Streamlit initial loading flicker
-Priority: low
-
-- Hide technical Streamlit loading flashes during first app load.
-- Compare with the old app later; one flicker case was already solved there.
-
-## Done
-
-### v1.3.0 - Detected object card edit layout
-- Reworked the detected object card with editable object name and QTY fields.
-- Added CONF display and Ignore visual control.
-- Aligned Dimensions, Materials, and Missing information with File Review card style.
-
-### v1.2.0 - File Review screen
-- Rebuilt the old File Review layout in the new screen structure.
-- Used a dev-only visual fixture until the real detection use case is connected.
-- Aligned the post-upload screen title origin with Processing.
-
-### v1.0.1 - Upload dragover state
-- Added dragover state for the custom upload box.
-- On dragover: lilac fill/border and a large white plus.
-- Avoided dynamic Streamlit/Emotion class names.
-
-### v1.0.0 - Upload screen foundation
-- Built the first upload screen: logo, hero, upload box, hover, responsive base.
-- Added local brand and font assets.
-- Hid Streamlit toolbar/deploy controls.
-
-### v1.8.0 - Agent usage ledger
-- Added agent_usage_events persistence for Detection Agent runs.
-- Stored input/output token counts, prompt version, model, file name, and run ID.
-- Added default Claude pricing catalog with optional secrets override for USD cost tracking.
+### v1.9.0 - Estimation foundation
+- Added pending estimate shell tables for project and object-level estimation.
+- Added `start_estimation_for_run()` use case.
+- Connected File Review continue action to create Supabase estimate records before Objects Estimation.

@@ -46,3 +46,18 @@ what the function deliberately does not do.
 Avoid comments that repeat obvious code.
 MD
 ```
+
+Estimation Target Flow
+confirmed detected objects
+        ↓
+start_estimation_for_run()
+        ↓
+create pending estimate + object estimate records
+        ↓
+future Estimation Agent fills material/labor/overhead lines per object
+        ↓
+deterministic calculation engine totals costs, VAT, and sale prices
+        ↓
+Objects Estimation and Object Detail render persisted estimate state
+Rule
+The Estimation Agent proposes line items and quantities. It does not own final arithmetic totals; deterministic engine code owns multiplication, VAT, totals, delivery, installation, and proposal math.
