@@ -77,6 +77,11 @@ def upsert_rfq_detection_result(client: Client, detection_result: dict) -> None:
         ).execute()
 
 
+def insert_agent_usage_event(client: Client, usage_event: dict) -> None:
+    """Persist one LLM usage ledger event for cost-efficiency tracking."""
+    client.table("agent_usage_events").insert(usage_event).execute()
+
+
 def fetch_rfq_run(client: Client, run_id: str) -> pd.DataFrame:
     return fetch_table(
         client,

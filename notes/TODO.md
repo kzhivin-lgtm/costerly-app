@@ -5,7 +5,7 @@ keeps important follow-up work visible without mixing it into the active scope.
 
 ## Current
 
-No active task. Next task starts as v1.4.0.
+No active task. Next task starts as v1.9.0.
 
 ## Backlog
 
@@ -14,13 +14,6 @@ Priority: low
 
 - Hide technical Streamlit loading flashes during first app load.
 - Compare with the old app later; one flicker case was already solved there.
-
-### Agent usage cost tracking
-Priority: medium
-
-- Add input tokens, output tokens, and total cost cents to agent output.
-- Include usage metrics in the validated detection data contract.
-- Store usage metrics in Supabase to track RFQ processing cost.
 
 ## Done
 
@@ -43,3 +36,8 @@ Priority: medium
 - Built the first upload screen: logo, hero, upload box, hover, responsive base.
 - Added local brand and font assets.
 - Hid Streamlit toolbar/deploy controls.
+
+### v1.8.0 - Agent usage ledger
+- Added agent_usage_events persistence for Detection Agent runs.
+- Stored input/output token counts, prompt version, model, file name, and run ID.
+- Added default Claude pricing catalog with optional secrets override for USD cost tracking.

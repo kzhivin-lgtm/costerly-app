@@ -9,6 +9,7 @@ from agents.detection_agent import run_detection_agent
 from db.repositories import (
     fetch_rfq_detected_objects,
     fetch_rfq_run,
+    insert_agent_usage_event,
     upsert_rfq_detection_result,
 )
 from db.supabase_client import get_supabase_client
@@ -21,10 +22,17 @@ def process_uploaded_rfq(*, file_name: str, file_bytes: bytes, company_id: str) 
         company_id=company_id,
         file_bytes=file_bytes,
     )
+    usage_event = detection_result.pop("_agent_usage", None)
     run_id = detection_result["rfq_run"]["run_id"]
 
     client = get_supabase_client()
     upsert_rfq_detection_result(client, detection_result)
+
+    if usage_event:
+        try:
+            insert_agent_usage_event(client, usage_event)
+        except Exception as exc:
+            print(f"[Usage Ledger] Could not save detection usage: {exc}")
 
     return {
         "run_id": run_id,

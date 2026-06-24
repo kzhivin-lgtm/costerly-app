@@ -39,4 +39,9 @@ def run_detection_agent(
         company_id=company_id,
         file_bytes=file_bytes,
     )
-    return validate_detection_result(result)
+
+    usage_event = result.pop("_agent_usage", None)
+    validated = validate_detection_result(result)
+    if usage_event:
+        validated["_agent_usage"] = usage_event
+    return validated

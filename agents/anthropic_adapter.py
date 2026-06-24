@@ -4,11 +4,13 @@ import base64
 import copy
 import json
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import anthropic
 
+from config import calculate_llm_cost_usd
 from agents.prompt_loader import load_detection_agent_prompt
 from agents.schemas.detection_schema import (
     DETECTION_RESULT_JSON_SCHEMA,
@@ -18,6 +20,7 @@ from agents.schemas.detection_schema import (
 
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
+DETECTION_PROMPT_VERSION = "detection_v1"
 
 
 def get_secret(name: str, default: str | None = None) -> str | None:
@@ -156,6 +159,60 @@ def build_uploaded_file_content_block(file_name: str, file_bytes: bytes) -> dict
     raise ValueError("Unsupported RFQ file type. Upload PDF, JPEG, or PNG.")
 
 
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def build_agent_usage_event(
+    *,
+    agent_name: str,
+    operation: str,
+    company_id: str,
+    run_id: str | None,
+    file_name: str | None,
+    object_id: str | None,
+    object_name: str | None,
+    model: str,
+    prompt_version: str,
+    response: Any,
+    started_at: str,
+    finished_at: str,
+) -> dict[str, Any]:
+    """Create a DB-ready usage event from Anthropic response metadata."""
+    usage = getattr(response, "usage", None)
+    input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
+    output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+    costs = calculate_llm_cost_usd(
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+    )
+
+    return {
+        "company_id": company_id,
+        "run_id": run_id,
+        "file_name": file_name,
+        "object_id": object_id,
+        "object_name": object_name,
+        "agent_name": agent_name,
+        "operation": operation,
+        "model": model,
+        "prompt_version": prompt_version,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "input_cost_usd": costs["input_cost_usd"],
+        "output_cost_usd": costs["output_cost_usd"],
+        "total_cost_usd": costs["total_cost_usd"],
+        "status": "succeeded",
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "raw_usage": {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+        },
+    }
+
+
 def extract_text_from_claude_response(response: Any) -> str:
     """
     Anthropic Messages responses usually return JSON text in response.content[0].text.
@@ -213,6 +270,7 @@ def run_anthropic_detection_agent(
 
     claude_schema = strip_schema_for_claude(DETECTION_RESULT_JSON_SCHEMA)
 
+    started_at = _utc_now_iso()
     response = client.messages.create(
         model=selected_model,
         max_tokens=8192,
@@ -236,6 +294,7 @@ def run_anthropic_detection_agent(
         },
     )
 
+    finished_at = _utc_now_iso()
     raw_text = extract_text_from_claude_response(response)
 
     try:
@@ -245,7 +304,22 @@ def run_anthropic_detection_agent(
             f"Claude returned invalid JSON. Raw response starts with: {raw_text[:500]}"
         ) from exc
 
-    return validate_detection_result(result)
+    validated = validate_detection_result(result)
+    validated["_agent_usage"] = build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection",
+        company_id=company_id,
+        run_id=validated["rfq_run"].get("run_id"),
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=selected_model,
+        prompt_version=DETECTION_PROMPT_VERSION,
+        response=response,
+        started_at=started_at,
+        finished_at=finished_at,
+    )
+    return validated
 
 
 def run_anthropic_detection_agent_with_fallback(
