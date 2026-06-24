@@ -8,6 +8,19 @@ def apply_objects_css() -> None:
     st.markdown(
         """
         <style>
+        .objects-estimation-header .post-upload-subtitle {
+            color: rgba(42, 31, 44, 0.58) !important;
+            font-family: var(--font-mono) !important;
+            font-size: 22px !important;
+            line-height: 1.2 !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.08em !important;
+            text-transform: uppercase !important;
+            margin-top: 14px !important;
+            max-width: none !important;
+            white-space: nowrap !important;
+        }
+
         .objects-pricing-card {
             --objects-row-main-offset: 12px;
             width: 100%;
@@ -124,6 +137,9 @@ def apply_objects_css() -> None:
         }
 
         .objects-pricing-review-button,
+        .objects-pricing-review-button:link,
+        .objects-pricing-review-button:visited,
+        .objects-pricing-review-button:active,
         .objects-pricing-download-button {
             display: inline-flex;
             align-items: center;
@@ -151,6 +167,22 @@ def apply_objects_css() -> None:
             background: var(--button-secondary-bg-hover);
             color: var(--color-accent);
             border-color: rgba(128, 73, 198, 0.42);
+            text-decoration: none;
+        }
+
+        .objects-pricing-review-button--done,
+        .objects-pricing-review-button--done:link,
+        .objects-pricing-review-button--done:visited,
+        .objects-pricing-review-button--done:active {
+            background: rgba(52, 168, 83, 0.10);
+            border-color: rgba(52, 168, 83, 0.34);
+            color: #2F8D48;
+        }
+
+        .objects-pricing-review-button--done:hover {
+            background: rgba(52, 168, 83, 0.16);
+            border-color: rgba(52, 168, 83, 0.48);
+            color: #26763B;
         }
 
         .objects-pricing-action-cell {

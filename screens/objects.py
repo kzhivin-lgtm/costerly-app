@@ -30,11 +30,15 @@ def _row_html(
     show_sale_total: bool,
 ) -> str:
     """Render one pricing row. Buttons are visual until object detail exists."""
-    review_html = (
-        '<button class="objects-pricing-review-button" type="button">Review</button>'
-        if with_review
-        else ""
-    )
+    if with_review:
+        action_label = "Done" if row.get("reviewed") else "Review"
+        action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
+        review_html = (
+            f'<a class="objects-pricing-review-button{action_class}" '
+            f'href="?screen=object_detail" target="_self">{action_label}</a>'
+        )
+    else:
+        review_html = ""
     sale_total_html = _money(row.get("sale_price_total")) if show_sale_total else ""
 
     return (
@@ -62,7 +66,7 @@ def _summary_html(summary: dict[str, object]) -> str:
         '<div>'
         '<div class="objects-pricing-summary-title">Project Summary</div>'
         '<button class="objects-pricing-download-button" type="button">'
-        '<span class="objects-pricing-download-pill">Download PDF</span>'
+        '<span class="objects-pricing-download-pill">Download XLS</span>'
         '</button>'
         '</div>'
         '<div>'
@@ -84,11 +88,21 @@ def _summary_html(summary: dict[str, object]) -> str:
 def render_objects_screen(company_id: str) -> None:
     """Render the object pricing review screen with temporary fixture data."""
     apply_objects_css()
-    render_post_upload_header("Review objects -> Set sale price -> Generate proposal")
+    render_post_upload_header(
+        "Objects Estimation",
+        "Review objects -> Set sale price -> Generate proposal",
+        class_name="objects-estimation-header",
+    )
 
     data = OBJECTS_FIXTURE
+    approved_object_keys = st.session_state.get("approved_object_keys", set())
     object_rows = "".join(
-        _row_html(row, with_review=True, show_sale_total=True) for row in data["rows"]
+        _row_html(
+            {**row, "reviewed": row.get("object_key") in approved_object_keys},
+            with_review=True,
+            show_sale_total=True,
+        )
+        for row in data["rows"]
     )
     project_cost_rows = "".join(
         _row_html(row, with_review=False, show_sale_total=False)

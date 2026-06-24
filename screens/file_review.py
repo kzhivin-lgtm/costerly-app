@@ -186,7 +186,7 @@ def render_file_review_screen(company_id: str) -> None:
         st.rerun()
 
     if col_next.button(
-        "CONTINUE TO OBJECTS",
+        "CONTINUE TO OBJECTS ESTIMATION",
         type="primary",
         use_container_width=True,
     ):

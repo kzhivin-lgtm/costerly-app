@@ -11,6 +11,7 @@ def render_post_upload_header(
     title: str,
     subtitle: str | None = None,
     *,
+    class_name: str | None = None,
     marker_id: str | None = None,
 ) -> None:
     """Render the fixed-origin header used after the Upload screen.
@@ -28,8 +29,12 @@ def render_post_upload_header(
     if marker_id:
         marker_html = f'<div id="{html.escape(marker_id)}" style="display:none"></div>'
 
+    shell_class = "post-upload-shell post-upload-screen-shell"
+    if class_name:
+        shell_class = f"{shell_class} {html.escape(class_name)}"
+
     st.markdown(
-        '<div class="post-upload-shell post-upload-screen-shell">'
+        f'<div class="{shell_class}">'
         f'{marker_html}'
         f'<h1 class="post-upload-title">{html.escape(title)}</h1>'
         f'{subtitle_html}'

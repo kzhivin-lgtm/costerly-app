@@ -73,7 +73,7 @@ def apply_base_css() -> None:
             --primitive-progress-blue: #2F80ED;
 
             /* Typography */
-            --font-hero: "Archivo Black", "Arial Black", sans-serif;
+            --font-hero: var(--font-mono);
             --font-brand: "Space Grotesk", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             --font-sans: "Space Grotesk", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

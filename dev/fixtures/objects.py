@@ -4,6 +4,7 @@ from __future__ import annotations
 OBJECTS_FIXTURE = {
     "rows": [
         {
+            "object_key": "curtain_rod",
             "name": "Curtain rod system with hardware",
             "materials": "steel tubing / metal brackets / mounting hardware / fabric curtains",
             "quantity": 1,

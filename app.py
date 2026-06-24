@@ -8,6 +8,7 @@ from screens.upload import render_upload_screen
 from screens.processing import render_processing_screen
 from screens.file_review import render_file_review_screen
 from screens.objects import render_objects_screen
+from screens.object_detail import render_object_detail_screen
 
 
 st.set_page_config(
@@ -23,6 +24,11 @@ def main() -> None:
     apply_base_css()
 
     company_id = get_company_id()
+    requested_screen = st.query_params.get("screen")
+    if requested_screen in {"object_detail"}:
+        st.session_state.screen = requested_screen
+        st.query_params.clear()
+
     screen = st.session_state.screen
 
     if screen == "upload":
@@ -33,6 +39,8 @@ def main() -> None:
         render_file_review_screen(company_id)
     elif screen == "objects":
         render_objects_screen(company_id)
+    elif screen == "object_detail":
+        render_object_detail_screen(company_id)
     else:
         st.session_state.screen = "upload"
         st.rerun()

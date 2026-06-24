@@ -88,8 +88,8 @@ def apply_upload_css() -> None:
             min-height: var(--upload-height) !important;
             padding: 0 !important;
             margin: 0 !important;
-            border: 2px solid var(--color-purple, var(--primitive-purple-900)) !important;
-            border-radius: var(--radius-lg) !important;
+            border: 2px dashed rgba(128, 73, 198, 0.50) !important;
+            border-radius: 18px !important;
             background: var(--color-surface) !important;
             box-shadow: none !important;
             outline: none !important;
@@ -98,7 +98,7 @@ def apply_upload_css() -> None:
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            transition: background-color 130ms ease, border-color 130ms ease !important;
+            transition: background-color 130ms ease, border-color 130ms ease, border-style 130ms ease !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] > div,
@@ -112,49 +112,67 @@ def apply_upload_css() -> None:
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"]::before {
-            content: "📎 Drop or upload" !important;
+            content: "" !important;
             position: absolute !important;
-            inset: 0 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            color: var(--color-purple, var(--primitive-purple-900)) !important;
-            font-family: "Garet", var(--font-brand) !important;
-            font-size: 28px !important;
-            font-weight: 500 !important;
-            line-height: 1 !important;
-            letter-spacing: -0.01em !important;
-            text-align: center !important;
+            left: 50% !important;
+            top: 52px !important;
+            width: 46px !important;
+            height: 46px !important;
+            transform: translateX(-50%) !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 18 V82 M18 50 H82' stroke='%238049C6' stroke-width='9' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: center center !important;
+            background-size: contain !important;
             pointer-events: none !important;
             z-index: 2 !important;
-            background: transparent !important;
+        }
+
+        div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"]::after {
+            content: "Drop or upload\\A PDF/JPEG/PNG" !important;
+            position: absolute !important;
+            left: 0 !important;
+            right: 0 !important;
+            top: 108px !important;
+            display: block !important;
+            color: rgba(42, 31, 44, 0.72) !important;
+            font-family: var(--font-mono) !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
+            line-height: 1.55 !important;
+            text-align: center !important;
+            white-space: pre-line !important;
+            pointer-events: none !important;
+            z-index: 2 !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover {
             background: var(--color-upload-lilac) !important;
-            border-color: var(--color-accent) !important;
+            border-color: var(--color-indigo, var(--color-accent)) !important;
+            border-style: solid !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover::before {
             content: "" !important;
-            width: 94px !important;
-            height: 94px !important;
-            margin: auto !important;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 21 V79 M21 50 H79' stroke='white' stroke-width='8' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") !important;
-            background-repeat: no-repeat !important;
-            background-position: center center !important;
-            background-size: contain !important;
-            transform: none !important;
+            top: 50% !important;
+            width: 88px !important;
+            height: 88px !important;
+            transform: translate(-50%, -50%) !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 16 V84 M16 50 H84' stroke='%238049C6' stroke-width='9' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") !important;
+        }
+
+        div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover::after {
+            content: "" !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"]:hover {
-            background: var(--color-upload-peach) !important;
-            border-color: var(--color-upload-orange) !important;
+            background: rgba(128, 73, 198, 0.045) !important;
+            border-color: rgba(128, 73, 198, 0.72) !important;
+            border-style: solid !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover:hover {
             background: var(--color-upload-lilac) !important;
-            border-color: var(--color-accent) !important;
+            border-color: var(--color-indigo, var(--color-accent)) !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] *,
@@ -186,14 +204,22 @@ def apply_upload_css() -> None:
             }
 
             div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"]::before {
-                content: "📎 Upload file" !important;
-                font-size: 22px !important;
+                top: 42px !important;
+                width: 42px !important;
+                height: 42px !important;
+            }
+
+            div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"]::after {
+                content: "Upload file\\A PDF/JPEG/PNG" !important;
+                top: 94px !important;
+                font-size: 18px !important;
             }
 
             div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover::before {
                 content: "" !important;
-                width: 82px !important;
-                height: 82px !important;
+                top: 50% !important;
+                width: 78px !important;
+                height: 78px !important;
             }
         }
 
