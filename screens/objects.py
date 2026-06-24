@@ -90,7 +90,7 @@ def render_objects_screen(company_id: str) -> None:
     apply_objects_css()
     render_post_upload_header(
         "Objects Estimation",
-        "Review objects -> Set sale price -> Generate proposal",
+        "Review objects → Set sale price → Generate proposal",
         class_name="objects-estimation-header",
     )
 

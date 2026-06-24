@@ -23,3 +23,5 @@ Object detail screen and final pre-agent UI polish, завершена 24.06 11:
 Backup V1.6.0_before_next_task created, завершена 24.06 11:05
 Claude Detection Agent connected to Processing and File Review via Supabase, завершена 24.06 12:54
 Backup V1.7.0_before_next_task created, завершена 24.06 12:54
+Objects Estimation subtitle arrows normalized, завершена 24.06 14:12
+Backup V1.7.1_before_next_task created, завершена 24.06 14:12
