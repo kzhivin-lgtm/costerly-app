@@ -5,6 +5,26 @@ import json
 import streamlit.components.v1 as components
 
 
+def clear_upload_processing_shell() -> None:
+    """Remove the instant upload processing shell after Streamlit reaches a real screen."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentDoc = window.parent.document;
+            const shell = parentDoc.getElementById('costerly-upload-processing-shell');
+            if (shell) shell.remove();
+
+            parentDoc.documentElement.classList.remove('costerly-upload-processing-shell-active');
+            parentDoc.body.classList.remove('costerly-upload-processing-shell-active');
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def install_upload_processing_shell(shell_html: str) -> None:
     """Show the processing layout immediately after a file is selected.
 

@@ -98,6 +98,7 @@ def apply_base_css() -> None:
             --post-upload-width: min(960px, calc(100vw - 56px));
             --post-upload-top: 73px;
             --post-upload-screen-top: 42px;
+            --processing-stage-top: var(--post-upload-top);
             --post-upload-bottom: 72px;
             --post-upload-title-size: 40px;
             --post-upload-title-line-height: 1.1;
@@ -302,7 +303,7 @@ def apply_base_css() -> None:
             max-width: none;
             margin-left: auto;
             margin-right: auto;
-            padding-top: var(--post-upload-top);
+            padding-top: var(--processing-stage-top);
             padding-left: 0;
             padding-right: 0;
             padding-bottom: var(--post-upload-bottom);

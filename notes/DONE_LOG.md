@@ -25,3 +25,5 @@ Claude Detection Agent connected to Processing and File Review via Supabase, з�
 Backup V1.7.0_before_next_task created, завершена 24.06 12:54
 Objects Estimation subtitle arrows normalized, завершена 24.06 14:12
 Backup V1.7.1_before_next_task created, завершена 24.06 14:12
+Processing screen soft progress restored and aligned without moving post-upload screens, завершена 24.06 17:19
+Backup V1.7.2_before_next_task created, завершена 24.06 17:19
