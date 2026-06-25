@@ -140,3 +140,100 @@ def fetch_rfq_object_estimates(client: Client, estimate_id: str) -> pd.DataFrame
         order_by="object_id",
         filters={"estimate_id": estimate_id},
     )
+
+
+def fetch_rfq_estimate_lines_for_object(
+    client: Client,
+    *,
+    estimate_id: str,
+    object_id: str,
+) -> pd.DataFrame:
+    return fetch_table(
+        client,
+        "rfq_estimate_lines",
+        order_by="sort_order",
+        filters={"estimate_id": estimate_id, "object_id": object_id},
+    )
+
+
+def replace_rfq_estimate_lines_for_object(
+    client: Client,
+    *,
+    estimate_id: str,
+    object_id: str,
+    lines: list[dict],
+) -> None:
+    """Replace material/labor estimate lines for one object estimate."""
+    client.table("rfq_estimate_lines").delete().eq(
+        "estimate_id",
+        estimate_id,
+    ).eq(
+        "object_id",
+        object_id,
+    ).execute()
+
+    if lines:
+        client.table("rfq_estimate_lines").upsert(
+            lines,
+            on_conflict="estimate_id,line_id",
+        ).execute()
+
+
+def update_rfq_estimate_line(
+    client: Client,
+    *,
+    estimate_id: str,
+    line_id: str,
+    values: dict,
+) -> None:
+    """Update deterministic pricing fields for one estimate line."""
+    client.table("rfq_estimate_lines").update(values).eq(
+        "estimate_id",
+        estimate_id,
+    ).eq(
+        "line_id",
+        line_id,
+    ).execute()
+
+
+def update_rfq_object_estimate_totals(
+    client: Client,
+    *,
+    estimate_id: str,
+    object_id: str,
+    self_cost_ex_vat: float,
+    vat_amount: float,
+    self_cost_total: float,
+) -> None:
+    """Persist deterministic self-cost totals for one object estimate."""
+    client.table("rfq_object_estimates").update(
+        {
+            "self_cost_ex_vat": self_cost_ex_vat,
+            "vat_amount": vat_amount,
+            "self_cost_total": self_cost_total,
+        },
+    ).eq(
+        "estimate_id",
+        estimate_id,
+    ).eq(
+        "object_id",
+        object_id,
+    ).execute()
+
+
+def update_rfq_object_estimate_status(
+    client: Client,
+    *,
+    estimate_id: str,
+    object_id: str,
+    status: str,
+) -> None:
+    client.table("rfq_object_estimates").update(
+        {"status": status},
+    ).eq(
+        "estimate_id",
+        estimate_id,
+    ).eq(
+        "object_id",
+        object_id,
+    ).execute()

@@ -22,6 +22,12 @@ def init_state() -> None:
     if "current_run_id" not in st.session_state:
         st.session_state.current_run_id = None
 
+    if "current_estimate_id" not in st.session_state:
+        st.session_state.current_estimate_id = None
+
+    if "current_object_id" not in st.session_state:
+        st.session_state.current_object_id = None
+
     if "uploaded_file_name" not in st.session_state:
         st.session_state.uploaded_file_name = None
 
@@ -33,6 +39,12 @@ def init_state() -> None:
 
     if "processing_error" not in st.session_state:
         st.session_state.processing_error = None
+
+    if "estimation_first_object_requested" not in st.session_state:
+        st.session_state.estimation_first_object_requested = False
+
+    if "last_estimation_error" not in st.session_state:
+        st.session_state.last_estimation_error = None
 
 
 def go_to(screen: str) -> None:

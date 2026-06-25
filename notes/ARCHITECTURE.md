@@ -61,3 +61,21 @@ deterministic calculation engine totals costs, VAT, and sale prices
 Objects Estimation and Object Detail render persisted estimate state
 Rule
 The Estimation Agent proposes line items and quantities. It does not own final arithmetic totals; deterministic engine code owns multiplication, VAT, totals, delivery, installation, and proposal math.
+
+Estimation Agent Contract v1
+The Estimation Agent runs per object. It may return material composition, material quantities, labor work types, and labor hours.
+It must not return material unit costs, labor rates, overhead rows, VAT, self-cost totals, sale prices, or final proposal totals.
+Each material row must explain quantity through `quantity_basis`, `evidence_pages`, `confidence`, and `notes`.
+Each labor row must explain hours through `hours_basis`, `evidence_pages`, `confidence`, and `notes`.
+`catalog_match_query` is a search hint for matching the agent line to company material catalog rows; it is not a price.
+Deterministic engine code owns catalog matching, prices, rates, overhead allocation, multiplication, VAT, and totals.
+
+Estimation Agent Runtime v1
+`estimate_one_object()` is the application-layer entrypoint for one object.
+It loads the detected object from Supabase, calls the Estimation Agent with the original uploaded file bytes, validates the returned JSON, replaces that object's estimate lines, and records an `agent_usage_events` row with `agent_name = estimation`.
+The UI does not call Anthropic directly.
+
+Pricing Runtime v1
+`price_estimated_object()` is the deterministic pricing entrypoint after one object is estimated.
+It reads the object's persisted material/labor lines, matches materials to the `materials` catalog, matches labor roles to the `labor` table, fills `unit_cost`, `rate`, and `cost`, then updates object self-cost totals.
+This layer owns arithmetic. The Estimation Agent remains responsible only for composition, quantities, labor hours, and reasoning.

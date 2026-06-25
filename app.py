@@ -25,8 +25,17 @@ def main() -> None:
 
     company_id = get_company_id()
     requested_screen = st.query_params.get("screen")
-    if requested_screen in {"object_detail"}:
+    if requested_screen in {"objects", "object_detail", "file_review"}:
         st.session_state.screen = requested_screen
+        requested_run_id = st.query_params.get("run_id")
+        requested_estimate_id = st.query_params.get("estimate_id")
+        requested_object_id = st.query_params.get("object_id")
+        if requested_run_id:
+            st.session_state.current_run_id = requested_run_id
+        if requested_estimate_id:
+            st.session_state.current_estimate_id = requested_estimate_id
+        if requested_object_id:
+            st.session_state.current_object_id = requested_object_id
         st.query_params.clear()
 
     screen = st.session_state.screen

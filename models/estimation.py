@@ -27,11 +27,14 @@ class EstimateLineDraft:
     group_name: str
     item_name: str
     unit: str | None = None
-    unit_cost: float | None = None
+    catalog_match_query: str | None = None
     quantity: float | None = None
+    quantity_basis: str | None = None
     role: str | None = None
     hours: float | None = None
-    rate: float | None = None
-    monthly_cost: float | None = None
-    allocation_basis: str | None = None
+    hours_basis: str | None = None
+    evidence_pages: str | None = None
+    confidence: float | None = None
+    notes: str | None = None
+    needs_review: bool = False
     raw_agent_json: dict[str, Any] = field(default_factory=dict)

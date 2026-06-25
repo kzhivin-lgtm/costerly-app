@@ -36,3 +36,13 @@ Backup V1.9.0_before_estimation_agent_contract created, завершена 24.06
 - Added pending estimate shell tables for project and object-level estimation.
 - Added `start_estimation_for_run()` use case.
 - Connected File Review continue action to create Supabase estimate records before Objects Estimation.
+
+### v1.10.0 - Estimation Agent contract/runtime
+- Added one-object Estimation Agent JSON schema and validator.
+- Added explainability fields for material quantity and labor hours.
+- Added DB line mapper that rejects agent prices/rates and leaves calculations to the engine.
+- Added one-object Estimation Agent runtime entrypoint.
+- Added immediate File Review -> Objects Estimation transition with persisted state restored from URL params.
+- Removed dev fixture fallback from real File Review / Objects / Object Detail routes.
+- Added first deterministic pricing layer for material unit costs, labor rates, line costs, and object self-cost totals.
+- Next step: overhead, delivery, installation, and stronger catalog match review.

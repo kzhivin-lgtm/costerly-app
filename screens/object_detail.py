@@ -4,8 +4,8 @@ import html
 
 import streamlit as st
 
-from dev.fixtures.object_detail import OBJECT_DETAIL_FIXTURE
 from styles.object_detail import apply_object_detail_css
+from use_cases.estimation import load_object_detail_data
 
 
 def _escape(value: object) -> str:
@@ -16,8 +16,10 @@ def _escape(value: object) -> str:
 
 
 def _money(value: object) -> str:
-    """Format demo monetary values for object detail tables."""
+    """Format monetary values for object detail tables."""
     if value is None or value == "":
+        return "—"
+    if isinstance(value, float) and value != value:
         return "—"
     if isinstance(value, str):
         return html.escape(value)
@@ -46,7 +48,7 @@ def _input_html(value: object, kind: str = "text") -> str:
 
 
 def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]:
-    """Map normalized fixture rows to visible table cells."""
+    """Map normalized estimate rows to visible table cells."""
     columns = section["columns"]
     if columns[0] == "Work":
         return [
@@ -73,7 +75,7 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
 
 
 def _table_html(section: dict[str, object]) -> str:
-    """Render a grouped cost table from normalized fixture rows."""
+    """Render a grouped cost table from normalized estimate rows."""
     columns = section["columns"]
     rows = section["rows"]
     column_count = len(columns)
@@ -166,9 +168,29 @@ def _final_html(data: dict[str, object]) -> str:
 
 
 def render_object_detail_screen(company_id: str) -> None:
-    """Render one object estimate detail screen with temporary fixture data."""
+    """Render one object estimate detail screen from persisted estimate data."""
     apply_object_detail_css()
-    data = OBJECT_DETAIL_FIXTURE
+    estimate_id = st.session_state.get("current_estimate_id")
+    object_id = st.session_state.get("current_object_id")
+
+    if not estimate_id or not object_id:
+        st.error("No object estimate selected.")
+        if st.button("BACK TO OBJECTS", type="secondary"):
+            st.session_state.screen = "objects"
+            st.rerun()
+        return
+
+    try:
+        data = load_object_detail_data(
+            estimate_id=estimate_id,
+            object_id=object_id,
+        )
+    except Exception as exc:
+        st.error(f"Could not load Object Detail: {exc}")
+        if st.button("BACK TO OBJECTS", type="secondary"):
+            st.session_state.screen = "objects"
+            st.rerun()
+        return
 
     st.markdown(
         '<div class="post-upload-shell object-detail-shell">'

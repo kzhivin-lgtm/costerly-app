@@ -31,3 +31,5 @@ Agent usage ledger with token and USD cost tracking, завершена 24.06 19
 Backup V1.8.0_before_estimation_agent_foundation created, завершена 24.06 19:19
 Estimation foundation shell connected to File Review, завершена 24.06 20:12
 Backup V1.9.0_before_estimation_agent_contract created, завершена 24.06 20:12
+Estimation Agent contract/runtime and first deterministic pricing layer, завершена 25.06 15:38
+Backup V1.10.0_before_overhead_pricing created, завершена 25.06 15:38
