@@ -4,6 +4,7 @@ import streamlit as st
 
 from state.session import init_state, get_company_id
 from styles.base import apply_base_css
+from ui.js_guards import scroll_parent_to_top
 from screens.upload import render_upload_screen
 from screens.processing import render_processing_screen
 from screens.file_review import render_file_review_screen
@@ -39,6 +40,9 @@ def main() -> None:
         st.query_params.clear()
 
     screen = st.session_state.screen
+    if st.session_state.get("_last_screen_for_scroll") != screen:
+        scroll_parent_to_top()
+        st.session_state._last_screen_for_scroll = screen
 
     if screen == "upload":
         render_upload_screen(company_id)

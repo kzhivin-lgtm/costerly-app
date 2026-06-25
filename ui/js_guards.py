@@ -25,6 +25,26 @@ def clear_upload_processing_shell() -> None:
     )
 
 
+def scroll_parent_to_top() -> None:
+    """Reset browser scroll after a screen-level Streamlit navigation."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+
+            parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
+            parentDoc.documentElement.scrollTop = 0;
+            parentDoc.body.scrollTop = 0;
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def install_upload_processing_shell(shell_html: str) -> None:
     """Show the processing layout immediately after a file is selected.
 

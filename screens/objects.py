@@ -31,7 +31,7 @@ def _money(value: object) -> str:
     if value is None or value == "":
         return "—"
     try:
-        return f"₪{int(value):,}".replace(",", " ")
+        return f"₪{round(float(value)):,}".replace(",", "\u202f")
     except (TypeError, ValueError):
         return _escape(value)
 

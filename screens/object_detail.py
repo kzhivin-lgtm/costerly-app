@@ -21,11 +21,10 @@ def _money(value: object) -> str:
         return "—"
     if isinstance(value, float) and value != value:
         return "—"
-    if isinstance(value, str):
-        return html.escape(value)
-    if isinstance(value, float) and not value.is_integer():
-        return f"₪{value:g}"
-    return f"₪{int(value):,}".replace(",", " ")
+    try:
+        return f"₪{round(float(value)):,}".replace(",", "\u202f")
+    except (TypeError, ValueError):
+        return _escape(value)
 
 
 def _metric_html(label: str, value: object) -> str:
