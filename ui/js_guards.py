@@ -34,9 +34,24 @@ def scroll_parent_to_top() -> None:
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
 
-            parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
-            parentDoc.documentElement.scrollTop = 0;
-            parentDoc.body.scrollTop = 0;
+            function scrollTopNow() {
+                parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
+                parentDoc.documentElement.scrollTop = 0;
+                parentDoc.body.scrollTop = 0;
+
+                parentDoc
+                    .querySelectorAll('section, main, div, [data-testid="stAppViewContainer"]')
+                    .forEach((node) => {
+                        if (node.scrollTop) {
+                            node.scrollTop = 0;
+                        }
+                    });
+            }
+
+            scrollTopNow();
+            parentWindow.requestAnimationFrame(scrollTopNow);
+            parentWindow.setTimeout(scrollTopNow, 50);
+            parentWindow.setTimeout(scrollTopNow, 250);
         })();
         </script>
         """,
