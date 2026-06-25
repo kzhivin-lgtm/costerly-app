@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
 import html
+import time
 from urllib.parse import quote
 
 import streamlit as st
@@ -160,6 +161,16 @@ def _start_first_object_estimation_if_requested(
     st.rerun()
 
 
+def _rerun_while_estimation_is_running() -> None:
+    """Poll the background estimate so Supabase totals appear without manual refresh."""
+    future = st.session_state.get("estimation_first_object_future")
+    if not isinstance(future, Future) or future.done():
+        return
+
+    time.sleep(2)
+    st.rerun()
+
+
 def render_objects_screen(company_id: str) -> None:
     """Render the object pricing review screen with temporary fixture data."""
     apply_objects_css()
@@ -231,6 +242,7 @@ def render_objects_screen(company_id: str) -> None:
         run_id=run_id,
         company_id=company_id,
     )
+    _rerun_while_estimation_is_running()
 
     col_back, col_generate = st.columns(2, gap="small")
 
