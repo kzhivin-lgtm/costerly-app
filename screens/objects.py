@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
 import html
-import time
 from urllib.parse import quote
 
 import streamlit as st
@@ -183,17 +182,8 @@ def _start_first_object_estimation_if_requested(
     )
     st.session_state.estimation_first_object_requested = False
     st.session_state.last_estimation_error = None
-    st.rerun()
-
-
-def _rerun_while_estimation_is_running() -> None:
-    """Poll the background estimate so Supabase totals appear without manual refresh."""
-    future = st.session_state.get("estimation_first_object_future")
-    if not isinstance(future, Future) or future.done():
-        return
-
-    time.sleep(2)
-    st.rerun()
+    # Do not rerun here: Streamlit Cloud keeps the previous DOM dimmed while a
+    # rerun is active, which creates duplicated screens during long estimates.
 
 
 def render_objects_screen(company_id: str) -> None:
@@ -270,7 +260,6 @@ def render_objects_screen(company_id: str) -> None:
         run_id=run_id,
         company_id=company_id,
     )
-    _rerun_while_estimation_is_running()
 
     col_back, col_generate = st.columns(2, gap="small")
 

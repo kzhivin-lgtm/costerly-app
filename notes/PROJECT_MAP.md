@@ -35,4 +35,5 @@ This file explains where code belongs so the project stays understandable.
 ## Project Notes
 
 - `notes/` stores architecture notes, migration decisions, and project memory.
+- `notes/WORK_RULES.md` stores working rules for debugging and project changes.
 - Keep notes short and update them when structure changes.
