@@ -6,7 +6,6 @@ import streamlit as st
 
 from styles.file_review import apply_file_review_css
 from ui.layout import render_post_upload_header
-from use_cases.estimation import start_estimation_for_run
 from use_cases.rfq_processing import load_file_review_data
 
 
@@ -209,19 +208,8 @@ def render_file_review_screen(company_id: str) -> None:
         type="primary",
         use_container_width=True,
     ):
-        if run_id:
-            try:
-                estimate = start_estimation_for_run(
-                    run_id=run_id,
-                    company_id=company_id,
-                )
-                st.session_state.current_estimate_id = estimate["estimate_id"]
-                st.session_state.estimation_first_object_requested = True
-                st.session_state.last_estimation_result = None
-                st.session_state.last_estimation_error = None
-            except Exception as exc:
-                st.error(f"Could not start Objects Estimation: {exc}")
-                return
-
+        st.session_state.estimation_start_requested = True
+        st.session_state.last_estimation_result = None
+        st.session_state.last_estimation_error = None
         st.session_state.screen = "objects"
         st.rerun()

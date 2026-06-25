@@ -9,7 +9,11 @@ import streamlit as st
 
 from styles.objects import apply_objects_css
 from ui.layout import render_post_upload_header
-from use_cases.estimation import estimate_first_object_for_run, load_objects_estimation_data
+from use_cases.estimation import (
+    estimate_first_object_for_run,
+    load_objects_estimation_data,
+    start_estimation_for_run,
+)
 
 
 _ESTIMATION_EXECUTOR = ThreadPoolExecutor(max_workers=1)
@@ -124,6 +128,27 @@ def _consume_estimation_future() -> None:
         st.session_state.estimation_first_object_future = None
 
 
+def _ensure_estimation_shell(*, run_id: str | None, company_id: str) -> None:
+    """Create the estimate shell after navigation, not during File Review click."""
+    if not run_id:
+        return
+    if not st.session_state.get("estimation_start_requested"):
+        return
+
+    try:
+        estimate = start_estimation_for_run(
+            run_id=run_id,
+            company_id=company_id,
+        )
+        st.session_state.current_estimate_id = estimate["estimate_id"]
+        st.session_state.estimation_first_object_requested = True
+        st.session_state.last_estimation_error = None
+    except Exception as exc:
+        st.session_state.last_estimation_error = f"Could not start Objects Estimation: {exc}"
+    finally:
+        st.session_state.estimation_start_requested = False
+
+
 def _start_first_object_estimation_if_requested(
     *,
     estimate_id: str | None,
@@ -183,6 +208,9 @@ def render_objects_screen(company_id: str) -> None:
 
     estimate_id = st.session_state.get("current_estimate_id")
     run_id = st.session_state.get("current_run_id")
+    _ensure_estimation_shell(run_id=run_id, company_id=company_id)
+    estimate_id = st.session_state.get("current_estimate_id")
+
     if estimate_id:
         try:
             data = load_objects_estimation_data(estimate_id)
