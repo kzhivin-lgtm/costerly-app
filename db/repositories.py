@@ -179,6 +179,32 @@ def replace_rfq_estimate_lines_for_object(
         ).execute()
 
 
+def replace_rfq_overhead_lines_for_object(
+    client: Client,
+    *,
+    estimate_id: str,
+    object_id: str,
+    lines: list[dict],
+) -> None:
+    """Replace deterministic overhead lines for one object estimate."""
+    client.table("rfq_estimate_lines").delete().eq(
+        "estimate_id",
+        estimate_id,
+    ).eq(
+        "object_id",
+        object_id,
+    ).eq(
+        "section",
+        "overhead",
+    ).execute()
+
+    if lines:
+        client.table("rfq_estimate_lines").upsert(
+            lines,
+            on_conflict="estimate_id,line_id",
+        ).execute()
+
+
 def update_rfq_estimate_line(
     client: Client,
     *,

@@ -58,9 +58,15 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
             _money(row.get("cost")),
         ]
     if len(columns) == 4:
+        monthly_cost_display = row.get("monthly_cost_display")
+        monthly_cost_value = (
+            _escape(monthly_cost_display)
+            if monthly_cost_display
+            else _money(row.get("monthly_cost"))
+        )
         return [
             _escape(row.get("item")),
-            _input_html(_money(row.get("monthly_cost")), "money"),
+            _input_html(monthly_cost_value, "money"),
             _input_html(row.get("allocation"), "text"),
             _money(row.get("cost")),
         ]

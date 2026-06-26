@@ -18,3 +18,16 @@ Avoid:
 - changing unrelated layout, footer, or theme code while the issue is elsewhere.
 
 Short version: source first, symptom second.
+
+## Backup Rule
+
+Before a commit, create a local backup archive in `backups/`.
+
+Do:
+- create the backup before `git commit`;
+- use the standard exclude list for `.git`, `.venv`, caches, `.streamlit`, `.DS_Store`, and `backups`;
+- keep backup archives local only because `backups/` is ignored by git;
+- do not inspect or verify archive contents unless there is a specific reason.
+- do not ask the user conversationally before routine backup creation; only use a tool approval request if sandbox permissions require it.
+
+Short version: backup first, no archive checking by default.

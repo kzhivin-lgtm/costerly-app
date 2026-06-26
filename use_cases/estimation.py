@@ -5,6 +5,7 @@ from typing import Any
 from agents.estimation_agent import run_estimation_agent
 from agents.schemas.estimation_schema import validate_estimation_result
 from db.repositories import (
+    fetch_company_data,
     fetch_rfq_estimate_lines_for_object,
     fetch_rfq_object_estimates,
     fetch_rfq_detected_objects,
@@ -143,8 +144,14 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         raise RuntimeError(f"Object estimate not found: {estimate_id}/{object_id}")
 
     object_row = matching.iloc[0].to_dict()
+    company_data = fetch_company_data(client, str(object_row.get("company_id")))
+    settings = _first_row(company_data["overhead_settings"])
+    vat_percent = _number(settings.get("vat_percent"), 18)
+    employer_load_percent = _number(settings.get("employer_load_percent"), 25)
+
     material_rows = []
     labor_rows = []
+    overhead_rows = []
 
     for _, line in lines_df.iterrows():
         item = line.to_dict()
@@ -170,6 +177,31 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                     "cost": item.get("cost"),
                 }
             )
+        elif item.get("section") == "overhead":
+            monthly_cost = item.get("monthly_cost")
+            allocation = item.get("allocation_basis")
+            monthly_cost_display = (
+                f"{_format_number(_number(monthly_cost, 0))}%"
+                if str(allocation or "").startswith(f"{_format_number(_number(monthly_cost, 0))}%")
+                else None
+            )
+            overhead_rows.append(
+                {
+                    "group": item.get("group_name"),
+                    "item": item.get("item_name"),
+                    "monthly_cost": monthly_cost,
+                    "monthly_cost_display": monthly_cost_display,
+                    "allocation": allocation,
+                    "cost": item.get("cost"),
+                }
+            )
+
+    material_total = sum(_number(row.get("cost"), 0) for row in material_rows)
+    labor_base_total = sum(_number(row.get("cost"), 0) for row in labor_rows)
+    labor_hours_total = sum(_number(row.get("hours"), 0) for row in labor_rows)
+    employer_load = round(labor_base_total * employer_load_percent / 100, 2)
+    labor_total = labor_base_total + employer_load
+    overhead_total = sum(_number(row.get("cost"), 0) for row in overhead_rows)
 
     return {
         "object_key": object_id,
@@ -180,20 +212,34 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         "sections": [
             {
                 "title": "Material cost",
-                "metrics": [("Cost", None), ("VAT 18%", None), ("Total", None)],
+                "metrics": [
+                    ("Cost", material_total),
+                    ("VAT 18%", round(material_total * vat_percent / 100, 2)),
+                    ("Total", round(material_total * (1 + vat_percent / 100), 2)),
+                ],
                 "columns": ["Item", "Unit", "Unit cost", "Qty", "Cost"],
                 "rows": material_rows,
             },
             {
                 "title": "Labor cost",
                 "metrics": [
-                    ("Total hours", "—"),
-                    ("Cost", None),
-                    ("Employer 25%", None),
-                    ("Total", None),
+                    ("Total hours", f"{_format_number(labor_hours_total)} h"),
+                    ("Cost", labor_base_total),
+                    ("Employer 25%", employer_load),
+                    ("Total", labor_total),
                 ],
                 "columns": ["Work", "Role", "Hours", "Rate", "Cost"],
                 "rows": labor_rows,
+            },
+            {
+                "title": "Overhead",
+                "metrics": [
+                    ("Cost", overhead_total),
+                    ("VAT", round(overhead_total * vat_percent / 100, 2)),
+                    ("Total", round(overhead_total * (1 + vat_percent / 100), 2)),
+                ],
+                "columns": ["Group", "Monthly cost", "Allocation", "Cost"],
+                "rows": overhead_rows,
             },
         ],
         "self_cost": {
@@ -203,6 +249,27 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
             "total": object_row.get("self_cost_total"),
         },
     }
+
+
+def _first_row(df: Any) -> dict[str, Any]:
+    if df.empty:
+        return {}
+    return df.iloc[0].to_dict()
+
+
+def _number(value: Any, default: float) -> float:
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _format_number(value: float) -> str:
+    if value == int(value):
+        return str(int(value))
+    return f"{value:.1f}".rstrip("0").rstrip(".")
 
 
 def estimate_first_object_for_run(
