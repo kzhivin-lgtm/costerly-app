@@ -99,6 +99,23 @@ def fetch_rfq_detected_objects(client: Client, run_id: str) -> pd.DataFrame:
     )
 
 
+def update_rfq_detected_object(
+    client: Client,
+    *,
+    run_id: str,
+    object_id: str,
+    values: dict,
+) -> None:
+    """Persist user edits from File Review before estimation starts."""
+    client.table("rfq_detected_objects").update(values).eq(
+        "run_id",
+        run_id,
+    ).eq(
+        "object_id",
+        object_id,
+    ).execute()
+
+
 def upsert_rfq_estimate_shell(
     client: Client,
     *,

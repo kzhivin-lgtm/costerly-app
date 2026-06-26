@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from agents.estimation_agent import run_estimation_agent
@@ -20,7 +21,12 @@ from models.estimation import ObjectEstimateSeed
 from use_cases.pricing import price_estimated_object
 
 
-def start_estimation_for_run(*, run_id: str, company_id: str) -> dict[str, Any]:
+def start_estimation_for_run(
+    *,
+    run_id: str,
+    company_id: str,
+    ignored_object_ids: set[str] | None = None,
+) -> dict[str, Any]:
     """Create pending estimation records for all detected RFQ objects.
 
     Called when the user leaves File Review for Objects Estimation. This does
@@ -30,6 +36,7 @@ def start_estimation_for_run(*, run_id: str, company_id: str) -> dict[str, Any]:
     client = get_supabase_client()
     run_df = fetch_rfq_run(client, run_id)
     objects_df = fetch_rfq_detected_objects(client, run_id)
+    ignored_object_ids = ignored_object_ids or set()
 
     if run_df.empty:
         raise RuntimeError(f"RFQ run not found in Supabase: {run_id}")
@@ -43,9 +50,11 @@ def start_estimation_for_run(*, run_id: str, company_id: str) -> dict[str, Any]:
             quantity=float(row.get("quantity") or 1),
         )
         for _, row in objects_df.iterrows()
+        if str(row.get("object_id")) not in ignored_object_ids
     ]
 
-    estimate_id = f"{run_id}_estimate_001"
+    estimate_stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    estimate_id = f"{run_id}_estimate_{estimate_stamp}"
     object_estimates = [
         {
             "estimate_id": estimate_id,

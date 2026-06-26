@@ -12,4 +12,3 @@
 - Add admin/debug view for cost by file, agent, and object.
 - Add XLS proposal export.
 - Add missing-object second-pass detection flow.
-- Investigate Streamlit cold-start/loading flicker.

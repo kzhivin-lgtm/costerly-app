@@ -5,7 +5,13 @@ import html
 import streamlit as st
 
 from styles.file_review import apply_file_review_css
+from ui.js_guards import install_post_upload_transition_guard
 from ui.layout import render_post_upload_header
+from ui.screen_transition import (
+    FILE_REVIEW_MARKER_ID,
+    OBJECTS_MARKER_ID,
+    post_upload_transition_shell_html,
+)
 from use_cases.rfq_processing import load_file_review_data
 
 
@@ -86,43 +92,94 @@ def _render_review_card(run: dict[str, object]) -> None:
 
 
 def _render_object_card(item: dict[str, object]) -> None:
-    """Render one detected object card."""
-    notes_html = _list_html(
-        item.get("notes", []),
-        class_name="file-review-object-notes-list",
-    )
+    """Render one detected object card with real editable Streamlit controls."""
+    object_id = str(item.get("object_id") or item.get("name") or "object")
+    edit_key = f"file_review_object_edits.{object_id}"
+    edits = st.session_state.setdefault("file_review_object_edits", {})
+    if object_id not in edits:
+        edits[object_id] = {
+            "name": item.get("name") or "",
+            "quantity": item.get("quantity") or "1",
+            "ignored": False,
+        }
 
-    card_html = (
-        '<div class="file-review-object-card">'
-        '<div class="file-review-object-edit-grid">'
-        '<div class="file-review-object-edit-group">'
-        '<div class="file-review-object-edit-label">Object name</div>'
-        f'<div class="file-review-object-name-input">{_escape(item.get("name"))}</div>'
-        '</div>'
-        '<div class="file-review-object-edit-group file-review-object-qty-group">'
-        '<div class="file-review-object-edit-label file-review-object-edit-label-center">QTY</div>'
-        f'<div class="file-review-object-qty-input">{_escape(item.get("quantity"))}</div>'
-        '</div>'
-        '<div class="file-review-object-confidence">'
-        '<div class="file-review-object-edit-label file-review-object-edit-label-center">CONF</div>'
-        f'<div class="file-review-object-confidence-value">{_escape(item.get("confidence"))}</div>'
-        '</div>'
-        '<div class="file-review-object-ignore-button">Ignore</div>'
-        '</div>'
-        '<div class="file-review-divider"></div>'
-        '<div class="file-review-object-detail-grid">'
-        '<div class="file-review-label">Dimensions:</div>'
-        f'<div class="file-review-value">{_escape(item.get("dimensions"))}</div>'
-        '<div class="file-review-label">Materials:</div>'
-        f'<div class="file-review-value">{_escape(item.get("materials"))}</div>'
-        '</div>'
-        '<div class="file-review-divider"></div>'
-        '<div class="file-review-section-title">Missing information:</div>'
-        f'{notes_html}'
-        '</div>'
-    )
+    with st.container(border=True):
+        st.markdown(
+            '<span class="file-review-object-card-marker" aria-hidden="true" '
+            'style="display:none!important;width:0;height:0;overflow:hidden;">&#8203;</span>',
+            unsafe_allow_html=True,
+        )
 
-    st.markdown(card_html, unsafe_allow_html=True)
+        col_name, col_qty, col_conf, col_ignore = st.columns(
+            [7.4, 1.2, 1.2, 1.5],
+            gap="small",
+            vertical_alignment="bottom",
+        )
+
+        edits[object_id]["name"] = col_name.text_input(
+            "Object name",
+            value=str(edits[object_id].get("name") or ""),
+            key=f"{edit_key}.name",
+        )
+        edits[object_id]["quantity"] = col_qty.text_input(
+            "QTY",
+            value=str(edits[object_id].get("quantity") or "1"),
+            key=f"{edit_key}.quantity",
+        )
+        col_conf.markdown(
+            '<div class="file-review-native-conf-label">CONF</div>'
+            f'<div class="file-review-native-conf-value">{_escape(item.get("confidence"))}</div>',
+            unsafe_allow_html=True,
+        )
+        ignore_clicked = col_ignore.button(
+            "IGNORE",
+            key=f"{edit_key}.ignore",
+            use_container_width=True,
+            type="secondary",
+        )
+        if ignore_clicked:
+            edits[object_id]["ignored"] = not bool(edits[object_id].get("ignored"))
+
+        if edits[object_id].get("ignored"):
+            st.markdown(
+                '<div class="file-review-native-ignored">This object will be skipped during estimation.</div>',
+                unsafe_allow_html=True,
+            )
+
+        st.markdown('<div class="file-review-divider"></div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="file-review-object-detail-grid">'
+            '<div class="file-review-label">Dimensions:</div>'
+            f'<div class="file-review-value">{_escape(item.get("dimensions"))}</div>'
+            '<div class="file-review-label">Materials:</div>'
+            f'<div class="file-review-value">{_escape(item.get("materials"))}</div>'
+            '</div>'
+            '<div class="file-review-divider"></div>'
+            '<div class="file-review-section-title">Missing information:</div>',
+            unsafe_allow_html=True,
+        )
+        notes_html = _list_html(
+            item.get("notes", []),
+            class_name="file-review-object-notes-list",
+        )
+        st.markdown(notes_html, unsafe_allow_html=True)
+
+
+def _sync_object_edit_state(run_id: str, objects: list[dict[str, object]]) -> None:
+    """Keep File Review edits scoped to the current RFQ run."""
+    if st.session_state.get("file_review_object_edits_run_id") != run_id:
+        st.session_state.file_review_object_edits = {}
+        st.session_state.file_review_object_edits_run_id = run_id
+
+    edits = st.session_state.setdefault("file_review_object_edits", {})
+    active_object_ids = {
+        str(item.get("object_id") or item.get("name") or "object")
+        for item in objects
+    }
+
+    for object_id in list(edits.keys()):
+        if object_id not in active_object_ids:
+            del edits[object_id]
 
 
 def _render_missing_object_search() -> None:
@@ -142,10 +199,11 @@ def _render_missing_object_search() -> None:
 def render_file_review_screen(company_id: str) -> None:
     """Render File Review from the persisted detection result when available."""
     apply_file_review_css()
-    render_post_upload_header("File Review")
 
     processing_error = st.session_state.get("processing_error")
     if processing_error:
+        render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
+        install_post_upload_transition_guard([], current_marker_id=FILE_REVIEW_MARKER_ID)
         st.error(f"RFQ processing failed: {processing_error}")
         if st.button("BACK TO UPLOAD", type="secondary"):
             st.session_state.screen = "upload"
@@ -158,14 +216,35 @@ def render_file_review_screen(company_id: str) -> None:
         try:
             data = load_file_review_data(run_id)
         except Exception as exc:
+            render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
+            install_post_upload_transition_guard([], current_marker_id=FILE_REVIEW_MARKER_ID)
             st.error(f"Could not load RFQ run from Supabase: {exc}")
             return
     else:
+        render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
+        install_post_upload_transition_guard([], current_marker_id=FILE_REVIEW_MARKER_ID)
         st.warning("No processed RFQ run found. Upload a file to start.")
         if st.button("BACK TO UPLOAD", type="secondary"):
             st.session_state.screen = "upload"
             st.rerun()
         return
+
+    render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
+    install_post_upload_transition_guard(
+        [
+            {
+                "label": "CONTINUE TO OBJECTS ESTIMATION",
+                "targetMarkerId": OBJECTS_MARKER_ID,
+                "shellHtml": post_upload_transition_shell_html(
+                    title="Objects Estimation",
+                    subtitle="Review objects → Set sale price → Generate proposal",
+                ),
+            }
+        ],
+        current_marker_id=FILE_REVIEW_MARKER_ID,
+    )
+
+    _sync_object_edit_state(run_id, data["objects"])
 
     _render_review_card(data["run"])
 
@@ -190,7 +269,22 @@ def render_file_review_screen(company_id: str) -> None:
         type="primary",
         use_container_width=True,
     ):
+        object_edits = st.session_state.get("file_review_object_edits", {})
+        st.session_state.pending_file_review_edits = {
+            str(object_id): dict(edit)
+            for object_id, edit in object_edits.items()
+        }
+        st.session_state.file_review_ignored_object_ids = {
+            str(object_id)
+            for object_id, edit in object_edits.items()
+            if edit.get("ignored")
+        }
         st.session_state.estimation_start_requested = True
+        st.session_state.current_estimate_id = None
+        st.session_state.current_object_id = None
+        st.session_state.estimation_first_object_future = None
+        st.session_state.estimation_first_object_requested = False
+        st.session_state.approved_object_keys = set()
         st.session_state.last_estimation_result = None
         st.session_state.last_estimation_error = None
         st.session_state.screen = "objects"

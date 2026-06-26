@@ -7,12 +7,19 @@ from urllib.parse import quote
 import streamlit as st
 
 from styles.objects import apply_objects_css
+from ui.js_guards import install_post_upload_transition_guard
 from ui.layout import render_post_upload_header
+from ui.screen_transition import (
+    FILE_REVIEW_MARKER_ID,
+    OBJECTS_MARKER_ID,
+    post_upload_transition_shell_html,
+)
 from use_cases.estimation import (
     estimate_first_object_for_run,
     load_objects_estimation_data,
     start_estimation_for_run,
 )
+from use_cases.rfq_processing import apply_file_review_edits
 
 
 _ESTIMATION_EXECUTOR = ThreadPoolExecutor(max_workers=1)
@@ -135,9 +142,20 @@ def _ensure_estimation_shell(*, run_id: str | None, company_id: str) -> None:
         return
 
     try:
+        ignored_object_ids = st.session_state.get("file_review_ignored_object_ids", set())
+        pending_edits = st.session_state.get("pending_file_review_edits")
+        if pending_edits:
+            ignored_object_ids = apply_file_review_edits(
+                run_id=run_id,
+                object_edits=pending_edits,
+            )
+            st.session_state.file_review_ignored_object_ids = ignored_object_ids
+            st.session_state.pending_file_review_edits = None
+
         estimate = start_estimation_for_run(
             run_id=run_id,
             company_id=company_id,
+            ignored_object_ids=ignored_object_ids,
         )
         st.session_state.current_estimate_id = estimate["estimate_id"]
         st.session_state.estimation_first_object_requested = True
@@ -190,26 +208,44 @@ def render_objects_screen(company_id: str) -> None:
     """Render the object pricing review screen with temporary fixture data."""
     apply_objects_css()
     _consume_estimation_future()
-    render_post_upload_header(
-        "Objects Estimation",
-        "Review objects → Set sale price → Generate proposal",
-        class_name="objects-estimation-header",
-    )
 
     estimate_id = st.session_state.get("current_estimate_id")
     run_id = st.session_state.get("current_run_id")
     _ensure_estimation_shell(run_id=run_id, company_id=company_id)
     estimate_id = st.session_state.get("current_estimate_id")
 
+    data_error = None
     if estimate_id:
         try:
             data = load_objects_estimation_data(estimate_id)
         except Exception as exc:
-            st.error(f"Could not load Objects Estimation: {exc}")
+            data_error = f"Could not load Objects Estimation: {exc}"
             data = _empty_objects_data()
     else:
-        st.warning("No active estimate. Return to File Review and start Objects Estimation.")
         data = _empty_objects_data()
+
+    render_post_upload_header(
+        "Objects Estimation",
+        "Review objects → Set sale price → Generate proposal",
+        class_name="objects-estimation-header",
+        marker_id=OBJECTS_MARKER_ID,
+    )
+    install_post_upload_transition_guard(
+        [
+            {
+                "label": "BACK TO FILE REVIEW",
+                "targetMarkerId": FILE_REVIEW_MARKER_ID,
+                "shellHtml": post_upload_transition_shell_html(title="File Review"),
+            }
+        ],
+        current_marker_id=OBJECTS_MARKER_ID,
+    )
+
+    if not estimate_id:
+        st.warning("No active estimate. Return to File Review and start Objects Estimation.")
+
+    if data_error:
+        st.error(data_error)
 
     if st.session_state.get("last_estimation_error"):
         st.error(f"Estimation failed: {st.session_state.last_estimation_error}")

@@ -19,6 +19,38 @@ Avoid:
 
 Short version: source first, symptom second.
 
+## Real Interaction Rule
+
+No product element may be decorative if it implies interaction or database state changes.
+
+Do:
+- use real Streamlit/application controls for editable values, actions, approvals, ignores, and navigation;
+- persist user edits to the intended state layer or database before downstream flows rely on them;
+- clearly explain any temporary non-functional placeholder before adding it.
+
+Avoid:
+- rendering fake inputs, fake buttons, or fake toggles for anything the user expects to change;
+- replacing implemented functionality with visual imitation to solve a layout or transition problem;
+- using decorative HTML controls as a workaround without explicit user approval.
+
+Short version: if it looks editable or actionable, it must actually work.
+
+## Streamlit Transition Rule
+
+Screen-to-screen overlays must account for Streamlit keeping old DOM alive during reruns.
+
+Do:
+- replace stale browser event handlers on every rendered screen;
+- let the newly rendered current-screen marker clear the overlay after a short stable delay;
+- prepare slow data before rendering the new screen header when possible.
+
+Avoid:
+- relying on one-time `window` flags for click handlers that must survive repeated navigation;
+- using target-screen markers inside the old DOM as proof that the new screen is ready;
+- rendering a new header before the data needed for that screen is available.
+
+Short version: repeated navigation must reinstall guards and clear from the current screen.
+
 ## Backup Rule
 
 Before a commit, create a local backup archive in `backups/`.

@@ -10,6 +10,7 @@ from db.repositories import (
     fetch_rfq_detected_objects,
     fetch_rfq_run,
     insert_agent_usage_event,
+    update_rfq_detected_object,
     upsert_rfq_detection_result,
 )
 from db.supabase_client import get_supabase_client
@@ -58,6 +59,39 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
     }
 
 
+def apply_file_review_edits(
+    *,
+    run_id: str,
+    object_edits: dict[str, dict[str, Any]],
+) -> set[str]:
+    """Save File Review object edits and return object ids ignored for estimation."""
+    client = get_supabase_client()
+    ignored_object_ids: set[str] = set()
+
+    for object_id, edit in object_edits.items():
+        if edit.get("ignored"):
+            ignored_object_ids.add(str(object_id))
+
+        values: dict[str, Any] = {}
+        object_name = str(edit.get("name") or "").strip()
+        quantity = _parse_quantity(edit.get("quantity"))
+
+        if object_name:
+            values["object_name"] = object_name
+        if quantity is not None:
+            values["quantity"] = quantity
+
+        if values:
+            update_rfq_detected_object(
+                client,
+                run_id=run_id,
+                object_id=str(object_id),
+                values=values,
+            )
+
+    return ignored_object_ids
+
+
 def _normalize_run(run: dict[str, Any]) -> dict[str, Any]:
     """Convert the Supabase RFQ row to the compact UI contract."""
     return {
@@ -86,6 +120,7 @@ def _normalize_object(item: dict[str, Any]) -> dict[str, Any]:
         dimensions = {}
 
     return {
+        "object_id": item.get("object_id"),
         "name": item.get("object_name"),
         "quantity": _clean_number(item.get("quantity")),
         "confidence": _percent(item.get("confidence")),
@@ -148,6 +183,19 @@ def _clean_number(value: Any) -> str:
     if number.is_integer():
         return str(int(number))
     return str(number)
+
+
+def _parse_quantity(value: Any) -> float | None:
+    """Parse user-entered quantity without failing the whole review save."""
+    if value is None or _is_missing(value):
+        return None
+    try:
+        text = str(value).strip().replace(",", ".")
+        if not text:
+            return None
+        return float(text)
+    except (TypeError, ValueError):
+        return None
 
 
 def _is_missing(value: Any) -> bool:

@@ -5,6 +5,153 @@ import json
 import streamlit.components.v1 as components
 
 
+def install_post_upload_transition_guard(
+    transitions: list[dict[str, str]],
+    *,
+    current_marker_id: str | None = None,
+) -> None:
+    """Cover old Streamlit DOM during post-upload screen-to-screen reruns."""
+    transitions_json = json.dumps(transitions)
+    current_marker_id_json = json.dumps(current_marker_id)
+
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentDoc = window.parent.document;
+            const CONFIG = __TRANSITIONS__;
+            const CURRENT_MARKER_ID = __CURRENT_MARKER_ID__;
+            const SCRIPT_ID = "COSTERLY_POST_UPLOAD_TRANSITION_GUARD_V1_10_9";
+            const STYLE_ID = "costerly-post-upload-transition-style";
+            const SHELL_ID = "costerly-post-upload-transition-shell";
+            const ACTIVE_CLASS = "costerly-post-upload-transition-active";
+            const CONFIG_KEY = "__costerlyPostUploadTransitionConfig";
+            const INSTALLED_KEY = "__costerlyPostUploadTransitionGuardInstalled";
+            const HANDLER_KEY = "__costerlyPostUploadTransitionClickHandler";
+            const MIN_STABLE_MS = 650;
+
+            window.parent[CONFIG_KEY] = CONFIG;
+
+            function normalizeText(value) {
+                return String(value || "")
+                    .replace(/\\s+/g, " ")
+                    .trim()
+                    .toUpperCase();
+            }
+
+            function installStyle() {
+                if (parentDoc.getElementById(STYLE_ID)) return;
+
+                const style = parentDoc.createElement("style");
+                style.id = STYLE_ID;
+                style.textContent = `
+                    html.${ACTIVE_CLASS},
+                    body.${ACTIVE_CLASS} {
+                        overflow: hidden !important;
+                    }
+
+                    #${SHELL_ID} {
+                        position: fixed;
+                        inset: 0;
+                        z-index: 2147483100;
+                        box-sizing: border-box;
+                        overflow: hidden;
+                    }
+                `;
+                parentDoc.head.appendChild(style);
+            }
+
+            function removeShell() {
+                const shell = parentDoc.getElementById(SHELL_ID);
+                if (shell) shell.remove();
+
+                parentDoc.documentElement.classList.remove(ACTIVE_CLASS);
+                parentDoc.body.classList.remove(ACTIVE_CLASS);
+            }
+
+            function targetIsActive(targetMarkerId) {
+                return Boolean(targetMarkerId && parentDoc.getElementById(targetMarkerId));
+            }
+
+            function clearForCurrentScreen() {
+                if (!targetIsActive(CURRENT_MARKER_ID)) return;
+                window.parent.setTimeout(removeShell, MIN_STABLE_MS);
+            }
+
+            function showShell(transition) {
+                if (!transition) return;
+
+                installStyle();
+                removeShell();
+
+                const shell = parentDoc.createElement("div");
+                shell.id = SHELL_ID;
+                shell.dataset.targetMarkerId = transition.targetMarkerId || "";
+                shell.innerHTML = transition.shellHtml || "";
+                parentDoc.body.appendChild(shell);
+
+                parentDoc.documentElement.classList.add(ACTIVE_CLASS);
+                parentDoc.body.classList.add(ACTIVE_CLASS);
+
+                window.parent.setTimeout(() => {
+                    const activeShell = parentDoc.getElementById(SHELL_ID);
+                    if (
+                        activeShell &&
+                        activeShell.dataset.targetMarkerId === (transition.targetMarkerId || "")
+                    ) {
+                        removeShell();
+                    }
+                }, 45000);
+            }
+
+            function findTransition(event) {
+                const target = event.target;
+                if (!target || !target.closest) return null;
+
+                const control = target.closest("button, a, [role='button']");
+                if (!control) return null;
+
+                const label = normalizeText(control.innerText || control.textContent);
+                return (window.parent[CONFIG_KEY] || []).find((transition) => {
+                    return normalizeText(transition.label) === label;
+                });
+            }
+
+            function handleClick(event) {
+                const transition = findTransition(event);
+                if (!transition) return;
+
+                showShell(transition);
+            }
+
+            const oldScript = parentDoc.getElementById(SCRIPT_ID);
+            if (oldScript) oldScript.remove();
+
+            const marker = parentDoc.createElement("script");
+            marker.id = SCRIPT_ID;
+            marker.type = "application/json";
+            marker.textContent = "installed";
+            parentDoc.head.appendChild(marker);
+
+            if (window.parent[HANDLER_KEY]) {
+                parentDoc.removeEventListener("click", window.parent[HANDLER_KEY], true);
+            }
+
+            window.parent[INSTALLED_KEY] = true;
+            parentDoc.addEventListener("click", handleClick, true);
+            window.parent[HANDLER_KEY] = handleClick;
+
+            clearForCurrentScreen();
+        })();
+        </script>
+        """
+        .replace("__TRANSITIONS__", transitions_json)
+        .replace("__CURRENT_MARKER_ID__", current_marker_id_json),
+        height=0,
+        width=0,
+    )
+
+
 def clear_upload_processing_shell() -> None:
     """Remove the instant upload processing shell after Streamlit reaches a real screen."""
     components.html(
