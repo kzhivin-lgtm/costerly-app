@@ -156,6 +156,8 @@ def apply_file_review_css() -> None:
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker) {
+            --file-review-row-label-height: calc(14px * 1.2);
+            --file-review-row-label-gap: 8px;
             width: 100%;
             background: var(--color-surface);
             border: 1px solid rgba(42, 31, 44, 0.14);
@@ -185,7 +187,8 @@ def apply_file_review_css() -> None:
             [data-testid="stTextInput"] label {
             font-size: 14px;
             line-height: 1.2;
-            margin: 0 0 8px 0;
+            height: var(--file-review-row-label-height);
+            margin: 0 0 var(--file-review-row-label-gap) 0;
             color: rgba(42, 31, 44, 0.52);
         }
 
@@ -194,11 +197,6 @@ def apply_file_review_css() -> None:
             display: block;
             width: 100%;
             text-align: center !important;
-        }
-
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
-            [data-testid="stTextInput"]:has(input[aria-label="QTY"]) {
-            transform: translateY(var(--space-1));
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
@@ -286,6 +284,11 @@ def apply_file_review_css() -> None:
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
+            [data-testid="stButton"] {
+            margin-top: calc(var(--file-review-row-label-height) + var(--file-review-row-label-gap));
+        }
+
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
             [data-testid="stButton"] button {
             height: var(--button-height-md) !important;
             min-height: var(--button-height-md) !important;
@@ -314,19 +317,18 @@ def apply_file_review_css() -> None:
         .file-review-native-conf-label {
             font-size: 14px;
             line-height: 1.2;
-            margin: 0 0 8px 0;
+            height: var(--file-review-row-label-height);
+            margin: 0;
             color: rgba(42, 31, 44, 0.52);
             text-align: center;
             width: 100%;
-            transform: translateY(calc(-1 * var(--space-2)));
         }
 
         .file-review-conf-stack {
-            height: calc(var(--input-height-md) + 25px);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            transform: translateY(calc(-1 * var(--space-3)));
+            display: grid;
+            grid-template-rows: var(--file-review-row-label-height) var(--input-height-md);
+            row-gap: var(--file-review-row-label-gap);
+            align-items: start;
         }
 
         .file-review-native-conf-value {

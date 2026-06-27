@@ -114,7 +114,7 @@ def _render_object_card(item: dict[str, object]) -> None:
         col_name, col_qty, col_conf, col_ignore = st.columns(
             [7.4, 1.2, 1.2, 1.5],
             gap="small",
-            vertical_alignment="bottom",
+            vertical_alignment="top",
         )
 
         edits[object_id]["name"] = col_name.text_input(
