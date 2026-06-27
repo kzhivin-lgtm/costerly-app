@@ -177,13 +177,6 @@ def apply_file_review_css() -> None:
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
-            div[data-testid="stElementContainer"]:has(.file-review-qty-column-marker),
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
-            div[data-testid="stMarkdownContainer"]:has(.file-review-qty-column-marker) {
-            display: none;
-        }
-
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
             [data-testid="stTextInput"] {
             margin: 0;
         }
@@ -197,10 +190,10 @@ def apply_file_review_css() -> None:
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
-            [data-testid="column"]:has(.file-review-qty-column-marker) [data-testid="stTextInput"] label {
+            [data-testid="stTextInput"]:has(input[aria-label="QTY"]) label {
             display: block;
             width: 100%;
-            text-align: center;
+            text-align: center !important;
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
@@ -279,10 +272,10 @@ def apply_file_review_css() -> None:
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
-            [data-testid="column"]:has(.file-review-qty-column-marker) input {
+            input[aria-label="QTY"] {
             font-size: var(--input-compact-font-size);
             font-weight: var(--input-compact-font-weight);
-            text-align: center;
+            text-align: center !important;
             padding-left: var(--input-padding-x) !important;
             padding-right: var(--input-padding-x) !important;
         }
@@ -322,7 +315,7 @@ def apply_file_review_css() -> None:
             width: 100%;
         }
 
-        div[data-testid="stMarkdownContainer"]:has(.file-review-conf-column-marker) {
+        .file-review-conf-stack {
             height: calc(var(--input-height-md) + 25px);
             display: flex;
             flex-direction: column;

@@ -122,21 +122,16 @@ def _render_object_card(item: dict[str, object]) -> None:
             value=str(edits[object_id].get("name") or ""),
             key=f"{edit_key}.name",
         )
-        col_qty.markdown(
-            '<span class="file-review-qty-column-marker" aria-hidden="true" '
-            'style="display:none!important;width:0;height:0;overflow:hidden;">&#8203;</span>',
-            unsafe_allow_html=True,
-        )
         edits[object_id]["quantity"] = col_qty.text_input(
             "QTY",
             value=str(edits[object_id].get("quantity") or "1"),
             key=f"{edit_key}.quantity",
         )
         col_conf.markdown(
-            '<span class="file-review-conf-column-marker" aria-hidden="true" '
-            'style="display:none!important;width:0;height:0;overflow:hidden;">&#8203;</span>'
+            '<div class="file-review-conf-stack">'
             '<div class="file-review-native-conf-label">CONF</div>'
-            f'<div class="file-review-native-conf-value">{_escape(item.get("confidence"))}</div>',
+            f'<div class="file-review-native-conf-value">{_escape(item.get("confidence"))}</div>'
+            '</div>',
             unsafe_allow_html=True,
         )
         ignore_clicked = col_ignore.button(
