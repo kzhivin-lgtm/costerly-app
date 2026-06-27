@@ -128,6 +128,9 @@ def _consume_estimation_future() -> None:
     try:
         st.session_state.last_estimation_result = future.result()
         st.session_state.last_estimation_error = None
+        estimate_id = st.session_state.get("current_estimate_id")
+        if estimate_id:
+            st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
     except Exception as exc:
         st.session_state.last_estimation_error = str(exc)
     finally:
@@ -140,6 +143,13 @@ def _ensure_estimation_shell(*, run_id: str | None, company_id: str) -> None:
         return
     if not st.session_state.get("estimation_start_requested"):
         return
+    if (
+        st.session_state.get("current_estimate_id")
+        and st.session_state.get("current_estimate_run_id") == run_id
+        and not st.session_state.get("pending_file_review_edits")
+    ):
+        st.session_state.estimation_start_requested = False
+        return
 
     try:
         ignored_object_ids = st.session_state.get("file_review_ignored_object_ids", set())
@@ -148,6 +158,11 @@ def _ensure_estimation_shell(*, run_id: str | None, company_id: str) -> None:
             ignored_object_ids = apply_file_review_edits(
                 run_id=run_id,
                 object_edits=pending_edits,
+            )
+            _update_file_review_cache_after_edits(
+                run_id=run_id,
+                object_edits=pending_edits,
+                ignored_object_ids=ignored_object_ids,
             )
             st.session_state.file_review_ignored_object_ids = ignored_object_ids
             st.session_state.pending_file_review_edits = None
@@ -158,12 +173,60 @@ def _ensure_estimation_shell(*, run_id: str | None, company_id: str) -> None:
             ignored_object_ids=ignored_object_ids,
         )
         st.session_state.current_estimate_id = estimate["estimate_id"]
+        st.session_state.current_estimate_run_id = run_id
         st.session_state.estimation_first_object_requested = True
         st.session_state.last_estimation_error = None
     except Exception as exc:
         st.session_state.last_estimation_error = f"Could not start Objects Estimation: {exc}"
     finally:
         st.session_state.estimation_start_requested = False
+
+
+def _update_file_review_cache_after_edits(
+    *,
+    run_id: str,
+    object_edits: dict[str, dict[str, object]],
+    ignored_object_ids: set[str],
+) -> None:
+    """Keep File Review cache aligned with edits saved before estimation."""
+    cache = st.session_state.setdefault("file_review_data_cache", {})
+    data = cache.get(run_id)
+    if data:
+        for item in data.get("objects", []):
+            object_id = str(item.get("object_id") or item.get("name") or "object")
+            edit = object_edits.get(object_id)
+            if not edit:
+                continue
+            if str(edit.get("name") or "").strip():
+                item["name"] = str(edit.get("name") or "").strip()
+            if str(edit.get("quantity") or "").strip():
+                item["quantity"] = str(edit.get("quantity") or "").strip()
+
+    st.session_state.file_review_saved_ignored_object_ids = set(ignored_object_ids)
+
+
+def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str | None]:
+    """Load Objects data from session cache first, then Supabase when needed."""
+    cache = st.session_state.setdefault("objects_estimation_data_cache", {})
+    dirty_estimates = st.session_state.setdefault("objects_estimation_cache_dirty", set())
+
+    if estimate_id in cache and estimate_id not in dirty_estimates:
+        return cache[estimate_id], None
+
+    try:
+        data = load_objects_estimation_data(estimate_id)
+    except Exception as exc:
+        cached = cache.get(estimate_id)
+        if cached is not None:
+            return (
+                cached,
+                f"Could not refresh Objects Estimation from Supabase. Showing last available data. ({exc})",
+            )
+        raise
+
+    cache[estimate_id] = data
+    dirty_estimates.discard(estimate_id)
+    return data, None
 
 
 def _start_first_object_estimation_if_requested(
@@ -215,9 +278,10 @@ def render_objects_screen(company_id: str) -> None:
     estimate_id = st.session_state.get("current_estimate_id")
 
     data_error = None
+    cache_warning = None
     if estimate_id:
         try:
-            data = load_objects_estimation_data(estimate_id)
+            data, cache_warning = _load_objects_screen_data(estimate_id)
         except Exception as exc:
             data_error = f"Could not load Objects Estimation: {exc}"
             data = _empty_objects_data()
@@ -246,6 +310,9 @@ def render_objects_screen(company_id: str) -> None:
 
     if data_error:
         st.error(data_error)
+
+    if cache_warning:
+        st.warning(cache_warning)
 
     if st.session_state.get("last_estimation_error"):
         st.error(f"Estimation failed: {st.session_state.last_estimation_error}")

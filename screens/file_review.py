@@ -170,6 +170,7 @@ def _sync_object_edit_state(run_id: str, objects: list[dict[str, object]]) -> No
     if st.session_state.get("file_review_object_edits_run_id") != run_id:
         st.session_state.file_review_object_edits = {}
         st.session_state.file_review_object_edits_run_id = run_id
+        st.session_state.file_review_saved_ignored_object_ids = set()
 
     edits = st.session_state.setdefault("file_review_object_edits", {})
     active_object_ids = {
@@ -180,6 +181,48 @@ def _sync_object_edit_state(run_id: str, objects: list[dict[str, object]]) -> No
     for object_id in list(edits.keys()):
         if object_id not in active_object_ids:
             del edits[object_id]
+
+
+def _load_file_review_screen_data(run_id: str) -> tuple[dict[str, object], str | None]:
+    """Load File Review data from session cache first, then Supabase."""
+    cache = st.session_state.setdefault("file_review_data_cache", {})
+    if run_id in cache:
+        return cache[run_id], None
+
+    data = load_file_review_data(run_id)
+    cache[run_id] = data
+    return data, None
+
+
+def _file_review_edits_changed(
+    objects: list[dict[str, object]],
+    object_edits: dict[str, dict[str, object]],
+) -> bool:
+    """Return whether File Review edits differ from the loaded object snapshot."""
+    objects_by_id = {
+        str(item.get("object_id") or item.get("name") or "object"): item
+        for item in objects
+    }
+
+    for object_id, edit in object_edits.items():
+        item = objects_by_id.get(str(object_id))
+        if item is None:
+            return True
+
+        original_name = str(item.get("name") or "").strip()
+        original_quantity = str(item.get("quantity") or "1").strip()
+        edited_name = str(edit.get("name") or "").strip()
+        edited_quantity = str(edit.get("quantity") or "1").strip()
+
+        if edited_name != original_name:
+            return True
+        if edited_quantity != original_quantity:
+            return True
+        saved_ignored_ids = st.session_state.get("file_review_saved_ignored_object_ids", set())
+        if bool(edit.get("ignored")) != (str(object_id) in saved_ignored_ids):
+            return True
+
+    return False
 
 
 def _render_missing_object_search() -> None:
@@ -214,7 +257,7 @@ def render_file_review_screen(company_id: str) -> None:
     run_id = st.session_state.get("current_run_id")
     if run_id:
         try:
-            data = load_file_review_data(run_id)
+            data, cache_warning = _load_file_review_screen_data(run_id)
         except Exception as exc:
             render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
             install_post_upload_transition_guard([], current_marker_id=FILE_REVIEW_MARKER_ID)
@@ -246,6 +289,9 @@ def render_file_review_screen(company_id: str) -> None:
 
     _sync_object_edit_state(run_id, data["objects"])
 
+    if cache_warning:
+        st.warning(cache_warning)
+
     _render_review_card(data["run"])
 
     st.markdown(
@@ -270,22 +316,29 @@ def render_file_review_screen(company_id: str) -> None:
         use_container_width=True,
     ):
         object_edits = st.session_state.get("file_review_object_edits", {})
+        edits_changed = _file_review_edits_changed(data["objects"], object_edits)
         st.session_state.pending_file_review_edits = {
             str(object_id): dict(edit)
             for object_id, edit in object_edits.items()
-        }
+        } if edits_changed else None
         st.session_state.file_review_ignored_object_ids = {
             str(object_id)
             for object_id, edit in object_edits.items()
             if edit.get("ignored")
         }
-        st.session_state.estimation_start_requested = True
-        st.session_state.current_estimate_id = None
-        st.session_state.current_object_id = None
-        st.session_state.estimation_first_object_future = None
-        st.session_state.estimation_first_object_requested = False
-        st.session_state.approved_object_keys = set()
-        st.session_state.last_estimation_result = None
-        st.session_state.last_estimation_error = None
+        current_estimate_matches_run = (
+            st.session_state.get("current_estimate_id")
+            and st.session_state.get("current_estimate_run_id") == run_id
+        )
+        st.session_state.estimation_start_requested = edits_changed or not current_estimate_matches_run
+        if edits_changed:
+            st.session_state.current_estimate_id = None
+            st.session_state.current_estimate_run_id = None
+            st.session_state.current_object_id = None
+            st.session_state.estimation_first_object_future = None
+            st.session_state.estimation_first_object_requested = False
+            st.session_state.approved_object_keys = set()
+            st.session_state.last_estimation_result = None
+            st.session_state.last_estimation_error = None
         st.session_state.screen = "objects"
         st.rerun()

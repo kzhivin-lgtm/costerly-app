@@ -25,6 +25,9 @@ def init_state() -> None:
     if "current_estimate_id" not in st.session_state:
         st.session_state.current_estimate_id = None
 
+    if "current_estimate_run_id" not in st.session_state:
+        st.session_state.current_estimate_run_id = None
+
     if "current_object_id" not in st.session_state:
         st.session_state.current_object_id = None
 
@@ -45,6 +48,18 @@ def init_state() -> None:
 
     if "last_estimation_error" not in st.session_state:
         st.session_state.last_estimation_error = None
+
+    if "file_review_data_cache" not in st.session_state:
+        st.session_state.file_review_data_cache = {}
+
+    if "file_review_saved_ignored_object_ids" not in st.session_state:
+        st.session_state.file_review_saved_ignored_object_ids = set()
+
+    if "objects_estimation_data_cache" not in st.session_state:
+        st.session_state.objects_estimation_data_cache = {}
+
+    if "objects_estimation_cache_dirty" not in st.session_state:
+        st.session_state.objects_estimation_cache_dirty = set()
 
 
 def go_to(screen: str) -> None:

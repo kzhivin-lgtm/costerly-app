@@ -14,6 +14,7 @@ from db.repositories import (
     upsert_rfq_detection_result,
 )
 from db.supabase_client import get_supabase_client
+from use_cases.retry import read_with_retry
 
 
 def process_uploaded_rfq(*, file_name: str, file_bytes: bytes, company_id: str) -> dict:
@@ -44,8 +45,8 @@ def process_uploaded_rfq(*, file_name: str, file_bytes: bytes, company_id: str) 
 def load_file_review_data(run_id: str) -> dict[str, Any]:
     """Load persisted detection data and adapt it for the File Review renderer."""
     client = get_supabase_client()
-    run_df = fetch_rfq_run(client, run_id)
-    objects_df = fetch_rfq_detected_objects(client, run_id)
+    run_df = read_with_retry(lambda: fetch_rfq_run(client, run_id))
+    objects_df = read_with_retry(lambda: fetch_rfq_detected_objects(client, run_id))
 
     if run_df.empty:
         raise RuntimeError(f"RFQ run not found in Supabase: {run_id}")

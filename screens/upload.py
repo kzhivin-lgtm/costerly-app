@@ -42,6 +42,29 @@ def _render_upload_hero() -> None:
 
     st.markdown(html, unsafe_allow_html=True)
 
+
+def _reset_post_upload_flow_state() -> None:
+    """Clear RFQ/estimate state when a new upload starts."""
+    st.session_state.current_run_id = None
+    st.session_state.current_estimate_id = None
+    st.session_state.current_estimate_run_id = None
+    st.session_state.current_object_id = None
+    st.session_state.processed_file_name = None
+    st.session_state.processing_error = None
+    st.session_state.estimation_start_requested = False
+    st.session_state.estimation_first_object_future = None
+    st.session_state.estimation_first_object_requested = False
+    st.session_state.last_estimation_error = None
+    st.session_state.file_review_object_edits = {}
+    st.session_state.file_review_object_edits_run_id = None
+    st.session_state.pending_file_review_edits = None
+    st.session_state.file_review_ignored_object_ids = set()
+    st.session_state.file_review_saved_ignored_object_ids = set()
+    st.session_state.file_review_data_cache = {}
+    st.session_state.objects_estimation_data_cache = {}
+    st.session_state.objects_estimation_cache_dirty = set()
+
+
 def render_upload_screen(company_id: str) -> None:
     """Render the first screen and move to processing after a file is accepted.
 
@@ -60,7 +83,13 @@ def render_upload_screen(company_id: str) -> None:
     install_upload_processing_shell(processing_stage_html())
 
     if uploaded_file is not None:
+        file_bytes = uploaded_file.getvalue()
+        if (
+            st.session_state.get("uploaded_file_name") != uploaded_file.name
+            or st.session_state.get("uploaded_file_bytes") != file_bytes
+        ):
+            _reset_post_upload_flow_state()
         st.session_state.uploaded_file_name = uploaded_file.name
-        st.session_state.uploaded_file_bytes = uploaded_file.getvalue()
+        st.session_state.uploaded_file_bytes = file_bytes
         st.session_state.screen = "processing"
         st.rerun()

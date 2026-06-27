@@ -19,6 +19,7 @@ from db.repositories import (
 from db.supabase_client import get_supabase_client
 from models.estimation import ObjectEstimateSeed
 from use_cases.pricing import price_estimated_object
+from use_cases.retry import read_with_retry
 
 
 def start_estimation_for_run(
@@ -87,7 +88,7 @@ def start_estimation_for_run(
 def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     """Load current object estimate statuses for the Objects Estimation screen."""
     client = get_supabase_client()
-    objects_df = fetch_rfq_object_estimates(client, estimate_id)
+    objects_df = read_with_retry(lambda: fetch_rfq_object_estimates(client, estimate_id))
 
     rows = []
     for _, item in objects_df.iterrows():
