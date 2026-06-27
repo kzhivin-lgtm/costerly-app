@@ -31,6 +31,7 @@ def install_post_upload_transition_guard(
             const PERF_KEY = "__costerlyTransitionPerfEntries";
             const PERF_BASE_KEY = "__costerlyTransitionPerfBase";
             const PERF_PANEL_ID = "costerly-transition-perf-panel";
+            const SHOW_PERF_PANEL = false;
             const FALLBACK_STABLE_MS = 250;
 
             window.parent[CONFIG_KEY] = CONFIG;
@@ -126,6 +127,8 @@ def install_post_upload_transition_guard(
             }
 
             function renderPerfPanel() {
+                if (!SHOW_PERF_PANEL) return;
+
                 const entries = window.parent[PERF_KEY] || [];
                 if (!entries.length) return;
 

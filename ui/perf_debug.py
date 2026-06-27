@@ -9,6 +9,7 @@ import streamlit as st
 
 
 PERF_DEBUG_ENABLED = True
+PERF_DEBUG_SHOW_PANEL = False
 
 
 def start_python_perf_run(screen: str) -> None:
@@ -59,7 +60,7 @@ def measure_python_perf(label: str, **fields: object) -> Iterator[None]:
 
 
 def render_python_perf_panel(screen: str) -> None:
-    if not PERF_DEBUG_ENABLED:
+    if not PERF_DEBUG_ENABLED or not PERF_DEBUG_SHOW_PANEL:
         return
 
     entries = st.session_state.get("_perf_entries", [])
