@@ -177,6 +177,13 @@ def apply_file_review_css() -> None:
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
+            div[data-testid="stElementContainer"]:has(.file-review-qty-column-marker),
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
+            div[data-testid="stMarkdownContainer"]:has(.file-review-qty-column-marker) {
+            display: none;
+        }
+
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
             [data-testid="stTextInput"] {
             margin: 0;
         }
@@ -190,7 +197,7 @@ def apply_file_review_css() -> None:
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
-            [data-testid="column"]:nth-of-type(2) [data-testid="stTextInput"] label {
+            [data-testid="column"]:has(.file-review-qty-column-marker) [data-testid="stTextInput"] label {
             display: block;
             width: 100%;
             text-align: center;
@@ -272,7 +279,7 @@ def apply_file_review_css() -> None:
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
-            [data-testid="column"]:nth-of-type(2) input {
+            [data-testid="column"]:has(.file-review-qty-column-marker) input {
             font-size: var(--input-compact-font-size);
             font-weight: var(--input-compact-font-weight);
             text-align: center;
@@ -313,6 +320,13 @@ def apply_file_review_css() -> None:
             color: rgba(42, 31, 44, 0.52);
             text-align: center;
             width: 100%;
+        }
+
+        div[data-testid="stMarkdownContainer"]:has(.file-review-conf-column-marker) {
+            height: calc(var(--input-height-md) + 25px);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
         }
 
         .file-review-native-conf-value {
