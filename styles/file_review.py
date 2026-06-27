@@ -320,6 +320,7 @@ def apply_file_review_css() -> None:
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
+            transform: translateY(calc(-1 * var(--space-3)));
         }
 
         .file-review-native-conf-value {
@@ -362,11 +363,11 @@ def apply_file_review_css() -> None:
             background: var(--color-surface);
             box-shadow: 0 14px 28px rgba(0, 0, 0, 0.055);
             padding: 26px 34px 24px 34px;
-            margin: 0 0 var(--review-card-gap) 0;
+            margin: 0;
         }
 
         div[data-testid="stElementContainer"]:has(.file-review-missing-card) {
-            margin-bottom: 0 !important;
+            margin-bottom: var(--review-card-gap) !important;
         }
 
         .file-review-missing-toggle {
