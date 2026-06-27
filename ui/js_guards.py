@@ -28,7 +28,7 @@ def install_post_upload_transition_guard(
             const CONFIG_KEY = "__costerlyPostUploadTransitionConfig";
             const INSTALLED_KEY = "__costerlyPostUploadTransitionGuardInstalled";
             const HANDLER_KEY = "__costerlyPostUploadTransitionClickHandler";
-            const MIN_STABLE_MS = 650;
+            const FALLBACK_STABLE_MS = 250;
 
             window.parent[CONFIG_KEY] = CONFIG;
 
@@ -77,7 +77,18 @@ def install_post_upload_transition_guard(
 
             function clearForCurrentScreen() {
                 if (!targetIsActive(CURRENT_MARKER_ID)) return;
-                window.parent.setTimeout(removeShell, MIN_STABLE_MS);
+
+                let removed = false;
+                function removeOnce() {
+                    if (removed) return;
+                    removed = true;
+                    removeShell();
+                }
+
+                window.parent.requestAnimationFrame(() => {
+                    window.parent.requestAnimationFrame(removeOnce);
+                });
+                window.parent.setTimeout(removeOnce, FALLBACK_STABLE_MS);
             }
 
             function getCurrentHeaderRect() {

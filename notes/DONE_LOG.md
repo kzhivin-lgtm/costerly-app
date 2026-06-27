@@ -39,3 +39,5 @@ Post-upload transition curtain checkpoint and dependency reuse rule saved, за�
 Backup V1.10.10_before_transition_curtain_cleanup created, завершена 27.06 11:30
 Navigation cache and Supabase retry optimization, завершена 27.06 12:36
 Backup V1.10.11_before_navigation_cache_retry_push created, завершена 27.06 12:36
+Transition overlay stable-frame release, завершена 27.06 13:30
+Backup V1.10.12_before_transition_overlay_stable_frame_release created, завершена 27.06 13:30
