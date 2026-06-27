@@ -161,7 +161,7 @@ def apply_file_review_css() -> None:
             border: 1px solid rgba(42, 31, 44, 0.14);
             border-radius: 16px;
             box-shadow: 0 14px 28px rgba(0, 0, 0, 0.055);
-            padding: 32px 34px 26px 34px;
+            padding: 32px 34px 34px 34px;
             box-sizing: border-box;
             color: var(--color-text-strong);
             margin: 0 0 var(--review-card-gap) 0;
@@ -187,6 +187,13 @@ def apply_file_review_css() -> None:
             line-height: 1.2;
             margin: 0 0 8px 0;
             color: rgba(42, 31, 44, 0.52);
+        }
+
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
+            [data-testid="column"]:nth-of-type(2) [data-testid="stTextInput"] label {
+            display: block;
+            width: 100%;
+            text-align: center;
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
@@ -269,6 +276,8 @@ def apply_file_review_css() -> None:
             font-size: var(--input-compact-font-size);
             font-weight: var(--input-compact-font-weight);
             text-align: center;
+            padding-left: var(--input-padding-x) !important;
+            padding-right: var(--input-padding-x) !important;
         }
 
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
@@ -303,6 +312,7 @@ def apply_file_review_css() -> None:
             margin: 0 0 8px 0;
             color: rgba(42, 31, 44, 0.52);
             text-align: center;
+            width: 100%;
         }
 
         .file-review-native-conf-value {
@@ -310,8 +320,9 @@ def apply_file_review_css() -> None:
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
-            font-weight: 700;
+            font-size: var(--input-compact-font-size);
+            line-height: var(--input-line-height);
+            font-weight: var(--input-compact-font-weight);
             color: #17131C;
         }
 
@@ -345,6 +356,10 @@ def apply_file_review_css() -> None:
             box-shadow: 0 14px 28px rgba(0, 0, 0, 0.055);
             padding: 26px 34px 24px 34px;
             margin: 0 0 var(--review-card-gap) 0;
+        }
+
+        div[data-testid="stElementContainer"]:has(.file-review-missing-card) {
+            margin-bottom: 0 !important;
         }
 
         .file-review-missing-toggle {
