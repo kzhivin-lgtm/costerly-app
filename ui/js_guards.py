@@ -28,6 +28,9 @@ def install_post_upload_transition_guard(
             const CONFIG_KEY = "__costerlyPostUploadTransitionConfig";
             const INSTALLED_KEY = "__costerlyPostUploadTransitionGuardInstalled";
             const HANDLER_KEY = "__costerlyPostUploadTransitionClickHandler";
+            const PERF_KEY = "__costerlyTransitionPerfEntries";
+            const PERF_BASE_KEY = "__costerlyTransitionPerfBase";
+            const PERF_PANEL_ID = "costerly-transition-perf-panel";
             const FALLBACK_STABLE_MS = 250;
 
             window.parent[CONFIG_KEY] = CONFIG;
@@ -59,12 +62,131 @@ def install_post_upload_transition_guard(
                         box-sizing: border-box;
                         overflow: hidden;
                     }
+
+                    #${PERF_PANEL_ID} {
+                        position: fixed;
+                        left: 12px;
+                        bottom: 12px;
+                        z-index: 2147483201;
+                        width: 360px;
+                        max-height: 44vh;
+                        overflow: auto;
+                        box-sizing: border-box;
+                        padding: 10px 12px;
+                        border: 1px solid rgba(42, 31, 44, 0.18);
+                        border-radius: 8px;
+                        background: rgba(255, 255, 255, 0.94);
+                        color: #17131C;
+                        box-shadow: 0 10px 30px rgba(42, 31, 44, 0.14);
+                        font-family: var(--font-mono, monospace);
+                        font-size: 11px;
+                        line-height: 1.35;
+                    }
+
+                    #${PERF_PANEL_ID} .costerly-transition-perf-title {
+                        margin: 0 0 8px 0;
+                        color: #8049C6;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                    }
+
+                    #${PERF_PANEL_ID} .costerly-transition-perf-row {
+                        display: grid;
+                        grid-template-columns: 58px 1fr;
+                        gap: 6px;
+                        padding: 3px 0;
+                        border-top: 1px solid rgba(42, 31, 44, 0.08);
+                    }
+
+                    #${PERF_PANEL_ID} span {
+                        color: rgba(42, 31, 44, 0.58);
+                    }
+
+                    #${PERF_PANEL_ID} strong {
+                        color: #17131C;
+                        font-weight: 700;
+                    }
+
+                    #${PERF_PANEL_ID} em {
+                        grid-column: 2;
+                        color: rgba(42, 31, 44, 0.62);
+                        font-style: normal;
+                        word-break: break-word;
+                    }
                 `;
                 parentDoc.head.appendChild(style);
             }
 
+            function escapeHtml(value) {
+                return String(value || "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;");
+            }
+
+            function renderPerfPanel() {
+                const entries = window.parent[PERF_KEY] || [];
+                if (!entries.length) return;
+
+                installStyle();
+                let panel = parentDoc.getElementById(PERF_PANEL_ID);
+                if (!panel) {
+                    panel = parentDoc.createElement("div");
+                    panel.id = PERF_PANEL_ID;
+                    parentDoc.body.appendChild(panel);
+                }
+
+                const rows = entries.slice(-18).map((entry) => {
+                    const detail = Object.entries(entry.detail || {})
+                        .map(([key, value]) => `${escapeHtml(key)}=${escapeHtml(value)}`)
+                        .join(" ");
+                    return `
+                        <div class="costerly-transition-perf-row">
+                            <span>${entry.elapsedMs.toFixed(1)}ms</span>
+                            <strong>${escapeHtml(entry.label)}</strong>
+                            <em>${detail}</em>
+                        </div>
+                    `;
+                }).join("");
+
+                panel.innerHTML = `
+                    <div class="costerly-transition-perf-title">Transition perf</div>
+                    ${rows}
+                `;
+            }
+
+            function recordPerf(label, detail = {}) {
+                const now = window.parent.performance.now();
+                if (!window.parent[PERF_BASE_KEY]) {
+                    window.parent[PERF_BASE_KEY] = now;
+                }
+
+                const entries = window.parent[PERF_KEY] || [];
+                const entry = {
+                    label,
+                    detail,
+                    elapsedMs: now - window.parent[PERF_BASE_KEY],
+                    absoluteMs: now
+                };
+                entries.push(entry);
+                window.parent[PERF_KEY] = entries.slice(-60);
+                renderPerfPanel();
+
+                if (window.parent.console && window.parent.console.table) {
+                    window.parent.console.table(window.parent[PERF_KEY]);
+                }
+            }
+
             function removeShell() {
                 const shell = parentDoc.getElementById(SHELL_ID);
+                const wasActive =
+                    Boolean(shell) ||
+                    parentDoc.documentElement.classList.contains(ACTIVE_CLASS) ||
+                    parentDoc.body.classList.contains(ACTIVE_CLASS);
+                if (wasActive) {
+                    recordPerf("shell removed");
+                }
                 if (shell) shell.remove();
 
                 parentDoc.documentElement.classList.remove(ACTIVE_CLASS);
@@ -77,6 +199,7 @@ def install_post_upload_transition_guard(
 
             function clearForCurrentScreen() {
                 if (!targetIsActive(CURRENT_MARKER_ID)) return;
+                recordPerf("marker appeared", { marker: CURRENT_MARKER_ID });
 
                 let removed = false;
                 function removeOnce() {
@@ -128,6 +251,7 @@ def install_post_upload_transition_guard(
                 if (!transition) return;
 
                 installStyle();
+                recordPerf("show shell start", { target: transition.targetMarkerId || "" });
                 const headerRect = getCurrentHeaderRect();
                 removeShell();
 
@@ -140,6 +264,7 @@ def install_post_upload_transition_guard(
 
                 parentDoc.documentElement.classList.add(ACTIVE_CLASS);
                 parentDoc.body.classList.add(ACTIVE_CLASS);
+                recordPerf("shell shown", { target: transition.targetMarkerId || "" });
 
                 window.parent.setTimeout(() => {
                     const activeShell = parentDoc.getElementById(SHELL_ID);
@@ -169,6 +294,9 @@ def install_post_upload_transition_guard(
                 const transition = findTransition(event);
                 if (!transition) return;
 
+                window.parent[PERF_BASE_KEY] = window.parent.performance.now();
+                window.parent[PERF_KEY] = [];
+                recordPerf("click", { label: transition.label || "" });
                 showShell(transition);
             }
 

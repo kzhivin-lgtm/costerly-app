@@ -5,6 +5,12 @@ import streamlit as st
 from state.session import init_state, get_company_id
 from styles.base import apply_base_css
 from ui.js_guards import scroll_parent_to_top
+from ui.perf_debug import (
+    mark_python_perf,
+    measure_python_perf,
+    render_python_perf_panel,
+    start_python_perf_run,
+)
 from screens.upload import render_upload_screen
 from screens.processing import render_processing_screen
 from screens.file_review import render_file_review_screen
@@ -40,23 +46,29 @@ def main() -> None:
         st.query_params.clear()
 
     screen = st.session_state.screen
+    start_python_perf_run(screen)
     if st.session_state.get("_last_screen_for_scroll") != screen:
         scroll_parent_to_top()
         st.session_state._last_screen_for_scroll = screen
+        mark_python_perf("scroll reset requested")
 
-    if screen == "upload":
-        render_upload_screen(company_id)
-    elif screen == "processing":
-        render_processing_screen(company_id)
-    elif screen == "file_review":
-        render_file_review_screen(company_id)
-    elif screen == "objects":
-        render_objects_screen(company_id)
-    elif screen == "object_detail":
-        render_object_detail_screen(company_id)
-    else:
-        st.session_state.screen = "upload"
-        st.rerun()
+    with measure_python_perf("route render", screen=screen):
+        if screen == "upload":
+            render_upload_screen(company_id)
+        elif screen == "processing":
+            render_processing_screen(company_id)
+        elif screen == "file_review":
+            render_file_review_screen(company_id)
+        elif screen == "objects":
+            render_objects_screen(company_id)
+        elif screen == "object_detail":
+            render_object_detail_screen(company_id)
+        else:
+            st.session_state.screen = "upload"
+            st.rerun()
+
+    mark_python_perf("python render end", screen=screen)
+    render_python_perf_panel(screen)
 
 
 if __name__ == "__main__":

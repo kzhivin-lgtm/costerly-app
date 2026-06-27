@@ -7,6 +7,7 @@ import streamlit as st
 from styles.file_review import apply_file_review_css
 from ui.js_guards import install_post_upload_transition_guard
 from ui.layout import render_post_upload_header
+from ui.perf_debug import mark_python_perf, measure_python_perf
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
     OBJECTS_MARKER_ID,
@@ -187,9 +188,12 @@ def _load_file_review_screen_data(run_id: str) -> tuple[dict[str, object], str |
     """Load File Review data from session cache first, then Supabase."""
     cache = st.session_state.setdefault("file_review_data_cache", {})
     if run_id in cache:
+        mark_python_perf("file review cache hit", run_id=run_id)
         return cache[run_id], None
 
-    data = load_file_review_data(run_id)
+    mark_python_perf("file review cache miss", run_id=run_id)
+    with measure_python_perf("load file review data", run_id=run_id):
+        data = load_file_review_data(run_id)
     cache[run_id] = data
     return data, None
 
@@ -241,7 +245,8 @@ def _render_missing_object_search() -> None:
 
 def render_file_review_screen(company_id: str) -> None:
     """Render File Review from the persisted detection result when available."""
-    apply_file_review_css()
+    with measure_python_perf("apply file review css"):
+        apply_file_review_css()
 
     processing_error = st.session_state.get("processing_error")
     if processing_error:
@@ -257,7 +262,8 @@ def render_file_review_screen(company_id: str) -> None:
     run_id = st.session_state.get("current_run_id")
     if run_id:
         try:
-            data, cache_warning = _load_file_review_screen_data(run_id)
+            with measure_python_perf("file review data section", run_id=run_id):
+                data, cache_warning = _load_file_review_screen_data(run_id)
         except Exception as exc:
             render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
             install_post_upload_transition_guard([], current_marker_id=FILE_REVIEW_MARKER_ID)
@@ -272,35 +278,39 @@ def render_file_review_screen(company_id: str) -> None:
             st.rerun()
         return
 
-    render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
-    install_post_upload_transition_guard(
-        [
-            {
-                "label": "CONTINUE TO OBJECTS ESTIMATION",
-                "targetMarkerId": OBJECTS_MARKER_ID,
-                "shellHtml": post_upload_transition_shell_html(
-                    title="Objects Estimation",
-                    subtitle="Review objects → Set sale price → Generate proposal",
-                ),
-            }
-        ],
-        current_marker_id=FILE_REVIEW_MARKER_ID,
-    )
+    with measure_python_perf("file review header + guard"):
+        render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
+        install_post_upload_transition_guard(
+            [
+                {
+                    "label": "CONTINUE TO OBJECTS ESTIMATION",
+                    "targetMarkerId": OBJECTS_MARKER_ID,
+                    "shellHtml": post_upload_transition_shell_html(
+                        title="Objects Estimation",
+                        subtitle="Review objects → Set sale price → Generate proposal",
+                    ),
+                }
+            ],
+            current_marker_id=FILE_REVIEW_MARKER_ID,
+        )
 
-    _sync_object_edit_state(run_id, data["objects"])
+    with measure_python_perf("sync file review edits", object_count=len(data["objects"])):
+        _sync_object_edit_state(run_id, data["objects"])
 
     if cache_warning:
         st.warning(cache_warning)
 
-    _render_review_card(data["run"])
+    with measure_python_perf("render file review card"):
+        _render_review_card(data["run"])
 
     st.markdown(
         '<h1 class="file-review-detected-title">Detected objects</h1>',
         unsafe_allow_html=True,
     )
 
-    for item in data["objects"]:
-        _render_object_card(item)
+    with measure_python_perf("render detected object cards", object_count=len(data["objects"])):
+        for item in data["objects"]:
+            _render_object_card(item)
 
     _render_missing_object_search()
 

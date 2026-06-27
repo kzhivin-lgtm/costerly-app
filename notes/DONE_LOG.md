@@ -41,3 +41,5 @@ Navigation cache and Supabase retry optimization, завершена 27.06 12:36
 Backup V1.10.11_before_navigation_cache_retry_push created, завершена 27.06 12:36
 Transition overlay stable-frame release, завершена 27.06 13:30
 Backup V1.10.12_before_transition_overlay_stable_frame_release created, завершена 27.06 13:30
+Temporary transition perf instrumentation, завершена 27.06 14:00
+Backup V1.10.13_before_transition_perf_instrumentation created, завершена 27.06 14:00
