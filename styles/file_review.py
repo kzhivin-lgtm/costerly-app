@@ -338,7 +338,6 @@ def apply_file_review_css() -> None:
             line-height: var(--input-line-height);
             font-weight: var(--input-compact-font-weight);
             color: #17131C;
-            transform: translateY(calc(-1 * var(--space-1)));
         }
 
         .file-review-native-ignored {
@@ -374,7 +373,7 @@ def apply_file_review_css() -> None:
         }
 
         div[data-testid="stElementContainer"]:has(.file-review-missing-card) {
-            margin-bottom: calc(var(--post-upload-heading-gap) + var(--review-card-gap)) !important;
+            margin-bottom: var(--post-upload-heading-gap) !important;
         }
 
         .file-review-missing-toggle {
