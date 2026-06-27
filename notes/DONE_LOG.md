@@ -35,3 +35,5 @@ Estimation Agent contract/runtime and first deterministic pricing layer, зав�
 Backup V1.10.0_before_overhead_pricing created, завершена 25.06 15:38
 File Review real object inputs and post-upload transition guard fixed, завершена 27.06 00:27
 Backup V1.10.9_before_file_review_object_inputs_transition_guard created, завершена 27.06 00:27
+Post-upload transition curtain checkpoint and dependency reuse rule saved, завершена 27.06 11:30
+Backup V1.10.10_before_transition_curtain_cleanup created, завершена 27.06 11:30

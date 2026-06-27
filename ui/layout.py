@@ -7,6 +7,35 @@ import streamlit as st
 from styles.post_upload import apply_post_upload_css
 
 
+def post_upload_header_html(
+    title: str,
+    subtitle: str | None = None,
+    *,
+    class_name: str | None = None,
+    marker_id: str | None = None,
+) -> str:
+    """Return the shared post-upload header HTML."""
+    subtitle_html = ""
+    if subtitle:
+        subtitle_html = f'<div class="post-upload-subtitle">{html.escape(subtitle)}</div>'
+
+    marker_html = ""
+    if marker_id:
+        marker_html = f'<div id="{html.escape(marker_id)}" style="display:none"></div>'
+
+    shell_class = "post-upload-shell post-upload-screen-shell"
+    if class_name:
+        shell_class = f"{shell_class} {html.escape(class_name)}"
+
+    return (
+        f'<div class="{shell_class}">'
+        f'{marker_html}'
+        f'<h1 class="post-upload-title">{html.escape(title)}</h1>'
+        f'{subtitle_html}'
+        '</div>'
+    )
+
+
 def render_post_upload_header(
     title: str,
     subtitle: str | None = None,
@@ -21,23 +50,12 @@ def render_post_upload_header(
     """
     apply_post_upload_css()
 
-    subtitle_html = ""
-    if subtitle:
-        subtitle_html = f'<div class="post-upload-subtitle">{html.escape(subtitle)}</div>'
-
-    marker_html = ""
-    if marker_id:
-        marker_html = f'<div id="{html.escape(marker_id)}" style="display:none"></div>'
-
-    shell_class = "post-upload-shell post-upload-screen-shell"
-    if class_name:
-        shell_class = f"{shell_class} {html.escape(class_name)}"
-
     st.markdown(
-        f'<div class="{shell_class}">'
-        f'{marker_html}'
-        f'<h1 class="post-upload-title">{html.escape(title)}</h1>'
-        f'{subtitle_html}'
-        '</div>',
+        post_upload_header_html(
+            title,
+            subtitle,
+            class_name=class_name,
+            marker_id=marker_id,
+        ),
         unsafe_allow_html=True,
     )

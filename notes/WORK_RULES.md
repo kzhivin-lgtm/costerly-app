@@ -35,6 +35,22 @@ Avoid:
 
 Short version: if it looks editable or actionable, it must actually work.
 
+## Dependency Reuse Rule
+
+If the project already has a suitable dependency, or a mature open implementation exists on GitHub/npm/PyPI, prefer using it directly instead of rebuilding the same behavior from scratch.
+
+Do:
+- check existing project dependencies and local helpers before writing custom implementations;
+- consider mature open-source libraries for established UI behavior, parsing, exports, rules engines, math, and integrations;
+- before adding a new dependency, briefly check maintenance, license, package size, and compatibility with the project.
+
+Avoid:
+- hand-rolling established behavior when a supported library fits the job;
+- adding a dependency without checking whether the project already has an equivalent tool;
+- choosing a library only because it is convenient if its license, bundle/runtime cost, or maintenance status is unclear.
+
+Short version: reuse mature tools first, but verify fit before adding dependencies.
+
 ## Streamlit Transition Rule
 
 Screen-to-screen overlays must account for Streamlit keeping old DOM alive during reruns.

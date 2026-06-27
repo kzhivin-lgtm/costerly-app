@@ -54,6 +54,8 @@ def install_post_upload_transition_guard(
                         position: fixed;
                         inset: 0;
                         z-index: 2147483100;
+                        background: var(--color-bg, #F1EFEF);
+                        color: var(--color-text-strong, #2A1F2C);
                         box-sizing: border-box;
                         overflow: hidden;
                     }
@@ -78,16 +80,51 @@ def install_post_upload_transition_guard(
                 window.parent.setTimeout(removeShell, MIN_STABLE_MS);
             }
 
+            function getCurrentHeaderRect() {
+                const existingShell = parentDoc.getElementById(SHELL_ID);
+                const headers = Array.from(parentDoc.querySelectorAll(".post-upload-screen-shell"));
+                const currentHeader = headers.find((header) => {
+                    if (existingShell && existingShell.contains(header)) return false;
+
+                    const rect = header.getBoundingClientRect();
+                    return rect.width > 0 && rect.height > 0;
+                });
+
+                if (!currentHeader) return null;
+
+                const rect = currentHeader.getBoundingClientRect();
+                return {
+                    left: rect.left,
+                    top: rect.top,
+                    width: rect.width
+                };
+            }
+
+            function alignHeaderToRect(shell, rect) {
+                if (!rect) return;
+
+                const header = shell.querySelector(".post-upload-screen-shell");
+                if (!header) return;
+
+                header.style.position = "fixed";
+                header.style.left = `${Math.round(rect.left)}px`;
+                header.style.top = `${Math.round(rect.top)}px`;
+                header.style.width = `${Math.round(rect.width)}px`;
+                header.style.margin = "0";
+            }
+
             function showShell(transition) {
                 if (!transition) return;
 
                 installStyle();
+                const headerRect = getCurrentHeaderRect();
                 removeShell();
 
                 const shell = parentDoc.createElement("div");
                 shell.id = SHELL_ID;
                 shell.dataset.targetMarkerId = transition.targetMarkerId || "";
                 shell.innerHTML = transition.shellHtml || "";
+                alignHeaderToRect(shell, headerRect);
                 parentDoc.body.appendChild(shell);
 
                 parentDoc.documentElement.classList.add(ACTIVE_CLASS);
