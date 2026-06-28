@@ -18,9 +18,7 @@ from ui.screen_transition import (
 from use_cases.estimation import (
     estimate_first_object_for_run,
     load_objects_estimation_data,
-    start_estimation_for_run,
 )
-from use_cases.rfq_processing import apply_file_review_edits
 
 
 _ESTIMATION_EXECUTOR = ThreadPoolExecutor(max_workers=1)
@@ -140,80 +138,6 @@ def _consume_estimation_future() -> None:
             st.session_state.estimation_first_object_future = None
 
 
-def _ensure_estimation_shell(*, run_id: str | None, company_id: str) -> None:
-    """Create the estimate shell after navigation, not during File Review click."""
-    if not run_id:
-        mark_python_perf("estimate shell skipped", reason="missing_run")
-        return
-    if not st.session_state.get("estimation_start_requested"):
-        mark_python_perf("estimate shell skipped", reason="not_requested")
-        return
-    if (
-        st.session_state.get("current_estimate_id")
-        and st.session_state.get("current_estimate_run_id") == run_id
-        and not st.session_state.get("pending_file_review_edits")
-    ):
-        st.session_state.estimation_start_requested = False
-        mark_python_perf("estimate shell reused", run_id=run_id)
-        return
-
-    with measure_python_perf("ensure estimation shell", run_id=run_id):
-        try:
-            ignored_object_ids = st.session_state.get("file_review_ignored_object_ids", set())
-            pending_edits = st.session_state.get("pending_file_review_edits")
-            if pending_edits:
-                with measure_python_perf("apply file review edits", edit_count=len(pending_edits)):
-                    ignored_object_ids = apply_file_review_edits(
-                        run_id=run_id,
-                        object_edits=pending_edits,
-                    )
-                _update_file_review_cache_after_edits(
-                    run_id=run_id,
-                    object_edits=pending_edits,
-                    ignored_object_ids=ignored_object_ids,
-                )
-                st.session_state.file_review_ignored_object_ids = ignored_object_ids
-                st.session_state.pending_file_review_edits = None
-
-            with measure_python_perf("start estimation shell", run_id=run_id):
-                estimate = start_estimation_for_run(
-                    run_id=run_id,
-                    company_id=company_id,
-                    ignored_object_ids=ignored_object_ids,
-                )
-            st.session_state.current_estimate_id = estimate["estimate_id"]
-            st.session_state.current_estimate_run_id = run_id
-            st.session_state.estimation_first_object_requested = True
-            st.session_state.last_estimation_error = None
-        except Exception as exc:
-            st.session_state.last_estimation_error = f"Could not start Objects Estimation: {exc}"
-        finally:
-            st.session_state.estimation_start_requested = False
-
-
-def _update_file_review_cache_after_edits(
-    *,
-    run_id: str,
-    object_edits: dict[str, dict[str, object]],
-    ignored_object_ids: set[str],
-) -> None:
-    """Keep File Review cache aligned with edits saved before estimation."""
-    cache = st.session_state.setdefault("file_review_data_cache", {})
-    data = cache.get(run_id)
-    if data:
-        for item in data.get("objects", []):
-            object_id = str(item.get("object_id") or item.get("name") or "object")
-            edit = object_edits.get(object_id)
-            if not edit:
-                continue
-            if str(edit.get("name") or "").strip():
-                item["name"] = str(edit.get("name") or "").strip()
-            if str(edit.get("quantity") or "").strip():
-                item["quantity"] = str(edit.get("quantity") or "").strip()
-
-    st.session_state.file_review_saved_ignored_object_ids = set(ignored_object_ids)
-
-
 def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str | None]:
     """Load Objects data from session cache first, then Supabase when needed."""
     cache = st.session_state.setdefault("objects_estimation_data_cache", {})
@@ -292,8 +216,6 @@ def render_objects_screen(company_id: str) -> None:
 
     estimate_id = st.session_state.get("current_estimate_id")
     run_id = st.session_state.get("current_run_id")
-    _ensure_estimation_shell(run_id=run_id, company_id=company_id)
-    estimate_id = st.session_state.get("current_estimate_id")
 
     data_error = None
     cache_warning = None
