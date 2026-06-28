@@ -8,10 +8,11 @@ from urllib.parse import quote
 
 import streamlit as st
 
+from config import get_optional_secret
 from styles.objects import apply_objects_css
 from ui.js_guards import (
     install_objects_progress_animation,
-    install_objects_progress_polling,
+    install_objects_progress_sync,
     install_post_upload_transition_guard,
 )
 from ui.layout import render_post_upload_header
@@ -57,21 +58,27 @@ def _row_html(
         review_html = ""
     sale_total_html = _money(row.get("sale_price_total")) if show_sale_total else ""
     self_cost_html = _self_cost_unit_html(row)
+    object_key = _escape(row.get("object_key"))
+    estimate_key = _escape(estimate_id or "")
+    run_key = _escape(run_id or "")
 
     return (
-        '<div class="objects-pricing-row">'
+        '<div class="objects-pricing-row" '
+        f'data-object-key="{object_key}" '
+        f'data-estimate-id="{estimate_key}" '
+        f'data-run-id="{run_key}">'
         '<div>'
         f'<div class="objects-pricing-name">{_escape(row.get("name"))}</div>'
         f'{_row_materials_html(row.get("materials"))}'
         '</div>'
         f'<div class="objects-pricing-number">{_escape(row.get("quantity"))}</div>'
-        f'<div class="objects-pricing-price">{self_cost_html}</div>'
+        f'<div class="objects-pricing-price objects-pricing-self-cost-cell">{self_cost_html}</div>'
         '<div class="objects-pricing-sale-cell">'
         f'<input class="objects-pricing-price-input" type="text" value="{_money(row.get("sale_price_unit"))}" />'
         f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
         '</div>'
         f'<div class="objects-pricing-price">{sale_total_html}</div>'
-        f'<div class="objects-pricing-action-cell">{review_html}</div>'
+        f'<div class="objects-pricing-action-cell" data-action-cell="true">{review_html}</div>'
         '</div>'
     )
 
@@ -187,9 +194,11 @@ def _consume_estimation_future() -> None:
             st.session_state.estimation_first_object_future = None
 
 
-def _mark_objects_cache_dirty(estimate_id: str | None) -> None:
-    if estimate_id:
-        st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
+def _objects_progress_sync_config() -> tuple[str | None, str | None]:
+    return (
+        get_optional_secret("SUPABASE_URL"),
+        get_optional_secret("SUPABASE_ANON_KEY"),
+    )
 
 
 def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str | None]:
@@ -340,15 +349,14 @@ def render_objects_screen(company_id: str) -> None:
             current_marker_id=OBJECTS_MARKER_ID,
         )
         install_objects_progress_animation()
-
-    if estimation_running and estimate_id:
-        st.button(
-            "REFRESH OBJECTS PROGRESS",
-            key=f"objects_progress_refresh_{estimate_id}",
-            on_click=_mark_objects_cache_dirty,
-            args=(estimate_id,),
-        )
-        install_objects_progress_polling(interval_ms=10000)
+        supabase_url, supabase_anon_key = _objects_progress_sync_config()
+        if estimate_id and supabase_url and supabase_anon_key:
+            install_objects_progress_sync(
+                supabase_url=supabase_url,
+                supabase_anon_key=supabase_anon_key,
+                estimate_id=str(estimate_id),
+                interval_ms=1500,
+            )
 
     if not estimate_id:
         st.warning("No active estimate. Return to File Review and start Objects Estimation.")

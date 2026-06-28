@@ -428,8 +428,17 @@ def install_objects_progress_animation() -> None:
     )
 
 
-def install_objects_progress_polling(*, interval_ms: int = 4000) -> None:
-    """Click the hidden Objects progress refresh button while estimation is running."""
+def install_objects_progress_sync(
+    *,
+    supabase_url: str,
+    supabase_anon_key: str,
+    estimate_id: str,
+    interval_ms: int = 1500,
+) -> None:
+    """Sync object progress from Supabase without rerunning Streamlit."""
+    supabase_url_json = json.dumps(supabase_url.rstrip("/"))
+    supabase_anon_key_json = json.dumps(supabase_anon_key)
+    estimate_id_json = json.dumps(estimate_id)
     interval_json = json.dumps(interval_ms)
     components.html(
         """
@@ -437,48 +446,152 @@ def install_objects_progress_polling(*, interval_ms: int = 4000) -> None:
         (() => {
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
-            const TIMER_KEY = "__costerlyObjectsProgressPollingTimer";
-            const TARGET_LABEL = "REFRESH OBJECTS PROGRESS";
+            const TIMER_KEY = "__costerlyObjectsProgressSyncTimer";
+            const SYNCING_KEY = "__costerlyObjectsProgressSyncing";
             const OBJECTS_MARKER_ID = "costerly-objects-screen-active";
+            const SUPABASE_URL = __SUPABASE_URL__;
+            const SUPABASE_ANON_KEY = __SUPABASE_ANON_KEY__;
+            const ESTIMATE_ID = __ESTIMATE_ID__;
             const INTERVAL_MS = __INTERVAL_MS__;
 
-            function normalizeText(value) {
+            function readNumber(value, fallback) {
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? parsed : fallback;
+            }
+
+            function escapeHtml(value) {
                 return String(value || "")
-                    .replace(/\\s+/g, " ")
-                    .trim()
-                    .toUpperCase();
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;");
             }
 
-            function findRefreshButton() {
-                return Array.from(parentDoc.querySelectorAll("button"))
-                    .find((button) => normalizeText(button.textContent) === TARGET_LABEL);
-            }
-
-            function hideRefreshButton() {
-                const button = findRefreshButton();
-                if (!button) return;
-                const wrapper = button.closest('[data-testid="stButton"]') || button;
-                wrapper.style.position = "absolute";
-                wrapper.style.width = "1px";
-                wrapper.style.height = "1px";
-                wrapper.style.overflow = "hidden";
-                wrapper.style.opacity = "0";
-                wrapper.style.pointerEvents = "none";
+            function progressCurve(base) {
+                if (base < 25) return { cap: 24, stepMs: 400 };
+                if (base < 65) return { cap: 64, stepMs: 500 };
+                if (base < 78) return { cap: 77, stepMs: 300 };
+                if (base < 88) return { cap: 87, stepMs: 250 };
+                if (base < 96) return { cap: 95, stepMs: 200 };
+                return { cap: 99, stepMs: 200 };
             }
 
             if (parentWindow[TIMER_KEY]) {
-                parentWindow.clearTimeout(parentWindow[TIMER_KEY]);
+                parentWindow.clearInterval(parentWindow[TIMER_KEY]);
             }
 
-            hideRefreshButton();
-            parentWindow[TIMER_KEY] = parentWindow.setTimeout(() => {
+            function rowForObject(objectId) {
+                return parentDoc.querySelector(
+                    `.objects-pricing-row[data-object-key="${CSS.escape(String(objectId || ""))}"]`
+                );
+            }
+
+            function reviewHref(row, objectId) {
+                const estimateId = encodeURIComponent(row.dataset.estimateId || ESTIMATE_ID || "");
+                const runId = encodeURIComponent(row.dataset.runId || "");
+                const objectParam = encodeURIComponent(String(objectId || ""));
+                return `?screen=object_detail&run_id=${runId}&estimate_id=${estimateId}&object_id=${objectParam}`;
+            }
+
+            function setAction(row, objectId, status) {
+                const cell = row.querySelector('[data-action-cell="true"]');
+                if (!cell) return;
+
+                if (status === "completed") {
+                    cell.innerHTML = (
+                        `<a class="objects-pricing-review-button" href="${reviewHref(row, objectId)}" target="_self">Review</a>`
+                    );
+                    return;
+                }
+
+                const label = status === "running" ? "Estimating" : status === "failed" ? "Failed" : "Pending";
+                cell.innerHTML = (
+                    `<span class="objects-pricing-review-button objects-pricing-review-button--disabled" aria-disabled="true">`
+                    + `${escapeHtml(label)}</span>`
+                );
+            }
+
+            function setProgress(row, progress) {
+                const cell = row.querySelector(".objects-pricing-self-cost-cell");
+                if (!cell) return;
+
+                const status = String(progress.status || "pending").toLowerCase();
+                const percent = Math.max(0, Math.min(100, readNumber(progress.progress_percent, 0)));
+                const updatedAt = progress.progress_updated_at || new Date().toISOString();
+
+                if (status === "completed") {
+                    cell.innerHTML = '<span class="objects-progress-percent">100%</span>';
+                    return;
+                }
+
+                if (status === "failed") {
+                    cell.textContent = "failed";
+                    return;
+                }
+
+                if (status !== "running") {
+                    cell.textContent = "pending";
+                    return;
+                }
+
+                const curve = progressCurve(percent);
+                cell.innerHTML = (
+                    '<span class="objects-progress-percent" '
+                    + `data-start="${percent}" `
+                    + `data-cap="${curve.cap}" `
+                    + `data-step-ms="${curve.stepMs}" `
+                    + `data-updated-at="${escapeHtml(updatedAt)}">`
+                    + `${Math.max(1, percent)}%</span>`
+                );
+            }
+
+            async function syncProgress() {
                 if (!parentDoc.getElementById(OBJECTS_MARKER_ID)) return;
-                const button = findRefreshButton();
-                if (button) button.click();
-            }, INTERVAL_MS);
+                if (parentWindow[SYNCING_KEY]) return;
+
+                parentWindow[SYNCING_KEY] = true;
+                try {
+                    const query = new URLSearchParams({
+                        estimate_id: `eq.${ESTIMATE_ID}`,
+                        select: "object_id,status,progress_percent,progress_label,progress_updated_at"
+                    });
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/rfq_object_estimates?${query}`, {
+                        headers: {
+                            apikey: SUPABASE_ANON_KEY,
+                            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                            Accept: "application/json"
+                        }
+                    });
+                    if (!response.ok) return;
+
+                    const rows = await response.json();
+                    rows.forEach((progress) => {
+                        const objectId = progress.object_id;
+                        const row = rowForObject(objectId);
+                        if (!row) return;
+                        const status = String(progress.status || "pending").toLowerCase();
+                        row.dataset.progressStatus = status;
+                        setProgress(row, progress);
+                        setAction(row, objectId, status);
+                    });
+                } catch (error) {
+                    if (parentWindow.console && parentWindow.console.debug) {
+                        parentWindow.console.debug("Objects progress sync skipped", error);
+                    }
+                } finally {
+                    parentWindow[SYNCING_KEY] = false;
+                }
+            }
+
+            syncProgress();
+            parentWindow[TIMER_KEY] = parentWindow.setInterval(syncProgress, INTERVAL_MS);
         })();
         </script>
-        """.replace("__INTERVAL_MS__", interval_json),
+        """
+        .replace("__SUPABASE_URL__", supabase_url_json)
+        .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json)
+        .replace("__ESTIMATE_ID__", estimate_id_json)
+        .replace("__INTERVAL_MS__", interval_json),
         height=0,
         width=0,
     )
