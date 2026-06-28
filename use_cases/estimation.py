@@ -104,7 +104,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
             {
                 "object_key": row.get("object_id"),
                 "name": row.get("object_name"),
-                "materials": status,
+                "materials": "",
                 "quantity": row.get("quantity"),
                 "self_cost_unit": self_cost if self_cost is not None else status,
                 "sale_price_unit": None,

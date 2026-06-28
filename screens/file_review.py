@@ -254,6 +254,36 @@ def _file_review_edits_changed(
     return False
 
 
+def _objects_estimation_seed_rows(
+    objects: list[dict[str, object]],
+    object_edits: dict[str, dict[str, object]],
+    ignored_object_ids: set[str],
+) -> list[dict[str, object]]:
+    """Build the immediate Objects screen rows from the reviewed object snapshot."""
+    rows = []
+    for item in objects:
+        object_id = str(item.get("object_id") or item.get("name") or "object")
+        if object_id in ignored_object_ids:
+            continue
+
+        edit = object_edits.get(object_id, {})
+        rows.append(
+            {
+                "object_key": object_id,
+                "name": str(edit.get("name") or item.get("name") or "Untitled object"),
+                "materials": "",
+                "quantity": str(edit.get("quantity") or item.get("quantity") or "1"),
+                "self_cost_unit": "pending",
+                "sale_price_unit": None,
+                "sale_price_total": None,
+                "suggestion": "suggested: SC + 30%",
+                "reviewed": False,
+            }
+        )
+
+    return rows
+
+
 def _render_missing_object_search() -> None:
     """Render a static second-pass search placeholder until the flow is wired."""
     card_html = (
@@ -362,6 +392,11 @@ def render_file_review_screen(company_id: str) -> None:
             if edit.get("ignored")
         }
         st.session_state.file_review_ignored_object_ids = ignored_object_ids
+        st.session_state.objects_estimation_seed_rows = _objects_estimation_seed_rows(
+            data["objects"],
+            object_edits_snapshot,
+            ignored_object_ids,
+        )
         current_estimate_matches_run = (
             st.session_state.get("current_estimate_id")
             and st.session_state.get("current_estimate_run_id") == run_id

@@ -63,7 +63,7 @@ def _row_html(
         '<div class="objects-pricing-row">'
         '<div>'
         f'<div class="objects-pricing-name">{_escape(row.get("name"))}</div>'
-        f'<div class="objects-pricing-materials">{_escape(row.get("materials"))}</div>'
+        f'{_row_materials_html(row.get("materials"))}'
         '</div>'
         f'<div class="objects-pricing-number">{_escape(row.get("quantity"))}</div>'
         f'<div class="objects-pricing-price">{_money(row.get("self_cost_unit"))}</div>'
@@ -75,6 +75,12 @@ def _row_html(
         f'<div class="objects-pricing-action-cell">{review_html}</div>'
         '</div>'
     )
+
+
+def _row_materials_html(value: object) -> str:
+    if value is None or value == "":
+        return ""
+    return f'<div class="objects-pricing-materials">{_escape(value)}</div>'
 
 
 def _summary_html(summary: dict[str, object]) -> str:
@@ -163,6 +169,19 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
     return data, None
 
 
+def _data_with_seed_rows(data: dict[str, object], *, estimation_running: bool) -> dict[str, object]:
+    """Show File Review objects immediately until the estimate shell reaches Supabase."""
+    rows_source = data.get("rows") or st.session_state.get("objects_estimation_seed_rows") or []
+    if not rows_source:
+        return data
+
+    rows = [dict(row) for row in rows_source]
+    if estimation_running and rows and str(rows[0].get("self_cost_unit") or "") == "pending":
+        rows[0]["self_cost_unit"] = "10%"
+
+    return {**data, "rows": rows}
+
+
 def render_objects_screen(company_id: str) -> None:
     """Render the object pricing review screen with temporary fixture data."""
     with measure_python_perf("apply objects css"):
@@ -217,8 +236,7 @@ def render_objects_screen(company_id: str) -> None:
     if st.session_state.get("last_estimation_error"):
         st.error(f"Estimation failed: {st.session_state.last_estimation_error}")
 
-    if estimation_running and not data["rows"]:
-        st.info("Starting estimation...")
+    data = _data_with_seed_rows(data, estimation_running=estimation_running)
 
     approved_object_keys = st.session_state.get("approved_object_keys", set())
     with measure_python_perf(
