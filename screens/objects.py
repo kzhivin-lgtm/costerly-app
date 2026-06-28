@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from concurrent.futures import Future
+from datetime import UTC, datetime
 import html
+import math
 from urllib.parse import quote
 
 import streamlit as st
 
 from styles.objects import apply_objects_css
-from ui.js_guards import install_post_upload_transition_guard
+from ui.js_guards import install_objects_progress_animation, install_post_upload_transition_guard
 from ui.layout import render_post_upload_header
 from ui.perf_debug import mark_python_perf, measure_python_perf
 from ui.screen_transition import (
@@ -50,6 +52,7 @@ def _row_html(
     else:
         review_html = ""
     sale_total_html = _money(row.get("sale_price_total")) if show_sale_total else ""
+    self_cost_html = _self_cost_unit_html(row)
 
     return (
         '<div class="objects-pricing-row">'
@@ -58,7 +61,7 @@ def _row_html(
         f'{_row_materials_html(row.get("materials"))}'
         '</div>'
         f'<div class="objects-pricing-number">{_escape(row.get("quantity"))}</div>'
-        f'<div class="objects-pricing-price">{_money(row.get("self_cost_unit"))}</div>'
+        f'<div class="objects-pricing-price">{self_cost_html}</div>'
         '<div class="objects-pricing-sale-cell">'
         f'<input class="objects-pricing-price-input" type="text" value="{_money(row.get("sale_price_unit"))}" />'
         f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
@@ -101,6 +104,28 @@ def _row_materials_html(value: object) -> str:
     if value is None or value == "":
         return ""
     return f'<div class="objects-pricing-materials">{_escape(value)}</div>'
+
+
+def _self_cost_unit_html(row: dict[str, object]) -> str:
+    if str(row.get("status") or "").lower() != "running":
+        return _money(row.get("self_cost_unit"))
+
+    updated_at = _parse_datetime(row.get("progress_updated_at"))
+    if updated_at is None:
+        return _escape(row.get("self_cost_unit"))
+
+    base = _safe_int(row.get("progress_percent"), default=25)
+    cap, seconds_per_percent = _smooth_progress_curve(base)
+    current = _smooth_progress_percent(row)
+    return (
+        '<span class="objects-progress-percent" '
+        f'data-start="{base}" '
+        f'data-cap="{cap}" '
+        f'data-step-ms="{int(seconds_per_percent * 1000)}" '
+        f'data-updated-at="{_escape(updated_at.isoformat())}">'
+        f'{current}%'
+        '</span>'
+    )
 
 
 def _summary_html(summary: dict[str, object]) -> str:
@@ -202,15 +227,66 @@ def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dic
         for row in rows:
             if str(row.get("object_key") or "") == active_object_id:
                 row["status"] = str(progress.get("status") or "running")
-                row["self_cost_unit"] = f'{int(progress.get("percent") or 0)}%'
+                row["progress_percent"] = progress.get("percent")
+                row["progress_updated_at"] = progress.get("updated_at")
                 break
 
     for row in rows:
         status = str(row.get("status") or "pending").lower()
-        if status == "running" and str(row.get("self_cost_unit") or "").lower() == "running":
-            row["self_cost_unit"] = "estimating"
+        if status == "running":
+            row["self_cost_unit"] = f"{_smooth_progress_percent(row)}%"
 
     return {**data, "rows": rows}
+
+
+def _smooth_progress_percent(row: dict[str, object]) -> int:
+    base = _safe_int(row.get("progress_percent"), default=25)
+    updated_at = _parse_datetime(row.get("progress_updated_at"))
+    if updated_at is None:
+        return base
+
+    elapsed_seconds = max(0, (datetime.now(UTC) - updated_at).total_seconds())
+    cap, seconds_per_percent = _smooth_progress_curve(base)
+    smoothed = base + math.floor(elapsed_seconds / seconds_per_percent)
+    return max(1, min(cap, smoothed))
+
+
+def _smooth_progress_curve(base: int) -> tuple[int, float]:
+    if base < 25:
+        return 24, 0.35
+    if base < 65:
+        return 64, 3.5
+    if base < 78:
+        return 77, 0.35
+    if base < 88:
+        return 87, 0.25
+    if base < 96:
+        return 95, 0.2
+    return 99, 0.2
+
+
+def _safe_int(value: object, *, default: int) -> int:
+    try:
+        if value is None or value == "":
+            return default
+        if isinstance(value, float) and value != value:
+            return default
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_datetime(value: object) -> datetime | None:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    if not value:
+        return None
+    try:
+        raw = str(value).replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(raw)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+    except ValueError:
+        return None
 
 
 def render_objects_screen(company_id: str) -> None:
@@ -254,6 +330,7 @@ def render_objects_screen(company_id: str) -> None:
             ],
             current_marker_id=OBJECTS_MARKER_ID,
         )
+        install_objects_progress_animation()
 
     if not estimate_id:
         st.warning("No active estimate. Return to File Review and start Objects Estimation.")

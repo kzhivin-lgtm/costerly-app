@@ -386,6 +386,48 @@ def scroll_parent_to_top() -> None:
     )
 
 
+def install_objects_progress_animation() -> None:
+    """Animate visible object-estimation percentages without rerunning Streamlit."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const TIMER_KEY = "__costerlyObjectsProgressAnimationTimer";
+
+            function readNumber(value, fallback) {
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? parsed : fallback;
+            }
+
+            function tick() {
+                parentDoc.querySelectorAll(".objects-progress-percent").forEach((node) => {
+                    const start = readNumber(node.dataset.start, 0);
+                    const cap = readNumber(node.dataset.cap, start);
+                    const stepMs = readNumber(node.dataset.stepMs, 1000);
+                    const updatedAtMs = Date.parse(node.dataset.updatedAt || "");
+                    if (!Number.isFinite(updatedAtMs) || stepMs <= 0) return;
+
+                    const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
+                    const value = Math.min(cap, start + Math.floor(elapsedMs / stepMs));
+                    node.textContent = `${Math.max(1, value)}%`;
+                });
+            }
+
+            if (parentWindow[TIMER_KEY]) {
+                parentWindow.clearInterval(parentWindow[TIMER_KEY]);
+            }
+            tick();
+            parentWindow[TIMER_KEY] = parentWindow.setInterval(tick, 1000);
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def install_upload_processing_shell(shell_html: str) -> None:
     """Show the processing layout immediately after a file is selected.
 

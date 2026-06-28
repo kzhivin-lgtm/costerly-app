@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import Future
+from datetime import UTC, datetime
 import html
 
 import streamlit as st
@@ -15,6 +16,7 @@ from ui.screen_transition import (
     post_upload_transition_shell_html,
 )
 from use_cases.estimation import build_estimate_id
+from use_cases.estimation_progress import set_object_progress
 from use_cases.estimation_runtime import submit_estimation_job
 from use_cases.rfq_processing import load_file_review_data
 
@@ -276,6 +278,8 @@ def _objects_estimation_seed_rows(
                 "quantity": str(edit.get("quantity") or item.get("quantity") or "1"),
                 "self_cost_unit": "pending",
                 "status": "pending",
+                "progress_percent": 0,
+                "progress_updated_at": None,
                 "sale_price_unit": None,
                 "sale_price_total": None,
                 "suggestion": "suggested: SC + 30%",
@@ -428,6 +432,7 @@ def render_file_review_screen(company_id: str) -> None:
                 st.session_state.approved_object_keys = set()
                 st.session_state.last_estimation_result = None
                 st.session_state.last_estimation_error = None
+            _mark_first_object_estimation_started(estimate_id)
             st.session_state.estimation_first_object_future = submit_estimation_job(
                 estimate_id=estimate_id,
                 run_id=run_id,
@@ -443,3 +448,27 @@ def render_file_review_screen(company_id: str) -> None:
 
         st.session_state.screen = "objects"
         st.rerun()
+
+
+def _mark_first_object_estimation_started(estimate_id: str) -> None:
+    """Seed the first visible row so the next screen does not flash all pending."""
+    seed_rows = st.session_state.get("objects_estimation_seed_rows")
+    if not seed_rows:
+        return
+
+    first_row = seed_rows[0]
+    object_id = str(first_row.get("object_key") or "")
+    if not object_id:
+        return
+
+    now = datetime.now(UTC).isoformat()
+    first_row["status"] = "running"
+    first_row["self_cost_unit"] = "1%"
+    first_row["progress_percent"] = 1
+    first_row["progress_updated_at"] = now
+    set_object_progress(
+        estimate_id=estimate_id,
+        object_id=object_id,
+        percent=1,
+        status="running",
+    )

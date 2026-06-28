@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from threading import Lock
 from typing import Any
 
@@ -21,6 +22,7 @@ def set_object_progress(
             "object_id": object_id,
             "percent": max(0, min(100, int(percent))),
             "status": status,
+            "updated_at": datetime.now(UTC).isoformat(),
         }
 
 

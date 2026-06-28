@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pandas as pd
 from supabase import Client
 
@@ -280,3 +282,38 @@ def update_rfq_object_estimate_status(
         "object_id",
         object_id,
     ).execute()
+
+
+def update_rfq_object_estimate_progress(
+    client: Client,
+    *,
+    estimate_id: str,
+    object_id: str,
+    status: str,
+    progress_percent: int,
+    progress_label: str,
+) -> None:
+    """Persist object estimation progress, falling back to status-only schema."""
+    progress_percent = max(0, min(100, int(progress_percent)))
+    try:
+        client.table("rfq_object_estimates").update(
+            {
+                "status": status,
+                "progress_percent": progress_percent,
+                "progress_label": progress_label,
+                "progress_updated_at": datetime.now(UTC).isoformat(),
+            },
+        ).eq(
+            "estimate_id",
+            estimate_id,
+        ).eq(
+            "object_id",
+            object_id,
+        ).execute()
+    except Exception:
+        update_rfq_object_estimate_status(
+            client,
+            estimate_id=estimate_id,
+            object_id=object_id,
+            status=status,
+        )
