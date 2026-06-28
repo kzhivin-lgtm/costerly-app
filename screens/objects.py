@@ -262,11 +262,11 @@ def _smooth_progress_percent(row: dict[str, object]) -> int:
 
 def _smooth_progress_curve(base: int) -> tuple[int, float]:
     if base < 25:
-        return 24, 0.35
+        return 24, 0.4
     if base < 65:
-        return 64, 3.5
+        return 64, 0.5
     if base < 78:
-        return 77, 0.35
+        return 77, 0.3
     if base < 88:
         return 87, 0.25
     if base < 96:
@@ -348,7 +348,7 @@ def render_objects_screen(company_id: str) -> None:
             on_click=_mark_objects_cache_dirty,
             args=(estimate_id,),
         )
-        install_objects_progress_polling(interval_ms=4000)
+        install_objects_progress_polling(interval_ms=10000)
 
     if not estimate_id:
         st.warning("No active estimate. Return to File Review and start Objects Estimation.")
