@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 import html
-import time
 from urllib.parse import quote
 
 import streamlit as st
@@ -17,11 +16,14 @@ from ui.screen_transition import (
     post_upload_transition_shell_html,
 )
 from use_cases.estimation import (
+    estimate_first_object_for_run,
     load_objects_estimation_data,
     start_estimation_for_run,
 )
-from use_cases.estimation_runtime import submit_pending_object_estimation
 from use_cases.rfq_processing import apply_file_review_edits
+
+
+_ESTIMATION_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 
 
 def _escape(value: object) -> str:
@@ -243,13 +245,13 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
     return data, None
 
 
-def _start_pending_object_estimation_if_requested(
+def _start_first_object_estimation_if_requested(
     *,
     estimate_id: str | None,
     run_id: str | None,
     company_id: str,
 ) -> None:
-    """Fallback-submit pending estimates when legacy state requests it."""
+    """Start the first object estimate in the background after the page renders."""
     if not estimate_id or not run_id:
         return
     if not st.session_state.get("estimation_first_object_requested"):
@@ -267,30 +269,19 @@ def _start_pending_object_estimation_if_requested(
         )
         return
 
-    st.session_state.estimation_first_object_future = submit_pending_object_estimation(
+    st.session_state.estimation_first_object_future = _ESTIMATION_EXECUTOR.submit(
+        estimate_first_object_for_run,
         estimate_id=estimate_id,
         run_id=run_id,
         company_id=company_id,
         file_name=file_name,
         file_bytes=file_bytes,
     )
-    mark_python_perf("pending object estimation submitted", estimate_id=estimate_id)
-    st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
+    mark_python_perf("first object estimation submitted", estimate_id=estimate_id)
     st.session_state.estimation_first_object_requested = False
     st.session_state.last_estimation_error = None
     # Do not rerun here: Streamlit Cloud keeps the previous DOM dimmed while a
     # rerun is active, which creates duplicated screens during long estimates.
-
-
-def _poll_estimation_future_if_needed() -> None:
-    """Keep Objects screen refreshing while the background estimate worker runs."""
-    future = st.session_state.get("estimation_first_object_future")
-    if not isinstance(future, Future) or future.done():
-        return
-
-    mark_python_perf("objects polling rerun scheduled")
-    time.sleep(2.0)
-    st.rerun()
 
 
 def render_objects_screen(company_id: str) -> None:
@@ -393,7 +384,7 @@ def render_objects_screen(company_id: str) -> None:
             unsafe_allow_html=True,
         )
 
-    _start_pending_object_estimation_if_requested(
+    _start_first_object_estimation_if_requested(
         estimate_id=estimate_id,
         run_id=run_id,
         company_id=company_id,
@@ -407,5 +398,3 @@ def render_objects_screen(company_id: str) -> None:
 
     if col_generate.button("GENERATE PROPOSAL", type="primary", use_container_width=True):
         st.session_state.screen = "objects"
-
-    _poll_estimation_future_if_needed()

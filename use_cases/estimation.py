@@ -282,7 +282,7 @@ def _format_number(value: float) -> str:
     return f"{value:.1f}".rstrip("0").rstrip(".")
 
 
-def estimate_pending_objects_for_run(
+def estimate_first_object_for_run(
     *,
     estimate_id: str,
     run_id: str,
@@ -290,48 +290,25 @@ def estimate_pending_objects_for_run(
     file_name: str,
     file_bytes: bytes,
 ) -> dict[str, Any]:
-    """Run pending object estimates for an existing estimate shell."""
+    """Run the first detected object estimate for an existing estimate shell."""
     client = get_supabase_client()
-    estimates_df = fetch_rfq_object_estimates(client, estimate_id)
-    if estimates_df.empty:
+    objects_df = fetch_rfq_detected_objects(client, run_id)
+    if objects_df.empty:
         return {
             "estimate_id": estimate_id,
             "run_id": run_id,
             "status": "no_objects",
         }
 
-    pending_rows = [
-        row.to_dict()
-        for _, row in estimates_df.iterrows()
-        if str(row.get("status") or "pending") == "pending"
-    ]
-    if not pending_rows:
-        return {
-            "estimate_id": estimate_id,
-            "run_id": run_id,
-            "status": "no_pending_objects",
-        }
-
-    results = []
-    for row in pending_rows:
-        results.append(
-            estimate_one_object(
-                estimate_id=estimate_id,
-                run_id=run_id,
-                object_id=str(row["object_id"]),
-                company_id=company_id,
-                file_name=file_name,
-                file_bytes=file_bytes,
-            )
-        )
-
-    return {
-        "estimate_id": estimate_id,
-        "run_id": run_id,
-        "object_count": len(results),
-        "status": "completed",
-        "results": results,
-    }
+    first_object = objects_df.iloc[0].to_dict()
+    return estimate_one_object(
+        estimate_id=estimate_id,
+        run_id=run_id,
+        object_id=str(first_object["object_id"]),
+        company_id=company_id,
+        file_name=file_name,
+        file_bytes=file_bytes,
+    )
 
 
 def estimate_one_object(
