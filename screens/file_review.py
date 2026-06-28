@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+from urllib.parse import urlencode
 
 import streamlit as st
 
@@ -221,37 +222,6 @@ def _load_file_review_screen_data(run_id: str) -> tuple[dict[str, object], str |
     return data, None
 
 
-def _file_review_edits_changed(
-    objects: list[dict[str, object]],
-    object_edits: dict[str, dict[str, object]],
-) -> bool:
-    """Return whether File Review edits differ from the loaded object snapshot."""
-    objects_by_id = {
-        str(item.get("object_id") or item.get("name") or "object"): item
-        for item in objects
-    }
-
-    for object_id, edit in object_edits.items():
-        item = objects_by_id.get(str(object_id))
-        if item is None:
-            return True
-
-        original_name = str(item.get("name") or "").strip()
-        original_quantity = str(item.get("quantity") or "1").strip()
-        edited_name = str(edit.get("name") or "").strip()
-        edited_quantity = str(edit.get("quantity") or "1").strip()
-
-        if edited_name != original_name:
-            return True
-        if edited_quantity != original_quantity:
-            return True
-        saved_ignored_ids = st.session_state.get("file_review_saved_ignored_object_ids", set())
-        if bool(edit.get("ignored")) != (str(object_id) in saved_ignored_ids):
-            return True
-
-    return False
-
-
 def _render_missing_object_search() -> None:
     """Render a static second-pass search placeholder until the flow is wired."""
     card_html = (
@@ -264,6 +234,43 @@ def _render_missing_object_search() -> None:
     )
 
     st.markdown(card_html, unsafe_allow_html=True)
+
+
+def _transition_nav_script() -> str:
+    """Delay HTML navigation one frame so focused Streamlit inputs can blur."""
+    return (
+        "event.preventDefault();"
+        "if(document.activeElement){document.activeElement.blur();}"
+        "requestAnimationFrame(()=>{window.location.href=this.href;});"
+    )
+
+
+def _render_action_links(*, run_id: str) -> None:
+    """Render bottom File Review actions without native Streamlit button widgets."""
+    back_href = "?screen=upload"
+    continue_params = {
+        "screen": "objects",
+        "run_id": run_id,
+        "action": "start_estimation",
+    }
+    current_estimate_id = st.session_state.get("current_estimate_id")
+    if current_estimate_id and st.session_state.get("current_estimate_run_id") == run_id:
+        continue_params["estimate_id"] = str(current_estimate_id)
+    continue_href = "?" + urlencode(continue_params)
+    nav_script = html.escape(_transition_nav_script(), quote=True)
+    st.markdown(
+        '<div class="file-review-action-row">'
+        f'<a class="file-review-action-button file-review-action-button--secondary" '
+        f'href="{html.escape(back_href, quote=True)}" onclick="{nav_script}">'
+        'Back to upload'
+        '</a>'
+        f'<a class="file-review-action-button file-review-action-button--primary" '
+        f'href="{html.escape(continue_href, quote=True)}" onclick="{nav_script}">'
+        'Continue to objects estimation'
+        '</a>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def render_file_review_screen(company_id: str) -> None:
@@ -337,41 +344,4 @@ def render_file_review_screen(company_id: str) -> None:
 
     _render_missing_object_search()
 
-    col_back, col_next = st.columns(2, gap="small")
-
-    if col_back.button("BACK TO UPLOAD", type="secondary", use_container_width=True):
-        st.session_state.screen = "upload"
-        st.rerun()
-
-    if col_next.button(
-        "CONTINUE TO OBJECTS ESTIMATION",
-        type="primary",
-        use_container_width=True,
-    ):
-        object_edits = st.session_state.get("file_review_object_edits", {})
-        edits_changed = _file_review_edits_changed(data["objects"], object_edits)
-        st.session_state.pending_file_review_edits = {
-            str(object_id): dict(edit)
-            for object_id, edit in object_edits.items()
-        } if edits_changed else None
-        st.session_state.file_review_ignored_object_ids = {
-            str(object_id)
-            for object_id, edit in object_edits.items()
-            if edit.get("ignored")
-        }
-        current_estimate_matches_run = (
-            st.session_state.get("current_estimate_id")
-            and st.session_state.get("current_estimate_run_id") == run_id
-        )
-        st.session_state.estimation_start_requested = edits_changed or not current_estimate_matches_run
-        if edits_changed:
-            st.session_state.current_estimate_id = None
-            st.session_state.current_estimate_run_id = None
-            st.session_state.current_object_id = None
-            st.session_state.estimation_first_object_future = None
-            st.session_state.estimation_first_object_requested = False
-            st.session_state.approved_object_keys = set()
-            st.session_state.last_estimation_result = None
-            st.session_state.last_estimation_error = None
-        st.session_state.screen = "objects"
-        st.rerun()
+    _render_action_links(run_id=run_id)

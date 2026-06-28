@@ -27,12 +27,13 @@ def start_estimation_for_run(
     run_id: str,
     company_id: str,
     ignored_object_ids: set[str] | None = None,
+    estimate_id: str | None = None,
 ) -> dict[str, Any]:
-    """Create pending estimation records for all detected RFQ objects.
+    """Create estimation records for detected RFQ objects.
 
-    Called when the user leaves File Review for Objects Estimation. This does
-    not call Claude yet; it only creates stable DB work items that the future
-    Estimation Agent can fill object by object.
+    Called by the background estimation runtime after the File Review click
+    queues work. The first object is marked running so Objects can show progress
+    as soon as the shell is persisted.
     """
     client = get_supabase_client()
     run_df = fetch_rfq_run(client, run_id)
@@ -54,20 +55,20 @@ def start_estimation_for_run(
         if str(row.get("object_id")) not in ignored_object_ids
     ]
 
-    estimate_stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
-    estimate_id = f"{run_id}_estimate_{estimate_stamp}"
-    object_estimates = [
-        {
-            "estimate_id": estimate_id,
-            "run_id": seed.run_id,
-            "company_id": seed.company_id,
-            "object_id": seed.object_id,
-            "object_name": seed.object_name,
-            "quantity": seed.quantity,
-            "status": "pending",
-        }
-        for seed in seeds
-    ]
+    estimate_id = estimate_id or build_estimate_id(run_id)
+    object_estimates = []
+    for index, seed in enumerate(seeds):
+        object_estimates.append(
+            {
+                "estimate_id": estimate_id,
+                "run_id": seed.run_id,
+                "company_id": seed.company_id,
+                "object_id": seed.object_id,
+                "object_name": seed.object_name,
+                "quantity": seed.quantity,
+                "status": "running" if index == 0 else "pending",
+            }
+        )
 
     upsert_rfq_estimate_shell(
         client,
@@ -81,8 +82,14 @@ def start_estimation_for_run(
         "estimate_id": estimate_id,
         "run_id": run_id,
         "object_count": len(object_estimates),
-        "status": "pending",
+        "status": "running" if object_estimates else "pending",
     }
+
+
+def build_estimate_id(run_id: str) -> str:
+    """Build a stable estimate id before asynchronous shell creation starts."""
+    estimate_stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    return f"{run_id}_estimate_{estimate_stamp}"
 
 
 def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
@@ -95,13 +102,15 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         row = item.to_dict()
         status = str(row.get("status") or "pending")
         self_cost = row.get("self_cost_ex_vat")
+        status_display = _object_status_display(status)
         rows.append(
             {
                 "object_key": row.get("object_id"),
                 "name": row.get("object_name"),
-                "materials": status,
+                "status": status,
+                "materials": None,
                 "quantity": row.get("quantity"),
-                "self_cost_unit": self_cost if self_cost is not None else status,
+                "self_cost_unit": self_cost if self_cost is not None else status_display,
                 "sale_price_unit": None,
                 "sale_price_total": None,
                 "suggestion": "suggested: SC + 30%",
@@ -158,6 +167,18 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
     settings = _first_row(company_data["overhead_settings"])
     vat_percent = _number(settings.get("vat_percent"), 18)
     employer_load_percent = _number(settings.get("employer_load_percent"), 25)
+
+    if _needs_overhead_reprice(lines_df):
+        price_estimated_object(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            company_id=str(object_row.get("company_id")),
+        )
+        lines_df = fetch_rfq_estimate_lines_for_object(
+            client,
+            estimate_id=estimate_id,
+            object_id=object_id,
+        )
 
     material_rows = []
     labor_rows = []
@@ -217,6 +238,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         "object_key": object_id,
         "name": object_row.get("object_name"),
         "quantity": object_row.get("quantity"),
+        "status": object_row.get("status") or "pending",
         "confidence": "—",
         "preview_label": "Object preview",
         "sections": [
@@ -267,6 +289,16 @@ def _first_row(df: Any) -> dict[str, Any]:
     return df.iloc[0].to_dict()
 
 
+def _needs_overhead_reprice(lines_df: Any) -> bool:
+    """Detect priced objects that predate deterministic overhead lines."""
+    if lines_df.empty or "section" not in lines_df:
+        return False
+
+    sections = {str(section) for section in lines_df["section"].dropna().tolist()}
+    has_priced_core = bool({"material", "labor"} & sections)
+    return has_priced_core and "overhead" not in sections
+
+
 def _number(value: Any, default: float) -> float:
     try:
         if value is None or value == "":
@@ -282,7 +314,13 @@ def _format_number(value: float) -> str:
     return f"{value:.1f}".rstrip("0").rstrip(".")
 
 
-def estimate_first_object_for_run(
+def _object_status_display(status: str) -> str:
+    if status == "running":
+        return "10%"
+    return status
+
+
+def estimate_pending_objects_for_run(
     *,
     estimate_id: str,
     run_id: str,
@@ -290,9 +328,9 @@ def estimate_first_object_for_run(
     file_name: str,
     file_bytes: bytes,
 ) -> dict[str, Any]:
-    """Run the first detected object estimate for an existing estimate shell."""
+    """Run all not-yet-completed object estimates for an existing estimate."""
     client = get_supabase_client()
-    objects_df = fetch_rfq_detected_objects(client, run_id)
+    objects_df = fetch_rfq_object_estimates(client, estimate_id)
     if objects_df.empty:
         return {
             "estimate_id": estimate_id,
@@ -300,15 +338,31 @@ def estimate_first_object_for_run(
             "status": "no_objects",
         }
 
-    first_object = objects_df.iloc[0].to_dict()
-    return estimate_one_object(
-        estimate_id=estimate_id,
-        run_id=run_id,
-        object_id=str(first_object["object_id"]),
-        company_id=company_id,
-        file_name=file_name,
-        file_bytes=file_bytes,
-    )
+    results = []
+    for _, item in objects_df.iterrows():
+        row = item.to_dict()
+        status = str(row.get("status") or "pending")
+        if status == "completed":
+            continue
+
+        results.append(
+            estimate_one_object(
+                estimate_id=estimate_id,
+                run_id=run_id,
+                object_id=str(row["object_id"]),
+                company_id=company_id,
+                file_name=file_name,
+                file_bytes=file_bytes,
+            )
+        )
+
+    return {
+        "estimate_id": estimate_id,
+        "run_id": run_id,
+        "object_count": len(results),
+        "status": "completed" if results else "no_pending_objects",
+        "results": results,
+    }
 
 
 def estimate_one_object(

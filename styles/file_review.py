@@ -354,6 +354,65 @@ def apply_file_review_css() -> None:
             margin-bottom: var(--post-upload-heading-gap) !important;
         }
 
+        .file-review-action-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-4);
+            width: 100%;
+        }
+
+        .file-review-action-button,
+        .file-review-action-button:link,
+        .file-review-action-button:visited,
+        .file-review-action-button:active {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: var(--button-height-lg);
+            box-sizing: border-box;
+            border-radius: var(--button-radius);
+            font-family: var(--font-sans);
+            font-size: var(--button-font-size);
+            font-weight: var(--button-font-weight);
+            line-height: 1;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+        }
+
+        .file-review-action-button--secondary,
+        .file-review-action-button--secondary:link,
+        .file-review-action-button--secondary:visited,
+        .file-review-action-button--secondary:active {
+            border: 1px solid var(--button-secondary-border);
+            background: var(--button-secondary-bg);
+            color: var(--button-secondary-text);
+        }
+
+        .file-review-action-button--secondary:hover {
+            background: var(--button-secondary-bg-hover);
+            color: var(--color-accent);
+            border-color: rgba(128, 73, 198, 0.42);
+            text-decoration: none;
+        }
+
+        .file-review-action-button--primary,
+        .file-review-action-button--primary:link,
+        .file-review-action-button--primary:visited,
+        .file-review-action-button--primary:active {
+            border: 1px solid var(--button-primary-bg);
+            background: var(--button-primary-bg);
+            color: var(--button-primary-text);
+        }
+
+        .file-review-action-button--primary:hover {
+            background: var(--button-primary-bg-hover);
+            border-color: var(--button-primary-bg-hover);
+            color: var(--button-primary-text);
+            text-decoration: none;
+        }
+
         .file-review-missing-toggle {
             display: none;
         }
@@ -493,6 +552,10 @@ def apply_file_review_css() -> None:
 
             .file-review-search-actions {
                 margin-left: 0;
+            }
+
+            .file-review-action-row {
+                grid-template-columns: 1fr;
             }
 
             .file-review-value {
