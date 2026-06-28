@@ -428,6 +428,62 @@ def install_objects_progress_animation() -> None:
     )
 
 
+def install_objects_progress_polling(*, interval_ms: int = 4000) -> None:
+    """Click the hidden Objects progress refresh button while estimation is running."""
+    interval_json = json.dumps(interval_ms)
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const TIMER_KEY = "__costerlyObjectsProgressPollingTimer";
+            const TARGET_LABEL = "REFRESH OBJECTS PROGRESS";
+            const OBJECTS_MARKER_ID = "costerly-objects-screen-active";
+            const INTERVAL_MS = __INTERVAL_MS__;
+
+            function normalizeText(value) {
+                return String(value || "")
+                    .replace(/\\s+/g, " ")
+                    .trim()
+                    .toUpperCase();
+            }
+
+            function findRefreshButton() {
+                return Array.from(parentDoc.querySelectorAll("button"))
+                    .find((button) => normalizeText(button.textContent) === TARGET_LABEL);
+            }
+
+            function hideRefreshButton() {
+                const button = findRefreshButton();
+                if (!button) return;
+                const wrapper = button.closest('[data-testid="stButton"]') || button;
+                wrapper.style.position = "absolute";
+                wrapper.style.width = "1px";
+                wrapper.style.height = "1px";
+                wrapper.style.overflow = "hidden";
+                wrapper.style.opacity = "0";
+                wrapper.style.pointerEvents = "none";
+            }
+
+            if (parentWindow[TIMER_KEY]) {
+                parentWindow.clearTimeout(parentWindow[TIMER_KEY]);
+            }
+
+            hideRefreshButton();
+            parentWindow[TIMER_KEY] = parentWindow.setTimeout(() => {
+                if (!parentDoc.getElementById(OBJECTS_MARKER_ID)) return;
+                const button = findRefreshButton();
+                if (button) button.click();
+            }, INTERVAL_MS);
+        })();
+        </script>
+        """.replace("__INTERVAL_MS__", interval_json),
+        height=0,
+        width=0,
+    )
+
+
 def install_upload_processing_shell(shell_html: str) -> None:
     """Show the processing layout immediately after a file is selected.
 

@@ -9,7 +9,11 @@ from urllib.parse import quote
 import streamlit as st
 
 from styles.objects import apply_objects_css
-from ui.js_guards import install_objects_progress_animation, install_post_upload_transition_guard
+from ui.js_guards import (
+    install_objects_progress_animation,
+    install_objects_progress_polling,
+    install_post_upload_transition_guard,
+)
 from ui.layout import render_post_upload_header
 from ui.perf_debug import mark_python_perf, measure_python_perf
 from ui.screen_transition import (
@@ -183,6 +187,11 @@ def _consume_estimation_future() -> None:
             st.session_state.estimation_first_object_future = None
 
 
+def _mark_objects_cache_dirty(estimate_id: str | None) -> None:
+    if estimate_id:
+        st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
+
+
 def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str | None]:
     """Load Objects data from session cache first, then Supabase when needed."""
     cache = st.session_state.setdefault("objects_estimation_data_cache", {})
@@ -331,6 +340,15 @@ def render_objects_screen(company_id: str) -> None:
             current_marker_id=OBJECTS_MARKER_ID,
         )
         install_objects_progress_animation()
+
+    if estimation_running and estimate_id:
+        st.button(
+            "REFRESH OBJECTS PROGRESS",
+            key=f"objects_progress_refresh_{estimate_id}",
+            on_click=_mark_objects_cache_dirty,
+            args=(estimate_id,),
+        )
+        install_objects_progress_polling(interval_ms=4000)
 
     if not estimate_id:
         st.warning("No active estimate. Return to File Review and start Objects Estimation.")
