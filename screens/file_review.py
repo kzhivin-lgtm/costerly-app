@@ -13,8 +13,7 @@ from ui.screen_transition import (
     OBJECTS_MARKER_ID,
     post_upload_transition_shell_html,
 )
-from use_cases.estimation import start_estimation_for_run
-from use_cases.rfq_processing import apply_file_review_edits, load_file_review_data
+from use_cases.rfq_processing import load_file_review_data
 
 
 def _escape(value: object) -> str:
@@ -267,84 +266,6 @@ def _render_missing_object_search() -> None:
     st.markdown(card_html, unsafe_allow_html=True)
 
 
-def _update_file_review_cache_after_edits(
-    *,
-    run_id: str,
-    object_edits: dict[str, dict[str, object]],
-    ignored_object_ids: set[str],
-) -> None:
-    """Keep File Review cache aligned with edits saved before estimation."""
-    cache = st.session_state.setdefault("file_review_data_cache", {})
-    data = cache.get(run_id)
-    if data:
-        for item in data.get("objects", []):
-            object_id = str(item.get("object_id") or item.get("name") or "object")
-            edit = object_edits.get(object_id)
-            if not edit:
-                continue
-            if str(edit.get("name") or "").strip():
-                item["name"] = str(edit.get("name") or "").strip()
-            if str(edit.get("quantity") or "").strip():
-                item["quantity"] = str(edit.get("quantity") or "").strip()
-
-    st.session_state.file_review_saved_ignored_object_ids = set(ignored_object_ids)
-
-
-def _start_estimation_shell_from_file_review(
-    *,
-    run_id: str,
-    company_id: str,
-    objects: list[dict[str, object]],
-) -> None:
-    """Persist File Review changes and create an estimate shell before navigation."""
-    object_edits = st.session_state.get("file_review_object_edits", {})
-    edits_changed = _file_review_edits_changed(objects, object_edits)
-    current_estimate_matches_run = (
-        st.session_state.get("current_estimate_id")
-        and st.session_state.get("current_estimate_run_id") == run_id
-    )
-    if current_estimate_matches_run and not edits_changed:
-        return
-
-    object_edits_for_save = {
-        str(object_id): dict(edit)
-        for object_id, edit in object_edits.items()
-    }
-    ignored_object_ids = {
-        str(object_id)
-        for object_id, edit in object_edits_for_save.items()
-        if edit.get("ignored")
-    }
-    if edits_changed:
-        with measure_python_perf("apply file review edits", edit_count=len(object_edits_for_save)):
-            ignored_object_ids = apply_file_review_edits(
-                run_id=run_id,
-                object_edits=object_edits_for_save,
-            )
-        _update_file_review_cache_after_edits(
-            run_id=run_id,
-            object_edits=object_edits_for_save,
-            ignored_object_ids=ignored_object_ids,
-        )
-
-    with measure_python_perf("start estimation shell", run_id=run_id):
-        estimate = start_estimation_for_run(
-            run_id=run_id,
-            company_id=company_id,
-            ignored_object_ids=ignored_object_ids,
-        )
-    st.session_state.current_estimate_id = estimate["estimate_id"]
-    st.session_state.current_estimate_run_id = run_id
-    st.session_state.current_object_id = None
-    st.session_state.file_review_ignored_object_ids = ignored_object_ids
-    st.session_state.estimation_first_object_future = None
-    st.session_state.estimation_first_object_requested = False
-    st.session_state.approved_object_keys = set()
-    st.session_state.last_estimation_result = None
-    st.session_state.last_estimation_error = None
-    st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate["estimate_id"])
-
-
 def render_file_review_screen(company_id: str) -> None:
     """Render File Review from the persisted detection result when available."""
     with measure_python_perf("apply file review css"):
@@ -427,17 +348,30 @@ def render_file_review_screen(company_id: str) -> None:
         type="primary",
         use_container_width=True,
     ):
-        try:
-            _start_estimation_shell_from_file_review(
-                run_id=run_id,
-                company_id=company_id,
-                objects=data["objects"],
-            )
-        except Exception as exc:
-            st.session_state.last_estimation_error = (
-                f"Could not start Objects Estimation: {exc}"
-            )
-            st.rerun()
-
+        object_edits = st.session_state.get("file_review_object_edits", {})
+        edits_changed = _file_review_edits_changed(data["objects"], object_edits)
+        st.session_state.pending_file_review_edits = {
+            str(object_id): dict(edit)
+            for object_id, edit in object_edits.items()
+        } if edits_changed else None
+        st.session_state.file_review_ignored_object_ids = {
+            str(object_id)
+            for object_id, edit in object_edits.items()
+            if edit.get("ignored")
+        }
+        current_estimate_matches_run = (
+            st.session_state.get("current_estimate_id")
+            and st.session_state.get("current_estimate_run_id") == run_id
+        )
+        st.session_state.estimation_start_requested = edits_changed or not current_estimate_matches_run
+        if edits_changed:
+            st.session_state.current_estimate_id = None
+            st.session_state.current_estimate_run_id = None
+            st.session_state.current_object_id = None
+            st.session_state.estimation_first_object_future = None
+            st.session_state.estimation_first_object_requested = False
+            st.session_state.approved_object_keys = set()
+            st.session_state.last_estimation_result = None
+            st.session_state.last_estimation_error = None
         st.session_state.screen = "objects"
         st.rerun()
