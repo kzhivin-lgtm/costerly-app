@@ -13,6 +13,8 @@ from ui.screen_transition import (
     OBJECTS_MARKER_ID,
     post_upload_transition_shell_html,
 )
+from use_cases.estimation import build_estimate_id
+from use_cases.estimation_runtime import submit_estimation_job
 from use_cases.rfq_processing import load_file_review_data
 
 
@@ -350,28 +352,48 @@ def render_file_review_screen(company_id: str) -> None:
     ):
         object_edits = st.session_state.get("file_review_object_edits", {})
         edits_changed = _file_review_edits_changed(data["objects"], object_edits)
-        st.session_state.pending_file_review_edits = {
+        object_edits_snapshot = {
             str(object_id): dict(edit)
             for object_id, edit in object_edits.items()
-        } if edits_changed else None
-        st.session_state.file_review_ignored_object_ids = {
+        }
+        ignored_object_ids = {
             str(object_id)
-            for object_id, edit in object_edits.items()
+            for object_id, edit in object_edits_snapshot.items()
             if edit.get("ignored")
         }
+        st.session_state.file_review_ignored_object_ids = ignored_object_ids
         current_estimate_matches_run = (
             st.session_state.get("current_estimate_id")
             and st.session_state.get("current_estimate_run_id") == run_id
         )
-        st.session_state.estimation_start_requested = edits_changed or not current_estimate_matches_run
-        if edits_changed:
-            st.session_state.current_estimate_id = None
-            st.session_state.current_estimate_run_id = None
+        if edits_changed or not current_estimate_matches_run:
+            file_name = st.session_state.get("uploaded_file_name")
+            file_bytes = st.session_state.get("uploaded_file_bytes")
+            if not file_name or not file_bytes:
+                st.session_state.last_estimation_error = (
+                    "Uploaded file bytes are missing. Please upload the file again."
+                )
+                st.rerun()
+                return
+
+            estimate_id = build_estimate_id(run_id)
+            st.session_state.current_estimate_id = estimate_id
+            st.session_state.current_estimate_run_id = run_id
             st.session_state.current_object_id = None
-            st.session_state.estimation_first_object_future = None
-            st.session_state.estimation_first_object_requested = False
             st.session_state.approved_object_keys = set()
             st.session_state.last_estimation_result = None
             st.session_state.last_estimation_error = None
+            st.session_state.estimation_first_object_future = submit_estimation_job(
+                estimate_id=estimate_id,
+                run_id=run_id,
+                company_id=company_id,
+                file_name=file_name,
+                file_bytes=file_bytes,
+                object_edits=object_edits_snapshot,
+                edits_changed=edits_changed,
+                ignored_object_ids=ignored_object_ids,
+            )
+            st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
+
         st.session_state.screen = "objects"
         st.rerun()

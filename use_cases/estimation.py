@@ -27,6 +27,7 @@ def start_estimation_for_run(
     run_id: str,
     company_id: str,
     ignored_object_ids: set[str] | None = None,
+    estimate_id: str | None = None,
 ) -> dict[str, Any]:
     """Create pending estimation records for all detected RFQ objects.
 
@@ -54,8 +55,7 @@ def start_estimation_for_run(
         if str(row.get("object_id")) not in ignored_object_ids
     ]
 
-    estimate_stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
-    estimate_id = f"{run_id}_estimate_{estimate_stamp}"
+    estimate_id = estimate_id or build_estimate_id(run_id)
     object_estimates = [
         {
             "estimate_id": estimate_id,
@@ -83,6 +83,11 @@ def start_estimation_for_run(
         "object_count": len(object_estimates),
         "status": "pending",
     }
+
+
+def build_estimate_id(run_id: str) -> str:
+    estimate_stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    return f"{run_id}_estimate_{estimate_stamp}"
 
 
 def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:

@@ -43,9 +43,6 @@ def init_state() -> None:
     if "processing_error" not in st.session_state:
         st.session_state.processing_error = None
 
-    if "estimation_first_object_requested" not in st.session_state:
-        st.session_state.estimation_first_object_requested = False
-
     if "last_estimation_error" not in st.session_state:
         st.session_state.last_estimation_error = None
 
