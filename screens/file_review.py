@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import html
-from urllib.parse import urlencode
 
 import streamlit as st
 
+from state.session import reset_post_upload_flow_state
 from styles.file_review import apply_file_review_css
 from ui.js_guards import install_post_upload_transition_guard
 from ui.layout import render_post_upload_header
@@ -14,6 +14,7 @@ from ui.screen_transition import (
     OBJECTS_MARKER_ID,
     post_upload_transition_shell_html,
 )
+from use_cases.estimation_start import queue_estimation_start_from_state
 from use_cases.rfq_processing import load_file_review_data
 
 
@@ -236,31 +237,22 @@ def _render_missing_object_search() -> None:
     st.markdown(card_html, unsafe_allow_html=True)
 
 
-def _render_action_links(*, run_id: str) -> None:
-    """Render bottom File Review actions without native Streamlit button widgets."""
-    back_href = "/?screen=upload"
-    continue_params = {
-        "screen": "objects",
-        "run_id": run_id,
-        "action": "start_estimation",
-    }
-    current_estimate_id = st.session_state.get("current_estimate_id")
-    if current_estimate_id and st.session_state.get("current_estimate_run_id") == run_id:
-        continue_params["estimate_id"] = str(current_estimate_id)
-    continue_href = "/?" + urlencode(continue_params)
-    st.markdown(
-        '<div class="file-review-action-row">'
-        f'<a class="file-review-action-button file-review-action-button--secondary" '
-        f'href="{html.escape(back_href, quote=True)}" target="_self">'
-        'Back to upload'
-        '</a>'
-        f'<a class="file-review-action-button file-review-action-button--primary" '
-        f'href="{html.escape(continue_href, quote=True)}" target="_self">'
-        'Continue to objects estimation'
-        '</a>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
+def _render_action_buttons(*, run_id: str, company_id: str) -> None:
+    """Render bottom File Review actions through Streamlit session routing."""
+    back_col, continue_col = st.columns(2, gap="large")
+    if back_col.button("BACK TO UPLOAD", type="secondary", use_container_width=True):
+        reset_post_upload_flow_state()
+        st.session_state.screen = "upload"
+        st.rerun()
+
+    if continue_col.button(
+        "CONTINUE TO OBJECTS ESTIMATION",
+        type="primary",
+        use_container_width=True,
+    ):
+        queue_estimation_start_from_state(run_id=run_id, company_id=company_id)
+        st.session_state.screen = "objects"
+        st.rerun()
 
 
 def render_file_review_screen(company_id: str) -> None:
@@ -334,4 +326,4 @@ def render_file_review_screen(company_id: str) -> None:
 
     _render_missing_object_search()
 
-    _render_action_links(run_id=run_id)
+    _render_action_buttons(run_id=run_id, company_id=company_id)
