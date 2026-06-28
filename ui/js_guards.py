@@ -555,7 +555,7 @@ def install_objects_progress_sync(
                         estimate_id: `eq.${ESTIMATE_ID}`,
                         select: "object_id,status,progress_percent,progress_label,progress_updated_at"
                     });
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/rfq_object_estimates?${query}`, {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/rfq_object_estimate_progress_public?${query}`, {
                         headers: {
                             apikey: SUPABASE_ANON_KEY,
                             Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
