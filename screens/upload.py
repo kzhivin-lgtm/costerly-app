@@ -52,7 +52,9 @@ def _reset_post_upload_flow_state() -> None:
     st.session_state.processed_file_name = None
     st.session_state.processing_error = None
     st.session_state.estimation_first_object_future = None
+    st.session_state.last_estimation_result = None
     st.session_state.last_estimation_error = None
+    st.session_state.objects_estimation_seed_rows = []
     st.session_state.file_review_object_edits = {}
     st.session_state.file_review_object_edits_run_id = None
     st.session_state.file_review_ignored_object_ids = set()

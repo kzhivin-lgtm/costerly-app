@@ -19,6 +19,7 @@ def submit_estimation_job(
     object_edits: dict[str, dict[str, object]],
     edits_changed: bool,
     ignored_object_ids: set[str],
+    create_shell: bool,
 ) -> Future:
     """Queue estimation work without blocking the Streamlit click path."""
     return _ESTIMATION_EXECUTOR.submit(
@@ -31,6 +32,7 @@ def submit_estimation_job(
         object_edits=object_edits,
         edits_changed=edits_changed,
         ignored_object_ids=ignored_object_ids,
+        create_shell=create_shell,
     )
 
 
@@ -44,8 +46,9 @@ def _run_estimation_job(
     object_edits: dict[str, dict[str, object]],
     edits_changed: bool,
     ignored_object_ids: set[str],
+    create_shell: bool,
 ) -> dict[str, object]:
-    """Persist edits, create the shell, then run the current first-object agent."""
+    """Persist edits, ensure the shell exists, then run queued object estimates."""
     if edits_changed:
         ignored_object_ids = apply_file_review_edits(
             run_id=run_id,
@@ -55,12 +58,14 @@ def _run_estimation_job(
             },
         )
 
-    shell = start_estimation_for_run(
-        run_id=run_id,
-        company_id=company_id,
-        ignored_object_ids=ignored_object_ids,
-        estimate_id=estimate_id,
-    )
+    shell = None
+    if create_shell:
+        shell = start_estimation_for_run(
+            run_id=run_id,
+            company_id=company_id,
+            ignored_object_ids=ignored_object_ids,
+            estimate_id=estimate_id,
+        )
     estimation_result = estimate_all_objects_for_run(
         estimate_id=estimate_id,
         run_id=run_id,

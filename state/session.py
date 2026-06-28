@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 import streamlit as st
 from streamlit.errors import StreamlitSecretNotFoundError
+
+
+_APP_BOOT_ID = uuid4().hex
 
 
 def get_secret(name: str, default: str) -> str:
@@ -16,6 +21,12 @@ def get_company_id() -> str:
 
 
 def init_state() -> None:
+    if st.session_state.get("_app_boot_id") not in {None, _APP_BOOT_ID}:
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+
+    st.session_state._app_boot_id = _APP_BOOT_ID
+
     if "screen" not in st.session_state:
         st.session_state.screen = "upload"
 

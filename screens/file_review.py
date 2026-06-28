@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import Future
 import html
 
 import streamlit as st
@@ -402,7 +403,10 @@ def render_file_review_screen(company_id: str) -> None:
             st.session_state.get("current_estimate_id")
             and st.session_state.get("current_estimate_run_id") == run_id
         )
-        if edits_changed or not current_estimate_matches_run:
+        create_shell = bool(edits_changed or not current_estimate_matches_run)
+        current_future = st.session_state.get("estimation_first_object_future")
+        estimation_job_active = isinstance(current_future, Future) and not current_future.done()
+        if create_shell or not estimation_job_active:
             file_name = st.session_state.get("uploaded_file_name")
             file_bytes = st.session_state.get("uploaded_file_bytes")
             if not file_name or not file_bytes:
@@ -412,13 +416,18 @@ def render_file_review_screen(company_id: str) -> None:
                 st.rerun()
                 return
 
-            estimate_id = build_estimate_id(run_id)
-            st.session_state.current_estimate_id = estimate_id
-            st.session_state.current_estimate_run_id = run_id
-            st.session_state.current_object_id = None
-            st.session_state.approved_object_keys = set()
-            st.session_state.last_estimation_result = None
-            st.session_state.last_estimation_error = None
+            estimate_id = (
+                build_estimate_id(run_id)
+                if create_shell
+                else str(st.session_state.get("current_estimate_id"))
+            )
+            if create_shell:
+                st.session_state.current_estimate_id = estimate_id
+                st.session_state.current_estimate_run_id = run_id
+                st.session_state.current_object_id = None
+                st.session_state.approved_object_keys = set()
+                st.session_state.last_estimation_result = None
+                st.session_state.last_estimation_error = None
             st.session_state.estimation_first_object_future = submit_estimation_job(
                 estimate_id=estimate_id,
                 run_id=run_id,
@@ -428,6 +437,7 @@ def render_file_review_screen(company_id: str) -> None:
                 object_edits=object_edits_snapshot,
                 edits_changed=edits_changed,
                 ignored_object_ids=ignored_object_ids,
+                create_shell=create_shell,
             )
             st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
 
