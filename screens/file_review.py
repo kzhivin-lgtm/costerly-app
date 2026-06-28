@@ -237,22 +237,17 @@ def _render_missing_object_search() -> None:
 
 
 def _transition_nav_script() -> str:
-    """Navigate the parent Streamlit page from inside the component iframe."""
+    """Delay HTML navigation one frame so focused Streamlit inputs can blur."""
     return (
         "event.preventDefault();"
-        "const target=this.href;"
         "if(document.activeElement){document.activeElement.blur();}"
-        "requestAnimationFrame(()=>{"
-        "try{window.parent.location.href=target;}"
-        "catch(e){try{window.top.location.href=target;}"
-        "catch(_){window.location.href=target;}}"
-        "});"
+        "requestAnimationFrame(()=>{window.location.href=this.href;});"
     )
 
 
 def _render_action_links(*, run_id: str) -> None:
     """Render bottom File Review actions without native Streamlit button widgets."""
-    back_href = "/?screen=upload"
+    back_href = "?screen=upload"
     continue_params = {
         "screen": "objects",
         "run_id": run_id,
@@ -261,7 +256,7 @@ def _render_action_links(*, run_id: str) -> None:
     current_estimate_id = st.session_state.get("current_estimate_id")
     if current_estimate_id and st.session_state.get("current_estimate_run_id") == run_id:
         continue_params["estimate_id"] = str(current_estimate_id)
-    continue_href = "/?" + urlencode(continue_params)
+    continue_href = "?" + urlencode(continue_params)
     nav_script = html.escape(_transition_nav_script(), quote=True)
     st.markdown(
         '<div class="file-review-action-row">'

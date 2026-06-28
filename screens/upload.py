@@ -5,7 +5,6 @@ from pathlib import Path
 
 import streamlit as st
 
-from state.session import reset_post_upload_flow_state
 from styles.upload import apply_upload_css
 from ui.js_guards import install_upload_dragover_guard, install_upload_processing_shell
 from ui.processing_stage import processing_stage_html
@@ -44,6 +43,25 @@ def _render_upload_hero() -> None:
     st.markdown(html, unsafe_allow_html=True)
 
 
+def _reset_post_upload_flow_state() -> None:
+    """Clear RFQ/estimate state when a new upload starts."""
+    st.session_state.current_run_id = None
+    st.session_state.current_estimate_id = None
+    st.session_state.current_estimate_run_id = None
+    st.session_state.current_object_id = None
+    st.session_state.processed_file_name = None
+    st.session_state.processing_error = None
+    st.session_state.estimation_cycle_future = None
+    st.session_state.last_estimation_error = None
+    st.session_state.file_review_object_edits = {}
+    st.session_state.file_review_object_edits_run_id = None
+    st.session_state.file_review_ignored_object_ids = set()
+    st.session_state.file_review_saved_ignored_object_ids = set()
+    st.session_state.file_review_data_cache = {}
+    st.session_state.objects_estimation_data_cache = {}
+    st.session_state.objects_estimation_cache_dirty = set()
+
+
 def render_upload_screen(company_id: str) -> None:
     """Render the first screen and move to processing after a file is accepted.
 
@@ -67,7 +85,7 @@ def render_upload_screen(company_id: str) -> None:
             st.session_state.get("uploaded_file_name") != uploaded_file.name
             or st.session_state.get("uploaded_file_bytes") != file_bytes
         ):
-            reset_post_upload_flow_state()
+            _reset_post_upload_flow_state()
         st.session_state.uploaded_file_name = uploaded_file.name
         st.session_state.uploaded_file_bytes = file_bytes
         st.session_state.screen = "processing"

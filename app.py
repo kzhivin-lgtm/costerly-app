@@ -3,7 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 from state.estimation_runs import get_estimate_for_run, remember_estimate_for_run
-from state.session import init_state, get_company_id, reset_post_upload_flow_state
+from state.session import init_state, get_company_id
 from state.uploaded_files import get_rfq_file
 from styles.base import apply_base_css
 from ui.js_guards import scroll_parent_to_top
@@ -103,8 +103,6 @@ def main() -> None:
     requested_screen = st.query_params.get("screen")
     if requested_screen in {"upload", "objects", "object_detail", "file_review"}:
         st.session_state.screen = requested_screen
-        if requested_screen == "upload":
-            reset_post_upload_flow_state()
         requested_run_id = st.query_params.get("run_id")
         requested_estimate_id = st.query_params.get("estimate_id")
         requested_object_id = st.query_params.get("object_id")
@@ -134,8 +132,6 @@ def main() -> None:
                     f"Could not start Objects Estimation: {exc}"
                 )
         st.query_params.clear()
-    elif st.session_state.get("screen") == "upload":
-        reset_post_upload_flow_state()
 
     screen = st.session_state.screen
     start_python_perf_run(screen)

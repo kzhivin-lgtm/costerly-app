@@ -11,7 +11,3 @@ def remember_rfq_file(*, run_id: str, file_name: str, file_bytes: bytes) -> None
 
 def get_rfq_file(run_id: str) -> tuple[str, bytes] | None:
     return _RFQ_FILE_CACHE.get(run_id)
-
-
-def clear_uploaded_files() -> None:
-    _RFQ_FILE_CACHE.clear()
