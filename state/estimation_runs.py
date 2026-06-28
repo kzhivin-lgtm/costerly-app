@@ -10,3 +10,7 @@ def remember_estimate_for_run(*, run_id: str, estimate_id: str) -> None:
 
 def get_estimate_for_run(run_id: str) -> str | None:
     return _ESTIMATE_BY_RUN_ID.get(run_id)
+
+
+def clear_estimation_runs() -> None:
+    _ESTIMATE_BY_RUN_ID.clear()
