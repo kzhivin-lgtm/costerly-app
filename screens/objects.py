@@ -213,12 +213,17 @@ def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dic
     return {**data, "rows": rows}
 
 
-def render_objects_screen(company_id: str) -> None:
-    """Render the object pricing review screen with temporary fixture data."""
-    with measure_python_perf("apply objects css"):
-        apply_objects_css()
-    _consume_estimation_future()
+def _estimation_job_active() -> bool:
+    future = st.session_state.get("estimation_first_object_future")
+    return isinstance(future, Future) and not future.done()
 
+
+def _estimation_future_present() -> bool:
+    return isinstance(st.session_state.get("estimation_first_object_future"), Future)
+
+
+def _render_objects_body(company_id: str) -> None:
+    _consume_estimation_future()
     estimate_id = st.session_state.get("current_estimate_id")
     run_id = st.session_state.get("current_run_id")
     estimation_running = isinstance(st.session_state.get("estimation_first_object_future"), Future)
@@ -236,24 +241,6 @@ def render_objects_screen(company_id: str) -> None:
             data = _empty_objects_data()
     else:
         data = _empty_objects_data()
-
-    with measure_python_perf("objects header + guard"):
-        render_post_upload_header(
-            "Objects Estimation",
-            "Review objects → Set sale price → Generate proposal",
-            class_name="objects-estimation-header",
-            marker_id=OBJECTS_MARKER_ID,
-        )
-        install_post_upload_transition_guard(
-            [
-                {
-                    "label": "BACK TO FILE REVIEW",
-                    "targetMarkerId": FILE_REVIEW_MARKER_ID,
-                    "shellHtml": post_upload_transition_shell_html(title="File Review"),
-                }
-            ],
-            current_marker_id=OBJECTS_MARKER_ID,
-        )
 
     if not estimate_id:
         st.warning("No active estimate. Return to File Review and start Objects Estimation.")
@@ -324,3 +311,40 @@ def render_objects_screen(company_id: str) -> None:
 
     if col_generate.button("GENERATE PROPOSAL", type="primary", use_container_width=True):
         st.session_state.screen = "objects"
+
+
+@st.fragment(run_every="1s")
+def _render_objects_live_body(company_id: str) -> None:
+    had_future = _estimation_future_present()
+    _render_objects_body(company_id)
+    if had_future and not _estimation_future_present():
+        st.rerun()
+
+
+def render_objects_screen(company_id: str) -> None:
+    """Render the object pricing review screen with temporary fixture data."""
+    with measure_python_perf("apply objects css"):
+        apply_objects_css()
+
+    with measure_python_perf("objects header + guard"):
+        render_post_upload_header(
+            "Objects Estimation",
+            "Review objects → Set sale price → Generate proposal",
+            class_name="objects-estimation-header",
+            marker_id=OBJECTS_MARKER_ID,
+        )
+        install_post_upload_transition_guard(
+            [
+                {
+                    "label": "BACK TO FILE REVIEW",
+                    "targetMarkerId": FILE_REVIEW_MARKER_ID,
+                    "shellHtml": post_upload_transition_shell_html(title="File Review"),
+                }
+            ],
+            current_marker_id=OBJECTS_MARKER_ID,
+        )
+
+    if _estimation_job_active():
+        _render_objects_live_body(company_id)
+    else:
+        _render_objects_body(company_id)

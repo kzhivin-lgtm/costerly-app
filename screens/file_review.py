@@ -15,6 +15,7 @@ from ui.screen_transition import (
     post_upload_transition_shell_html,
 )
 from use_cases.estimation import build_estimate_id
+from use_cases.estimation_progress import set_object_progress
 from use_cases.estimation_runtime import submit_estimation_job
 from use_cases.rfq_processing import load_file_review_data
 
@@ -428,6 +429,13 @@ def render_file_review_screen(company_id: str) -> None:
                 st.session_state.approved_object_keys = set()
                 st.session_state.last_estimation_result = None
                 st.session_state.last_estimation_error = None
+            seed_rows = st.session_state.get("objects_estimation_seed_rows") or []
+            if seed_rows:
+                set_object_progress(
+                    estimate_id=estimate_id,
+                    object_id=str(seed_rows[0].get("object_key") or ""),
+                    percent=1,
+                )
             st.session_state.estimation_first_object_future = submit_estimation_job(
                 estimate_id=estimate_id,
                 run_id=run_id,
