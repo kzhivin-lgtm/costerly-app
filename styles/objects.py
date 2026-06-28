@@ -170,6 +170,16 @@ def apply_objects_css() -> None:
             text-decoration: none;
         }
 
+        .objects-pricing-review-button--disabled,
+        .objects-pricing-review-button--disabled:hover {
+            pointer-events: none;
+            cursor: default;
+            background: rgba(42, 31, 44, 0.06);
+            border-color: rgba(42, 31, 44, 0.14);
+            color: rgba(42, 31, 44, 0.44);
+            text-decoration: none;
+        }
+
         .objects-pricing-review-button--done,
         .objects-pricing-review-button--done:link,
         .objects-pricing-review-button--done:visited,

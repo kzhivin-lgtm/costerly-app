@@ -274,6 +274,7 @@ def _objects_estimation_seed_rows(
                 "materials": "",
                 "quantity": str(edit.get("quantity") or item.get("quantity") or "1"),
                 "self_cost_unit": "pending",
+                "status": "pending",
                 "sale_price_unit": None,
                 "sale_price_total": None,
                 "suggestion": "suggested: SC + 30%",

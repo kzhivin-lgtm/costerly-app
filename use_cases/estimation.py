@@ -18,6 +18,7 @@ from db.repositories import (
 )
 from db.supabase_client import get_supabase_client
 from models.estimation import ObjectEstimateSeed
+from use_cases.estimation_progress import clear_estimate_progress, set_object_progress
 from use_cases.pricing import price_estimated_object
 from use_cases.retry import read_with_retry
 
@@ -107,6 +108,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "materials": "",
                 "quantity": row.get("quantity"),
                 "self_cost_unit": self_cost if self_cost is not None else status,
+                "status": status,
                 "sale_price_unit": None,
                 "sale_price_total": None,
                 "suggestion": "suggested: SC + 30%",
@@ -316,6 +318,53 @@ def estimate_first_object_for_run(
     )
 
 
+def estimate_all_objects_for_run(
+    *,
+    estimate_id: str,
+    run_id: str,
+    company_id: str,
+    file_name: str,
+    file_bytes: bytes,
+) -> dict[str, Any]:
+    """Run object estimates one by one for the current estimate shell."""
+    client = get_supabase_client()
+    objects_df = fetch_rfq_object_estimates(client, estimate_id)
+    if objects_df.empty:
+        return {
+            "estimate_id": estimate_id,
+            "run_id": run_id,
+            "status": "no_objects",
+            "estimated_objects": 0,
+        }
+
+    results = []
+    for _, item in objects_df.iterrows():
+        row = item.to_dict()
+        status = str(row.get("status") or "pending")
+        object_id = str(row.get("object_id"))
+        if status == "completed":
+            continue
+
+        results.append(
+            estimate_one_object(
+                estimate_id=estimate_id,
+                run_id=run_id,
+                object_id=object_id,
+                company_id=company_id,
+                file_name=file_name,
+                file_bytes=file_bytes,
+            )
+        )
+
+    clear_estimate_progress(estimate_id)
+    return {
+        "estimate_id": estimate_id,
+        "run_id": run_id,
+        "estimated_objects": len(results),
+        "status": "completed",
+    }
+
+
 def estimate_one_object(
     *,
     estimate_id: str,
@@ -334,14 +383,29 @@ def estimate_one_object(
         raise RuntimeError(f"Detected object not found: {run_id}/{object_id}")
 
     detected_object = matching.iloc[0].to_dict()
+    set_object_progress(
+        estimate_id=estimate_id,
+        object_id=object_id,
+        percent=5,
+    )
     update_rfq_object_estimate_status(
         client,
         estimate_id=estimate_id,
         object_id=object_id,
         status="running",
     )
+    set_object_progress(
+        estimate_id=estimate_id,
+        object_id=object_id,
+        percent=12,
+    )
 
     try:
+        set_object_progress(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            percent=25,
+        )
         estimation_result = run_estimation_agent(
             file_name=file_name,
             company_id=company_id,
@@ -350,9 +414,19 @@ def estimate_one_object(
             run_id=run_id,
             detected_object=detected_object,
         )
+        set_object_progress(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            percent=65,
+        )
         usage_event = estimation_result.pop("_agent_usage", None)
         validated = validate_estimation_result(estimation_result)
         lines = build_estimate_lines_from_agent_result(validated)
+        set_object_progress(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            percent=78,
+        )
 
         replace_rfq_estimate_lines_for_object(
             client,
@@ -360,15 +434,31 @@ def estimate_one_object(
             object_id=object_id,
             lines=lines,
         )
+        set_object_progress(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            percent=88,
+        )
         pricing_result = price_estimated_object(
             estimate_id=estimate_id,
             object_id=object_id,
             company_id=company_id,
         )
+        set_object_progress(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            percent=96,
+        )
         update_rfq_object_estimate_status(
             client,
             estimate_id=estimate_id,
             object_id=object_id,
+            status="completed",
+        )
+        set_object_progress(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            percent=100,
             status="completed",
         )
 
@@ -391,6 +481,12 @@ def estimate_one_object(
             client,
             estimate_id=estimate_id,
             object_id=object_id,
+            status="failed",
+        )
+        set_object_progress(
+            estimate_id=estimate_id,
+            object_id=object_id,
+            percent=100,
             status="failed",
         )
         raise

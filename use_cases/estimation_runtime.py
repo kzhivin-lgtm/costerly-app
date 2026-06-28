@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
 
-from use_cases.estimation import estimate_first_object_for_run, start_estimation_for_run
+from use_cases.estimation import estimate_all_objects_for_run, start_estimation_for_run
 from use_cases.rfq_processing import apply_file_review_edits
 
 
@@ -61,7 +61,7 @@ def _run_estimation_job(
         ignored_object_ids=ignored_object_ids,
         estimate_id=estimate_id,
     )
-    first_object = estimate_first_object_for_run(
+    estimation_result = estimate_all_objects_for_run(
         estimate_id=estimate_id,
         run_id=run_id,
         company_id=company_id,
@@ -72,5 +72,5 @@ def _run_estimation_job(
         "estimate_id": estimate_id,
         "run_id": run_id,
         "shell": shell,
-        "first_object": first_object,
+        "estimation": estimation_result,
     }

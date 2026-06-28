@@ -16,6 +16,7 @@ from ui.screen_transition import (
     post_upload_transition_shell_html,
 )
 from use_cases.estimation import load_objects_estimation_data
+from use_cases.estimation_progress import get_estimate_progress
 
 
 def _escape(value: object) -> str:
@@ -43,18 +44,9 @@ def _row_html(
     estimate_id: str | None,
     run_id: str | None,
 ) -> str:
-    """Render one pricing row. Buttons are visual until object detail exists."""
+    """Render one pricing row."""
     if with_review:
-        action_label = "Done" if row.get("reviewed") else "Review"
-        action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
-        object_id = quote(str(row.get("object_key") or ""))
-        estimate_param = quote(str(estimate_id or ""))
-        run_param = quote(str(run_id or ""))
-        review_html = (
-            f'<a class="objects-pricing-review-button{action_class}" '
-            f'href="?screen=object_detail&run_id={run_param}&estimate_id={estimate_param}&object_id={object_id}" '
-            f'target="_self">{action_label}</a>'
-        )
+        review_html = _review_action_html(row, estimate_id=estimate_id, run_id=run_id)
     else:
         review_html = ""
     sale_total_html = _money(row.get("sale_price_total")) if show_sale_total else ""
@@ -74,6 +66,34 @@ def _row_html(
         f'<div class="objects-pricing-price">{sale_total_html}</div>'
         f'<div class="objects-pricing-action-cell">{review_html}</div>'
         '</div>'
+    )
+
+
+def _review_action_html(
+    row: dict[str, object],
+    *,
+    estimate_id: str | None,
+    run_id: str | None,
+) -> str:
+    status = str(row.get("status") or "pending").lower()
+    if status == "completed":
+        action_label = "Done" if row.get("reviewed") else "Review"
+        action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
+        object_id = quote(str(row.get("object_key") or ""))
+        estimate_param = quote(str(estimate_id or ""))
+        run_param = quote(str(run_id or ""))
+        return (
+            f'<a class="objects-pricing-review-button{action_class}" '
+            f'href="?screen=object_detail&run_id={run_param}&estimate_id={estimate_param}&object_id={object_id}" '
+            f'target="_self">{action_label}</a>'
+        )
+
+    action_label = "Estimating" if status == "running" else "Pending"
+    return (
+        '<span class="objects-pricing-review-button objects-pricing-review-button--disabled" '
+        'aria-disabled="true">'
+        f'{action_label}'
+        '</span>'
     )
 
 
@@ -169,15 +189,26 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
     return data, None
 
 
-def _data_with_seed_rows(data: dict[str, object], *, estimation_running: bool) -> dict[str, object]:
+def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dict[str, object]:
     """Show File Review objects immediately until the estimate shell reaches Supabase."""
     rows_source = data.get("rows") or st.session_state.get("objects_estimation_seed_rows") or []
     if not rows_source:
         return data
 
+    progress = get_estimate_progress(estimate_id)
     rows = [dict(row) for row in rows_source]
-    if estimation_running and rows and str(rows[0].get("self_cost_unit") or "") == "pending":
-        rows[0]["self_cost_unit"] = "10%"
+    if progress:
+        active_object_id = str(progress.get("object_id") or "")
+        for row in rows:
+            if str(row.get("object_key") or "") == active_object_id:
+                row["status"] = str(progress.get("status") or "running")
+                row["self_cost_unit"] = f'{int(progress.get("percent") or 0)}%'
+                break
+
+    for row in rows:
+        status = str(row.get("status") or "pending").lower()
+        if status == "running" and str(row.get("self_cost_unit") or "").lower() == "running":
+            row["self_cost_unit"] = "estimating"
 
     return {**data, "rows": rows}
 
@@ -236,7 +267,7 @@ def render_objects_screen(company_id: str) -> None:
     if st.session_state.get("last_estimation_error"):
         st.error(f"Estimation failed: {st.session_state.last_estimation_error}")
 
-    data = _data_with_seed_rows(data, estimation_running=estimation_running)
+    data = _data_with_progress(data, estimate_id)
 
     approved_object_keys = st.session_state.get("approved_object_keys", set())
     with measure_python_perf(
