@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 import html
 from urllib.parse import quote
 
@@ -15,7 +15,15 @@ from ui.screen_transition import (
     OBJECTS_MARKER_ID,
     post_upload_transition_shell_html,
 )
-from use_cases.estimation import load_objects_estimation_data
+from use_cases.estimation import (
+    estimate_first_object_for_run,
+    load_objects_estimation_data,
+    start_estimation_for_run,
+)
+from use_cases.rfq_processing import apply_file_review_edits
+
+
+_ESTIMATION_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 
 
 def _escape(value: object) -> str:
@@ -45,37 +53,25 @@ def _row_html(
 ) -> str:
     """Render one pricing row. Buttons are visual until object detail exists."""
     if with_review:
-        if row.get("status") == "pending":
-            review_html = (
-                '<span class="objects-pricing-review-button '
-                'objects-pricing-review-button--pending" '
-                'aria-disabled="true">Pending</span>'
-            )
-        else:
-            action_label = "Done" if row.get("reviewed") else "Review"
-            action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
-            object_id = quote(str(row.get("object_key") or ""))
-            estimate_param = quote(str(estimate_id or ""))
-            run_param = quote(str(run_id or ""))
-            review_html = (
-                f'<a class="objects-pricing-review-button{action_class}" '
-                f'href="?screen=object_detail&run_id={run_param}&estimate_id={estimate_param}&object_id={object_id}" '
-                f'target="_self">{action_label}</a>'
-            )
+        action_label = "Done" if row.get("reviewed") else "Review"
+        action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
+        object_id = quote(str(row.get("object_key") or ""))
+        estimate_param = quote(str(estimate_id or ""))
+        run_param = quote(str(run_id or ""))
+        review_html = (
+            f'<a class="objects-pricing-review-button{action_class}" '
+            f'href="?screen=object_detail&run_id={run_param}&estimate_id={estimate_param}&object_id={object_id}" '
+            f'target="_self">{action_label}</a>'
+        )
     else:
         review_html = ""
     sale_total_html = _money(row.get("sale_price_total")) if show_sale_total else ""
-    materials_html = (
-        f'<div class="objects-pricing-materials">{_escape(row.get("materials"))}</div>'
-        if row.get("materials")
-        else ""
-    )
 
     return (
         '<div class="objects-pricing-row">'
         '<div>'
         f'<div class="objects-pricing-name">{_escape(row.get("name"))}</div>'
-        f'{materials_html}'
+        f'<div class="objects-pricing-materials">{_escape(row.get("materials"))}</div>'
         '</div>'
         f'<div class="objects-pricing-number">{_escape(row.get("quantity"))}</div>'
         f'<div class="objects-pricing-price">{_money(row.get("self_cost_unit"))}</div>'
@@ -126,7 +122,7 @@ def _empty_objects_data() -> dict[str, object]:
 
 def _consume_estimation_future() -> None:
     """Store the background estimation result once the worker is done."""
-    future = st.session_state.get("estimation_cycle_future")
+    future = st.session_state.get("estimation_first_object_future")
     if not isinstance(future, Future) or not future.done():
         mark_python_perf("estimation future pending", pending=isinstance(future, Future))
         return
@@ -141,17 +137,89 @@ def _consume_estimation_future() -> None:
         except Exception as exc:
             st.session_state.last_estimation_error = str(exc)
         finally:
-            st.session_state.estimation_cycle_future = None
+            st.session_state.estimation_first_object_future = None
+
+
+def _ensure_estimation_shell(*, run_id: str | None, company_id: str) -> None:
+    """Create the estimate shell after navigation, not during File Review click."""
+    if not run_id:
+        mark_python_perf("estimate shell skipped", reason="missing_run")
+        return
+    if not st.session_state.get("estimation_start_requested"):
+        mark_python_perf("estimate shell skipped", reason="not_requested")
+        return
+    if (
+        st.session_state.get("current_estimate_id")
+        and st.session_state.get("current_estimate_run_id") == run_id
+        and not st.session_state.get("pending_file_review_edits")
+    ):
+        st.session_state.estimation_start_requested = False
+        mark_python_perf("estimate shell reused", run_id=run_id)
+        return
+
+    with measure_python_perf("ensure estimation shell", run_id=run_id):
+        try:
+            ignored_object_ids = st.session_state.get("file_review_ignored_object_ids", set())
+            pending_edits = st.session_state.get("pending_file_review_edits")
+            if pending_edits:
+                with measure_python_perf("apply file review edits", edit_count=len(pending_edits)):
+                    ignored_object_ids = apply_file_review_edits(
+                        run_id=run_id,
+                        object_edits=pending_edits,
+                    )
+                _update_file_review_cache_after_edits(
+                    run_id=run_id,
+                    object_edits=pending_edits,
+                    ignored_object_ids=ignored_object_ids,
+                )
+                st.session_state.file_review_ignored_object_ids = ignored_object_ids
+                st.session_state.pending_file_review_edits = None
+
+            with measure_python_perf("start estimation shell", run_id=run_id):
+                estimate = start_estimation_for_run(
+                    run_id=run_id,
+                    company_id=company_id,
+                    ignored_object_ids=ignored_object_ids,
+                )
+            st.session_state.current_estimate_id = estimate["estimate_id"]
+            st.session_state.current_estimate_run_id = run_id
+            st.session_state.estimation_first_object_requested = True
+            st.session_state.last_estimation_error = None
+        except Exception as exc:
+            st.session_state.last_estimation_error = f"Could not start Objects Estimation: {exc}"
+        finally:
+            st.session_state.estimation_start_requested = False
+
+
+def _update_file_review_cache_after_edits(
+    *,
+    run_id: str,
+    object_edits: dict[str, dict[str, object]],
+    ignored_object_ids: set[str],
+) -> None:
+    """Keep File Review cache aligned with edits saved before estimation."""
+    cache = st.session_state.setdefault("file_review_data_cache", {})
+    data = cache.get(run_id)
+    if data:
+        for item in data.get("objects", []):
+            object_id = str(item.get("object_id") or item.get("name") or "object")
+            edit = object_edits.get(object_id)
+            if not edit:
+                continue
+            if str(edit.get("name") or "").strip():
+                item["name"] = str(edit.get("name") or "").strip()
+            if str(edit.get("quantity") or "").strip():
+                item["quantity"] = str(edit.get("quantity") or "").strip()
+
+    st.session_state.file_review_saved_ignored_object_ids = set(ignored_object_ids)
 
 
 def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str | None]:
     """Load Objects data from session cache first, then Supabase when needed."""
     cache = st.session_state.setdefault("objects_estimation_data_cache", {})
     dirty_estimates = st.session_state.setdefault("objects_estimation_cache_dirty", set())
-    future = st.session_state.get("estimation_cycle_future")
-    estimation_running = isinstance(future, Future) and not future.done()
 
-    if estimate_id in cache and estimate_id not in dirty_estimates and not estimation_running:
+    if estimate_id in cache and estimate_id not in dirty_estimates:
         mark_python_perf("objects cache hit", estimate_id=estimate_id)
         return cache[estimate_id], None
 
@@ -159,7 +227,6 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
         "objects cache miss",
         estimate_id=estimate_id,
         dirty=estimate_id in dirty_estimates,
-        estimation_running=estimation_running,
     )
     try:
         with measure_python_perf("load objects estimation data", estimate_id=estimate_id):
@@ -178,22 +245,58 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
     return data, None
 
 
-def _estimation_cycle_running() -> bool:
-    future = st.session_state.get("estimation_cycle_future")
-    return isinstance(future, Future) and not future.done()
+def _start_first_object_estimation_if_requested(
+    *,
+    estimate_id: str | None,
+    run_id: str | None,
+    company_id: str,
+) -> None:
+    """Start the first object estimate in the background after the page renders."""
+    if not estimate_id or not run_id:
+        return
+    if not st.session_state.get("estimation_first_object_requested"):
+        return
+    if isinstance(st.session_state.get("estimation_first_object_future"), Future):
+        st.session_state.estimation_first_object_requested = False
+        return
+
+    file_name = st.session_state.get("uploaded_file_name")
+    file_bytes = st.session_state.get("uploaded_file_bytes")
+    if not file_name or not file_bytes:
+        st.session_state.estimation_first_object_requested = False
+        st.session_state.last_estimation_error = (
+            "Uploaded file bytes are missing. Please upload the file again."
+        )
+        return
+
+    st.session_state.estimation_first_object_future = _ESTIMATION_EXECUTOR.submit(
+        estimate_first_object_for_run,
+        estimate_id=estimate_id,
+        run_id=run_id,
+        company_id=company_id,
+        file_name=file_name,
+        file_bytes=file_bytes,
+    )
+    mark_python_perf("first object estimation submitted", estimate_id=estimate_id)
+    st.session_state.estimation_first_object_requested = False
+    st.session_state.last_estimation_error = None
+    # Do not rerun here: Streamlit Cloud keeps the previous DOM dimmed while a
+    # rerun is active, which creates duplicated screens during long estimates.
 
 
-@st.fragment(run_every="1s")
-def _render_objects_live_region(company_id: str) -> None:
-    """Render data that must refresh while the background estimate cycle runs."""
+def render_objects_screen(company_id: str) -> None:
+    """Render the object pricing review screen with temporary fixture data."""
+    with measure_python_perf("apply objects css"):
+        apply_objects_css()
     _consume_estimation_future()
 
     estimate_id = st.session_state.get("current_estimate_id")
     run_id = st.session_state.get("current_run_id")
+    _ensure_estimation_shell(run_id=run_id, company_id=company_id)
+    estimate_id = st.session_state.get("current_estimate_id")
 
     data_error = None
     cache_warning = None
-    estimation_running = _estimation_cycle_running()
     if estimate_id:
         try:
             with measure_python_perf("objects data section", estimate_id=estimate_id):
@@ -204,14 +307,29 @@ def _render_objects_live_region(company_id: str) -> None:
     else:
         data = _empty_objects_data()
 
+    with measure_python_perf("objects header + guard"):
+        render_post_upload_header(
+            "Objects Estimation",
+            "Review objects → Set sale price → Generate proposal",
+            class_name="objects-estimation-header",
+            marker_id=OBJECTS_MARKER_ID,
+        )
+        install_post_upload_transition_guard(
+            [
+                {
+                    "label": "BACK TO FILE REVIEW",
+                    "targetMarkerId": FILE_REVIEW_MARKER_ID,
+                    "shellHtml": post_upload_transition_shell_html(title="File Review"),
+                }
+            ],
+            current_marker_id=OBJECTS_MARKER_ID,
+        )
+
     if not estimate_id:
         st.warning("No active estimate. Return to File Review and start Objects Estimation.")
 
-    if data_error and not estimation_running:
+    if data_error:
         st.error(data_error)
-
-    if estimation_running and not data["rows"]:
-        st.info("Starting estimation…")
 
     if cache_warning:
         st.warning(cache_warning)
@@ -266,6 +384,12 @@ def _render_objects_live_region(company_id: str) -> None:
             unsafe_allow_html=True,
         )
 
+    _start_first_object_estimation_if_requested(
+        estimate_id=estimate_id,
+        run_id=run_id,
+        company_id=company_id,
+    )
+
     col_back, col_generate = st.columns(2, gap="small")
 
     if col_back.button("BACK TO FILE REVIEW", type="secondary", use_container_width=True):
@@ -274,29 +398,3 @@ def _render_objects_live_region(company_id: str) -> None:
 
     if col_generate.button("GENERATE PROPOSAL", type="primary", use_container_width=True):
         st.session_state.screen = "objects"
-
-
-def render_objects_screen(company_id: str) -> None:
-    """Render the object pricing review screen with temporary fixture data."""
-    with measure_python_perf("apply objects css"):
-        apply_objects_css()
-
-    with measure_python_perf("objects header + guard"):
-        render_post_upload_header(
-            "Objects Estimation",
-            "Review objects → Set sale price → Generate proposal",
-            class_name="objects-estimation-header",
-            marker_id=OBJECTS_MARKER_ID,
-        )
-        install_post_upload_transition_guard(
-            [
-                {
-                    "label": "BACK TO FILE REVIEW",
-                    "targetMarkerId": FILE_REVIEW_MARKER_ID,
-                    "shellHtml": post_upload_transition_shell_html(title="File Review"),
-                }
-            ],
-            current_marker_id=OBJECTS_MARKER_ID,
-        )
-
-    _render_objects_live_region(company_id)

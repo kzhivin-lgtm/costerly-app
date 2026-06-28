@@ -5,7 +5,6 @@ import html
 import streamlit as st
 
 from styles.object_detail import apply_object_detail_css
-from ui.processing_stage import post_upload_stage_html
 from use_cases.estimation import load_object_detail_data
 
 
@@ -173,39 +172,6 @@ def _final_html(data: dict[str, object]) -> str:
     )
 
 
-def _render_not_ready_state(data: dict[str, object]) -> None:
-    status = str(data.get("status") or "pending")
-    if status == "running":
-        title = "Estimating object"
-        subtitle = f'{data.get("name") or "Object"} is being estimated'
-        include_progress = True
-        progress_value = 0.10
-    elif status == "failed":
-        title = "Object estimation failed"
-        subtitle = f'{data.get("name") or "Object"} needs review before detail is available'
-        include_progress = False
-        progress_value = 0.0
-    else:
-        title = "Object waiting in queue"
-        subtitle = f'{data.get("name") or "Object"} has not started yet'
-        include_progress = False
-        progress_value = 0.0
-
-    st.markdown(
-        post_upload_stage_html(
-            title=title,
-            subtitle=subtitle,
-            include_progress=include_progress,
-            progress_value=progress_value,
-            include_slow_message=False,
-        ),
-        unsafe_allow_html=True,
-    )
-    if st.button("BACK TO OBJECTS", type="secondary", use_container_width=True):
-        st.session_state.screen = "objects"
-        st.rerun()
-
-
 def render_object_detail_screen(company_id: str) -> None:
     """Render one object estimate detail screen from persisted estimate data."""
     apply_object_detail_css()
@@ -229,10 +195,6 @@ def render_object_detail_screen(company_id: str) -> None:
         if st.button("BACK TO OBJECTS", type="secondary"):
             st.session_state.screen = "objects"
             st.rerun()
-        return
-
-    if data.get("status") != "completed":
-        _render_not_ready_state(data)
         return
 
     st.markdown(

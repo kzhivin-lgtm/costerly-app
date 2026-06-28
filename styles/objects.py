@@ -185,15 +185,6 @@ def apply_objects_css() -> None:
             color: #26763B;
         }
 
-        .objects-pricing-review-button--pending,
-        .objects-pricing-review-button--pending:hover {
-            cursor: default;
-            pointer-events: none;
-            background: rgba(42, 31, 44, 0.04);
-            border-color: rgba(42, 31, 44, 0.12);
-            color: rgba(42, 31, 44, 0.42);
-        }
-
         .objects-pricing-action-cell {
             padding-top: calc(var(--objects-row-main-offset) + 4px);
         }

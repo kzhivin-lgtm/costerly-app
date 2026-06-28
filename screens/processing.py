@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import streamlit as st
 
-from state.uploaded_files import remember_rfq_file
 from ui.js_guards import clear_upload_processing_shell
 from ui.processing_stage import PROCESSING_MARKER_ID, processing_stage_html
 from use_cases.rfq_processing import process_uploaded_rfq
@@ -74,11 +73,6 @@ def render_processing_screen(company_id: str) -> None:
         st.rerun()
 
     st.session_state.current_run_id = result["run_id"]
-    remember_rfq_file(
-        run_id=result["run_id"],
-        file_name=file_name,
-        file_bytes=file_bytes,
-    )
     st.session_state.processed_file_name = file_name
     st.session_state.processing_error = None
     st.session_state.screen = "file_review"
