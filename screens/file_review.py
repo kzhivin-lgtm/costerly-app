@@ -111,6 +111,28 @@ def _render_object_card(item: dict[str, object]) -> None:
             unsafe_allow_html=True,
         )
 
+        label_name, label_qty, label_conf, label_ignore = st.columns(
+            [7.4, 1.2, 1.2, 1.5],
+            gap="small",
+            vertical_alignment="top",
+        )
+        label_name.markdown(
+            '<div class="file-review-top-label">Object name</div>',
+            unsafe_allow_html=True,
+        )
+        label_qty.markdown(
+            '<div class="file-review-top-label file-review-top-label-center">QTY</div>',
+            unsafe_allow_html=True,
+        )
+        label_conf.markdown(
+            '<div class="file-review-top-label file-review-top-label-center">CONF</div>',
+            unsafe_allow_html=True,
+        )
+        label_ignore.markdown(
+            '<div class="file-review-top-label file-review-top-label-empty" aria-hidden="true">&nbsp;</div>',
+            unsafe_allow_html=True,
+        )
+
         col_name, col_qty, col_conf, col_ignore = st.columns(
             [7.4, 1.2, 1.2, 1.5],
             gap="small",
@@ -121,17 +143,16 @@ def _render_object_card(item: dict[str, object]) -> None:
             "Object name",
             value=str(edits[object_id].get("name") or ""),
             key=f"{edit_key}.name",
+            label_visibility="collapsed",
         )
         edits[object_id]["quantity"] = col_qty.text_input(
             "QTY",
             value=str(edits[object_id].get("quantity") or "1"),
             key=f"{edit_key}.quantity",
+            label_visibility="collapsed",
         )
         col_conf.markdown(
-            '<div class="file-review-conf-stack">'
-            '<div class="file-review-native-conf-label">CONF</div>'
-            f'<div class="file-review-native-conf-value">{_escape(item.get("confidence"))}</div>'
-            '</div>',
+            f'<div class="file-review-native-conf-value">{_escape(item.get("confidence"))}</div>',
             unsafe_allow_html=True,
         )
         ignore_clicked = col_ignore.button(
