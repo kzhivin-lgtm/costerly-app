@@ -7,7 +7,9 @@ with (security_invoker = false) as
 select
     estimate_id,
     object_id,
+    quantity,
     status,
+    self_cost_ex_vat,
     progress_percent,
     progress_label,
     progress_updated_at

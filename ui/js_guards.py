@@ -429,6 +429,16 @@ def install_objects_progress_sync(
                 return Math.max(0, Math.min(100, readNumber(value, 0)));
             }
 
+            function readMoneyNumber(value) {
+                const cleaned = String(value || "").replace(/[^0-9.-]/g, "");
+                return readNumber(cleaned, 0);
+            }
+
+            function formatMoney(value) {
+                const rounded = Math.round(readNumber(value, 0));
+                return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
+            }
+
             function escapeHtml(value) {
                 return String(value || "")
                     .replace(/&/g, "&amp;")
@@ -486,6 +496,11 @@ def install_objects_progress_sync(
                 return clampPercent(String(percentNode.textContent || "").replace("%", ""));
             }
 
+            function rowQuantity(row, fallback) {
+                const quantityNode = row.querySelector(".objects-pricing-number");
+                return readNumber(quantityNode ? quantityNode.textContent : "", readNumber(fallback, 1));
+            }
+
             function ensureStateForRow(row) {
                 const objectId = row.dataset.objectKey || "";
                 if (!objectId) return null;
@@ -498,6 +513,8 @@ def install_objects_progress_sync(
                         status: row.dataset.progressStatus || (displayedPercent > 0 ? "running" : "pending"),
                         backendPercent: displayedPercent,
                         displayedPercent,
+                        selfCost: null,
+                        quantity: rowQuantity(row, 1),
                         lastBackendAt: Date.now(),
                         lastFillerAt: Date.now()
                     };
@@ -523,6 +540,73 @@ def install_objects_progress_sync(
                 );
             }
 
+            function setSalePricing(row, saleUnit, saleTotal) {
+                const input = row.querySelector(".objects-pricing-price-input");
+                const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
+                if (input) input.value = saleUnit == null ? "—" : formatMoney(saleUnit);
+                if (totalCell) totalCell.textContent = saleTotal == null ? "" : formatMoney(saleTotal);
+            }
+
+            function setSummaryValue(field, value) {
+                const node = parentDoc.querySelector(`[data-summary-field="${field}"]`);
+                if (!node) return;
+                node.textContent = value == null ? "—" : formatMoney(value);
+            }
+
+            function objectRows() {
+                return rowsForEstimate().filter((row) => {
+                    const key = row.dataset.objectKey || "";
+                    return key && key !== "delivery" && key !== "installation";
+                });
+            }
+
+            function updateProjectPricingIfComplete() {
+                const rows = objectRows();
+                if (!rows.length) return;
+
+                let subtotal = 0;
+                for (const row of rows) {
+                    const objectState = ensureStateForRow(row);
+                    if (!objectState || String(objectState.status).toLowerCase() !== "completed") return;
+
+                    const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
+                    subtotal += readMoneyNumber(totalCell ? totalCell.textContent : "");
+                }
+
+                const delivery = Math.round(subtotal * 0.03 * 100) / 100;
+                const installation = Math.round(subtotal * 0.10 * 100) / 100;
+                const projectPrice = Math.round((subtotal + delivery + installation) * 100) / 100;
+                const vat = Math.round(projectPrice * 0.18 * 100) / 100;
+                const total = Math.round((projectPrice + vat) * 100) / 100;
+
+                const deliveryRow = rowForObject("delivery");
+                if (deliveryRow) setSalePricing(deliveryRow, delivery, null);
+
+                const installationRow = rowForObject("installation");
+                if (installationRow) setSalePricing(installationRow, installation, null);
+
+                setSummaryValue("project_price", projectPrice);
+                setSummaryValue("vat", vat);
+                setSummaryValue("total", total);
+            }
+
+            function setCompletedPricing(row, objectState) {
+                const selfCost = readNumber(objectState.selfCost, NaN);
+                if (!Number.isFinite(selfCost)) {
+                    const cell = row.querySelector(".objects-pricing-self-cost-cell");
+                    if (cell) cell.innerHTML = '<span class="objects-progress-percent">100%</span>';
+                    return;
+                }
+
+                const quantity = rowQuantity(row, objectState.quantity || 1);
+                const saleUnit = Math.round(selfCost * 1.3 * 100) / 100;
+                const saleTotal = Math.round(saleUnit * quantity * 100) / 100;
+
+                const cell = row.querySelector(".objects-pricing-self-cost-cell");
+                if (cell) cell.textContent = formatMoney(selfCost);
+                setSalePricing(row, saleUnit, saleTotal);
+            }
+
             function renderProgress(row, objectState) {
                 const cell = row.querySelector(".objects-pricing-self-cost-cell");
                 if (!cell) return;
@@ -531,7 +615,7 @@ def install_objects_progress_sync(
                 const percent = Math.round(clampPercent(objectState.displayedPercent));
 
                 if (status === "completed") {
-                    cell.innerHTML = '<span class="objects-progress-percent">100%</span>';
+                    setCompletedPricing(row, objectState);
                     return;
                 }
 
@@ -564,6 +648,8 @@ def install_objects_progress_sync(
 
                 objectState.status = status;
                 objectState.backendPercent = Math.max(objectState.backendPercent || 0, backendPercent);
+                objectState.selfCost = progress.self_cost_ex_vat ?? objectState.selfCost;
+                objectState.quantity = readNumber(progress.quantity, objectState.quantity || 1);
                 objectState.lastBackendAt = Date.now();
 
                 if (status === "completed") {
@@ -581,6 +667,7 @@ def install_objects_progress_sync(
                 row.dataset.progressStatus = status;
                 renderProgress(row, objectState);
                 setAction(row, objectId, status);
+                updateProjectPricingIfComplete();
             }
 
             function renderAll() {
@@ -619,7 +706,7 @@ def install_objects_progress_sync(
                 try {
                     const query = new URLSearchParams({
                         estimate_id: `eq.${ESTIMATE_ID}`,
-                        select: "object_id,status,progress_percent,progress_label,progress_updated_at"
+                        select: "object_id,quantity,status,self_cost_ex_vat,progress_percent,progress_label,progress_updated_at"
                     });
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/rfq_object_estimate_progress_public?${query}`, {
                         headers: {

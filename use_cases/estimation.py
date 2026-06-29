@@ -102,6 +102,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         row = item.to_dict()
         status = str(row.get("status") or "pending")
         self_cost = row.get("self_cost_ex_vat")
+        sale_price_unit = _suggested_sale_price(self_cost) if status == "completed" else None
         rows.append(
             {
                 "object_key": row.get("object_id"),
@@ -113,23 +114,63 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "progress_percent": row.get("progress_percent"),
                 "progress_label": row.get("progress_label"),
                 "progress_updated_at": row.get("progress_updated_at"),
-                "sale_price_unit": None,
-                "sale_price_total": None,
+                "sale_price_unit": sale_price_unit,
+                "sale_price_total": _line_total(sale_price_unit, row.get("quantity")),
                 "suggestion": "suggested: SC + 30%",
                 "reviewed": bool(row.get("approved")),
             }
         )
 
+    project_costs, summary = _objects_project_pricing(rows)
     return {
         "rows": rows,
-        "project_costs": [
+        "project_costs": project_costs,
+        "summary": summary,
+    }
+
+
+def _suggested_sale_price(self_cost: Any) -> float | None:
+    """Return MVP suggested sale price: self cost plus 30%."""
+    if self_cost is None or self_cost == "":
+        return None
+    if isinstance(self_cost, float) and self_cost != self_cost:
+        return None
+    return round(_number(self_cost, 0) * 1.3, 2)
+
+
+def _line_total(unit_price: Any, quantity: Any) -> float | None:
+    if unit_price is None or unit_price == "":
+        return None
+    return round(_number(unit_price, 0) * _number(quantity, 1), 2)
+
+
+def _objects_project_pricing(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Calculate project-level suggested costs after all objects are priced."""
+    object_rows = [row for row in rows if row.get("object_key")]
+    all_completed = bool(object_rows) and all(
+        str(row.get("status") or "").lower() == "completed" for row in object_rows
+    )
+    objects_subtotal = sum(_number(row.get("sale_price_total"), 0) for row in object_rows)
+
+    delivery = round(objects_subtotal * 0.03, 2) if all_completed else None
+    installation = round(objects_subtotal * 0.10, 2) if all_completed else None
+    project_price = (
+        round(objects_subtotal + _number(delivery, 0) + _number(installation, 0), 2)
+        if all_completed
+        else None
+    )
+    vat = round(_number(project_price, 0) * 0.18, 2) if all_completed else None
+    total = round(_number(project_price, 0) + _number(vat, 0), 2) if all_completed else None
+
+    return (
+        [
             {
                 "object_key": "delivery",
                 "name": "Delivery",
                 "materials": "project-level cost",
                 "quantity": 1,
                 "self_cost_unit": None,
-                "sale_price_unit": None,
+                "sale_price_unit": delivery,
                 "sale_price_total": None,
                 "suggestion": "suggested: 3% of objects subtotal",
                 "reviewed": False,
@@ -140,14 +181,14 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "materials": "project-level cost",
                 "quantity": 1,
                 "self_cost_unit": None,
-                "sale_price_unit": None,
+                "sale_price_unit": installation,
                 "sale_price_total": None,
                 "suggestion": "suggested: 10% of objects subtotal",
                 "reviewed": False,
             },
         ],
-        "summary": {"project_price": None, "vat": None, "total": None},
-    }
+        {"project_price": project_price, "vat": vat, "total": total},
+    )
 
 
 def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, Any]:
@@ -281,6 +322,8 @@ def _first_row(df: Any) -> dict[str, Any]:
 def _number(value: Any, default: float) -> float:
     try:
         if value is None or value == "":
+            return default
+        if isinstance(value, float) and value != value:
             return default
         return float(value)
     except (TypeError, ValueError):

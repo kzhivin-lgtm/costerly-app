@@ -36,6 +36,8 @@ def _money(value: object) -> str:
     """Format temporary pricing fixture values for the pricing table."""
     if value is None or value == "":
         return "—"
+    if isinstance(value, float) and value != value:
+        return "—"
     try:
         return f"₪{round(float(value)):,}".replace(",", "\u202f")
     except (TypeError, ValueError):
@@ -76,7 +78,7 @@ def _row_html(
         f'<input class="objects-pricing-price-input" type="text" value="{_money(row.get("sale_price_unit"))}" />'
         f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
         '</div>'
-        f'<div class="objects-pricing-price">{sale_total_html}</div>'
+        f'<div class="objects-pricing-price objects-pricing-sale-total-cell">{sale_total_html}</div>'
         f'<div class="objects-pricing-action-cell" data-action-cell="true">{review_html}</div>'
         '</div>'
     )
@@ -150,15 +152,15 @@ def _summary_html(summary: dict[str, object]) -> str:
         '</div>'
         '<div>'
         '<div class="objects-pricing-summary-title">Project Price</div>'
-        f'<div class="objects-pricing-summary-value">{_money(summary.get("project_price"))}</div>'
+        f'<div class="objects-pricing-summary-value" data-summary-field="project_price">{_money(summary.get("project_price"))}</div>'
         '</div>'
         '<div>'
         '<div class="objects-pricing-summary-title">VAT 18%</div>'
-        f'<div class="objects-pricing-summary-value">{_money(summary.get("vat"))}</div>'
+        f'<div class="objects-pricing-summary-value" data-summary-field="vat">{_money(summary.get("vat"))}</div>'
         '</div>'
         '<div>'
         '<div class="objects-pricing-summary-title">Project Total</div>'
-        f'<div class="objects-pricing-summary-value objects-pricing-summary-value--total">{_money(summary.get("total"))}</div>'
+        f'<div class="objects-pricing-summary-value objects-pricing-summary-value--total" data-summary-field="total">{_money(summary.get("total"))}</div>'
         '</div>'
         '</div>'
     )
