@@ -11,7 +11,6 @@ import streamlit as st
 from config import get_optional_secret
 from styles.objects import apply_objects_css
 from ui.js_guards import (
-    install_objects_progress_animation,
     install_objects_progress_sync,
     install_post_upload_transition_guard,
 )
@@ -348,7 +347,6 @@ def render_objects_screen(company_id: str) -> None:
             ],
             current_marker_id=OBJECTS_MARKER_ID,
         )
-        install_objects_progress_animation()
         supabase_url, supabase_anon_key = _objects_progress_sync_config()
         if estimate_id and supabase_url and supabase_anon_key:
             install_objects_progress_sync(

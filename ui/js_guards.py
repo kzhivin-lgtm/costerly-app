@@ -300,6 +300,9 @@ def install_post_upload_transition_guard(
                 window.parent[PERF_BASE_KEY] = window.parent.performance.now();
                 window.parent[PERF_KEY] = [];
                 recordPerf("click", { label: transition.label || "" });
+                if (window.parent.__costerlyStopObjectsProgressRuntime) {
+                    window.parent.__costerlyStopObjectsProgressRuntime();
+                }
                 showShell(transition);
             }
 
@@ -386,48 +389,6 @@ def scroll_parent_to_top() -> None:
     )
 
 
-def install_objects_progress_animation() -> None:
-    """Animate visible object-estimation percentages without rerunning Streamlit."""
-    components.html(
-        """
-        <script>
-        (() => {
-            const parentWindow = window.parent;
-            const parentDoc = parentWindow.document;
-            const TIMER_KEY = "__costerlyObjectsProgressAnimationTimer";
-
-            function readNumber(value, fallback) {
-                const parsed = Number(value);
-                return Number.isFinite(parsed) ? parsed : fallback;
-            }
-
-            function tick() {
-                parentDoc.querySelectorAll(".objects-progress-percent").forEach((node) => {
-                    const start = readNumber(node.dataset.start, 0);
-                    const cap = readNumber(node.dataset.cap, start);
-                    const stepMs = readNumber(node.dataset.stepMs, 1000);
-                    const updatedAtMs = Date.parse(node.dataset.updatedAt || "");
-                    if (!Number.isFinite(updatedAtMs) || stepMs <= 0) return;
-
-                    const elapsedMs = Math.max(0, Date.now() - updatedAtMs);
-                    const value = Math.min(cap, start + Math.floor(elapsedMs / stepMs));
-                    node.textContent = `${Math.max(1, value)}%`;
-                });
-            }
-
-            if (parentWindow[TIMER_KEY]) {
-                parentWindow.clearInterval(parentWindow[TIMER_KEY]);
-            }
-            tick();
-            parentWindow[TIMER_KEY] = parentWindow.setInterval(tick, 1000);
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
-
 def install_objects_progress_sync(
     *,
     supabase_url: str,
@@ -447,16 +408,25 @@ def install_objects_progress_sync(
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
             const TIMER_KEY = "__costerlyObjectsProgressSyncTimer";
+            const OLD_ANIMATION_TIMER_KEY = "__costerlyObjectsProgressAnimationTimer";
             const SYNCING_KEY = "__costerlyObjectsProgressSyncing";
+            const STATE_KEY = "__costerlyObjectsProgressState";
+            const STOP_KEY = "__costerlyStopObjectsProgressRuntime";
             const OBJECTS_MARKER_ID = "costerly-objects-screen-active";
+            const TRANSITION_SHELL_ID = "costerly-post-upload-transition-shell";
             const SUPABASE_URL = __SUPABASE_URL__;
             const SUPABASE_ANON_KEY = __SUPABASE_ANON_KEY__;
             const ESTIMATE_ID = __ESTIMATE_ID__;
             const INTERVAL_MS = __INTERVAL_MS__;
+            const TICK_MS = 500;
 
             function readNumber(value, fallback) {
                 const parsed = Number(value);
                 return Number.isFinite(parsed) ? parsed : fallback;
+            }
+
+            function clampPercent(value) {
+                return Math.max(0, Math.min(100, readNumber(value, 0)));
             }
 
             function escapeHtml(value) {
@@ -476,8 +446,19 @@ def install_objects_progress_sync(
                 return { cap: 99, stepMs: 200 };
             }
 
-            if (parentWindow[TIMER_KEY]) {
-                parentWindow.clearInterval(parentWindow[TIMER_KEY]);
+            function stopRuntime() {
+                if (parentWindow[TIMER_KEY]) {
+                    parentWindow.clearInterval(parentWindow[TIMER_KEY]);
+                }
+                if (parentWindow[OLD_ANIMATION_TIMER_KEY]) {
+                    parentWindow.clearInterval(parentWindow[OLD_ANIMATION_TIMER_KEY]);
+                }
+                parentWindow[TIMER_KEY] = null;
+                parentWindow[OLD_ANIMATION_TIMER_KEY] = null;
+                parentWindow[SYNCING_KEY] = false;
+                if (parentWindow[STATE_KEY]) {
+                    parentWindow[STATE_KEY].active = false;
+                }
             }
 
             function rowForObject(objectId) {
@@ -491,6 +472,37 @@ def install_objects_progress_sync(
                 const runId = encodeURIComponent(row.dataset.runId || "");
                 const objectParam = encodeURIComponent(String(objectId || ""));
                 return `?screen=object_detail&run_id=${runId}&estimate_id=${estimateId}&object_id=${objectParam}`;
+            }
+
+            function rowsForEstimate() {
+                return Array.from(parentDoc.querySelectorAll(
+                    `.objects-pricing-row[data-estimate-id="${CSS.escape(String(ESTIMATE_ID || ""))}"]`
+                ));
+            }
+
+            function readInitialDisplayedPercent(row) {
+                const percentNode = row.querySelector(".objects-progress-percent");
+                if (!percentNode) return 0;
+                return clampPercent(String(percentNode.textContent || "").replace("%", ""));
+            }
+
+            function ensureStateForRow(row) {
+                const objectId = row.dataset.objectKey || "";
+                if (!objectId) return null;
+
+                const state = parentWindow[STATE_KEY];
+                if (!state.objects[objectId]) {
+                    const displayedPercent = readInitialDisplayedPercent(row);
+                    state.objects[objectId] = {
+                        objectId,
+                        status: row.dataset.progressStatus || (displayedPercent > 0 ? "running" : "pending"),
+                        backendPercent: displayedPercent,
+                        displayedPercent,
+                        lastBackendAt: Date.now(),
+                        lastFillerAt: Date.now()
+                    };
+                }
+                return state.objects[objectId];
             }
 
             function setAction(row, objectId, status) {
@@ -511,13 +523,12 @@ def install_objects_progress_sync(
                 );
             }
 
-            function setProgress(row, progress) {
+            function renderProgress(row, objectState) {
                 const cell = row.querySelector(".objects-pricing-self-cost-cell");
                 if (!cell) return;
 
-                const status = String(progress.status || "pending").toLowerCase();
-                const percent = Math.max(0, Math.min(100, readNumber(progress.progress_percent, 0)));
-                const updatedAt = progress.progress_updated_at || new Date().toISOString();
+                const status = String(objectState.status || "pending").toLowerCase();
+                const percent = Math.round(clampPercent(objectState.displayedPercent));
 
                 if (status === "completed") {
                     cell.innerHTML = '<span class="objects-progress-percent">100%</span>';
@@ -534,19 +545,74 @@ def install_objects_progress_sync(
                     return;
                 }
 
-                const curve = progressCurve(percent);
                 cell.innerHTML = (
-                    '<span class="objects-progress-percent" '
-                    + `data-start="${percent}" `
-                    + `data-cap="${curve.cap}" `
-                    + `data-step-ms="${curve.stepMs}" `
-                    + `data-updated-at="${escapeHtml(updatedAt)}">`
+                    '<span class="objects-progress-percent">'
                     + `${Math.max(1, percent)}%</span>`
                 );
             }
 
+            function applyBackendProgress(progress) {
+                const objectId = progress.object_id;
+                const row = rowForObject(objectId);
+                if (!row) return;
+
+                const objectState = ensureStateForRow(row);
+                if (!objectState) return;
+
+                const status = String(progress.status || "pending").toLowerCase();
+                const backendPercent = clampPercent(progress.progress_percent);
+
+                objectState.status = status;
+                objectState.backendPercent = Math.max(objectState.backendPercent || 0, backendPercent);
+                objectState.lastBackendAt = Date.now();
+
+                if (status === "completed") {
+                    objectState.displayedPercent = 100;
+                } else if (status === "running") {
+                    objectState.displayedPercent = Math.max(
+                        objectState.displayedPercent || 0,
+                        objectState.backendPercent,
+                        1
+                    );
+                } else if (status === "failed") {
+                    objectState.displayedPercent = objectState.displayedPercent || objectState.backendPercent || 0;
+                }
+
+                row.dataset.progressStatus = status;
+                renderProgress(row, objectState);
+                setAction(row, objectId, status);
+            }
+
+            function renderAll() {
+                rowsForEstimate().forEach((row) => {
+                    const objectState = ensureStateForRow(row);
+                    if (!objectState) return;
+                    renderProgress(row, objectState);
+                    setAction(row, objectState.objectId, objectState.status);
+                });
+            }
+
+            function advanceFiller(now) {
+                rowsForEstimate().forEach((row) => {
+                    const objectState = ensureStateForRow(row);
+                    if (!objectState || String(objectState.status).toLowerCase() !== "running") return;
+
+                    const curve = progressCurve(objectState.backendPercent || 0);
+                    const lastFillerAt = objectState.lastFillerAt || now;
+                    if (objectState.displayedPercent >= curve.cap) return;
+                    if (now - lastFillerAt < curve.stepMs) return;
+
+                    const steps = Math.max(1, Math.floor((now - lastFillerAt) / curve.stepMs));
+                    objectState.displayedPercent = Math.min(curve.cap, objectState.displayedPercent + steps);
+                    objectState.lastFillerAt = now;
+                    renderProgress(row, objectState);
+                    setAction(row, objectState.objectId, objectState.status);
+                });
+            }
+
             async function syncProgress() {
                 if (!parentDoc.getElementById(OBJECTS_MARKER_ID)) return;
+                if (parentDoc.getElementById(TRANSITION_SHELL_ID)) return;
                 if (parentWindow[SYNCING_KEY]) return;
 
                 parentWindow[SYNCING_KEY] = true;
@@ -566,13 +632,7 @@ def install_objects_progress_sync(
 
                     const rows = await response.json();
                     rows.forEach((progress) => {
-                        const objectId = progress.object_id;
-                        const row = rowForObject(objectId);
-                        if (!row) return;
-                        const status = String(progress.status || "pending").toLowerCase();
-                        row.dataset.progressStatus = status;
-                        setProgress(row, progress);
-                        setAction(row, objectId, status);
+                        applyBackendProgress(progress);
                     });
                 } catch (error) {
                     if (parentWindow.console && parentWindow.console.debug) {
@@ -583,8 +643,44 @@ def install_objects_progress_sync(
                 }
             }
 
+            function tick() {
+                const state = parentWindow[STATE_KEY];
+                if (!state || !state.active || state.estimateId !== ESTIMATE_ID) {
+                    stopRuntime();
+                    return;
+                }
+                if (!parentDoc.getElementById(OBJECTS_MARKER_ID)) {
+                    stopRuntime();
+                    return;
+                }
+                if (parentDoc.getElementById(TRANSITION_SHELL_ID)) {
+                    return;
+                }
+
+                const now = Date.now();
+                advanceFiller(now);
+                if (!state.lastSyncAt || now - state.lastSyncAt >= INTERVAL_MS) {
+                    state.lastSyncAt = now;
+                    syncProgress();
+                }
+            }
+
+            if (parentWindow[STOP_KEY]) {
+                parentWindow[STOP_KEY]();
+            } else {
+                stopRuntime();
+            }
+            parentWindow[STOP_KEY] = stopRuntime;
+            parentWindow[STATE_KEY] = {
+                active: true,
+                estimateId: ESTIMATE_ID,
+                lastSyncAt: 0,
+                objects: {}
+            };
+
+            renderAll();
             syncProgress();
-            parentWindow[TIMER_KEY] = parentWindow.setInterval(syncProgress, INTERVAL_MS);
+            parentWindow[TIMER_KEY] = parentWindow.setInterval(tick, TICK_MS);
         })();
         </script>
         """
