@@ -20,6 +20,12 @@ def apply_file_review_css() -> None:
             margin: var(--post-upload-heading-gap) 0 0 0;
         }
 
+        div[data-testid="stElementContainer"]:has(.file-review-card),
+        div[data-testid="stElementContainer"]:has(.file-review-detected-title) {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
         .file-review-summary-grid {
             display: grid;
             grid-template-columns: max-content minmax(0, 1fr);

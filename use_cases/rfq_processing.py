@@ -141,12 +141,31 @@ def _split_notes(value: Any) -> list[str]:
         normalized = value.replace("\n", ";")
         normalized = re.sub(r"(?<=[.!?])\s+(?=[A-ZА-Я])", ";", normalized)
         parts = normalized.split(";")
-        return [part.strip(" -•") for part in parts if part.strip(" -•")]
+        return _normalize_note_items(parts)
 
     if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, dict)):
-        return [str(item).strip() for item in value if str(item).strip()]
+        return _normalize_note_items(str(item) for item in value)
 
-    return [str(value)]
+    return _normalize_note_items([str(value)])
+
+
+def _normalize_note_items(values: Iterable[str]) -> list[str]:
+    items = []
+    for value in values:
+        item = _normalize_note_item(value)
+        if item:
+            items.append(item)
+    return items
+
+
+def _normalize_note_item(value: str) -> str:
+    """Apply File Review bullet copy style."""
+    item = value.strip(" -•")
+    while item.endswith("."):
+        item = item[:-1].rstrip()
+    if not item:
+        return ""
+    return item[0].lower() + item[1:]
 
 
 def _format_dimensions(dimensions: dict[str, Any]) -> str:
