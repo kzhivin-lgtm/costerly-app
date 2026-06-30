@@ -8,11 +8,6 @@ def apply_file_review_css() -> None:
     st.markdown(
         """
         <style>
-        .stApp:has(#costerly-file-review-screen-active)
-            [data-testid="stMainBlockContainer"] > div[data-testid="stVerticalBlock"] {
-            gap: 0 !important;
-        }
-
         .file-review-card {
             width: 100%;
             background: var(--color-surface);
@@ -25,7 +20,6 @@ def apply_file_review_css() -> None:
             margin: var(--post-upload-heading-gap) 0 0 0;
         }
 
-        div[data-testid="stElementContainer"]:has(.post-upload-screen-shell),
         div[data-testid="stElementContainer"]:has(.file-review-card),
         div[data-testid="stElementContainer"]:has(.file-review-detected-title) {
             margin-top: 0 !important;
@@ -352,8 +346,7 @@ def apply_file_review_css() -> None:
             padding-left: 2px;
         }
 
-        .file-review-missing-card,
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-missing-card-marker) {
+        .file-review-missing-card {
             width: 100%;
             border: 1px solid rgba(42, 31, 44, 0.12);
             border-radius: 16px;
@@ -363,58 +356,32 @@ def apply_file_review_css() -> None:
             margin: 0;
         }
 
-        .file-review-missing-card-marker {
-            display: none;
-        }
-
         div[data-testid="stElementContainer"]:has(.file-review-missing-card) {
             margin-bottom: var(--post-upload-heading-gap) !important;
         }
 
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-missing-card-marker) {
-            margin: 0 0 var(--post-upload-heading-gap) 0;
-        }
-
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-missing-card-marker)
-            div[data-testid="stMarkdownContainer"]:has(.file-review-missing-card-marker) {
+        .file-review-missing-toggle {
             display: none;
         }
 
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-missing-card-marker)
-            [data-testid="stHorizontalBlock"] {
+        .file-review-missing-collapsed {
+            display: flex;
             align-items: center;
+            gap: 22px;
         }
 
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-missing-card-marker)
-            [data-testid="stTextInput"] {
-            margin: 0;
+        .file-review-missing-expanded {
+            display: none;
         }
 
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-missing-card-marker)
-            [data-testid="stTextInputRootElement"],
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-missing-card-marker)
-            [data-testid="stTextInput"] div[data-baseweb="input"] {
-            min-height: var(--input-height-md);
-            border: 1px solid var(--input-border) !important;
-            border-radius: var(--input-radius) !important;
-            background: var(--input-bg) !important;
-            box-shadow: none !important;
-            outline: none !important;
+        .file-review-missing-toggle:checked
+            ~ .file-review-missing-collapsed {
+            display: none;
         }
 
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-missing-card-marker)
-            [data-testid="stTextInput"] input {
-            min-height: var(--input-height-md);
-            color: var(--input-text) !important;
-            background: transparent !important;
-            border: 0 !important;
-            outline: 0 !important;
-            font-family: var(--font-sans) !important;
-            font-size: var(--input-font-size);
-            line-height: var(--input-line-height);
-            font-weight: var(--input-font-weight);
-            padding: var(--input-padding-y) var(--input-padding-x) !important;
-            box-shadow: none !important;
+        .file-review-missing-toggle:checked
+            ~ .file-review-missing-expanded {
+            display: block;
         }
 
         .file-review-missing-title {
@@ -426,33 +393,90 @@ def apply_file_review_css() -> None:
             text-transform: uppercase;
         }
 
-        .file-review-search-field-label {
+        .file-review-search-label {
             color: rgba(42, 31, 44, 0.58);
             font-size: 18px;
             line-height: 1.25;
             font-weight: 700;
             letter-spacing: 0.10em;
             text-transform: uppercase;
-            margin: 0 0 10px 0;
         }
 
-        .file-review-search-status {
-            color: rgba(42, 31, 44, 0.58);
-            font-size: 14px;
-            line-height: 1.3;
-            font-weight: 700;
-            margin: 12px 0 0 0;
+        .file-review-search-row {
+            display: grid;
+            grid-template-columns: max-content minmax(0, 1fr);
+            column-gap: 22px;
+            align-items: center;
+            margin: 0 0 14px 0;
         }
 
-        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-missing-card-marker)
-            [data-testid="stButton"] button {
-            min-height: var(--button-height-md) !important;
-            border-radius: var(--button-radius) !important;
-            font-family: var(--font-mono) !important;
-            font-size: var(--button-font-size) !important;
-            font-weight: var(--button-font-weight) !important;
-            text-transform: uppercase !important;
-            padding: 0 20px !important;
+        .file-review-search-label {
+            min-width: 150px;
+        }
+
+        .file-review-search-input {
+            width: 100%;
+            min-height: var(--input-height-md);
+            box-sizing: border-box;
+            border: 1px solid var(--input-border);
+            border-radius: var(--input-radius);
+            background: var(--input-bg);
+            color: var(--input-text);
+            font-family: var(--font-sans);
+            font-size: var(--input-font-size);
+            line-height: var(--input-line-height);
+            font-weight: var(--input-font-weight);
+            padding: var(--input-padding-y) var(--input-padding-x);
+            outline: none;
+            transition: border-color 140ms ease, box-shadow 140ms ease;
+        }
+
+        .file-review-search-input::placeholder {
+            color: var(--input-placeholder);
+            opacity: 1;
+        }
+
+        .file-review-search-input:focus {
+            border-color: var(--input-focus-border);
+            box-shadow: 0 0 0 3px var(--input-focus-ring);
+        }
+
+        .file-review-search-actions {
+            display: flex;
+            gap: 16px;
+            margin: 22px 0 0 172px;
+        }
+
+        .file-review-search-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 150px;
+            min-height: var(--button-height-md);
+            box-sizing: border-box;
+            border: 1px solid var(--button-secondary-border);
+            border-radius: var(--button-radius);
+            background: var(--button-secondary-bg);
+            color: var(--button-secondary-text);
+            font-family: var(--font-mono);
+            font-size: var(--button-font-size);
+            font-weight: var(--button-font-weight);
+            text-transform: uppercase;
+            cursor: pointer;
+            text-decoration: none;
+            transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+        }
+
+        .file-review-search-button:hover {
+            background: var(--button-secondary-bg-hover);
+            color: var(--color-accent);
+            border-color: rgba(128, 73, 198, 0.42);
+        }
+
+        .file-review-search-button--cancel:hover {
+            background: var(--button-danger-bg-hover);
+            color: var(--button-danger-text-hover);
+            border-color: var(--button-danger-border-hover);
         }
 
         @media (max-width: 760px) {
@@ -467,9 +491,14 @@ def apply_file_review_css() -> None:
             .file-review-summary-grid,
             .file-review-meta-row,
             .file-review-object-edit-grid,
-            .file-review-object-detail-grid {
+            .file-review-object-detail-grid,
+            .file-review-search-row {
                 grid-template-columns: 1fr;
                 row-gap: 8px;
+            }
+
+            .file-review-search-actions {
+                margin-left: 0;
             }
 
             .file-review-value {
