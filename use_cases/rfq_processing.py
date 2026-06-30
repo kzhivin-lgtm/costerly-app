@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from typing import Any
+import re
 
 import pandas as pd
 
@@ -137,7 +138,9 @@ def _split_notes(value: Any) -> list[str]:
         return []
 
     if isinstance(value, str):
-        parts = value.replace("\n", ";").split(";")
+        normalized = value.replace("\n", ";")
+        normalized = re.sub(r"(?<=[.!?])\s+(?=[A-ZА-Я])", ";", normalized)
+        parts = normalized.split(";")
         return [part.strip(" -•") for part in parts if part.strip(" -•")]
 
     if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, dict)):

@@ -171,7 +171,7 @@ def _render_object_card(item: dict[str, object]) -> None:
 
         if edits[object_id].get("ignored"):
             st.markdown(
-                '<div class="file-review-native-ignored">This object will be skipped during estimation.</div>',
+                '<div class="file-review-native-ignored">THIS OBJECT WILL BE SKIPPED DURING ESTIMATION</div>',
                 unsafe_allow_html=True,
             )
 

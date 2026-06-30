@@ -139,7 +139,7 @@ def apply_file_review_css() -> None:
             line-height: var(--post-upload-title-line-height) !important;
             font-weight: 500 !important;
             letter-spacing: -0.02em !important;
-            margin: 48px 0 var(--post-upload-heading-gap) 0 !important;
+            margin: var(--space-6) 0 var(--post-upload-heading-gap) 0 !important;
             padding: 0 !important;
         }
 
