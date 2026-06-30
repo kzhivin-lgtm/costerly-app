@@ -290,18 +290,102 @@ def _objects_estimation_seed_rows(
     return rows
 
 
-def _render_missing_object_search() -> None:
-    """Render a static second-pass search placeholder until the flow is wired."""
-    card_html = (
-        '<div class="file-review-missing-card">'
-        '<div class="file-review-missing-collapsed">'
-        '<div class="file-review-missing-title">Missing objects:</div>'
-        '<div class="file-review-search-button">Search again</div>'
-        '</div>'
-        '</div>'
-    )
+def _open_missing_object_search() -> None:
+    """Open the Missing Objects search UI."""
+    st.session_state.file_review_missing_search_open = True
+    st.session_state.file_review_missing_search_submitted = False
 
-    st.markdown(card_html, unsafe_allow_html=True)
+
+def _cancel_missing_object_search() -> None:
+    """Return Missing Objects search UI to its collapsed state."""
+    st.session_state.file_review_missing_search_open = False
+    st.session_state.file_review_missing_object_name = ""
+    st.session_state.file_review_missing_search_hints = ""
+    st.session_state.file_review_missing_search_submitted = False
+
+
+def _mark_missing_object_search_started() -> None:
+    """Record that the user started a Missing Objects search request."""
+    st.session_state.file_review_missing_search_submitted = True
+
+
+def _render_missing_object_search() -> None:
+    """Render the Missing Objects action as real Streamlit controls."""
+    is_open = bool(st.session_state.get("file_review_missing_search_open"))
+
+    with st.container():
+        st.markdown(
+            '<span class="file-review-missing-card-marker" aria-hidden="true" '
+            'style="display:none!important;width:0;height:0;overflow:hidden;">&#8203;</span>',
+            unsafe_allow_html=True,
+        )
+
+        if not is_open:
+            title_col, action_col = st.columns([3.0, 7.0], gap="small")
+            title_col.markdown(
+                '<div class="file-review-missing-title">Missing objects:</div>',
+                unsafe_allow_html=True,
+            )
+            if action_col.button(
+                "SEARCH AGAIN",
+                key="file_review_missing_search_open_button",
+                type="secondary",
+                on_click=_open_missing_object_search,
+            ):
+                pass
+            return
+
+        st.markdown(
+            '<div class="file-review-search-field-label">Missing object name:</div>',
+            unsafe_allow_html=True,
+        )
+        object_name = st.text_input(
+            "Missing object name",
+            key="file_review_missing_object_name",
+            label_visibility="collapsed",
+            placeholder="For example, armchair, side table, wall bracket",
+        )
+
+        st.markdown(
+            '<div class="file-review-search-field-label">Search hints:</div>',
+            unsafe_allow_html=True,
+        )
+        search_hints = st.text_input(
+            "Search hints",
+            key="file_review_missing_search_hints",
+            label_visibility="collapsed",
+            placeholder="For example, look at page 3, right corner, near the window",
+        )
+
+        if st.session_state.get("file_review_missing_search_submitted"):
+            st.markdown(
+                '<div class="file-review-search-status">Search request captured</div>',
+                unsafe_allow_html=True,
+            )
+
+        cancel_col, add_col = st.columns(2, gap="small")
+        if cancel_col.button(
+            "CANCEL",
+            key="file_review_missing_search_cancel",
+            type="secondary",
+            use_container_width=True,
+            on_click=_cancel_missing_object_search,
+        ):
+            pass
+
+        start_disabled = not (
+            str(object_name or "").strip()
+            or str(search_hints or "").strip()
+        )
+        if add_col.button(
+            "START SEARCH",
+            key="file_review_missing_search_start",
+            type="primary",
+            use_container_width=True,
+            disabled=start_disabled,
+            on_click=_mark_missing_object_search_started,
+        ):
+            pass
 
 
 def render_file_review_screen(company_id: str) -> None:
