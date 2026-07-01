@@ -10,12 +10,7 @@
 - UI copy: remove trailing periods from standalone UI text when no next sentence follows.
 - Upload: speed up first app/file-load flow and remove flickering intermediate screens, including the brief "thing after file upload" flicker.
 - Processing: review processing-screen text wording and keep its current position as the layout benchmark.
-- Post-upload screens: align File Review and Objects Estimation headers higher, closer to the Upload/Processing header position.
-- File Review: normalize uneven spacing between File Review, Detected Objects, and object cards.
-- File Review: split Missing Information into real bullet points instead of one merged text block.
-- File Review: review long object naming behavior in the agent prompt/contract later.
-- File Review: refine Ignore state copy, likely all-caps without trailing period.
-- File Review: restore or rebuild Search again behavior for Missing Objects.
+- Prompts / Agent Contract: normalize long object names later through the agent prompt/contract.
 - Objects Estimation: reduce the large vertical gap between subtitle and pricing table column headers.
 - Objects Estimation: add a small blue spinner next to the running Self Cost per Unit percent.
 - Objects Estimation: format object quantities as whole units, not 1.0, after estimation completes.

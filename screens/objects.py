@@ -124,18 +124,27 @@ def _self_cost_unit_html(row: dict[str, object]) -> str:
 
     updated_at = _parse_datetime(row.get("progress_updated_at"))
     if updated_at is None:
-        return _escape(row.get("self_cost_unit"))
+        percent = _escape(row.get("self_cost_unit") or f'{_safe_int(row.get("progress_percent"), default=25)}%')
+        return (
+            '<span class="objects-progress-status" aria-label="Estimating self cost">'
+            '<span class="objects-progress-spinner" aria-hidden="true"></span>'
+            f'<span class="objects-progress-percent">{percent}</span>'
+            '</span>'
+        )
 
     base = _safe_int(row.get("progress_percent"), default=25)
     cap, seconds_per_percent = _smooth_progress_curve(base)
     current = _smooth_progress_percent(row)
     return (
+        '<span class="objects-progress-status" aria-label="Estimating self cost">'
+        '<span class="objects-progress-spinner" aria-hidden="true"></span>'
         '<span class="objects-progress-percent" '
         f'data-start="{base}" '
         f'data-cap="{cap}" '
         f'data-step-ms="{int(seconds_per_percent * 1000)}" '
         f'data-updated-at="{_escape(updated_at.isoformat())}">'
         f'{current}%'
+        '</span>'
         '</span>'
     )
 

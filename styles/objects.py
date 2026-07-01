@@ -108,6 +108,38 @@ def apply_objects_css() -> None:
             margin-top: var(--objects-row-main-offset);
         }
 
+        .objects-progress-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            min-width: 58px;
+            white-space: nowrap;
+        }
+
+        .objects-progress-spinner {
+            width: 13px;
+            height: 13px;
+            box-sizing: border-box;
+            border: 3px solid rgba(40, 153, 221, 0.22);
+            border-top-color: #2899DD;
+            border-radius: 999px;
+            animation: objects-progress-spin 500ms linear infinite;
+            flex: 0 0 auto;
+        }
+
+        .objects-progress-percent {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes objects-progress-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         .objects-pricing-price-input {
             width: 100%;
             min-height: 42px;

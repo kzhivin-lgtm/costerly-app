@@ -594,7 +594,14 @@ def install_objects_progress_sync(
                 const selfCost = readNumber(objectState.selfCost, NaN);
                 if (!Number.isFinite(selfCost)) {
                     const cell = row.querySelector(".objects-pricing-self-cost-cell");
-                    if (cell) cell.innerHTML = '<span class="objects-progress-percent">100%</span>';
+                    if (cell) {
+                        cell.innerHTML = (
+                            '<span class="objects-progress-status" aria-label="Estimating self cost">'
+                            + '<span class="objects-progress-spinner" aria-hidden="true"></span>'
+                            + '<span class="objects-progress-percent">100%</span>'
+                            + '</span>'
+                        );
+                    }
                     return;
                 }
 
@@ -630,8 +637,11 @@ def install_objects_progress_sync(
                 }
 
                 cell.innerHTML = (
-                    '<span class="objects-progress-percent">'
+                    '<span class="objects-progress-status" aria-label="Estimating self cost">'
+                    + '<span class="objects-progress-spinner" aria-hidden="true"></span>'
+                    + '<span class="objects-progress-percent">'
                     + `${Math.max(1, percent)}%</span>`
+                    + '</span>'
                 );
             }
 
