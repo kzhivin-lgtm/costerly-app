@@ -24,8 +24,14 @@ def apply_objects_css() -> None:
         .objects-pricing-card {
             --objects-row-main-offset: 12px;
             width: 100%;
-            margin: 42px 0 0 0;
+            margin: var(--post-upload-heading-gap) 0 0 0;
             color: var(--color-text-strong);
+        }
+
+        div[data-testid="stElementContainer"]:has(.objects-estimation-header),
+        div[data-testid="stElementContainer"]:has(.objects-pricing-card) {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
         }
 
         .objects-pricing-table {

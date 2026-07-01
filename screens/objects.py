@@ -360,31 +360,13 @@ def render_objects_screen(company_id: str) -> None:
     else:
         data = _empty_objects_data()
 
-    with measure_python_perf("objects header + guard"):
+    with measure_python_perf("objects header"):
         render_post_upload_header(
             "Objects Estimation",
             "Review objects → Set sale price → Generate proposal",
             class_name="objects-estimation-header",
             marker_id=OBJECTS_MARKER_ID,
         )
-        install_post_upload_transition_guard(
-            [
-                {
-                    "label": "BACK TO FILE REVIEW",
-                    "targetMarkerId": FILE_REVIEW_MARKER_ID,
-                    "shellHtml": post_upload_transition_shell_html(title="File Review"),
-                }
-            ],
-            current_marker_id=OBJECTS_MARKER_ID,
-        )
-        supabase_url, supabase_anon_key = _objects_progress_sync_config()
-        if estimate_id and supabase_url and supabase_anon_key:
-            install_objects_progress_sync(
-                supabase_url=supabase_url,
-                supabase_anon_key=supabase_anon_key,
-                estimate_id=str(estimate_id),
-                interval_ms=1500,
-            )
 
     if not estimate_id:
         st.warning("No active estimate. Return to File Review and start Objects Estimation.")
@@ -455,3 +437,23 @@ def render_objects_screen(company_id: str) -> None:
 
     if col_generate.button("GENERATE PROPOSAL", type="primary", use_container_width=True):
         st.session_state.screen = "objects"
+
+    with measure_python_perf("objects guards"):
+        install_post_upload_transition_guard(
+            [
+                {
+                    "label": "BACK TO FILE REVIEW",
+                    "targetMarkerId": FILE_REVIEW_MARKER_ID,
+                    "shellHtml": post_upload_transition_shell_html(title="File Review"),
+                }
+            ],
+            current_marker_id=OBJECTS_MARKER_ID,
+        )
+        supabase_url, supabase_anon_key = _objects_progress_sync_config()
+        if estimate_id and supabase_url and supabase_anon_key:
+            install_objects_progress_sync(
+                supabase_url=supabase_url,
+                supabase_anon_key=supabase_anon_key,
+                estimate_id=str(estimate_id),
+                interval_ms=1500,
+            )
