@@ -44,6 +44,23 @@ def _money(value: object) -> str:
         return _escape(value)
 
 
+def _quantity(value: object) -> str:
+    """Format quantities as whole units in the pricing table."""
+    if value is None or value == "":
+        return "—"
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return _escape(value)
+    if number != number:
+        return "—"
+    return str(int(round(number)))
+
+
+def _is_project_cost_row(row: dict[str, object]) -> bool:
+    return str(row.get("object_key") or "").lower() in {"delivery", "installation"}
+
+
 def _row_html(
     row: dict[str, object],
     *,
@@ -53,7 +70,8 @@ def _row_html(
     run_id: str | None,
 ) -> str:
     """Render one pricing row."""
-    if with_review:
+    is_project_cost = _is_project_cost_row(row)
+    if with_review and not is_project_cost:
         review_html = _review_action_html(row, estimate_id=estimate_id, run_id=run_id)
     else:
         review_html = ""
@@ -72,14 +90,15 @@ def _row_html(
         f'<div class="objects-pricing-name">{_escape(row.get("name"))}</div>'
         f'{_row_materials_html(row.get("materials"))}'
         '</div>'
-        f'<div class="objects-pricing-number">{_escape(row.get("quantity"))}</div>'
+        f'<div class="objects-pricing-number">{_quantity(row.get("quantity"))}</div>'
         f'<div class="objects-pricing-price objects-pricing-self-cost-cell">{self_cost_html}</div>'
         '<div class="objects-pricing-sale-cell">'
         f'<input class="objects-pricing-price-input" type="text" value="{_money(row.get("sale_price_unit"))}" />'
         f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
         '</div>'
         f'<div class="objects-pricing-price objects-pricing-sale-total-cell">{sale_total_html}</div>'
-        f'<div class="objects-pricing-action-cell" data-action-cell="true">{review_html}</div>'
+        '<div class="objects-pricing-action-cell"'
+        f'{" data-action-cell=\"true\"" if with_review and not is_project_cost else ""}>{review_html}</div>'
         '</div>'
     )
 

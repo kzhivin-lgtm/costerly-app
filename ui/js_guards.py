@@ -477,6 +477,18 @@ def install_objects_progress_sync(
                 );
             }
 
+            function isProjectCostRow(row) {
+                const key = String(row.dataset.objectKey || "").toLowerCase();
+                return key === "delivery" || key === "installation";
+            }
+
+            function clearProjectCostStatus(row) {
+                const selfCostCell = row.querySelector(".objects-pricing-self-cost-cell");
+                const actionCell = row.querySelector(".objects-pricing-action-cell");
+                if (selfCostCell) selfCostCell.textContent = "";
+                if (actionCell) actionCell.innerHTML = "";
+            }
+
             function reviewHref(row, objectId) {
                 const estimateId = encodeURIComponent(row.dataset.estimateId || ESTIMATE_ID || "");
                 const runId = encodeURIComponent(row.dataset.runId || "");
@@ -502,6 +514,11 @@ def install_objects_progress_sync(
             }
 
             function ensureStateForRow(row) {
+                if (isProjectCostRow(row)) {
+                    clearProjectCostStatus(row);
+                    return null;
+                }
+
                 const objectId = row.dataset.objectKey || "";
                 if (!objectId) return null;
 
@@ -523,6 +540,11 @@ def install_objects_progress_sync(
             }
 
             function setAction(row, objectId, status) {
+                if (isProjectCostRow(row)) {
+                    clearProjectCostStatus(row);
+                    return;
+                }
+
                 const cell = row.querySelector('[data-action-cell="true"]');
                 if (!cell) return;
 
@@ -615,6 +637,11 @@ def install_objects_progress_sync(
             }
 
             function renderProgress(row, objectState) {
+                if (isProjectCostRow(row)) {
+                    clearProjectCostStatus(row);
+                    return;
+                }
+
                 const cell = row.querySelector(".objects-pricing-self-cost-cell");
                 if (!cell) return;
 
@@ -649,6 +676,10 @@ def install_objects_progress_sync(
                 const objectId = progress.object_id;
                 const row = rowForObject(objectId);
                 if (!row) return;
+                if (isProjectCostRow(row)) {
+                    clearProjectCostStatus(row);
+                    return;
+                }
 
                 const objectState = ensureStateForRow(row);
                 if (!objectState) return;
