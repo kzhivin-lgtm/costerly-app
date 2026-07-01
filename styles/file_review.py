@@ -17,7 +17,15 @@ def apply_file_review_css() -> None:
             padding: 32px 34px 26px 34px;
             box-sizing: border-box;
             color: var(--color-text-strong);
-            margin: var(--post-upload-heading-gap) 0 0 0;
+            margin: 0 !important;
+        }
+
+        .file-review-title-card-shell {
+            display: flex;
+            flex-direction: column;
+            gap: var(--post-upload-heading-gap);
+            margin: 0;
+            padding: 0;
         }
 
         div[data-testid="stElementContainer"]:has(.file-review-card),

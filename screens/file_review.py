@@ -8,7 +8,7 @@ import streamlit as st
 
 from styles.file_review import apply_file_review_css
 from ui.js_guards import install_post_upload_transition_guard
-from ui.layout import render_post_upload_header
+from ui.layout import post_upload_header_html, render_post_upload_header
 from ui.perf_debug import mark_python_perf, measure_python_perf
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
@@ -62,8 +62,8 @@ def _metadata_rows_html(run: dict[str, object]) -> str:
     )
 
 
-def _render_review_card(run: dict[str, object]) -> None:
-    """Render the top File Review summary card."""
+def _build_review_card_html(run: dict[str, object]) -> str:
+    """Build the top File Review summary card HTML."""
     missing_html = _list_html(
         run.get("missing_information", []),
         class_name="file-review-missing-list",
@@ -94,7 +94,7 @@ def _render_review_card(run: dict[str, object]) -> None:
         '</div>'
     )
 
-    st.markdown(card_html, unsafe_allow_html=True)
+    return card_html
 
 
 def _render_object_card(item: dict[str, object]) -> None:
@@ -340,7 +340,15 @@ def render_file_review_screen(company_id: str) -> None:
         return
 
     with measure_python_perf("file review header + guard"):
-        render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
+        st.markdown(
+            (
+                '<div class="file-review-title-card-shell">'
+                + post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID)
+                + _build_review_card_html(data["run"])
+                + "</div>"
+            ),
+            unsafe_allow_html=True,
+        )
         install_post_upload_transition_guard(
             [
                 {
@@ -360,9 +368,6 @@ def render_file_review_screen(company_id: str) -> None:
 
     if cache_warning:
         st.warning(cache_warning)
-
-    with measure_python_perf("render file review card"):
-        _render_review_card(data["run"])
 
     st.markdown(
         '<h1 class="file-review-detected-title">Detected objects</h1>',
