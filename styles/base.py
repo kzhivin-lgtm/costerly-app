@@ -97,7 +97,7 @@ def apply_base_css() -> None:
             --upload-height: 200px;
             --post-upload-width: min(960px, calc(100vw - 56px));
             --post-upload-top: 73px;
-            --post-upload-screen-top: 42px;
+            --post-upload-screen-top: 26px;
             --processing-stage-top: var(--post-upload-top);
             --post-upload-bottom: 72px;
             --post-upload-title-size: 40px;
