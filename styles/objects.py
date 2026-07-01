@@ -118,8 +118,8 @@ def apply_objects_css() -> None:
         }
 
         .objects-progress-spinner {
-            width: 13px;
-            height: 13px;
+            width: 15px;
+            height: 15px;
             box-sizing: border-box;
             border: 3px solid rgba(40, 153, 221, 0.22);
             border-top-color: #2899DD;

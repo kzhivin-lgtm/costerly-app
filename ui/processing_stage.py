@@ -3,8 +3,8 @@ from __future__ import annotations
 import html
 
 
-PROCESSING_TITLE = "Reading your RFQ package"
-PROCESSING_SUBTITLE = "AI Detection is analyzing the uploaded file and detecting estimate-scope objects"
+PROCESSING_TITLE = "Reading your RFQ file"
+PROCESSING_SUBTITLE = "Detecting scope items for estimation"
 PROCESSING_MARKER_ID = "costerly-processing-screen-active"
 
 
