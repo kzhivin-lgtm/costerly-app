@@ -411,7 +411,6 @@ def install_objects_progress_sync(
             const OLD_ANIMATION_TIMER_KEY = "__costerlyObjectsProgressAnimationTimer";
             const SYNCING_KEY = "__costerlyObjectsProgressSyncing";
             const STATE_KEY = "__costerlyObjectsProgressState";
-            const MANUAL_PRICES_KEY = "__costerlyObjectsManualPrices";
             const STOP_KEY = "__costerlyStopObjectsProgressRuntime";
             const OBJECTS_MARKER_ID = "costerly-objects-screen-active";
             const TRANSITION_SHELL_ID = "costerly-post-upload-transition-shell";
@@ -443,36 +442,6 @@ def install_objects_progress_sync(
             function formatInputMoney(value) {
                 const rounded = Math.round(readNumber(value, 0));
                 return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
-            }
-
-            function normalizeMoneyInput(input) {
-                const raw = String(input.value || "");
-                const isNegative = /^\\s*-/.test(raw.replace(/^₪/, ""));
-                const digits = raw.replace(/[^0-9]/g, "");
-                const numericValue = readNumber(`${isNegative ? "-" : ""}${digits}`, 0);
-                const nextValue = digits ? formatInputMoney(numericValue) : "₪";
-                input.value = nextValue;
-                input.dataset.userEdited = "true";
-            }
-
-            function priceKey(row) {
-                return `${ESTIMATE_ID || row.dataset.estimateId || "estimate"}:${row.dataset.objectKey || "object"}`;
-            }
-
-            function manualPrices() {
-                if (!parentWindow[MANUAL_PRICES_KEY]) parentWindow[MANUAL_PRICES_KEY] = {};
-                return parentWindow[MANUAL_PRICES_KEY];
-            }
-
-            function manualInputValue(row) {
-                const prices = manualPrices();
-                const key = priceKey(row);
-                return Object.prototype.hasOwnProperty.call(prices, key) ? prices[key] : null;
-            }
-
-            function saveManualInputValue(row, input) {
-                manualPrices()[priceKey(row)] = String(input.value || "");
-                input.dataset.userEdited = "true";
             }
 
             function escapeHtml(value) {
@@ -603,19 +572,13 @@ def install_objects_progress_sync(
             }
 
             function inputWasEdited(input) {
-                if (!input) return false;
-                const row = input.closest(".objects-pricing-row");
-                return Boolean(input.dataset.userEdited === "true" || (row && manualInputValue(row) !== null));
+                return Boolean(input && input.dataset.userEdited === "true");
             }
 
             function setSalePricing(row, saleUnit, saleTotal) {
                 const input = saleInput(row);
                 const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
-                const manualValue = manualInputValue(row);
-                if (input && manualValue !== null) {
-                    input.value = manualValue;
-                    input.dataset.userEdited = "true";
-                } else if (input && !inputWasEdited(input) && parentDoc.activeElement !== input) {
+                if (input && !inputWasEdited(input) && parentDoc.activeElement !== input) {
                     input.value = saleUnit == null ? "—" : formatInputMoney(saleUnit);
                     input.dataset.autoValue = input.value;
                 }
@@ -644,22 +607,19 @@ def install_objects_progress_sync(
                     input.dataset.objectsInputBound = "true";
                     input.addEventListener("focus", () => {
                         if (["—", "-", "--"].includes(String(input.value || "").trim())) {
-                            input.value = "₪";
+                            input.value = "";
                         }
-                        saveManualInputValue(row, input);
                     });
                     input.addEventListener("input", () => {
-                        normalizeMoneyInput(input);
-                        saveManualInputValue(row, input);
+                        input.dataset.userEdited = "true";
                         updateLineTotalFromInput(row);
                         updateProjectPricingIfComplete();
                     });
                     input.addEventListener("blur", () => {
-                        if (String(input.value || "").trim() === "₪") {
-                            input.value = "₪0";
+                        if (!String(input.value || "").trim()) {
+                            input.value = "0";
                         }
-                        normalizeMoneyInput(input);
-                        saveManualInputValue(row, input);
+                        input.dataset.userEdited = "true";
                         updateLineTotalFromInput(row);
                         updateProjectPricingIfComplete();
                     });
