@@ -102,6 +102,7 @@ def apply_objects_css() -> None:
 
         .objects-pricing-number,
         .objects-pricing-price {
+            font-family: var(--font-mono);
             font-size: 18px;
             line-height: 1.2;
             font-weight: 700;
@@ -172,6 +173,25 @@ def apply_objects_css() -> None:
             flex-direction: column;
             gap: 5px;
             padding-top: calc(var(--objects-row-main-offset) + 6px);
+        }
+
+        .objects-pricing-row--project-cost .objects-pricing-project-cost-cell {
+            grid-column: 2 / 5;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
+            gap: 5px;
+            padding-top: calc(var(--objects-row-main-offset) + 6px);
+        }
+
+        .objects-pricing-row--project-cost .objects-pricing-price-input {
+            width: 162px;
+        }
+
+        .objects-pricing-row--project-cost .objects-pricing-suggestion {
+            width: 162px;
+            text-align: center;
         }
 
         .objects-pricing-review-button,

@@ -347,6 +347,23 @@ def apply_base_css() -> None:
             max-width: var(--post-upload-subtitle-width) !important;
         }
 
+        .post-upload-stage .post-upload-subtitle {
+            color: rgba(42, 31, 44, 0.58) !important;
+            font-family: var(--font-mono) !important;
+            font-size: 22px !important;
+            line-height: 1.2 !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.08em !important;
+            text-transform: uppercase !important;
+            margin-top: 14px !important;
+            max-width: none !important;
+            white-space: nowrap !important;
+        }
+
+        .post-upload-stage .custom-progress-track {
+            margin-top: var(--post-upload-heading-gap);
+        }
+
         .custom-progress-track {
             width: 100%;
             height: var(--progress-height);

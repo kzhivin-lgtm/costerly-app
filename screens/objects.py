@@ -44,6 +44,18 @@ def _money(value: object) -> str:
         return _escape(value)
 
 
+def _input_money(value: object) -> str:
+    """Format editable pricing input values with a stable currency prefix."""
+    if value is None or value == "":
+        return "—"
+    if isinstance(value, float) and value != value:
+        return "—"
+    try:
+        return f"₪{round(float(value)):,}".replace(",", "\u202f")
+    except (TypeError, ValueError):
+        return _escape(value)
+
+
 def _quantity(value: object) -> str:
     """Format quantities as whole units in the pricing table."""
     if value is None or value == "":
@@ -71,6 +83,9 @@ def _row_html(
 ) -> str:
     """Render one pricing row."""
     is_project_cost = _is_project_cost_row(row)
+    if is_project_cost:
+        return _project_cost_row_html(row, estimate_id=estimate_id, run_id=run_id)
+
     if with_review and not is_project_cost:
         review_html = _review_action_html(row, estimate_id=estimate_id, run_id=run_id)
     else:
@@ -93,12 +108,39 @@ def _row_html(
         f'<div class="objects-pricing-number">{_quantity(row.get("quantity"))}</div>'
         f'<div class="objects-pricing-price objects-pricing-self-cost-cell">{self_cost_html}</div>'
         '<div class="objects-pricing-sale-cell">'
-        f'<input class="objects-pricing-price-input" type="text" value="{_money(row.get("sale_price_unit"))}" />'
+        f'<input class="objects-pricing-price-input" type="text" value="{_input_money(row.get("sale_price_unit"))}" />'
         f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
         '</div>'
         f'<div class="objects-pricing-price objects-pricing-sale-total-cell">{sale_total_html}</div>'
         '<div class="objects-pricing-action-cell"'
         f'{" data-action-cell=\"true\"" if with_review and not is_project_cost else ""}>{review_html}</div>'
+        '</div>'
+    )
+
+
+def _project_cost_row_html(
+    row: dict[str, object],
+    *,
+    estimate_id: str | None,
+    run_id: str | None,
+) -> str:
+    object_key = _escape(row.get("object_key"))
+    estimate_key = _escape(estimate_id or "")
+    run_key = _escape(run_id or "")
+
+    return (
+        '<div class="objects-pricing-row objects-pricing-row--project-cost" '
+        f'data-object-key="{object_key}" '
+        f'data-estimate-id="{estimate_key}" '
+        f'data-run-id="{run_key}">'
+        '<div>'
+        f'<div class="objects-pricing-name">{_escape(row.get("name"))}</div>'
+        f'{_row_materials_html(row.get("materials"))}'
+        '</div>'
+        '<div class="objects-pricing-project-cost-cell">'
+        f'<input class="objects-pricing-price-input" type="text" value="{_input_money(row.get("sale_price_unit"))}" />'
+        f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
+        '</div>'
         '</div>'
     )
 
@@ -263,7 +305,8 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
 
 def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dict[str, object]:
     """Show File Review objects immediately until the estimate shell reaches Supabase."""
-    rows_source = data.get("rows") or st.session_state.get("objects_estimation_seed_rows") or []
+    seed_rows = st.session_state.get("objects_estimation_seed_rows") or []
+    rows_source = data.get("rows") or seed_rows
     if not rows_source:
         return data
 
@@ -283,7 +326,54 @@ def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dic
         if status == "running":
             row["self_cost_unit"] = f"{_smooth_progress_percent(row)}%"
 
-    return {**data, "rows": rows}
+    project_costs = data.get("project_costs") or _project_cost_rows_for_seed(rows)
+    return {**data, "rows": rows, "project_costs": project_costs}
+
+
+def _project_cost_rows_for_seed(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Build project-level cost rows while estimate results are still loading."""
+    if not rows:
+        return []
+    all_completed = all(str(row.get("status") or "pending").lower() == "completed" for row in rows)
+    subtotal = sum(_number(row.get("sale_price_total"), 0) for row in rows)
+    delivery = round(subtotal * 0.03, 2) if all_completed else None
+    installation = round(subtotal * 0.10, 2) if all_completed else None
+
+    return [
+        {
+            "object_key": "delivery",
+            "name": "Delivery",
+            "materials": "project-level cost",
+            "quantity": 1,
+            "self_cost_unit": None,
+            "sale_price_unit": delivery,
+            "sale_price_total": None,
+            "status": "completed" if all_completed else "pending",
+            "suggestion": "suggested: 3% of objects subtotal",
+        },
+        {
+            "object_key": "installation",
+            "name": "Installation",
+            "materials": "project-level cost",
+            "quantity": 1,
+            "self_cost_unit": None,
+            "sale_price_unit": installation,
+            "sale_price_total": None,
+            "status": "completed" if all_completed else "pending",
+            "suggestion": "suggested: 10% of objects subtotal",
+        },
+    ]
+
+
+def _number(value: object, default: float = 0) -> float:
+    try:
+        if value is None or value == "":
+            return default
+        if isinstance(value, float) and value != value:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _smooth_progress_percent(row: dict[str, object]) -> int:

@@ -411,6 +411,7 @@ def install_objects_progress_sync(
             const OLD_ANIMATION_TIMER_KEY = "__costerlyObjectsProgressAnimationTimer";
             const SYNCING_KEY = "__costerlyObjectsProgressSyncing";
             const STATE_KEY = "__costerlyObjectsProgressState";
+            const MANUAL_PRICES_KEY = "__costerlyObjectsManualPrices";
             const STOP_KEY = "__costerlyStopObjectsProgressRuntime";
             const OBJECTS_MARKER_ID = "costerly-objects-screen-active";
             const TRANSITION_SHELL_ID = "costerly-post-upload-transition-shell";
@@ -437,6 +438,41 @@ def install_objects_progress_sync(
             function formatMoney(value) {
                 const rounded = Math.round(readNumber(value, 0));
                 return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
+            }
+
+            function formatInputMoney(value) {
+                const rounded = Math.round(readNumber(value, 0));
+                return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
+            }
+
+            function normalizeMoneyInput(input) {
+                const raw = String(input.value || "");
+                const isNegative = /^\\s*-/.test(raw.replace(/^₪/, ""));
+                const digits = raw.replace(/[^0-9]/g, "");
+                const numericValue = readNumber(`${isNegative ? "-" : ""}${digits}`, 0);
+                const nextValue = digits ? formatInputMoney(numericValue) : "₪";
+                input.value = nextValue;
+                input.dataset.userEdited = "true";
+            }
+
+            function priceKey(row) {
+                return `${ESTIMATE_ID || row.dataset.estimateId || "estimate"}:${row.dataset.objectKey || "object"}`;
+            }
+
+            function manualPrices() {
+                if (!parentWindow[MANUAL_PRICES_KEY]) parentWindow[MANUAL_PRICES_KEY] = {};
+                return parentWindow[MANUAL_PRICES_KEY];
+            }
+
+            function manualInputValue(row) {
+                const prices = manualPrices();
+                const key = priceKey(row);
+                return Object.prototype.hasOwnProperty.call(prices, key) ? prices[key] : null;
+            }
+
+            function saveManualInputValue(row, input) {
+                manualPrices()[priceKey(row)] = String(input.value || "");
+                input.dataset.userEdited = "true";
             }
 
             function escapeHtml(value) {
@@ -562,11 +598,72 @@ def install_objects_progress_sync(
                 );
             }
 
+            function saleInput(row) {
+                return row.querySelector(".objects-pricing-price-input");
+            }
+
+            function inputWasEdited(input) {
+                if (!input) return false;
+                const row = input.closest(".objects-pricing-row");
+                return Boolean(input.dataset.userEdited === "true" || (row && manualInputValue(row) !== null));
+            }
+
             function setSalePricing(row, saleUnit, saleTotal) {
-                const input = row.querySelector(".objects-pricing-price-input");
+                const input = saleInput(row);
                 const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
-                if (input) input.value = saleUnit == null ? "—" : formatMoney(saleUnit);
+                const manualValue = manualInputValue(row);
+                if (input && manualValue !== null) {
+                    input.value = manualValue;
+                    input.dataset.userEdited = "true";
+                } else if (input && !inputWasEdited(input) && parentDoc.activeElement !== input) {
+                    input.value = saleUnit == null ? "—" : formatInputMoney(saleUnit);
+                    input.dataset.autoValue = input.value;
+                }
                 if (totalCell) totalCell.textContent = saleTotal == null ? "" : formatMoney(saleTotal);
+            }
+
+            function rowSaleUnit(row) {
+                const input = saleInput(row);
+                return readMoneyNumber(input ? input.value : "");
+            }
+
+            function updateLineTotalFromInput(row) {
+                if (isProjectCostRow(row)) return;
+
+                const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
+                if (!totalCell) return;
+
+                const saleTotal = Math.round(rowSaleUnit(row) * rowQuantity(row, 1) * 100) / 100;
+                totalCell.textContent = formatMoney(saleTotal);
+            }
+
+            function bindSaleInputs() {
+                rowsForEstimate().forEach((row) => {
+                    const input = saleInput(row);
+                    if (!input || input.dataset.objectsInputBound === "true") return;
+                    input.dataset.objectsInputBound = "true";
+                    input.addEventListener("focus", () => {
+                        if (["—", "-", "--"].includes(String(input.value || "").trim())) {
+                            input.value = "₪";
+                        }
+                        saveManualInputValue(row, input);
+                    });
+                    input.addEventListener("input", () => {
+                        normalizeMoneyInput(input);
+                        saveManualInputValue(row, input);
+                        updateLineTotalFromInput(row);
+                        updateProjectPricingIfComplete();
+                    });
+                    input.addEventListener("blur", () => {
+                        if (String(input.value || "").trim() === "₪") {
+                            input.value = "₪0";
+                        }
+                        normalizeMoneyInput(input);
+                        saveManualInputValue(row, input);
+                        updateLineTotalFromInput(row);
+                        updateProjectPricingIfComplete();
+                    });
+                });
             }
 
             function setSummaryValue(field, value) {
@@ -595,17 +692,20 @@ def install_objects_progress_sync(
                     subtotal += readMoneyNumber(totalCell ? totalCell.textContent : "");
                 }
 
-                const delivery = Math.round(subtotal * 0.03 * 100) / 100;
-                const installation = Math.round(subtotal * 0.10 * 100) / 100;
+                const deliveryDefault = Math.round(subtotal * 0.03 * 100) / 100;
+                const installationDefault = Math.round(subtotal * 0.10 * 100) / 100;
+
+                const deliveryRow = rowForObject("delivery");
+                if (deliveryRow) setSalePricing(deliveryRow, deliveryDefault, null);
+
+                const installationRow = rowForObject("installation");
+                if (installationRow) setSalePricing(installationRow, installationDefault, null);
+
+                const delivery = deliveryRow ? rowSaleUnit(deliveryRow) : deliveryDefault;
+                const installation = installationRow ? rowSaleUnit(installationRow) : installationDefault;
                 const projectPrice = Math.round((subtotal + delivery + installation) * 100) / 100;
                 const vat = Math.round(projectPrice * 0.18 * 100) / 100;
                 const total = Math.round((projectPrice + vat) * 100) / 100;
-
-                const deliveryRow = rowForObject("delivery");
-                if (deliveryRow) setSalePricing(deliveryRow, delivery, null);
-
-                const installationRow = rowForObject("installation");
-                if (installationRow) setSalePricing(installationRow, installation, null);
 
                 setSummaryValue("project_price", projectPrice);
                 setSummaryValue("vat", vat);
@@ -712,12 +812,14 @@ def install_objects_progress_sync(
             }
 
             function renderAll() {
+                bindSaleInputs();
                 rowsForEstimate().forEach((row) => {
                     const objectState = ensureStateForRow(row);
                     if (!objectState) return;
                     renderProgress(row, objectState);
                     setAction(row, objectState.objectId, objectState.status);
                 });
+                bindSaleInputs();
             }
 
             function advanceFiller(now) {

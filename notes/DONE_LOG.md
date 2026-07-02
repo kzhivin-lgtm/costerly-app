@@ -42,4 +42,6 @@ Backup V1.10.11_before_navigation_cache_retry_push created, завершена 2
 Transition overlay stable-frame release, завершена 27.06 13:30
 Backup V1.10.12_before_transition_overlay_stable_frame_release created, завершена 27.06 13:30
 Temporary transition perf instrumentation, завершена 27.06 14:00
+Objects Estimation layout/input-format checkpoint before numeric input editor fix, завершена 02.07 12:49
+Backup v2.01.30_before_numeric_input_editor_fix created, завершена 02.07 12:49
 Backup V1.10.13_before_transition_perf_instrumentation created, завершена 27.06 14:00
