@@ -389,6 +389,245 @@ def scroll_parent_to_top() -> None:
     )
 
 
+def install_objects_price_input_guard(*, estimate_id: str) -> None:
+    """Install always-on editing behavior for Objects sale price controls."""
+    estimate_id_json = json.dumps(estimate_id)
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const ESTIMATE_ID = __ESTIMATE_ID__;
+            const HANDLER_KEY = "__costerlyObjectsPriceInputGuardCleanup";
+            const MANUAL_PRICES_KEY = "__costerlyObjectsManualSalePrices";
+
+            if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
+
+            function readNumber(value, fallback) {
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? parsed : fallback;
+            }
+
+            function readMoneyNumber(value) {
+                const cleaned = String(value || "").replace(/[^0-9.-]/g, "");
+                return readNumber(cleaned, 0);
+            }
+
+            function inputDigits(value) {
+                return String(value || "").replace(/[^0-9]/g, "");
+            }
+
+            function formatMoney(value) {
+                const rounded = Math.round(readNumber(value, 0));
+                return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
+            }
+
+            function context(event) {
+                const target = event.target;
+                if (!target || !target.closest) return null;
+                const input = target.closest(".objects-pricing-price-input");
+                if (!input) return null;
+                const row = input.closest(".objects-pricing-row");
+                if (!row || row.dataset.estimateId !== String(ESTIMATE_ID || "")) return null;
+                return { input, row };
+            }
+
+            function isDisabled(input) {
+                return input.getAttribute("aria-disabled") === "true" || input.disabled === true;
+            }
+
+            function saleInputValue(input) {
+                if (!input) return "";
+                return "value" in input ? input.value : input.textContent;
+            }
+
+            function setSaleInputValue(input, value) {
+                if (!input) return;
+                if ("value" in input) {
+                    input.value = value;
+                } else {
+                    input.textContent = value;
+                }
+            }
+
+            function rowQuantity(row) {
+                const node = row.querySelector(".objects-pricing-number");
+                return readNumber(node ? node.textContent : "", 1);
+            }
+
+            function rowSaleUnit(row) {
+                return readMoneyNumber(saleInputValue(row.querySelector(".objects-pricing-price-input")));
+            }
+
+            function isProjectCostRow(row) {
+                const key = String(row.dataset.objectKey || "").toLowerCase();
+                return key === "delivery" || key === "installation";
+            }
+
+            function manualPrices() {
+                if (!parentWindow[MANUAL_PRICES_KEY]) parentWindow[MANUAL_PRICES_KEY] = {};
+                if (!parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID]) parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID] = {};
+                return parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID];
+            }
+
+            function setManualSaleUnit(row, value) {
+                const key = row.dataset.objectKey || "";
+                if (!key) return;
+                manualPrices()[key] = Math.max(0, Math.round(readNumber(value, 0)));
+                const input = row.querySelector(".objects-pricing-price-input");
+                if (input) input.dataset.userEdited = "true";
+            }
+
+            function rowsForEstimate() {
+                return Array.from(parentDoc.querySelectorAll(
+                    `.objects-pricing-row[data-estimate-id="${CSS.escape(String(ESTIMATE_ID || ""))}"]`
+                ));
+            }
+
+            function objectRows() {
+                return rowsForEstimate().filter((row) => {
+                    const key = String(row.dataset.objectKey || "").toLowerCase();
+                    return key && key !== "delivery" && key !== "installation";
+                });
+            }
+
+            function rowForObject(objectKey) {
+                return parentDoc.querySelector(
+                    `.objects-pricing-row[data-estimate-id="${CSS.escape(String(ESTIMATE_ID || ""))}"][data-object-key="${CSS.escape(String(objectKey || ""))}"]`
+                );
+            }
+
+            function setSummaryValue(field, value) {
+                const node = parentDoc.querySelector(`[data-summary-field="${field}"]`);
+                if (node) node.textContent = value == null ? "—" : formatMoney(value);
+            }
+
+            function updateLineTotal(row) {
+                if (isProjectCostRow(row)) return;
+                const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
+                if (!totalCell) return;
+                totalCell.textContent = formatMoney(rowSaleUnit(row) * rowQuantity(row));
+            }
+
+            function updateProjectPricing() {
+                let subtotal = 0;
+                for (const row of objectRows()) {
+                    const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
+                    subtotal += readMoneyNumber(totalCell ? totalCell.textContent : "");
+                }
+
+                const deliveryRow = rowForObject("delivery");
+                const installationRow = rowForObject("installation");
+                const prices = manualPrices();
+                const deliveryDefault = Math.round(subtotal * 0.03 * 100) / 100;
+                const installationDefault = Math.round(subtotal * 0.10 * 100) / 100;
+                const delivery = Number.isFinite(prices.delivery) ? prices.delivery : deliveryDefault;
+                const installation = Number.isFinite(prices.installation) ? prices.installation : installationDefault;
+
+                if (deliveryRow && !Number.isFinite(prices.delivery)) {
+                    const input = deliveryRow.querySelector(".objects-pricing-price-input");
+                    if (input && parentDoc.activeElement !== input && input.getAttribute("aria-disabled") !== "true") {
+                        setSaleInputValue(input, formatMoney(deliveryDefault));
+                    }
+                }
+                if (installationRow && !Number.isFinite(prices.installation)) {
+                    const input = installationRow.querySelector(".objects-pricing-price-input");
+                    if (input && parentDoc.activeElement !== input && input.getAttribute("aria-disabled") !== "true") {
+                        setSaleInputValue(input, formatMoney(installationDefault));
+                    }
+                }
+
+                const projectPrice = Math.round((subtotal + delivery + installation) * 100) / 100;
+                const vat = Math.round(projectPrice * 0.18 * 100) / 100;
+                setSummaryValue("project_price", projectPrice);
+                setSummaryValue("vat", vat);
+                setSummaryValue("total", Math.round((projectPrice + vat) * 100) / 100);
+            }
+
+            function sanitizeActive(input) {
+                const digits = inputDigits(saleInputValue(input));
+                if (saleInputValue(input) !== digits) setSaleInputValue(input, digits);
+                return digits;
+            }
+
+            function handleFocus(event) {
+                const ctx = context(event);
+                if (!ctx || isDisabled(ctx.input)) return;
+                setSaleInputValue(ctx.input, inputDigits(saleInputValue(ctx.input)));
+            }
+
+            function handleKeydown(event) {
+                const ctx = context(event);
+                if (!ctx) return;
+                if (isDisabled(ctx.input)) {
+                    event.preventDefault();
+                    return;
+                }
+                const allowedKeys = new Set([
+                    "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+                    "Home", "End", "Tab", "Enter", "Escape",
+                ]);
+                if (event.metaKey || event.ctrlKey || event.altKey || allowedKeys.has(event.key)) return;
+                if (!/^[0-9]$/.test(event.key)) event.preventDefault();
+            }
+
+            function handleBeforeInput(event) {
+                const ctx = context(event);
+                if (!ctx) return;
+                if (isDisabled(ctx.input) || (event.data && /[^0-9]/.test(event.data))) event.preventDefault();
+            }
+
+            function handlePaste(event) {
+                const ctx = context(event);
+                if (!ctx || isDisabled(ctx.input)) return;
+                event.preventDefault();
+                const text = event.clipboardData ? event.clipboardData.getData("text") : "";
+                parentDoc.execCommand("insertText", false, inputDigits(text));
+            }
+
+            function handleInput(event) {
+                const ctx = context(event);
+                if (!ctx || isDisabled(ctx.input)) return;
+                const digits = sanitizeActive(ctx.input);
+                setManualSaleUnit(ctx.row, digits ? Number(digits) : 0);
+                updateLineTotal(ctx.row);
+                updateProjectPricing();
+            }
+
+            function handleBlur(event) {
+                const ctx = context(event);
+                if (!ctx || isDisabled(ctx.input)) return;
+                const digits = sanitizeActive(ctx.input);
+                setManualSaleUnit(ctx.row, digits ? Number(digits) : 0);
+                setSaleInputValue(ctx.input, formatMoney(digits ? Number(digits) : 0));
+                updateLineTotal(ctx.row);
+                updateProjectPricing();
+            }
+
+            parentDoc.addEventListener("focusin", handleFocus, true);
+            parentDoc.addEventListener("keydown", handleKeydown, true);
+            parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
+            parentDoc.addEventListener("paste", handlePaste, true);
+            parentDoc.addEventListener("input", handleInput, true);
+            parentDoc.addEventListener("focusout", handleBlur, true);
+
+            parentWindow[HANDLER_KEY] = () => {
+                parentDoc.removeEventListener("focusin", handleFocus, true);
+                parentDoc.removeEventListener("keydown", handleKeydown, true);
+                parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
+                parentDoc.removeEventListener("paste", handlePaste, true);
+                parentDoc.removeEventListener("input", handleInput, true);
+                parentDoc.removeEventListener("focusout", handleBlur, true);
+                parentWindow[HANDLER_KEY] = null;
+            };
+        })();
+        </script>
+        """.replace("__ESTIMATE_ID__", estimate_id_json),
+        height=0,
+    )
+
+
 def install_objects_progress_sync(
     *,
     supabase_url: str,
@@ -411,6 +650,7 @@ def install_objects_progress_sync(
             const OLD_ANIMATION_TIMER_KEY = "__costerlyObjectsProgressAnimationTimer";
             const SYNCING_KEY = "__costerlyObjectsProgressSyncing";
             const STATE_KEY = "__costerlyObjectsProgressState";
+            const MANUAL_PRICES_KEY = "__costerlyObjectsManualSalePrices";
             const STOP_KEY = "__costerlyStopObjectsProgressRuntime";
             const OBJECTS_MARKER_ID = "costerly-objects-screen-active";
             const TRANSITION_SHELL_ID = "costerly-post-upload-transition-shell";
@@ -442,6 +682,10 @@ def install_objects_progress_sync(
             function formatInputMoney(value) {
                 const rounded = Math.round(readNumber(value, 0));
                 return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
+            }
+
+            function inputDigits(value) {
+                return String(value || "").replace(/[^0-9]/g, "");
             }
 
             function escapeHtml(value) {
@@ -571,6 +815,51 @@ def install_objects_progress_sync(
                 return row.querySelector(".objects-pricing-price-input");
             }
 
+            function manualPrices() {
+                if (!parentWindow[MANUAL_PRICES_KEY]) parentWindow[MANUAL_PRICES_KEY] = {};
+                if (!parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID]) parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID] = {};
+                return parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID];
+            }
+
+            function manualSaleUnit(row) {
+                const objectKey = row ? row.dataset.objectKey || "" : "";
+                const value = manualPrices()[objectKey];
+                return Number.isFinite(value) ? value : null;
+            }
+
+            function setManualSaleUnit(row, value) {
+                const objectKey = row ? row.dataset.objectKey || "" : "";
+                if (!objectKey) return;
+                manualPrices()[objectKey] = Math.max(0, Math.round(readNumber(value, 0)));
+            }
+
+            function saleInputValue(input) {
+                if (!input) return "";
+                return "value" in input ? input.value : input.textContent;
+            }
+
+            function setSaleInputValue(input, value) {
+                if (!input) return;
+                if ("value" in input) {
+                    input.value = value;
+                    return;
+                }
+                input.textContent = value;
+            }
+
+            function setSaleInputDisabled(input, disabled) {
+                if (!input) return;
+                if ("disabled" in input) input.disabled = disabled;
+                input.setAttribute("aria-disabled", disabled ? "true" : "false");
+                if (disabled) {
+                    input.removeAttribute("contenteditable");
+                    input.removeAttribute("tabindex");
+                } else if (!("value" in input)) {
+                    input.setAttribute("contenteditable", "true");
+                    input.setAttribute("tabindex", "0");
+                }
+            }
+
             function inputWasEdited(input) {
                 return Boolean(input && input.dataset.userEdited === "true");
             }
@@ -578,16 +867,23 @@ def install_objects_progress_sync(
             function setSalePricing(row, saleUnit, saleTotal) {
                 const input = saleInput(row);
                 const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
-                if (input && !inputWasEdited(input) && parentDoc.activeElement !== input) {
-                    input.value = saleUnit == null ? "—" : formatInputMoney(saleUnit);
-                    input.dataset.autoValue = input.value;
+                const manualUnit = manualSaleUnit(row);
+                const effectiveUnit = manualUnit == null ? saleUnit : manualUnit;
+                if (input && parentDoc.activeElement !== input && effectiveUnit != null) {
+                    const formatted = formatInputMoney(effectiveUnit);
+                    setSaleInputValue(input, formatted);
+                    setSaleInputDisabled(input, false);
+                    input.dataset.autoValue = formatted;
                 }
-                if (totalCell) totalCell.textContent = saleTotal == null ? "" : formatMoney(saleTotal);
+                if (totalCell) {
+                    const effectiveTotal = manualUnit == null ? saleTotal : Math.round(manualUnit * rowQuantity(row, 1) * 100) / 100;
+                    totalCell.textContent = effectiveTotal == null ? "" : formatMoney(effectiveTotal);
+                }
             }
 
             function rowSaleUnit(row) {
                 const input = saleInput(row);
-                return readMoneyNumber(input ? input.value : "");
+                return readMoneyNumber(saleInputValue(input));
             }
 
             function updateLineTotalFromInput(row) {
@@ -606,20 +902,55 @@ def install_objects_progress_sync(
                     if (!input || input.dataset.objectsInputBound === "true") return;
                     input.dataset.objectsInputBound = "true";
                     input.addEventListener("focus", () => {
-                        if (["—", "-", "--"].includes(String(input.value || "").trim())) {
-                            input.value = "";
+                        if (input.getAttribute("aria-disabled") === "true") return;
+                        const digits = inputDigits(saleInputValue(input));
+                        setSaleInputValue(input, digits);
+                    });
+                    input.addEventListener("keydown", (event) => {
+                        if (input.getAttribute("aria-disabled") === "true") {
+                            event.preventDefault();
+                            return;
                         }
+                        const allowedKeys = new Set([
+                            "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+                            "Home", "End", "Tab", "Enter", "Escape",
+                        ]);
+                        if (event.metaKey || event.ctrlKey || event.altKey || allowedKeys.has(event.key)) return;
+                        if (!/^[0-9]$/.test(event.key)) event.preventDefault();
+                    });
+                    input.addEventListener("beforeinput", (event) => {
+                        if (input.getAttribute("aria-disabled") === "true") {
+                            event.preventDefault();
+                            return;
+                        }
+                        if (event.data && /[^0-9]/.test(event.data)) {
+                            event.preventDefault();
+                        }
+                    });
+                    input.addEventListener("paste", (event) => {
+                        if (input.getAttribute("aria-disabled") === "true") {
+                            event.preventDefault();
+                            return;
+                        }
+                        event.preventDefault();
+                        const text = event.clipboardData ? event.clipboardData.getData("text") : "";
+                        const digits = inputDigits(text);
+                        parentDoc.execCommand("insertText", false, digits);
                     });
                     input.addEventListener("input", () => {
                         input.dataset.userEdited = "true";
+                        const digits = inputDigits(saleInputValue(input));
+                        if (saleInputValue(input) !== digits) setSaleInputValue(input, digits);
+                        setManualSaleUnit(row, digits ? Number(digits) : 0);
                         updateLineTotalFromInput(row);
                         updateProjectPricingIfComplete();
                     });
                     input.addEventListener("blur", () => {
-                        if (!String(input.value || "").trim()) {
-                            input.value = "0";
-                        }
+                        if (input.getAttribute("aria-disabled") === "true") return;
                         input.dataset.userEdited = "true";
+                        const digits = inputDigits(saleInputValue(input));
+                        setManualSaleUnit(row, digits ? Number(digits) : 0);
+                        setSaleInputValue(input, formatInputMoney(digits ? Number(digits) : 0));
                         updateLineTotalFromInput(row);
                         updateProjectPricingIfComplete();
                     });
@@ -688,7 +1019,8 @@ def install_objects_progress_sync(
                 }
 
                 const quantity = rowQuantity(row, objectState.quantity || 1);
-                const saleUnit = Math.round(selfCost * 1.3 * 100) / 100;
+                const manualUnit = manualSaleUnit(row);
+                const saleUnit = manualUnit == null ? Math.round(selfCost * 1.3 * 100) / 100 : manualUnit;
                 const saleTotal = Math.round(saleUnit * quantity * 100) / 100;
 
                 const cell = row.querySelector(".objects-pricing-self-cost-cell");

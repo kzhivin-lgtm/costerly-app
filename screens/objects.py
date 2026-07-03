@@ -11,6 +11,7 @@ import streamlit as st
 from config import get_optional_secret
 from styles.objects import apply_objects_css
 from ui.js_guards import (
+    install_objects_price_input_guard,
     install_objects_progress_sync,
     install_post_upload_transition_guard,
 )
@@ -54,6 +55,16 @@ def _input_money(value: object) -> str:
         return f"₪{round(float(value)):,}".replace(",", "\u202f")
     except (TypeError, ValueError):
         return _escape(value)
+
+
+def _sale_input_html(value: object) -> str:
+    input_value = _input_money(value)
+    editable_attr = '' if input_value == "—" else ' contenteditable="true" tabindex="0"'
+    disabled_attr = ' aria-disabled="true"' if input_value == "—" else ' aria-disabled="false"'
+    return (
+        '<div class="objects-pricing-price-input" role="textbox" inputmode="numeric" '
+        f'{editable_attr}{disabled_attr}>{input_value}</div>'
+    )
 
 
 def _quantity(value: object) -> str:
@@ -108,7 +119,7 @@ def _row_html(
         f'<div class="objects-pricing-number">{_quantity(row.get("quantity"))}</div>'
         f'<div class="objects-pricing-price objects-pricing-self-cost-cell">{self_cost_html}</div>'
         '<div class="objects-pricing-sale-cell">'
-        f'<input class="objects-pricing-price-input" type="text" inputmode="numeric" autocomplete="off" value="{_input_money(row.get("sale_price_unit"))}" />'
+        f'{_sale_input_html(row.get("sale_price_unit"))}'
         f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
         '</div>'
         f'<div class="objects-pricing-price objects-pricing-sale-total-cell">{sale_total_html}</div>'
@@ -138,7 +149,7 @@ def _project_cost_row_html(
         f'{_row_materials_html(row.get("materials"))}'
         '</div>'
         '<div class="objects-pricing-project-cost-cell">'
-        f'<input class="objects-pricing-price-input" type="text" inputmode="numeric" autocomplete="off" value="{_input_money(row.get("sale_price_unit"))}" />'
+        f'{_sale_input_html(row.get("sale_price_unit"))}'
         f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
         '</div>'
         '</div>'
@@ -529,6 +540,8 @@ def render_objects_screen(company_id: str) -> None:
         st.session_state.screen = "objects"
 
     with measure_python_perf("objects guards"):
+        if estimate_id:
+            install_objects_price_input_guard(estimate_id=str(estimate_id))
         install_post_upload_transition_guard(
             [
                 {

@@ -160,6 +160,9 @@ def apply_objects_css() -> None:
             font-weight: 700;
             text-align: center;
             outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: border-color 140ms ease, box-shadow 140ms ease;
         }
 

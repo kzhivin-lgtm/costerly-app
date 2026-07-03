@@ -16,7 +16,6 @@
 - Objects Estimation: format object quantities as whole units, not 1.0, after estimation completes.
 - Objects Estimation: Delivery and Installation should not show Self Cost pending state or Pending review buttons; keep review/status area empty for project-level rows.
 - Objects Estimation: keep Delivery and Installation as project-level percentage allocations and show their sale price inputs without fake object status.
-- Objects Estimation: fix sale price inputs so users can freely edit integer digits only; manual values must not revert to auto-calculated values on input blur or progress sync.
 - Object Detail: format Quantity as whole units, not 1.0.
 - Object Detail: show AI Confidence when available.
 - Object Detail: implement Object Preview image capture/display.
