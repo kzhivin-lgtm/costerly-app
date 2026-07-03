@@ -401,6 +401,7 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
             const ESTIMATE_ID = __ESTIMATE_ID__;
             const HANDLER_KEY = "__costerlyObjectsPriceInputGuardCleanup";
             const MANUAL_PRICES_KEY = "__costerlyObjectsManualSalePrices";
+            let pointerStartedInPriceInput = false;
 
             if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
 
@@ -465,6 +466,12 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
                 return key === "delivery" || key === "installation";
             }
 
+            function hideProjectCostSuggestion(row) {
+                if (!isProjectCostRow(row)) return;
+                const suggestion = row.querySelector(".objects-pricing-suggestion");
+                if (suggestion) suggestion.textContent = "";
+            }
+
             function manualPrices() {
                 if (!parentWindow[MANUAL_PRICES_KEY]) parentWindow[MANUAL_PRICES_KEY] = {};
                 if (!parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID]) parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID] = {};
@@ -477,6 +484,7 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
                 manualPrices()[key] = Math.max(0, Math.round(readNumber(value, 0)));
                 const input = row.querySelector(".objects-pricing-price-input");
                 if (input) input.dataset.userEdited = "true";
+                hideProjectCostSuggestion(row);
             }
 
             function rowsForEstimate() {
@@ -524,6 +532,8 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
                 const installationDefault = Math.round(subtotal * 0.10 * 100) / 100;
                 const delivery = Number.isFinite(prices.delivery) ? prices.delivery : deliveryDefault;
                 const installation = Number.isFinite(prices.installation) ? prices.installation : installationDefault;
+                if (deliveryRow && Number.isFinite(prices.delivery)) hideProjectCostSuggestion(deliveryRow);
+                if (installationRow && Number.isFinite(prices.installation)) hideProjectCostSuggestion(installationRow);
 
                 if (deliveryRow && !Number.isFinite(prices.delivery)) {
                     const input = deliveryRow.querySelector(".objects-pricing-price-input");
@@ -554,7 +564,17 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
             function handleFocus(event) {
                 const ctx = context(event);
                 if (!ctx || isDisabled(ctx.input)) return;
-                setSaleInputValue(ctx.input, inputDigits(saleInputValue(ctx.input)));
+                const digits = inputDigits(saleInputValue(ctx.input));
+                ctx.input.dataset.editStartDigits = digits;
+                ctx.input.dataset.editDirty = "false";
+                setSaleInputValue(ctx.input, digits);
+            }
+
+            function handlePointerDown(event) {
+                const target = event.target;
+                pointerStartedInPriceInput = Boolean(
+                    target && target.closest && target.closest(".objects-pricing-price-input")
+                );
             }
 
             function handleKeydown(event) {
@@ -590,6 +610,7 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
                 const ctx = context(event);
                 if (!ctx || isDisabled(ctx.input)) return;
                 const digits = sanitizeActive(ctx.input);
+                ctx.input.dataset.editDirty = "true";
                 setManualSaleUnit(ctx.row, digits ? Number(digits) : 0);
                 updateLineTotal(ctx.row);
                 updateProjectPricing();
@@ -599,12 +620,24 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
                 const ctx = context(event);
                 if (!ctx || isDisabled(ctx.input)) return;
                 const digits = sanitizeActive(ctx.input);
-                setManualSaleUnit(ctx.row, digits ? Number(digits) : 0);
+                const changed = ctx.input.dataset.editDirty === "true" || digits !== (ctx.input.dataset.editStartDigits || "");
+                if (changed) setManualSaleUnit(ctx.row, digits ? Number(digits) : 0);
                 setSaleInputValue(ctx.input, formatMoney(digits ? Number(digits) : 0));
                 updateLineTotal(ctx.row);
                 updateProjectPricing();
+                if (!pointerStartedInPriceInput) {
+                    parentWindow.setTimeout(() => {
+                        const active = parentDoc.activeElement;
+                        if (active && active.closest && active.closest(".objects-pricing-price-input")) {
+                            active.blur();
+                        }
+                        const selection = parentWindow.getSelection ? parentWindow.getSelection() : null;
+                        if (selection) selection.removeAllRanges();
+                    }, 0);
+                }
             }
 
+            parentDoc.addEventListener("pointerdown", handlePointerDown, true);
             parentDoc.addEventListener("focusin", handleFocus, true);
             parentDoc.addEventListener("keydown", handleKeydown, true);
             parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
@@ -613,6 +646,7 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
             parentDoc.addEventListener("focusout", handleBlur, true);
 
             parentWindow[HANDLER_KEY] = () => {
+                parentDoc.removeEventListener("pointerdown", handlePointerDown, true);
                 parentDoc.removeEventListener("focusin", handleFocus, true);
                 parentDoc.removeEventListener("keydown", handleKeydown, true);
                 parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
@@ -815,6 +849,12 @@ def install_objects_progress_sync(
                 return row.querySelector(".objects-pricing-price-input");
             }
 
+            function hideProjectCostSuggestion(row) {
+                if (!isProjectCostRow(row)) return;
+                const suggestion = row.querySelector(".objects-pricing-suggestion");
+                if (suggestion) suggestion.textContent = "";
+            }
+
             function manualPrices() {
                 if (!parentWindow[MANUAL_PRICES_KEY]) parentWindow[MANUAL_PRICES_KEY] = {};
                 if (!parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID]) parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID] = {};
@@ -831,6 +871,7 @@ def install_objects_progress_sync(
                 const objectKey = row ? row.dataset.objectKey || "" : "";
                 if (!objectKey) return;
                 manualPrices()[objectKey] = Math.max(0, Math.round(readNumber(value, 0)));
+                hideProjectCostSuggestion(row);
             }
 
             function saleInputValue(input) {
@@ -869,6 +910,7 @@ def install_objects_progress_sync(
                 const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
                 const manualUnit = manualSaleUnit(row);
                 const effectiveUnit = manualUnit == null ? saleUnit : manualUnit;
+                if (manualUnit != null) hideProjectCostSuggestion(row);
                 if (input && parentDoc.activeElement !== input && effectiveUnit != null) {
                     const formatted = formatInputMoney(effectiveUnit);
                     setSaleInputValue(input, formatted);
@@ -897,64 +939,8 @@ def install_objects_progress_sync(
             }
 
             function bindSaleInputs() {
-                rowsForEstimate().forEach((row) => {
-                    const input = saleInput(row);
-                    if (!input || input.dataset.objectsInputBound === "true") return;
-                    input.dataset.objectsInputBound = "true";
-                    input.addEventListener("focus", () => {
-                        if (input.getAttribute("aria-disabled") === "true") return;
-                        const digits = inputDigits(saleInputValue(input));
-                        setSaleInputValue(input, digits);
-                    });
-                    input.addEventListener("keydown", (event) => {
-                        if (input.getAttribute("aria-disabled") === "true") {
-                            event.preventDefault();
-                            return;
-                        }
-                        const allowedKeys = new Set([
-                            "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
-                            "Home", "End", "Tab", "Enter", "Escape",
-                        ]);
-                        if (event.metaKey || event.ctrlKey || event.altKey || allowedKeys.has(event.key)) return;
-                        if (!/^[0-9]$/.test(event.key)) event.preventDefault();
-                    });
-                    input.addEventListener("beforeinput", (event) => {
-                        if (input.getAttribute("aria-disabled") === "true") {
-                            event.preventDefault();
-                            return;
-                        }
-                        if (event.data && /[^0-9]/.test(event.data)) {
-                            event.preventDefault();
-                        }
-                    });
-                    input.addEventListener("paste", (event) => {
-                        if (input.getAttribute("aria-disabled") === "true") {
-                            event.preventDefault();
-                            return;
-                        }
-                        event.preventDefault();
-                        const text = event.clipboardData ? event.clipboardData.getData("text") : "";
-                        const digits = inputDigits(text);
-                        parentDoc.execCommand("insertText", false, digits);
-                    });
-                    input.addEventListener("input", () => {
-                        input.dataset.userEdited = "true";
-                        const digits = inputDigits(saleInputValue(input));
-                        if (saleInputValue(input) !== digits) setSaleInputValue(input, digits);
-                        setManualSaleUnit(row, digits ? Number(digits) : 0);
-                        updateLineTotalFromInput(row);
-                        updateProjectPricingIfComplete();
-                    });
-                    input.addEventListener("blur", () => {
-                        if (input.getAttribute("aria-disabled") === "true") return;
-                        input.dataset.userEdited = "true";
-                        const digits = inputDigits(saleInputValue(input));
-                        setManualSaleUnit(row, digits ? Number(digits) : 0);
-                        setSaleInputValue(input, formatInputMoney(digits ? Number(digits) : 0));
-                        updateLineTotalFromInput(row);
-                        updateProjectPricingIfComplete();
-                    });
-                });
+                // Editing is handled by install_objects_price_input_guard. Keep this no-op
+                // so progress rendering never installs competing focus/input listeners.
             }
 
             function setSummaryValue(field, value) {
