@@ -51,3 +51,5 @@ Objects Estimation Delivery/Installation manual override scoped per input, за�
 Backup v2.01.33_before_project_cost_manual_override_scope created, завершена 03.07 18:34
 Objects Estimation pricing overrides persisted and Object Detail editable inputs connected, завершена 04.07 12:45
 Backup v2.01.34_before_persisted_object_detail_edits created, завершена 04.07 12:45
+Validated backup helper and backup-only-through-helper rule added, завершена 04.07 12:55
+Backup v2.01.35_before_validated_backup_helper created, завершена 04.07 12:55

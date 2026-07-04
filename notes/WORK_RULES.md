@@ -73,9 +73,14 @@ Before a commit, create a local backup archive in `backups/`.
 
 Do:
 - create the backup before `git commit`;
-- use the standard exclude list for `.git`, `.venv`, caches, `.streamlit`, `.DS_Store`, and `backups`;
+- create backups only with `.venv/bin/python tools/create_backup.py VERSION SLUG`;
+- let the backup helper validate exclusions and archive size before accepting the backup;
 - keep backup archives local only because `backups/` is ignored by git;
-- do not inspect or verify archive contents unless there is a specific reason.
 - do not ask the user conversationally before routine backup creation; only use a tool approval request if sandbox permissions require it.
 
-Short version: backup first, no archive checking by default.
+Avoid:
+- hand-writing `zip -r` backup commands;
+- accepting a backup that has not passed helper validation;
+- deleting and recreating an invalid backup without explaining the validation failure.
+
+Short version: backup first, helper only, validation required.

@@ -2,6 +2,28 @@
 
 Rules for local project backups. This file exists because backup mistakes are easy to repeat when zip exclude masks are typed by hand.
 
+## Required command
+
+Always create backups through the validated helper:
+
+```bash
+.venv/bin/python tools/create_backup.py vX.Y.Z before_task_name
+```
+
+Do not create backups with a hand-written `zip -r` command. The helper owns archive naming, exclusions, validation, and cleanup after failed validation.
+
+## Helper validation
+
+The helper must reject and delete the archive if any of these checks fail:
+
+- no `.git/` paths inside the archive;
+- no `.venv/` paths inside the archive;
+- no `backups/` paths inside the archive;
+- no `.streamlit/`, `__pycache__`, or `.DS_Store` paths inside the archive;
+- `app.py` is present;
+- `notes/DONE_LOG.md` is present;
+- archive size is not suspiciously large.
+
 ## Always exclude
 
 - `.git/*`
@@ -13,9 +35,9 @@ Rules for local project backups. This file exists because backup mistakes are ea
 - `.DS_Store`
 - `*/.DS_Store`
 
-## Safe zip command shape
+## Legacy zip command shape
 
-Always quote every exclude mask so the shell does not expand it before `zip` receives it.
+This command is kept only as historical reference. Do not use it for routine backups; use `tools/create_backup.py`.
 
 ```bash
 zip -r backups/VERSION_FOLDER/costerly-app_VERSION_YYYY-MM-DD.zip . \
@@ -25,14 +47,14 @@ zip -r backups/VERSION_FOLDER/costerly-app_VERSION_YYYY-MM-DD.zip . \
 
 ## Required self-check after every backup
 
-Run this before calling the backup valid:
+The helper runs validation automatically. If a manual archive is ever explicitly requested, run this before calling the backup valid:
 
 ```bash
 unzip -l backups/VERSION_FOLDER/costerly-app_VERSION_YYYY-MM-DD.zip | \
   grep -E '(^|/)(\.git|\.venv|\.streamlit|backups|__pycache__)(/|$)'
 ```
 
-Expected result: no output. Any output means the archive is invalid and must be deleted and rebuilt.
+Expected result: no output. Any output means the archive is invalid and must be deleted and rebuilt through `tools/create_backup.py`.
 
 ## Commit rule
 
