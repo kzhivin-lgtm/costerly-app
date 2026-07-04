@@ -161,6 +161,15 @@ def fetch_rfq_object_estimates(client: Client, estimate_id: str) -> pd.DataFrame
     )
 
 
+def fetch_rfq_estimate_pricing_overrides(client: Client, estimate_id: str) -> pd.DataFrame:
+    return fetch_table(
+        client,
+        "rfq_estimate_pricing_overrides",
+        order_by="object_key",
+        filters={"estimate_id": estimate_id},
+    )
+
+
 def fetch_rfq_estimate_lines_for_object(
     client: Client,
     *,
@@ -257,6 +266,25 @@ def update_rfq_object_estimate_totals(
             "vat_amount": vat_amount,
             "self_cost_total": self_cost_total,
         },
+    ).eq(
+        "estimate_id",
+        estimate_id,
+    ).eq(
+        "object_id",
+        object_id,
+    ).execute()
+
+
+def update_rfq_object_estimate_approved(
+    client: Client,
+    *,
+    estimate_id: str,
+    object_id: str,
+    approved: bool,
+) -> None:
+    """Persist Object Detail approval state."""
+    client.table("rfq_object_estimates").update(
+        {"approved": approved},
     ).eq(
         "estimate_id",
         estimate_id,

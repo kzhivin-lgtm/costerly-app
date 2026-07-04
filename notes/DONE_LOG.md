@@ -49,3 +49,5 @@ Objects Estimation sale price input guard fixed without changing table layout, �
 Backup v2.01.32_before_objects_sale_price_input_guard created, завершена 03.07 15:10
 Objects Estimation Delivery/Installation manual override scoped per input, завершена 03.07 18:34
 Backup v2.01.33_before_project_cost_manual_override_scope created, завершена 03.07 18:34
+Objects Estimation pricing overrides persisted and Object Detail editable inputs connected, завершена 04.07 12:45
+Backup v2.01.34_before_persisted_object_detail_edits created, завершена 04.07 12:45

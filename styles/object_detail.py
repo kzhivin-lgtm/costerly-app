@@ -268,7 +268,7 @@ def apply_object_detail_css() -> None:
 
         .object-detail-final-title {
             font-family: var(--font-mono);
-            font-size: 24px;
+            font-size: 30px;
             line-height: 1.12;
             font-weight: 700;
             letter-spacing: 0.02em;
@@ -277,20 +277,20 @@ def apply_object_detail_css() -> None:
         }
 
         .object-detail-final-label {
-            font-size: 11px;
-            margin: 0 0 6px 0;
+            font-size: 13px;
+            margin: 0 0 8px 0;
         }
 
         .object-detail-final-value {
             font-family: var(--font-mono);
-            font-size: 16px;
+            font-size: 24px;
             font-weight: 700;
             color: var(--color-text-strong);
             text-align: center;
         }
 
         .object-detail-final-total {
-            font-size: 24px;
+            font-size: 30px;
             color: var(--color-accent);
         }
 

@@ -389,9 +389,16 @@ def scroll_parent_to_top() -> None:
     )
 
 
-def install_objects_price_input_guard(*, estimate_id: str) -> None:
+def install_objects_price_input_guard(
+    *,
+    estimate_id: str,
+    supabase_url: str | None = None,
+    supabase_anon_key: str | None = None,
+) -> None:
     """Install always-on editing behavior for Objects sale price controls."""
     estimate_id_json = json.dumps(estimate_id)
+    supabase_url_json = json.dumps(supabase_url.rstrip("/")) if supabase_url else "null"
+    supabase_anon_key_json = json.dumps(supabase_anon_key) if supabase_anon_key else "null"
     components.html(
         """
         <script>
@@ -399,6 +406,8 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
             const ESTIMATE_ID = __ESTIMATE_ID__;
+            const SUPABASE_URL = __SUPABASE_URL__;
+            const SUPABASE_ANON_KEY = __SUPABASE_ANON_KEY__;
             const HANDLER_KEY = "__costerlyObjectsPriceInputGuardCleanup";
             const MANUAL_PRICES_KEY = "__costerlyObjectsManualSalePrices";
             let pointerStartedInPriceInput = false;
@@ -478,6 +487,20 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
                 return parentWindow[MANUAL_PRICES_KEY][ESTIMATE_ID];
             }
 
+            function seedManualPricesFromDom() {
+                const prices = manualPrices();
+                for (const row of parentDoc.querySelectorAll(
+                    `.objects-pricing-row[data-estimate-id="${CSS.escape(String(ESTIMATE_ID || ""))}"]`
+                )) {
+                    const input = row.querySelector('.objects-pricing-price-input[data-pricing-overridden="true"]');
+                    const objectKey = row.dataset.objectKey || "";
+                    if (!input || !objectKey || Number.isFinite(prices[objectKey])) continue;
+                    prices[objectKey] = Math.max(0, Math.round(readMoneyNumber(saleInputValue(input))));
+                    input.dataset.userEdited = "true";
+                    hideProjectCostSuggestion(row);
+                }
+            }
+
             function setManualSaleUnit(row, value) {
                 const key = row.dataset.objectKey || "";
                 if (!key) return;
@@ -485,6 +508,35 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
                 const input = row.querySelector(".objects-pricing-price-input");
                 if (input) input.dataset.userEdited = "true";
                 hideProjectCostSuggestion(row);
+            }
+
+            async function persistManualSaleUnit(row, value) {
+                if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+                const objectKey = row ? row.dataset.objectKey || "" : "";
+                if (!objectKey) return;
+                const payload = {
+                    estimate_id: ESTIMATE_ID,
+                    object_key: objectKey,
+                    field: "sale_price_unit",
+                    value: Math.max(0, Math.round(readNumber(value, 0))),
+                    updated_at: new Date().toISOString(),
+                };
+                try {
+                    await fetch(`${SUPABASE_URL}/rest/v1/rfq_estimate_pricing_overrides?on_conflict=estimate_id,object_key,field`, {
+                        method: "POST",
+                        headers: {
+                            "apikey": SUPABASE_ANON_KEY,
+                            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                            "Content-Type": "application/json",
+                            "Prefer": "resolution=merge-duplicates,return=minimal",
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                } catch (error) {
+                    if (parentWindow.console && parentWindow.console.warn) {
+                        parentWindow.console.warn("Could not persist pricing override", error);
+                    }
+                }
             }
 
             function rowsForEstimate() {
@@ -621,7 +673,11 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
                 if (!ctx || isDisabled(ctx.input)) return;
                 const digits = sanitizeActive(ctx.input);
                 const changed = ctx.input.dataset.editDirty === "true" || digits !== (ctx.input.dataset.editStartDigits || "");
-                if (changed) setManualSaleUnit(ctx.row, digits ? Number(digits) : 0);
+                if (changed) {
+                    const value = digits ? Number(digits) : 0;
+                    setManualSaleUnit(ctx.row, value);
+                    persistManualSaleUnit(ctx.row, value);
+                }
                 setSaleInputValue(ctx.input, formatMoney(digits ? Number(digits) : 0));
                 updateLineTotal(ctx.row);
                 updateProjectPricing();
@@ -655,9 +711,130 @@ def install_objects_price_input_guard(*, estimate_id: str) -> None:
                 parentDoc.removeEventListener("focusout", handleBlur, true);
                 parentWindow[HANDLER_KEY] = null;
             };
+            seedManualPricesFromDom();
         })();
         </script>
-        """.replace("__ESTIMATE_ID__", estimate_id_json),
+        """
+        .replace("__ESTIMATE_ID__", estimate_id_json)
+        .replace("__SUPABASE_URL__", supabase_url_json)
+        .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json),
+        height=0,
+    )
+
+
+def install_object_detail_input_guard(
+    *,
+    run_id: str,
+    estimate_id: str,
+    object_id: str,
+) -> None:
+    """Install blur-save behavior for Object Detail HTML inputs."""
+    run_id_json = json.dumps(run_id)
+    estimate_id_json = json.dumps(estimate_id)
+    object_id_json = json.dumps(object_id)
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const RUN_ID = __RUN_ID__;
+            const ESTIMATE_ID = __ESTIMATE_ID__;
+            const OBJECT_ID = __OBJECT_ID__;
+            const HANDLER_KEY = "__costerlyObjectDetailInputGuardCleanup";
+
+            if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
+
+            function inputContext(event) {
+                const target = event.target;
+                if (!target || !target.closest) return null;
+                const input = target.closest(".object-detail-cell-input");
+                if (!input) return null;
+                const row = input.closest(".object-detail-table-row");
+                const lineId = row ? row.dataset.lineId || "" : "";
+                const field = input.dataset.field || "";
+                if (!lineId || !field) return null;
+                return { input, lineId, field };
+            }
+
+            function cleanMoney(value) {
+                return String(value || "").replace(/₪/g, "").replace(/[,\u202f]/g, "").trim();
+            }
+
+            function cleanNumber(value) {
+                return cleanMoney(value).replace(/[^0-9.]/g, "");
+            }
+
+            function normalizeInputValue(input) {
+                if (input.classList.contains("object-detail-cell-input--text")) {
+                    return String(input.value || "").trim();
+                }
+                return cleanNumber(input.value);
+            }
+
+            function handleFocus(event) {
+                const ctx = inputContext(event);
+                if (!ctx) return;
+                ctx.input.dataset.editStartValue = normalizeInputValue(ctx.input);
+                if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
+                    ctx.input.value = ctx.input.dataset.editStartValue;
+                }
+            }
+
+            function handleKeydown(event) {
+                const ctx = inputContext(event);
+                if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
+                const allowedKeys = new Set([
+                    "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+                    "Home", "End", "Tab", "Enter", "Escape", ".",
+                ]);
+                if (event.metaKey || event.ctrlKey || event.altKey || allowedKeys.has(event.key)) return;
+                if (!/^[0-9]$/.test(event.key)) event.preventDefault();
+            }
+
+            function handleBeforeInput(event) {
+                const ctx = inputContext(event);
+                if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
+                if (event.data && /[^0-9.]/.test(event.data)) event.preventDefault();
+            }
+
+            function handleBlur(event) {
+                const ctx = inputContext(event);
+                if (!ctx) return;
+                const nextValue = normalizeInputValue(ctx.input);
+                const startValue = ctx.input.dataset.editStartValue || "";
+                if (nextValue === startValue) return;
+
+                const params = new URLSearchParams();
+                params.set("screen", "object_detail");
+                if (RUN_ID) params.set("run_id", RUN_ID);
+                params.set("estimate_id", ESTIMATE_ID);
+                params.set("object_id", OBJECT_ID);
+                params.set("od_edit_line", ctx.lineId);
+                params.set("od_edit_field", ctx.field);
+                params.set("od_edit_value", nextValue);
+                params.set("od_edit_nonce", String(Date.now()));
+                parentWindow.location.search = `?${params.toString()}`;
+            }
+
+            parentDoc.addEventListener("focusin", handleFocus, true);
+            parentDoc.addEventListener("keydown", handleKeydown, true);
+            parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
+            parentDoc.addEventListener("focusout", handleBlur, true);
+
+            parentWindow[HANDLER_KEY] = () => {
+                parentDoc.removeEventListener("focusin", handleFocus, true);
+                parentDoc.removeEventListener("keydown", handleKeydown, true);
+                parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
+                parentDoc.removeEventListener("focusout", handleBlur, true);
+                parentWindow[HANDLER_KEY] = null;
+            };
+        })();
+        </script>
+        """
+        .replace("__RUN_ID__", run_id_json)
+        .replace("__ESTIMATE_ID__", estimate_id_json)
+        .replace("__OBJECT_ID__", object_id_json),
         height=0,
     )
 
@@ -1373,7 +1550,10 @@ def install_upload_processing_shell(shell_html: str) -> None:
                     if (realProcessingIsActive()) removeShell();
                 });
 
-                observer.observe(document.body, { childList: true, subtree: true });
+                const observerRoot = document.body || document.documentElement;
+                if (observerRoot) {
+                    observer.observe(observerRoot, { childList: true, subtree: true });
+                }
                 bindInputs();
                 startWatcher();
             }.toString() + ")();";

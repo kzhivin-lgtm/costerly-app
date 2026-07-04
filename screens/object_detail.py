@@ -5,7 +5,12 @@ import html
 import streamlit as st
 
 from styles.object_detail import apply_object_detail_css
-from use_cases.estimation import load_object_detail_data
+from ui.js_guards import install_object_detail_input_guard
+from use_cases.estimation import (
+    apply_object_detail_line_edit,
+    approve_object_estimate,
+    load_object_detail_data,
+)
 
 
 def _escape(value: object) -> str:
@@ -27,6 +32,25 @@ def _money(value: object) -> str:
         return _escape(value)
 
 
+def _quantity(value: object) -> str:
+    try:
+        return str(int(float(value)))
+    except (TypeError, ValueError):
+        return _escape(value)
+
+
+def _number_text(value: object) -> str:
+    if value is None or value == "":
+        return ""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if number == int(number):
+        return str(int(number))
+    return f"{number:.2f}".rstrip("0").rstrip(".")
+
+
 def _metric_html(label: str, value: object) -> str:
     """Render one compact section metric."""
     formatted = _money(value) if isinstance(value, int | float) else _escape(value)
@@ -38,11 +62,12 @@ def _metric_html(label: str, value: object) -> str:
     )
 
 
-def _input_html(value: object, kind: str = "text") -> str:
+def _input_html(value: object, kind: str = "text", field: str = "") -> str:
     """Render a visual editable field for future calculation wiring."""
+    field_attr = f' data-field="{_escape(field)}"' if field else ""
     return (
         f'<input class="object-detail-cell-input object-detail-cell-input--{kind}" '
-        f'value="{_escape(value)}" />'
+        f'value="{_escape(value)}"{field_attr} />'
     )
 
 
@@ -53,8 +78,8 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
         return [
             _escape(row.get("work")),
             _escape(row.get("role")),
-            _input_html(row.get("hours"), "number"),
-            _input_html(_money(row.get("rate")), "money"),
+            _input_html(_number_text(row.get("hours")), "number", "hours"),
+            _input_html(_money(row.get("rate")), "money", "rate"),
             _money(row.get("cost")),
         ]
     if len(columns) == 4:
@@ -66,17 +91,27 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
         )
         return [
             _escape(row.get("item")),
-            _input_html(monthly_cost_value, "money"),
-            _input_html(row.get("allocation"), "text"),
+            _input_html(monthly_cost_value, "money", "monthly_cost"),
+            _input_html(row.get("allocation"), "text", "allocation_basis"),
             _money(row.get("cost")),
         ]
     return [
         _escape(row.get("item")),
         _escape(row.get("unit")),
-        _input_html(_money(row.get("unit_cost")), "money"),
-        _input_html(row.get("qty"), "number"),
+        _input_html(_money(row.get("unit_cost")), "money", "unit_cost"),
+        _input_html(_number_text(row.get("qty")), "number", "quantity"),
         _money(row.get("cost")),
     ]
+
+
+def _group_summary_value(column: str, group_rows: list[dict[str, object]]) -> str:
+    if column in {"Qty", "Hours"}:
+        key = "qty" if column == "Qty" else "hours"
+        return _number_text(sum(float(row.get(key) or 0) for row in group_rows))
+    if column in {"Cost", "Monthly cost"}:
+        key = "monthly_cost" if column == "Monthly cost" else "cost"
+        return _money(sum(float(row.get(key) or 0) for row in group_rows))
+    return ""
 
 
 def _table_html(section: dict[str, object]) -> str:
@@ -94,15 +129,10 @@ def _table_html(section: dict[str, object]) -> str:
     for row in rows:
         grouped_rows.setdefault(row.get("group"), []).append(row)
 
-    has_qty_summary = "Qty" in columns and "Cost" in columns
     for group, group_rows in grouped_rows.items():
         summary_cells = ['<span class="object-detail-group-title">' + _escape(group) + "</span>"]
         for column in columns[1:]:
-            value = ""
-            if has_qty_summary and column == "Qty":
-                value = _escape(sum(row.get("qty") or 0 for row in group_rows))
-            elif has_qty_summary and column == "Cost":
-                value = _money(sum(row.get("cost") or 0 for row in group_rows))
+            value = _group_summary_value(column, group_rows)
             summary_cells.append(
                 f'<span class="object-detail-group-total">{value}</span>'
             )
@@ -117,7 +147,8 @@ def _table_html(section: dict[str, object]) -> str:
         for row in group_rows:
             values = _row_values(section, row)
             body_parts.append(
-                '<div class="object-detail-table-row">'
+                '<div class="object-detail-table-row" '
+                f'data-line-id="{_escape(row.get("line_id"))}">'
                 + "".join(f'<div class="object-detail-table-cell">{value}</div>' for value in values)
                 + "</div>"
             )
@@ -185,6 +216,8 @@ def render_object_detail_screen(company_id: str) -> None:
             st.rerun()
         return
 
+    _consume_pending_object_detail_edit()
+
     try:
         data = load_object_detail_data(
             estimate_id=estimate_id,
@@ -207,7 +240,7 @@ def render_object_detail_screen(company_id: str) -> None:
         '</h1>'
         '<div class="object-detail-info-row">'
         '<span class="object-detail-info-label">QTY:</span>'
-        f'<span class="object-detail-info-value">{_escape(data["quantity"])}</span>'
+        f'<span class="object-detail-info-value">{_quantity(data["quantity"])}</span>'
         '<span>·</span>'
         '<span class="object-detail-info-label">AI confidence:</span>'
         f'<span class="object-detail-info-value">{_escape(data["confidence"])}</span>'
@@ -231,7 +264,30 @@ def render_object_detail_screen(company_id: str) -> None:
         st.rerun()
 
     if col_approve.button("APPROVE ESTIMATE", type="primary", use_container_width=True):
+        approve_object_estimate(
+            estimate_id=str(estimate_id),
+            object_id=str(object_id),
+        )
         approved_object_keys = st.session_state.setdefault("approved_object_keys", set())
         approved_object_keys.add(data["object_key"])
         st.session_state.screen = "objects"
         st.rerun()
+
+    install_object_detail_input_guard(
+        run_id=str(st.session_state.get("current_run_id") or ""),
+        estimate_id=str(estimate_id),
+        object_id=str(object_id),
+    )
+
+
+def _consume_pending_object_detail_edit() -> None:
+    pending = st.session_state.pop("object_detail_pending_edit", None)
+    if not pending:
+        return
+    apply_object_detail_line_edit(
+        estimate_id=str(pending.get("estimate_id") or ""),
+        object_id=str(pending.get("object_id") or ""),
+        line_id=str(pending.get("line_id") or ""),
+        field=str(pending.get("field") or ""),
+        value=str(pending.get("value") or ""),
+    )

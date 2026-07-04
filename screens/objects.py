@@ -57,13 +57,14 @@ def _input_money(value: object) -> str:
         return _escape(value)
 
 
-def _sale_input_html(value: object) -> str:
+def _sale_input_html(value: object, *, overridden: bool = False) -> str:
     input_value = _input_money(value)
     editable_attr = '' if input_value == "—" else ' contenteditable="true" tabindex="0"'
     disabled_attr = ' aria-disabled="true"' if input_value == "—" else ' aria-disabled="false"'
+    overridden_attr = ' data-pricing-overridden="true"' if overridden else ''
     return (
         '<div class="objects-pricing-price-input" role="textbox" inputmode="numeric" '
-        f'{editable_attr}{disabled_attr}>{input_value}</div>'
+        f'{editable_attr}{disabled_attr}{overridden_attr}>{input_value}</div>'
     )
 
 
@@ -119,7 +120,7 @@ def _row_html(
         f'<div class="objects-pricing-number">{_quantity(row.get("quantity"))}</div>'
         f'<div class="objects-pricing-price objects-pricing-self-cost-cell">{self_cost_html}</div>'
         '<div class="objects-pricing-sale-cell">'
-        f'{_sale_input_html(row.get("sale_price_unit"))}'
+        f'{_sale_input_html(row.get("sale_price_unit"), overridden=bool(row.get("sale_price_overridden")))}'
         f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
         '</div>'
         f'<div class="objects-pricing-price objects-pricing-sale-total-cell">{sale_total_html}</div>'
@@ -149,7 +150,7 @@ def _project_cost_row_html(
         f'{_row_materials_html(row.get("materials"))}'
         '</div>'
         '<div class="objects-pricing-project-cost-cell">'
-        f'{_sale_input_html(row.get("sale_price_unit"))}'
+        f'{_sale_input_html(row.get("sale_price_unit"), overridden=bool(row.get("sale_price_overridden")))}'
         f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
         '</div>'
         '</div>'
@@ -540,8 +541,13 @@ def render_objects_screen(company_id: str) -> None:
         st.session_state.screen = "objects"
 
     with measure_python_perf("objects guards"):
+        supabase_url, supabase_anon_key = _objects_progress_sync_config()
         if estimate_id:
-            install_objects_price_input_guard(estimate_id=str(estimate_id))
+            install_objects_price_input_guard(
+                estimate_id=str(estimate_id),
+                supabase_url=supabase_url,
+                supabase_anon_key=supabase_anon_key,
+            )
         install_post_upload_transition_guard(
             [
                 {
@@ -552,7 +558,6 @@ def render_objects_screen(company_id: str) -> None:
             ],
             current_marker_id=OBJECTS_MARKER_ID,
         )
-        supabase_url, supabase_anon_key = _objects_progress_sync_config()
         if estimate_id and supabase_url and supabase_anon_key:
             install_objects_progress_sync(
                 supabase_url=supabase_url,

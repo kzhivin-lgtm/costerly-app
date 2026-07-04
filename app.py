@@ -37,12 +37,30 @@ def main() -> None:
         requested_run_id = st.query_params.get("run_id")
         requested_estimate_id = st.query_params.get("estimate_id")
         requested_object_id = st.query_params.get("object_id")
+        object_detail_edit_line = st.query_params.get("od_edit_line")
+        object_detail_edit_field = st.query_params.get("od_edit_field")
+        object_detail_edit_value = st.query_params.get("od_edit_value")
         if requested_run_id:
             st.session_state.current_run_id = requested_run_id
         if requested_estimate_id:
             st.session_state.current_estimate_id = requested_estimate_id
         if requested_object_id:
             st.session_state.current_object_id = requested_object_id
+        if (
+            requested_screen == "object_detail"
+            and requested_estimate_id
+            and requested_object_id
+            and object_detail_edit_line
+            and object_detail_edit_field
+            and object_detail_edit_value is not None
+        ):
+            st.session_state.object_detail_pending_edit = {
+                "estimate_id": requested_estimate_id,
+                "object_id": requested_object_id,
+                "line_id": object_detail_edit_line,
+                "field": object_detail_edit_field,
+                "value": object_detail_edit_value,
+            }
         st.query_params.clear()
 
     screen = st.session_state.screen

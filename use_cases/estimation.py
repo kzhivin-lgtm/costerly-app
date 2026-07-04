@@ -7,14 +7,18 @@ from agents.estimation_agent import run_estimation_agent
 from agents.schemas.estimation_schema import validate_estimation_result
 from db.repositories import (
     fetch_company_data,
+    fetch_rfq_estimate_pricing_overrides,
     fetch_rfq_estimate_lines_for_object,
     fetch_rfq_object_estimates,
     fetch_rfq_detected_objects,
     fetch_rfq_run,
     insert_agent_usage_event,
     replace_rfq_estimate_lines_for_object,
+    update_rfq_estimate_line,
+    update_rfq_object_estimate_approved,
     update_rfq_object_estimate_progress,
     update_rfq_object_estimate_status,
+    update_rfq_object_estimate_totals,
     upsert_rfq_estimate_shell,
 )
 from db.supabase_client import get_supabase_client
@@ -96,6 +100,11 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     """Load current object estimate statuses for the Objects Estimation screen."""
     client = get_supabase_client()
     objects_df = read_with_retry(lambda: fetch_rfq_object_estimates(client, estimate_id))
+    try:
+        overrides_df = read_with_retry(lambda: fetch_rfq_estimate_pricing_overrides(client, estimate_id))
+    except Exception:
+        overrides_df = None
+    sale_price_overrides = _pricing_overrides_by_object(overrides_df)
 
     rows = []
     for _, item in objects_df.iterrows():
@@ -103,6 +112,9 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         status = str(row.get("status") or "pending")
         self_cost = row.get("self_cost_ex_vat")
         sale_price_unit = _suggested_sale_price(self_cost) if status == "completed" else None
+        sale_price_overridden = status == "completed" and row.get("object_id") in sale_price_overrides
+        if sale_price_overridden:
+            sale_price_unit = sale_price_overrides[row.get("object_id")]
         rows.append(
             {
                 "object_key": row.get("object_id"),
@@ -116,12 +128,13 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "progress_updated_at": row.get("progress_updated_at"),
                 "sale_price_unit": sale_price_unit,
                 "sale_price_total": _line_total(sale_price_unit, row.get("quantity")),
+                "sale_price_overridden": sale_price_overridden,
                 "suggestion": "suggested: SC + 30%",
                 "reviewed": bool(row.get("approved")),
             }
         )
 
-    project_costs, summary = _objects_project_pricing(rows)
+    project_costs, summary = _objects_project_pricing(rows, sale_price_overrides)
     return {
         "rows": rows,
         "project_costs": project_costs,
@@ -144,16 +157,37 @@ def _line_total(unit_price: Any, quantity: Any) -> float | None:
     return round(_number(unit_price, 0) * _number(quantity, 1), 2)
 
 
-def _objects_project_pricing(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _pricing_overrides_by_object(overrides_df: Any) -> dict[str, float]:
+    if overrides_df is None or overrides_df.empty:
+        return {}
+    overrides: dict[str, float] = {}
+    for _, item in overrides_df.iterrows():
+        row = item.to_dict()
+        if row.get("field") != "sale_price_unit":
+            continue
+        object_key = str(row.get("object_key") or "")
+        if not object_key:
+            continue
+        overrides[object_key] = round(_number(row.get("value"), 0), 2)
+    return overrides
+
+
+def _objects_project_pricing(
+    rows: list[dict[str, Any]],
+    sale_price_overrides: dict[str, float] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Calculate project-level suggested costs after all objects are priced."""
+    sale_price_overrides = sale_price_overrides or {}
     object_rows = [row for row in rows if row.get("object_key")]
     all_completed = bool(object_rows) and all(
         str(row.get("status") or "").lower() == "completed" for row in object_rows
     )
     objects_subtotal = sum(_number(row.get("sale_price_total"), 0) for row in object_rows)
 
-    delivery = round(objects_subtotal * 0.03, 2) if all_completed else None
-    installation = round(objects_subtotal * 0.10, 2) if all_completed else None
+    delivery_suggested = round(objects_subtotal * 0.03, 2) if all_completed else None
+    installation_suggested = round(objects_subtotal * 0.10, 2) if all_completed else None
+    delivery = sale_price_overrides.get("delivery", delivery_suggested)
+    installation = sale_price_overrides.get("installation", installation_suggested)
     project_price = (
         round(objects_subtotal + _number(delivery, 0) + _number(installation, 0), 2)
         if all_completed
@@ -172,7 +206,8 @@ def _objects_project_pricing(rows: list[dict[str, Any]]) -> tuple[list[dict[str,
                 "self_cost_unit": None,
                 "sale_price_unit": delivery,
                 "sale_price_total": None,
-                "suggestion": "suggested: 3% of objects subtotal",
+                "sale_price_overridden": "delivery" in sale_price_overrides,
+                "suggestion": "" if "delivery" in sale_price_overrides else "suggested: 3% of objects subtotal",
                 "reviewed": False,
             },
             {
@@ -183,7 +218,8 @@ def _objects_project_pricing(rows: list[dict[str, Any]]) -> tuple[list[dict[str,
                 "self_cost_unit": None,
                 "sale_price_unit": installation,
                 "sale_price_total": None,
-                "suggestion": "suggested: 10% of objects subtotal",
+                "sale_price_overridden": "installation" in sale_price_overrides,
+                "suggestion": "" if "installation" in sale_price_overrides else "suggested: 10% of objects subtotal",
                 "reviewed": False,
             },
         ],
@@ -221,6 +257,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
             material_rows.append(
                 {
                     "group": item.get("group_name"),
+                    "line_id": item.get("line_id"),
                     "item": item.get("item_name"),
                     "unit": item.get("unit"),
                     "unit_cost": item.get("unit_cost"),
@@ -232,6 +269,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
             labor_rows.append(
                 {
                     "group": item.get("group_name"),
+                    "line_id": item.get("line_id"),
                     "work": item.get("item_name"),
                     "role": item.get("role"),
                     "hours": item.get("hours"),
@@ -250,6 +288,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
             overhead_rows.append(
                 {
                     "group": item.get("group_name"),
+                    "line_id": item.get("line_id"),
                     "item": item.get("item_name"),
                     "monthly_cost": monthly_cost,
                     "monthly_cost_display": monthly_cost_display,
@@ -269,6 +308,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         "object_key": object_id,
         "name": object_row.get("object_name"),
         "quantity": object_row.get("quantity"),
+        "approved": bool(object_row.get("approved")),
         "confidence": "—",
         "preview_label": "Object preview",
         "sections": [
@@ -311,6 +351,142 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
             "total": object_row.get("self_cost_total"),
         },
     }
+
+
+def approve_object_estimate(*, estimate_id: str, object_id: str) -> None:
+    """Mark one object estimate approved in Supabase."""
+    client = get_supabase_client()
+    update_rfq_object_estimate_approved(
+        client,
+        estimate_id=estimate_id,
+        object_id=object_id,
+        approved=True,
+    )
+
+
+def apply_object_detail_line_edit(
+    *,
+    estimate_id: str,
+    object_id: str,
+    line_id: str,
+    field: str,
+    value: str,
+) -> None:
+    """Persist one Object Detail edit and recalculate object totals."""
+    field = str(field or "")
+    if field not in {
+        "unit_cost",
+        "quantity",
+        "hours",
+        "rate",
+        "monthly_cost",
+        "allocation_basis",
+    }:
+        return
+
+    client = get_supabase_client()
+    lines_df = fetch_rfq_estimate_lines_for_object(
+        client,
+        estimate_id=estimate_id,
+        object_id=object_id,
+    )
+    matching = lines_df[lines_df["line_id"] == line_id]
+    if matching.empty:
+        return
+
+    line = matching.iloc[0].to_dict()
+    section = str(line.get("section") or "")
+    updates: dict[str, Any] = {"updated_at": datetime.now(UTC).isoformat()}
+
+    if field == "allocation_basis":
+        if section != "overhead":
+            return
+        updates["allocation_basis"] = str(value or "").strip()
+    else:
+        numeric_value = _number_from_edit(value)
+        updates[field] = numeric_value
+
+        if section == "material" and field in {"unit_cost", "quantity"}:
+            unit_cost = numeric_value if field == "unit_cost" else _number(line.get("unit_cost"), 0)
+            quantity = numeric_value if field == "quantity" else _number(line.get("quantity"), 0)
+            updates["cost"] = round(unit_cost * quantity, 2)
+        elif section == "labor" and field in {"hours", "rate"}:
+            hours = numeric_value if field == "hours" else _number(line.get("hours"), 0)
+            rate = numeric_value if field == "rate" else _number(line.get("rate"), 0)
+            updates["cost"] = round(hours * rate, 2)
+        elif section == "overhead" and field == "monthly_cost":
+            old_monthly = _number(line.get("monthly_cost"), 0)
+            old_cost = _number(line.get("cost"), 0)
+            ratio = old_cost / old_monthly if old_monthly else 0
+            updates["cost"] = round(numeric_value * ratio, 2)
+        else:
+            return
+
+    update_rfq_estimate_line(
+        client,
+        estimate_id=estimate_id,
+        line_id=line_id,
+        values=updates,
+    )
+    _recalculate_object_estimate_totals(
+        client,
+        estimate_id=estimate_id,
+        object_id=object_id,
+    )
+
+
+def _number_from_edit(value: Any) -> float:
+    cleaned = str(value or "").replace("₪", "").replace(",", "").replace("\u202f", "").strip()
+    return max(0, _number(cleaned, 0))
+
+
+def _recalculate_object_estimate_totals(
+    client: Any,
+    *,
+    estimate_id: str,
+    object_id: str,
+) -> None:
+    objects_df = fetch_rfq_object_estimates(client, estimate_id)
+    matching = objects_df[objects_df["object_id"] == object_id]
+    if matching.empty:
+        return
+
+    object_row = matching.iloc[0].to_dict()
+    company_data = fetch_company_data(client, str(object_row.get("company_id")))
+    settings = _first_row(company_data["overhead_settings"])
+    vat_percent = _number(settings.get("vat_percent"), 18)
+    employer_load_percent = _number(settings.get("employer_load_percent"), 25)
+
+    lines_df = fetch_rfq_estimate_lines_for_object(
+        client,
+        estimate_id=estimate_id,
+        object_id=object_id,
+    )
+    material_total = 0.0
+    labor_base_total = 0.0
+    overhead_total = 0.0
+    for _, line in lines_df.iterrows():
+        row = line.to_dict()
+        section = str(row.get("section") or "")
+        cost = _number(row.get("cost"), 0)
+        if section == "material":
+            material_total += cost
+        elif section == "labor":
+            labor_base_total += cost
+        elif section == "overhead":
+            overhead_total += cost
+
+    employer_load = round(labor_base_total * employer_load_percent / 100, 2)
+    self_cost_ex_vat = round(material_total + labor_base_total + employer_load + overhead_total, 2)
+    vat_amount = round(self_cost_ex_vat * vat_percent / 100, 2)
+    update_rfq_object_estimate_totals(
+        client,
+        estimate_id=estimate_id,
+        object_id=object_id,
+        self_cost_ex_vat=self_cost_ex_vat,
+        vat_amount=vat_amount,
+        self_cost_total=round(self_cost_ex_vat + vat_amount, 2),
+    )
 
 
 def _first_row(df: Any) -> dict[str, Any]:
