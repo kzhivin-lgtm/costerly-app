@@ -38,6 +38,10 @@ def fetch_company_data(client: Client, company_id: str) -> dict[str, pd.DataFram
     }
 
 
+def fetch_company_overhead_settings(client: Client, company_id: str) -> pd.DataFrame:
+    return fetch_table(client, "overhead_settings", filters={"company_id": company_id})
+
+
 def fetch_estimate_driver_quantities(
     client: Client,
     company_id: str,
@@ -265,6 +269,7 @@ def update_rfq_object_estimate_totals(
             "self_cost_ex_vat": self_cost_ex_vat,
             "vat_amount": vat_amount,
             "self_cost_total": self_cost_total,
+            "updated_at": datetime.now(UTC).isoformat(),
         },
     ).eq(
         "estimate_id",
@@ -284,7 +289,10 @@ def update_rfq_object_estimate_approved(
 ) -> None:
     """Persist Object Detail approval state."""
     client.table("rfq_object_estimates").update(
-        {"approved": approved},
+        {
+            "approved": approved,
+            "updated_at": datetime.now(UTC).isoformat(),
+        },
     ).eq(
         "estimate_id",
         estimate_id,

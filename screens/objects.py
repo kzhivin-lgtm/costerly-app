@@ -492,7 +492,11 @@ def render_objects_screen(company_id: str) -> None:
     ):
         object_rows = "".join(
             _row_html(
-                {**row, "reviewed": row.get("object_key") in approved_object_keys},
+                {
+                    **row,
+                    "reviewed": bool(row.get("reviewed"))
+                    or row.get("object_key") in approved_object_keys,
+                },
                 with_review=True,
                 show_sale_total=True,
                 estimate_id=estimate_id,

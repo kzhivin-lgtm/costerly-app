@@ -765,11 +765,160 @@ def install_object_detail_input_guard(
                 return cleanMoney(value).replace(/[^0-9.]/g, "");
             }
 
+            function readNumber(value) {
+                const parsed = Number(cleanNumber(value));
+                return Number.isFinite(parsed) ? parsed : 0;
+            }
+
+            function formatNumber(value) {
+                const rounded = Math.round((Number(value) || 0) * 100) / 100;
+                if (rounded === Math.trunc(rounded)) return String(Math.trunc(rounded));
+                return String(rounded).replace(/0+$/, "").replace(/\\.$/, "");
+            }
+
+            function formatMoney(value) {
+                const rounded = Math.round(Number(value) || 0);
+                return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
+            }
+
+            function editableValue(input) {
+                if (!input) return "";
+                return "value" in input ? input.value : input.textContent;
+            }
+
+            function setEditableValue(input, value) {
+                if (!input) return;
+                if ("value" in input) {
+                    input.value = value;
+                } else {
+                    input.textContent = value;
+                }
+            }
+
+            function sectionNode(section) {
+                return parentDoc.querySelector(`.object-detail-section[data-section="${CSS.escape(String(section || ""))}"]`);
+            }
+
+            function sectionRows(section) {
+                return Array.from(parentDoc.querySelectorAll(
+                    `.object-detail-table-row[data-section="${CSS.escape(String(section || ""))}"]`
+                ));
+            }
+
+            function rowField(row, field) {
+                return row ? row.querySelector(`.object-detail-cell-input[data-field="${CSS.escape(field)}"]`) : null;
+            }
+
+            function fieldNumber(row, field) {
+                return readNumber(editableValue(rowField(row, field)));
+            }
+
+            function rowCost(row) {
+                const cost = row ? row.querySelector(".object-detail-row-cost") : null;
+                return readNumber(cost ? cost.textContent : "");
+            }
+
+            function setRowCost(row, value) {
+                const cost = row ? row.querySelector(".object-detail-row-cost") : null;
+                if (cost) cost.textContent = formatMoney(value);
+            }
+
+            function metricValue(section, metric) {
+                const node = sectionNode(section);
+                if (!node) return null;
+                return node.querySelector(`.object-detail-section-metric[data-metric="${CSS.escape(metric)}"] .object-detail-section-value`);
+            }
+
+            function metricLabel(section, metric) {
+                const node = sectionNode(section);
+                if (!node) return "";
+                const label = node.querySelector(`.object-detail-section-metric[data-metric="${CSS.escape(metric)}"] .object-detail-section-label`);
+                return label ? label.textContent || "" : "";
+            }
+
+            function percentFromLabel(text, fallback) {
+                const match = String(text || "").match(/([0-9]+(?:\\.[0-9]+)?)%/);
+                return match ? Number(match[1]) : fallback;
+            }
+
+            function setMetric(section, metric, value, formatter) {
+                const node = metricValue(section, metric);
+                if (node) node.textContent = formatter(value);
+            }
+
+            function setFinal(field, value) {
+                const node = parentDoc.querySelector(`.object-detail-final-value[data-final="${CSS.escape(field)}"]`);
+                if (node) node.textContent = formatMoney(value);
+            }
+
+            function updateRowCost(row) {
+                if (!row) return;
+                const section = String(row.dataset.section || "");
+                if (section === "material") {
+                    setRowCost(row, fieldNumber(row, "unit_cost") * fieldNumber(row, "quantity"));
+                } else if (section === "labor") {
+                    setRowCost(row, fieldNumber(row, "hours") * fieldNumber(row, "rate"));
+                } else if (section === "overhead") {
+                    const monthly = fieldNumber(row, "monthly_cost");
+                    const initialMonthly = readNumber(row.dataset.initialMonthlyCost || monthly);
+                    const initialCost = readNumber(row.dataset.initialCost || rowCost(row));
+                    const ratio = initialMonthly ? initialCost / initialMonthly : 0;
+                    setRowCost(row, monthly * ratio);
+                }
+            }
+
+            function seedRowBaselines() {
+                for (const row of sectionRows("overhead")) {
+                    if (!row.dataset.initialCost) row.dataset.initialCost = String(rowCost(row));
+                    if (!row.dataset.initialMonthlyCost) {
+                        row.dataset.initialMonthlyCost = String(fieldNumber(row, "monthly_cost"));
+                    }
+                }
+            }
+
+            function sumRows(section, selector) {
+                return sectionRows(section).reduce((total, row) => total + selector(row), 0);
+            }
+
+            function updateSummaries() {
+                const materialCost = sumRows("material", rowCost);
+                const materialVatPct = percentFromLabel(metricLabel("material", "vat_18"), 18);
+                setMetric("material", "cost", materialCost, formatMoney);
+                setMetric("material", "vat_18", materialCost * materialVatPct / 100, formatMoney);
+                setMetric("material", "total", materialCost * (1 + materialVatPct / 100), formatMoney);
+
+                const laborHours = sumRows("labor", (row) => fieldNumber(row, "hours"));
+                const laborCost = sumRows("labor", rowCost);
+                const employerPct = percentFromLabel(metricLabel("labor", "employer_25"), 25);
+                const employerLoad = laborCost * employerPct / 100;
+                setMetric("labor", "total_hours", `${formatNumber(laborHours)} h`, (value) => value);
+                setMetric("labor", "cost", laborCost, formatMoney);
+                setMetric("labor", "employer_25", employerLoad, formatMoney);
+                setMetric("labor", "total", laborCost + employerLoad, formatMoney);
+
+                const overheadCost = sumRows("overhead", rowCost);
+                const overheadVatPct = percentFromLabel(metricLabel("overhead", "vat"), 18);
+                setMetric("overhead", "cost", overheadCost, formatMoney);
+                setMetric("overhead", "vat", overheadCost * overheadVatPct / 100, formatMoney);
+                setMetric("overhead", "total", overheadCost * (1 + overheadVatPct / 100), formatMoney);
+
+                const exclVat = materialCost + laborCost + employerLoad + overheadCost;
+                const finalVatPct = 18;
+                setFinal("excl_vat", exclVat);
+                setFinal("vat", exclVat * finalVatPct / 100);
+                setFinal("total", exclVat * (1 + finalVatPct / 100));
+            }
+
+            function updateCalculations(row) {
+                updateRowCost(row);
+                updateSummaries();
+            }
+
             function normalizeInputValue(input) {
                 if (input.classList.contains("object-detail-cell-input--text")) {
-                    return String(input.value || "").trim();
+                    return String(editableValue(input) || "").trim();
                 }
-                return cleanNumber(input.value);
+                return cleanNumber(editableValue(input));
             }
 
             function handleFocus(event) {
@@ -777,7 +926,7 @@ def install_object_detail_input_guard(
                 if (!ctx) return;
                 ctx.input.dataset.editStartValue = normalizeInputValue(ctx.input);
                 if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
-                    ctx.input.value = ctx.input.dataset.editStartValue;
+                    setEditableValue(ctx.input, ctx.input.dataset.editStartValue);
                 }
             }
 
@@ -798,11 +947,36 @@ def install_object_detail_input_guard(
                 if (event.data && /[^0-9.]/.test(event.data)) event.preventDefault();
             }
 
+            function handleInput(event) {
+                const ctx = inputContext(event);
+                if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
+                updateCalculations(ctx.input.closest(".object-detail-table-row"));
+            }
+
+            function handlePaste(event) {
+                const ctx = inputContext(event);
+                if (!ctx) return;
+                if (ctx.input.classList.contains("object-detail-cell-input--text")) return;
+                event.preventDefault();
+                const text = event.clipboardData ? event.clipboardData.getData("text") : "";
+                parentDoc.execCommand("insertText", false, cleanNumber(text));
+            }
+
             function handleBlur(event) {
                 const ctx = inputContext(event);
                 if (!ctx) return;
                 const nextValue = normalizeInputValue(ctx.input);
                 const startValue = ctx.input.dataset.editStartValue || "";
+                if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
+                    if (ctx.input.classList.contains("object-detail-cell-input--percent")) {
+                        setEditableValue(ctx.input, `${formatNumber(readNumber(nextValue))}%`);
+                    } else if (ctx.field === "quantity" || ctx.field === "hours") {
+                        setEditableValue(ctx.input, formatNumber(readNumber(nextValue)));
+                    } else {
+                        setEditableValue(ctx.input, formatMoney(nextValue));
+                    }
+                }
+                updateCalculations(ctx.input.closest(".object-detail-table-row"));
                 if (nextValue === startValue) return;
 
                 const params = new URLSearchParams();
@@ -820,15 +994,20 @@ def install_object_detail_input_guard(
             parentDoc.addEventListener("focusin", handleFocus, true);
             parentDoc.addEventListener("keydown", handleKeydown, true);
             parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
+            parentDoc.addEventListener("paste", handlePaste, true);
+            parentDoc.addEventListener("input", handleInput, true);
             parentDoc.addEventListener("focusout", handleBlur, true);
 
             parentWindow[HANDLER_KEY] = () => {
                 parentDoc.removeEventListener("focusin", handleFocus, true);
                 parentDoc.removeEventListener("keydown", handleKeydown, true);
                 parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
+                parentDoc.removeEventListener("paste", handlePaste, true);
+                parentDoc.removeEventListener("input", handleInput, true);
                 parentDoc.removeEventListener("focusout", handleBlur, true);
                 parentWindow[HANDLER_KEY] = null;
             };
+            seedRowBaselines();
         })();
         </script>
         """
@@ -1009,6 +1188,12 @@ def install_objects_progress_sync(
                 if (!cell) return;
 
                 if (status === "completed") {
+                    if (
+                        cell.querySelector(".objects-pricing-review-button--done")
+                        || String(cell.textContent || "").trim().toLowerCase() === "done"
+                    ) {
+                        return;
+                    }
                     cell.innerHTML = (
                         `<a class="objects-pricing-review-button" href="${reviewHref(row, objectId)}" target="_self">Review</a>`
                     );

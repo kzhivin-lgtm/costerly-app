@@ -239,6 +239,9 @@ def apply_object_detail_css() -> None:
             border-radius: 8px;
             background: #FFFFFF;
             color: var(--color-text-strong);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-family: var(--font-mono);
             font-size: 13px;
             font-weight: 700;

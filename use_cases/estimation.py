@@ -7,6 +7,7 @@ from agents.estimation_agent import run_estimation_agent
 from agents.schemas.estimation_schema import validate_estimation_result
 from db.repositories import (
     fetch_company_data,
+    fetch_company_overhead_settings,
     fetch_rfq_estimate_pricing_overrides,
     fetch_rfq_estimate_lines_for_object,
     fetch_rfq_object_estimates,
@@ -313,6 +314,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         "preview_label": "Object preview",
         "sections": [
             {
+                "key": "material",
                 "title": "Material cost",
                 "metrics": [
                     ("Cost", material_total),
@@ -323,6 +325,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                 "rows": material_rows,
             },
             {
+                "key": "labor",
                 "title": "Labor cost",
                 "metrics": [
                     ("Total hours", f"{_format_number(labor_hours_total)} h"),
@@ -334,6 +337,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                 "rows": labor_rows,
             },
             {
+                "key": "overhead",
                 "title": "Overhead",
                 "metrics": [
                     ("Cost", overhead_total),
@@ -356,6 +360,11 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
 def approve_object_estimate(*, estimate_id: str, object_id: str) -> None:
     """Mark one object estimate approved in Supabase."""
     client = get_supabase_client()
+    _recalculate_object_estimate_totals(
+        client,
+        estimate_id=estimate_id,
+        object_id=object_id,
+    )
     update_rfq_object_estimate_approved(
         client,
         estimate_id=estimate_id,
@@ -452,8 +461,7 @@ def _recalculate_object_estimate_totals(
         return
 
     object_row = matching.iloc[0].to_dict()
-    company_data = fetch_company_data(client, str(object_row.get("company_id")))
-    settings = _first_row(company_data["overhead_settings"])
+    settings = _first_row(fetch_company_overhead_settings(client, str(object_row.get("company_id"))))
     vat_percent = _number(settings.get("vat_percent"), 18)
     employer_load_percent = _number(settings.get("employer_load_percent"), 25)
 

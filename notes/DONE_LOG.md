@@ -53,3 +53,5 @@ Objects Estimation pricing overrides persisted and Object Detail editable inputs
 Backup v2.01.34_before_persisted_object_detail_edits created, завершена 04.07 12:45
 Validated backup helper and backup-only-through-helper rule added, завершена 04.07 12:55
 Backup v2.01.35_before_validated_backup_helper created, завершена 04.07 12:55
+Object Detail editable cells checkpoint with live recalculation and input persistence, завершена 04.07 23:30
+Backup v2.01.36_before_object_detail_approve_fix created, завершена 04.07 23:30
