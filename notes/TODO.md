@@ -18,7 +18,6 @@
 - Objects Estimation: keep Delivery and Installation as project-level percentage allocations and show their sale price inputs without fake object status.
 - Object Detail: show AI Confidence when available.
 - Object Detail: implement Object Preview image capture/display.
-- Object Detail: fix Approve so it persists recalculated object self cost back to Objects Estimation and restores green Done indication.
 - Object Detail to Objects Estimation navigation: remove stale screen fragment flicker on return.
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
 

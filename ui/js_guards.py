@@ -742,8 +742,10 @@ def install_object_detail_input_guard(
             const ESTIMATE_ID = __ESTIMATE_ID__;
             const OBJECT_ID = __OBJECT_ID__;
             const HANDLER_KEY = "__costerlyObjectDetailInputGuardCleanup";
+            const SUBMITTING_KEY = "__costerlyObjectDetailSubmittingSnapshot";
 
             if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
+            parentWindow[SUBMITTING_KEY] = false;
 
             function inputContext(event) {
                 const target = event.target;
@@ -965,6 +967,11 @@ def install_object_detail_input_guard(
             function handleBlur(event) {
                 const ctx = inputContext(event);
                 if (!ctx) return;
+                if (parentWindow[SUBMITTING_KEY]) return;
+                if (ctx.input.dataset.skipNextBlurSave === "true") {
+                    delete ctx.input.dataset.skipNextBlurSave;
+                    return;
+                }
                 const nextValue = normalizeInputValue(ctx.input);
                 const startValue = ctx.input.dataset.editStartValue || "";
                 if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
@@ -991,11 +998,59 @@ def install_object_detail_input_guard(
                 parentWindow.location.search = `?${params.toString()}`;
             }
 
+            function findApproveButton(target) {
+                const button = target && target.closest ? target.closest("[data-object-detail-approve]") : null;
+                if (!button) return null;
+                return button;
+            }
+
+            function snapshotEdits() {
+                return Array.from(parentDoc.querySelectorAll(".object-detail-table-row")).flatMap((row) => {
+                    const lineId = row.dataset.lineId || "";
+                    if (!lineId) return [];
+                    return Array.from(row.querySelectorAll(".object-detail-cell-input[data-field]")).map((input) => ({
+                        line_id: lineId,
+                        field: input.dataset.field || "",
+                        value: normalizeInputValue(input),
+                    })).filter((edit) => edit.field);
+                });
+            }
+
+            function approveSnapshotHref() {
+                const edits = snapshotEdits();
+
+                const params = new URLSearchParams();
+                params.set("screen", "object_detail");
+                if (RUN_ID) params.set("run_id", RUN_ID);
+                params.set("estimate_id", ESTIMATE_ID);
+                params.set("object_id", OBJECT_ID);
+                params.set("od_snapshot", JSON.stringify(edits));
+                params.set("od_approve_after", "1");
+                params.set("od_edit_nonce", String(Date.now()));
+                return { href: `?${params.toString()}`, edits };
+            }
+
+            function prepareApproveSnapshot(event) {
+                const button = findApproveButton(event.target);
+                if (!button) return;
+                const snapshot = approveSnapshotHref();
+                button.setAttribute("href", snapshot.href);
+                parentWindow[SUBMITTING_KEY] = true;
+                console.info("[costerly] Object Detail approve snapshot", {
+                    estimateId: ESTIMATE_ID,
+                    objectId: OBJECT_ID,
+                    edits: snapshot.edits.length,
+                });
+            }
+
             parentDoc.addEventListener("focusin", handleFocus, true);
             parentDoc.addEventListener("keydown", handleKeydown, true);
             parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
             parentDoc.addEventListener("paste", handlePaste, true);
             parentDoc.addEventListener("input", handleInput, true);
+            parentDoc.addEventListener("pointerdown", prepareApproveSnapshot, true);
+            parentDoc.addEventListener("mousedown", prepareApproveSnapshot, true);
+            parentDoc.addEventListener("click", prepareApproveSnapshot, true);
             parentDoc.addEventListener("focusout", handleBlur, true);
 
             parentWindow[HANDLER_KEY] = () => {
@@ -1004,6 +1059,9 @@ def install_object_detail_input_guard(
                 parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
                 parentDoc.removeEventListener("paste", handlePaste, true);
                 parentDoc.removeEventListener("input", handleInput, true);
+                parentDoc.removeEventListener("pointerdown", prepareApproveSnapshot, true);
+                parentDoc.removeEventListener("mousedown", prepareApproveSnapshot, true);
+                parentDoc.removeEventListener("click", prepareApproveSnapshot, true);
                 parentDoc.removeEventListener("focusout", handleBlur, true);
                 parentWindow[HANDLER_KEY] = null;
             };

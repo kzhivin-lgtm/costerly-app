@@ -297,10 +297,51 @@ def apply_object_detail_css() -> None:
             color: var(--color-accent);
         }
 
+        .object-detail-footer-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-top: 34px;
+        }
+
+        .object-detail-footer-button {
+            min-height: var(--button-height-lg);
+            border-radius: var(--button-radius);
+            border: 1px solid var(--button-secondary-border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: var(--button-font-size);
+            font-weight: var(--button-font-weight);
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: background 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease;
+            cursor: pointer;
+        }
+
+        .object-detail-footer-button--secondary {
+            background: var(--button-secondary-bg);
+            color: var(--button-secondary-text);
+        }
+
+        .object-detail-footer-button--primary {
+            background: var(--button-primary-bg);
+            border-color: var(--button-primary-bg);
+            color: var(--button-primary-text);
+        }
+
+        .object-detail-footer-button--primary:hover {
+            background: var(--button-primary-bg-hover);
+            border-color: var(--button-primary-bg-hover);
+            color: var(--button-primary-text);
+        }
+
         @media (max-width: 760px) {
             .object-detail-hero,
             .object-detail-section-header,
-            .object-detail-final {
+            .object-detail-final,
+            .object-detail-footer-actions {
                 grid-template-columns: 1fr;
                 row-gap: 14px;
             }

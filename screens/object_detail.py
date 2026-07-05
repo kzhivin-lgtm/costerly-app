@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import json
 
 import streamlit as st
 
@@ -8,6 +9,7 @@ from styles.object_detail import apply_object_detail_css
 from ui.js_guards import install_object_detail_input_guard
 from use_cases.estimation import (
     apply_object_detail_line_edit,
+    apply_object_detail_snapshot,
     approve_object_estimate,
     load_object_detail_data,
 )
@@ -215,6 +217,30 @@ def _final_html(data: dict[str, object]) -> str:
     )
 
 
+def _footer_html(run_id: object, estimate_id: object, object_id: object) -> str:
+    back_params = (
+        f"screen=objects&run_id={html.escape(str(run_id or ''))}"
+        f"&estimate_id={html.escape(str(estimate_id or ''))}"
+    )
+    approve_params = (
+        f"screen=object_detail&run_id={html.escape(str(run_id or ''))}"
+        f"&estimate_id={html.escape(str(estimate_id or ''))}"
+        f"&object_id={html.escape(str(object_id or ''))}"
+        "&od_snapshot=[]&od_approve_after=1"
+    )
+    return (
+        '<div class="object-detail-footer-actions">'
+        f'<a class="object-detail-footer-button object-detail-footer-button--secondary" href="?{back_params}" target="_self">'
+        'BACK TO OBJECTS'
+        '</a>'
+        f'<a class="object-detail-footer-button object-detail-footer-button--primary" href="?{approve_params}" '
+        'target="_self" data-object-detail-approve="true">'
+        'APPROVE ESTIMATE'
+        '</a>'
+        '</div>'
+    )
+
+
 def render_object_detail_screen(company_id: str) -> None:
     """Render one object estimate detail screen from persisted estimate data."""
     apply_object_detail_css()
@@ -228,7 +254,11 @@ def render_object_detail_screen(company_id: str) -> None:
             st.rerun()
         return
 
+    _consume_pending_object_detail_snapshot()
     _consume_pending_object_detail_edit()
+    if st.session_state.pop("object_detail_approve_after_edit", False):
+        _approve_current_object_and_return(estimate_id=str(estimate_id), object_id=str(object_id))
+        st.rerun()
 
     try:
         data = load_object_detail_data(
@@ -266,25 +296,14 @@ def render_object_detail_screen(company_id: str) -> None:
 
     st.markdown(
         "".join(_section_html(section) for section in data["sections"])
-        + _final_html(data),
+        + _final_html(data)
+        + _footer_html(
+            run_id=st.session_state.get("current_run_id"),
+            estimate_id=estimate_id,
+            object_id=object_id,
+        ),
         unsafe_allow_html=True,
     )
-
-    col_back, col_approve = st.columns(2, gap="small")
-    if col_back.button("BACK TO OBJECTS", type="secondary", use_container_width=True):
-        st.session_state.screen = "objects"
-        st.rerun()
-
-    if col_approve.button("APPROVE ESTIMATE", type="primary", use_container_width=True):
-        approve_object_estimate(
-            estimate_id=str(estimate_id),
-            object_id=str(object_id),
-        )
-        _mark_objects_estimation_dirty(str(estimate_id))
-        approved_object_keys = st.session_state.setdefault("approved_object_keys", set())
-        approved_object_keys.add(data["object_key"])
-        st.session_state.screen = "objects"
-        st.rerun()
 
     install_object_detail_input_guard(
         run_id=str(st.session_state.get("current_run_id") or ""),
@@ -307,6 +326,44 @@ def _consume_pending_object_detail_edit() -> None:
         value=str(pending.get("value") or ""),
     )
     _mark_objects_estimation_dirty(estimate_id)
+
+
+def _consume_pending_object_detail_snapshot() -> None:
+    pending = st.session_state.pop("object_detail_pending_snapshot", None)
+    if not pending:
+        return
+    estimate_id = str(pending.get("estimate_id") or "")
+    object_id = str(pending.get("object_id") or "")
+    try:
+        edits = json.loads(str(pending.get("snapshot") or "[]"))
+    except json.JSONDecodeError:
+        edits = []
+    st.session_state.object_detail_last_snapshot_debug = {
+        "received": True,
+        "edits": len(edits) if isinstance(edits, list) else 0,
+    }
+    apply_object_detail_snapshot(
+        estimate_id=estimate_id,
+        object_id=object_id,
+        edits=edits if isinstance(edits, list) else [],
+    )
+    _mark_objects_estimation_dirty(estimate_id)
+
+
+def _approve_current_object_and_return(
+    *,
+    estimate_id: str,
+    object_id: str,
+    object_key: str | None = None,
+) -> None:
+    approve_object_estimate(
+        estimate_id=estimate_id,
+        object_id=object_id,
+    )
+    _mark_objects_estimation_dirty(estimate_id)
+    approved_object_keys = st.session_state.setdefault("approved_object_keys", set())
+    approved_object_keys.add(object_key or object_id)
+    st.session_state.screen = "objects"
 
 
 def _mark_objects_estimation_dirty(estimate_id: str) -> None:

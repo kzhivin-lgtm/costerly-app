@@ -444,8 +444,121 @@ def apply_object_detail_line_edit(
     )
 
 
+def apply_object_detail_snapshot(
+    *,
+    estimate_id: str,
+    object_id: str,
+    edits: list[Any],
+) -> None:
+    """Persist the current Object Detail table snapshot and recalculate once."""
+    allowed_fields = {
+        "unit_cost",
+        "quantity",
+        "hours",
+        "rate",
+        "monthly_cost",
+        "allocation_basis",
+    }
+    edits_by_line: dict[str, dict[str, Any]] = {}
+    for edit in edits:
+        if not isinstance(edit, dict):
+            continue
+        line_id = str(edit.get("line_id") or "")
+        field = str(edit.get("field") or "")
+        if not line_id or field not in allowed_fields:
+            continue
+        edits_by_line.setdefault(line_id, {})[field] = edit.get("value")
+
+    if not edits_by_line:
+        return
+
+    client = get_supabase_client()
+    lines_df = fetch_rfq_estimate_lines_for_object(
+        client,
+        estimate_id=estimate_id,
+        object_id=object_id,
+    )
+    if lines_df.empty:
+        return
+
+    for _, item in lines_df.iterrows():
+        line = item.to_dict()
+        line_id = str(line.get("line_id") or "")
+        line_edits = edits_by_line.get(line_id)
+        if not line_edits:
+            continue
+
+        section = str(line.get("section") or "")
+        updates: dict[str, Any] = {"updated_at": datetime.now(UTC).isoformat()}
+        next_values = dict(line)
+
+        if "allocation_basis" in line_edits and section == "overhead":
+            value = str(line_edits["allocation_basis"] or "").strip()
+            updates["allocation_basis"] = value
+            next_values["allocation_basis"] = value
+
+        for field, value in line_edits.items():
+            if field == "allocation_basis":
+                continue
+            if field not in _editable_numeric_fields_for_section(section):
+                continue
+            numeric_value = _number_from_edit(value)
+            updates[field] = numeric_value
+            next_values[field] = numeric_value
+
+        if section == "material" and {"unit_cost", "quantity"} & updates.keys():
+            updates["cost"] = round(
+                _number(next_values.get("unit_cost"), 0)
+                * _number(next_values.get("quantity"), 0),
+                2,
+            )
+        elif section == "labor" and {"hours", "rate"} & updates.keys():
+            updates["cost"] = round(
+                _number(next_values.get("hours"), 0)
+                * _number(next_values.get("rate"), 0),
+                2,
+            )
+        elif section == "overhead" and "monthly_cost" in updates:
+            old_monthly = _number(line.get("monthly_cost"), 0)
+            old_cost = _number(line.get("cost"), 0)
+            ratio = old_cost / old_monthly if old_monthly else 0
+            updates["cost"] = round(_number(next_values.get("monthly_cost"), 0) * ratio, 2)
+
+        if len(updates) == 1:
+            continue
+        update_rfq_estimate_line(
+            client,
+            estimate_id=estimate_id,
+            line_id=line_id,
+            values=updates,
+        )
+
+    _recalculate_object_estimate_totals(
+        client,
+        estimate_id=estimate_id,
+        object_id=object_id,
+    )
+
+
+def _editable_numeric_fields_for_section(section: str) -> set[str]:
+    if section == "material":
+        return {"unit_cost", "quantity"}
+    if section == "labor":
+        return {"hours", "rate"}
+    if section == "overhead":
+        return {"monthly_cost"}
+    return set()
+
+
 def _number_from_edit(value: Any) -> float:
-    cleaned = str(value or "").replace("₪", "").replace(",", "").replace("\u202f", "").strip()
+    cleaned = (
+        str(value or "")
+        .replace("₪", "")
+        .replace("%", "")
+        .replace(",", "")
+        .replace("\u202f", "")
+        .strip()
+    )
     return max(0, _number(cleaned, 0))
 
 

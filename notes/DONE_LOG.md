@@ -55,3 +55,5 @@ Validated backup helper and backup-only-through-helper rule added, заверш�
 Backup v2.01.35_before_validated_backup_helper created, завершена 04.07 12:55
 Object Detail editable cells checkpoint with live recalculation and input persistence, завершена 04.07 23:30
 Backup v2.01.36_before_object_detail_approve_fix created, завершена 04.07 23:30
+Object Detail Approve snapshot save persists recalculated self cost and Done state, завершена 05.07 11:35
+Backup v2.01.37_before_next_object_detail_task created, завершена 05.07 11:35

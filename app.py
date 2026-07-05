@@ -40,6 +40,8 @@ def main() -> None:
         object_detail_edit_line = st.query_params.get("od_edit_line")
         object_detail_edit_field = st.query_params.get("od_edit_field")
         object_detail_edit_value = st.query_params.get("od_edit_value")
+        object_detail_approve_after = st.query_params.get("od_approve_after")
+        object_detail_snapshot = st.query_params.get("od_snapshot")
         if requested_run_id:
             st.session_state.current_run_id = requested_run_id
         if requested_estimate_id:
@@ -47,6 +49,23 @@ def main() -> None:
         if requested_object_id:
             st.session_state.current_object_id = requested_object_id
         if (
+            requested_screen == "object_detail"
+            and requested_estimate_id
+            and requested_object_id
+            and object_detail_snapshot
+        ):
+            st.session_state.object_detail_last_snapshot_debug = {
+                "received": True,
+                "chars": len(object_detail_snapshot),
+            }
+            st.session_state.object_detail_pending_snapshot = {
+                "estimate_id": requested_estimate_id,
+                "object_id": requested_object_id,
+                "snapshot": object_detail_snapshot,
+            }
+            if object_detail_approve_after == "1":
+                st.session_state.object_detail_approve_after_edit = True
+        elif (
             requested_screen == "object_detail"
             and requested_estimate_id
             and requested_object_id
@@ -61,6 +80,8 @@ def main() -> None:
                 "field": object_detail_edit_field,
                 "value": object_detail_edit_value,
             }
+            if object_detail_approve_after == "1":
+                st.session_state.object_detail_approve_after_edit = True
         st.query_params.clear()
 
     screen = st.session_state.screen
