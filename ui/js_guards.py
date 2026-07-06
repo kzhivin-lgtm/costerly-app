@@ -217,6 +217,25 @@ def install_post_upload_transition_guard(
                 window.parent.setTimeout(removeOnce, FALLBACK_STABLE_MS);
             }
 
+            function clearWithoutTransitionTargets() {
+                if (CONFIG.length) return;
+                if (window.parent.__costerlyObjectDetailInputGuardCleanup) {
+                    window.parent.__costerlyObjectDetailInputGuardCleanup();
+                }
+                if (window.parent.__costerlyStopObjectsProgressRuntime) {
+                    window.parent.__costerlyStopObjectsProgressRuntime();
+                }
+                window.parent.__costerlyObjectDetailSubmittingSnapshot = false;
+                removeShell();
+                const uploadShell = parentDoc.getElementById("costerly-upload-processing-shell");
+                if (uploadShell) uploadShell.remove();
+                parentDoc.documentElement.classList.remove("costerly-upload-processing-shell-active");
+                parentDoc.body.classList.remove("costerly-upload-processing-shell-active");
+                window.parent.requestAnimationFrame(removeShell);
+                window.parent.setTimeout(removeShell, FALLBACK_STABLE_MS);
+                window.parent.setTimeout(removeShell, 1200);
+            }
+
             function getCurrentHeaderRect() {
                 const existingShell = parentDoc.getElementById(SHELL_ID);
                 const headers = Array.from(parentDoc.querySelectorAll(".post-upload-screen-shell"));
@@ -323,6 +342,7 @@ def install_post_upload_transition_guard(
             parentDoc.addEventListener("click", handleClick, true);
             window.parent[HANDLER_KEY] = handleClick;
 
+            clearWithoutTransitionTargets();
             clearForCurrentScreen();
         })();
         </script>

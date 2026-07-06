@@ -10,11 +10,7 @@ from styles.file_review import apply_file_review_css
 from ui.js_guards import install_post_upload_transition_guard
 from ui.layout import post_upload_header_html, render_post_upload_header
 from ui.perf_debug import mark_python_perf, measure_python_perf
-from ui.screen_transition import (
-    FILE_REVIEW_MARKER_ID,
-    OBJECTS_MARKER_ID,
-    post_upload_transition_shell_html,
-)
+from ui.screen_transition import FILE_REVIEW_MARKER_ID
 from use_cases.estimation import build_estimate_id
 from use_cases.estimation_progress import set_object_progress
 from use_cases.estimation_runtime import submit_estimation_job
@@ -349,19 +345,7 @@ def render_file_review_screen(company_id: str) -> None:
             ),
             unsafe_allow_html=True,
         )
-        install_post_upload_transition_guard(
-            [
-                {
-                    "label": "CONTINUE TO OBJECTS ESTIMATION",
-                    "targetMarkerId": OBJECTS_MARKER_ID,
-                    "shellHtml": post_upload_transition_shell_html(
-                        title="Objects Estimation",
-                        subtitle="Review objects → Set sale price → Generate proposal",
-                    ),
-                }
-            ],
-            current_marker_id=FILE_REVIEW_MARKER_ID,
-        )
+        install_post_upload_transition_guard([], current_marker_id=FILE_REVIEW_MARKER_ID)
 
     with measure_python_perf("sync file review edits", object_count=len(data["objects"])):
         _sync_object_edit_state(run_id, data["objects"])
@@ -412,10 +396,22 @@ def render_file_review_screen(company_id: str) -> None:
             st.session_state.get("current_estimate_id")
             and st.session_state.get("current_estimate_run_id") == run_id
         )
+        current_estimate_id = st.session_state.get("current_estimate_id")
+        current_estimate_run_id = st.session_state.get("current_estimate_run_id")
+        if (
+            current_estimate_id
+            and current_estimate_run_id != run_id
+            and str(current_estimate_id).startswith(f"{run_id}_estimate_")
+        ):
+            st.session_state.current_estimate_run_id = run_id
+            current_estimate_matches_run = True
         create_shell = bool(edits_changed or not current_estimate_matches_run)
         current_future = st.session_state.get("estimation_first_object_future")
         estimation_job_active = isinstance(current_future, Future) and not current_future.done()
-        if create_shell or not estimation_job_active:
+        should_submit_estimation = create_shell or (
+            estimation_job_active and not current_estimate_matches_run
+        )
+        if should_submit_estimation:
             file_name = st.session_state.get("uploaded_file_name")
             file_bytes = st.session_state.get("uploaded_file_bytes")
             if not file_name or not file_bytes:
@@ -450,6 +446,10 @@ def render_file_review_screen(company_id: str) -> None:
                 create_shell=create_shell,
             )
             st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
+        elif current_estimate_matches_run:
+            st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(
+                str(st.session_state.get("current_estimate_id"))
+            )
 
         st.session_state.screen = "objects"
         st.rerun()

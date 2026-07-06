@@ -18,9 +18,7 @@ from ui.js_guards import (
 from ui.layout import render_post_upload_header
 from ui.perf_debug import mark_python_perf, measure_python_perf
 from ui.screen_transition import (
-    FILE_REVIEW_MARKER_ID,
     OBJECTS_MARKER_ID,
-    post_upload_transition_shell_html,
 )
 from use_cases.estimation import load_objects_estimation_data
 from use_cases.estimation_progress import get_estimate_progress
@@ -552,16 +550,7 @@ def render_objects_screen(company_id: str) -> None:
                 supabase_url=supabase_url,
                 supabase_anon_key=supabase_anon_key,
             )
-        install_post_upload_transition_guard(
-            [
-                {
-                    "label": "BACK TO FILE REVIEW",
-                    "targetMarkerId": FILE_REVIEW_MARKER_ID,
-                    "shellHtml": post_upload_transition_shell_html(title="File Review"),
-                }
-            ],
-            current_marker_id=OBJECTS_MARKER_ID,
-        )
+        install_post_upload_transition_guard([], current_marker_id=OBJECTS_MARKER_ID)
         if estimate_id and supabase_url and supabase_anon_key:
             install_objects_progress_sync(
                 supabase_url=supabase_url,

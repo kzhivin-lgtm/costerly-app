@@ -46,6 +46,8 @@ def main() -> None:
             st.session_state.current_run_id = requested_run_id
         if requested_estimate_id:
             st.session_state.current_estimate_id = requested_estimate_id
+            if requested_run_id:
+                st.session_state.current_estimate_run_id = requested_run_id
         if requested_object_id:
             st.session_state.current_object_id = requested_object_id
         if (

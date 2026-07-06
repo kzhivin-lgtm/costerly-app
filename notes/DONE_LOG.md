@@ -57,3 +57,5 @@ Object Detail editable cells checkpoint with live recalculation and input persis
 Backup v2.01.36_before_object_detail_approve_fix created, завершена 04.07 23:30
 Object Detail Approve snapshot save persists recalculated self cost and Done state, завершена 05.07 11:35
 Backup v2.01.37_before_next_object_detail_task created, завершена 05.07 11:35
+File Review Continue restored after Object Detail approve/back navigation, завершена 06.07 14:15
+Backup v2.01.38_before_next_task created, завершена 06.07 14:15
