@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
+    <meta name="costerly-wrapper-version" content="v2.01.47-single-grey-boot" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -26,6 +27,12 @@
         border: 0;
         display: block;
         background: #F1EFEF;
+        opacity: 0;
+        transition: opacity 120ms ease;
+      }
+
+      iframe.is-ready {
+        opacity: 1;
       }
 
       .app-loading-mask {
@@ -67,39 +74,27 @@
       (() => {
         const mask = document.getElementById("app-loading-mask");
         const frame = document.getElementById("costerly-app-frame");
-        let hideTimer = null;
+        let fallbackTimer = null;
+        let ready = false;
 
-        function showMask() {
-          if (!mask) return;
-          window.clearTimeout(hideTimer);
-          mask.classList.remove("is-hidden");
-        }
-
-        function hideMask() {
-          if (!mask) return;
-          window.clearTimeout(hideTimer);
-          hideTimer = window.setTimeout(() => {
+        function revealApp() {
+          if (ready) return;
+          ready = true;
+          window.clearTimeout(fallbackTimer);
+          if (frame) frame.classList.add("is-ready");
+          if (mask) {
             mask.classList.add("is-hidden");
-          }, 220);
+            window.setTimeout(() => mask.remove(), 220);
+          }
         }
 
         window.addEventListener("message", (event) => {
-          if (event.data && event.data.type === "costerly:iframe-loading") {
-            showMask();
-          }
           if (event.data && event.data.type === "costerly:app-ready") {
-            hideMask();
+            revealApp();
           }
         });
 
-        if (frame) {
-          frame.addEventListener("load", () => {
-            window.clearTimeout(hideTimer);
-            hideTimer = window.setTimeout(hideMask, 1800);
-          });
-        }
-
-        hideTimer = window.setTimeout(hideMask, 2200);
+        fallbackTimer = window.setTimeout(revealApp, 8000);
       })();
     </script>
   </body>
