@@ -312,29 +312,9 @@ def install_post_upload_transition_guard(
                 });
             }
 
-            function notifyHostLoadingMask() {
-                try {
-                    window.top.postMessage({ type: "costerly:iframe-loading" }, "*");
-                } catch (error) {
-                    // The app also runs outside the Cloudflare wrapper during local development.
-                }
-            }
-
-            function findFullNavigationLink(event) {
-                const target = event.target;
-                if (!target || !target.closest) return null;
-                const link = target.closest('a[href*="screen=object_detail"]');
-                return link;
-            }
-
             function handleClick(event) {
                 const transition = findTransition(event);
-                if (!transition) {
-                    if (findFullNavigationLink(event)) {
-                        notifyHostLoadingMask();
-                    }
-                    return;
-                }
+                if (!transition) return;
 
                 window.parent[PERF_BASE_KEY] = window.parent.performance.now();
                 window.parent[PERF_KEY] = [];
@@ -430,7 +410,7 @@ def scroll_parent_to_top() -> None:
 
 
 def notify_host_app_ready() -> None:
-    """Tell the outer Cloudflare shell that the Streamlit app rendered a real screen."""
+    """Tell the outer Cloudflare shell that Streamlit rendered a real screen."""
     components.html(
         """
         <script>
@@ -982,14 +962,6 @@ def install_object_detail_input_guard(
                 return cleanNumber(editableValue(input));
             }
 
-            function notifyHostLoadingMask() {
-                try {
-                    window.top.postMessage({ type: "costerly:iframe-loading" }, "*");
-                } catch (error) {
-                    // The app also runs outside the Cloudflare wrapper during local development.
-                }
-            }
-
             function seedInputBaselines() {
                 for (const input of parentDoc.querySelectorAll(".object-detail-cell-input[data-field]")) {
                     input.dataset.originalValue = normalizeInputValue(input);
@@ -1057,18 +1029,24 @@ def install_object_detail_input_guard(
                     }
                 }
                 updateCalculations(ctx.input.closest(".object-detail-table-row"));
+                if (nextValue === startValue) return;
+
+                const params = new URLSearchParams();
+                params.set("screen", "object_detail");
+                if (RUN_ID) params.set("run_id", RUN_ID);
+                params.set("estimate_id", ESTIMATE_ID);
+                params.set("object_id", OBJECT_ID);
+                params.set("od_edit_line", ctx.lineId);
+                params.set("od_edit_field", ctx.field);
+                params.set("od_edit_value", nextValue);
+                params.set("od_edit_nonce", String(Date.now()));
+                parentWindow.location.search = `?${params.toString()}`;
             }
 
             function findApproveButton(target) {
                 const button = target && target.closest ? target.closest("[data-object-detail-approve]") : null;
                 if (!button) return null;
                 return button;
-            }
-
-            function findBackToObjectsLink(target) {
-                const link = target && target.closest ? target.closest('a[href*="screen=objects"]') : null;
-                if (!link) return null;
-                return link;
             }
 
             function snapshotEdits() {
@@ -1100,15 +1078,9 @@ def install_object_detail_input_guard(
 
             function prepareApproveSnapshot(event) {
                 const button = findApproveButton(event.target);
-                if (!button) {
-                    if (findBackToObjectsLink(event.target)) {
-                        notifyHostLoadingMask();
-                    }
-                    return;
-                }
+                if (!button) return;
                 const snapshot = approveSnapshotHref();
                 button.setAttribute("href", snapshot.href);
-                notifyHostLoadingMask();
                 parentWindow[SUBMITTING_KEY] = true;
                 console.info("[costerly] Object Detail approve snapshot", {
                     estimateId: ESTIMATE_ID,
