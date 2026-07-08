@@ -10,7 +10,11 @@ from styles.file_review import apply_file_review_css
 from ui.js_guards import install_post_upload_transition_guard
 from ui.layout import post_upload_header_html, render_post_upload_header
 from ui.perf_debug import mark_python_perf, measure_python_perf
-from ui.screen_transition import FILE_REVIEW_MARKER_ID
+from ui.screen_transition import (
+    FILE_REVIEW_MARKER_ID,
+    OBJECTS_MARKER_ID,
+    post_upload_transition_shell_html,
+)
 from use_cases.estimation import build_estimate_id
 from use_cases.estimation_progress import set_object_progress
 from use_cases.estimation_runtime import submit_estimation_job
@@ -302,6 +306,21 @@ def _render_missing_object_search() -> None:
 
 def render_file_review_screen(company_id: str) -> None:
     """Render File Review from the persisted detection result when available."""
+    def install_continue_transition_guard() -> None:
+        install_post_upload_transition_guard(
+            [
+                {
+                    "label": "CONTINUE TO OBJECTS ESTIMATION",
+                    "targetMarkerId": OBJECTS_MARKER_ID,
+                    "shellHtml": post_upload_transition_shell_html(
+                        title="Objects Estimation",
+                        subtitle="Review objects → Set sale price → Generate proposal",
+                    ),
+                }
+            ],
+            current_marker_id=FILE_REVIEW_MARKER_ID,
+        )
+
     with measure_python_perf("apply file review css"):
         apply_file_review_css()
 
@@ -345,7 +364,7 @@ def render_file_review_screen(company_id: str) -> None:
             ),
             unsafe_allow_html=True,
         )
-        install_post_upload_transition_guard([], current_marker_id=FILE_REVIEW_MARKER_ID)
+        install_continue_transition_guard()
 
     with measure_python_perf("sync file review edits", object_count=len(data["objects"])):
         _sync_object_edit_state(run_id, data["objects"])
