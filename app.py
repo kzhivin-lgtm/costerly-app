@@ -11,11 +11,6 @@ from ui.perf_debug import (
     render_python_perf_panel,
     start_python_perf_run,
 )
-from screens.upload import render_upload_screen
-from screens.processing import render_processing_screen
-from screens.file_review import render_file_review_screen
-from screens.objects import render_objects_screen
-from screens.object_detail import render_object_detail_screen
 
 
 st.set_page_config(
@@ -95,14 +90,24 @@ def main() -> None:
 
     with measure_python_perf("route render", screen=screen):
         if screen == "upload":
+            from screens.upload import render_upload_screen
+
             render_upload_screen(company_id)
         elif screen == "processing":
+            from screens.processing import render_processing_screen
+
             render_processing_screen(company_id)
         elif screen == "file_review":
+            from screens.file_review import render_file_review_screen
+
             render_file_review_screen(company_id)
         elif screen == "objects":
+            from screens.objects import render_objects_screen
+
             render_objects_screen(company_id)
         elif screen == "object_detail":
+            from screens.object_detail import render_object_detail_screen
+
             render_object_detail_screen(company_id)
         else:
             st.session_state.screen = "upload"
