@@ -318,7 +318,6 @@ def apply_object_detail_css() -> None:
             text-decoration: none;
             transition: background 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease;
             cursor: pointer;
-            width: 100%;
         }
 
         .object-detail-footer-button,
@@ -366,15 +365,6 @@ def apply_object_detail_css() -> None:
             background: var(--button-primary-bg-hover);
             border-color: var(--button-primary-bg-hover);
             color: var(--button-primary-text);
-        }
-
-        .st-key-object_detail_nav_bridge {
-            position: absolute !important;
-            width: 1px !important;
-            height: 1px !important;
-            overflow: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
         }
 
         @media (max-width: 760px) {

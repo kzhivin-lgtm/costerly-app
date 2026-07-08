@@ -11,7 +11,6 @@ import streamlit as st
 from config import get_optional_secret
 from styles.objects import apply_objects_css
 from ui.js_guards import (
-    install_objects_detail_nav_bridge,
     install_objects_price_input_guard,
     install_objects_progress_sync,
     install_post_upload_transition_guard,
@@ -169,9 +168,12 @@ def _review_action_html(
         action_label = "Done" if row.get("reviewed") else "Review"
         action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
         object_id = quote(str(row.get("object_key") or ""))
+        estimate_param = quote(str(estimate_id or ""))
+        run_param = quote(str(run_id or ""))
         return (
-            f'<button class="objects-pricing-review-button{action_class}" '
-            f'type="button" data-object-detail-open="{object_id}">{action_label}</button>'
+            f'<a class="objects-pricing-review-button{action_class}" '
+            f'href="?screen=object_detail&run_id={run_param}&estimate_id={estimate_param}&object_id={object_id}" '
+            f'target="_self">{action_label}</a>'
         )
 
     action_label = "Estimating" if status == "running" else "Pending"
@@ -436,24 +438,6 @@ def _parse_datetime(value: object) -> datetime | None:
         return None
 
 
-def _render_object_detail_nav_bridge(rows: list[dict[str, object]]) -> None:
-    if not rows:
-        return
-
-    with st.container(key="objects_detail_nav_bridge"):
-        st.text_input(
-            "OBJECT_DETAIL_TARGET",
-            key="objects_detail_nav_target",
-            label_visibility="collapsed",
-        )
-        if st.button("OPEN_OBJECT_DETAIL_BRIDGE", key="objects_detail_nav_submit"):
-            object_id = str(st.session_state.get("objects_detail_nav_target") or "")
-            if object_id:
-                st.session_state.current_object_id = object_id
-                st.session_state.screen = "object_detail"
-                st.rerun()
-
-
 def render_objects_screen(company_id: str) -> None:
     """Render the object pricing review screen with temporary fixture data."""
     with measure_python_perf("apply objects css"):
@@ -550,7 +534,6 @@ def render_objects_screen(company_id: str) -> None:
             '</div>',
             unsafe_allow_html=True,
         )
-    _render_object_detail_nav_bridge(data["rows"])
 
     col_back, col_generate = st.columns(2, gap="small")
 
@@ -564,7 +547,6 @@ def render_objects_screen(company_id: str) -> None:
     with measure_python_perf("objects guards"):
         supabase_url, supabase_anon_key = _objects_progress_sync_config()
         if estimate_id:
-            install_objects_detail_nav_bridge()
             install_objects_price_input_guard(
                 estimate_id=str(estimate_id),
                 supabase_url=supabase_url,

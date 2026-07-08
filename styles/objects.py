@@ -222,7 +222,6 @@ def apply_objects_css() -> None:
             width: 100%;
             min-height: 46px;
             font-size: 16px;
-            cursor: pointer;
         }
 
         .objects-pricing-review-button:hover {
@@ -259,15 +258,6 @@ def apply_objects_css() -> None:
 
         .objects-pricing-action-cell {
             padding-top: calc(var(--objects-row-main-offset) + 4px);
-        }
-
-        .st-key-objects_detail_nav_bridge {
-            position: absolute !important;
-            width: 1px !important;
-            height: 1px !important;
-            overflow: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
         }
 
         .objects-pricing-download-button {
