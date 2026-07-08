@@ -1065,10 +1065,8 @@ def install_object_detail_input_guard(
                 return button;
             }
 
-            function findBackToObjectsLink(target) {
-                const link = target && target.closest ? target.closest('a[href*="screen=objects"]') : null;
-                if (!link) return null;
-                return link;
+            function findBackToObjectsButton(target) {
+                return target && target.closest ? target.closest("[data-object-detail-back]") : null;
             }
 
             function snapshotEdits() {
@@ -1084,37 +1082,66 @@ def install_object_detail_input_guard(
                 });
             }
 
-            function approveSnapshotHref() {
-                const edits = snapshotEdits();
+            function bridgeContainer() {
+                return parentDoc.querySelector(".st-key-object_detail_nav_bridge");
+            }
 
-                const params = new URLSearchParams();
-                params.set("screen", "object_detail");
-                if (RUN_ID) params.set("run_id", RUN_ID);
-                params.set("estimate_id", ESTIMATE_ID);
-                params.set("object_id", OBJECT_ID);
-                params.set("od_snapshot", JSON.stringify(edits));
-                params.set("od_approve_after", "1");
-                params.set("od_edit_nonce", String(Date.now()));
-                return { href: `?${params.toString()}`, edits };
+            function bridgeButton(label) {
+                const container = bridgeContainer();
+                if (!container) return null;
+                return Array.from(container.querySelectorAll("button")).find((button) =>
+                    String(button.textContent || "").trim() === label
+                );
+            }
+
+            function setNativeValue(element, value) {
+                if (!element) return;
+                const proto = element.tagName === "TEXTAREA"
+                    ? parentWindow.HTMLTextAreaElement.prototype
+                    : parentWindow.HTMLInputElement.prototype;
+                const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
+                if (descriptor && descriptor.set) {
+                    descriptor.set.call(element, value);
+                } else {
+                    element.value = value;
+                }
+                element.dispatchEvent(new Event("input", { bubbles: true }));
+                element.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+
+            function submitBridge(label, snapshotValue = null) {
+                const container = bridgeContainer();
+                if (!container) return false;
+                if (snapshotValue !== null) {
+                    const textarea = container.querySelector("textarea");
+                    setNativeValue(textarea, snapshotValue);
+                }
+                const button = bridgeButton(label);
+                if (!button) return false;
+                parentWindow.requestAnimationFrame(() => button.click());
+                return true;
             }
 
             function prepareApproveSnapshot(event) {
                 const button = findApproveButton(event.target);
-                if (!button) {
-                    if (findBackToObjectsLink(event.target)) {
-                        notifyHostLoadingMask();
-                    }
+                const backButton = findBackToObjectsButton(event.target);
+                if (!button && !backButton) return;
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (backButton) {
+                    submitBridge("BACK_TO_OBJECTS_BRIDGE");
                     return;
                 }
-                const snapshot = approveSnapshotHref();
-                button.setAttribute("href", snapshot.href);
-                notifyHostLoadingMask();
+                const edits = snapshotEdits();
                 parentWindow[SUBMITTING_KEY] = true;
                 console.info("[costerly] Object Detail approve snapshot", {
                     estimateId: ESTIMATE_ID,
                     objectId: OBJECT_ID,
-                    edits: snapshot.edits.length,
+                    edits: edits.length,
                 });
+                submitBridge("APPROVE_OBJECT_DETAIL_BRIDGE", JSON.stringify(edits));
             }
 
             parentDoc.addEventListener("focusin", handleFocus, true);
@@ -1122,8 +1149,6 @@ def install_object_detail_input_guard(
             parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
             parentDoc.addEventListener("paste", handlePaste, true);
             parentDoc.addEventListener("input", handleInput, true);
-            parentDoc.addEventListener("pointerdown", prepareApproveSnapshot, true);
-            parentDoc.addEventListener("mousedown", prepareApproveSnapshot, true);
             parentDoc.addEventListener("click", prepareApproveSnapshot, true);
             parentDoc.addEventListener("focusout", handleBlur, true);
 
@@ -1133,8 +1158,6 @@ def install_object_detail_input_guard(
                 parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
                 parentDoc.removeEventListener("paste", handlePaste, true);
                 parentDoc.removeEventListener("input", handleInput, true);
-                parentDoc.removeEventListener("pointerdown", prepareApproveSnapshot, true);
-                parentDoc.removeEventListener("mousedown", prepareApproveSnapshot, true);
                 parentDoc.removeEventListener("click", prepareApproveSnapshot, true);
                 parentDoc.removeEventListener("focusout", handleBlur, true);
                 parentWindow[HANDLER_KEY] = null;
@@ -1147,6 +1170,76 @@ def install_object_detail_input_guard(
         .replace("__RUN_ID__", run_id_json)
         .replace("__ESTIMATE_ID__", estimate_id_json)
         .replace("__OBJECT_ID__", object_id_json),
+        height=0,
+    )
+
+
+def install_objects_detail_nav_bridge() -> None:
+    """Route Objects HTML action buttons through Streamlit state widgets."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const HANDLER_KEY = "__costerlyObjectsDetailNavBridgeCleanup";
+
+            if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
+
+            function bridgeContainer() {
+                return parentDoc.querySelector(".st-key-objects_detail_nav_bridge");
+            }
+
+            function bridgeButton() {
+                const container = bridgeContainer();
+                if (!container) return null;
+                return Array.from(container.querySelectorAll("button")).find((button) =>
+                    String(button.textContent || "").trim() === "OPEN_OBJECT_DETAIL_BRIDGE"
+                );
+            }
+
+            function setNativeValue(element, value) {
+                if (!element) return;
+                const descriptor = Object.getOwnPropertyDescriptor(
+                    parentWindow.HTMLInputElement.prototype,
+                    "value"
+                );
+                if (descriptor && descriptor.set) {
+                    descriptor.set.call(element, value);
+                } else {
+                    element.value = value;
+                }
+                element.dispatchEvent(new Event("input", { bubbles: true }));
+                element.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+
+            function handleClick(event) {
+                const trigger = event.target && event.target.closest
+                    ? event.target.closest("[data-object-detail-open]")
+                    : null;
+                if (!trigger) return;
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                const container = bridgeContainer();
+                const input = container ? container.querySelector("input") : null;
+                const button = bridgeButton();
+                const objectId = trigger.dataset.objectDetailOpen || "";
+                if (!input || !button || !objectId) return;
+
+                setNativeValue(input, objectId);
+                parentWindow.requestAnimationFrame(() => button.click());
+            }
+
+            parentDoc.addEventListener("click", handleClick, true);
+            parentWindow[HANDLER_KEY] = () => {
+                parentDoc.removeEventListener("click", handleClick, true);
+                parentWindow[HANDLER_KEY] = null;
+            };
+        })();
+        </script>
+        """,
         height=0,
     )
 
@@ -1261,13 +1354,6 @@ def install_objects_progress_sync(
                 if (actionCell) actionCell.innerHTML = "";
             }
 
-            function reviewHref(row, objectId) {
-                const estimateId = encodeURIComponent(row.dataset.estimateId || ESTIMATE_ID || "");
-                const runId = encodeURIComponent(row.dataset.runId || "");
-                const objectParam = encodeURIComponent(String(objectId || ""));
-                return `?screen=object_detail&run_id=${runId}&estimate_id=${estimateId}&object_id=${objectParam}`;
-            }
-
             function rowsForEstimate() {
                 return Array.from(parentDoc.querySelectorAll(
                     `.objects-pricing-row[data-estimate-id="${CSS.escape(String(ESTIMATE_ID || ""))}"]`
@@ -1328,7 +1414,8 @@ def install_objects_progress_sync(
                         return;
                     }
                     cell.innerHTML = (
-                        `<a class="objects-pricing-review-button" href="${reviewHref(row, objectId)}" target="_self">Review</a>`
+                        `<button class="objects-pricing-review-button" type="button" `
+                        + `data-object-detail-open="${escapeHtml(objectId)}">Review</button>`
                     );
                     return;
                 }

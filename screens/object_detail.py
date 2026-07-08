@@ -217,26 +217,17 @@ def _final_html(data: dict[str, object]) -> str:
     )
 
 
-def _footer_html(run_id: object, estimate_id: object, object_id: object) -> str:
-    back_params = (
-        f"screen=objects&run_id={html.escape(str(run_id or ''))}"
-        f"&estimate_id={html.escape(str(estimate_id or ''))}"
-    )
-    approve_params = (
-        f"screen=object_detail&run_id={html.escape(str(run_id or ''))}"
-        f"&estimate_id={html.escape(str(estimate_id or ''))}"
-        f"&object_id={html.escape(str(object_id or ''))}"
-        "&od_snapshot=[]&od_approve_after=1"
-    )
+def _footer_html() -> str:
     return (
         '<div class="object-detail-footer-actions">'
-        f'<a class="object-detail-footer-button object-detail-footer-button--secondary" href="?{back_params}" target="_self">'
+        '<button class="object-detail-footer-button object-detail-footer-button--secondary" '
+        'type="button" data-object-detail-back="true">'
         'BACK TO OBJECTS'
-        '</a>'
-        f'<a class="object-detail-footer-button object-detail-footer-button--primary" href="?{approve_params}" '
-        'target="_self" data-object-detail-approve="true">'
+        '</button>'
+        '<button class="object-detail-footer-button object-detail-footer-button--primary" '
+        'type="button" data-object-detail-approve="true">'
         'APPROVE ESTIMATE'
-        '</a>'
+        '</button>'
         '</div>'
     )
 
@@ -301,13 +292,10 @@ def render_object_detail_screen(company_id: str) -> None:
     st.markdown(
         "".join(_section_html(section) for section in data["sections"])
         + _final_html(data)
-        + _footer_html(
-            run_id=st.session_state.get("current_run_id"),
-            estimate_id=estimate_id,
-            object_id=object_id,
-        ),
+        + _footer_html(),
         unsafe_allow_html=True,
     )
+    _render_object_detail_nav_bridge(estimate_id=str(estimate_id), object_id=str(object_id))
 
     install_object_detail_input_guard(
         run_id=str(st.session_state.get("current_run_id") or ""),
@@ -378,3 +366,32 @@ def _mark_objects_estimation_dirty(estimate_id: str) -> None:
     if not estimate_id:
         return
     st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
+
+
+def _render_object_detail_nav_bridge(*, estimate_id: str, object_id: str) -> None:
+    with st.container(key="object_detail_nav_bridge"):
+        st.text_area(
+            "OBJECT_DETAIL_SNAPSHOT",
+            key="object_detail_snapshot_bridge",
+            label_visibility="collapsed",
+        )
+        if st.button("BACK_TO_OBJECTS_BRIDGE", key="object_detail_back_submit"):
+            st.session_state.screen = "objects"
+            st.rerun()
+        if st.button("APPROVE_OBJECT_DETAIL_BRIDGE", key="object_detail_approve_submit"):
+            snapshot = str(st.session_state.get("object_detail_snapshot_bridge") or "[]")
+            try:
+                edits = json.loads(snapshot)
+            except json.JSONDecodeError:
+                edits = []
+            apply_object_detail_snapshot(
+                estimate_id=estimate_id,
+                object_id=object_id,
+                edits=edits if isinstance(edits, list) else [],
+            )
+            _approve_current_object_and_return(
+                estimate_id=estimate_id,
+                object_id=object_id,
+                recalculate=False,
+            )
+            st.rerun()
