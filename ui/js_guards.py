@@ -943,6 +943,12 @@ def install_object_detail_input_guard(
                 return cleanNumber(editableValue(input));
             }
 
+            function seedInputBaselines() {
+                for (const input of parentDoc.querySelectorAll(".object-detail-cell-input[data-field]")) {
+                    input.dataset.originalValue = normalizeInputValue(input);
+                }
+            }
+
             function handleFocus(event) {
                 const ctx = inputContext(event);
                 if (!ctx) return;
@@ -1032,7 +1038,8 @@ def install_object_detail_input_guard(
                         line_id: lineId,
                         field: input.dataset.field || "",
                         value: normalizeInputValue(input),
-                    })).filter((edit) => edit.field);
+                        originalValue: input.dataset.originalValue ?? normalizeInputValue(input),
+                    })).filter((edit) => edit.field && edit.value !== edit.originalValue);
                 });
             }
 
@@ -1085,6 +1092,7 @@ def install_object_detail_input_guard(
                 parentDoc.removeEventListener("focusout", handleBlur, true);
                 parentWindow[HANDLER_KEY] = null;
             };
+            seedInputBaselines();
             seedRowBaselines();
         })();
         </script>

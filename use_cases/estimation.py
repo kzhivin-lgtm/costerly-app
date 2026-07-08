@@ -357,14 +357,20 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
     }
 
 
-def approve_object_estimate(*, estimate_id: str, object_id: str) -> None:
+def approve_object_estimate(
+    *,
+    estimate_id: str,
+    object_id: str,
+    recalculate: bool = True,
+) -> None:
     """Mark one object estimate approved in Supabase."""
     client = get_supabase_client()
-    _recalculate_object_estimate_totals(
-        client,
-        estimate_id=estimate_id,
-        object_id=object_id,
-    )
+    if recalculate:
+        _recalculate_object_estimate_totals(
+            client,
+            estimate_id=estimate_id,
+            object_id=object_id,
+        )
     update_rfq_object_estimate_approved(
         client,
         estimate_id=estimate_id,

@@ -257,7 +257,11 @@ def render_object_detail_screen(company_id: str) -> None:
     _consume_pending_object_detail_snapshot()
     _consume_pending_object_detail_edit()
     if st.session_state.pop("object_detail_approve_after_edit", False):
-        _approve_current_object_and_return(estimate_id=str(estimate_id), object_id=str(object_id))
+        _approve_current_object_and_return(
+            estimate_id=str(estimate_id),
+            object_id=str(object_id),
+            recalculate=False,
+        )
         st.rerun()
 
     try:
@@ -312,10 +316,10 @@ def render_object_detail_screen(company_id: str) -> None:
     )
 
 
-def _consume_pending_object_detail_edit() -> None:
+def _consume_pending_object_detail_edit() -> bool:
     pending = st.session_state.pop("object_detail_pending_edit", None)
     if not pending:
-        return
+        return False
     estimate_id = str(pending.get("estimate_id") or "")
     object_id = str(pending.get("object_id") or "")
     apply_object_detail_line_edit(
@@ -326,12 +330,13 @@ def _consume_pending_object_detail_edit() -> None:
         value=str(pending.get("value") or ""),
     )
     _mark_objects_estimation_dirty(estimate_id)
+    return True
 
 
-def _consume_pending_object_detail_snapshot() -> None:
+def _consume_pending_object_detail_snapshot() -> bool:
     pending = st.session_state.pop("object_detail_pending_snapshot", None)
     if not pending:
-        return
+        return False
     estimate_id = str(pending.get("estimate_id") or "")
     object_id = str(pending.get("object_id") or "")
     try:
@@ -348,6 +353,7 @@ def _consume_pending_object_detail_snapshot() -> None:
         edits=edits if isinstance(edits, list) else [],
     )
     _mark_objects_estimation_dirty(estimate_id)
+    return bool(edits)
 
 
 def _approve_current_object_and_return(
@@ -355,10 +361,12 @@ def _approve_current_object_and_return(
     estimate_id: str,
     object_id: str,
     object_key: str | None = None,
+    recalculate: bool = True,
 ) -> None:
     approve_object_estimate(
         estimate_id=estimate_id,
         object_id=object_id,
+        recalculate=recalculate,
     )
     _mark_objects_estimation_dirty(estimate_id)
     approved_object_keys = st.session_state.setdefault("approved_object_keys", set())

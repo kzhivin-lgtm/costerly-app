@@ -320,15 +320,45 @@ def apply_object_detail_css() -> None:
             cursor: pointer;
         }
 
+        .object-detail-footer-button,
+        .object-detail-footer-button:link,
+        .object-detail-footer-button:visited,
+        .object-detail-footer-button:hover,
+        .object-detail-footer-button:focus,
+        .object-detail-footer-button:active {
+            text-decoration: none !important;
+        }
+
         .object-detail-footer-button--secondary {
             background: var(--button-secondary-bg);
             color: var(--button-secondary-text);
+        }
+
+        .object-detail-footer-button--secondary:link,
+        .object-detail-footer-button--secondary:visited,
+        .object-detail-footer-button--secondary:hover,
+        .object-detail-footer-button--secondary:focus,
+        .object-detail-footer-button--secondary:active {
+            color: var(--button-secondary-text) !important;
+        }
+
+        .object-detail-footer-button--secondary:hover {
+            background: var(--button-secondary-bg-hover);
+            border-color: var(--button-secondary-border);
         }
 
         .object-detail-footer-button--primary {
             background: var(--button-primary-bg);
             border-color: var(--button-primary-bg);
             color: var(--button-primary-text);
+        }
+
+        .object-detail-footer-button--primary:link,
+        .object-detail-footer-button--primary:visited,
+        .object-detail-footer-button--primary:hover,
+        .object-detail-footer-button--primary:focus,
+        .object-detail-footer-button--primary:active {
+            color: var(--button-primary-text) !important;
         }
 
         .object-detail-footer-button--primary:hover {
