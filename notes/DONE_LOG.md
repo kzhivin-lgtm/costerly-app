@@ -59,3 +59,5 @@ Object Detail Approve snapshot save persists recalculated self cost and Done sta
 Backup v2.01.37_before_next_object_detail_task created, завершена 05.07 11:35
 File Review Continue restored after Object Detail approve/back navigation, завершена 06.07 14:15
 Backup v2.01.38_before_next_task created, завершена 06.07 14:15
+Object Detail approve return optimized to about 4s and footer link button styling fixed, завершена 08.07 12:25
+Backup v2.01.39_before_next_task created, завершена 08.07 12:25
