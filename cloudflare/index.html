@@ -28,6 +28,20 @@
         background: #F1EFEF;
       }
 
+      .app-loading-mask {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        background: #F1EFEF;
+        opacity: 1;
+        pointer-events: none;
+        transition: opacity 160ms ease;
+      }
+
+      .app-loading-mask.is-hidden {
+        opacity: 0;
+      }
+
       .embed-footer-mask {
         position: fixed;
         left: 0;
@@ -41,11 +55,52 @@
   </head>
 
   <body>
+    <div class="app-loading-mask" id="app-loading-mask" aria-hidden="true"></div>
     <iframe
+      id="costerly-app-frame"
       src="https://costerly-app.streamlit.app/?embed=true"
       title="costerly.ai"
       allow="clipboard-write; clipboard-read; fullscreen"
     ></iframe>
     <div class="embed-footer-mask" aria-hidden="true"></div>
+    <script>
+      (() => {
+        const mask = document.getElementById("app-loading-mask");
+        const frame = document.getElementById("costerly-app-frame");
+        let hideTimer = null;
+
+        function showMask() {
+          if (!mask) return;
+          window.clearTimeout(hideTimer);
+          mask.classList.remove("is-hidden");
+        }
+
+        function hideMask() {
+          if (!mask) return;
+          window.clearTimeout(hideTimer);
+          hideTimer = window.setTimeout(() => {
+            mask.classList.add("is-hidden");
+          }, 220);
+        }
+
+        window.addEventListener("message", (event) => {
+          if (event.data && event.data.type === "costerly:iframe-loading") {
+            showMask();
+          }
+          if (event.data && event.data.type === "costerly:app-ready") {
+            hideMask();
+          }
+        });
+
+        if (frame) {
+          frame.addEventListener("load", () => {
+            window.clearTimeout(hideTimer);
+            hideTimer = window.setTimeout(hideMask, 1800);
+          });
+        }
+
+        hideTimer = window.setTimeout(hideMask, 2200);
+      })();
+    </script>
   </body>
 </html>
