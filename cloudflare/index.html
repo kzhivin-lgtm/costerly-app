@@ -38,8 +38,28 @@
         transition: opacity 160ms ease;
       }
 
+      .app-loading-mask::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 168px;
+        height: 4px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #8049C6 0%, #2899DD 50%, #8049C6 100%);
+        background-size: 200% 100%;
+        transform: translate(-50%, -50%);
+        animation: app-loading-mask-sweep 900ms linear infinite;
+      }
+
       .app-loading-mask.is-hidden {
         opacity: 0;
+      }
+
+      @keyframes app-loading-mask-sweep {
+        to {
+          background-position: -200% 0;
+        }
       }
 
       .embed-footer-mask {
@@ -68,15 +88,18 @@
         const mask = document.getElementById("app-loading-mask");
         const frame = document.getElementById("costerly-app-frame");
         let hideTimer = null;
+        let appReady = false;
 
         function showMask() {
           if (!mask) return;
+          appReady = false;
           window.clearTimeout(hideTimer);
           mask.classList.remove("is-hidden");
         }
 
         function hideMask() {
           if (!mask) return;
+          appReady = true;
           window.clearTimeout(hideTimer);
           hideTimer = window.setTimeout(() => {
             mask.classList.add("is-hidden");
@@ -94,12 +117,9 @@
 
         if (frame) {
           frame.addEventListener("load", () => {
-            window.clearTimeout(hideTimer);
-            hideTimer = window.setTimeout(hideMask, 1800);
+            if (!appReady) showMask();
           });
         }
-
-        hideTimer = window.setTimeout(hideMask, 2200);
       })();
     </script>
   </body>
