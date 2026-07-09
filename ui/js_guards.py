@@ -415,11 +415,46 @@ def notify_host_app_ready() -> None:
         """
         <script>
         (() => {
-            try {
-                window.top.postMessage({ type: "costerly:app-ready" }, "*");
-            } catch (error) {
-                // Local development may run without the Cloudflare wrapper.
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const READY_KEY = "__costerlyHostAppReadyPosted";
+            const MARKERS = [
+                ".upload-screen-active",
+                "#costerly-processing-screen-active",
+                "#costerly-file-review-screen-active",
+                "#costerly-objects-screen-active",
+                ".object-detail-shell",
+            ];
+            let attempts = 0;
+
+            function realScreenIsMounted() {
+                return MARKERS.some((selector) => Boolean(parentDoc.querySelector(selector)));
             }
+
+            function postReady() {
+                if (parentWindow[READY_KEY]) return;
+                parentWindow[READY_KEY] = true;
+                try {
+                    window.top.postMessage({ type: "costerly:app-ready" }, "*");
+                } catch (error) {
+                    // Local development may run without the Cloudflare wrapper.
+                }
+            }
+
+            function waitForStableScreen() {
+                attempts += 1;
+                if (realScreenIsMounted()) {
+                    parentWindow.requestAnimationFrame(() => {
+                        parentWindow.requestAnimationFrame(postReady);
+                    });
+                    return;
+                }
+                if (attempts < 120) {
+                    parentWindow.setTimeout(waitForStableScreen, 50);
+                }
+            }
+
+            waitForStableScreen();
         })();
         </script>
         """,
