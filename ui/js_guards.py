@@ -409,60 +409,6 @@ def scroll_parent_to_top() -> None:
     )
 
 
-def notify_host_app_ready() -> None:
-    """Tell the outer Cloudflare shell that Streamlit rendered a real screen."""
-    components.html(
-        """
-        <script>
-        (() => {
-            const parentWindow = window.parent;
-            const parentDoc = parentWindow.document;
-            const READY_KEY = "__costerlyHostAppReadyPosted";
-            const MARKERS = [
-                ".upload-screen-active",
-                "#costerly-processing-screen-active",
-                "#costerly-file-review-screen-active",
-                "#costerly-objects-screen-active",
-                ".object-detail-shell",
-            ];
-            let attempts = 0;
-
-            function realScreenIsMounted() {
-                return MARKERS.some((selector) => Boolean(parentDoc.querySelector(selector)));
-            }
-
-            function postReady() {
-                if (parentWindow[READY_KEY]) return;
-                parentWindow[READY_KEY] = true;
-                try {
-                    window.top.postMessage({ type: "costerly:app-ready" }, "*");
-                } catch (error) {
-                    // Local development may run without the Cloudflare wrapper.
-                }
-            }
-
-            function waitForStableScreen() {
-                attempts += 1;
-                if (realScreenIsMounted()) {
-                    parentWindow.requestAnimationFrame(() => {
-                        parentWindow.requestAnimationFrame(postReady);
-                    });
-                    return;
-                }
-                if (attempts < 120) {
-                    parentWindow.setTimeout(waitForStableScreen, 50);
-                }
-            }
-
-            waitForStableScreen();
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
-
 def install_objects_price_input_guard(
     *,
     estimate_id: str,

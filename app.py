@@ -4,7 +4,7 @@ import streamlit as st
 
 from state.session import init_state, get_company_id
 from styles.base import apply_base_css
-from ui.js_guards import notify_host_app_ready, scroll_parent_to_top
+from ui.js_guards import scroll_parent_to_top
 from ui.perf_debug import (
     mark_python_perf,
     measure_python_perf,
@@ -109,7 +109,6 @@ def main() -> None:
             st.rerun()
 
     mark_python_perf("python render end", screen=screen)
-    notify_host_app_ready()
     render_python_perf_panel(screen)
 
 
