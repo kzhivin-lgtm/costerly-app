@@ -5,6 +5,47 @@ import json
 import streamlit.components.v1 as components
 
 
+def signal_app_ready_to_embed(screen: str) -> None:
+    """Tell the embedding Cloudflare wrapper that a real Streamlit screen rendered."""
+    screen_json = json.dumps(screen)
+
+    components.html(
+        """
+        <script>
+        (() => {
+            const message = {
+                type: "costerly:app-ready",
+                screen: __SCREEN__,
+                sentAt: Date.now()
+            };
+
+            function postReady() {
+                try {
+                    window.parent.postMessage(message, "*");
+                } catch (error) {}
+
+                try {
+                    window.parent.parent.postMessage(message, "*");
+                } catch (error) {}
+
+                try {
+                    window.top.postMessage(message, "*");
+                } catch (error) {}
+            }
+
+            postReady();
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(postReady);
+            });
+            window.setTimeout(postReady, 120);
+        })();
+        </script>
+        """.replace("__SCREEN__", screen_json),
+        height=0,
+        width=0,
+    )
+
+
 def install_post_upload_transition_guard(
     transitions: list[dict[str, str]],
     *,
