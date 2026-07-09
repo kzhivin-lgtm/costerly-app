@@ -83,8 +83,13 @@
         function mark(label, detail = {}) {
           const elapsedMs = Math.round(performance.now() - startedAt);
           const payload = { label, elapsedMs, ...detail };
+          window.__costerlyBootTimeline = window.__costerlyBootTimeline || [];
+          window.__costerlyBootTimeline.push(payload);
           performance.mark(`costerly:${label}`);
-          console.info("[Costerly boot]", payload);
+          const detailText = Object.entries(detail)
+            .map(([key, value]) => `${key}=${value}`)
+            .join(" ");
+          console.info(`[Costerly boot] ${label} ${elapsedMs}ms${detailText ? ` ${detailText}` : ""}`);
         }
 
         function revealApp(source) {
