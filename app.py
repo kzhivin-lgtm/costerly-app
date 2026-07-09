@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import time
 
+_MODULE_IMPORT_STARTED_AT = time.perf_counter()
+
 import streamlit as st
 
 from state.session import init_state, get_company_id
@@ -22,6 +24,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+_MODULE_READY_MS = (time.perf_counter() - _MODULE_IMPORT_STARTED_AT) * 1000
 
 
 def _render_screen(screen: str, company_id: str) -> None:
@@ -116,6 +119,7 @@ def main() -> None:
 
     screen = st.session_state.screen
     start_python_perf_run(screen)
+    mark_python_perf("module import + page config", duration_ms=f"{_MODULE_READY_MS:.1f}")
     mark_python_perf("init_state", duration_ms=f"{init_elapsed_ms:.1f}")
     with measure_python_perf("base css"):
         apply_base_css()
