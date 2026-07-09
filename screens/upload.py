@@ -6,7 +6,7 @@ from pathlib import Path
 import streamlit as st
 
 from styles.upload import apply_upload_css
-from ui.js_guards import install_upload_dragover_guard, install_upload_processing_shell
+from ui.js_guards import install_upload_interaction_guards
 from ui.processing_stage import processing_stage_html
 
 
@@ -78,8 +78,7 @@ def render_upload_screen(company_id: str) -> None:
         type=["pdf", "png", "jpg", "jpeg"],
         label_visibility="collapsed",
     )
-    install_upload_dragover_guard()
-    install_upload_processing_shell(processing_stage_html())
+    install_upload_interaction_guards(processing_stage_html())
 
     if uploaded_file is not None:
         file_bytes = uploaded_file.getvalue()

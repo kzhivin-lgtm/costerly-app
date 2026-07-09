@@ -88,10 +88,16 @@ def main() -> None:
 
     screen = st.session_state.screen
     start_python_perf_run(screen)
-    if st.session_state.get("_last_screen_for_scroll") != screen:
-        scroll_parent_to_top()
+    last_screen_for_scroll = st.session_state.get("_last_screen_for_scroll")
+    if last_screen_for_scroll != screen:
+        is_initial_upload_render = last_screen_for_scroll is None and screen == "upload"
+        if not is_initial_upload_render:
+            scroll_parent_to_top()
         st.session_state._last_screen_for_scroll = screen
-        mark_python_perf("scroll reset requested")
+        mark_python_perf(
+            "scroll reset skipped" if is_initial_upload_render else "scroll reset requested",
+            reason="initial upload render" if is_initial_upload_render else None,
+        )
 
     with measure_python_perf("route render", screen=screen):
         if screen == "upload":

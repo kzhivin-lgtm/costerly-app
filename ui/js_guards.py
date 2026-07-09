@@ -1838,6 +1838,248 @@ def install_upload_processing_shell(shell_html: str) -> None:
     )
 
 
+def install_upload_interaction_guards(shell_html: str) -> None:
+    """Install upload dragover and instant processing shell from one component."""
+    shell_html_json = json.dumps(shell_html)
+
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentDoc = window.parent.document;
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_3";
+            const oldMarker = parentDoc.getElementById(markerId);
+
+            if (oldMarker) {
+                oldMarker.remove();
+            }
+
+            const script = parentDoc.createElement("script");
+            script.id = markerId;
+
+            script.textContent = "(" + function () {
+                const SHELL_HTML = __SHELL_HTML__;
+                const DROPZONE_SELECTOR = 'section[data-testid="stFileUploaderDropzone"]';
+                const FILE_INPUT_SELECTOR = 'input[type="file"]';
+                const DRAG_CLASS = 'costerly-upload-dragover';
+                const SHELL_ID = 'costerly-upload-processing-shell';
+                const STYLE_ID = 'costerly-upload-processing-shell-style';
+                const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
+                const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV113Installed';
+                let clearDragTimer = null;
+                let watcher = null;
+                let slowTimer = null;
+
+                if (window[INSTALLED_FLAG]) {
+                    return;
+                }
+
+                window[INSTALLED_FLAG] = true;
+
+                function getDropzones() {
+                    return Array.from(document.querySelectorAll(DROPZONE_SELECTOR));
+                }
+
+                function dragHasFiles(event) {
+                    const dt = event.dataTransfer;
+                    if (!dt) return true;
+
+                    const types = Array.from(dt.types || []);
+                    return types.includes('Files') || types.includes('application/x-moz-file');
+                }
+
+                function setDragover(dropzone, on) {
+                    getDropzones().forEach((zone) => {
+                        zone.classList.toggle(DRAG_CLASS, Boolean(on) && zone === dropzone);
+                    });
+                }
+
+                function clearDragover() {
+                    window.clearTimeout(clearDragTimer);
+                    setDragover(null, false);
+                }
+
+                function forceDragover(event) {
+                    if (!dragHasFiles(event)) return;
+
+                    const dropzone = event.target.closest(DROPZONE_SELECTOR);
+
+                    if (!dropzone) {
+                        clearDragover();
+                        return;
+                    }
+
+                    event.preventDefault();
+                    window.clearTimeout(clearDragTimer);
+                    setDragover(dropzone, true);
+                }
+
+                function realProcessingIsActive() {
+                    return Boolean(document.getElementById(REAL_PROCESSING_MARKER_ID));
+                }
+
+                function installStyle() {
+                    if (document.getElementById(STYLE_ID)) return;
+
+                    const style = document.createElement('style');
+                    style.id = STYLE_ID;
+                    style.textContent = `
+                        html.${SHELL_ACTIVE_CLASS},
+                        body.${SHELL_ACTIVE_CLASS} {
+                            overflow: hidden !important;
+                        }
+
+                        #${SHELL_ID} {
+                            position: fixed;
+                            inset: 0;
+                            z-index: 2147483000;
+                            box-sizing: border-box;
+                            overflow: hidden;
+                        }
+
+                        #${SHELL_ID}[data-slow="true"] .post-upload-stage__slow {
+                            display: block;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+
+                function removeShell() {
+                    const shell = document.getElementById(SHELL_ID);
+                    if (shell) shell.remove();
+
+                    document.documentElement.classList.remove(SHELL_ACTIVE_CLASS);
+                    document.body.classList.remove(SHELL_ACTIVE_CLASS);
+
+                    if (slowTimer) {
+                        window.clearTimeout(slowTimer);
+                        slowTimer = null;
+                    }
+                }
+
+                function startWatcher() {
+                    if (watcher) return;
+
+                    watcher = window.setInterval(() => {
+                        if (realProcessingIsActive()) {
+                            removeShell();
+                            window.clearInterval(watcher);
+                            watcher = null;
+                        }
+                    }, 80);
+                }
+
+                function showShell(source) {
+                    if (realProcessingIsActive()) return;
+
+                    installStyle();
+
+                    let shell = document.getElementById(SHELL_ID);
+                    if (!shell) {
+                        shell = document.createElement('div');
+                        shell.id = SHELL_ID;
+                        shell.innerHTML = SHELL_HTML;
+                        document.body.appendChild(shell);
+                    }
+
+                    shell.dataset.source = source || 'unknown';
+                    shell.dataset.slow = 'false';
+                    document.documentElement.classList.add(SHELL_ACTIVE_CLASS);
+                    document.body.classList.add(SHELL_ACTIVE_CLASS);
+
+                    if (slowTimer) window.clearTimeout(slowTimer);
+                    slowTimer = window.setTimeout(() => {
+                        const activeShell = document.getElementById(SHELL_ID);
+                        if (activeShell && !realProcessingIsActive()) {
+                            activeShell.dataset.slow = 'true';
+                        }
+                    }, 25000);
+
+                    startWatcher();
+                }
+
+                function dropHasFiles(event) {
+                    return Boolean(
+                        event.dataTransfer &&
+                        event.dataTransfer.files &&
+                        event.dataTransfer.files.length > 0
+                    );
+                }
+
+                function bindInputs() {
+                    document.querySelectorAll(FILE_INPUT_SELECTOR).forEach((input) => {
+                        if (input.getAttribute(SHELL_BOUND_ATTR) === 'true') return;
+                        input.setAttribute(SHELL_BOUND_ATTR, 'true');
+
+                        input.addEventListener('change', () => {
+                            if (input.files && input.files.length > 0) {
+                                showShell('input-change');
+                            }
+                        }, true);
+                    });
+                }
+
+                function bindGlobalListeners() {
+                    if (document.documentElement.getAttribute(GUARD_BOUND_ATTR) === 'true') return;
+                    document.documentElement.setAttribute(GUARD_BOUND_ATTR, 'true');
+
+                    document.addEventListener('dragenter', forceDragover, true);
+                    document.addEventListener('dragover', forceDragover, true);
+                    document.addEventListener('dragleave', () => {
+                        window.clearTimeout(clearDragTimer);
+                        clearDragTimer = window.setTimeout(clearDragover, 140);
+                    }, true);
+                    document.addEventListener('drop', (event) => {
+                        const dropzone = event.target.closest(DROPZONE_SELECTOR);
+                        clearDragover();
+                        if (dropzone && dropHasFiles(event)) {
+                            window.setTimeout(() => showShell('drop'), 0);
+                        }
+                    }, true);
+                    document.addEventListener('dragend', clearDragover, true);
+                    window.addEventListener('blur', clearDragover, true);
+
+                    document.addEventListener('change', (event) => {
+                        const target = event.target;
+                        if (
+                            target &&
+                            target.matches &&
+                            target.matches(FILE_INPUT_SELECTOR) &&
+                            target.files &&
+                            target.files.length > 0
+                        ) {
+                            showShell('document-change');
+                        }
+                    }, true);
+                }
+
+                const observer = new MutationObserver(() => {
+                    bindInputs();
+                    if (realProcessingIsActive()) removeShell();
+                });
+
+                const observerRoot = document.body || document.documentElement;
+                if (observerRoot) {
+                    observer.observe(observerRoot, { childList: true, subtree: true });
+                }
+
+                bindGlobalListeners();
+                bindInputs();
+                startWatcher();
+            }.toString() + ")();";
+
+            parentDoc.head.appendChild(script);
+        })();
+        </script>
+        """.replace("__SHELL_HTML__", shell_html_json),
+        height=0,
+        width=0,
+    )
+
+
 def install_upload_dragover_guard() -> None:
     """Add stable dragover classes to Streamlit's native file uploader.
 
