@@ -61,3 +61,5 @@ File Review Continue restored after Object Detail approve/back navigation, за�
 Backup v2.01.38_before_next_task created, завершена 06.07 14:15
 Object Detail approve return optimized to about 4s and footer link button styling fixed, завершена 08.07 12:25
 Backup v2.01.39_before_next_task created, завершена 08.07 12:25
+Initial app boot visual noise reduced: Cloudflare grey screen now releases via Streamlit app-ready signal, warm refresh is about 5s and skeleton is limited to cold start after reboot, завершена 09.07
+Backup v2.01.52_after_embed_ready_signal created, завершена 09.07
