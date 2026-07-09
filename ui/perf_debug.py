@@ -45,6 +45,16 @@ def mark_python_perf(label: str, **fields: object) -> None:
     )
 
 
+def get_python_perf_entries() -> list[dict[str, object]]:
+    if not PERF_DEBUG_ENABLED:
+        return []
+
+    entries = st.session_state.get("_perf_entries", [])
+    if not isinstance(entries, list):
+        return []
+    return entries[-18:]
+
+
 @contextmanager
 def measure_python_perf(label: str, **fields: object) -> Iterator[None]:
     if not PERF_DEBUG_ENABLED:

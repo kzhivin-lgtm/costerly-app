@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="v2.01.54-boot-timeline" />
+    <meta name="costerly-wrapper-version" content="v2.01.57-lazy-screen-imports" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -114,7 +114,16 @@
 
         window.addEventListener("message", (event) => {
           if (event.data && event.data.type === "costerly:app-ready") {
-            mark("app-ready", { screen: event.data.screen || "" });
+            const perfEntries = Array.isArray(event.data.perfEntries) ? event.data.perfEntries : [];
+            const perfSummary = perfEntries
+              .slice(-10)
+              .map((entry) => {
+                const fields = entry && entry.fields ? entry.fields : {};
+                const duration = fields.duration_ms ? `/duration=${fields.duration_ms}` : "";
+                return `${entry.label}:${entry.elapsed_ms}${duration}`;
+              })
+              .join(" | ");
+            mark("app-ready", { screen: event.data.screen || "", python: perfSummary });
             revealApp("app-ready");
           }
         });
