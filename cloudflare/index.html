@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
+    <meta name="costerly-wrapper-version" content="v2.01.54-boot-timeline" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -26,6 +27,28 @@
         border: 0;
         display: block;
         background: #F1EFEF;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 120ms ease;
+      }
+
+      iframe.is-ready {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .app-loading-mask {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        background: #F1EFEF;
+        opacity: 1;
+        pointer-events: none;
+        transition: opacity 160ms ease;
+      }
+
+      .app-loading-mask.is-hidden {
+        opacity: 0;
       }
 
       .embed-footer-mask {
@@ -41,11 +64,58 @@
   </head>
 
   <body>
+    <div class="app-loading-mask" id="app-loading-mask" aria-hidden="true"></div>
     <iframe
+      id="costerly-app-frame"
       src="https://costerly-app.streamlit.app/?embed=true"
       title="costerly.ai"
       allow="clipboard-write; clipboard-read; fullscreen"
     ></iframe>
     <div class="embed-footer-mask" aria-hidden="true"></div>
+    <script>
+      (() => {
+        const startedAt = performance.now();
+        const mask = document.getElementById("app-loading-mask");
+        const frame = document.getElementById("costerly-app-frame");
+        let fallbackTimer = null;
+        let ready = false;
+
+        function mark(label, detail = {}) {
+          const elapsedMs = Math.round(performance.now() - startedAt);
+          const payload = { label, elapsedMs, ...detail };
+          performance.mark(`costerly:${label}`);
+          console.info("[Costerly boot]", payload);
+        }
+
+        function revealApp(source) {
+          if (ready) return;
+          ready = true;
+          window.clearTimeout(fallbackTimer);
+          mark("reveal", { source });
+          if (frame) frame.classList.add("is-ready");
+          if (mask) {
+            mask.classList.add("is-hidden");
+            window.setTimeout(() => mask.remove(), 220);
+          }
+        }
+
+        mark("wrapper-start");
+
+        if (frame) {
+          frame.addEventListener("load", () => {
+            mark("iframe-load");
+          });
+        }
+
+        window.addEventListener("message", (event) => {
+          if (event.data && event.data.type === "costerly:app-ready") {
+            mark("app-ready", { screen: event.data.screen || "" });
+            revealApp("app-ready");
+          }
+        });
+
+        fallbackTimer = window.setTimeout(() => revealApp("fallback-8000ms"), 8000);
+      })();
+    </script>
   </body>
 </html>

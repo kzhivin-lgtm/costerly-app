@@ -9,6 +9,7 @@
 - Design Objects Estimation status refresh without Streamlit stale-DOM fragments.
 - UI copy: remove trailing periods from standalone UI text when no next sentence follows.
 - Upload: continue first app/file-load optimization; warm refresh now uses the grey screen/app-ready path, but cold start after reboot can still show one Streamlit skeleton.
+- Upload performance follow-up: after boot timeline + font/logo cache, return to lazy-load screens, `.streamlit/config.toml`, and post-deploy/reboot prewarm.
 - Processing: review processing-screen text wording and keep its current position as the layout benchmark.
 - Prompts / Agent Contract: normalize long object names later through the agent prompt/contract.
 - Objects Estimation: reduce the large vertical gap between subtitle and pricing table column headers.

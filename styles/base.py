@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from functools import lru_cache
 from pathlib import Path
 
 import streamlit as st
@@ -8,6 +9,7 @@ import streamlit as st
 FONT_DIR = Path("assets/fonts")
 
 
+@lru_cache(maxsize=None)
 def _font_data_uri(file_name: str) -> str:
     font_bytes = (FONT_DIR / file_name).read_bytes()
     encoded = base64.b64encode(font_bytes).decode("ascii")

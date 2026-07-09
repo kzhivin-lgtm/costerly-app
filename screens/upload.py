@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from functools import lru_cache
 from pathlib import Path
 
 import streamlit as st
@@ -12,6 +13,7 @@ from ui.processing_stage import processing_stage_html
 
 LOGO_PATH = Path("assets/brand/costelry_logo_full_cropped.svg")
 
+@lru_cache(maxsize=1)
 def _read_logo_data_uri() -> str:
     """Return the brand logo as an inline image source for the upload screen.
 
