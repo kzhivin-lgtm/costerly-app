@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="v2.01.57-lazy-screen-imports" />
+    <meta name="costerly-wrapper-version" content="v2.01.58-dom-boot-timeline" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -85,6 +85,11 @@
           const payload = { label, elapsedMs, ...detail };
           window.__costerlyBootTimeline = window.__costerlyBootTimeline || [];
           window.__costerlyBootTimeline.push(payload);
+          document.documentElement.setAttribute("data-costerly-boot-last", JSON.stringify(payload));
+          document.documentElement.setAttribute(
+            "data-costerly-boot-timeline",
+            JSON.stringify(window.__costerlyBootTimeline)
+          );
           performance.mark(`costerly:${label}`);
           const detailText = Object.entries(detail)
             .map(([key, value]) => `${key}=${value}`)
