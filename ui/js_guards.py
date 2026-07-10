@@ -1289,11 +1289,6 @@ def install_objects_progress_sync(
                 totalCell.textContent = formatMoney(saleTotal);
             }
 
-            function bindSaleInputs() {
-                // Editing is handled by install_objects_price_input_guard. Keep this no-op
-                // so progress rendering never installs competing focus/input listeners.
-            }
-
             function setSummaryValue(field, value) {
                 const node = parentDoc.querySelector(`[data-summary-field="${field}"]`);
                 if (!node) return;
@@ -1441,14 +1436,12 @@ def install_objects_progress_sync(
             }
 
             function renderAll() {
-                bindSaleInputs();
                 rowsForEstimate().forEach((row) => {
                     const objectState = ensureStateForRow(row);
                     if (!objectState) return;
                     renderProgress(row, objectState);
                     setAction(row, objectState.objectId, objectState.status);
                 });
-                bindSaleInputs();
             }
 
             function advanceFiller(now) {

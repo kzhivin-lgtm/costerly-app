@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import Future
-from datetime import UTC, datetime
-import html
-import math
-from urllib.parse import quote
+from dataclasses import dataclass
 
 import streamlit as st
 
@@ -15,6 +12,7 @@ from ui.js_guards import (
     install_objects_progress_sync,
     install_post_upload_transition_guard,
 )
+from ui import objects_pricing
 from ui.layout import render_post_upload_header
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
@@ -25,226 +23,12 @@ from use_cases.estimation import load_objects_estimation_data
 from use_cases.estimation_progress import get_estimate_progress
 
 
-def _escape(value: object) -> str:
-    """Return escaped text and a dash for unavailable estimate values."""
-    if value is None or value == "":
-        return "—"
-    return html.escape(str(value))
-
-
-def _money(value: object) -> str:
-    """Format pricing values for the objects estimate table."""
-    if value is None or value == "":
-        return "—"
-    if isinstance(value, float) and value != value:
-        return "—"
-    try:
-        return f"₪{round(float(value)):,}".replace(",", "\u202f")
-    except (TypeError, ValueError):
-        return _escape(value)
-
-
-def _input_money(value: object) -> str:
-    """Format editable pricing input values with a stable currency prefix."""
-    if value is None or value == "":
-        return "—"
-    if isinstance(value, float) and value != value:
-        return "—"
-    try:
-        return f"₪{round(float(value)):,}".replace(",", "\u202f")
-    except (TypeError, ValueError):
-        return _escape(value)
-
-
-def _sale_input_html(value: object, *, overridden: bool = False) -> str:
-    input_value = _input_money(value)
-    editable_attr = '' if input_value == "—" else ' contenteditable="true" tabindex="0"'
-    disabled_attr = ' aria-disabled="true"' if input_value == "—" else ' aria-disabled="false"'
-    overridden_attr = ' data-pricing-overridden="true"' if overridden else ''
-    return (
-        '<div class="objects-pricing-price-input" role="textbox" inputmode="numeric" '
-        f'{editable_attr}{disabled_attr}{overridden_attr}>{input_value}</div>'
-    )
-
-
-def _quantity(value: object) -> str:
-    """Format quantities as whole units in the pricing table."""
-    if value is None or value == "":
-        return "—"
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return _escape(value)
-    if number != number:
-        return "—"
-    return str(int(round(number)))
-
-
-def _is_project_cost_row(row: dict[str, object]) -> bool:
-    return str(row.get("object_key") or "").lower() in {"delivery", "installation"}
-
-
-def _row_html(
-    row: dict[str, object],
-    *,
-    with_review: bool,
-    show_sale_total: bool,
-    estimate_id: str | None,
-    run_id: str | None,
-) -> str:
-    """Render one pricing row."""
-    is_project_cost = _is_project_cost_row(row)
-    if is_project_cost:
-        return _project_cost_row_html(row, estimate_id=estimate_id, run_id=run_id)
-
-    if with_review and not is_project_cost:
-        review_html = _review_action_html(row, estimate_id=estimate_id, run_id=run_id)
-    else:
-        review_html = ""
-    sale_total_html = _money(row.get("sale_price_total")) if show_sale_total else ""
-    self_cost_html = _self_cost_unit_html(row)
-    object_key = _escape(row.get("object_key"))
-    estimate_key = _escape(estimate_id or "")
-    run_key = _escape(run_id or "")
-
-    return (
-        '<div class="objects-pricing-row" '
-        f'data-object-key="{object_key}" '
-        f'data-estimate-id="{estimate_key}" '
-        f'data-run-id="{run_key}">'
-        '<div>'
-        f'<div class="objects-pricing-name">{_escape(row.get("name"))}</div>'
-        f'{_row_materials_html(row.get("materials"))}'
-        '</div>'
-        f'<div class="objects-pricing-number">{_quantity(row.get("quantity"))}</div>'
-        f'<div class="objects-pricing-price objects-pricing-self-cost-cell">{self_cost_html}</div>'
-        '<div class="objects-pricing-sale-cell">'
-        f'{_sale_input_html(row.get("sale_price_unit"), overridden=bool(row.get("sale_price_overridden")))}'
-        f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
-        '</div>'
-        f'<div class="objects-pricing-price objects-pricing-sale-total-cell">{sale_total_html}</div>'
-        '<div class="objects-pricing-action-cell"'
-        f'{" data-action-cell=\"true\"" if with_review and not is_project_cost else ""}>{review_html}</div>'
-        '</div>'
-    )
-
-
-def _project_cost_row_html(
-    row: dict[str, object],
-    *,
-    estimate_id: str | None,
-    run_id: str | None,
-) -> str:
-    object_key = _escape(row.get("object_key"))
-    estimate_key = _escape(estimate_id or "")
-    run_key = _escape(run_id or "")
-
-    return (
-        '<div class="objects-pricing-row objects-pricing-row--project-cost" '
-        f'data-object-key="{object_key}" '
-        f'data-estimate-id="{estimate_key}" '
-        f'data-run-id="{run_key}">'
-        '<div>'
-        f'<div class="objects-pricing-name">{_escape(row.get("name"))}</div>'
-        f'{_row_materials_html(row.get("materials"))}'
-        '</div>'
-        '<div class="objects-pricing-project-cost-cell">'
-        f'{_sale_input_html(row.get("sale_price_unit"), overridden=bool(row.get("sale_price_overridden")))}'
-        f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
-        '</div>'
-        '</div>'
-    )
-
-
-def _review_action_html(
-    row: dict[str, object],
-    *,
-    estimate_id: str | None,
-    run_id: str | None,
-) -> str:
-    status = str(row.get("status") or "pending").lower()
-    if status == "completed":
-        action_label = "Done" if row.get("reviewed") else "Review"
-        action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
-        object_id = quote(str(row.get("object_key") or ""))
-        estimate_param = quote(str(estimate_id or ""))
-        run_param = quote(str(run_id or ""))
-        return (
-            f'<a class="objects-pricing-review-button{action_class}" '
-            f'href="?screen=object_detail&run_id={run_param}&estimate_id={estimate_param}&object_id={object_id}" '
-            f'target="_self">{action_label}</a>'
-        )
-
-    action_label = "Estimating" if status == "running" else "Pending"
-    return (
-        '<span class="objects-pricing-review-button objects-pricing-review-button--disabled" '
-        'aria-disabled="true">'
-        f'{action_label}'
-        '</span>'
-    )
-
-
-def _row_materials_html(value: object) -> str:
-    if value is None or value == "":
-        return ""
-    return f'<div class="objects-pricing-materials">{_escape(value)}</div>'
-
-
-def _self_cost_unit_html(row: dict[str, object]) -> str:
-    if str(row.get("status") or "").lower() != "running":
-        return _money(row.get("self_cost_unit"))
-
-    updated_at = _parse_datetime(row.get("progress_updated_at"))
-    if updated_at is None:
-        percent = _escape(row.get("self_cost_unit") or f'{_safe_int(row.get("progress_percent"), default=25)}%')
-        return (
-            '<span class="objects-progress-status" aria-label="Estimating self cost">'
-            '<span class="objects-progress-spinner" aria-hidden="true"></span>'
-            f'<span class="objects-progress-percent">{percent}</span>'
-            '</span>'
-        )
-
-    base = _safe_int(row.get("progress_percent"), default=25)
-    cap, seconds_per_percent = _smooth_progress_curve(base)
-    current = _smooth_progress_percent(row)
-    return (
-        '<span class="objects-progress-status" aria-label="Estimating self cost">'
-        '<span class="objects-progress-spinner" aria-hidden="true"></span>'
-        '<span class="objects-progress-percent" '
-        f'data-start="{base}" '
-        f'data-cap="{cap}" '
-        f'data-step-ms="{int(seconds_per_percent * 1000)}" '
-        f'data-updated-at="{_escape(updated_at.isoformat())}">'
-        f'{current}%'
-        '</span>'
-        '</span>'
-    )
-
-
-def _summary_html(summary: dict[str, object]) -> str:
-    """Render project-level price summary."""
-    return (
-        '<div class="objects-pricing-summary">'
-        '<div>'
-        '<div class="objects-pricing-summary-title">Project Summary</div>'
-        '<button class="objects-pricing-download-button" type="button">'
-        '<span class="objects-pricing-download-pill">Download XLS</span>'
-        '</button>'
-        '</div>'
-        '<div>'
-        '<div class="objects-pricing-summary-title">Project Price</div>'
-        f'<div class="objects-pricing-summary-value" data-summary-field="project_price">{_money(summary.get("project_price"))}</div>'
-        '</div>'
-        '<div>'
-        '<div class="objects-pricing-summary-title">VAT 18%</div>'
-        f'<div class="objects-pricing-summary-value" data-summary-field="vat">{_money(summary.get("vat"))}</div>'
-        '</div>'
-        '<div>'
-        '<div class="objects-pricing-summary-title">Project Total</div>'
-        f'<div class="objects-pricing-summary-value objects-pricing-summary-value--total" data-summary-field="total">{_money(summary.get("total"))}</div>'
-        '</div>'
-        '</div>'
-    )
+@dataclass(frozen=True)
+class ObjectsScreenState:
+    """Loaded Objects Estimation data plus non-fatal render messages."""
+    data: dict[str, object]
+    data_error: str | None = None
+    cache_warning: str | None = None
 
 
 def _empty_objects_data() -> dict[str, object]:
@@ -324,9 +108,9 @@ def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dic
                 break
 
     for row in rows:
-        status = str(row.get("status") or "pending").lower()
+        status = objects_pricing.row_status(row)
         if status == "running":
-            row["self_cost_unit"] = f"{_smooth_progress_percent(row)}%"
+            row["self_cost_unit"] = f"{objects_pricing.smooth_progress_percent(row)}%"
 
     project_costs = data.get("project_costs") or _project_cost_rows_for_seed(rows)
     return {**data, "rows": rows, "project_costs": project_costs}
@@ -336,8 +120,8 @@ def _project_cost_rows_for_seed(rows: list[dict[str, object]]) -> list[dict[str,
     """Build project-level cost rows while estimate results are still loading."""
     if not rows:
         return []
-    all_completed = all(str(row.get("status") or "pending").lower() == "completed" for row in rows)
-    subtotal = sum(_number(row.get("sale_price_total"), 0) for row in rows)
+    all_completed = all(objects_pricing.row_status(row) == "completed" for row in rows)
+    subtotal = sum(objects_pricing.number(row.get("sale_price_total"), 0) for row in rows)
     delivery = round(subtotal * 0.03, 2) if all_completed else None
     installation = round(subtotal * 0.10, 2) if all_completed else None
 
@@ -367,155 +151,78 @@ def _project_cost_rows_for_seed(rows: list[dict[str, object]]) -> list[dict[str,
     ]
 
 
-def _number(value: object, default: float = 0) -> float:
-    try:
-        if value is None or value == "":
-            return default
-        if isinstance(value, float) and value != value:
-            return default
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _smooth_progress_percent(row: dict[str, object]) -> int:
-    base = _safe_int(row.get("progress_percent"), default=25)
-    updated_at = _parse_datetime(row.get("progress_updated_at"))
-    if updated_at is None:
-        return base
-
-    elapsed_seconds = max(0, (datetime.now(UTC) - updated_at).total_seconds())
-    cap, seconds_per_percent = _smooth_progress_curve(base)
-    smoothed = base + math.floor(elapsed_seconds / seconds_per_percent)
-    return max(1, min(cap, smoothed))
-
-
-def _smooth_progress_curve(base: int) -> tuple[int, float]:
-    if base < 25:
-        return 24, 0.4
-    if base < 65:
-        return 64, 0.5
-    if base < 78:
-        return 77, 0.3
-    if base < 88:
-        return 87, 0.25
-    if base < 96:
-        return 95, 0.2
-    return 99, 0.2
-
-
-def _safe_int(value: object, *, default: int) -> int:
-    try:
-        if value is None or value == "":
-            return default
-        if isinstance(value, float) and value != value:
-            return default
-        return int(float(value))
-    except (TypeError, ValueError):
-        return default
-
-
-def _parse_datetime(value: object) -> datetime | None:
-    if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=UTC)
-    if not value:
-        return None
-    try:
-        raw = str(value).replace("Z", "+00:00")
-        parsed = datetime.fromisoformat(raw)
-        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
-    except ValueError:
-        return None
-
-
-def render_objects_screen(company_id: str) -> None:
-    """Render the object pricing review screen from persisted estimate data."""
-    apply_objects_css()
-    _consume_estimation_future()
-
-    estimate_id = st.session_state.get("current_estimate_id")
-    run_id = st.session_state.get("current_run_id")
+def _mark_objects_cache_dirty_when_estimation_runs(estimate_id: str | None) -> None:
+    """Force a refresh while the background estimation worker can still change rows."""
     estimation_running = isinstance(st.session_state.get("estimation_first_object_future"), Future)
     if estimation_running and estimate_id:
         st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
 
-    data_error = None
-    cache_warning = None
-    if estimate_id:
-        try:
-            data, cache_warning = _load_objects_screen_data(estimate_id)
-        except Exception as exc:
-            data_error = f"Could not load Objects Estimation: {exc}"
-            data = _empty_objects_data()
-    else:
-        data = _empty_objects_data()
 
-    render_post_upload_header(
-        "Objects Estimation",
-        "Review objects → Set sale price → Generate proposal",
-        class_name="objects-estimation-header",
-        marker_id=OBJECTS_MARKER_ID,
-    )
+def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
+    """Return Objects Estimation data plus user-visible error/warning strings."""
+    if not estimate_id:
+        return ObjectsScreenState(data=_empty_objects_data())
 
+    try:
+        data, cache_warning = _load_objects_screen_data(estimate_id)
+        return ObjectsScreenState(data=data, cache_warning=cache_warning)
+    except Exception as exc:
+        return ObjectsScreenState(
+            data=_empty_objects_data(),
+            data_error=f"Could not load Objects Estimation: {exc}",
+        )
+
+
+def _render_objects_messages(
+    *,
+    estimate_id: str | None,
+    data_error: str | None,
+    cache_warning: str | None,
+) -> None:
+    """Render non-table Objects Estimation messages."""
     if not estimate_id:
         st.warning("No active estimate. Return to File Review and start Objects Estimation.")
-
     if data_error:
         st.error(data_error)
-
     if cache_warning:
         st.warning(cache_warning)
-
     if st.session_state.get("last_estimation_error"):
         st.error(f"Estimation failed: {st.session_state.last_estimation_error}")
 
-    data = _data_with_progress(data, estimate_id)
 
+def _rows_with_approved_overlay(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Apply local approved-state feedback before rendering pricing rows."""
     approved_object_keys = st.session_state.get("approved_object_keys", set())
-    object_rows = "".join(
-        _row_html(
-            {
-                **row,
-                "reviewed": bool(row.get("reviewed"))
-                or row.get("object_key") in approved_object_keys,
-            },
-            with_review=True,
-            show_sale_total=True,
-            estimate_id=estimate_id,
-            run_id=run_id,
-        )
-        for row in data["rows"]
-    )
-    project_cost_rows = "".join(
-        _row_html(
-            row,
-            with_review=False,
-            show_sale_total=False,
-            estimate_id=estimate_id,
-            run_id=run_id,
-        )
-        for row in data["project_costs"]
-    )
+    return [
+        {
+            **row,
+            "reviewed": bool(row.get("reviewed")) or row.get("object_key") in approved_object_keys,
+        }
+        for row in rows
+    ]
 
+
+def _render_pricing_table(
+    data: dict[str, object],
+    *,
+    estimate_id: str | None,
+    run_id: str | None,
+) -> None:
+    """Render the Objects Estimation pricing table."""
     st.markdown(
-        '<div class="objects-pricing-card">'
-        '<div class="objects-pricing-header">'
-        '<div class="objects-pricing-head">Project objects</div>'
-        '<div class="objects-pricing-head">QTY</div>'
-        '<div class="objects-pricing-head">Self cost<br>per unit</div>'
-        '<div class="objects-pricing-head">Sale price<br>per unit</div>'
-        '<div class="objects-pricing-head">Sale price<br>total</div>'
-        '<div></div>'
-        '</div>'
-        '<div class="objects-pricing-table">'
-        f'{object_rows}'
-        f'{project_cost_rows}'
-        f'{_summary_html(data["summary"])}'
-        '</div>'
-        '</div>',
+        objects_pricing.pricing_table_html(
+            rows=_rows_with_approved_overlay(data["rows"]),
+            project_costs=data["project_costs"],
+            summary=data["summary"],
+            estimate_id=estimate_id,
+            run_id=run_id,
+        ),
         unsafe_allow_html=True,
     )
 
+
+def _render_objects_actions() -> None:
+    """Render bottom navigation actions for Objects Estimation."""
     col_back, col_generate = st.columns(2, gap="small")
 
     if col_back.button("BACK TO FILE REVIEW", type="secondary", use_container_width=True):
@@ -525,13 +232,9 @@ def render_objects_screen(company_id: str) -> None:
     if col_generate.button("GENERATE PROPOSAL", type="primary", use_container_width=True):
         st.session_state.screen = "objects"
 
-    supabase_url, supabase_anon_key = _objects_progress_sync_config()
-    if estimate_id:
-        install_objects_price_input_guard(
-            estimate_id=str(estimate_id),
-            supabase_url=supabase_url,
-            supabase_anon_key=supabase_anon_key,
-        )
+
+def _install_objects_transition_guard() -> None:
+    """Mask the Streamlit rerun while returning to File Review."""
     install_post_upload_transition_guard(
         [
             {
@@ -542,6 +245,22 @@ def render_objects_screen(company_id: str) -> None:
         ],
         current_marker_id=OBJECTS_MARKER_ID,
     )
+
+
+def _install_objects_runtimes(
+    *,
+    estimate_id: str | None,
+    supabase_url: str | None,
+    supabase_anon_key: str | None,
+) -> None:
+    """Install client-side editing/progress runtimes for the current estimate."""
+    if estimate_id:
+        install_objects_price_input_guard(
+            estimate_id=str(estimate_id),
+            supabase_url=supabase_url,
+            supabase_anon_key=supabase_anon_key,
+        )
+    _install_objects_transition_guard()
     if estimate_id and supabase_url and supabase_anon_key:
         install_objects_progress_sync(
             supabase_url=supabase_url,
@@ -549,3 +268,37 @@ def render_objects_screen(company_id: str) -> None:
             estimate_id=str(estimate_id),
             interval_ms=1500,
         )
+
+
+def render_objects_screen(company_id: str) -> None:
+    """Render the object pricing review screen from persisted estimate data."""
+    apply_objects_css()
+    _consume_estimation_future()
+
+    estimate_id = st.session_state.get("current_estimate_id")
+    run_id = st.session_state.get("current_run_id")
+    _mark_objects_cache_dirty_when_estimation_runs(estimate_id)
+    screen_state = _current_objects_state(estimate_id)
+
+    render_post_upload_header(
+        "Objects Estimation",
+        "Review objects → Set sale price → Generate proposal",
+        class_name="objects-estimation-header",
+        marker_id=OBJECTS_MARKER_ID,
+    )
+    _render_objects_messages(
+        estimate_id=estimate_id,
+        data_error=screen_state.data_error,
+        cache_warning=screen_state.cache_warning,
+    )
+
+    data = _data_with_progress(screen_state.data, estimate_id)
+    _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id)
+    _render_objects_actions()
+
+    supabase_url, supabase_anon_key = _objects_progress_sync_config()
+    _install_objects_runtimes(
+        estimate_id=estimate_id,
+        supabase_url=supabase_url,
+        supabase_anon_key=supabase_anon_key,
+    )

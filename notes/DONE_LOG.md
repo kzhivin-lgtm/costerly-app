@@ -67,3 +67,5 @@ Runtime cleanup and upload lazy-load checkpoint: perf/debug instrumentation remo
 Backup v3.0_after_runtime_cleanup created, завершена 10.07
 File Review refactor: Continue flow split into helpers, object edit state centralized, dead CSS/search leftovers removed, локально проверено на 8572, завершена 10.07
 Backup v3.0.1_after_file_review_refactor created, завершена 10.07
+Objects Estimation refactor: screen split into state/render/runtime helpers, pricing table HTML moved to ui.objects_pricing, unused progress input no-op removed, локально проверено на 8572, завершена 10.07
+Backup v3.0.2_after_objects_estimation_refactor created, завершена 10.07
