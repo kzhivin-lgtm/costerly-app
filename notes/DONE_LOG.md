@@ -69,3 +69,5 @@ File Review refactor: Continue flow split into helpers, object edit state centra
 Backup v3.0.1_after_file_review_refactor created, завершена 10.07
 Objects Estimation refactor: screen split into state/render/runtime helpers, pricing table HTML moved to ui.objects_pricing, unused progress input no-op removed, локально проверено на 8572, завершена 10.07
 Backup v3.0.2_after_objects_estimation_refactor created, завершена 10.07
+Object Detail refactor: HTML renderer moved to ui.object_detail_view, screen orchestration split into context/load/render/runtime helpers, вручную проверено на 8572, завершена 10.07
+Backup v3.0.3_after_object_detail_refactor created, завершена 10.07
