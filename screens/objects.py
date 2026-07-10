@@ -33,7 +33,7 @@ def _escape(value: object) -> str:
 
 
 def _money(value: object) -> str:
-    """Format temporary pricing fixture values for the pricing table."""
+    """Format pricing values for the objects estimate table."""
     if value is None or value == "":
         return "—"
     if isinstance(value, float) and value != value:
@@ -429,7 +429,7 @@ def _parse_datetime(value: object) -> datetime | None:
 
 
 def render_objects_screen(company_id: str) -> None:
-    """Render the object pricing review screen with temporary fixture data."""
+    """Render the object pricing review screen from persisted estimate data."""
     apply_objects_css()
     _consume_estimation_future()
 

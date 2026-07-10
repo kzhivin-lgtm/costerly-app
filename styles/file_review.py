@@ -157,18 +157,6 @@ def apply_file_review_css() -> None:
             padding: 0 !important;
         }
 
-        .file-review-object-card {
-            width: 100%;
-            background: var(--color-surface);
-            border: 1px solid rgba(42, 31, 44, 0.14);
-            border-radius: 16px;
-            box-shadow: 0 14px 28px rgba(0, 0, 0, 0.055);
-            padding: 32px 34px 26px 34px;
-            box-sizing: border-box;
-            color: var(--color-text-strong);
-            margin: 0 0 var(--review-card-gap) 0;
-        }
-
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker) {
             width: 100%;
             background: var(--color-surface);
@@ -368,28 +356,10 @@ def apply_file_review_css() -> None:
             margin-bottom: var(--post-upload-heading-gap) !important;
         }
 
-        .file-review-missing-toggle {
-            display: none;
-        }
-
         .file-review-missing-collapsed {
             display: flex;
             align-items: center;
             gap: 22px;
-        }
-
-        .file-review-missing-expanded {
-            display: none;
-        }
-
-        .file-review-missing-toggle:checked
-            ~ .file-review-missing-collapsed {
-            display: none;
-        }
-
-        .file-review-missing-toggle:checked
-            ~ .file-review-missing-expanded {
-            display: block;
         }
 
         .file-review-missing-title {
@@ -399,60 +369,6 @@ def apply_file_review_css() -> None:
             font-weight: 700;
             letter-spacing: 0.10em;
             text-transform: uppercase;
-        }
-
-        .file-review-search-label {
-            color: rgba(42, 31, 44, 0.58);
-            font-size: 18px;
-            line-height: 1.25;
-            font-weight: 700;
-            letter-spacing: 0.10em;
-            text-transform: uppercase;
-        }
-
-        .file-review-search-row {
-            display: grid;
-            grid-template-columns: max-content minmax(0, 1fr);
-            column-gap: 22px;
-            align-items: center;
-            margin: 0 0 14px 0;
-        }
-
-        .file-review-search-label {
-            min-width: 150px;
-        }
-
-        .file-review-search-input {
-            width: 100%;
-            min-height: var(--input-height-md);
-            box-sizing: border-box;
-            border: 1px solid var(--input-border);
-            border-radius: var(--input-radius);
-            background: var(--input-bg);
-            color: var(--input-text);
-            font-family: var(--font-sans);
-            font-size: var(--input-font-size);
-            line-height: var(--input-line-height);
-            font-weight: var(--input-font-weight);
-            padding: var(--input-padding-y) var(--input-padding-x);
-            outline: none;
-            transition: border-color 140ms ease, box-shadow 140ms ease;
-        }
-
-        .file-review-search-input::placeholder {
-            color: var(--input-placeholder);
-            opacity: 1;
-        }
-
-        .file-review-search-input:focus {
-            border-color: var(--input-focus-border);
-            box-shadow: 0 0 0 3px var(--input-focus-ring);
-        }
-
-        .file-review-search-actions {
-            display: flex;
-            gap: 16px;
-            margin: 22px 0 0 172px;
         }
 
         .file-review-search-button {
@@ -481,15 +397,8 @@ def apply_file_review_css() -> None:
             border-color: rgba(128, 73, 198, 0.42);
         }
 
-        .file-review-search-button--cancel:hover {
-            background: var(--button-danger-bg-hover);
-            color: var(--button-danger-text-hover);
-            border-color: var(--button-danger-border-hover);
-        }
-
         @media (max-width: 760px) {
             .file-review-card,
-            .file-review-object-card,
             :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker),
             .file-review-missing-card {
                 padding: 26px 22px 24px 22px;
@@ -498,15 +407,9 @@ def apply_file_review_css() -> None:
 
             .file-review-summary-grid,
             .file-review-meta-row,
-            .file-review-object-edit-grid,
-            .file-review-object-detail-grid,
-            .file-review-search-row {
+            .file-review-object-detail-grid {
                 grid-template-columns: 1fr;
                 row-gap: 8px;
-            }
-
-            .file-review-search-actions {
-                margin-left: 0;
             }
 
             .file-review-value {

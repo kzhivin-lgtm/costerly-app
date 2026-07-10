@@ -65,3 +65,5 @@ Initial app boot visual noise reduced: Cloudflare grey screen now releases via S
 Backup v2.01.52_after_embed_ready_signal created, завершена 09.07
 Runtime cleanup and upload lazy-load checkpoint: perf/debug instrumentation removed, upload route stays isolated from post-upload screens, локально проверено на 8572, завершена 10.07
 Backup v3.0_after_runtime_cleanup created, завершена 10.07
+File Review refactor: Continue flow split into helpers, object edit state centralized, dead CSS/search leftovers removed, локально проверено на 8572, завершена 10.07
+Backup v3.0.1_after_file_review_refactor created, завершена 10.07

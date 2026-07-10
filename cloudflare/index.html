@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="v2.01.60-clean-runtime-wrapper" />
+    <meta name="costerly-wrapper-version" content="v3.0-runtime-cleanup" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
@@ -74,21 +74,14 @@
     <div class="embed-footer-mask" aria-hidden="true"></div>
     <script>
       (() => {
-        const startedAt = performance.now();
         const mask = document.getElementById("app-loading-mask");
         const frame = document.getElementById("costerly-app-frame");
         let fallbackTimer = null;
         let ready = false;
-
-        function mark(label) {
-          performance.mark(`costerly:${label}`);
-        }
-
-        function revealApp(source) {
+        function revealApp() {
           if (ready) return;
           ready = true;
           window.clearTimeout(fallbackTimer);
-          mark("reveal");
           if (frame) frame.classList.add("is-ready");
           if (mask) {
             mask.classList.add("is-hidden");
@@ -96,22 +89,13 @@
           }
         }
 
-        mark("wrapper-start");
-
-        if (frame) {
-          frame.addEventListener("load", () => {
-            mark("iframe-load");
-          });
-        }
-
         window.addEventListener("message", (event) => {
           if (event.data && event.data.type === "costerly:app-ready") {
-            mark("app-ready");
-            revealApp("app-ready");
+            revealApp();
           }
         });
 
-        fallbackTimer = window.setTimeout(() => revealApp("fallback-8000ms"), 8000);
+        fallbackTimer = window.setTimeout(() => revealApp(), 8000);
       })();
     </script>
   </body>
