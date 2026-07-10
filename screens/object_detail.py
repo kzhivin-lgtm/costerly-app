@@ -343,10 +343,6 @@ def _consume_pending_object_detail_snapshot() -> bool:
         edits = json.loads(str(pending.get("snapshot") or "[]"))
     except json.JSONDecodeError:
         edits = []
-    st.session_state.object_detail_last_snapshot_debug = {
-        "received": True,
-        "edits": len(edits) if isinstance(edits, list) else 0,
-    }
     apply_object_detail_snapshot(
         estimate_id=estimate_id,
         object_id=object_id,

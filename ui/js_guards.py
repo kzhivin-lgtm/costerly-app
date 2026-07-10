@@ -5,14 +5,9 @@ import json
 import streamlit.components.v1 as components
 
 
-def signal_app_ready_to_embed(
-    screen: str,
-    *,
-    perf_entries: list[dict[str, object]] | None = None,
-) -> None:
+def signal_app_ready_to_embed(screen: str) -> None:
     """Tell the embedding Cloudflare wrapper that a real Streamlit screen rendered."""
     screen_json = json.dumps(screen)
-    perf_entries_json = json.dumps(perf_entries or [])
 
     components.html(
         """
@@ -21,7 +16,6 @@ def signal_app_ready_to_embed(
             const message = {
                 type: "costerly:app-ready",
                 screen: __SCREEN__,
-                perfEntries: __PERF_ENTRIES__,
                 sentAt: Date.now()
             };
 
@@ -46,7 +40,7 @@ def signal_app_ready_to_embed(
             window.setTimeout(postReady, 120);
         })();
         </script>
-        """.replace("__SCREEN__", screen_json).replace("__PERF_ENTRIES__", perf_entries_json),
+        """.replace("__SCREEN__", screen_json),
         height=0,
         width=0,
     )
@@ -1110,11 +1104,6 @@ def install_object_detail_input_guard(
                 const snapshot = approveSnapshotHref();
                 button.setAttribute("href", snapshot.href);
                 parentWindow[SUBMITTING_KEY] = true;
-                console.info("[costerly] Object Detail approve snapshot", {
-                    estimateId: ESTIMATE_ID,
-                    objectId: OBJECT_ID,
-                    edits: snapshot.edits.length,
-                });
             }
 
             parentDoc.addEventListener("focusin", handleFocus, true);

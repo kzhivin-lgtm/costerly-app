@@ -9,7 +9,6 @@ import streamlit as st
 from styles.file_review import apply_file_review_css
 from ui.js_guards import install_post_upload_transition_guard
 from ui.layout import post_upload_header_html, render_post_upload_header
-from ui.perf_debug import mark_python_perf, measure_python_perf
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
     OBJECTS_MARKER_ID,
@@ -216,12 +215,9 @@ def _load_file_review_screen_data(run_id: str) -> tuple[dict[str, object], str |
     """Load File Review data from session cache first, then Supabase."""
     cache = st.session_state.setdefault("file_review_data_cache", {})
     if run_id in cache:
-        mark_python_perf("file review cache hit", run_id=run_id)
         return cache[run_id], None
 
-    mark_python_perf("file review cache miss", run_id=run_id)
-    with measure_python_perf("load file review data", run_id=run_id):
-        data = load_file_review_data(run_id)
+    data = load_file_review_data(run_id)
     cache[run_id] = data
     return data, None
 
@@ -321,8 +317,7 @@ def render_file_review_screen(company_id: str) -> None:
             current_marker_id=FILE_REVIEW_MARKER_ID,
         )
 
-    with measure_python_perf("apply file review css"):
-        apply_file_review_css()
+    apply_file_review_css()
 
     processing_error = st.session_state.get("processing_error")
     if processing_error:
@@ -338,8 +333,7 @@ def render_file_review_screen(company_id: str) -> None:
     run_id = st.session_state.get("current_run_id")
     if run_id:
         try:
-            with measure_python_perf("file review data section", run_id=run_id):
-                data, cache_warning = _load_file_review_screen_data(run_id)
+            data, cache_warning = _load_file_review_screen_data(run_id)
         except Exception as exc:
             render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
             install_post_upload_transition_guard([], current_marker_id=FILE_REVIEW_MARKER_ID)
@@ -354,20 +348,18 @@ def render_file_review_screen(company_id: str) -> None:
             st.rerun()
         return
 
-    with measure_python_perf("file review header + guard"):
-        st.markdown(
-            (
-                '<div class="file-review-title-card-shell">'
-                + post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID)
-                + _build_review_card_html(data["run"])
-                + "</div>"
-            ),
-            unsafe_allow_html=True,
-        )
-        install_continue_transition_guard()
+    st.markdown(
+        (
+            '<div class="file-review-title-card-shell">'
+            + post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID)
+            + _build_review_card_html(data["run"])
+            + "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
+    install_continue_transition_guard()
 
-    with measure_python_perf("sync file review edits", object_count=len(data["objects"])):
-        _sync_object_edit_state(run_id, data["objects"])
+    _sync_object_edit_state(run_id, data["objects"])
 
     if cache_warning:
         st.warning(cache_warning)
@@ -377,9 +369,8 @@ def render_file_review_screen(company_id: str) -> None:
         unsafe_allow_html=True,
     )
 
-    with measure_python_perf("render detected object cards", object_count=len(data["objects"])):
-        for item in data["objects"]:
-            _render_object_card(item)
+    for item in data["objects"]:
+        _render_object_card(item)
 
     _render_missing_object_search()
 

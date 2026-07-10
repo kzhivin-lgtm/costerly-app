@@ -16,7 +16,6 @@ from ui.js_guards import (
     install_post_upload_transition_guard,
 )
 from ui.layout import render_post_upload_header
-from ui.perf_debug import mark_python_perf, measure_python_perf
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
     OBJECTS_MARKER_ID,
@@ -261,20 +260,18 @@ def _consume_estimation_future() -> None:
     """Store the background estimation result once the worker is done."""
     future = st.session_state.get("estimation_first_object_future")
     if not isinstance(future, Future) or not future.done():
-        mark_python_perf("estimation future pending", pending=isinstance(future, Future))
         return
 
-    with measure_python_perf("consume estimation future"):
-        try:
-            st.session_state.last_estimation_result = future.result()
-            st.session_state.last_estimation_error = None
-            estimate_id = st.session_state.get("current_estimate_id")
-            if estimate_id:
-                st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
-        except Exception as exc:
-            st.session_state.last_estimation_error = str(exc)
-        finally:
-            st.session_state.estimation_first_object_future = None
+    try:
+        st.session_state.last_estimation_result = future.result()
+        st.session_state.last_estimation_error = None
+        estimate_id = st.session_state.get("current_estimate_id")
+        if estimate_id:
+            st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
+    except Exception as exc:
+        st.session_state.last_estimation_error = str(exc)
+    finally:
+        st.session_state.estimation_first_object_future = None
 
 
 def _objects_progress_sync_config() -> tuple[str | None, str | None]:
@@ -290,17 +287,10 @@ def _load_objects_screen_data(estimate_id: str) -> tuple[dict[str, object], str 
     dirty_estimates = st.session_state.setdefault("objects_estimation_cache_dirty", set())
 
     if estimate_id in cache and estimate_id not in dirty_estimates:
-        mark_python_perf("objects cache hit", estimate_id=estimate_id)
         return cache[estimate_id], None
 
-    mark_python_perf(
-        "objects cache miss",
-        estimate_id=estimate_id,
-        dirty=estimate_id in dirty_estimates,
-    )
     try:
-        with measure_python_perf("load objects estimation data", estimate_id=estimate_id):
-            data = load_objects_estimation_data(estimate_id)
+        data = load_objects_estimation_data(estimate_id)
     except Exception as exc:
         cached = cache.get(estimate_id)
         if cached is not None:
@@ -440,8 +430,7 @@ def _parse_datetime(value: object) -> datetime | None:
 
 def render_objects_screen(company_id: str) -> None:
     """Render the object pricing review screen with temporary fixture data."""
-    with measure_python_perf("apply objects css"):
-        apply_objects_css()
+    apply_objects_css()
     _consume_estimation_future()
 
     estimate_id = st.session_state.get("current_estimate_id")
@@ -454,21 +443,19 @@ def render_objects_screen(company_id: str) -> None:
     cache_warning = None
     if estimate_id:
         try:
-            with measure_python_perf("objects data section", estimate_id=estimate_id):
-                data, cache_warning = _load_objects_screen_data(estimate_id)
+            data, cache_warning = _load_objects_screen_data(estimate_id)
         except Exception as exc:
             data_error = f"Could not load Objects Estimation: {exc}"
             data = _empty_objects_data()
     else:
         data = _empty_objects_data()
 
-    with measure_python_perf("objects header"):
-        render_post_upload_header(
-            "Objects Estimation",
-            "Review objects → Set sale price → Generate proposal",
-            class_name="objects-estimation-header",
-            marker_id=OBJECTS_MARKER_ID,
-        )
+    render_post_upload_header(
+        "Objects Estimation",
+        "Review objects → Set sale price → Generate proposal",
+        class_name="objects-estimation-header",
+        marker_id=OBJECTS_MARKER_ID,
+    )
 
     if not estimate_id:
         st.warning("No active estimate. Return to File Review and start Objects Estimation.")
@@ -485,55 +472,49 @@ def render_objects_screen(company_id: str) -> None:
     data = _data_with_progress(data, estimate_id)
 
     approved_object_keys = st.session_state.get("approved_object_keys", set())
-    with measure_python_perf(
-        "build objects table html",
-        object_rows=len(data["rows"]),
-        project_cost_rows=len(data["project_costs"]),
-    ):
-        object_rows = "".join(
-            _row_html(
-                {
-                    **row,
-                    "reviewed": bool(row.get("reviewed"))
-                    or row.get("object_key") in approved_object_keys,
-                },
-                with_review=True,
-                show_sale_total=True,
-                estimate_id=estimate_id,
-                run_id=run_id,
-            )
-            for row in data["rows"]
+    object_rows = "".join(
+        _row_html(
+            {
+                **row,
+                "reviewed": bool(row.get("reviewed"))
+                or row.get("object_key") in approved_object_keys,
+            },
+            with_review=True,
+            show_sale_total=True,
+            estimate_id=estimate_id,
+            run_id=run_id,
         )
-        project_cost_rows = "".join(
-            _row_html(
-                row,
-                with_review=False,
-                show_sale_total=False,
-                estimate_id=estimate_id,
-                run_id=run_id,
-            )
-            for row in data["project_costs"]
+        for row in data["rows"]
+    )
+    project_cost_rows = "".join(
+        _row_html(
+            row,
+            with_review=False,
+            show_sale_total=False,
+            estimate_id=estimate_id,
+            run_id=run_id,
         )
+        for row in data["project_costs"]
+    )
 
-    with measure_python_perf("render objects table markdown"):
-        st.markdown(
-            '<div class="objects-pricing-card">'
-            '<div class="objects-pricing-header">'
-            '<div class="objects-pricing-head">Project objects</div>'
-            '<div class="objects-pricing-head">QTY</div>'
-            '<div class="objects-pricing-head">Self cost<br>per unit</div>'
-            '<div class="objects-pricing-head">Sale price<br>per unit</div>'
-            '<div class="objects-pricing-head">Sale price<br>total</div>'
-            '<div></div>'
-            '</div>'
-            '<div class="objects-pricing-table">'
-            f'{object_rows}'
-            f'{project_cost_rows}'
-            f'{_summary_html(data["summary"])}'
-            '</div>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
+    st.markdown(
+        '<div class="objects-pricing-card">'
+        '<div class="objects-pricing-header">'
+        '<div class="objects-pricing-head">Project objects</div>'
+        '<div class="objects-pricing-head">QTY</div>'
+        '<div class="objects-pricing-head">Self cost<br>per unit</div>'
+        '<div class="objects-pricing-head">Sale price<br>per unit</div>'
+        '<div class="objects-pricing-head">Sale price<br>total</div>'
+        '<div></div>'
+        '</div>'
+        '<div class="objects-pricing-table">'
+        f'{object_rows}'
+        f'{project_cost_rows}'
+        f'{_summary_html(data["summary"])}'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
     col_back, col_generate = st.columns(2, gap="small")
 
@@ -544,28 +525,27 @@ def render_objects_screen(company_id: str) -> None:
     if col_generate.button("GENERATE PROPOSAL", type="primary", use_container_width=True):
         st.session_state.screen = "objects"
 
-    with measure_python_perf("objects guards"):
-        supabase_url, supabase_anon_key = _objects_progress_sync_config()
-        if estimate_id:
-            install_objects_price_input_guard(
-                estimate_id=str(estimate_id),
-                supabase_url=supabase_url,
-                supabase_anon_key=supabase_anon_key,
-            )
-        install_post_upload_transition_guard(
-            [
-                {
-                    "label": "BACK TO FILE REVIEW",
-                    "targetMarkerId": FILE_REVIEW_MARKER_ID,
-                    "shellHtml": post_upload_transition_shell_html(title="File Review"),
-                }
-            ],
-            current_marker_id=OBJECTS_MARKER_ID,
+    supabase_url, supabase_anon_key = _objects_progress_sync_config()
+    if estimate_id:
+        install_objects_price_input_guard(
+            estimate_id=str(estimate_id),
+            supabase_url=supabase_url,
+            supabase_anon_key=supabase_anon_key,
         )
-        if estimate_id and supabase_url and supabase_anon_key:
-            install_objects_progress_sync(
-                supabase_url=supabase_url,
-                supabase_anon_key=supabase_anon_key,
-                estimate_id=str(estimate_id),
-                interval_ms=1500,
-            )
+    install_post_upload_transition_guard(
+        [
+            {
+                "label": "BACK TO FILE REVIEW",
+                "targetMarkerId": FILE_REVIEW_MARKER_ID,
+                "shellHtml": post_upload_transition_shell_html(title="File Review"),
+            }
+        ],
+        current_marker_id=OBJECTS_MARKER_ID,
+    )
+    if estimate_id and supabase_url and supabase_anon_key:
+        install_objects_progress_sync(
+            supabase_url=supabase_url,
+            supabase_anon_key=supabase_anon_key,
+            estimate_id=str(estimate_id),
+            interval_ms=1500,
+        )
