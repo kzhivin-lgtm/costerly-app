@@ -25,6 +25,18 @@ def _money(value: object) -> str:
         return _escape(value)
 
 
+def _number(value: object, default: float = 0) -> float:
+    """Convert pricing values for lightweight UI calculations."""
+    if value is None or value == "":
+        return default
+    if isinstance(value, float) and value != value:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def _input_money(value: object) -> str:
     """Format editable pricing input values with a stable currency prefix."""
     if value is None or value == "":
@@ -189,6 +201,55 @@ def _row_materials_html(value: object) -> str:
     if value is None or value == "":
         return ""
     return f'<div class="objects-pricing-materials">{_escape(value)}</div>'
+
+
+def _safe_int(value: object, *, default: int = 0) -> int:
+    """Return a bounded integer for progress display."""
+    try:
+        number = int(float(value))
+    except (TypeError, ValueError):
+        return default
+    return max(0, min(100, number))
+
+
+def _parse_datetime(value: object) -> datetime | None:
+    """Parse Supabase timestamps used by the smooth progress display."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+def _smooth_progress_curve(base: int) -> tuple[int, float]:
+    """Return the display cap and seconds per visual progress point."""
+    if base >= 95:
+        return 99, 6.0
+    if base >= 70:
+        return 95, 3.0
+    if base >= 35:
+        return 85, 1.8
+    return 70, 1.2
+
+
+def _smooth_progress_percent(row: dict[str, object]) -> int:
+    """Smooth a running estimate percent between backend updates."""
+    base = _safe_int(row.get("progress_percent"), default=25)
+    updated_at = _parse_datetime(row.get("progress_updated_at"))
+    if updated_at is None:
+        return base
+
+    cap, seconds_per_percent = _smooth_progress_curve(base)
+    elapsed = max(0.0, (datetime.now(UTC) - updated_at).total_seconds())
+    visual_increment = int(elapsed / seconds_per_percent)
+    return max(base, min(cap, base + visual_increment))
 
 
 def _self_cost_unit_html(row: dict[str, object]) -> str:

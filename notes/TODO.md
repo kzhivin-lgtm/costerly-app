@@ -1,7 +1,6 @@
 # TODO
 
 ## Active
-- Refactor: continue post-upload cleanup after Object Detail renderer/orchestration split; keep behavior checks at each stage.
 - Objects Estimation: manual sale price override should stay authoritative after self-cost changes, with manual label and SC-changed notice.
 - Work with agent metrics: token/cost ledger plus seconds per agent cycle, seconds per detected object, and seconds per estimated object.
 - Add overhead calculation layer after object material/labor pricing.

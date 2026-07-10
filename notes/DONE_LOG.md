@@ -71,3 +71,5 @@ Objects Estimation refactor: screen split into state/render/runtime helpers, pri
 Backup v3.0.2_after_objects_estimation_refactor created, завершена 10.07
 Object Detail refactor: HTML renderer moved to ui.object_detail_view, screen orchestration split into context/load/render/runtime helpers, вручную проверено на 8572, завершена 10.07
 Backup v3.0.3_after_object_detail_refactor created, завершена 10.07
+Post-refactor stabilization: old dev mock fixtures removed and Objects Estimation renderer missing helpers restored; File Review Continue verified without grey screen on 8576, завершена 10.07
+Backup v3.0.4_after_post_refactor_stabilization created, завершена 10.07
