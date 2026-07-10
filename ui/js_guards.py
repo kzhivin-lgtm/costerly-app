@@ -356,8 +356,12 @@ def install_objects_price_input_guard(
                 return String(value || "").replace(/[^0-9]/g, "");
             }
 
+            function wholeMoney(value) {
+                return Math.max(0, Math.floor(readNumber(value, 0)));
+            }
+
             function formatMoney(value) {
-                const rounded = Math.round(readNumber(value, 0));
+                const rounded = wholeMoney(value);
                 return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
             }
 
@@ -403,10 +407,39 @@ def install_objects_price_input_guard(
                 return key === "delivery" || key === "installation";
             }
 
-            function hideProjectCostSuggestion(row) {
-                if (!isProjectCostRow(row)) return;
-                const suggestion = row.querySelector(".objects-pricing-suggestion");
-                if (suggestion) suggestion.textContent = "";
+            function updateManualLabels(row) {
+                const suggestion = row ? row.querySelector(".objects-pricing-suggestion") : null;
+                if (!suggestion) return;
+
+                const sourceSelfCost = readNumber(row.dataset.sourceSelfCost, NaN);
+                const sourceSuggested = readNumber(row.dataset.suggestedSalePrice, NaN);
+
+                if (
+                    !isProjectCostRow(row)
+                    && (Number.isFinite(sourceSelfCost) || Number.isFinite(sourceSuggested))
+                ) {
+                    const currentSelfCost = readMoneyNumber(
+                        row.querySelector(".objects-pricing-self-cost-cell")?.textContent || ""
+                    );
+                    const currentSuggested = wholeMoney(currentSelfCost * 1.3);
+                    const selfCostChanged = (
+                        Number.isFinite(sourceSelfCost)
+                        && wholeMoney(sourceSelfCost) !== wholeMoney(currentSelfCost)
+                    );
+                    const suggestedChanged = (
+                        Number.isFinite(sourceSuggested)
+                        && wholeMoney(sourceSuggested) !== wholeMoney(currentSuggested)
+                    );
+
+                    if (selfCostChanged || suggestedChanged) {
+                        suggestion.textContent = "SC changed, price kept manually";
+                        suggestion.classList.add("objects-pricing-suggestion--warning");
+                        return;
+                    }
+                }
+
+                suggestion.classList.remove("objects-pricing-suggestion--warning");
+                suggestion.textContent = "manual price";
             }
 
             function manualPrices() {
@@ -423,19 +456,28 @@ def install_objects_price_input_guard(
                     const input = row.querySelector('.objects-pricing-price-input[data-pricing-overridden="true"]');
                     const objectKey = row.dataset.objectKey || "";
                     if (!input || !objectKey || Number.isFinite(prices[objectKey])) continue;
-                    prices[objectKey] = Math.max(0, Math.round(readMoneyNumber(saleInputValue(input))));
+                    prices[objectKey] = wholeMoney(readMoneyNumber(saleInputValue(input)));
                     input.dataset.userEdited = "true";
-                    hideProjectCostSuggestion(row);
+                    updateManualLabels(row);
                 }
             }
 
             function setManualSaleUnit(row, value) {
                 const key = row.dataset.objectKey || "";
                 if (!key) return;
-                manualPrices()[key] = Math.max(0, Math.round(readNumber(value, 0)));
+                manualPrices()[key] = wholeMoney(value);
+                if (!isProjectCostRow(row)) {
+                    const currentSelfCost = wholeMoney(readMoneyNumber(
+                        row.querySelector(".objects-pricing-self-cost-cell")?.textContent
+                        || row.dataset.sourceSelfCost
+                        || 0
+                    ));
+                    row.dataset.sourceSelfCost = String(currentSelfCost);
+                    row.dataset.suggestedSalePrice = String(wholeMoney(currentSelfCost * 1.3));
+                }
                 const input = row.querySelector(".objects-pricing-price-input");
                 if (input) input.dataset.userEdited = "true";
-                hideProjectCostSuggestion(row);
+                updateManualLabels(row);
             }
 
             async function persistManualSaleUnit(row, value) {
@@ -446,11 +488,28 @@ def install_objects_price_input_guard(
                     estimate_id: ESTIMATE_ID,
                     object_key: objectKey,
                     field: "sale_price_unit",
-                    value: Math.max(0, Math.round(readNumber(value, 0))),
+                    value: wholeMoney(value),
                     updated_at: new Date().toISOString(),
                 };
-                try {
-                    await fetch(`${SUPABASE_URL}/rest/v1/rfq_estimate_pricing_overrides?on_conflict=estimate_id,object_key,field`, {
+                if (!isProjectCostRow(row)) {
+                    payload.source_self_cost = wholeMoney(readMoneyNumber(
+                        row.querySelector(".objects-pricing-self-cost-cell")?.textContent
+                        || row.dataset.sourceSelfCost
+                        || 0
+                    ));
+                    payload.source_suggested_sale_price = wholeMoney(
+                        row.dataset.suggestedSalePrice || payload.source_self_cost * 1.3
+                    );
+                }
+                const legacyPayload = {
+                    estimate_id: payload.estimate_id,
+                    object_key: payload.object_key,
+                    field: payload.field,
+                    value: payload.value,
+                    updated_at: payload.updated_at,
+                };
+                async function upsert(payloadToSend) {
+                    return fetch(`${SUPABASE_URL}/rest/v1/rfq_estimate_pricing_overrides?on_conflict=estimate_id,object_key,field`, {
                         method: "POST",
                         headers: {
                             "apikey": SUPABASE_ANON_KEY,
@@ -458,8 +517,14 @@ def install_objects_price_input_guard(
                             "Content-Type": "application/json",
                             "Prefer": "resolution=merge-duplicates,return=minimal",
                         },
-                        body: JSON.stringify(payload),
+                        body: JSON.stringify(payloadToSend),
                     });
+                }
+                try {
+                    const response = await upsert(payload);
+                    if (!response.ok && payload.source_self_cost != null) {
+                        await upsert(legacyPayload);
+                    }
                 } catch (error) {
                     if (parentWindow.console && parentWindow.console.warn) {
                         parentWindow.console.warn("Could not persist pricing override", error);
@@ -508,12 +573,12 @@ def install_objects_price_input_guard(
                 const deliveryRow = rowForObject("delivery");
                 const installationRow = rowForObject("installation");
                 const prices = manualPrices();
-                const deliveryDefault = Math.round(subtotal * 0.03 * 100) / 100;
-                const installationDefault = Math.round(subtotal * 0.10 * 100) / 100;
+                const deliveryDefault = wholeMoney(subtotal * 0.03);
+                const installationDefault = wholeMoney(subtotal * 0.10);
                 const delivery = Number.isFinite(prices.delivery) ? prices.delivery : deliveryDefault;
                 const installation = Number.isFinite(prices.installation) ? prices.installation : installationDefault;
-                if (deliveryRow && Number.isFinite(prices.delivery)) hideProjectCostSuggestion(deliveryRow);
-                if (installationRow && Number.isFinite(prices.installation)) hideProjectCostSuggestion(installationRow);
+                if (deliveryRow && Number.isFinite(prices.delivery)) updateManualLabels(deliveryRow);
+                if (installationRow && Number.isFinite(prices.installation)) updateManualLabels(installationRow);
 
                 if (deliveryRow && !Number.isFinite(prices.delivery)) {
                     const input = deliveryRow.querySelector(".objects-pricing-price-input");
@@ -528,11 +593,11 @@ def install_objects_price_input_guard(
                     }
                 }
 
-                const projectPrice = Math.round((subtotal + delivery + installation) * 100) / 100;
-                const vat = Math.round(projectPrice * 0.18 * 100) / 100;
+                const projectPrice = wholeMoney(subtotal + delivery + installation);
+                const vat = wholeMoney(projectPrice * 0.18);
                 setSummaryValue("project_price", projectPrice);
                 setSummaryValue("vat", vat);
-                setSummaryValue("total", Math.round((projectPrice + vat) * 100) / 100);
+                setSummaryValue("total", wholeMoney(projectPrice + vat));
             }
 
             function sanitizeActive(input) {
@@ -1053,13 +1118,17 @@ def install_objects_progress_sync(
                 return readNumber(cleaned, 0);
             }
 
+            function wholeMoney(value) {
+                return Math.max(0, Math.floor(readNumber(value, 0)));
+            }
+
             function formatMoney(value) {
-                const rounded = Math.round(readNumber(value, 0));
+                const rounded = wholeMoney(value);
                 return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
             }
 
             function formatInputMoney(value) {
-                const rounded = Math.round(readNumber(value, 0));
+                const rounded = wholeMoney(value);
                 return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
             }
 
@@ -1200,10 +1269,39 @@ def install_objects_progress_sync(
                 return row.querySelector(".objects-pricing-price-input");
             }
 
-            function hideProjectCostSuggestion(row) {
-                if (!isProjectCostRow(row)) return;
-                const suggestion = row.querySelector(".objects-pricing-suggestion");
-                if (suggestion) suggestion.textContent = "";
+            function updateManualLabels(row) {
+                const suggestion = row ? row.querySelector(".objects-pricing-suggestion") : null;
+                if (!suggestion) return;
+
+                const sourceSelfCost = readNumber(row.dataset.sourceSelfCost, NaN);
+                const sourceSuggested = readNumber(row.dataset.suggestedSalePrice, NaN);
+
+                if (
+                    !isProjectCostRow(row)
+                    && (Number.isFinite(sourceSelfCost) || Number.isFinite(sourceSuggested))
+                ) {
+                    const currentSelfCost = readMoneyNumber(
+                        row.querySelector(".objects-pricing-self-cost-cell")?.textContent || ""
+                    );
+                    const currentSuggested = wholeMoney(currentSelfCost * 1.3);
+                    const selfCostChanged = (
+                        Number.isFinite(sourceSelfCost)
+                        && wholeMoney(sourceSelfCost) !== wholeMoney(currentSelfCost)
+                    );
+                    const suggestedChanged = (
+                        Number.isFinite(sourceSuggested)
+                        && wholeMoney(sourceSuggested) !== wholeMoney(currentSuggested)
+                    );
+
+                    if (selfCostChanged || suggestedChanged) {
+                        suggestion.textContent = "SC changed, price kept manually";
+                        suggestion.classList.add("objects-pricing-suggestion--warning");
+                        return;
+                    }
+                }
+
+                suggestion.classList.remove("objects-pricing-suggestion--warning");
+                suggestion.textContent = "manual price";
             }
 
             function manualPrices() {
@@ -1221,8 +1319,19 @@ def install_objects_progress_sync(
             function setManualSaleUnit(row, value) {
                 const objectKey = row ? row.dataset.objectKey || "" : "";
                 if (!objectKey) return;
-                manualPrices()[objectKey] = Math.max(0, Math.round(readNumber(value, 0)));
-                hideProjectCostSuggestion(row);
+                manualPrices()[objectKey] = wholeMoney(value);
+                if (!isProjectCostRow(row)) {
+                    const currentSelfCost = wholeMoney(readMoneyNumber(
+                        row.querySelector(".objects-pricing-self-cost-cell")?.textContent
+                        || row.dataset.sourceSelfCost
+                        || 0
+                    ));
+                    row.dataset.sourceSelfCost = String(currentSelfCost);
+                    row.dataset.suggestedSalePrice = String(wholeMoney(currentSelfCost * 1.3));
+                }
+                const input = saleInput(row);
+                if (input) input.dataset.userEdited = "true";
+                updateManualLabels(row);
             }
 
             function saleInputValue(input) {
@@ -1261,7 +1370,7 @@ def install_objects_progress_sync(
                 const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
                 const manualUnit = manualSaleUnit(row);
                 const effectiveUnit = manualUnit == null ? saleUnit : manualUnit;
-                if (manualUnit != null) hideProjectCostSuggestion(row);
+                if (manualUnit != null) updateManualLabels(row);
                 if (input && parentDoc.activeElement !== input && effectiveUnit != null) {
                     const formatted = formatInputMoney(effectiveUnit);
                     setSaleInputValue(input, formatted);
@@ -1269,7 +1378,7 @@ def install_objects_progress_sync(
                     input.dataset.autoValue = formatted;
                 }
                 if (totalCell) {
-                    const effectiveTotal = manualUnit == null ? saleTotal : Math.round(manualUnit * rowQuantity(row, 1) * 100) / 100;
+                    const effectiveTotal = manualUnit == null ? saleTotal : wholeMoney(manualUnit * rowQuantity(row, 1));
                     totalCell.textContent = effectiveTotal == null ? "" : formatMoney(effectiveTotal);
                 }
             }
@@ -1285,7 +1394,7 @@ def install_objects_progress_sync(
                 const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
                 if (!totalCell) return;
 
-                const saleTotal = Math.round(rowSaleUnit(row) * rowQuantity(row, 1) * 100) / 100;
+                const saleTotal = wholeMoney(rowSaleUnit(row) * rowQuantity(row, 1));
                 totalCell.textContent = formatMoney(saleTotal);
             }
 
@@ -1315,8 +1424,8 @@ def install_objects_progress_sync(
                     subtotal += readMoneyNumber(totalCell ? totalCell.textContent : "");
                 }
 
-                const deliveryDefault = Math.round(subtotal * 0.03 * 100) / 100;
-                const installationDefault = Math.round(subtotal * 0.10 * 100) / 100;
+                const deliveryDefault = wholeMoney(subtotal * 0.03);
+                const installationDefault = wholeMoney(subtotal * 0.10);
 
                 const deliveryRow = rowForObject("delivery");
                 if (deliveryRow) setSalePricing(deliveryRow, deliveryDefault, null);
@@ -1326,9 +1435,9 @@ def install_objects_progress_sync(
 
                 const delivery = deliveryRow ? rowSaleUnit(deliveryRow) : deliveryDefault;
                 const installation = installationRow ? rowSaleUnit(installationRow) : installationDefault;
-                const projectPrice = Math.round((subtotal + delivery + installation) * 100) / 100;
-                const vat = Math.round(projectPrice * 0.18 * 100) / 100;
-                const total = Math.round((projectPrice + vat) * 100) / 100;
+                const projectPrice = wholeMoney(subtotal + delivery + installation);
+                const vat = wholeMoney(projectPrice * 0.18);
+                const total = wholeMoney(projectPrice + vat);
 
                 setSummaryValue("project_price", projectPrice);
                 setSummaryValue("vat", vat);
@@ -1352,8 +1461,8 @@ def install_objects_progress_sync(
 
                 const quantity = rowQuantity(row, objectState.quantity || 1);
                 const manualUnit = manualSaleUnit(row);
-                const saleUnit = manualUnit == null ? Math.round(selfCost * 1.3 * 100) / 100 : manualUnit;
-                const saleTotal = Math.round(saleUnit * quantity * 100) / 100;
+                const saleUnit = manualUnit == null ? wholeMoney(selfCost * 1.3) : manualUnit;
+                const saleTotal = wholeMoney(saleUnit * quantity);
 
                 const cell = row.querySelector(".objects-pricing-self-cost-cell");
                 if (cell) cell.textContent = formatMoney(selfCost);

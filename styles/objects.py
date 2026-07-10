@@ -100,6 +100,11 @@ def apply_objects_css() -> None:
             text-align: center;
         }
 
+        .objects-pricing-suggestion--warning {
+            color: #D53B3B;
+            font-weight: 700;
+        }
+
         .objects-pricing-number,
         .objects-pricing-price {
             font-family: var(--font-mono);
