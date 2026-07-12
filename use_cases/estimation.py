@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-import math
 from typing import Any
 
 from agents.estimation_agent import run_estimation_agent
@@ -113,13 +112,10 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         row = item.to_dict()
         status = str(row.get("status") or "pending")
         self_cost = row.get("self_cost_ex_vat")
-        suggested_sale_price = _suggested_sale_price(self_cost) if status == "completed" else None
-        sale_price_unit = suggested_sale_price
-        object_key = str(row.get("object_id") or "")
-        override = sale_price_overrides.get(object_key)
-        sale_price_overridden = status == "completed" and override is not None
+        sale_price_unit = _suggested_sale_price(self_cost) if status == "completed" else None
+        sale_price_overridden = status == "completed" and row.get("object_id") in sale_price_overrides
         if sale_price_overridden:
-            sale_price_unit = _override_record_value(override)
+            sale_price_unit = sale_price_overrides[row.get("object_id")]
         rows.append(
             {
                 "object_key": row.get("object_id"),
@@ -134,21 +130,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "sale_price_unit": sale_price_unit,
                 "sale_price_total": _line_total(sale_price_unit, row.get("quantity")),
                 "sale_price_overridden": sale_price_overridden,
-                "suggested_sale_price": suggested_sale_price,
-                "manual_source_self_cost": (
-                    override.get("source_self_cost") if isinstance(override, dict) else _nullable_number(self_cost)
-                ),
-                "manual_source_suggested_sale_price": (
-                    override.get("source_suggested_sale_price")
-                    if isinstance(override, dict)
-                    else suggested_sale_price
-                ),
-                "sale_price_manual_warning": _manual_price_warning(
-                    override=override if isinstance(override, dict) else None,
-                    current_self_cost=self_cost,
-                    current_suggested_sale_price=suggested_sale_price,
-                ),
-                "suggestion": "manual price" if sale_price_overridden else "suggested: SC + 30%",
+                "suggestion": "suggested: SC + 30%",
                 "reviewed": bool(row.get("approved")),
             }
         )
@@ -167,40 +149,19 @@ def _suggested_sale_price(self_cost: Any) -> float | None:
         return None
     if isinstance(self_cost, float) and self_cost != self_cost:
         return None
-    return _whole_money(_number(self_cost, 0) * 1.3)
+    return round(_number(self_cost, 0) * 1.3, 2)
 
 
 def _line_total(unit_price: Any, quantity: Any) -> float | None:
     if unit_price is None or unit_price == "":
         return None
-    return _whole_money(_number(unit_price, 0) * _number(quantity, 1))
+    return round(_number(unit_price, 0) * _number(quantity, 1), 2)
 
 
-def _whole_money(value: Any) -> float:
-    return float(max(0, math.floor(_number(value, 0))))
-
-
-def _nullable_number(value: Any) -> float | None:
-    if value is None or value == "":
-        return None
-    if isinstance(value, float) and value != value:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _override_record_value(record: Any) -> float | None:
-    if isinstance(record, dict):
-        return _nullable_number(record.get("value"))
-    return _nullable_number(record)
-
-
-def _pricing_overrides_by_object(overrides_df: Any) -> dict[str, dict[str, float | None]]:
+def _pricing_overrides_by_object(overrides_df: Any) -> dict[str, float]:
     if overrides_df is None or overrides_df.empty:
         return {}
-    overrides: dict[str, dict[str, float | None]] = {}
+    overrides: dict[str, float] = {}
     for _, item in overrides_df.iterrows():
         row = item.to_dict()
         if row.get("field") != "sale_price_unit":
@@ -208,43 +169,13 @@ def _pricing_overrides_by_object(overrides_df: Any) -> dict[str, dict[str, float
         object_key = str(row.get("object_key") or "")
         if not object_key:
             continue
-        overrides[object_key] = {
-            "value": _whole_money(row.get("value")),
-            "source_self_cost": _nullable_number(row.get("source_self_cost")),
-            "source_suggested_sale_price": _nullable_number(row.get("source_suggested_sale_price")),
-        }
+        overrides[object_key] = round(_number(row.get("value"), 0), 2)
     return overrides
-
-
-def _manual_price_warning(
-    *,
-    override: dict[str, float | None] | None,
-    current_self_cost: Any,
-    current_suggested_sale_price: Any,
-) -> str:
-    if not override:
-        return ""
-
-    source_self_cost = override.get("source_self_cost")
-    source_suggested_sale_price = override.get("source_suggested_sale_price")
-    if source_self_cost is None and source_suggested_sale_price is None:
-        return ""
-
-    if source_self_cost is not None and _whole_money(source_self_cost) != _whole_money(current_self_cost):
-        return "SC changed, price kept manually"
-
-    if (
-        source_suggested_sale_price is not None
-        and _whole_money(source_suggested_sale_price) != _whole_money(current_suggested_sale_price)
-    ):
-        return "SC changed, price kept manually"
-
-    return ""
 
 
 def _objects_project_pricing(
     rows: list[dict[str, Any]],
-    sale_price_overrides: dict[str, dict[str, float | None]] | None = None,
+    sale_price_overrides: dict[str, float] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Calculate project-level suggested costs after all objects are priced."""
     sale_price_overrides = sale_price_overrides or {}
@@ -254,21 +185,17 @@ def _objects_project_pricing(
     )
     objects_subtotal = sum(_number(row.get("sale_price_total"), 0) for row in object_rows)
 
-    delivery_suggested = _whole_money(objects_subtotal * 0.03) if all_completed else None
-    installation_suggested = _whole_money(objects_subtotal * 0.10) if all_completed else None
-    delivery_override = sale_price_overrides.get("delivery")
-    installation_override = sale_price_overrides.get("installation")
-    delivery_override_value = _override_record_value(delivery_override)
-    installation_override_value = _override_record_value(installation_override)
-    delivery = delivery_override_value if delivery_override_value is not None else delivery_suggested
-    installation = installation_override_value if installation_override_value is not None else installation_suggested
+    delivery_suggested = round(objects_subtotal * 0.03, 2) if all_completed else None
+    installation_suggested = round(objects_subtotal * 0.10, 2) if all_completed else None
+    delivery = sale_price_overrides.get("delivery", delivery_suggested)
+    installation = sale_price_overrides.get("installation", installation_suggested)
     project_price = (
-        _whole_money(objects_subtotal + _number(delivery, 0) + _number(installation, 0))
+        round(objects_subtotal + _number(delivery, 0) + _number(installation, 0), 2)
         if all_completed
         else None
     )
-    vat = _whole_money(_number(project_price, 0) * 0.18) if all_completed else None
-    total = _whole_money(_number(project_price, 0) + _number(vat, 0)) if all_completed else None
+    vat = round(_number(project_price, 0) * 0.18, 2) if all_completed else None
+    total = round(_number(project_price, 0) + _number(vat, 0), 2) if all_completed else None
 
     return (
         [
@@ -280,8 +207,8 @@ def _objects_project_pricing(
                 "self_cost_unit": None,
                 "sale_price_unit": delivery,
                 "sale_price_total": None,
-                "sale_price_overridden": delivery_override_value is not None,
-                "suggestion": "manual price" if delivery_override_value is not None else "suggested: 3% of objects subtotal",
+                "sale_price_overridden": "delivery" in sale_price_overrides,
+                "suggestion": "" if "delivery" in sale_price_overrides else "suggested: 3% of objects subtotal",
                 "reviewed": False,
             },
             {
@@ -292,8 +219,8 @@ def _objects_project_pricing(
                 "self_cost_unit": None,
                 "sale_price_unit": installation,
                 "sale_price_total": None,
-                "sale_price_overridden": installation_override_value is not None,
-                "suggestion": "manual price" if installation_override_value is not None else "suggested: 10% of objects subtotal",
+                "sale_price_overridden": "installation" in sale_price_overrides,
+                "suggestion": "" if "installation" in sale_price_overrides else "suggested: 10% of objects subtotal",
                 "reviewed": False,
             },
         ],

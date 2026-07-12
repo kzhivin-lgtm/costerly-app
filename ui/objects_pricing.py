@@ -20,7 +20,7 @@ def _money(value: object) -> str:
     if isinstance(value, float) and value != value:
         return "—"
     try:
-        return f"₪{max(0, math.floor(float(value))):,}".replace(",", "\u202f")
+        return f"₪{round(float(value)):,}".replace(",", "\u202f")
     except (TypeError, ValueError):
         return _escape(value)
 
@@ -44,7 +44,7 @@ def _input_money(value: object) -> str:
     if isinstance(value, float) and value != value:
         return "—"
     try:
-        return f"₪{max(0, math.floor(float(value))):,}".replace(",", "\u202f")
+        return f"₪{round(float(value)):,}".replace(",", "\u202f")
     except (TypeError, ValueError):
         return _escape(value)
 
@@ -88,23 +88,6 @@ def _run_key(run_id: str | None) -> str:
     return _escape(run_id or "")
 
 
-def _data_number(value: object) -> str:
-    if value is None or value == "":
-        return ""
-    if isinstance(value, float) and value != value:
-        return ""
-    return _escape(value)
-
-
-def _suggestion_html(row: dict[str, object]) -> str:
-    warning = _escape(row.get("sale_price_manual_warning"))
-    if warning == "—":
-        warning = ""
-    text = warning or _escape(row.get("suggestion"))
-    warning_class = " objects-pricing-suggestion--warning" if warning else ""
-    return f'<div class="objects-pricing-suggestion{warning_class}">{text}</div>'
-
-
 def _row_status(row: dict[str, object]) -> str:
     """Return normalized row status."""
     return str(row.get("status") or "pending").lower()
@@ -136,16 +119,12 @@ def _row_html(
     object_key = _escape(_object_key(row))
     estimate_key = _estimate_key(estimate_id)
     run_key = _run_key(run_id)
-    source_self_cost = _data_number(row.get("manual_source_self_cost"))
-    suggested_sale_price = _data_number(row.get("manual_source_suggested_sale_price"))
 
     return (
         '<div class="objects-pricing-row" '
         f'data-object-key="{object_key}" '
         f'data-estimate-id="{estimate_key}" '
-        f'data-run-id="{run_key}" '
-        f'data-source-self-cost="{source_self_cost}" '
-        f'data-suggested-sale-price="{suggested_sale_price}">'
+        f'data-run-id="{run_key}">'
         '<div>'
         f'<div class="objects-pricing-name">{_escape(row.get("name"))}</div>'
         f'{_row_materials_html(row.get("materials"))}'
@@ -154,7 +133,7 @@ def _row_html(
         f'<div class="objects-pricing-price objects-pricing-self-cost-cell">{self_cost_html}</div>'
         '<div class="objects-pricing-sale-cell">'
         f'{_sale_input_html(row.get("sale_price_unit"), overridden=bool(row.get("sale_price_overridden")))}'
-        f'{_suggestion_html(row)}'
+        f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
         '</div>'
         f'<div class="objects-pricing-price objects-pricing-sale-total-cell">{sale_total_html}</div>'
         '<div class="objects-pricing-action-cell"'
@@ -184,7 +163,7 @@ def _project_cost_row_html(
         '</div>'
         '<div class="objects-pricing-project-cost-cell">'
         f'{_sale_input_html(row.get("sale_price_unit"), overridden=bool(row.get("sale_price_overridden")))}'
-        f'{_suggestion_html(row)}'
+        f'<div class="objects-pricing-suggestion">{_escape(row.get("suggestion"))}</div>'
         '</div>'
         '</div>'
     )
