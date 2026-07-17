@@ -79,3 +79,6 @@ Agent lap timing added for OCR, Detection, Estimation, and total RFQ processing 
 Backup v3.0.7_before_agent_timing created, завершена 17.07
 Elapsed timer now starts in the instant upload shell and continues through the real Processing screen without reset, завершена 17.07
 Backup v3.0.11_after_continuous_elapsed_timer created, завершена 17.07
+Detection Prompt v3 candidate introduced commercial quote-line and independent-product tests; page-23.pdf now resolves into shelving unit, sliding door system, and TV console with compact dimensions, завершена 17.07
+Elapsed timer DOM synchronization prevents visible backward second jumps during Processing rerenders, завершена 17.07
+Backup v3.0.12_after_detection_prompt_v3_candidate created, завершена 17.07

@@ -57,6 +57,14 @@ text as additional evidence. The OCR package is kept in Streamlit session state 
 the current run; durable Supabase caching and object-specific Estimation contexts are
 future steps.
 
+Detection Prompt v3 Candidate
+Detection uses the contractor quotation line as its commercial object boundary. It
+separates physically independent products, merges repeated views and integral
+components, preserves object-level indices, and returns compact names, complete-unit
+quantities, external W × H × D dimensions, materials, evidence pages, and short
+actionable notes. Sheet and room titles are context, never object names. Detection
+prepares the Estimation handoff but does not create BOM, labor, or pricing output.
+
 Estimation Target Flow
 confirmed detected objects
         ↓
@@ -87,8 +95,8 @@ The UI does not call Anthropic directly.
 
 Agent Runtime Metrics v1
 The user-facing Elapsed timer starts when a file is selected, appears immediately
-inside the upload processing shell, and continues across the real Processing screen
-without resetting. File Review shows OCR, Detection, and total cycle seconds.
+inside the upload processing shell, and continues monotonically across the real
+Processing screen without resetting or competing with server-rendered timer values. File Review shows OCR, Detection, and total cycle seconds.
 `agent_usage_events` records OCR, Detection, Estimation, and orchestration durations;
 `raw_usage.duration_seconds` remains the backward-compatible source until the explicit
 duration column migration is applied.
