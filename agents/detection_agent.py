@@ -21,6 +21,7 @@ def run_detection_agent(
     file_name: str,
     company_id: str = "001",
     file_bytes: bytes | None = None,
+    ocr_package: dict | None = None,
 ) -> dict:
     """
     Detection Agent entrypoint.
@@ -38,6 +39,7 @@ def run_detection_agent(
         file_name=file_name,
         company_id=company_id,
         file_bytes=file_bytes,
+        ocr_package=ocr_package,
     )
 
     usage_event = result.pop("_agent_usage", None)

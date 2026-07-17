@@ -7,6 +7,7 @@ import re
 import pandas as pd
 
 from agents.detection_agent import run_detection_agent
+from agents.ocr_adapter import run_mistral_ocr
 from db.repositories import (
     fetch_rfq_detected_objects,
     fetch_rfq_run,
@@ -20,10 +21,15 @@ from use_cases.retry import read_with_retry
 
 def process_uploaded_rfq(*, file_name: str, file_bytes: bytes, company_id: str) -> dict:
     """Run RFQ detection once and persist the validated result to Supabase."""
+    ocr_package = run_mistral_ocr(
+        file_name=file_name,
+        file_bytes=file_bytes,
+    )
     detection_result = run_detection_agent(
         file_name=file_name,
         company_id=company_id,
         file_bytes=file_bytes,
+        ocr_package=ocr_package,
     )
     usage_event = detection_result.pop("_agent_usage", None)
     run_id = detection_result["rfq_run"]["run_id"]
@@ -40,6 +46,7 @@ def process_uploaded_rfq(*, file_name: str, file_bytes: bytes, company_id: str) 
     return {
         "run_id": run_id,
         "detection_result": detection_result,
+        "ocr_package": ocr_package,
     }
 
 

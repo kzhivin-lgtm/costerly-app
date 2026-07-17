@@ -31,6 +31,8 @@ process_uploaded_rfq()
         ↓
 parse file metadata/content
         ↓
+run Mistral OCR once and normalize page text/structure
+        ↓
 run detection agent
         ↓
 validate and normalize detection result
@@ -46,6 +48,14 @@ what the function deliberately does not do.
 Avoid comments that repeat obvious code.
 MD
 ```
+
+OCR Runtime v1
+The upload flow calls Mistral OCR 4 before Detection. OCR returns a provider-neutral
+page package with Markdown, page dimensions, blocks, tables, images, and confidence.
+Detection still receives the original visual file and uses compact page-numbered OCR
+text as additional evidence. The OCR package is kept in Streamlit session state for
+the current run; durable Supabase caching and object-specific Estimation contexts are
+future steps.
 
 Estimation Target Flow
 confirmed detected objects

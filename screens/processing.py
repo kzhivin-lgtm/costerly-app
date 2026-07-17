@@ -73,6 +73,7 @@ def render_processing_screen(company_id: str) -> None:
         st.rerun()
 
     st.session_state.current_run_id = result["run_id"]
+    st.session_state.current_ocr_package = result.get("ocr_package")
     st.session_state.processed_file_name = file_name
     st.session_state.processing_error = None
     st.session_state.screen = "file_review"

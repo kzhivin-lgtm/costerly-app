@@ -73,3 +73,5 @@ Object Detail refactor: HTML renderer moved to ui.object_detail_view, screen orc
 Backup v3.0.3_after_object_detail_refactor created, завершена 10.07
 Post-refactor stabilization: old dev mock fixtures removed and Objects Estimation renderer missing helpers restored; File Review Continue verified without grey screen on 8576, завершена 10.07
 Backup v3.0.4_after_post_refactor_stabilization created, завершена 10.07
+Mistral OCR 4 preprocessing connected before Detection with normalized page package and Free-workspace smoke test, завершена 17.07
+Backup v3.0.6_before_ocr_layer created, завершена 17.07
