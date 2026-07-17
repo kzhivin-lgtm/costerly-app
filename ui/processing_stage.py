@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 
 
-PROCESSING_TITLE = "Reading your RFQ file"
+PROCESSING_TITLE = "Reading your RFQ file..."
 PROCESSING_SUBTITLE = "Detecting scope items for estimation"
 PROCESSING_MARKER_ID = "costerly-processing-screen-active"
 
