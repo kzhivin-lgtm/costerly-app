@@ -1741,7 +1741,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         <script>
         (() => {
             const parentDoc = window.parent.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_6";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_7";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -1760,9 +1760,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const STYLE_ID = 'costerly-upload-processing-shell-style';
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v116';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v116';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV116Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v117';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v117';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV117Installed';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAt';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimer';
                 let clearDragTimer = null;
@@ -1864,6 +1864,20 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         if (node.textContent !== label) {
                             node.textContent = label;
                         }
+                    });
+
+                    const progress = Math.min(
+                        88,
+                        4 + 84 * (1 - Math.exp(-seconds / 18))
+                    );
+                    const progressWidth = progress.toFixed(1) + '%';
+                    document.querySelectorAll('.post-upload-stage .custom-progress-fill').forEach((node) => {
+                        if (node.style.width !== progressWidth) {
+                            node.style.width = progressWidth;
+                        }
+                    });
+                    document.querySelectorAll('.post-upload-stage').forEach((node) => {
+                        node.dataset.slow = seconds >= 25 ? 'true' : 'false';
                     });
 
                     if (!realProcessingIsActive() && !document.getElementById(SHELL_ID)) {

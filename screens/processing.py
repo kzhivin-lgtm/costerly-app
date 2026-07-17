@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -52,9 +51,6 @@ def render_processing_screen(company_id: str) -> None:
         st.rerun()
 
     try:
-        render_stage(0.12)
-
-        start_time = time.time()
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
                 process_uploaded_rfq,
@@ -64,20 +60,9 @@ def render_processing_screen(company_id: str) -> None:
             )
 
             while not future.done():
-                elapsed = time.time() - start_time
-                soft_value = 0.12 + 0.76 * (1 - math.exp(-elapsed / 18))
-                render_stage(
-                    min(soft_value, 0.88),
-                    elapsed_seconds=elapsed,
-                )
                 time.sleep(0.15)
 
             result = future.result()
-
-        render_stage(
-            0.94,
-            elapsed_seconds=time.time() - start_time,
-        )
     except Exception as exc:
         st.session_state.processing_error = str(exc)
         st.session_state.screen = "file_review"
