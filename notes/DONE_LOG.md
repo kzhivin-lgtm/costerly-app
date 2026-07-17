@@ -82,3 +82,6 @@ Backup v3.0.11_after_continuous_elapsed_timer created, завершена 17.07
 Detection Prompt v3 candidate introduced commercial quote-line and independent-product tests; page-23.pdf now resolves into shelving unit, sliding door system, and TV console with compact dimensions, завершена 17.07
 Elapsed timer DOM synchronization prevents visible backward second jumps during Processing rerenders, завершена 17.07
 Backup v3.0.12_after_detection_prompt_v3_candidate created, завершена 17.07
+Upload drop flow and monotonic Elapsed timer hotfix manually verified on localhost:8501 after removing the MutationObserver feedback loop, завершена 17.07
+Local Verification Before Push Rule added: interactive changes require explicit local browser confirmation before backup, commit, and push, завершена 17.07
+Backup v3.0.14_after_verified_upload_timer_hotfix created, завершена 17.07

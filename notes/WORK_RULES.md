@@ -67,6 +67,24 @@ Avoid:
 
 Short version: repeated navigation must reinstall guards and clear from the current screen.
 
+## Local Verification Before Push Rule
+
+Changes that affect UI, browser JavaScript, uploads, timers, navigation, screen transitions, or asynchronous state must be manually verified in the local browser before they are committed or pushed.
+
+Required sequence:
+- implement the change locally;
+- run automated tests and syntax checks;
+- close old local ports and start the single current local port;
+- open the updated local app in Chrome;
+- wait for the user to manually verify both the requested behavior and the surrounding flow;
+- only after explicit user confirmation, create the backup, commit, and push.
+
+Automated tests, compilation, and code inspection do not replace manual browser verification for interactive behavior.
+
+If local verification exposes a regression, fix it locally and repeat the full manual check. Do not push an unverified hotfix merely because the previous version is already on production.
+
+Short version: local browser confirmation first; backup, commit, and push only after.
+
 ## Backup Rule
 
 Before a commit, create a local backup archive in `backups/`.
