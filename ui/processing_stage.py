@@ -81,12 +81,11 @@ def processing_stage_html(
     include_progress: bool = True,
     progress_value: float = 0.04,
     elapsed_seconds: float | None = None,
-    subtitle: str | None = None,
 ) -> str:
     """Return the shared Processing stage HTML for instant and real screens."""
     return post_upload_stage_html(
         title=PROCESSING_TITLE,
-        subtitle=subtitle or PROCESSING_SUBTITLE,
+        subtitle=PROCESSING_SUBTITLE,
         marker_id=marker_id,
         include_progress=include_progress,
         progress_value=progress_value,

@@ -31,12 +31,11 @@ def test_anthropic_usage_event_contains_duration():
     assert event["raw_usage"]["duration_seconds"] == 12.345
 
 
-def test_processing_stage_shows_live_timer_and_stage():
+def test_processing_stage_shows_live_timer_and_original_subtitle():
     markup = processing_stage_html(
         progress_value=0.5,
         elapsed_seconds=65,
-        subtitle="Detection Agent",
     )
 
     assert "Elapsed 01:05" in markup
-    assert "Detection Agent" in markup
+    assert "Detecting scope items for estimation" in markup

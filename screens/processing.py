@@ -23,14 +23,12 @@ def render_processing_screen(company_id: str) -> None:
         progress_value: float,
         *,
         elapsed_seconds: float = 0,
-        subtitle: str | None = None,
     ) -> None:
         stage_slot.markdown(
             processing_stage_html(
                 marker_id=PROCESSING_MARKER_ID,
                 progress_value=progress_value,
                 elapsed_seconds=elapsed_seconds,
-                subtitle=subtitle,
             ),
             unsafe_allow_html=True,
         )
@@ -57,18 +55,12 @@ def render_processing_screen(company_id: str) -> None:
         render_stage(0.12)
 
         start_time = time.time()
-        stage_state = {"label": "Preparing document"}
-
-        def update_stage(label: str) -> None:
-            stage_state["label"] = label
-
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
                 process_uploaded_rfq,
                 file_name=file_name,
                 file_bytes=file_bytes,
                 company_id=company_id,
-                progress_callback=update_stage,
             )
 
             while not future.done():
@@ -77,7 +69,6 @@ def render_processing_screen(company_id: str) -> None:
                 render_stage(
                     min(soft_value, 0.88),
                     elapsed_seconds=elapsed,
-                    subtitle=stage_state["label"],
                 )
                 time.sleep(0.15)
 
@@ -86,7 +77,6 @@ def render_processing_screen(company_id: str) -> None:
         render_stage(
             0.94,
             elapsed_seconds=time.time() - start_time,
-            subtitle="Completed",
         )
     except Exception as exc:
         st.session_state.processing_error = str(exc)
