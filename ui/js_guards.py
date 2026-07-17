@@ -1741,7 +1741,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         <script>
         (() => {
             const parentDoc = window.parent.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_5";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_6";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -1760,9 +1760,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const STYLE_ID = 'costerly-upload-processing-shell-style';
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v115';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v115';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV115Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v116';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v116';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV116Installed';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAt';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimer';
                 let clearDragTimer = null;
@@ -1859,8 +1859,11 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         0,
                         Math.floor((Date.now() - startedAt) / 1000)
                     );
+                    const label = elapsedLabel(seconds);
                     document.querySelectorAll('.post-upload-stage__timer').forEach((node) => {
-                        node.textContent = elapsedLabel(seconds);
+                        if (node.textContent !== label) {
+                            node.textContent = label;
+                        }
                     });
 
                     if (!realProcessingIsActive() && !document.getElementById(SHELL_ID)) {
