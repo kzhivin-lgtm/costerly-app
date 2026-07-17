@@ -1741,7 +1741,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         <script>
         (() => {
             const parentDoc = window.parent.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_3";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_4";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -1762,7 +1762,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
                 const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound';
                 const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV113Installed';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV114Installed';
+                const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAt';
+                const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimer';
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
@@ -1841,6 +1843,43 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     document.head.appendChild(style);
                 }
 
+                function elapsedLabel(seconds) {
+                    const minutes = Math.floor(seconds / 60);
+                    const remainder = seconds % 60;
+                    return 'Elapsed ' +
+                        String(minutes).padStart(2, '0') + ':' +
+                        String(remainder).padStart(2, '0');
+                }
+
+                function updateElapsed() {
+                    const startedAt = Number(window[ELAPSED_STARTED_AT_KEY] || 0);
+                    if (!startedAt) return;
+
+                    const seconds = Math.max(
+                        0,
+                        Math.floor((Date.now() - startedAt) / 1000)
+                    );
+                    document.querySelectorAll('.post-upload-stage__timer').forEach((node) => {
+                        node.textContent = elapsedLabel(seconds);
+                    });
+
+                    if (!realProcessingIsActive() && !document.getElementById(SHELL_ID)) {
+                        window.clearInterval(window[ELAPSED_TIMER_KEY]);
+                        window[ELAPSED_TIMER_KEY] = null;
+                        window[ELAPSED_STARTED_AT_KEY] = null;
+                    }
+                }
+
+                function startElapsed() {
+                    if (!window[ELAPSED_STARTED_AT_KEY]) {
+                        window[ELAPSED_STARTED_AT_KEY] = Date.now();
+                    }
+                    updateElapsed();
+                    if (!window[ELAPSED_TIMER_KEY]) {
+                        window[ELAPSED_TIMER_KEY] = window.setInterval(updateElapsed, 200);
+                    }
+                }
+
                 function removeShell() {
                     const shell = document.getElementById(SHELL_ID);
                     if (shell) shell.remove();
@@ -1883,6 +1922,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     shell.dataset.slow = 'false';
                     document.documentElement.classList.add(SHELL_ACTIVE_CLASS);
                     document.body.classList.add(SHELL_ACTIVE_CLASS);
+                    startElapsed();
 
                     if (slowTimer) window.clearTimeout(slowTimer);
                     slowTimer = window.setTimeout(() => {

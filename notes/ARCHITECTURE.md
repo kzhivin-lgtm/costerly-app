@@ -86,10 +86,12 @@ It loads the detected object from Supabase, calls the Estimation Agent with the 
 The UI does not call Anthropic directly.
 
 Agent Runtime Metrics v1
-Processing shows a live elapsed timer and current stage. File Review shows OCR,
-Detection, and total cycle seconds. `agent_usage_events` records OCR, Detection,
-Estimation, and orchestration durations; `raw_usage.duration_seconds` remains the
-backward-compatible source until the explicit duration column migration is applied.
+The user-facing Elapsed timer starts when a file is selected, appears immediately
+inside the upload processing shell, and continues across the real Processing screen
+without resetting. File Review shows OCR, Detection, and total cycle seconds.
+`agent_usage_events` records OCR, Detection, Estimation, and orchestration durations;
+`raw_usage.duration_seconds` remains the backward-compatible source until the explicit
+duration column migration is applied.
 
 Pricing Runtime v1
 `price_estimated_object()` is the deterministic pricing entrypoint after one object is estimated.

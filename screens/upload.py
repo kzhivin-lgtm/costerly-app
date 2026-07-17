@@ -82,7 +82,7 @@ def render_upload_screen(company_id: str) -> None:
         type=["pdf", "png", "jpg", "jpeg"],
         label_visibility="collapsed",
     )
-    install_upload_interaction_guards(processing_stage_html())
+    install_upload_interaction_guards(processing_stage_html(elapsed_seconds=0))
 
     if uploaded_file is not None:
         file_bytes = uploaded_file.getvalue()
