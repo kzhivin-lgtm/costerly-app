@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -71,6 +72,8 @@ def normalize_mistral_ocr_response(
     file_bytes: bytes,
     model: str,
     elapsed_seconds: float,
+    started_at: str | None = None,
+    finished_at: str | None = None,
 ) -> dict[str, Any]:
     raw = _response_to_dict(response)
     raw_pages = raw.get("pages") or []
@@ -107,6 +110,8 @@ def normalize_mistral_ocr_response(
         "mime_type": _mime_type(file_name),
         "page_count": len(pages),
         "processing_seconds": round(elapsed_seconds, 3),
+        "started_at": started_at,
+        "finished_at": finished_at,
         "pages": pages,
         "usage": _plain_json(raw.get("usage_info") or {}),
     }
@@ -163,6 +168,7 @@ def run_mistral_ocr(
     encoded = base64.standard_b64encode(file_bytes).decode("ascii")
     document_url = f"data:{_mime_type(file_name)};base64,{encoded}"
     started = time.perf_counter()
+    started_at = datetime.now(UTC).isoformat()
 
     try:
         response = http_client.post(
@@ -190,10 +196,13 @@ def run_mistral_ocr(
     except Exception as exc:
         _raise_ocr_error(exc)
 
+    finished_at = datetime.now(UTC).isoformat()
     return normalize_mistral_ocr_response(
         response_payload,
         file_name=file_name,
         file_bytes=file_bytes,
         model=selected_model,
         elapsed_seconds=time.perf_counter() - started,
+        started_at=started_at,
+        finished_at=finished_at,
     )

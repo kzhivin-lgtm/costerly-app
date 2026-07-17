@@ -2,7 +2,7 @@
 
 ## Active
 - Objects Estimation: manual sale price override should stay authoritative after self-cost changes, with manual label and SC-changed notice.
-- Work with agent metrics: token/cost ledger plus seconds per agent cycle, seconds per detected object, and seconds per estimated object.
+- Agent performance: build p50/p95 baselines and optimize OCR/Detection/Estimation latency without reducing result quality.
 - Add overhead calculation layer after object material/labor pricing.
 - Add deterministic delivery and installation pricing from project subtotal / overhead settings.
 - Improve catalog matching: save matched material/labor rows and mark weak matches as `needs_review`.

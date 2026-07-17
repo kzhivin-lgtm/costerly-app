@@ -54,6 +54,9 @@ def init_state() -> None:
     if "processing_error" not in st.session_state:
         st.session_state.processing_error = None
 
+    if "current_agent_timings" not in st.session_state:
+        st.session_state.current_agent_timings = None
+
     if "last_estimation_error" not in st.session_state:
         st.session_state.last_estimation_error = None
 

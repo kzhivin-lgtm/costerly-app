@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 import re
+import time
 
 import pandas as pd
 
 from agents.detection_agent import run_detection_agent
 from agents.ocr_adapter import run_mistral_ocr
 from db.repositories import (
+    fetch_agent_usage_events,
     fetch_rfq_detected_objects,
     fetch_rfq_run,
     insert_agent_usage_event,
@@ -19,34 +23,134 @@ from db.supabase_client import get_supabase_client
 from use_cases.retry import read_with_retry
 
 
-def process_uploaded_rfq(*, file_name: str, file_bytes: bytes, company_id: str) -> dict:
+def _runtime_event(
+    *,
+    agent_name: str,
+    operation: str,
+    company_id: str,
+    run_id: str,
+    file_name: str,
+    model: str,
+    prompt_version: str,
+    started_at: str,
+    finished_at: str,
+    duration_seconds: float,
+    raw_usage: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    usage = dict(raw_usage or {})
+    usage["duration_seconds"] = duration_seconds
+    return {
+        "company_id": company_id,
+        "run_id": run_id,
+        "file_name": file_name,
+        "object_id": None,
+        "object_name": None,
+        "agent_name": agent_name,
+        "operation": operation,
+        "model": model,
+        "prompt_version": prompt_version,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "input_cost_usd": None,
+        "output_cost_usd": None,
+        "total_cost_usd": None,
+        "status": "succeeded",
+        "duration_seconds": duration_seconds,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "raw_usage": usage,
+    }
+
+
+def process_uploaded_rfq(
+    *,
+    file_name: str,
+    file_bytes: bytes,
+    company_id: str,
+    progress_callback: Callable[[str], None] | None = None,
+) -> dict:
     """Run RFQ detection once and persist the validated result to Supabase."""
+    cycle_started_at = datetime.now(UTC).isoformat()
+    cycle_started = time.perf_counter()
+    if progress_callback:
+        progress_callback("OCR reading document")
     ocr_package = run_mistral_ocr(
         file_name=file_name,
         file_bytes=file_bytes,
     )
+    if progress_callback:
+        progress_callback("Detection Agent")
+    detection_started = time.perf_counter()
     detection_result = run_detection_agent(
         file_name=file_name,
         company_id=company_id,
         file_bytes=file_bytes,
         ocr_package=ocr_package,
     )
+    detection_seconds = round(time.perf_counter() - detection_started, 3)
     usage_event = detection_result.pop("_agent_usage", None)
     run_id = detection_result["rfq_run"]["run_id"]
 
+    if progress_callback:
+        progress_callback("Saving results")
     client = get_supabase_client()
     upsert_rfq_detection_result(client, detection_result)
 
-    if usage_event:
+    ocr_seconds = float(ocr_package.get("processing_seconds") or 0)
+    ocr_event = _runtime_event(
+        agent_name="ocr",
+        operation="document_ocr",
+        company_id=company_id,
+        run_id=run_id,
+        file_name=file_name,
+        model=str(ocr_package.get("model") or "unknown"),
+        prompt_version=str(ocr_package.get("contract_version") or "ocr_v1"),
+        started_at=str(ocr_package.get("started_at") or cycle_started_at),
+        finished_at=str(ocr_package.get("finished_at") or datetime.now(UTC).isoformat()),
+        duration_seconds=ocr_seconds,
+        raw_usage=dict(ocr_package.get("usage") or {}),
+    )
+
+    for event, label in ((ocr_event, "OCR"), (usage_event, "Detection")):
+        if not event:
+            continue
         try:
-            insert_agent_usage_event(client, usage_event)
+            insert_agent_usage_event(client, event)
         except Exception as exc:
-            print(f"[Usage Ledger] Could not save detection usage: {exc}")
+            print(f"[Usage Ledger] Could not save {label} usage: {exc}")
+
+    cycle_finished_at = datetime.now(UTC).isoformat()
+    total_seconds = round(time.perf_counter() - cycle_started, 3)
+    cycle_event = _runtime_event(
+        agent_name="orchestration",
+        operation="rfq_processing_cycle",
+        company_id=company_id,
+        run_id=run_id,
+        file_name=file_name,
+        model="deterministic",
+        prompt_version="rfq_processing_v1",
+        started_at=cycle_started_at,
+        finished_at=cycle_finished_at,
+        duration_seconds=total_seconds,
+        raw_usage={
+            "ocr_seconds": ocr_seconds,
+            "detection_seconds": detection_seconds,
+        },
+    )
+    try:
+        insert_agent_usage_event(client, cycle_event)
+    except Exception as exc:
+        print(f"[Usage Ledger] Could not save cycle timing: {exc}")
 
     return {
         "run_id": run_id,
         "detection_result": detection_result,
         "ocr_package": ocr_package,
+        "timings": {
+            "ocr_seconds": ocr_seconds,
+            "detection_seconds": detection_seconds,
+            "total_seconds": total_seconds,
+        },
     }
 
 
@@ -55,6 +159,7 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
     client = get_supabase_client()
     run_df = read_with_retry(lambda: fetch_rfq_run(client, run_id))
     objects_df = read_with_retry(lambda: fetch_rfq_detected_objects(client, run_id))
+    usage_df = read_with_retry(lambda: fetch_agent_usage_events(client, run_id))
 
     if run_df.empty:
         raise RuntimeError(f"RFQ run not found in Supabase: {run_id}")
@@ -65,6 +170,40 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
     return {
         "run": _normalize_run(run),
         "objects": [_normalize_object(item) for item in objects],
+        "timings": _latest_runtime_timings(usage_df),
+    }
+
+
+def _latest_runtime_timings(usage_df: pd.DataFrame) -> dict[str, float] | None:
+    if usage_df.empty:
+        return None
+
+    cycle_rows = usage_df[
+        usage_df.get("operation", pd.Series(dtype=str)) == "rfq_processing_cycle"
+    ]
+    if cycle_rows.empty:
+        return None
+
+    row = cycle_rows.iloc[-1].to_dict()
+    raw_usage = row.get("raw_usage")
+    if isinstance(raw_usage, str):
+        try:
+            import json
+
+            raw_usage = json.loads(raw_usage)
+        except (TypeError, ValueError):
+            raw_usage = {}
+    if not isinstance(raw_usage, dict):
+        raw_usage = {}
+
+    total_seconds = row.get("duration_seconds")
+    if total_seconds is None or pd.isna(total_seconds):
+        total_seconds = raw_usage.get("duration_seconds", 0)
+
+    return {
+        "ocr_seconds": float(raw_usage.get("ocr_seconds") or 0),
+        "detection_seconds": float(raw_usage.get("detection_seconds") or 0),
+        "total_seconds": float(total_seconds or 0),
     }
 
 

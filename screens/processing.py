@@ -19,11 +19,18 @@ def render_processing_screen(company_id: str) -> None:
     """
     stage_slot = st.empty()
 
-    def render_stage(progress_value: float) -> None:
+    def render_stage(
+        progress_value: float,
+        *,
+        elapsed_seconds: float = 0,
+        subtitle: str | None = None,
+    ) -> None:
         stage_slot.markdown(
             processing_stage_html(
                 marker_id=PROCESSING_MARKER_ID,
                 progress_value=progress_value,
+                elapsed_seconds=elapsed_seconds,
+                subtitle=subtitle,
             ),
             unsafe_allow_html=True,
         )
@@ -50,23 +57,37 @@ def render_processing_screen(company_id: str) -> None:
         render_stage(0.12)
 
         start_time = time.time()
+        stage_state = {"label": "Preparing document"}
+
+        def update_stage(label: str) -> None:
+            stage_state["label"] = label
+
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
                 process_uploaded_rfq,
                 file_name=file_name,
                 file_bytes=file_bytes,
                 company_id=company_id,
+                progress_callback=update_stage,
             )
 
             while not future.done():
                 elapsed = time.time() - start_time
                 soft_value = 0.12 + 0.76 * (1 - math.exp(-elapsed / 18))
-                render_stage(min(soft_value, 0.88))
+                render_stage(
+                    min(soft_value, 0.88),
+                    elapsed_seconds=elapsed,
+                    subtitle=stage_state["label"],
+                )
                 time.sleep(0.15)
 
             result = future.result()
 
-        render_stage(0.94)
+        render_stage(
+            0.94,
+            elapsed_seconds=time.time() - start_time,
+            subtitle="Completed",
+        )
     except Exception as exc:
         st.session_state.processing_error = str(exc)
         st.session_state.screen = "file_review"
@@ -74,6 +95,7 @@ def render_processing_screen(company_id: str) -> None:
 
     st.session_state.current_run_id = result["run_id"]
     st.session_state.current_ocr_package = result.get("ocr_package")
+    st.session_state.current_agent_timings = result.get("timings")
     st.session_state.processed_file_name = file_name
     st.session_state.processing_error = None
     st.session_state.screen = "file_review"

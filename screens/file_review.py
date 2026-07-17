@@ -83,7 +83,30 @@ def _ensure_object_edit(object_id: str, item: dict[str, object]) -> dict[str, ob
     return edits[object_id]
 
 
-def _build_review_card_html(run: dict[str, object]) -> str:
+def _timing_html(timings: dict[str, object] | None) -> str:
+    if not timings:
+        return ""
+
+    def seconds(key: str) -> str:
+        try:
+            return f"{float(timings.get(key) or 0):.1f}s"
+        except (TypeError, ValueError):
+            return "—"
+
+    return (
+        '<div class="file-review-divider"></div>'
+        '<div class="file-review-timing-row">'
+        f'<span>OCR <strong>{seconds("ocr_seconds")}</strong></span>'
+        f'<span>Detection <strong>{seconds("detection_seconds")}</strong></span>'
+        f'<span>Total lap <strong>{seconds("total_seconds")}</strong></span>'
+        '</div>'
+    )
+
+
+def _build_review_card_html(
+    run: dict[str, object],
+    timings: dict[str, object] | None = None,
+) -> str:
     """Build the top File Review summary card HTML."""
     missing_html = _list_html(
         run.get("missing_information", []),
@@ -103,6 +126,7 @@ def _build_review_card_html(run: dict[str, object]) -> str:
         '<div class="file-review-divider"></div>'
         '<div class="file-review-section-title">Missing information:</div>'
         f'{missing_html}'
+        f'{_timing_html(timings)}'
         '<div class="file-review-divider"></div>'
         '<details class="file-review-meta-details">'
         '<summary class="file-review-meta-summary">'
@@ -383,7 +407,10 @@ def render_file_review_screen(company_id: str) -> None:
         (
             '<div class="file-review-title-card-shell">'
             + post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID)
-            + _build_review_card_html(data["run"])
+            + _build_review_card_html(
+                data["run"],
+                st.session_state.get("current_agent_timings") or data.get("timings"),
+            )
             + "</div>"
         ),
         unsafe_allow_html=True,

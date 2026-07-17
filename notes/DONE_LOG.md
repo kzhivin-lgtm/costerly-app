@@ -75,3 +75,5 @@ Post-refactor stabilization: old dev mock fixtures removed and Objects Estimatio
 Backup v3.0.4_after_post_refactor_stabilization created, завершена 10.07
 Mistral OCR 4 preprocessing connected before Detection with normalized page package and Free-workspace smoke test, завершена 17.07
 Backup v3.0.6_before_ocr_layer created, завершена 17.07
+Agent lap timing added for OCR, Detection, Estimation, and total RFQ processing with live Processing timer and File Review breakdown, завершена 17.07
+Backup v3.0.7_before_agent_timing created, завершена 17.07

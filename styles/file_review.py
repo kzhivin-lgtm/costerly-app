@@ -8,6 +8,21 @@ def apply_file_review_css() -> None:
     st.markdown(
         """
         <style>
+        .file-review-timing-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 24px;
+            color: rgba(42, 31, 44, 0.7);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .file-review-timing-row strong {
+            color: var(--color-text);
+            font-weight: 700;
+        }
+
         .file-review-card {
             width: 100%;
             background: var(--color-surface);

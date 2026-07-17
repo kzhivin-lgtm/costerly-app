@@ -17,6 +17,7 @@ def post_upload_stage_html(
     include_progress: bool = True,
     progress_value: float = 0.04,
     include_slow_message: bool = True,
+    elapsed_seconds: float | None = None,
 ) -> str:
     """Return the shared fixed-origin post-upload stage HTML."""
     stage_classes = "post-upload-stage"
@@ -49,6 +50,15 @@ def post_upload_stage_html(
             '</div>'
         )
 
+    timer_html = ""
+    if elapsed_seconds is not None:
+        seconds = max(0, int(elapsed_seconds))
+        timer_html = (
+            '<div class="post-upload-stage__timer">'
+            f'Elapsed {seconds // 60:02d}:{seconds % 60:02d}'
+            '</div>'
+        )
+
     return (
         f'<div class="{stage_classes}">'
         '<div class="post-upload-stage__inner">'
@@ -58,6 +68,7 @@ def post_upload_stage_html(
         f'{subtitle_html}'
         '</div>'
         f'{progress_html}'
+        f'{timer_html}'
         f'{slow_html}'
         '</div>'
         '</div>'
@@ -69,13 +80,16 @@ def processing_stage_html(
     marker_id: str | None = None,
     include_progress: bool = True,
     progress_value: float = 0.04,
+    elapsed_seconds: float | None = None,
+    subtitle: str | None = None,
 ) -> str:
     """Return the shared Processing stage HTML for instant and real screens."""
     return post_upload_stage_html(
         title=PROCESSING_TITLE,
-        subtitle=PROCESSING_SUBTITLE,
+        subtitle=subtitle or PROCESSING_SUBTITLE,
         marker_id=marker_id,
         include_progress=include_progress,
         progress_value=progress_value,
         include_slow_message=True,
+        elapsed_seconds=elapsed_seconds,
     )

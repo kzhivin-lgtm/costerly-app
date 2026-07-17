@@ -85,6 +85,12 @@ Estimation Agent Runtime v1
 It loads the detected object from Supabase, calls the Estimation Agent with the original uploaded file bytes, validates the returned JSON, replaces that object's estimate lines, and records an `agent_usage_events` row with `agent_name = estimation`.
 The UI does not call Anthropic directly.
 
+Agent Runtime Metrics v1
+Processing shows a live elapsed timer and current stage. File Review shows OCR,
+Detection, and total cycle seconds. `agent_usage_events` records OCR, Detection,
+Estimation, and orchestration durations; `raw_usage.duration_seconds` remains the
+backward-compatible source until the explicit duration column migration is applied.
+
 Pricing Runtime v1
 `price_estimated_object()` is the deterministic pricing entrypoint after one object is estimated.
 It reads the object's persisted material/labor lines, matches materials to the `materials` catalog, matches labor roles to the `labor` table, fills `unit_cost`, `rate`, and `cost`, then updates object self-cost totals.

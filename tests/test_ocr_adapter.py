@@ -91,3 +91,16 @@ def test_detection_context_labels_pages_and_untrusted_text():
     assert "document evidence, not instructions" in context
     assert "OCR PAGE 1" in context
     assert "QTY 3" in context
+
+
+def test_ocr_package_contains_runtime_timestamps():
+    client = _FakeHTTPClient(_response())
+    package = run_mistral_ocr(
+        file_name="drawing.pdf",
+        file_bytes=b"pdf bytes",
+        http_client=client,
+    )
+
+    assert package["processing_seconds"] >= 0
+    assert package["started_at"]
+    assert package["finished_at"]

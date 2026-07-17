@@ -321,6 +321,14 @@ def apply_base_css() -> None:
             line-height: 1.45;
         }
 
+        .post-upload-stage__timer {
+            margin-top: var(--space-3);
+            color: rgba(42, 31, 44, 0.68);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-variant-numeric: tabular-nums;
+        }
+
         .post-upload-stage[data-slow="true"] .post-upload-stage__slow {
             display: block;
         }

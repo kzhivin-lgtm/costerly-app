@@ -291,6 +291,9 @@ def build_agent_usage_event(
         input_tokens=input_tokens,
         output_tokens=output_tokens,
     )
+    started = datetime.fromisoformat(started_at)
+    finished = datetime.fromisoformat(finished_at)
+    duration_seconds = round(max(0.0, (finished - started).total_seconds()), 3)
 
     return {
         "company_id": company_id,
@@ -308,11 +311,13 @@ def build_agent_usage_event(
         "output_cost_usd": costs["output_cost_usd"],
         "total_cost_usd": costs["total_cost_usd"],
         "status": "succeeded",
+        "duration_seconds": duration_seconds,
         "started_at": started_at,
         "finished_at": finished_at,
         "raw_usage": {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
+            "duration_seconds": duration_seconds,
         },
     }
 

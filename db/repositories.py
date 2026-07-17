@@ -85,7 +85,18 @@ def upsert_rfq_detection_result(client: Client, detection_result: dict) -> None:
 
 def insert_agent_usage_event(client: Client, usage_event: dict) -> None:
     """Persist one LLM usage ledger event for cost-efficiency tracking."""
-    client.table("agent_usage_events").insert(usage_event).execute()
+    try:
+        client.table("agent_usage_events").insert(usage_event).execute()
+    except Exception as exc:
+        # Keep timing data in raw_usage until the duration_seconds migration is applied.
+        if "duration_seconds" not in str(exc):
+            raise
+        legacy_event = dict(usage_event)
+        duration_seconds = legacy_event.pop("duration_seconds", None)
+        raw_usage = dict(legacy_event.get("raw_usage") or {})
+        raw_usage["duration_seconds"] = duration_seconds
+        legacy_event["raw_usage"] = raw_usage
+        client.table("agent_usage_events").insert(legacy_event).execute()
 
 
 def fetch_rfq_run(client: Client, run_id: str) -> pd.DataFrame:
@@ -101,6 +112,16 @@ def fetch_rfq_detected_objects(client: Client, run_id: str) -> pd.DataFrame:
         client,
         "rfq_detected_objects",
         order_by="object_id",
+        filters={"run_id": run_id},
+    )
+
+
+def fetch_agent_usage_events(client: Client, run_id: str) -> pd.DataFrame:
+    """Load persisted runtime/cost events for one RFQ run."""
+    return fetch_table(
+        client,
+        "agent_usage_events",
+        order_by="created_at",
         filters={"run_id": run_id},
     )
 
