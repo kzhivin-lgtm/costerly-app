@@ -1,4 +1,10 @@
-from agents.anthropic_adapter import build_agent_usage_event, build_detection_ocr_context
+from agents.anthropic_adapter import (
+    build_agent_usage_event,
+    build_detection_ocr_context,
+    build_detection_system_content,
+    build_detection_user_text,
+    build_uploaded_file_content_block,
+)
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
 from use_cases.rfq_processing import _ocr_storage_usage
@@ -52,6 +58,19 @@ def test_processing_stage_exposes_real_phase_and_completion():
 
     assert 'data-processing-phase="complete"' in markup
     assert 'data-processing-complete="true"' in markup
+
+
+def test_detection_static_contract_and_document_are_cacheable():
+    system = build_detection_system_content()
+    document = build_uploaded_file_content_block("drawing.pdf", b"pdf")
+    user_text = build_detection_user_text("drawing.pdf", "001")
+
+    assert system[0]["cache_control"] == {"type": "ephemeral"}
+    assert "commercial object" in system[0]["text"].lower()
+    assert document["cache_control"] == {"type": "ephemeral"}
+    assert "DETECTION PROMPT:" not in user_text
+
+
 
 
 def test_ocr_storage_preserves_full_result_and_detection_context():

@@ -156,8 +156,8 @@ def test_detection_context_groups_evidence_by_visual_region_without_semantics():
     context = build_detection_ocr_context(package)
 
     assert "OCR SPATIAL EVIDENCE" in context
-    assert '"region_id":"img-1.jpeg"' in context
-    assert '"text":"4130"' in context
+    assert "P1 R=img-1.jpeg" in context
+    assert 'E=dimension|top-center|1|"4130"' in context
     assert "not necessarily one product" in context
 
 

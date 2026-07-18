@@ -36,3 +36,11 @@ def test_pdf_pages_are_ocrd_in_order_and_combined():
     assert [page["page_number"] for page in package["pages"]] == [1, 2]
     assert package["rendering"]["dpi"] == 200
     assert package["evidence"]["text_blocks"][1]["text"] == "PAGE 2"
+    assert set(package["timings"]) == {
+        "render_seconds",
+        "warmup_wait_seconds",
+        "provider_wall_seconds",
+        "assembly_seconds",
+        "unattributed_seconds",
+    }
+    assert package["processing_seconds"] >= sum(package["timings"].values()) - 0.004

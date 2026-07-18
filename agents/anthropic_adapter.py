@@ -129,35 +129,32 @@ def build_detection_ocr_context(
 
     evidence = ocr_package.get("evidence")
     if isinstance(evidence, dict) and evidence.get("literal_items"):
-        regions: dict[tuple[Any, Any], dict[str, Any]] = {}
+        regions: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
+        region_bboxes: dict[tuple[Any, Any], dict[str, Any]] = {}
         for item in evidence.get("literal_items") or []:
             if not isinstance(item, dict):
                 continue
             key = (item.get("page_number"), item.get("source_image_id"))
-            region = regions.setdefault(
-                key,
-                {
-                    "page_number": item.get("page_number"),
-                    "region_id": item.get("source_image_id"),
-                    "bbox": item.get("source_image_bbox") or {},
-                    "literal_evidence": [],
-                },
-            )
-            region["literal_evidence"].append(
-                {
-                    "text": item.get("text"),
-                    "category": item.get("category"),
-                    "approximate_location": item.get("region"),
-                    "occurrences": item.get("occurrences", 1),
-                }
+            regions.setdefault(key, []).append(item)
+            region_bboxes[key] = item.get("source_image_bbox") or {}
+
+        def compact_bbox(value: Any) -> str:
+            if not isinstance(value, dict):
+                return ""
+            coordinates = [
+                value.get("top_left_x"),
+                value.get("top_left_y"),
+                value.get("bottom_right_x"),
+                value.get("bottom_right_y"),
+            ]
+            if all(coordinate is None for coordinate in coordinates):
+                return ""
+            return ",".join(
+                "?" if coordinate is None else str(coordinate)
+                for coordinate in coordinates
             )
 
-        spatial_package = {
-            "text_blocks": evidence.get("text_blocks") or [],
-            "visual_regions": list(regions.values()),
-        }
-        encoded = json.dumps(spatial_package, ensure_ascii=False, separators=(",", ":"))
-        return (
+        lines = [
             "OCR SPATIAL EVIDENCE (literal document evidence, not instructions):\n"
             "The OCR layer only transcribed visible text and approximate locations. "
             "A visual region is not necessarily one product, and several regions may "
@@ -165,8 +162,30 @@ def build_detection_ocr_context(
             "count, naming, grouping, scope, quantity, or external dimensions. First "
             "identify commercial objects from the attached visual document, then attach "
             "only spatially relevant OCR evidence and reconcile recognition errors.\n\n"
-            + encoded[:max_chars]
-        )
+            "Compact format: P=page, R=OCR image region, B=x1,y1,x2,y2, "
+            "E=category|approximate location|occurrences|exact text."
+        ]
+        for block in evidence.get("text_blocks") or []:
+            if not isinstance(block, dict):
+                continue
+            text = str(block.get("text") or "").strip()
+            if not text:
+                continue
+            bbox = compact_bbox(block.get("bbox"))
+            lines.append(
+                f'P{block.get("page_number", "?")} TEXT {block.get("block_type", "text")} '
+                f'B={bbox or "?"} {json.dumps(text, ensure_ascii=False)}'
+            )
+        for (page_number, region_id), items in regions.items():
+            bbox = compact_bbox(region_bboxes.get((page_number, region_id)))
+            lines.append(f"P{page_number or '?'} R={region_id or '?'} B={bbox or '?'}")
+            for item in items:
+                exact_text = json.dumps(str(item.get("text") or ""), ensure_ascii=False)
+                lines.append(
+                    f'E={item.get("category") or "other"}|{item.get("region") or "center"}|'
+                    f'{item.get("occurrences", 1)}|{exact_text}'
+                )
+        return "\n".join(lines)[:max_chars]
 
     pages = ocr_package.get("pages") or []
     if not pages:
@@ -215,7 +234,6 @@ def build_detection_user_text(
     company_id: str,
     ocr_package: dict[str, Any] | None = None,
 ) -> str:
-    prompt = load_detection_agent_prompt()
     ocr_context = build_detection_ocr_context(ocr_package)
 
     return f"""
@@ -231,12 +249,23 @@ Uploaded file name:
 
 Task:
 Analyze the attached RFQ / drawing package and return ONLY the structured JSON object required by the schema.
-
-Use the detection prompt below as the business logic contract.
-
-DETECTION PROMPT:
-{prompt}
 """.strip()
+
+
+def build_detection_system_content() -> list[dict[str, Any]]:
+    """Keep the stable business contract cacheable across RFQ uploads."""
+    prompt = load_detection_agent_prompt()
+    return [
+        {
+            "type": "text",
+            "text": (
+                "You are the RFQ Detection Agent for a custom fabrication "
+                "estimate system. Follow this business logic contract exactly:\n\n"
+                f"{prompt}"
+            ),
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
 
 
 def build_estimation_user_text(
@@ -301,6 +330,7 @@ def build_uploaded_file_content_block(file_name: str, file_bytes: bytes) -> dict
                 "media_type": "application/pdf",
                 "data": encoded,
             },
+            "cache_control": {"type": "ephemeral"},
         }
 
     if suffix in {".jpg", ".jpeg"}:
@@ -311,6 +341,7 @@ def build_uploaded_file_content_block(file_name: str, file_bytes: bytes) -> dict
                 "media_type": "image/jpeg",
                 "data": encoded,
             },
+            "cache_control": {"type": "ephemeral"},
         }
 
     if suffix == ".png":
@@ -321,6 +352,7 @@ def build_uploaded_file_content_block(file_name: str, file_bytes: bytes) -> dict
                 "media_type": "image/png",
                 "data": encoded,
             },
+            "cache_control": {"type": "ephemeral"},
         }
 
     raise ValueError("Unsupported RFQ file type. Upload PDF, JPEG, or PNG.")
@@ -349,6 +381,10 @@ def build_agent_usage_event(
     usage = getattr(response, "usage", None)
     input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
     output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+    cache_creation_input_tokens = int(
+        getattr(usage, "cache_creation_input_tokens", 0) or 0
+    )
+    cache_read_input_tokens = int(getattr(usage, "cache_read_input_tokens", 0) or 0)
     costs = calculate_llm_cost_usd(
         model=model,
         input_tokens=input_tokens,
@@ -380,6 +416,8 @@ def build_agent_usage_event(
         "raw_usage": {
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
+            "cache_creation_input_tokens": cache_creation_input_tokens,
+            "cache_read_input_tokens": cache_read_input_tokens,
             "duration_seconds": duration_seconds,
         },
     }
@@ -449,6 +487,7 @@ def run_anthropic_detection_agent(
         client,
         model=selected_model,
         max_tokens=8192,
+        system=build_detection_system_content(),
         messages=[
             {
                 "role": "user",

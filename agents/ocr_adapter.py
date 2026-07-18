@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import os
+import threading
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -17,6 +18,11 @@ from agents.ocr_contract import (
 
 DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-0"
 OCR_CONTRACT_VERSION = "ocr_v2"
+_HTTP_CLIENT: Any | None = None
+_HTTP_CLIENT_LOCK = threading.Lock()
+_WARMUP_LOCK = threading.Lock()
+_WARMUP_EVENT = threading.Event()
+_WARMUP_STARTED = False
 
 
 def get_secret(name: str, default: str | None = None) -> str | None:
@@ -33,6 +39,51 @@ def get_secret(name: str, default: str | None = None) -> str | None:
         pass
 
     return default
+
+
+def get_mistral_http_client() -> Any:
+    """Return one process-wide connection pool for all OCR requests."""
+    global _HTTP_CLIENT
+    if _HTTP_CLIENT is not None:
+        return _HTTP_CLIENT
+    with _HTTP_CLIENT_LOCK:
+        if _HTTP_CLIENT is None:
+            import httpx
+
+            _HTTP_CLIENT = httpx.Client(timeout=180)
+    return _HTTP_CLIENT
+
+
+def warm_mistral_http_client_async() -> None:
+    """Warm DNS/TLS/HTTP keep-alive without blocking the upload screen."""
+    global _WARMUP_STARTED
+    api_key = get_secret("MISTRAL_API_KEY")
+    if not api_key:
+        _WARMUP_EVENT.set()
+        return
+    with _WARMUP_LOCK:
+        if _WARMUP_STARTED:
+            return
+        _WARMUP_STARTED = True
+
+    def warm() -> None:
+        try:
+            get_mistral_http_client().get(
+                "https://api.mistral.ai/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=15,
+            )
+        except Exception:
+            # OCR itself remains the authoritative request and error surface.
+            pass
+        finally:
+            _WARMUP_EVENT.set()
+
+    threading.Thread(target=warm, name="mistral-http-warmup", daemon=True).start()
+
+
+def wait_for_mistral_http_warmup(timeout: float = 10.0) -> None:
+    _WARMUP_EVENT.wait(timeout=max(0.0, timeout))
 
 
 def _mime_type(file_name: str) -> str:
@@ -253,9 +304,7 @@ def run_mistral_ocr(
         )
 
     if http_client is None:
-        import httpx
-
-        http_client = httpx.Client(timeout=180)
+        http_client = get_mistral_http_client()
 
     encoded = base64.standard_b64encode(file_bytes).decode("ascii")
     document_url = f"data:{_mime_type(file_name)};base64,{encoded}"

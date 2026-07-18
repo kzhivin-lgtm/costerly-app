@@ -15,6 +15,8 @@ from agents.ocr_adapter import (
     OCR_CONTRACT_VERSION,
     build_ocr_evidence,
     run_mistral_ocr,
+    wait_for_mistral_http_warmup,
+    warm_mistral_http_client_async,
 )
 from agents.ocr_contract import OCR_PROFILE_EVIDENCE
 
@@ -90,7 +92,13 @@ def run_mistral_document_evidence_ocr(
 
     started = time.perf_counter()
     started_at = datetime.now(UTC).isoformat()
+    warm_mistral_http_client_async()
+    render_started = time.perf_counter()
     rendered_pages = renderer(file_bytes, dpi=dpi)
+    render_seconds = time.perf_counter() - render_started
+    warmup_wait_started = time.perf_counter()
+    wait_for_mistral_http_warmup()
+    warmup_wait_seconds = time.perf_counter() - warmup_wait_started
 
     def recognize(item: tuple[int, bytes]) -> tuple[int, dict[str, Any]]:
         page_index, page_bytes = item
@@ -102,10 +110,13 @@ def run_mistral_document_evidence_ocr(
         return page_index, package
 
     worker_count = max(1, min(page_workers, len(rendered_pages)))
+    provider_started = time.perf_counter()
     with ThreadPoolExecutor(max_workers=worker_count) as executor:
         recognized = list(executor.map(recognize, enumerate(rendered_pages)))
+    provider_wall_seconds = time.perf_counter() - provider_started
     recognized.sort(key=lambda item: item[0])
 
+    assembly_started = time.perf_counter()
     pages: list[dict[str, Any]] = []
     raw_page_responses: list[dict[str, Any]] = []
     model = "unknown"
@@ -117,8 +128,10 @@ def run_mistral_document_evidence_ocr(
             normalized_page["page_number"] = page_index + 1
             normalized_page["source_page_index"] = page_index
             pages.append(normalized_page)
+    assembly_seconds = time.perf_counter() - assembly_started
 
     finished_at = datetime.now(UTC).isoformat()
+    total_seconds = time.perf_counter() - started
     result = {
         "contract_version": OCR_CONTRACT_VERSION,
         "provider": "mistral",
@@ -128,7 +141,7 @@ def run_mistral_document_evidence_ocr(
         "file_sha256": hashlib.sha256(file_bytes).hexdigest(),
         "mime_type": "application/pdf",
         "page_count": len(pages),
-        "processing_seconds": round(time.perf_counter() - started, 3),
+        "processing_seconds": round(total_seconds, 3),
         "started_at": started_at,
         "finished_at": finished_at,
         "rendering": {
@@ -136,6 +149,23 @@ def run_mistral_document_evidence_ocr(
             "rendered_page_count": len(rendered_pages),
             "rendered_bytes_total": sum(len(page) for page in rendered_pages),
             "parallel_workers": worker_count,
+        },
+        "timings": {
+            "render_seconds": round(render_seconds, 3),
+            "warmup_wait_seconds": round(warmup_wait_seconds, 3),
+            "provider_wall_seconds": round(provider_wall_seconds, 3),
+            "assembly_seconds": round(assembly_seconds, 3),
+            "unattributed_seconds": round(
+                max(
+                    0.0,
+                    total_seconds
+                    - render_seconds
+                    - warmup_wait_seconds
+                    - provider_wall_seconds
+                    - assembly_seconds,
+                ),
+                3,
+            ),
         },
         "pages": pages,
         "usage": {

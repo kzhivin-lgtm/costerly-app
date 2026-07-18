@@ -6,6 +6,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from agents.ocr_adapter import warm_mistral_http_client_async
 from styles.upload import apply_upload_css
 from ui.js_guards import install_upload_interaction_guards
 from ui.processing_stage import processing_stage_html
@@ -75,6 +76,7 @@ def render_upload_screen(company_id: str) -> None:
     will later move into a use case outside the Streamlit screen layer.
     """
     apply_upload_css()
+    warm_mistral_http_client_async()
     _render_upload_hero()
 
     uploaded_file = st.file_uploader(
