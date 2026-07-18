@@ -85,3 +85,6 @@ Backup v3.0.12_after_detection_prompt_v3_candidate created, завершена 1
 Upload drop flow and monotonic Elapsed timer hotfix manually verified on localhost:8501 after removing the MutationObserver feedback loop, завершена 17.07
 Local Verification Before Push Rule added: interactive changes require explicit local browser confirmation before backup, commit, and push, завершена 17.07
 Backup v3.0.14_after_verified_upload_timer_hotfix created, завершена 17.07
+OCR v2 evidence pipeline added: PDF pages render at 200 DPI, Mistral returns literal spatial evidence, the complete auditable result is saved in Supabase, and Detection receives region-bound text without OCR-driven object grouping; page-23.pdf locally verified as Shelving Unit, Sliding Panel System, and TV Console in 19.97s total, завершена 18.07
+OCR Lab added with versioned profiles, fixed page-23 evidence checks, full JSON artifacts, and 95% literal evidence recall at the 200 DPI baseline, завершена 18.07
+Backup v3.0.16_working_ocr_v2_spatial_detection_handoff created, завершена 18.07

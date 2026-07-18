@@ -9,9 +9,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from agents.ocr_contract import (
+    OCR_PROFILE_BASIC,
+    build_mistral_ocr_request,
+)
+
 
 DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-0"
-OCR_CONTRACT_VERSION = "ocr_v1"
+OCR_CONTRACT_VERSION = "ocr_v2"
 
 
 def get_secret(name: str, default: str | None = None) -> str | None:
@@ -65,6 +70,84 @@ def _plain_json(value: Any) -> Any:
     return value
 
 
+def _annotation_dict(value: Any) -> dict[str, Any] | None:
+    if isinstance(value, dict):
+        return value
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = json.loads(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
+    """Create a deterministic evidence index without semantic interpretation."""
+    text_blocks: list[dict[str, Any]] = []
+    literal_items: list[dict[str, Any]] = []
+    item_index: dict[tuple[Any, ...], dict[str, Any]] = {}
+
+    for page in pages:
+        page_number = page["page_number"]
+        for block in page.get("blocks") or []:
+            content = str(block.get("content") or "").strip()
+            if block.get("type") == "image" or not content:
+                continue
+            text_blocks.append(
+                {
+                    "page_number": page_number,
+                    "block_type": block.get("type"),
+                    "text": content,
+                    "bbox": {
+                        "top_left_x": block.get("top_left_x"),
+                        "top_left_y": block.get("top_left_y"),
+                        "bottom_right_x": block.get("bottom_right_x"),
+                        "bottom_right_y": block.get("bottom_right_y"),
+                    },
+                }
+            )
+
+        for image_item in page.get("images") or []:
+            annotation = _annotation_dict(image_item.get("image_annotation"))
+            if not annotation:
+                continue
+            image_bbox = {
+                "top_left_x": image_item.get("top_left_x"),
+                "top_left_y": image_item.get("top_left_y"),
+                "bottom_right_x": image_item.get("bottom_right_x"),
+                "bottom_right_y": image_item.get("bottom_right_y"),
+            }
+            for raw_item in annotation.get("literal_items") or []:
+                if not isinstance(raw_item, dict):
+                    continue
+                text = str(raw_item.get("text") or "").strip()
+                if not text:
+                    continue
+                category = str(raw_item.get("category") or "other")
+                region = str(raw_item.get("region") or "center")
+                key = (page_number, image_item.get("id"), text, category, region)
+                if key in item_index:
+                    item_index[key]["occurrences"] += 1
+                    continue
+                item = {
+                    "page_number": page_number,
+                    "source_image_id": image_item.get("id"),
+                    "text": text,
+                    "category": category,
+                    "region": region,
+                    "source_image_bbox": image_bbox,
+                    "occurrences": 1,
+                }
+                item_index[key] = item
+                literal_items.append(item)
+
+    return {
+        "text_blocks": text_blocks,
+        "literal_items": literal_items,
+    }
+
+
 def normalize_mistral_ocr_response(
     response: Any,
     *,
@@ -72,6 +155,7 @@ def normalize_mistral_ocr_response(
     file_bytes: bytes,
     model: str,
     elapsed_seconds: float,
+    profile: str = OCR_PROFILE_BASIC,
     started_at: str | None = None,
     finished_at: str | None = None,
 ) -> dict[str, Any]:
@@ -101,10 +185,11 @@ def normalize_mistral_ocr_response(
             }
         )
 
-    return {
+    result = {
         "contract_version": OCR_CONTRACT_VERSION,
         "provider": "mistral",
         "model": str(raw.get("model") or model),
+        "profile": profile,
         "file_name": file_name,
         "file_sha256": hashlib.sha256(file_bytes).hexdigest(),
         "mime_type": _mime_type(file_name),
@@ -114,7 +199,13 @@ def normalize_mistral_ocr_response(
         "finished_at": finished_at,
         "pages": pages,
         "usage": _plain_json(raw.get("usage_info") or {}),
+        # Preserve the exact provider payload for auditing and downstream agents.
+        # Image base64 is disabled in the request, so this does not duplicate the
+        # uploaded source file inside Supabase.
+        "raw_response": _plain_json(raw),
     }
+    result["evidence"] = build_ocr_evidence(pages)
+    return result
 
 
 def _raise_ocr_error(exc: Exception) -> None:
@@ -143,6 +234,7 @@ def run_mistral_ocr(
     file_name: str,
     file_bytes: bytes,
     model: str | None = None,
+    profile: str = OCR_PROFILE_BASIC,
     http_client: Any | None = None,
 ) -> dict[str, Any]:
     """Run OCR once and return a provider-neutral page package."""
@@ -177,19 +269,11 @@ def run_mistral_ocr(
                 "Authorization": f"Bearer {api_key or 'test-key'}",
                 "Content-Type": "application/json",
             },
-            json={
-                "model": selected_model,
-                "document": {
-                    "type": "document_url",
-                    "document_url": document_url,
-                },
-                "table_format": "html",
-                "extract_header": True,
-                "extract_footer": True,
-                "include_blocks": True,
-                "include_image_base64": False,
-                "confidence_scores_granularity": "page",
-            },
+            json=build_mistral_ocr_request(
+                model=selected_model,
+                document_url=document_url,
+                profile=profile,
+            ),
         )
         response.raise_for_status()
         response_payload = response.json()
@@ -203,6 +287,7 @@ def run_mistral_ocr(
         file_bytes=file_bytes,
         model=selected_model,
         elapsed_seconds=time.perf_counter() - started,
+        profile=profile,
         started_at=started_at,
         finished_at=finished_at,
     )

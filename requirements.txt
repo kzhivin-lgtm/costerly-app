@@ -3,3 +3,4 @@ pandas
 supabase
 anthropic
 httpx
+PyMuPDF

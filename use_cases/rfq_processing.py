@@ -9,8 +9,9 @@ import time
 
 import pandas as pd
 
+from agents.anthropic_adapter import build_detection_ocr_context
 from agents.detection_agent import run_detection_agent
-from agents.ocr_adapter import run_mistral_ocr
+from agents.ocr_rendering import run_mistral_document_evidence_ocr
 from db.repositories import (
     fetch_agent_usage_events,
     fetch_rfq_detected_objects,
@@ -62,6 +63,22 @@ def _runtime_event(
     }
 
 
+def _ocr_storage_usage(
+    ocr_package: dict[str, Any],
+    *,
+    detection_context: str | None = None,
+) -> dict[str, Any]:
+    """Build the complete, auditable OCR payload stored with the usage event."""
+    return {
+        "provider_usage": dict(ocr_package.get("usage") or {}),
+        "ocr_result": ocr_package,
+        "candidate_ocr_context": build_detection_ocr_context(ocr_package),
+        "detection_context": detection_context
+        if detection_context is not None
+        else build_detection_ocr_context(ocr_package),
+    }
+
+
 def process_uploaded_rfq(
     *,
     file_name: str,
@@ -74,10 +91,11 @@ def process_uploaded_rfq(
     cycle_started = time.perf_counter()
     if progress_callback:
         progress_callback("OCR reading document")
-    ocr_package = run_mistral_ocr(
+    ocr_package = run_mistral_document_evidence_ocr(
         file_name=file_name,
         file_bytes=file_bytes,
     )
+    detection_context = build_detection_ocr_context(ocr_package)
     if progress_callback:
         progress_callback("Detection Agent")
     detection_started = time.perf_counter()
@@ -104,11 +122,14 @@ def process_uploaded_rfq(
         run_id=run_id,
         file_name=file_name,
         model=str(ocr_package.get("model") or "unknown"),
-        prompt_version=str(ocr_package.get("contract_version") or "ocr_v1"),
+        prompt_version=str(ocr_package.get("contract_version") or "ocr_v2"),
         started_at=str(ocr_package.get("started_at") or cycle_started_at),
         finished_at=str(ocr_package.get("finished_at") or datetime.now(UTC).isoformat()),
         duration_seconds=ocr_seconds,
-        raw_usage=dict(ocr_package.get("usage") or {}),
+        raw_usage=_ocr_storage_usage(
+            ocr_package,
+            detection_context=detection_context,
+        ),
     )
 
     for event, label in ((ocr_event, "OCR"), (usage_event, "Detection")):

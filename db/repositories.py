@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import json
 
 import pandas as pd
 from supabase import Client
@@ -124,6 +125,39 @@ def fetch_agent_usage_events(client: Client, run_id: str) -> pd.DataFrame:
         order_by="created_at",
         filters={"run_id": run_id},
     )
+
+
+def fetch_latest_ocr_result(client: Client, run_id: str) -> dict | None:
+    """Load the latest complete OCR result and Detection handoff for a run."""
+    response = (
+        client.table("agent_usage_events")
+        .select("raw_usage")
+        .eq("run_id", run_id)
+        .eq("agent_name", "ocr")
+        .eq("operation", "document_ocr")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not response.data:
+        return None
+
+    raw_usage = response.data[0].get("raw_usage") or {}
+    if isinstance(raw_usage, str):
+        try:
+            raw_usage = json.loads(raw_usage)
+        except (TypeError, ValueError):
+            return None
+    if not isinstance(raw_usage, dict):
+        return None
+
+    ocr_result = raw_usage.get("ocr_result")
+    if not isinstance(ocr_result, dict):
+        return None
+    return {
+        "ocr_result": ocr_result,
+        "detection_context": str(raw_usage.get("detection_context") or ""),
+    }
 
 
 def update_rfq_detected_object(
