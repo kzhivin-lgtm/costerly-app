@@ -18,6 +18,8 @@ def post_upload_stage_html(
     progress_value: float = 0.04,
     include_slow_message: bool = True,
     elapsed_seconds: float | None = None,
+    complete: bool = False,
+    processing_phase: str | None = None,
 ) -> str:
     """Return the shared fixed-origin post-upload stage HTML."""
     stage_classes = "post-upload-stage"
@@ -59,8 +61,15 @@ def post_upload_stage_html(
             '</div>'
         )
 
+    complete_attr = ' data-processing-complete="true"' if complete else ""
+    phase_attr = (
+        f' data-processing-phase="{html.escape(processing_phase)}"'
+        if processing_phase
+        else ""
+    )
+
     return (
-        f'<div class="{stage_classes}">'
+        f'<div class="{stage_classes}"{complete_attr}{phase_attr}>'
         '<div class="post-upload-stage__inner">'
         '<div class="post-upload-shell">'
         f'{marker_html}'
@@ -81,6 +90,8 @@ def processing_stage_html(
     include_progress: bool = True,
     progress_value: float = 0.04,
     elapsed_seconds: float | None = None,
+    complete: bool = False,
+    processing_phase: str = "upload",
 ) -> str:
     """Return the shared Processing stage HTML for instant and real screens."""
     return post_upload_stage_html(
@@ -91,4 +102,6 @@ def processing_stage_html(
         progress_value=progress_value,
         include_slow_message=True,
         elapsed_seconds=elapsed_seconds,
+        complete=complete,
+        processing_phase=processing_phase,
     )

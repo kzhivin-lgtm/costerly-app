@@ -43,6 +43,17 @@ def test_processing_stage_shows_live_timer_and_original_subtitle():
     assert "Detecting scope items for estimation" in markup
 
 
+def test_processing_stage_exposes_real_phase_and_completion():
+    markup = processing_stage_html(
+        progress_value=1,
+        processing_phase="complete",
+        complete=True,
+    )
+
+    assert 'data-processing-phase="complete"' in markup
+    assert 'data-processing-complete="true"' in markup
+
+
 def test_ocr_storage_preserves_full_result_and_detection_context():
     provider_response = {
         "model": "mistral-ocr-4-0",

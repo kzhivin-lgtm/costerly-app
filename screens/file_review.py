@@ -98,7 +98,7 @@ def _timing_html(timings: dict[str, object] | None) -> str:
         '<div class="file-review-timing-row">'
         f'<span>OCR <strong>{seconds("ocr_seconds")}</strong></span>'
         f'<span>Detection <strong>{seconds("detection_seconds")}</strong></span>'
-        f'<span>Total lap <strong>{seconds("total_seconds")}</strong></span>'
+        f'<span>Total lap <strong data-costerly-total-lap>{seconds("total_seconds")}</strong></span>'
         '</div>'
     )
 

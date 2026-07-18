@@ -1741,7 +1741,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         <script>
         (() => {
             const parentDoc = window.parent.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_7";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_8";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -1759,12 +1759,16 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const SHELL_ID = 'costerly-upload-processing-shell';
                 const STYLE_ID = 'costerly-upload-processing-shell-style';
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
+                const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v117';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v117';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV117Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v118';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v118';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV118Installed';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAt';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimer';
+                const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSeconds';
+                const PROGRESS_PHASE_KEY = '__costerlyProcessingProgressPhase';
+                const PROGRESS_PHASE_STARTED_AT_KEY = '__costerlyProcessingProgressPhaseStartedAt';
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
@@ -1817,6 +1821,10 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     return Boolean(document.getElementById(REAL_PROCESSING_MARKER_ID));
                 }
 
+                function fileReviewIsActive() {
+                    return Boolean(document.getElementById(FILE_REVIEW_MARKER_ID));
+                }
+
                 function installStyle() {
                     if (document.getElementById(STYLE_ID)) return;
 
@@ -1851,6 +1859,41 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         String(remainder).padStart(2, '0');
                 }
 
+                function activeProcessingStage() {
+                    const marker = document.getElementById(REAL_PROCESSING_MARKER_ID);
+                    if (marker) return marker.closest('.post-upload-stage');
+
+                    const shell = document.getElementById(SHELL_ID);
+                    return shell ? shell.querySelector('.post-upload-stage') : null;
+                }
+
+                function phaseProgress(stage) {
+                    if (!stage) return 4;
+                    if (stage.dataset.processingComplete === 'true') return 100;
+
+                    const phase = stage.dataset.processingPhase || 'upload';
+                    if (window[PROGRESS_PHASE_KEY] !== phase) {
+                        window[PROGRESS_PHASE_KEY] = phase;
+                        window[PROGRESS_PHASE_STARTED_AT_KEY] = Date.now();
+                    }
+
+                    const phaseSeconds = Math.max(
+                        0,
+                        (Date.now() - Number(window[PROGRESS_PHASE_STARTED_AT_KEY] || Date.now())) / 1000
+                    );
+                    const config = {
+                        upload: [4, 8, 2],
+                        ocr: [8, 32, 5],
+                        detection: [32, 92, 12],
+                        saving: [92, 98, 2],
+                    }[phase] || [4, 96, 20];
+                    const start = config[0];
+                    const end = config[1];
+                    const expectedSeconds = config[2];
+                    const fraction = Math.min(0.97, phaseSeconds / expectedSeconds);
+                    return start + (end - start) * fraction;
+                }
+
                 function updateElapsed() {
                     const startedAt = Number(window[ELAPSED_STARTED_AT_KEY] || 0);
                     if (!startedAt) return;
@@ -1866,11 +1909,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         }
                     });
 
-                    const progress = Math.min(
-                        88,
-                        4 + 84 * (1 - Math.exp(-seconds / 18))
-                    );
-                    const progressWidth = progress.toFixed(1) + '%';
+                    const progressWidth = phaseProgress(activeProcessingStage()).toFixed(1) + '%';
                     document.querySelectorAll('.post-upload-stage .custom-progress-fill').forEach((node) => {
                         if (node.style.width !== progressWidth) {
                             node.style.width = progressWidth;
@@ -1880,11 +1919,27 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         node.dataset.slow = seconds >= 25 ? 'true' : 'false';
                     });
 
-                    if (!realProcessingIsActive() && !document.getElementById(SHELL_ID)) {
-                        window.clearInterval(window[ELAPSED_TIMER_KEY]);
-                        window[ELAPSED_TIMER_KEY] = null;
-                        window[ELAPSED_STARTED_AT_KEY] = null;
-                    }
+                    if (fileReviewIsActive()) finalizeElapsed(seconds);
+                }
+
+                function applyFinalElapsed(seconds) {
+                    if (!Number.isFinite(seconds)) return;
+                    document.querySelectorAll('[data-costerly-total-lap]').forEach((node) => {
+                        const label = seconds.toFixed(1) + 's';
+                        if (node.textContent !== label) node.textContent = label;
+                    });
+                }
+
+                function finalizeElapsed(seconds) {
+                    const preciseSeconds = Math.max(
+                        seconds,
+                        (Date.now() - Number(window[ELAPSED_STARTED_AT_KEY] || Date.now())) / 1000
+                    );
+                    window[LAST_ELAPSED_SECONDS_KEY] = preciseSeconds;
+                    applyFinalElapsed(preciseSeconds);
+                    window.clearInterval(window[ELAPSED_TIMER_KEY]);
+                    window[ELAPSED_TIMER_KEY] = null;
+                    window[ELAPSED_STARTED_AT_KEY] = null;
                 }
 
                 function startElapsed() {
@@ -2012,9 +2067,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     const shellIsActive = Boolean(document.getElementById(SHELL_ID));
                     if (
                         window[ELAPSED_STARTED_AT_KEY] &&
-                        (realProcessingIsActive() || shellIsActive)
+                        (realProcessingIsActive() || shellIsActive || fileReviewIsActive())
                     ) {
                         updateElapsed();
+                    }
+                    if (fileReviewIsActive() && window[LAST_ELAPSED_SECONDS_KEY]) {
+                        applyFinalElapsed(Number(window[LAST_ELAPSED_SECONDS_KEY]));
                     }
                     if (realProcessingIsActive()) removeShell();
                 });
