@@ -1882,15 +1882,21 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         (Date.now() - Number(window[PROGRESS_PHASE_STARTED_AT_KEY] || Date.now())) / 1000
                     );
                     const config = {
-                        upload: [4, 8, 2],
-                        ocr: [8, 32, 5],
-                        detection: [32, 92, 12],
-                        saving: [92, 98, 2],
+                        upload: [4, 10, 3],
+                        ocr: [10, 30, 6],
+                        detection: [30, 94, 18],
+                        saving: [94, 99, 2.5],
                     }[phase] || [4, 96, 20];
                     const start = config[0];
                     const end = config[1];
                     const expectedSeconds = config[2];
-                    const fraction = Math.min(0.97, phaseSeconds / expectedSeconds);
+                    // An asymptotic curve keeps moving during a slow provider call
+                    // without reaching the phase boundary before the backend does.
+                    // Real phase transitions remain authoritative.
+                    const fraction = Math.min(
+                        0.985,
+                        1 - Math.exp(-2.1 * phaseSeconds / expectedSeconds)
+                    );
                     return start + (end - start) * fraction;
                 }
 
@@ -1915,10 +1921,6 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                             node.style.width = progressWidth;
                         }
                     });
-                    document.querySelectorAll('.post-upload-stage').forEach((node) => {
-                        node.dataset.slow = seconds >= 25 ? 'true' : 'false';
-                    });
-
                     if (fileReviewIsActive()) finalizeElapsed(seconds);
                 }
 
@@ -1991,18 +1993,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     }
 
                     shell.dataset.source = source || 'unknown';
-                    shell.dataset.slow = 'false';
                     document.documentElement.classList.add(SHELL_ACTIVE_CLASS);
                     document.body.classList.add(SHELL_ACTIVE_CLASS);
                     startElapsed();
-
-                    if (slowTimer) window.clearTimeout(slowTimer);
-                    slowTimer = window.setTimeout(() => {
-                        const activeShell = document.getElementById(SHELL_ID);
-                        if (activeShell && !realProcessingIsActive()) {
-                            activeShell.dataset.slow = 'true';
-                        }
-                    }, 25000);
 
                     startWatcher();
                 }

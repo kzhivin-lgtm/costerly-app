@@ -36,7 +36,7 @@ def render_processing_screen(company_id: str) -> None:
             unsafe_allow_html=True,
         )
 
-    render_stage(0.08, processing_phase="ocr")
+    render_stage(0.10, processing_phase="ocr")
     clear_upload_processing_shell()
 
     file_name = st.session_state.get("uploaded_file_name")
@@ -78,7 +78,7 @@ def render_processing_screen(company_id: str) -> None:
                 active_phase = phase_state["value"]
                 if active_phase != rendered_phase:
                     render_stage(
-                        {"ocr": 0.08, "detection": 0.32, "saving": 0.92}[active_phase],
+                        {"ocr": 0.10, "detection": 0.30, "saving": 0.94}[active_phase],
                         processing_phase=active_phase,
                     )
                     rendered_phase = active_phase

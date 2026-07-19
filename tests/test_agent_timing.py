@@ -47,6 +47,7 @@ def test_processing_stage_shows_live_timer_and_original_subtitle():
 
     assert "Elapsed 01:05" in markup
     assert "Detecting scope items for estimation" in markup
+    assert "taking longer than expected" not in markup
 
 
 def test_processing_stage_exposes_real_phase_and_completion():
