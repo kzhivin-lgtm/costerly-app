@@ -22,52 +22,116 @@ from agents.ocr_contract import OCR_PROFILE_EVIDENCE
 
 
 DEFAULT_RENDER_DPI = 200
+DEFAULT_RENDER_WORKERS = 4
 DEFAULT_PAGE_WORKERS = 4
 
 
-def _render_with_pymupdf(file_bytes: bytes, dpi: int) -> list[bytes]:
+def _render_with_pymupdf(
+    file_bytes: bytes,
+    dpi: int,
+    *,
+    render_workers: int = DEFAULT_RENDER_WORKERS,
+) -> list[bytes]:
     import fitz  # PyMuPDF
 
     document = fitz.open(stream=file_bytes, filetype="pdf")
     try:
-        return [
-            page.get_pixmap(dpi=dpi, alpha=False).tobytes("png")
-            for page in document
-        ]
+        page_count = len(document)
     finally:
         document.close()
 
+    def render_page(page_index: int) -> bytes:
+        # PyMuPDF documents are not thread-safe, so every worker owns its
+        # document handle while pages are rendered concurrently.
+        worker_document = fitz.open(stream=file_bytes, filetype="pdf")
+        try:
+            page = worker_document.load_page(page_index)
+            return page.get_pixmap(dpi=dpi, alpha=False).tobytes("png")
+        finally:
+            worker_document.close()
 
-def _render_with_pdftoppm(file_bytes: bytes, dpi: int) -> list[bytes]:
+    worker_count = max(1, min(render_workers, page_count))
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        return list(executor.map(render_page, range(page_count)))
+
+
+def _render_with_pdftoppm(
+    file_bytes: bytes,
+    dpi: int,
+    *,
+    render_workers: int = DEFAULT_RENDER_WORKERS,
+) -> list[bytes]:
     executable = shutil.which("pdftoppm")
-    if not executable:
+    pdfinfo = shutil.which("pdfinfo")
+    if not executable or not pdfinfo:
         raise RuntimeError("PDF rendering requires PyMuPDF or pdftoppm")
     with tempfile.TemporaryDirectory(prefix="costerly-ocr-") as directory:
         temp_dir = Path(directory)
         source_path = temp_dir / "source.pdf"
-        output_prefix = temp_dir / "page"
         source_path.write_bytes(file_bytes)
-        subprocess.run(
+
+        info = subprocess.run(
             [
-                executable,
-                "-r",
-                str(dpi),
-                "-png",
+                pdfinfo,
                 str(source_path),
-                str(output_prefix),
             ],
             check=True,
             capture_output=True,
+            text=True,
         )
-        return [path.read_bytes() for path in sorted(temp_dir.glob("page-*.png"))]
+        page_count = 0
+        for line in info.stdout.splitlines():
+            if line.startswith("Pages:"):
+                page_count = int(line.split(":", 1)[1].strip())
+                break
+        if page_count < 1:
+            raise RuntimeError("Unable to determine PDF page count")
+
+        def render_page(page_number: int) -> bytes:
+            output_prefix = temp_dir / f"page-{page_number:06d}"
+            subprocess.run(
+                [
+                    executable,
+                    "-f",
+                    str(page_number),
+                    "-l",
+                    str(page_number),
+                    "-singlefile",
+                    "-r",
+                    str(dpi),
+                    "-png",
+                    str(source_path),
+                    str(output_prefix),
+                ],
+                check=True,
+                capture_output=True,
+            )
+            return output_prefix.with_suffix(".png").read_bytes()
+
+        worker_count = max(1, min(render_workers, page_count))
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            return list(executor.map(render_page, range(1, page_count + 1)))
 
 
-def render_pdf_pages(file_bytes: bytes, *, dpi: int = DEFAULT_RENDER_DPI) -> list[bytes]:
+def render_pdf_pages(
+    file_bytes: bytes,
+    *,
+    dpi: int = DEFAULT_RENDER_DPI,
+    render_workers: int = DEFAULT_RENDER_WORKERS,
+) -> list[bytes]:
     """Render PDF pages for OCR; PyMuPDF is production, pdftoppm is local fallback."""
     try:
-        pages = _render_with_pymupdf(file_bytes, dpi)
+        pages = _render_with_pymupdf(
+            file_bytes,
+            dpi,
+            render_workers=render_workers,
+        )
     except (ImportError, ModuleNotFoundError):
-        pages = _render_with_pdftoppm(file_bytes, dpi)
+        pages = _render_with_pdftoppm(
+            file_bytes,
+            dpi,
+            render_workers=render_workers,
+        )
     if not pages:
         raise RuntimeError("PDF contains no renderable pages")
     return pages
