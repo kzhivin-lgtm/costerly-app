@@ -28,7 +28,7 @@ from agents.schemas.estimation_schema import (
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_ESTIMATION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
-DETECTION_PROMPT_VERSION = "detection_v3_3_verified_compact_candidate"
+DETECTION_PROMPT_VERSION = "detection_v3_2_4_metadata_no_cache_baseline"
 ESTIMATION_PROMPT_VERSION = "estimation_v1"
 
 
@@ -51,6 +51,12 @@ def get_secret(name: str, default: str | None = None) -> str | None:
         pass
 
     return default
+
+
+def detection_input_cache_enabled() -> bool:
+    """Keep provider input caching off during fresh-file benchmark testing."""
+    value = str(get_secret("DETECTION_INPUT_CACHE_ENABLED", "false") or "false")
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def get_anthropic_client() -> anthropic.Anthropic:
@@ -180,18 +186,11 @@ def build_detection_ocr_context(
         for (page_number, region_id), items in regions.items():
             bbox = compact_bbox(region_bboxes.get((page_number, region_id)))
             lines.append(f"P{page_number or '?'} R={region_id or '?'} B={bbox or '?'}")
-            grouped_items: dict[tuple[str, str, Any], list[str]] = {}
             for item in items:
-                key = (
-                    str(item.get("category") or "other"),
-                    str(item.get("region") or "center"),
-                    item.get("occurrences", 1),
-                )
-                grouped_items.setdefault(key, []).append(str(item.get("text") or ""))
-            for (category, region, occurrences), texts in grouped_items.items():
-                exact_texts = json.dumps(texts, ensure_ascii=False, separators=(",", ":"))
+                exact_text = json.dumps(str(item.get("text") or ""), ensure_ascii=False)
                 lines.append(
-                    f"E={category}|{region}|{occurrences}|{exact_texts}"
+                    f'E={item.get("category") or "other"}|{item.get("region") or "center"}|'
+                    f'{item.get("occurrences", 1)}|{exact_text}'
                 )
         return "\n".join(lines)[:max_chars]
 
@@ -260,20 +259,20 @@ Analyze the attached RFQ / drawing package and return ONLY the structured JSON o
 """.strip()
 
 
-def build_detection_system_content() -> list[dict[str, Any]]:
-    """Keep the stable business contract cacheable across RFQ uploads."""
+def build_detection_system_content(*, cache_enabled: bool = False) -> list[dict[str, Any]]:
+    """Build the business contract, optionally enabling provider input caching."""
     prompt = load_detection_agent_prompt()
-    return [
-        {
-            "type": "text",
-            "text": (
-                "You are the RFQ Detection Agent for a custom fabrication "
-                "estimate system. Follow this business logic contract exactly:\n\n"
-                f"{prompt}"
-            ),
-            "cache_control": {"type": "ephemeral"},
-        }
-    ]
+    block = {
+        "type": "text",
+        "text": (
+            "You are the RFQ Detection Agent for a custom fabrication "
+            "estimate system. Follow this business logic contract exactly:\n\n"
+            f"{prompt}"
+        ),
+    }
+    if cache_enabled:
+        block["cache_control"] = {"type": "ephemeral"}
+    return [block]
 
 
 def build_estimation_user_text(
@@ -322,7 +321,12 @@ def encode_pdf_bytes(file_bytes: bytes) -> str:
     return base64.standard_b64encode(file_bytes).decode("utf-8")
 
 
-def build_uploaded_file_content_block(file_name: str, file_bytes: bytes) -> dict[str, Any]:
+def build_uploaded_file_content_block(
+    file_name: str,
+    file_bytes: bytes,
+    *,
+    cache_enabled: bool = False,
+) -> dict[str, Any]:
     """Build the Claude content block for supported RFQ upload formats."""
     if not file_bytes:
         raise ValueError("file_bytes is empty")
@@ -331,43 +335,76 @@ def build_uploaded_file_content_block(file_name: str, file_bytes: bytes) -> dict
     encoded = base64.standard_b64encode(file_bytes).decode("utf-8")
 
     if suffix == ".pdf":
-        return {
+        block = {
             "type": "document",
             "source": {
                 "type": "base64",
                 "media_type": "application/pdf",
                 "data": encoded,
             },
-            "cache_control": {"type": "ephemeral"},
         }
+        if cache_enabled:
+            block["cache_control"] = {"type": "ephemeral"}
+        return block
 
     if suffix in {".jpg", ".jpeg"}:
-        return {
+        block = {
             "type": "image",
             "source": {
                 "type": "base64",
                 "media_type": "image/jpeg",
                 "data": encoded,
             },
-            "cache_control": {"type": "ephemeral"},
         }
+        if cache_enabled:
+            block["cache_control"] = {"type": "ephemeral"}
+        return block
 
     if suffix == ".png":
-        return {
+        block = {
             "type": "image",
             "source": {
                 "type": "base64",
                 "media_type": "image/png",
                 "data": encoded,
             },
-            "cache_control": {"type": "ephemeral"},
         }
+        if cache_enabled:
+            block["cache_control"] = {"type": "ephemeral"}
+        return block
 
     raise ValueError("Unsupported RFQ file type. Upload PDF, JPEG, or PNG.")
 
 
 def _utc_now_iso() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def normalize_detection_identity_fields(
+    result: dict[str, Any],
+    *,
+    company_id: str,
+    file_name: str,
+) -> dict[str, Any]:
+    """Make transport identity fields authoritative before schema validation."""
+    rfq_run = result.get("rfq_run")
+    detected_objects = result.get("detected_objects")
+    if not isinstance(rfq_run, dict) or not isinstance(detected_objects, list):
+        return result
+
+    run_id = rfq_run.get("run_id")
+    if not isinstance(run_id, str) or not run_id.strip():
+        return result
+
+    rfq_run["company_id"] = company_id
+    rfq_run["file_name"] = file_name
+    for detected_object in detected_objects:
+        if not isinstance(detected_object, dict):
+            continue
+        detected_object["run_id"] = run_id
+        detected_object["company_id"] = company_id
+
+    return result
 
 
 def build_agent_usage_event(
@@ -482,6 +519,7 @@ def run_anthropic_detection_agent(
         selected_model = DEFAULT_CLAUDE_DETECTION_MODEL
 
     client = get_anthropic_client()
+    cache_enabled = detection_input_cache_enabled()
     user_text = build_detection_user_text(
         file_name=file_name,
         company_id=company_id,
@@ -495,12 +533,16 @@ def run_anthropic_detection_agent(
         client,
         model=selected_model,
         max_tokens=8192,
-        system=build_detection_system_content(),
+        system=build_detection_system_content(cache_enabled=cache_enabled),
         messages=[
             {
                 "role": "user",
                 "content": [
-                    build_uploaded_file_content_block(file_name, file_bytes),
+                    build_uploaded_file_content_block(
+                        file_name,
+                        file_bytes,
+                        cache_enabled=cache_enabled,
+                    ),
                     {
                         "type": "text",
                         "text": user_text,
@@ -526,6 +568,11 @@ def run_anthropic_detection_agent(
             f"Claude returned invalid JSON. Raw response starts with: {raw_text[:500]}"
         ) from exc
 
+    result = normalize_detection_identity_fields(
+        result,
+        company_id=company_id,
+        file_name=file_name,
+    )
     validated = validate_detection_result(result)
     validated["_agent_usage"] = build_agent_usage_event(
         agent_name="detection",

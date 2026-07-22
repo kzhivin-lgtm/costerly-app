@@ -66,9 +66,15 @@ def upsert_rfq_detection_result(client: Client, detection_result: dict) -> None:
     detected_objects = detection_result["detected_objects"]
 
     run_id = rfq_run["run_id"]
+    run_row = dict(rfq_run)
+    design_partner = str(run_row.get("design_partner") or "unknown").strip()
+    end_client = str(run_row.get("client") or "unknown").strip()
+    run_row["client_or_design_partner"] = (
+        design_partner if design_partner and design_partner != "unknown" else end_client
+    )
 
     client.table("rfq_runs").upsert(
-        rfq_run,
+        run_row,
         on_conflict="run_id",
     ).execute()
 

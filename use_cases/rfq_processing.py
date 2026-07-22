@@ -37,6 +37,7 @@ def _runtime_event(
     finished_at: str,
     duration_seconds: float,
     raw_usage: dict[str, Any] | None = None,
+    status: str = "succeeded",
 ) -> dict[str, Any]:
     usage = dict(raw_usage or {})
     usage["duration_seconds"] = duration_seconds
@@ -55,7 +56,7 @@ def _runtime_event(
         "input_cost_usd": None,
         "output_cost_usd": None,
         "total_cost_usd": None,
-        "status": "succeeded",
+        "status": status,
         "duration_seconds": duration_seconds,
         "started_at": started_at,
         "finished_at": finished_at,
@@ -79,6 +80,43 @@ def _ocr_storage_usage(
     }
 
 
+def _run_optional_ocr(
+    *,
+    file_name: str,
+    file_bytes: bytes,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Return stored OCR diagnostics plus OCR evidence for Detection when available."""
+    started_at = datetime.now(UTC).isoformat()
+    started = time.perf_counter()
+    try:
+        package = run_mistral_document_evidence_ocr(
+            file_name=file_name,
+            file_bytes=file_bytes,
+        )
+    except Exception as exc:
+        finished_at = datetime.now(UTC).isoformat()
+        elapsed_seconds = round(time.perf_counter() - started, 3)
+        error = str(exc)
+        print(f"[OCR fallback] Detection will use the original file only: {error}")
+        return (
+            {
+                "model": "mistral-ocr-4-0",
+                "contract_version": "ocr_v2",
+                "profile": "evidence",
+                "status": "failed",
+                "error": error,
+                "pages": [],
+                "evidence": {"text_blocks": [], "literal_items": []},
+                "usage": {},
+                "processing_seconds": elapsed_seconds,
+                "started_at": started_at,
+                "finished_at": finished_at,
+            },
+            None,
+        )
+    return package, package
+
+
 def process_uploaded_rfq(
     *,
     file_name: str,
@@ -91,11 +129,11 @@ def process_uploaded_rfq(
     cycle_started = time.perf_counter()
     if progress_callback:
         progress_callback("OCR reading document")
-    ocr_package = run_mistral_document_evidence_ocr(
+    ocr_package, detection_ocr_package = _run_optional_ocr(
         file_name=file_name,
         file_bytes=file_bytes,
     )
-    detection_context = build_detection_ocr_context(ocr_package)
+    detection_context = build_detection_ocr_context(detection_ocr_package)
     if progress_callback:
         progress_callback("Detection Agent")
     detection_started = time.perf_counter()
@@ -103,7 +141,7 @@ def process_uploaded_rfq(
         file_name=file_name,
         company_id=company_id,
         file_bytes=file_bytes,
-        ocr_package=ocr_package,
+        ocr_package=detection_ocr_package,
     )
     detection_seconds = round(time.perf_counter() - detection_started, 3)
     usage_event = detection_result.pop("_agent_usage", None)
@@ -130,6 +168,7 @@ def process_uploaded_rfq(
             ocr_package,
             detection_context=detection_context,
         ),
+        status="failed" if ocr_package.get("status") == "failed" else "succeeded",
     )
 
     for event, label in ((ocr_event, "OCR"), (usage_event, "Detection")):
@@ -263,9 +302,13 @@ def apply_file_review_edits(
 
 def _normalize_run(run: dict[str, Any]) -> dict[str, Any]:
     """Convert the Supabase RFQ row to the compact UI contract."""
+    partner = run.get("design_partner")
+    if partner is None or partner == "":
+        partner = run.get("client_or_design_partner")
     return {
         "project_name": run.get("project_name"),
-        "partner": run.get("client_or_design_partner"),
+        "partner": partner,
+        "client": run.get("client"),
         "file_quality": run.get("file_quality_label"),
         "file_name": run.get("file_name"),
         "pages_detected": run.get("pages_detected"),

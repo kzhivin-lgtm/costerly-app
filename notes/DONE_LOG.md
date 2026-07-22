@@ -88,3 +88,4 @@ Backup v3.0.14_after_verified_upload_timer_hotfix created, завершена 17
 OCR v2 evidence pipeline added: PDF pages render at 200 DPI, Mistral returns literal spatial evidence, the complete auditable result is saved in Supabase, and Detection receives region-bound text without OCR-driven object grouping; page-23.pdf locally verified as Shelving Unit, Sliding Panel System, and TV Console in 19.97s total, завершена 18.07
 OCR Lab added with versioned profiles, fixed page-23 evidence checks, full JSON artifacts, and 95% literal evidence recall at the 200 DPI baseline, завершена 18.07
 Backup v3.0.16_working_ocr_v2_spatial_detection_handoff created, завершена 18.07
+Detection metadata roles separated into Project, Partner, Client, Author, Date, and File Quality; project addresses compacted; Anthropic input caching disabled for fresh-file benchmarks; verified no-cache medians are 23.035s for page-23.pdf and 51.831s for Металл (1).pdf, завершена 22.07

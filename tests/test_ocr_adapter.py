@@ -157,7 +157,7 @@ def test_detection_context_groups_evidence_by_visual_region_without_semantics():
 
     assert "OCR SPATIAL EVIDENCE" in context
     assert "P1 R=img-1.jpeg" in context
-    assert 'E=dimension|top-center|1|["4130"]' in context
+    assert 'E=dimension|top-center|1|"4130"' in context
     assert "never object boundaries or object candidates" in context
 
 

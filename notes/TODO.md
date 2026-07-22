@@ -13,6 +13,7 @@
 - Upload: continue first app/file-load optimization; warm refresh now uses the grey screen/app-ready path, but cold start after reboot can still show one Streamlit skeleton.
 - Upload performance follow-up: lazy-load screens and cleanup are done; revisit `.streamlit/config.toml`, cold-start behavior, and optional post-deploy/reboot prewarm.
 - Processing: review processing-screen text wording and keep its current position as the layout benchmark.
+- Processing progress bar: replace the current decorative timing curve with a phase-aware, benchmark-calibrated progression for OCR, Detection, saving, and completion; prevent the bar from racing early and crawling near the end.
 - Detection Prompt v3: benchmark the candidate on a fixed multi-document set with expected object boundaries, names, quantities, external dimensions, notes, p50/p95 latency, tokens, and cost.
 - Objects Estimation: reduce the large vertical gap between subtitle and pricing table column headers.
 - Objects Estimation: add a small blue spinner next to the running Self Cost per Unit percent.

@@ -4,10 +4,11 @@ from agents.anthropic_adapter import (
     build_detection_system_content,
     build_detection_user_text,
     build_uploaded_file_content_block,
+    normalize_detection_identity_fields,
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
-from use_cases.rfq_processing import _ocr_storage_usage
+from use_cases.rfq_processing import _normalize_run, _ocr_storage_usage, _run_optional_ocr
 
 
 class _Usage:
@@ -61,15 +62,71 @@ def test_processing_stage_exposes_real_phase_and_completion():
     assert 'data-processing-complete="true"' in markup
 
 
-def test_detection_static_contract_and_document_are_cacheable():
+def test_detection_input_cache_is_disabled_by_default_and_can_be_enabled():
     system = build_detection_system_content()
     document = build_uploaded_file_content_block("drawing.pdf", b"pdf")
     user_text = build_detection_user_text("drawing.pdf", "001")
 
-    assert system[0]["cache_control"] == {"type": "ephemeral"}
+    assert "cache_control" not in system[0]
     assert "commercial object" in system[0]["text"].lower()
-    assert document["cache_control"] == {"type": "ephemeral"}
+    assert "cache_control" not in document
     assert "DETECTION PROMPT:" not in user_text
+
+    cached_system = build_detection_system_content(cache_enabled=True)
+    cached_document = build_uploaded_file_content_block(
+        "drawing.pdf",
+        b"pdf",
+        cache_enabled=True,
+    )
+    assert cached_system[0]["cache_control"] == {"type": "ephemeral"}
+    assert cached_document["cache_control"] == {"type": "ephemeral"}
+
+
+def test_detection_identity_fields_are_normalized_before_validation():
+    result = {
+        "rfq_run": {
+            "run_id": "authoritative_run",
+            "company_id": "wrong_company",
+            "file_name": "wrong.pdf",
+            "project_name": "Keep this semantic value",
+        },
+        "detected_objects": [
+            {
+                "run_id": "mismatched_run",
+                "company_id": "another_company",
+                "object_name": "Keep this object",
+            }
+        ],
+    }
+
+    normalized = normalize_detection_identity_fields(
+        result,
+        company_id="001",
+        file_name="drawing.pdf",
+    )
+
+    assert normalized["rfq_run"]["run_id"] == "authoritative_run"
+    assert normalized["rfq_run"]["company_id"] == "001"
+    assert normalized["rfq_run"]["file_name"] == "drawing.pdf"
+    assert normalized["rfq_run"]["project_name"] == "Keep this semantic value"
+    assert normalized["detected_objects"][0]["run_id"] == "authoritative_run"
+    assert normalized["detected_objects"][0]["company_id"] == "001"
+    assert normalized["detected_objects"][0]["object_name"] == "Keep this object"
+
+
+def test_file_review_run_keeps_partner_and_client_roles_separate():
+    normalized = _normalize_run(
+        {
+            "project_name": "Example",
+            "design_partner": "Studio A",
+            "client": "Developer B",
+            "file_quality_label": "detailed_drawings",
+        }
+    )
+
+    assert normalized["partner"] == "Studio A"
+    assert normalized["client"] == "Developer B"
+    assert normalized["file_quality"] == "detailed_drawings"
 
 
 
@@ -128,3 +185,23 @@ def test_ocr_storage_can_preserve_actual_spatial_detection_handoff():
 
     assert stored["detection_context"] == context
     assert "2695" in stored["detection_context"]
+
+
+def test_ocr_failure_falls_back_to_original_file_without_ocr(monkeypatch):
+    def fail_ocr(**_kwargs):
+        raise RuntimeError("Mistral OCR request failed: timed out")
+
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.run_mistral_document_evidence_ocr",
+        fail_ocr,
+    )
+
+    stored_package, detection_package = _run_optional_ocr(
+        file_name="drawing.pdf",
+        file_bytes=b"pdf",
+    )
+
+    assert detection_package is None
+    assert stored_package["status"] == "failed"
+    assert "timed out" in stored_package["error"]
+    assert build_detection_ocr_context(detection_package) == "OCR text layer: unavailable"

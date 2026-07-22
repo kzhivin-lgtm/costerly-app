@@ -9,7 +9,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BACKUP_ROOT = REPO_ROOT / "backups"
-EXCLUDED_DIRS = {".git", ".venv", ".streamlit", "__pycache__", "backups"}
+EXCLUDED_DIRS = {".git", ".venv", ".streamlit", "__pycache__", "backups", "tmp"}
 EXCLUDED_FILES = {".DS_Store"}
 REQUIRED_FILES = {"app.py", "notes/DONE_LOG.md"}
 MAX_ARCHIVE_BYTES = 5 * 1024 * 1024

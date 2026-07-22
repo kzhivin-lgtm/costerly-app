@@ -41,13 +41,12 @@ def _metadata_rows_html(run: dict[str, object]) -> str:
     rows = [
         ("Project name", run.get("project_name")),
         ("Partner", run.get("partner")),
+        ("Client", run.get("client")),
         ("File name", run.get("file_name")),
         ("Pages detected", run.get("pages_detected")),
-        ("Source type", run.get("source_type")),
         ("Author", run.get("author")),
         ("Document date", run.get("document_date")),
-        ("Language", run.get("language")),
-        ("File quality confidence", run.get("file_quality_confidence")),
+        ("File quality", run.get("file_quality")),
         ("Run ID", run.get("run_id")),
         ("Status", run.get("status")),
     ]
@@ -120,6 +119,8 @@ def _build_review_card_html(
         f'<div class="file-review-value">{_escape(run.get("project_name"))}</div>'
         '<div class="file-review-label">Partner:</div>'
         f'<div class="file-review-value">{_escape(run.get("partner"))}</div>'
+        '<div class="file-review-label">Client:</div>'
+        f'<div class="file-review-value">{_escape(run.get("client"))}</div>'
         '<div class="file-review-label">File quality:</div>'
         f'<div class="file-review-value">{_escape(run.get("file_quality"))}</div>'
         '</div>'
