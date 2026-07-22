@@ -2,14 +2,16 @@ from agents.anthropic_adapter import DETECTION_PROMPT_VERSION
 from agents.prompt_loader import load_detection_agent_prompt
 
 
-def test_detection_prompt_v3_2_4_covers_metadata_roles_contract():
+def test_detection_prompt_v3_2_6_covers_ocr_identity_reconciliation():
     prompt = load_detection_agent_prompt()
 
-    assert "RFQ DETECTION AGENT V3.2.4" in prompt
-    assert "Stage A — lock the commercial object set visually" in prompt
-    assert "Stage B — enrich the locked objects from OCR" in prompt
-    assert "must not create, split, merge, or increase the object set" in prompt
-    assert "Do not spend effort retranscribing text" in prompt
+    assert "RFQ DETECTION AGENT V3.2.6" in prompt
+    assert "Stage A — establish visual object candidates" in prompt
+    assert "Stage B — lock identities and enrich from OCR" in prompt
+    assert "unanchored OCR never creates an object" in prompt
+    assert "reconcile authoritative product-level tags from OCR once" in prompt
+    assert "This targeted reconciliation is not a second page-by-page review" in prompt
+    assert "Do not retranscribe text OCR already provides" in prompt
     assert "Detection alone makes all semantic decisions" in prompt
     assert "six user-facing jobs" in prompt
     assert "### Metadata — project name" in prompt
@@ -31,9 +33,13 @@ def test_detection_prompt_v3_2_4_covers_metadata_roles_contract():
     assert "They never imply mains power" in prompt
     assert "Estimation Agent handoff boundary" in prompt
     assert "independent-product test" in prompt
+    assert "ЛП-1, ЛС-1, ЛС-2, and МП-1 remain separate quote lines" in prompt
+    assert "Component, BOM, hardware, and detail codes are not object identities" in prompt
+    assert "does not establish parent-child containment" in prompt
+    assert "Build one package-level candidate set" in prompt
     assert "Living room furniture assembly" in prompt
     assert 'use "W 3610 × H 630 × D 610 mm"' in prompt
-    assert DETECTION_PROMPT_VERSION == "detection_v3_2_4_metadata_no_cache_baseline"
+    assert DETECTION_PROMPT_VERSION == "detection_v3_2_6_ocr_identity_reconciliation"
 
 
 def test_detection_prompt_v3_stays_compact():

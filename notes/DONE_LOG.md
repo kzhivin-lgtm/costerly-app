@@ -89,3 +89,5 @@ OCR v2 evidence pipeline added: PDF pages render at 200 DPI, Mistral returns lit
 OCR Lab added with versioned profiles, fixed page-23 evidence checks, full JSON artifacts, and 95% literal evidence recall at the 200 DPI baseline, завершена 18.07
 Backup v3.0.16_working_ocr_v2_spatial_detection_handoff created, завершена 18.07
 Detection metadata roles separated into Project, Partner, Client, Author, Date, and File Quality; project addresses compacted; Anthropic input caching disabled for fresh-file benchmarks; verified no-cache medians are 23.035s for page-23.pdf and 51.831s for Металл (1).pdf, завершена 22.07
+Detection V3.2.6 reconciles OCR product-level identities against visual fabrication evidence without a second page pass; verified object boundaries are 3/3/3 for page-23.pdf and 15/15/15 for Металл (1).pdf, with Detection medians 12.476s and 30.285s, завершена 22.07
+Detection V3.2.6 restored as the stable checkpoint after rejecting V3.2.7–V3.2.9 naming experiments due quality and timing regressions; 25 tests passed, завершена 22.07

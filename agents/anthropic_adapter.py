@@ -28,7 +28,7 @@ from agents.schemas.estimation_schema import (
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_ESTIMATION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
-DETECTION_PROMPT_VERSION = "detection_v3_2_4_metadata_no_cache_baseline"
+DETECTION_PROMPT_VERSION = "detection_v3_2_6_ocr_identity_reconciliation"
 ESTIMATION_PROMPT_VERSION = "estimation_v1"
 
 
