@@ -1,5 +1,8 @@
 from agents.anthropic_adapter import DETECTION_PROMPT_VERSION
-from agents.prompt_loader import load_detection_agent_prompt
+from agents.prompt_loader import (
+    load_detection_agent_prompt,
+    load_detection_agent_without_naming_prompt,
+)
 
 
 def test_detection_prompt_v3_2_6_covers_ocr_identity_reconciliation():
@@ -47,3 +50,13 @@ def test_detection_prompt_v3_stays_compact():
 
     assert len(prompt) < 24_000
     assert len(prompt.splitlines()) < 500
+
+
+def test_no_naming_ab_prompt_delegates_user_facing_name_once():
+    prompt = load_detection_agent_without_naming_prompt()
+
+    assert "Your output has five user-facing jobs" in prompt
+    assert "## 5. Object naming" not in prompt
+    assert "Do not create, translate, shorten, improve, or validate" in prompt
+    assert "otherwise use Object 1, Object 2" in prompt
+    assert "Naming is performed once by a separate downstream Naming Agent" in prompt

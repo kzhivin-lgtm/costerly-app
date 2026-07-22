@@ -9,9 +9,23 @@ import time
 
 import pandas as pd
 
-from agents.anthropic_adapter import build_detection_ocr_context
+from agents.anthropic_adapter import (
+    build_detection_ocr_context,
+    detection_naming_split_enabled,
+)
 from agents.detection_agent import run_detection_agent
-from agents.ocr_rendering import run_mistral_document_evidence_ocr
+from agents.naming_lab import (
+    NAMING_LAB_VERSION,
+    apply_name_mapping,
+    build_locked_naming_input,
+    ensure_unique_object_ids,
+    run_naming_lab_call,
+)
+from agents.ocr_rendering import (
+    direct_pdf_ocr_enabled,
+    run_mistral_direct_pdf_evidence_ocr,
+    run_mistral_document_evidence_ocr,
+)
 from db.repositories import (
     fetch_agent_usage_events,
     fetch_rfq_detected_objects,
@@ -89,10 +103,16 @@ def _run_optional_ocr(
     started_at = datetime.now(UTC).isoformat()
     started = time.perf_counter()
     try:
-        package = run_mistral_document_evidence_ocr(
-            file_name=file_name,
-            file_bytes=file_bytes,
-        )
+        if direct_pdf_ocr_enabled():
+            package = run_mistral_direct_pdf_evidence_ocr(
+                file_name=file_name,
+                file_bytes=file_bytes,
+            )
+        else:
+            package = run_mistral_document_evidence_ocr(
+                file_name=file_name,
+                file_bytes=file_bytes,
+            )
     except Exception as exc:
         finished_at = datetime.now(UTC).isoformat()
         elapsed_seconds = round(time.perf_counter() - started, 3)
@@ -145,6 +165,45 @@ def process_uploaded_rfq(
     )
     detection_seconds = round(time.perf_counter() - detection_started, 3)
     usage_event = detection_result.pop("_agent_usage", None)
+    naming_seconds = 0.0
+    naming_event = None
+    if detection_naming_split_enabled() and detection_result["detected_objects"]:
+        ensure_unique_object_ids(detection_result["detected_objects"])
+        if progress_callback:
+            progress_callback("Naming Agent")
+        naming_started_at = datetime.now(UTC).isoformat()
+        locked_objects = build_locked_naming_input(
+            detection_result["detected_objects"],
+            ocr_package,
+        )
+        naming_result = run_naming_lab_call(
+            locked_objects,
+            file_name=file_name,
+            file_bytes=file_bytes,
+        )
+        naming_seconds = float(naming_result["duration_seconds"])
+        apply_name_mapping(
+            detection_result["detected_objects"],
+            locked_objects,
+            naming_result,
+        )
+        naming_event = _runtime_event(
+            agent_name="naming",
+            operation="locked_object_naming",
+            company_id=company_id,
+            run_id=detection_result["rfq_run"]["run_id"],
+            file_name=file_name,
+            model=str(naming_result["model"]),
+            prompt_version=NAMING_LAB_VERSION,
+            started_at=naming_started_at,
+            finished_at=datetime.now(UTC).isoformat(),
+            duration_seconds=naming_seconds,
+            raw_usage={
+                "input_tokens": naming_result["input_tokens"],
+                "output_tokens": naming_result["output_tokens"],
+                "validation": naming_result["validation"],
+            },
+        )
     run_id = detection_result["rfq_run"]["run_id"]
 
     if progress_callback:
@@ -171,7 +230,11 @@ def process_uploaded_rfq(
         status="failed" if ocr_package.get("status") == "failed" else "succeeded",
     )
 
-    for event, label in ((ocr_event, "OCR"), (usage_event, "Detection")):
+    for event, label in (
+        (ocr_event, "OCR"),
+        (usage_event, "Detection"),
+        (naming_event, "Naming"),
+    ):
         if not event:
             continue
         try:
@@ -195,6 +258,7 @@ def process_uploaded_rfq(
         raw_usage={
             "ocr_seconds": ocr_seconds,
             "detection_seconds": detection_seconds,
+            "naming_seconds": naming_seconds,
         },
     )
     try:
@@ -209,6 +273,7 @@ def process_uploaded_rfq(
         "timings": {
             "ocr_seconds": ocr_seconds,
             "detection_seconds": detection_seconds,
+            "naming_seconds": naming_seconds,
             "total_seconds": total_seconds,
         },
     }
@@ -263,6 +328,7 @@ def _latest_runtime_timings(usage_df: pd.DataFrame) -> dict[str, float] | None:
     return {
         "ocr_seconds": float(raw_usage.get("ocr_seconds") or 0),
         "detection_seconds": float(raw_usage.get("detection_seconds") or 0),
+        "naming_seconds": float(raw_usage.get("naming_seconds") or 0),
         "total_seconds": float(total_seconds or 0),
     }
 

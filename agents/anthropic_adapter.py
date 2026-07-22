@@ -4,6 +4,7 @@ import base64
 import copy
 import json
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,7 @@ import anthropic
 from config import calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
+    load_detection_agent_without_naming_prompt,
     load_estimation_agent_prompt,
 )
 from agents.schemas.detection_schema import (
@@ -29,6 +31,7 @@ DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_ESTIMATION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
 DETECTION_PROMPT_VERSION = "detection_v3_2_6_ocr_identity_reconciliation"
+DETECTION_NO_NAMING_PROMPT_VERSION = "detection_v3_2_6_no_naming_ab"
 ESTIMATION_PROMPT_VERSION = "estimation_v1"
 
 
@@ -56,6 +59,14 @@ def get_secret(name: str, default: str | None = None) -> str | None:
 def detection_input_cache_enabled() -> bool:
     """Keep provider input caching off during fresh-file benchmark testing."""
     value = str(get_secret("DETECTION_INPUT_CACHE_ENABLED", "false") or "false")
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def detection_naming_split_enabled() -> bool:
+    """Enable the isolated local A/B flow; disabled by default and in production."""
+    if "--naming-split" in sys.argv:
+        return True
+    value = str(get_secret("DETECTION_NAMING_SPLIT_EXPERIMENT", "false") or "false")
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
@@ -261,7 +272,11 @@ Analyze the attached RFQ / drawing package and return ONLY the structured JSON o
 
 def build_detection_system_content(*, cache_enabled: bool = False) -> list[dict[str, Any]]:
     """Build the business contract, optionally enabling provider input caching."""
-    prompt = load_detection_agent_prompt()
+    prompt = (
+        load_detection_agent_without_naming_prompt()
+        if detection_naming_split_enabled()
+        else load_detection_agent_prompt()
+    )
     block = {
         "type": "text",
         "text": (
@@ -583,7 +598,11 @@ def run_anthropic_detection_agent(
         object_id=None,
         object_name=None,
         model=selected_model,
-        prompt_version=DETECTION_PROMPT_VERSION,
+        prompt_version=(
+            DETECTION_NO_NAMING_PROMPT_VERSION
+            if detection_naming_split_enabled()
+            else DETECTION_PROMPT_VERSION
+        ),
         response=response,
         started_at=started_at,
         finished_at=finished_at,

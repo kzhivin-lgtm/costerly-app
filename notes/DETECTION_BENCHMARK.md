@@ -82,3 +82,32 @@ to four objects and quantity 2 in one run, and V3.2.9 medians increased to
 The additive Supabase columns `object_index`, `object_name_en`, and
 `object_name_original` may remain in the database. V3.2.6 does not read or write
 them, so no destructive rollback SQL is required.
+
+## Experimental Direct PDF + Naming Split candidate
+
+Backup: `v3.0.30_experimental_direct_pdf_naming_split_checkpoint`.
+This candidate is not yet the production baseline.
+
+The local experiment sends the original document to Mistral once, removes
+user-facing naming from Detection, and applies a separate Naming Agent after
+the object list is locked. The former rendered-page OCR route remains available
+as the disabled control path.
+
+Three accepted repeated runs of `Металл (1).pdf` produced:
+
+| Run | OCR | Detection | Naming | Total | Objects |
+|---|---:|---:|---:|---:|---:|
+| 1 | 1.061 s | 30.124 s | 4.298 s | 38.216 s | 15 |
+| 2 | 0.798 s | 30.913 s | 4.390 s | 38.586 s | 15 |
+| 3 | 0.960 s | 29.508 s | 4.461 s | 38.308 s | 15 |
+| Median | 0.960 s | 30.124 s | 4.390 s | 38.308 s | 15 |
+
+All three OCR results contained 11 pages and 633 literal evidence items.
+Commercial object boundaries stayed correct, including distinct LS-1, LS-2,
+and LP-1 positions. External dimensions varied materially between identical
+OCR handoffs, so dimension binding remains the next quality task.
+
+The sub-second OCR repeats may include provider-side deduplication of the same
+PDF. They must not replace the cold-user benchmark until Direct PDF is tested
+on previously unseen or byte-unique documents. `page-23.pdf` also returned two
+objects in one of four Direct PDF runs, so the candidate is not accepted yet.

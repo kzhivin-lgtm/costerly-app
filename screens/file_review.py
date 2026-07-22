@@ -92,11 +92,19 @@ def _timing_html(timings: dict[str, object] | None) -> str:
         except (TypeError, ValueError):
             return "—"
 
+    naming_html = ""
+    try:
+        if float(timings.get("naming_seconds") or 0) > 0:
+            naming_html = f'<span>Naming <strong>{seconds("naming_seconds")}</strong></span>'
+    except (TypeError, ValueError):
+        pass
+
     return (
         '<div class="file-review-divider"></div>'
         '<div class="file-review-timing-row">'
         f'<span>OCR <strong>{seconds("ocr_seconds")}</strong></span>'
         f'<span>Detection <strong>{seconds("detection_seconds")}</strong></span>'
+        f'{naming_html}'
         f'<span>Total lap <strong data-costerly-total-lap>{seconds("total_seconds")}</strong></span>'
         '</div>'
     )
