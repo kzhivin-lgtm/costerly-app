@@ -2,7 +2,7 @@
 
 ## Active
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
-  1. Checkpoint the current candidate. Create a new experimental backup for Direct PDF OCR + Naming Split, and make benchmark run IDs unique so repeated runs cannot overwrite prior object results.
+  1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR + Naming Split is active by default and checkpointed as stable in `v3.0.30_experimental_direct_pdf_naming_split_checkpoint` (the historical archive slug is unchanged).
   2. Validate the new OCR route. Test one original PDF → one Mistral OCR request on cold, byte-unique or previously unseen documents. Record OCR completeness, p50/p95, dimensions, tokens, and total time; do not count possible provider deduplication as cold performance.
   3. Continue the dimensions work already started. Bind every external dimension to the same object index, evidence page, and OCR region; never promote a component size to the whole-object envelope; when axes conflict, return unknown plus a concise clarification instead of guessing. Do not add another full-document pass.
   4. Make Naming text-only. Keep the separate Naming Agent and immutable object list, but stop sending it the PDF again. Pass indices, evidence pages, relevant OCR snippets, and locked Detection facts. Preserve current naming quality and target 2–3 seconds.
@@ -10,7 +10,7 @@
   6. Parallelize the post-lock stage. After object IDs and order are immutable, start short Naming and technical OCR enrichment as parallel branches. Neither branch may add, remove, merge, split, or reorder objects.
   7. Shorten the persistence path. Save the minimum authoritative result required for File Review, open File Review, and persist the full OCR JSON plus technical usage events concurrently or immediately afterward with reliable error reporting.
   8. Recalibrate the Processing UI only after the real route is stable. Drive progress from Direct OCR, visual locking, reconciliation, parallel post-lock work, minimum save, and completion; remove the current early sprint and slow finish.
-  9. Run the acceptance benchmark. Use fresh files and at least three cold runs per file; compare object boundaries, names, dimensions, OCR completeness, p50/p95, tokens, cost, and total user-visible time. Promote the candidate only after quality and timing are both accepted.
+  9. Run the acceptance benchmark. Use fresh files and at least three cold runs per file; compare object boundaries, names, dimensions, OCR completeness, p50/p95, tokens, cost, and total user-visible time.
   10. Prepare production concurrency later. Add organization-wide limits, backpressure queueing, 429 handling, and visual-only Detection fallback. Keep one PDF as one OCR request; do not restore per-page fan-out.
 - Closed routing experiments:
   - Rendering pages while earlier pages entered OCR produced about 3.5 seconds of overlap on the 11-page file, but is superseded by Direct PDF because the main route no longer renders pages.

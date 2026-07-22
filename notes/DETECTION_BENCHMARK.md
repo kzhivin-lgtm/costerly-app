@@ -83,15 +83,16 @@ The additive Supabase columns `object_index`, `object_name_en`, and
 `object_name_original` may remain in the database. V3.2.6 does not read or write
 them, so no destructive rollback SQL is required.
 
-## Experimental Direct PDF + Naming Split candidate
+## Direct PDF + Naming Split v3.0.30 baseline
 
 Backup: `v3.0.30_experimental_direct_pdf_naming_split_checkpoint`.
-This candidate is not yet the production baseline.
+Despite the historical archive slug, this checkpoint is the accepted stable
+baseline and its flow is active by default in production.
 
-The local experiment sends the original document to Mistral once, removes
+The active flow sends the original document to Mistral once, removes
 user-facing naming from Detection, and applies a separate Naming Agent after
-the object list is locked. The former rendered-page OCR route remains available
-as the disabled control path.
+the object list is locked. The former rendered-page OCR route remains only as
+an explicit rollback path.
 
 Three accepted repeated runs of `Металл (1).pdf` produced:
 
@@ -110,4 +111,5 @@ OCR handoffs, so dimension binding remains the next quality task.
 The sub-second OCR repeats may include provider-side deduplication of the same
 PDF. They must not replace the cold-user benchmark until Direct PDF is tested
 on previously unseen or byte-unique documents. `page-23.pdf` also returned two
-objects in one of four Direct PDF runs, so the candidate is not accepted yet.
+objects in one of four Direct PDF runs, so that quality variance remains an
+open issue even though v3.0.30 is the active baseline.

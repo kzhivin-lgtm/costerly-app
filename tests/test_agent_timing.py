@@ -192,7 +192,7 @@ def test_ocr_failure_falls_back_to_original_file_without_ocr(monkeypatch):
         raise RuntimeError("Mistral OCR request failed: timed out")
 
     monkeypatch.setattr(
-        "use_cases.rfq_processing.run_mistral_document_evidence_ocr",
+        "use_cases.rfq_processing.run_mistral_direct_pdf_evidence_ocr",
         fail_ocr,
     )
 

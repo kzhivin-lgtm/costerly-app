@@ -63,10 +63,10 @@ def detection_input_cache_enabled() -> bool:
 
 
 def detection_naming_split_enabled() -> bool:
-    """Enable the isolated local A/B flow; disabled by default and in production."""
+    """Use the active split Naming flow unless an explicit rollback disables it."""
     if "--naming-split" in sys.argv:
         return True
-    value = str(get_secret("DETECTION_NAMING_SPLIT_EXPERIMENT", "false") or "false")
+    value = str(get_secret("DETECTION_NAMING_SPLIT_EXPERIMENT", "true") or "true")
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 

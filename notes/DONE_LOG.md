@@ -96,3 +96,4 @@ OCR page rendering and Mistral calls were overlapped, producing about 3.5 second
 Experimental Direct PDF OCR sends one original PDF in one Mistral request without local rendering or per-page fan-out; three accepted large-file repeats returned 15 objects in 38.216s, 38.586s, and 38.308s total, while external-dimension consistency remains unresolved, завершена 22.07
 Unified Detection/OCR roadmap now sequences Direct PDF cold validation, dimension stabilization, text-only Naming, two parallel processing stages, asynchronous audit persistence, progress calibration, and final acceptance benchmarking, завершена 22.07
 Backup v3.0.30_experimental_direct_pdf_naming_split_checkpoint created, завершена 22.07
+Direct PDF OCR + Naming Split accepted as the single active v3.0.30 baseline and enabled by default for production; no parallel stable/experimental branch retained, завершена 22.07
