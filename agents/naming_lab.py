@@ -16,7 +16,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v4_compact_context_hint"
+NAMING_LAB_VERSION = "naming_lab_v5_semantic_category"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -188,7 +188,7 @@ def compose_name_preview(
         object_index = str(locked_by_id[object_id].get("object_index") or "").strip()
         name_en = str(item.get("name_en") or "").strip()
         original = str(item.get("name_original") or "").strip()
-        base = " — ".join(part for part in (object_index, name_en) if part)
+        base = " ".join(part for part in (object_index, name_en) if part)
         display_name = f'{base} ("{original}")' if original else base
         previews.append({"object_id": object_id, "display_name": display_name})
     return previews
@@ -223,9 +223,9 @@ def run_naming_lab_call(
         {
             "type": "text",
             "text": (
-                "Name only these already locked objects. Use their existing labels, short "
-                "Detection context hint, and OCR snippets to identify the product category and source-language "
-                "label. Return only schema JSON:\n"
+                "Name only these already locked objects. Treat an object index or a model/name "
+                "as incomplete until you identify its product category from the Detection context "
+                "and local OCR. Return only schema JSON:\n"
                 + json.dumps(locked_objects, ensure_ascii=False, separators=(",", ":"))
             ),
         }

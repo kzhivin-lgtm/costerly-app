@@ -176,3 +176,18 @@ the final Streamlit transition and File Review load.
 This checkpoint improves perceived latency but does not change Detection. The
 same runs returned 4 and 13 objects rather than the 3 and 15 acceptance targets,
 so object-boundary stabilization remains the next prompt task.
+
+## Semantic-category Naming V5 — 2026-09-12
+
+Naming V5 keeps the compact text-only background route but no longer accepts an
+object index or proper/model name as a complete product name. Every English
+label must identify the physical product category; an explicit model name may
+be retained only alongside that category. The application now joins the index
+and semantic label with a space instead of a dash.
+
+The local qualitative check produced useful category-bearing names and about
+2.9 seconds of background Naming. The tested large-file Detection result held
+13 objects, which is below the 15-object acceptance target and remains an
+upstream Detection issue. Some source-language labels present in local OCR,
+including an OM15-1 railing label, were not returned consistently; that is the
+next isolated Naming task.

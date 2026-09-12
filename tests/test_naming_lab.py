@@ -1,6 +1,7 @@
 import pytest
 
 from agents.naming_lab import (
+    NAMING_LAB_VERSION,
     apply_name_mapping,
     build_locked_naming_input,
     compose_name_preview,
@@ -9,6 +10,10 @@ from agents.naming_lab import (
     relevant_ocr_snippets,
     validate_locked_name_mapping,
 )
+
+
+def test_uses_semantic_category_naming_version():
+    assert NAMING_LAB_VERSION == "naming_lab_v5_semantic_category"
 
 
 def test_extracts_authoritative_leading_index_only():
@@ -120,7 +125,7 @@ def test_preview_is_composed_without_mutating_locked_objects():
     }
 
     assert compose_name_preview(locked, result) == [
-        {"object_id": "a", "display_name": 'ОМ-2 — Railing panel ("Панель ограждения")'}
+        {"object_id": "a", "display_name": 'ОМ-2 Railing panel ("Панель ограждения")'}
     ]
     assert locked[0]["current_name"] == "Old"
 
