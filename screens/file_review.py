@@ -95,7 +95,7 @@ def _timing_html(timings: dict[str, object] | None) -> str:
     naming_html = ""
     try:
         if float(timings.get("naming_seconds") or 0) > 0:
-            naming_html = f'<span>Naming <strong>{seconds("naming_seconds")}</strong></span>'
+            naming_html = f'<span>Naming background <strong>{seconds("naming_seconds")}</strong></span>'
     except (TypeError, ValueError):
         pass
 
@@ -265,6 +265,53 @@ def _load_file_review_screen_data(run_id: str) -> dict[str, object]:
     return cache[run_id]
 
 
+def _apply_completed_naming(run_id: str) -> None:
+    """Merge deferred names without overwriting names edited by the user."""
+    result = st.session_state.pop("current_naming_result", None)
+    if not isinstance(result, dict) or result.get("status") != "succeeded":
+        return
+
+    names = result.get("names") or {}
+    cache = st.session_state.setdefault("file_review_data_cache", {})
+    data = cache.get(run_id)
+    if isinstance(data, dict):
+        edits = st.session_state.setdefault("file_review_object_edits", {})
+        for item in data.get("objects") or []:
+            object_id = _object_id(item)
+            new_name = str(names.get(object_id) or "")
+            if not new_name:
+                continue
+            old_name = str(item.get("name") or "")
+            edit = edits.get(object_id)
+            if isinstance(edit, dict) and str(edit.get("name") or "") == old_name:
+                edit["name"] = new_name
+                widget_key = f"file_review_object_edits.{object_id}.name"
+                if st.session_state.get(widget_key) == old_name:
+                    st.session_state[widget_key] = new_name
+            item["name"] = new_name
+
+    timings = st.session_state.get("current_agent_timings")
+    if isinstance(timings, dict):
+        timings["naming_seconds"] = float(result.get("naming_seconds") or 0)
+
+
+@st.fragment(run_every=0.5)
+def _poll_deferred_naming() -> None:
+    """Refresh File Review once background Naming has completed."""
+    future = st.session_state.get("current_naming_future")
+    if not isinstance(future, Future) or not future.done():
+        return
+    try:
+        st.session_state.current_naming_result = future.result()
+    except Exception as exc:
+        st.session_state.current_naming_result = {
+            "status": "failed",
+            "error": str(exc),
+        }
+    st.session_state.current_naming_future = None
+    st.rerun()
+
+
 def _file_review_edits_changed(
     objects: list[dict[str, object]],
     object_edits: dict[str, dict[str, object]],
@@ -405,6 +452,9 @@ def render_file_review_screen(company_id: str) -> None:
     if not run_id:
         _render_missing_run_state()
         return
+
+    _apply_completed_naming(run_id)
+    _poll_deferred_naming()
 
     try:
         data = _load_file_review_screen_data(run_id)

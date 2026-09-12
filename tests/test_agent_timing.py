@@ -8,7 +8,12 @@ from agents.anthropic_adapter import (
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
-from use_cases.rfq_processing import _normalize_run, _ocr_storage_usage, _run_optional_ocr
+from use_cases.rfq_processing import (
+    _normalize_run,
+    _ocr_storage_usage,
+    _run_deferred_naming,
+    _run_optional_ocr,
+)
 from db.repositories import insert_agent_usage_events
 
 
@@ -250,3 +255,64 @@ def test_usage_diagnostics_are_batched_for_legacy_schema():
     assert "duration_seconds" not in client.target.rows[0]
     assert client.target.rows[0]["raw_usage"]["duration_seconds"] == 12.5
     assert client.target.rows[1]["raw_usage"]["duration_seconds"] == 2.5
+
+
+def test_deferred_naming_updates_locked_names_and_returns_without_detection_changes(
+    monkeypatch,
+):
+    updates = []
+    events = []
+    detected_objects = [
+        {"object_id": "object-001", "object_name": "Object 1", "quantity": 1}
+    ]
+    locked_objects = [
+        {
+            "object_id": "object-001",
+            "object_index": "",
+            "current_name": "Object 1",
+        }
+    ]
+
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.run_naming_lab_call",
+        lambda _locked: {
+            "names": [
+                {
+                    "object_id": "object-001",
+                    "name_en": "Display cabinet",
+                    "name_original": "",
+                }
+            ],
+            "duration_seconds": 2.25,
+            "model": "test-model",
+            "input_tokens": 20,
+            "output_tokens": 5,
+            "validation": {"accepted": True, "violations": []},
+        },
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.update_rfq_detected_object_name_if_unchanged",
+        lambda _client, **kwargs: updates.append(kwargs),
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.insert_agent_usage_event",
+        lambda _client, event: events.append(event),
+    )
+
+    result = _run_deferred_naming(
+        client=object(),
+        detected_objects=detected_objects,
+        locked_objects=locked_objects,
+        company_id="001",
+        run_id="run-001",
+        file_name="drawing.pdf",
+    )
+
+    assert result == {
+        "status": "succeeded",
+        "names": {"object-001": "Display cabinet"},
+        "naming_seconds": 2.25,
+    }
+    assert updates[0]["expected_name"] == "Object 1"
+    assert updates[0]["object_name"] == "Display cabinet"
+    assert events[0]["operation"] == "locked_object_naming_deferred"

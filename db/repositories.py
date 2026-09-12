@@ -199,6 +199,25 @@ def update_rfq_detected_object(
     ).execute()
 
 
+def update_rfq_detected_object_name_if_unchanged(
+    client: Client,
+    *,
+    run_id: str,
+    object_id: str,
+    expected_name: str,
+    object_name: str,
+) -> None:
+    """Apply deferred Naming only while the provisional name is unchanged."""
+    (
+        client.table("rfq_detected_objects")
+        .update({"object_name": object_name})
+        .eq("run_id", run_id)
+        .eq("object_id", object_id)
+        .eq("object_name", expected_name)
+        .execute()
+    )
+
+
 def upsert_rfq_estimate_shell(
     client: Client,
     *,

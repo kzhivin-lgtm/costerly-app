@@ -57,6 +57,12 @@ def init_state() -> None:
     if "current_agent_timings" not in st.session_state:
         st.session_state.current_agent_timings = None
 
+    if "current_naming_future" not in st.session_state:
+        st.session_state.current_naming_future = None
+
+    if "current_naming_result" not in st.session_state:
+        st.session_state.current_naming_result = None
+
     if "last_estimation_error" not in st.session_state:
         st.session_state.last_estimation_error = None
 

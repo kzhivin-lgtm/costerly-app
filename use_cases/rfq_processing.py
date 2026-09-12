@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 import re
@@ -32,8 +33,10 @@ from db.repositories import (
     fetch_agent_usage_events,
     fetch_rfq_detected_objects,
     fetch_rfq_run,
+    insert_agent_usage_event,
     insert_agent_usage_events,
     update_rfq_detected_object,
+    update_rfq_detected_object_name_if_unchanged,
     upsert_rfq_detection_result,
 )
 from db.supabase_client import get_supabase_client
@@ -43,6 +46,10 @@ from use_cases.retry import read_with_retry
 _DIAGNOSTICS_EXECUTOR = ThreadPoolExecutor(
     max_workers=2,
     thread_name_prefix="rfq-diagnostics",
+)
+_NAMING_EXECUTOR = ThreadPoolExecutor(
+    max_workers=4,
+    thread_name_prefix="rfq-naming",
 )
 
 
@@ -188,6 +195,71 @@ def _run_optional_ocr(
     return package, package
 
 
+def _run_deferred_naming(
+    *,
+    client: Any,
+    detected_objects: list[dict[str, Any]],
+    locked_objects: list[dict[str, Any]],
+    company_id: str,
+    run_id: str,
+    file_name: str,
+) -> dict[str, Any]:
+    """Name locked objects after File Review is allowed to open."""
+    started_at = datetime.now(UTC).isoformat()
+    started = time.perf_counter()
+    try:
+        naming_result = run_naming_lab_call(locked_objects)
+        apply_name_mapping(detected_objects, locked_objects, naming_result)
+        names: dict[str, str] = {}
+        for provisional, named in zip(locked_objects, detected_objects, strict=True):
+            object_id = str(named.get("object_id") or "")
+            old_name = str(provisional.get("current_name") or "")
+            new_name = str(named.get("object_name") or old_name)
+            update_rfq_detected_object_name_if_unchanged(
+                client,
+                run_id=run_id,
+                object_id=object_id,
+                expected_name=old_name,
+                object_name=new_name,
+            )
+            names[object_id] = new_name
+
+        naming_seconds = float(naming_result["duration_seconds"])
+        insert_agent_usage_event(
+            client,
+            _runtime_event(
+                agent_name="naming",
+                operation="locked_object_naming_deferred",
+                company_id=company_id,
+                run_id=run_id,
+                file_name=file_name,
+                model=str(naming_result["model"]),
+                prompt_version=NAMING_LAB_VERSION,
+                started_at=started_at,
+                finished_at=datetime.now(UTC).isoformat(),
+                duration_seconds=naming_seconds,
+                raw_usage={
+                    "input_tokens": naming_result["input_tokens"],
+                    "output_tokens": naming_result["output_tokens"],
+                    "validation": naming_result["validation"],
+                    "deferred": True,
+                },
+            ),
+        )
+        return {
+            "status": "succeeded",
+            "names": names,
+            "naming_seconds": naming_seconds,
+        }
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "names": {},
+            "naming_seconds": round(time.perf_counter() - started, 3),
+            "error": str(exc),
+        }
+
+
 def process_uploaded_rfq(
     *,
     file_name: str,
@@ -217,39 +289,13 @@ def process_uploaded_rfq(
     detection_seconds = round(time.perf_counter() - detection_started, 3)
     usage_event = detection_result.pop("_agent_usage", None)
     naming_seconds = 0.0
-    naming_event = None
+    naming_future = None
+    locked_objects = None
     if detection_naming_split_enabled() and detection_result["detected_objects"]:
         ensure_unique_object_ids(detection_result["detected_objects"])
-        if progress_callback:
-            progress_callback("Naming Agent")
-        naming_started_at = datetime.now(UTC).isoformat()
         locked_objects = build_locked_naming_input(
             detection_result["detected_objects"],
             ocr_package,
-        )
-        naming_result = run_naming_lab_call(locked_objects)
-        naming_seconds = float(naming_result["duration_seconds"])
-        apply_name_mapping(
-            detection_result["detected_objects"],
-            locked_objects,
-            naming_result,
-        )
-        naming_event = _runtime_event(
-            agent_name="naming",
-            operation="locked_object_naming",
-            company_id=company_id,
-            run_id=detection_result["rfq_run"]["run_id"],
-            file_name=file_name,
-            model=str(naming_result["model"]),
-            prompt_version=NAMING_LAB_VERSION,
-            started_at=naming_started_at,
-            finished_at=datetime.now(UTC).isoformat(),
-            duration_seconds=naming_seconds,
-            raw_usage={
-                "input_tokens": naming_result["input_tokens"],
-                "output_tokens": naming_result["output_tokens"],
-                "validation": naming_result["validation"],
-            },
         )
     run_id = detection_result["rfq_run"]["run_id"]
 
@@ -257,6 +303,16 @@ def process_uploaded_rfq(
         progress_callback("Saving results")
     client = get_supabase_client()
     upsert_rfq_detection_result(client, detection_result)
+    if locked_objects is not None:
+        naming_future = _NAMING_EXECUTOR.submit(
+            _run_deferred_naming,
+            client=client,
+            detected_objects=deepcopy(detection_result["detected_objects"]),
+            locked_objects=locked_objects,
+            company_id=company_id,
+            run_id=run_id,
+            file_name=file_name,
+        )
 
     ocr_seconds = float(ocr_package.get("processing_seconds") or 0)
     cycle_finished_at = datetime.now(UTC).isoformat()
@@ -268,7 +324,7 @@ def process_uploaded_rfq(
         run_id=run_id,
         file_name=file_name,
         model="deterministic",
-        prompt_version="rfq_processing_v1",
+        prompt_version="rfq_processing_v2_deferred_naming",
         started_at=cycle_started_at,
         finished_at=cycle_finished_at,
         duration_seconds=total_seconds,
@@ -276,6 +332,7 @@ def process_uploaded_rfq(
             "ocr_seconds": ocr_seconds,
             "detection_seconds": detection_seconds,
             "naming_seconds": naming_seconds,
+            "naming_deferred": naming_future is not None,
         },
     )
     _DIAGNOSTICS_EXECUTOR.submit(
@@ -284,7 +341,7 @@ def process_uploaded_rfq(
         ocr_package=ocr_package,
         detection_context=detection_context,
         usage_event=usage_event,
-        naming_event=naming_event,
+        naming_event=None,
         cycle_event=cycle_event,
         company_id=company_id,
         run_id=run_id,
@@ -296,6 +353,7 @@ def process_uploaded_rfq(
         "run_id": run_id,
         "detection_result": detection_result,
         "ocr_package": ocr_package,
+        "naming_future": naming_future,
         "timings": {
             "ocr_seconds": ocr_seconds,
             "detection_seconds": detection_seconds,

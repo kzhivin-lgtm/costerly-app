@@ -159,3 +159,20 @@ payloads were approximately 7 KB and 229 KB.
 This persistence change cannot alter Detection semantics. The large-file run
 returned 13 rather than the 15 acceptance objects, which remains an independent
 upstream Detection variance tracked by the existing acceptance benchmark.
+
+## Deferred Naming checkpoint — 2026-09-12
+
+Naming v4 now starts only after the provisional Detection result is stored, so
+File Review no longer waits for Naming. The screen opens with locked provisional
+labels and replaces only unchanged names when the background result arrives.
+
+The first local user-visible laps were approximately 16 seconds for
+`page-23.pdf` and 29 seconds for `Металл (1).pdf`. Persisted critical-path cycles
+were 13.177 seconds (OCR 0.967, Detection 11.805) and 26.649 seconds (OCR 1.160,
+Detection 24.427). Background Naming took 2.526 and 9.335 seconds respectively
+and is excluded from Total lap. The remaining 2–3 user-visible seconds occur in
+the final Streamlit transition and File Review load.
+
+This checkpoint improves perceived latency but does not change Detection. The
+same runs returned 4 and 13 objects rather than the 3 and 15 acceptance targets,
+so object-boundary stabilization remains the next prompt task.
