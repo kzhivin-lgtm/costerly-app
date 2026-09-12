@@ -169,7 +169,19 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
                 "bottom_right_x": image_item.get("bottom_right_x"),
                 "bottom_right_y": image_item.get("bottom_right_y"),
             }
-            for raw_item in annotation.get("literal_items") or []:
+            raw_items = annotation.get("literal_items") or []
+            # OCR 4.1 bbox annotations already carry page/image coordinates in
+            # the provider response. Keep the annotation model focused on exact
+            # transcription instead of asking it to recreate spatial metadata.
+            if not raw_items and str(annotation.get("text") or "").strip():
+                raw_items = [
+                    {
+                        "text": annotation["text"],
+                        "category": "other",
+                        "region": "center",
+                    }
+                ]
+            for raw_item in raw_items:
                 if not isinstance(raw_item, dict):
                     continue
                 text = str(raw_item.get("text") or "").strip()

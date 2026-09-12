@@ -97,3 +97,6 @@ Experimental Direct PDF OCR sends one original PDF in one Mistral request withou
 Unified Detection/OCR roadmap now sequences Direct PDF cold validation, dimension stabilization, text-only Naming, two parallel processing stages, asynchronous audit persistence, progress calibration, and final acceptance benchmarking, завершена 22.07
 Backup v3.0.30_experimental_direct_pdf_naming_split_checkpoint created, завершена 22.07
 Direct PDF OCR + Naming Split accepted as the single active v3.0.30 baseline and enabled by default for production; no parallel stable/experimental branch retained, завершена 22.07
+Fast Direct PDF OCR restored after provider/API drift: one original PDF is sent in one core Mistral OCR request, without bbox annotation or page fan-out; locally verified at 1.9s for page-23.pdf and 3.3s for Металл (1).pdf, завершена 12.09
+Text-only Naming checkpoint removes repeated PDF input and uses locked Detection facts plus OCR snippets; measured at 3.6s for page-23.pdf and 10.3s for Металл (1).pdf before planned reintegration into Detection, завершена 12.09
+Anthropic SDK pinned to 0.111.0 to restore Messages API compatibility after the production temperature-argument failure, завершена 12.09

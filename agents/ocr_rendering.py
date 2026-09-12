@@ -19,7 +19,7 @@ from agents.ocr_adapter import (
     wait_for_mistral_http_warmup,
     warm_mistral_http_client_async,
 )
-from agents.ocr_contract import OCR_PROFILE_EVIDENCE
+from agents.ocr_contract import OCR_PROFILE_BASIC, OCR_PROFILE_EVIDENCE
 
 
 DEFAULT_RENDER_DPI = 200
@@ -28,7 +28,7 @@ DEFAULT_PAGE_WORKERS = 4
 
 
 def direct_pdf_ocr_enabled() -> bool:
-    """Use one-PDF/one-request OCR unless an explicit rollback disables it."""
+    """Use the saved one-PDF/one-request OCR flow by default."""
     if "--ocr-direct-pdf" in sys.argv:
         return True
     value = os.getenv("MISTRAL_DIRECT_PDF_EXPERIMENT", "true")
@@ -41,11 +41,11 @@ def run_mistral_direct_pdf_evidence_ocr(
     file_bytes: bytes,
     document_ocr: Callable[..., dict[str, Any]] = run_mistral_ocr,
 ) -> dict[str, Any]:
-    """Send the original document to Mistral in exactly one OCR request."""
+    """Send the original document through Mistral's core OCR in one request."""
     package = document_ocr(
         file_name=file_name,
         file_bytes=file_bytes,
-        profile=OCR_PROFILE_EVIDENCE,
+        profile=OCR_PROFILE_BASIC,
     )
     result = dict(package)
     provider_seconds = float(result.get("processing_seconds") or 0.0)

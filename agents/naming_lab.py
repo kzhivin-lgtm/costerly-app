@@ -8,7 +8,6 @@ from typing import Any
 
 from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_DETECTION_MODEL,
-    build_uploaded_file_content_block,
     create_claude_message,
     extract_text_from_claude_response,
     get_anthropic_client,
@@ -17,7 +16,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v1"
+NAMING_LAB_VERSION = "naming_lab_v2_text_only"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -211,9 +210,6 @@ def apply_name_mapping(
 
 def run_naming_lab_call(
     locked_objects: list[dict[str, Any]],
-    *,
-    file_name: str | None = None,
-    file_bytes: bytes | None = None,
 ) -> dict[str, Any]:
     model = str(
         get_secret("CLAUDE_NAMING_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -221,26 +217,17 @@ def run_naming_lab_call(
     )
     client = get_anthropic_client()
     started = time.perf_counter()
-    content: list[dict[str, Any]] = []
-    if file_name and file_bytes:
-        content.append(
-            build_uploaded_file_content_block(
-                file_name,
-                file_bytes,
-                cache_enabled=False,
-            )
-        )
-    content.append(
+    content = [
         {
             "type": "text",
             "text": (
-                "Name only these already locked objects. Use the attached document only "
-                "to understand their product category and source-language label. Return "
-                "only schema JSON:\n"
+                "Name only these already locked objects. Use their Detection facts and "
+                "OCR snippets to understand the product category and source-language "
+                "label. Return only schema JSON:\n"
                 + json.dumps(locked_objects, ensure_ascii=False, separators=(",", ":"))
             ),
         }
-    )
+    ]
     response = create_claude_message(
         client,
         model=model,

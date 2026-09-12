@@ -1,6 +1,6 @@
 streamlit
 pandas
 supabase
-anthropic
+anthropic==0.111.0
 httpx
 PyMuPDF

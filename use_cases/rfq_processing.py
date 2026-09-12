@@ -26,6 +26,7 @@ from agents.ocr_rendering import (
     run_mistral_direct_pdf_evidence_ocr,
     run_mistral_document_evidence_ocr,
 )
+from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL
 from db.repositories import (
     fetch_agent_usage_events,
     fetch_rfq_detected_objects,
@@ -120,9 +121,9 @@ def _run_optional_ocr(
         print(f"[OCR fallback] Detection will use the original file only: {error}")
         return (
             {
-                "model": "mistral-ocr-4-0",
+                "model": DEFAULT_MISTRAL_OCR_MODEL,
                 "contract_version": "ocr_v2",
-                "profile": "evidence",
+                "profile": "basic" if direct_pdf_ocr_enabled() else "evidence",
                 "status": "failed",
                 "error": error,
                 "pages": [],
@@ -176,11 +177,7 @@ def process_uploaded_rfq(
             detection_result["detected_objects"],
             ocr_package,
         )
-        naming_result = run_naming_lab_call(
-            locked_objects,
-            file_name=file_name,
-            file_bytes=file_bytes,
-        )
+        naming_result = run_naming_lab_call(locked_objects)
         naming_seconds = float(naming_result["duration_seconds"])
         apply_name_mapping(
             detection_result["detected_objects"],

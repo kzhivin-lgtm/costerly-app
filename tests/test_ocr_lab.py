@@ -21,7 +21,7 @@ def test_technical_profile_adds_bbox_schema_only_when_requested():
     assert "bbox_annotation_format" not in basic
     assert evidence["bbox_annotation_format"]["type"] == "json_schema"
     schema = evidence["bbox_annotation_format"]["json_schema"]["schema"]
-    assert set(schema["properties"]) == {"literal_items"}
+    assert set(schema["properties"]) == {"text"}
 
 
 def test_quality_flags_image_only_basic_ocr_for_annotations():

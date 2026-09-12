@@ -14,47 +14,18 @@ OCR_EVIDENCE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "literal_items": {
-            "type": "array",
+        "text": {
+            "type": "string",
             "description": (
-                "Transcribe every legible text occurrence in the image exactly as "
-                "printed. Include dimensions, labels, notes, material and finish "
-                "callouts. Never infer missing text, summarize content, identify "
-                "products, count products, name products, or group drawing views."
+                "Transcribe all legible text inside this image exactly as printed. "
+                "Preserve language, spelling, numbers, units, and line breaks. "
+                "Include dimensions, labels, notes, material and finish callouts. "
+                "Never infer missing text, summarize content, identify products, "
+                "count products, or group drawing views."
             ),
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "properties": {
-                    "text": {
-                        "type": "string",
-                        "description": "Exact visible text preserving language, spelling, numbers, and units.",
-                    },
-                    "category": {
-                        "type": "string",
-                        "enum": ["dimension", "material", "finish", "hardware", "note", "title", "other"],
-                    },
-                    "region": {
-                        "type": "string",
-                        "enum": [
-                            "top-left",
-                            "top-center",
-                            "top-right",
-                            "center-left",
-                            "center",
-                            "center-right",
-                            "bottom-left",
-                            "bottom-center",
-                            "bottom-right",
-                        ],
-                        "description": "Approximate location of this exact text occurrence inside the image.",
-                    },
-                },
-                "required": ["text", "category", "region"],
-            },
         }
     },
-    "required": ["literal_items"],
+    "required": ["text"],
 }
 
 
@@ -68,12 +39,15 @@ def build_mistral_ocr_request(
     if profile not in OCR_PROFILES:
         raise ValueError(f"Unknown OCR profile: {profile}")
 
+    is_image = document_url.startswith("data:image/")
+    document = (
+        {"type": "image_url", "image_url": document_url}
+        if is_image
+        else {"type": "document_url", "document_url": document_url}
+    )
     payload: dict[str, Any] = {
         "model": model,
-        "document": {
-            "type": "document_url",
-            "document_url": document_url,
-        },
+        "document": document,
         "table_format": "html",
         "extract_header": True,
         "extract_footer": True,

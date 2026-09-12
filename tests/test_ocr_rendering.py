@@ -24,7 +24,7 @@ def test_direct_pdf_mode_uses_one_original_document_request():
         document_ocr=document_ocr,
     )
 
-    assert calls == [("drawing.pdf", b"source pdf", "evidence")]
+    assert calls == [("drawing.pdf", b"source pdf", "basic")]
     assert package["transport"] == {
         "mode": "direct_pdf",
         "request_count": 1,

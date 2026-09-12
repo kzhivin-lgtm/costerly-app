@@ -80,6 +80,19 @@ def test_calls_ocr4_with_structured_page_output():
     )
 
 
+def test_calls_ocr_with_image_url_chunk_for_rendered_page():
+    client = _FakeHTTPClient(_response())
+    run_mistral_ocr(
+        file_name="page-0001.png",
+        file_bytes=b"png bytes",
+        http_client=client,
+    )
+
+    document = client.kwargs["json"]["document"]
+    assert document["type"] == "image_url"
+    assert document["image_url"].startswith("data:image/png;base64,")
+
+
 def test_detection_context_labels_pages_and_untrusted_text():
     package = normalize_mistral_ocr_response(
         _response(),
@@ -190,3 +203,30 @@ def test_normalized_evidence_parses_and_compacts_literal_items():
     assert evidence["text_blocks"][0]["text"] == "BAR COUNTER"
     assert evidence["literal_items"][0]["text"] == "4130"
     assert evidence["literal_items"][0]["occurrences"] == 2
+
+
+def test_normalized_evidence_accepts_ocr41_bbox_text():
+    response = _response()
+    response["model"] = "mistral-ocr-4-1"
+    response["pages"][0]["images"] = [
+        {
+            "id": "img-0.jpeg",
+            "top_left_x": 1,
+            "top_left_y": 2,
+            "bottom_right_x": 100,
+            "bottom_right_y": 200,
+            "image_annotation": '{"text":"4130 mm\\nMDF panel 20 mm"}',
+        }
+    ]
+    package = normalize_mistral_ocr_response(
+        response,
+        file_name="drawing.pdf",
+        file_bytes=b"pdf bytes",
+        model="mistral-ocr-4-1",
+        elapsed_seconds=1,
+    )
+
+    item = package["evidence"]["literal_items"][0]
+    assert item["text"] == "4130 mm\nMDF panel 20 mm"
+    assert item["source_image_id"] == "img-0.jpeg"
+    assert item["source_image_bbox"]["top_left_x"] == 1
