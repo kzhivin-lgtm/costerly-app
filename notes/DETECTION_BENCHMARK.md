@@ -141,3 +141,21 @@ from 11.138 to 2.650 seconds for `Металл (1).pdf`. Product categories reco
 after the context hint was added, while original-language labels remain less
 consistent. Detection object-count variance is evaluated separately because
 Naming runs only after the object list is locked.
+
+## Asynchronous Supabase diagnostics — 2026-09-12
+
+The authoritative RFQ run and detected objects remain a synchronous File Review
+dependency. Full OCR JSON and OCR, Detection, Naming, and cycle usage events now
+leave the critical path and are inserted afterward as one background batch.
+
+The verified `page-23.pdf` cycle completed in 18.512 seconds (OCR 0.700,
+Detection 13.431, Naming 3.420); its unclassified persistence/orchestration tail
+was 0.961 seconds versus 1.940 seconds in the preceding run. The verified
+`Металл (1).pdf` cycle completed in 28.664 seconds (OCR 1.192, Detection 24.393,
+Naming 2.536); its tail was 0.543 seconds versus 2.850 seconds. All four events
+and complete OCR payloads were subsequently present in Supabase; the stored OCR
+payloads were approximately 7 KB and 229 KB.
+
+This persistence change cannot alter Detection semantics. The large-file run
+returned 13 rather than the 15 acceptance objects, which remains an independent
+upstream Detection variance tracked by the existing acceptance benchmark.

@@ -106,6 +106,22 @@ def insert_agent_usage_event(client: Client, usage_event: dict) -> None:
         client.table("agent_usage_events").insert(legacy_event).execute()
 
 
+def insert_agent_usage_events(client: Client, usage_events: list[dict]) -> None:
+    """Insert runtime diagnostics in one request using the current DB schema."""
+    rows = []
+    for usage_event in usage_events:
+        row = dict(usage_event)
+        duration_seconds = row.pop("duration_seconds", None)
+        raw_usage = dict(row.get("raw_usage") or {})
+        if duration_seconds is not None:
+            raw_usage["duration_seconds"] = duration_seconds
+        row["raw_usage"] = raw_usage
+        rows.append(row)
+
+    if rows:
+        client.table("agent_usage_events").insert(rows).execute()
+
+
 def fetch_rfq_run(client: Client, run_id: str) -> pd.DataFrame:
     return fetch_table(
         client,

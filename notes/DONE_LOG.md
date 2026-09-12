@@ -102,3 +102,4 @@ Text-only Naming checkpoint removes repeated PDF input and uses locked Detection
 Anthropic SDK pinned to 0.111.0 to restore Messages API compatibility after the production temperature-argument failure, завершена 12.09
 API-compatible Direct PDF OCR + Detection + text-only Naming checkpoint reconfirmed at approximately 23s for page-23.pdf and 43s for Металл (1).pdf; speed restored without accepting unresolved object-boundary variance, завершена 12.09
 Compact Naming v4 reduced its input by 30–41% and measured 2.934s for page-23.pdf and 2.650s for Металл (1).pdf; short Detection context restored useful categories while object-count variance remains upstream, завершена 12.09
+Supabase diagnostics removed from the File Review critical path: the authoritative RFQ result remains synchronous while full OCR JSON and four runtime/usage events are written as one background batch; verified cycles were 18.512s for page-23.pdf and 28.664s for Металл (1).pdf, завершена 12.09

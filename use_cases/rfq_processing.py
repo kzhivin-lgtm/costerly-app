@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
 import re
@@ -31,12 +32,18 @@ from db.repositories import (
     fetch_agent_usage_events,
     fetch_rfq_detected_objects,
     fetch_rfq_run,
-    insert_agent_usage_event,
+    insert_agent_usage_events,
     update_rfq_detected_object,
     upsert_rfq_detection_result,
 )
 from db.supabase_client import get_supabase_client
 from use_cases.retry import read_with_retry
+
+
+_DIAGNOSTICS_EXECUTOR = ThreadPoolExecutor(
+    max_workers=2,
+    thread_name_prefix="rfq-diagnostics",
+)
 
 
 def _runtime_event(
@@ -93,6 +100,49 @@ def _ocr_storage_usage(
         if detection_context is not None
         else build_detection_ocr_context(ocr_package),
     }
+
+
+def _persist_rfq_diagnostics(
+    *,
+    client: Any,
+    ocr_package: dict[str, Any],
+    detection_context: str,
+    usage_event: dict[str, Any] | None,
+    naming_event: dict[str, Any] | None,
+    cycle_event: dict[str, Any],
+    company_id: str,
+    run_id: str,
+    file_name: str,
+    cycle_started_at: str,
+) -> None:
+    """Persist large OCR and runtime diagnostics outside the review critical path."""
+    ocr_seconds = float(ocr_package.get("processing_seconds") or 0)
+    ocr_event = _runtime_event(
+        agent_name="ocr",
+        operation="document_ocr",
+        company_id=company_id,
+        run_id=run_id,
+        file_name=file_name,
+        model=str(ocr_package.get("model") or "unknown"),
+        prompt_version=str(ocr_package.get("contract_version") or "ocr_v2"),
+        started_at=str(ocr_package.get("started_at") or cycle_started_at),
+        finished_at=str(ocr_package.get("finished_at") or datetime.now(UTC).isoformat()),
+        duration_seconds=ocr_seconds,
+        raw_usage=_ocr_storage_usage(
+            ocr_package,
+            detection_context=detection_context,
+        ),
+        status="failed" if ocr_package.get("status") == "failed" else "succeeded",
+    )
+    events = [
+        event
+        for event in (ocr_event, usage_event, naming_event, cycle_event)
+        if event
+    ]
+    try:
+        insert_agent_usage_events(client, events)
+    except Exception as exc:
+        print(f"[Usage Ledger] Could not save RFQ diagnostics: {exc}")
 
 
 def _run_optional_ocr(
@@ -209,36 +259,6 @@ def process_uploaded_rfq(
     upsert_rfq_detection_result(client, detection_result)
 
     ocr_seconds = float(ocr_package.get("processing_seconds") or 0)
-    ocr_event = _runtime_event(
-        agent_name="ocr",
-        operation="document_ocr",
-        company_id=company_id,
-        run_id=run_id,
-        file_name=file_name,
-        model=str(ocr_package.get("model") or "unknown"),
-        prompt_version=str(ocr_package.get("contract_version") or "ocr_v2"),
-        started_at=str(ocr_package.get("started_at") or cycle_started_at),
-        finished_at=str(ocr_package.get("finished_at") or datetime.now(UTC).isoformat()),
-        duration_seconds=ocr_seconds,
-        raw_usage=_ocr_storage_usage(
-            ocr_package,
-            detection_context=detection_context,
-        ),
-        status="failed" if ocr_package.get("status") == "failed" else "succeeded",
-    )
-
-    for event, label in (
-        (ocr_event, "OCR"),
-        (usage_event, "Detection"),
-        (naming_event, "Naming"),
-    ):
-        if not event:
-            continue
-        try:
-            insert_agent_usage_event(client, event)
-        except Exception as exc:
-            print(f"[Usage Ledger] Could not save {label} usage: {exc}")
-
     cycle_finished_at = datetime.now(UTC).isoformat()
     total_seconds = round(time.perf_counter() - cycle_started, 3)
     cycle_event = _runtime_event(
@@ -258,10 +278,19 @@ def process_uploaded_rfq(
             "naming_seconds": naming_seconds,
         },
     )
-    try:
-        insert_agent_usage_event(client, cycle_event)
-    except Exception as exc:
-        print(f"[Usage Ledger] Could not save cycle timing: {exc}")
+    _DIAGNOSTICS_EXECUTOR.submit(
+        _persist_rfq_diagnostics,
+        client=client,
+        ocr_package=ocr_package,
+        detection_context=detection_context,
+        usage_event=usage_event,
+        naming_event=naming_event,
+        cycle_event=cycle_event,
+        company_id=company_id,
+        run_id=run_id,
+        file_name=file_name,
+        cycle_started_at=cycle_started_at,
+    )
 
     return {
         "run_id": run_id,

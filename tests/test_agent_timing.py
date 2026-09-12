@@ -9,6 +9,7 @@ from agents.anthropic_adapter import (
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
 from use_cases.rfq_processing import _normalize_run, _ocr_storage_usage, _run_optional_ocr
+from db.repositories import insert_agent_usage_events
 
 
 class _Usage:
@@ -205,3 +206,47 @@ def test_ocr_failure_falls_back_to_original_file_without_ocr(monkeypatch):
     assert stored_package["status"] == "failed"
     assert "timed out" in stored_package["error"]
     assert build_detection_ocr_context(detection_package) == "OCR text layer: unavailable"
+
+
+def test_usage_diagnostics_are_batched_for_legacy_schema():
+    class Execute:
+        def execute(self):
+            return None
+
+    class Table:
+        def __init__(self):
+            self.rows = None
+
+        def insert(self, rows):
+            self.rows = rows
+            return Execute()
+
+    class Client:
+        def __init__(self):
+            self.target = Table()
+
+        def table(self, name):
+            assert name == "agent_usage_events"
+            return self.target
+
+    client = Client()
+    insert_agent_usage_events(
+        client,
+        [
+            {
+                "agent_name": "detection",
+                "duration_seconds": 12.5,
+                "raw_usage": {"input_tokens": 100},
+            },
+            {
+                "agent_name": "naming",
+                "duration_seconds": 2.5,
+                "raw_usage": {},
+            },
+        ],
+    )
+
+    assert len(client.target.rows) == 2
+    assert "duration_seconds" not in client.target.rows[0]
+    assert client.target.rows[0]["raw_usage"]["duration_seconds"] == 12.5
+    assert client.target.rows[1]["raw_usage"]["duration_seconds"] == 2.5
