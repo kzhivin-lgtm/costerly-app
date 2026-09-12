@@ -52,12 +52,39 @@ def test_builds_minimal_locked_input_without_mutable_object_fields():
             "object_index": "ЛП-1",
             "current_name": "ЛП-1 — Metal platform",
             "evidence_pages": "1",
-            "materials": "",
-            "dimensions": {"width": 1000},
-            "notes": "",
+            "context_hint": "",
             "ocr_snippets": ["ЛП-1 Площадка"],
         }
     ]
+
+
+def test_context_hint_is_whitespace_normalized_and_capped():
+    objects = [
+        {
+            "object_id": "a",
+            "object_name": "Object 1",
+            "evidence_pages": "1",
+            "notes": "  Custom\n shelving   unit " + ("with shelves " * 40),
+        }
+    ]
+
+    locked = build_locked_naming_input(objects, {"evidence": {}})
+
+    assert locked[0]["context_hint"].startswith("Custom shelving unit with shelves")
+    assert len(locked[0]["context_hint"]) == 300
+
+
+def test_ocr_snippets_are_capped_for_compact_naming_input():
+    long_text = "ЛП-1 " + ("металлическая площадка " * 100)
+    ocr = {"evidence": {"literal_items": [{"page_number": 1, "text": long_text}]}}
+
+    snippets = relevant_ocr_snippets(
+        {"object_name": "ЛП-1", "evidence_pages": "1"},
+        ocr,
+    )
+
+    assert len(snippets) == 1
+    assert len(snippets[0]) == 1000
 
 
 def test_rejects_changed_object_sequence_and_reports_word_limits():

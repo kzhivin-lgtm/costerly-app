@@ -127,3 +127,17 @@ and 41.551 seconds (OCR 1.271, Detection 26.928, Naming 11.138).
 This is a recovered speed checkpoint, not a new quality acceptance baseline;
 object-boundary quality remains subject to the existing 3-object and 15-object
 acceptance rules.
+
+## Compact Naming input — 2026-09-12
+
+Naming v4 keeps locked identifiers, existing labels, evidence pages, up to 300
+characters of Detection context, and capped OCR snippets. It no longer repeats
+dimensions, materials, or complete notes. The serialized Naming payload was
+reduced by approximately 30% for `page-23.pdf` and 41% for `Металл (1).pdf`
+relative to the full text-only input.
+
+Observed Naming time fell from 4.380 to 2.934 seconds for `page-23.pdf` and
+from 11.138 to 2.650 seconds for `Металл (1).pdf`. Product categories recovered
+after the context hint was added, while original-language labels remain less
+consistent. Detection object-count variance is evaluated separately because
+Naming runs only after the object list is locked.

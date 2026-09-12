@@ -16,7 +16,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v2_text_only"
+NAMING_LAB_VERSION = "naming_lab_v4_compact_context_hint"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -79,8 +79,8 @@ def relevant_ocr_snippets(
     detected_object: dict[str, Any],
     ocr_result: dict[str, Any],
     *,
-    max_items: int = 12,
-    max_chars: int = 2400,
+    max_items: int = 6,
+    max_chars: int = 1000,
 ) -> list[str]:
     object_index = extract_object_index(detected_object.get("object_name"))
     pages = _page_numbers(detected_object.get("evidence_pages"))
@@ -103,7 +103,11 @@ def relevant_ocr_snippets(
         key = text.casefold()
         if key in seen:
             continue
-        if char_count + len(text) > max_chars:
+        remaining = max_chars - char_count
+        if remaining <= 0:
+            break
+        text = text[:remaining].rstrip()
+        if not text:
             break
         seen.add(key)
         unique.append(text)
@@ -123,9 +127,7 @@ def build_locked_naming_input(
             "object_index": extract_object_index(item.get("object_name")),
             "current_name": str(item.get("object_name") or ""),
             "evidence_pages": str(item.get("evidence_pages") or ""),
-            "materials": str(item.get("detected_materials") or ""),
-            "dimensions": dict(item.get("dimensions_json") or {}),
-            "notes": str(item.get("notes") or ""),
+            "context_hint": " ".join(str(item.get("notes") or "").split())[:300],
             "ocr_snippets": relevant_ocr_snippets(item, ocr_result),
         }
         for item in detected_objects
@@ -221,8 +223,8 @@ def run_naming_lab_call(
         {
             "type": "text",
             "text": (
-                "Name only these already locked objects. Use their Detection facts and "
-                "OCR snippets to understand the product category and source-language "
+                "Name only these already locked objects. Use their existing labels, short "
+                "Detection context hint, and OCR snippets to identify the product category and source-language "
                 "label. Return only schema JSON:\n"
                 + json.dumps(locked_objects, ensure_ascii=False, separators=(",", ":"))
             ),

@@ -13,4 +13,4 @@ For every input object, return exactly one result with the same object_id.
 - Do not include the object index in either name field. The application adds it later.
 - Never use sheet, room, package, drawing, material, component, dimension, quantity, or marketing text as a product name.
 
-Use only the supplied locked objects, their Detection evidence, and OCR snippets. Object identities and boundaries are final: do not perform object detection or estimation.
+Use only the supplied locked identifiers, existing labels, short context hints, evidence pages, and OCR snippets. A context hint describes the already detected object; use it only to identify the product category. Object identities and boundaries are final: do not perform object detection or estimation.
