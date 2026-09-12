@@ -13,7 +13,7 @@ from agents.naming_lab import (
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v5_semantic_category"
+    assert NAMING_LAB_VERSION == "naming_lab_v5_1_english_only_mvp"
 
 
 def test_extracts_authoritative_leading_index_only():
@@ -120,14 +120,35 @@ def test_preview_is_composed_without_mutating_locked_objects():
     locked = [{"object_id": "a", "object_index": "ОМ-2", "current_name": "Old"}]
     result = {
         "names": [
-            {"object_id": "a", "name_en": "Railing panel", "name_original": "Панель ограждения"}
+            {"object_id": "a", "name_en": "Railing panel", "name_original": ""}
         ]
     }
 
     assert compose_name_preview(locked, result) == [
-        {"object_id": "a", "display_name": 'ОМ-2 Railing panel ("Панель ограждения")'}
+        {"object_id": "a", "display_name": "ОМ-2 Railing panel"}
     ]
     assert locked[0]["current_name"] == "Old"
+
+
+def test_rejects_source_language_name_for_english_only_mvp():
+    locked = [{"object_id": "a", "object_index": "ОМ-2", "current_name": "ОМ-2"}]
+    validation = validate_locked_name_mapping(
+        locked,
+        {
+            "names": [
+                {
+                    "object_id": "a",
+                    "name_en": "Stair railing",
+                    "name_original": "Ограждение лестницы",
+                }
+            ]
+        },
+    )
+
+    assert validation["accepted"] is False
+    assert validation["violations"] == [
+        {"object_id": "a", "field": "name_original", "words": 2}
+    ]
 
 
 def test_applies_validated_names_without_changing_object_identity():

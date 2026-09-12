@@ -16,7 +16,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v5_semantic_category"
+NAMING_LAB_VERSION = "naming_lab_v5_1_english_only_mvp"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -174,6 +174,14 @@ def validate_locked_name_mapping(
                     "words": original_words,
                 }
             )
+        elif original_words:
+            violations.append(
+                {
+                    "object_id": item["object_id"],
+                    "field": "name_original",
+                    "words": original_words,
+                }
+            )
     return {"accepted": not violations, "violations": violations}
 
 
@@ -187,10 +195,8 @@ def compose_name_preview(
         object_id = str(item["object_id"])
         object_index = str(locked_by_id[object_id].get("object_index") or "").strip()
         name_en = str(item.get("name_en") or "").strip()
-        original = str(item.get("name_original") or "").strip()
         base = " ".join(part for part in (object_index, name_en) if part)
-        display_name = f'{base} ("{original}")' if original else base
-        previews.append({"object_id": object_id, "display_name": display_name})
+        previews.append({"object_id": object_id, "display_name": base})
     return previews
 
 

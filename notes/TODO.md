@@ -16,7 +16,6 @@
   8. Recalibrate the Processing UI only after the real route is stable. Drive progress from Direct OCR, visual locking, reconciliation, parallel post-lock work, minimum save, and completion; remove the current early sprint and slow finish.
   9. Run the acceptance benchmark. Use fresh files and at least three cold runs per file; compare object boundaries, names, dimensions, OCR completeness, p50/p95, tokens, cost, and total user-visible time.
   10. Prepare production concurrency later. Add organization-wide limits, backpressure queueing, 429 handling, and visual-only Detection fallback. Keep one PDF as one OCR request; do not restore per-page fan-out.
-  11. Naming V5 follow-up: make original-language labels consistent across indexed objects. When a source-language product label exists in an object's local OCR (for example OM15-1 / "ограждение"), return the short category-bearing original label; never copy a label from another object merely for consistency.
 - Closed routing experiments:
   - Rendering pages while earlier pages entered OCR produced about 3.5 seconds of overlap on the 11-page file, but is superseded by Direct PDF because the main route no longer renders pages.
   - The 4-versus-6 page-worker experiment is retired. Future concurrency control applies across whole PDF requests from different users, not inside one document.

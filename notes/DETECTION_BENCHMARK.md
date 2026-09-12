@@ -190,4 +190,9 @@ The local qualitative check produced useful category-bearing names and about
 13 objects, which is below the 15-object acceptance target and remains an
 upstream Detection issue. Some source-language labels present in local OCR,
 including an OM15-1 railing label, were not returned consistently; that is the
-next isolated Naming task.
+reason V5.1 adopts a single English-only MVP label instead.
+
+V5.1 returns one 2–3 word English semantic label; explicit proper/model names
+may be transliterated when useful. The application renders `index + name` with
+a space, without a dash, parentheses, or source-language duplicate. The compact
+text-only background route is unchanged.
