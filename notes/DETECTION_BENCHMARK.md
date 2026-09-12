@@ -113,3 +113,17 @@ PDF. They must not replace the cold-user benchmark until Direct PDF is tested
 on previously unseen or byte-unique documents. `page-23.pdf` also returned two
 objects in one of four Direct PDF runs, so that quality variance remains an
 open issue even though v3.0.30 is the active baseline.
+
+## Restored API-compatible checkpoint — 2026-09-12
+
+Checkpoint commit: `bb7c712`.
+
+After restoring one-request Direct PDF OCR and the Detection + text-only Naming
+split, the user-visible runs returned to approximately 23 seconds for
+`page-23.pdf` and 43 seconds for `Металл (1).pdf`. The corresponding persisted
+cycle timings were 19.925 seconds (OCR 0.864, Detection 12.801, Naming 4.380)
+and 41.551 seconds (OCR 1.271, Detection 26.928, Naming 11.138).
+
+This is a recovered speed checkpoint, not a new quality acceptance baseline;
+object-boundary quality remains subject to the existing 3-object and 15-object
+acceptance rules.
