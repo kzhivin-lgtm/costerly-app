@@ -13,6 +13,7 @@ from use_cases.rfq_processing import (
     _ocr_storage_usage,
     _run_deferred_naming,
     _run_optional_ocr,
+    save_file_review_object_name,
 )
 from db.repositories import insert_agent_usage_events
 
@@ -316,3 +317,34 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
     assert updates[0]["expected_name"] == "Object 1"
     assert updates[0]["object_name"] == "Display cabinet"
     assert events[0]["operation"] == "locked_object_naming_deferred"
+
+
+def test_file_review_name_is_trimmed_and_saved_immediately(monkeypatch):
+    updates = []
+    client = object()
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.get_supabase_client",
+        lambda: client,
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.update_rfq_detected_object",
+        lambda actual_client, **kwargs: updates.append((actual_client, kwargs)),
+    )
+
+    saved_name = save_file_review_object_name(
+        run_id="run-001",
+        object_id="object-001",
+        object_name="  Reception desk  ",
+    )
+
+    assert saved_name == "Reception desk"
+    assert updates == [
+        (
+            client,
+            {
+                "run_id": "run-001",
+                "object_id": "object-001",
+                "values": {"object_name": "Reception desk"},
+            },
+        )
+    ]

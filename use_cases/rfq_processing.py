@@ -450,6 +450,27 @@ def apply_file_review_edits(
     return ignored_object_ids
 
 
+def save_file_review_object_name(
+    *,
+    run_id: str,
+    object_id: str,
+    object_name: str,
+) -> str:
+    """Persist one File Review name immediately after the user commits it."""
+    normalized_name = str(object_name or "").strip()
+    if not normalized_name:
+        raise ValueError("Object name cannot be empty.")
+
+    client = get_supabase_client()
+    update_rfq_detected_object(
+        client,
+        run_id=str(run_id),
+        object_id=str(object_id),
+        values={"object_name": normalized_name},
+    )
+    return normalized_name
+
+
 def _normalize_run(run: dict[str, Any]) -> dict[str, Any]:
     """Convert the Supabase RFQ row to the compact UI contract."""
     partner = run.get("design_partner")

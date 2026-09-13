@@ -17,7 +17,10 @@ from ui.screen_transition import (
 from use_cases.estimation import build_estimate_id
 from use_cases.estimation_progress import set_object_progress
 from use_cases.estimation_runtime import submit_estimation_job
-from use_cases.rfq_processing import load_file_review_data
+from use_cases.rfq_processing import (
+    load_file_review_data,
+    save_file_review_object_name,
+)
 
 
 def _escape(value: object) -> str:
@@ -80,6 +83,38 @@ def _ensure_object_edit(object_id: str, item: dict[str, object]) -> dict[str, ob
     if object_id not in edits:
         edits[object_id] = _default_object_edit(item)
     return edits[object_id]
+
+
+def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
+    """Save a name committed with Enter or by leaving its input field."""
+    edits = st.session_state.setdefault("file_review_object_edits", {})
+    edit = edits.setdefault(object_id, {})
+    previous_name = str(edit.get("name") or "")
+    submitted_name = str(st.session_state.get(widget_key) or "").strip()
+
+    try:
+        saved_name = save_file_review_object_name(
+            run_id=run_id,
+            object_id=object_id,
+            object_name=submitted_name,
+        )
+    except Exception as exc:
+        st.session_state[widget_key] = previous_name
+        st.session_state.file_review_name_save_error = str(exc)
+    else:
+        edit["name"] = saved_name
+        cache = st.session_state.setdefault("file_review_data_cache", {})
+        data = cache.get(run_id)
+        if isinstance(data, dict):
+            for item in data.get("objects") or []:
+                if _object_id(item) == object_id:
+                    item["name"] = saved_name
+                    break
+        st.session_state.file_review_name_save_error = None
+
+    # An input commit must never be interpreted as page navigation.
+    st.session_state.screen = "file_review"
+    st.session_state.file_review_input_commit_pending = True
 
 
 def _timing_html(timings: dict[str, object] | None) -> str:
@@ -192,10 +227,18 @@ def _render_object_card(item: dict[str, object]) -> None:
             vertical_alignment="top",
         )
 
+        name_widget_key = f"{edit_key}.name"
+        if name_widget_key not in st.session_state:
+            st.session_state[name_widget_key] = str(edit.get("name") or "")
         edit["name"] = col_name.text_input(
             "Object name",
-            value=str(edit.get("name") or ""),
-            key=f"{edit_key}.name",
+            key=name_widget_key,
+            on_change=_commit_object_name,
+            args=(
+                str(st.session_state.get("current_run_id") or ""),
+                object_id,
+                name_widget_key,
+            ),
             label_visibility="collapsed",
         )
         edit["quantity"] = col_qty.text_input(
@@ -478,6 +521,10 @@ def render_file_review_screen(company_id: str) -> None:
 
     _sync_object_edit_state(run_id, data["objects"])
 
+    name_save_error = st.session_state.get("file_review_name_save_error")
+    if name_save_error:
+        st.error(f"Could not save object name: {name_save_error}")
+
     st.markdown(
         (
             '<h1 class="file-review-detected-title">'
@@ -494,7 +541,13 @@ def render_file_review_screen(company_id: str) -> None:
 
     col_back, col_next = st.columns(2, gap="small")
 
-    if col_back.button("BACK TO UPLOAD", type="secondary", use_container_width=True):
+    input_commit_pending = bool(
+        st.session_state.pop("file_review_input_commit_pending", False)
+    )
+    if (
+        col_back.button("BACK TO UPLOAD", type="secondary", use_container_width=True)
+        and not input_commit_pending
+    ):
         st.session_state.screen = "upload"
         st.rerun()
 

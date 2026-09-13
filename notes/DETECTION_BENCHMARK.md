@@ -217,3 +217,12 @@ The user-designated verification set produced:
 This is the key code and UX rollback point requested by the user. It does not
 replace the earlier 3-object and 15-object quality targets: Detection output
 still varies on both benchmark documents and remains the next investigation.
+
+### Detection/UI 3.2.6.2 — persisted File Review names
+
+The 3.2.6.2 checkpoint keeps the same effective Detection prompt and adds one
+post-Detection behavior: committing an object-name input with Enter or blur
+immediately updates `rfq_detected_objects.object_name`, synchronizes the local
+File Review cache, and leaves the active screen unchanged. The persistence path
+was verified directly in Supabase on `unknown_project_run_001`, `object-002`,
+whose edited value was stored as `Sliding door panelbjhbj`.
