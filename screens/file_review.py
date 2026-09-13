@@ -479,7 +479,11 @@ def render_file_review_screen(company_id: str) -> None:
     _sync_object_edit_state(run_id, data["objects"])
 
     st.markdown(
-        '<h1 class="file-review-detected-title">Detected objects</h1>',
+        (
+            '<h1 class="file-review-detected-title">'
+            f'Detected Objects: {len(data["objects"])}'
+            "</h1>"
+        ),
         unsafe_allow_html=True,
     )
 

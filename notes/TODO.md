@@ -40,6 +40,7 @@
 - Object Detail approve action: remove stale screen fragment flicker after clicking Approve.
 
 ## Later
+- Large-PDF Detection routing: prevent Claude HTTP 413 before starting expensive work. Estimate the complete Messages payload size, including Base64 expansion, OCR context, prompt, and schema; never retry a non-retriable 413 through the fallback model. When the inline payload would approach the 32 MB Messages limit, upload the PDF once through the Anthropic Files API and pass its `file_id` instead of Base64. If the referenced document still exceeds the model context, split it into controlled page groups and reconcile one package-level object set. Persist OCR, upload, Detection, and failure timings for unsuccessful cycles.
 - Detection quantity rules: complete units, sets, repeated views, linear meters, and component-versus-product counts.
 - Detection Notes / missing information: keep only estimation-relevant uncertainty, assumptions, and specific questions; remove specification retelling and duplicated dimensions/materials.
 - Audit and replace brittle layout code in Objects pricing rows and Upload dropzone when the current estimation/overhead flow is stable.

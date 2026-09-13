@@ -1,4 +1,7 @@
-from agents.anthropic_adapter import DETECTION_PROMPT_VERSION
+from agents.anthropic_adapter import (
+    DETECTION_NO_NAMING_PROMPT_VERSION,
+    DETECTION_PROMPT_VERSION,
+)
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
@@ -55,6 +58,7 @@ def test_detection_prompt_v3_stays_compact():
 def test_no_naming_ab_prompt_delegates_user_facing_name_once():
     prompt = load_detection_agent_without_naming_prompt()
 
+    assert DETECTION_NO_NAMING_PROMPT_VERSION == "detection_v3_2_6_1_count_ui_checkpoint"
     assert "Your output has five user-facing jobs" in prompt
     assert "## 5. Object naming" not in prompt
     assert "Do not create, translate, shorten, improve, or validate" in prompt

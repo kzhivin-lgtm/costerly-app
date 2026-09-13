@@ -196,3 +196,24 @@ V5.1 returns one 2–3 word English semantic label; explicit proper/model names
 may be transliterated when useful. The application renders `index + name` with
 a space, without a dash, parentheses, or source-language duplicate. The compact
 text-only background route is unchanged.
+
+## Key rollback checkpoint — Detection 3.2.6.1 — 2026-09-13
+
+Detection 3.2.6.1 deliberately keeps the effective Claude prompt byte-identical
+to the accepted 3.2.6 no-naming prompt. Its only user-facing change is the File
+Review heading `Detected Objects: N`, where Python computes `N` from the object
+list already loaded for rendering. This code runs after the measured processing
+cycle and makes no OCR, Claude, or Supabase request.
+
+The user-designated verification set produced:
+
+| File | OCR | Detection | Total | Objects |
+|---|---:|---:|---:|---:|
+| `page-23.pdf` | 0.934 s | 13.698 s | 15.293 s | 4 |
+| `Металл (1).pdf` run 1 | 1.386 s | 28.263 s | 30.293 s | 13 |
+| `Металл (1).pdf` run 2 | 1.281 s | 27.526 s | 29.381 s | 13 |
+| `Металл (1).pdf` run 3 | 1.917 s | 28.156 s | 31.168 s | 15 |
+
+This is the key code and UX rollback point requested by the user. It does not
+replace the earlier 3-object and 15-object quality targets: Detection output
+still varies on both benchmark documents and remains the next investigation.
