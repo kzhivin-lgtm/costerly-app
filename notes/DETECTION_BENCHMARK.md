@@ -226,3 +226,35 @@ immediately updates `rfq_detected_objects.object_name`, synchronizes the local
 File Review cache, and leaves the active screen unchanged. The persistence path
 was verified directly in Supabase on `unknown_project_run_001`, `object-002`,
 whose edited value was stored as `Sliding door panelbjhbj`.
+
+### Detection/UI 3.2.6.3 — Page-aware processing progress
+
+The final Detection checkpoint keeps the exact Golden runtime prompt and
+provider schema:
+
+- effective prompt SHA-256: `682b91359ae4ac72b6329e1968360a63f37e714fa115725fa151d13a0ef676c5`;
+- provider schema SHA-256: `ec673df2276cf316fa059bda8f14b064e463a96a3c6f99fa077a73d68c1ba52c`.
+
+The rejected schema and quantity-prompt experiments are not included. The UI
+change is based on 35 Golden orchestration runs, whose median backend stages
+were 1.386 seconds for OCR, 25.065 seconds for Detection, and 1.011 seconds for
+saving. The visible range is now 8–13% for OCR, 13–96% for Detection, and
+96–99% for saving. Detection uses an ease-in curve so progress starts
+conservatively and accelerates when the backend phase completes.
+
+After OCR, the authoritative OCR page count selects only the expected Detection
+pacing, without changing backend work or completion:
+
+| OCR pages | Expected Detection pacing |
+|---:|---:|
+| 1–2 | 14 s |
+| 3–6 | 18 s |
+| 7–12 | 28 s |
+| 13–20 | 45 s |
+| 21+ | 60 s |
+| Unknown | 28 s |
+
+Across 36 matched Golden runs, page count and Detection time had Pearson
+correlation `0.853`. Production upload time remains outside orchestration
+timing because the browser progress shell starts before Streamlit receives the
+file. No unverified production multiplier is applied.

@@ -265,20 +265,22 @@ def process_uploaded_rfq(
     file_name: str,
     file_bytes: bytes,
     company_id: str,
-    progress_callback: Callable[[str], None] | None = None,
+    progress_callback: Callable[[str, int | None], None] | None = None,
 ) -> dict:
     """Run RFQ detection once and persist the validated result to Supabase."""
     cycle_started_at = datetime.now(UTC).isoformat()
     cycle_started = time.perf_counter()
     if progress_callback:
-        progress_callback("OCR reading document")
+        progress_callback("OCR reading document", None)
     ocr_package, detection_ocr_package = _run_optional_ocr(
         file_name=file_name,
         file_bytes=file_bytes,
     )
     detection_context = build_detection_ocr_context(detection_ocr_package)
     if progress_callback:
-        progress_callback("Detection Agent")
+        pages = ocr_package.get("pages")
+        page_count = len(pages) if isinstance(pages, list) and pages else None
+        progress_callback("Detection Agent", page_count)
     detection_started = time.perf_counter()
     detection_result = run_detection_agent(
         file_name=file_name,
@@ -300,7 +302,7 @@ def process_uploaded_rfq(
     run_id = detection_result["rfq_run"]["run_id"]
 
     if progress_callback:
-        progress_callback("Saving results")
+        progress_callback("Saving results", None)
     client = get_supabase_client()
     upsert_rfq_detection_result(client, detection_result)
     if locked_objects is not None:

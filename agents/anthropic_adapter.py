@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import base64
 import copy
+import hashlib
 import json
 import os
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -30,8 +32,8 @@ from agents.schemas.estimation_schema import (
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_ESTIMATION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
-DETECTION_PROMPT_VERSION = "detection_v3_2_6_ocr_identity_reconciliation"
-DETECTION_NO_NAMING_PROMPT_VERSION = "detection_v3_2_6_2_persisted_review_names"
+DETECTION_PROMPT_VERSION = "detection_v3_2_6_2_golden_streaming_telemetry"
+DETECTION_NO_NAMING_PROMPT_VERSION = "detection_v3_2_6_2_golden_streaming_telemetry"
 ESTIMATION_PROMPT_VERSION = "estimation_v1"
 
 
@@ -101,6 +103,85 @@ def create_claude_message(client: anthropic.Anthropic, **kwargs: Any) -> Any:
         raise RuntimeError(
             f"Claude API returned HTTP {exc.status_code}: {exc.message}"
         ) from exc
+
+
+def create_claude_message_streamed(
+    client: anthropic.Anthropic,
+    **kwargs: Any,
+) -> tuple[Any, dict[str, Any]]:
+    """Collect one streamed Message and precise request-phase diagnostics."""
+    started_at = _utc_now_iso()
+    started = time.perf_counter()
+    first_event_seconds: float | None = None
+    first_token_seconds: float | None = None
+    stream_event_count = 0
+    text_delta_count = 0
+    request_id: str | None = None
+
+    try:
+        with client.messages.stream(**kwargs) as stream:
+            request_id = stream.request_id
+            for event in stream:
+                elapsed = time.perf_counter() - started
+                stream_event_count += 1
+                if first_event_seconds is None:
+                    first_event_seconds = elapsed
+
+                if getattr(event, "type", None) != "content_block_delta":
+                    continue
+                delta = getattr(event, "delta", None)
+                if getattr(delta, "type", None) != "text_delta":
+                    continue
+                if not str(getattr(delta, "text", "") or ""):
+                    continue
+
+                text_delta_count += 1
+                if first_token_seconds is None:
+                    first_token_seconds = elapsed
+
+            response = stream.get_final_message()
+    except anthropic.APIConnectionError as exc:
+        raise RuntimeError(
+            "Claude connection failed before receiving a response. "
+            "Check network access, Anthropic service availability, and Streamlit secrets."
+        ) from exc
+    except anthropic.APITimeoutError as exc:
+        raise RuntimeError(
+            "Claude request timed out before receiving a response. Try again with the same file."
+        ) from exc
+    except anthropic.RateLimitError as exc:
+        raise RuntimeError("Claude rate limit reached. Try again later.") from exc
+    except anthropic.APIStatusError as exc:
+        raise RuntimeError(
+            f"Claude API returned HTTP {exc.status_code}: {exc.message}"
+        ) from exc
+
+    total_seconds = time.perf_counter() - started
+    finished_at = _utc_now_iso()
+    generation_seconds = (
+        max(0.0, total_seconds - first_token_seconds)
+        if first_token_seconds is not None
+        else None
+    )
+
+    return response, {
+        "request_id": request_id,
+        "request_started_at": started_at,
+        "first_event_seconds": (
+            round(first_event_seconds, 6) if first_event_seconds is not None else None
+        ),
+        "time_to_first_token_seconds": (
+            round(first_token_seconds, 6) if first_token_seconds is not None else None
+        ),
+        "generation_after_first_token_seconds": (
+            round(generation_seconds, 6) if generation_seconds is not None else None
+        ),
+        "stream_total_seconds": round(total_seconds, 6),
+        "request_finished_at": finished_at,
+        "stream_event_count": stream_event_count,
+        "text_delta_count": text_delta_count,
+        "streaming": True,
+    }
 
 
 def strip_schema_for_claude(schema: dict[str, Any]) -> dict[str, Any]:
@@ -270,13 +351,18 @@ Analyze the attached RFQ / drawing package and return ONLY the structured JSON o
 """.strip()
 
 
-def build_detection_system_content(*, cache_enabled: bool = False) -> list[dict[str, Any]]:
+def build_detection_system_content(
+    *,
+    cache_enabled: bool = False,
+    prompt: str | None = None,
+) -> list[dict[str, Any]]:
     """Build the business contract, optionally enabling provider input caching."""
-    prompt = (
-        load_detection_agent_without_naming_prompt()
-        if detection_naming_split_enabled()
-        else load_detection_agent_prompt()
-    )
+    if prompt is None:
+        prompt = (
+            load_detection_agent_without_naming_prompt()
+            if detection_naming_split_enabled()
+            else load_detection_agent_prompt()
+        )
     block = {
         "type": "text",
         "text": (
@@ -395,6 +481,24 @@ def _utc_now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def _sha256_text(value: str) -> str:
+    return _sha256_bytes(value.encode("utf-8"))
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+
+
 def normalize_detection_identity_fields(
     result: dict[str, Any],
     *,
@@ -422,6 +526,36 @@ def normalize_detection_identity_fields(
     return result
 
 
+def apply_benchmark_run_suffix(result: dict[str, Any]) -> dict[str, Any]:
+    """Isolate parallel benchmark persistence without changing the Claude request."""
+    suffix = str(os.getenv("BENCHMARK_RUN_SUFFIX", "") or "").strip()
+    if not suffix:
+        return result
+
+    safe_suffix = "".join(
+        character if character.isalnum() or character in {"-", "_"} else "_"
+        for character in suffix
+    ).strip("_")
+    if not safe_suffix:
+        return result
+
+    rfq_run = result.get("rfq_run")
+    detected_objects = result.get("detected_objects")
+    if not isinstance(rfq_run, dict) or not isinstance(detected_objects, list):
+        return result
+
+    run_id = str(rfq_run.get("run_id") or "").strip()
+    if not run_id:
+        return result
+
+    benchmark_run_id = f"{run_id}_{safe_suffix}"
+    rfq_run["run_id"] = benchmark_run_id
+    for detected_object in detected_objects:
+        if isinstance(detected_object, dict):
+            detected_object["run_id"] = benchmark_run_id
+    return result
+
+
 def build_agent_usage_event(
     *,
     agent_name: str,
@@ -436,6 +570,7 @@ def build_agent_usage_event(
     response: Any,
     started_at: str,
     finished_at: str,
+    request_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Create a DB-ready usage event from Anthropic response metadata."""
     usage = getattr(response, "usage", None)
@@ -453,6 +588,23 @@ def build_agent_usage_event(
     started = datetime.fromisoformat(started_at)
     finished = datetime.fromisoformat(finished_at)
     duration_seconds = round(max(0.0, (finished - started).total_seconds()), 3)
+
+    raw_usage = {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_creation_input_tokens": cache_creation_input_tokens,
+        "cache_read_input_tokens": cache_read_input_tokens,
+        "duration_seconds": duration_seconds,
+    }
+    if request_diagnostics:
+        raw_usage.update(request_diagnostics)
+
+    generation_seconds = raw_usage.get("generation_after_first_token_seconds")
+    if isinstance(generation_seconds, (int, float)) and generation_seconds > 0:
+        raw_usage["output_tokens_per_generation_second"] = round(
+            output_tokens / generation_seconds,
+            3,
+        )
 
     return {
         "company_id": company_id,
@@ -473,13 +625,7 @@ def build_agent_usage_event(
         "duration_seconds": duration_seconds,
         "started_at": started_at,
         "finished_at": finished_at,
-        "raw_usage": {
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "cache_creation_input_tokens": cache_creation_input_tokens,
-            "cache_read_input_tokens": cache_read_input_tokens,
-            "duration_seconds": duration_seconds,
-        },
+        "raw_usage": raw_usage,
     }
 
 
@@ -513,6 +659,7 @@ def run_anthropic_detection_agent(
     file_bytes: bytes,
     ocr_package: dict[str, Any] | None = None,
     model: str | None = None,
+    attempt_label: str = "primary",
 ) -> dict:
     """
     Real Claude-backed Detection Agent.
@@ -535,6 +682,11 @@ def run_anthropic_detection_agent(
 
     client = get_anthropic_client()
     cache_enabled = detection_input_cache_enabled()
+    prompt = (
+        load_detection_agent_without_naming_prompt()
+        if detection_naming_split_enabled()
+        else load_detection_agent_prompt()
+    )
     user_text = build_detection_user_text(
         file_name=file_name,
         company_id=company_id,
@@ -542,13 +694,36 @@ def run_anthropic_detection_agent(
     )
 
     claude_schema = strip_schema_for_claude(DETECTION_RESULT_JSON_SCHEMA)
+    system_content = build_detection_system_content(
+        cache_enabled=cache_enabled,
+        prompt=prompt,
+    )
+    prompt_sha256 = _sha256_text(prompt)
+    schema_sha256 = _sha256_text(_canonical_json(claude_schema))
+    system_content_sha256 = _sha256_text(_canonical_json(system_content))
+    user_text_sha256 = _sha256_text(user_text)
+    pdf_sha256 = _sha256_bytes(file_bytes)
+    request_fingerprint = _sha256_text(
+        _canonical_json(
+            {
+                "model": selected_model,
+                "max_tokens": 8192,
+                "prompt_sha256": prompt_sha256,
+                "schema_sha256": schema_sha256,
+                "system_content_sha256": system_content_sha256,
+                "user_text_sha256": user_text_sha256,
+                "pdf_sha256": pdf_sha256,
+                "cache_enabled": cache_enabled,
+                "streaming": True,
+            }
+        )
+    )
 
-    started_at = _utc_now_iso()
-    response = create_claude_message(
+    response, stream_diagnostics = create_claude_message_streamed(
         client,
         model=selected_model,
         max_tokens=8192,
-        system=build_detection_system_content(cache_enabled=cache_enabled),
+        system=system_content,
         messages=[
             {
                 "role": "user",
@@ -572,8 +747,6 @@ def run_anthropic_detection_agent(
             }
         },
     )
-
-    finished_at = _utc_now_iso()
     raw_text = extract_text_from_claude_response(response)
 
     try:
@@ -588,7 +761,43 @@ def run_anthropic_detection_agent(
         company_id=company_id,
         file_name=file_name,
     )
+    result = apply_benchmark_run_suffix(result)
     validated = validate_detection_result(result)
+    response_usage = getattr(response, "usage", None)
+    usage_details = (
+        response_usage.model_dump(mode="json")
+        if hasattr(response_usage, "model_dump")
+        else {}
+    )
+    stream_diagnostics.update(
+        {
+            "prompt_sha256": prompt_sha256,
+            "schema_sha256": schema_sha256,
+            "effective_prompt_text": prompt,
+            "claude_output_schema": claude_schema,
+            "system_content_sha256": system_content_sha256,
+            "user_text_sha256": user_text_sha256,
+            "pdf_sha256": pdf_sha256,
+            "request_fingerprint": request_fingerprint,
+            "response_id": str(getattr(response, "id", "") or ""),
+            "response_model": str(getattr(response, "model", "") or ""),
+            "stop_reason": str(getattr(response, "stop_reason", "") or ""),
+            "stop_sequence": getattr(response, "stop_sequence", None),
+            "response_character_count": len(raw_text),
+            "detected_object_count": len(validated["detected_objects"]),
+            "max_tokens": 8192,
+            "cache_enabled": cache_enabled,
+            "benchmark_variant": str(os.getenv("BENCHMARK_VARIANT", "") or ""),
+            "benchmark_source_id": str(
+                os.getenv("BENCHMARK_SOURCE_ID", "") or ""
+            ),
+            "benchmark_run_suffix": str(
+                os.getenv("BENCHMARK_RUN_SUFFIX", "") or ""
+            ),
+            "attempt_label": attempt_label,
+            "sdk_usage": usage_details,
+        }
+    )
     validated["_agent_usage"] = build_agent_usage_event(
         agent_name="detection",
         operation="rfq_detection",
@@ -604,8 +813,9 @@ def run_anthropic_detection_agent(
             else DETECTION_PROMPT_VERSION
         ),
         response=response,
-        started_at=started_at,
-        finished_at=finished_at,
+        started_at=stream_diagnostics["request_started_at"],
+        finished_at=stream_diagnostics["request_finished_at"],
+        request_diagnostics=stream_diagnostics,
     )
     return validated
 
@@ -636,6 +846,7 @@ def run_anthropic_detection_agent_with_fallback(
             file_bytes=file_bytes,
             ocr_package=ocr_package,
             model=primary_model,
+            attempt_label="primary",
         )
     except Exception as primary_error:
         print(f"[Detection Agent] Primary Claude model failed: {primary_error}")
@@ -649,6 +860,7 @@ def run_anthropic_detection_agent_with_fallback(
             file_bytes=file_bytes,
             ocr_package=ocr_package,
             model=fallback_model,
+            attempt_label="fallback",
         )
 
 

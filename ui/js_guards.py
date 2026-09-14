@@ -1741,7 +1741,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         <script>
         (() => {
             const parentDoc = window.parent.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_8";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_10";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -1761,9 +1761,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v118';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v118';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV118Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1110';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1110';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1110Installed';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAt';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimer';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSeconds';
@@ -1881,22 +1881,36 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         0,
                         (Date.now() - Number(window[PROGRESS_PHASE_STARTED_AT_KEY] || Date.now())) / 1000
                     );
+                    const requestedDetectionSeconds = Number(
+                        stage.dataset.expectedDetectionSeconds || 28
+                    );
+                    const detectionExpectedSeconds = Number.isFinite(requestedDetectionSeconds)
+                        ? Math.min(90, Math.max(8, requestedDetectionSeconds))
+                        : 28;
+                    // Golden benchmark medians are approximately 1.4s OCR,
+                    // 25.1s Detection, and 1.0s saving. Keep most of the visual
+                    // range for the opaque Detection call.
                     const config = {
-                        upload: [4, 10, 3],
-                        ocr: [10, 30, 6],
-                        detection: [30, 94, 18],
-                        saving: [94, 99, 2.5],
-                    }[phase] || [4, 96, 20];
+                        upload: [4, 8, 2.5],
+                        ocr: [8, 13, 1.5],
+                        detection: [13, 96, detectionExpectedSeconds],
+                        saving: [96, 99, 1],
+                    }[phase] || [4, 96, 28];
                     const start = config[0];
                     const end = config[1];
                     const expectedSeconds = config[2];
-                    // An asymptotic curve keeps moving during a slow provider call
-                    // without reaching the phase boundary before the backend does.
-                    // Real phase transitions remain authoritative.
-                    const fraction = Math.min(
-                        0.985,
-                        1 - Math.exp(-2.1 * phaseSeconds / expectedSeconds)
-                    );
+                    // Ease in through the opaque phase, then creep toward its cap
+                    // during unusually slow calls. The real backend transition is
+                    // authoritative and provides the faster finish.
+                    const normalized = Math.min(1, phaseSeconds / expectedSeconds);
+                    let fraction;
+                    if (phaseSeconds <= expectedSeconds) {
+                        fraction = 0.90 * Math.pow(normalized, 1.35);
+                    } else {
+                        const overtime = (phaseSeconds - expectedSeconds) / expectedSeconds;
+                        fraction = 0.90 + 0.085 * (1 - Math.exp(-overtime));
+                    }
+                    fraction = Math.min(0.985, fraction);
                     return start + (end - start) * fraction;
                 }
 

@@ -10,6 +10,21 @@ from ui.processing_stage import PROCESSING_MARKER_ID, processing_stage_html
 from use_cases.rfq_processing import process_uploaded_rfq
 
 
+def expected_detection_seconds(page_count: int | None) -> float:
+    """Return a conservative Detection pacing bucket from OCR page count."""
+    if not isinstance(page_count, int) or isinstance(page_count, bool) or page_count < 1:
+        return 28.0
+    if page_count <= 2:
+        return 14.0
+    if page_count <= 6:
+        return 18.0
+    if page_count <= 12:
+        return 28.0
+    if page_count <= 20:
+        return 45.0
+    return 60.0
+
+
 def render_processing_screen(company_id: str) -> None:
     """Render the processing screen while the uploaded RFQ is analyzed.
 
@@ -24,6 +39,7 @@ def render_processing_screen(company_id: str) -> None:
         elapsed_seconds: float = 0,
         complete: bool = False,
         processing_phase: str = "ocr",
+        expected_detection_seconds_value: float | None = None,
     ) -> None:
         stage_slot.markdown(
             processing_stage_html(
@@ -32,11 +48,12 @@ def render_processing_screen(company_id: str) -> None:
                 elapsed_seconds=elapsed_seconds,
                 complete=complete,
                 processing_phase=processing_phase,
+                expected_detection_seconds=expected_detection_seconds_value,
             ),
             unsafe_allow_html=True,
         )
 
-    render_stage(0.10, processing_phase="ocr")
+    render_stage(0.08, processing_phase="ocr")
     clear_upload_processing_shell()
 
     file_name = st.session_state.get("uploaded_file_name")
@@ -55,14 +72,16 @@ def render_processing_screen(company_id: str) -> None:
         st.rerun()
 
     try:
-        phase_state = {"value": "ocr"}
+        phase_state: dict[str, object] = {"value": "ocr", "page_count": None}
 
-        def update_phase(label: str) -> None:
+        def update_phase(label: str, page_count: int | None = None) -> None:
             phase_state["value"] = {
                 "OCR reading document": "ocr",
                 "Detection Agent": "detection",
                 "Saving results": "saving",
             }.get(label, phase_state["value"])
+            if page_count is not None:
+                phase_state["page_count"] = page_count
 
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
@@ -78,8 +97,13 @@ def render_processing_screen(company_id: str) -> None:
                 active_phase = phase_state["value"]
                 if active_phase != rendered_phase:
                     render_stage(
-                        {"ocr": 0.10, "detection": 0.30, "saving": 0.94}[active_phase],
+                        {"ocr": 0.08, "detection": 0.13, "saving": 0.96}[active_phase],
                         processing_phase=active_phase,
+                        expected_detection_seconds_value=(
+                            expected_detection_seconds(phase_state.get("page_count"))
+                            if active_phase == "detection"
+                            else None
+                        ),
                     )
                     rendered_phase = active_phase
                 time.sleep(0.15)

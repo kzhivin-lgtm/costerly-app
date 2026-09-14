@@ -1,13 +1,21 @@
+from inspect import getsource
+from types import SimpleNamespace
+from unittest.mock import patch
+
 from agents.anthropic_adapter import (
+    apply_benchmark_run_suffix,
     build_agent_usage_event,
     build_detection_ocr_context,
     build_detection_system_content,
     build_detection_user_text,
     build_uploaded_file_content_block,
+    create_claude_message_streamed,
     normalize_detection_identity_fields,
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
+from ui.js_guards import install_upload_interaction_guards
+from screens.processing import expected_detection_seconds
 from use_cases.rfq_processing import (
     _normalize_run,
     _ocr_storage_usage,
@@ -25,6 +33,38 @@ class _Usage:
 
 class _Response:
     usage = _Usage()
+
+
+class _FakeStream:
+    request_id = "req_benchmark_001"
+
+    def __init__(self):
+        self._response = _Response()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return None
+
+    def __iter__(self):
+        yield SimpleNamespace(type="message_start")
+        yield SimpleNamespace(
+            type="content_block_delta",
+            delta=SimpleNamespace(type="text_delta", text="{"),
+        )
+
+    def get_final_message(self):
+        return self._response
+
+
+class _FakeMessages:
+    def stream(self, **kwargs):
+        return _FakeStream()
+
+
+class _FakeClient:
+    messages = _FakeMessages()
 
 
 def test_anthropic_usage_event_contains_duration():
@@ -47,6 +87,43 @@ def test_anthropic_usage_event_contains_duration():
     assert event["raw_usage"]["duration_seconds"] == 12.345
 
 
+def test_streamed_message_records_first_token_and_generation_phases():
+    with patch(
+        "agents.anthropic_adapter.time.perf_counter",
+        side_effect=[10.0, 10.1, 10.25, 10.5],
+    ):
+        response, diagnostics = create_claude_message_streamed(
+            _FakeClient(),
+            model="claude-haiku-4-5-20251001",
+            max_tokens=8192,
+            messages=[],
+        )
+
+    assert isinstance(response, _Response)
+    assert diagnostics["request_id"] == "req_benchmark_001"
+    assert diagnostics["first_event_seconds"] == 0.1
+    assert diagnostics["time_to_first_token_seconds"] == 0.25
+    assert diagnostics["generation_after_first_token_seconds"] == 0.25
+    assert diagnostics["stream_total_seconds"] == 0.5
+    assert diagnostics["stream_event_count"] == 2
+    assert diagnostics["text_delta_count"] == 1
+
+
+def test_benchmark_suffix_is_applied_after_detection(monkeypatch):
+    monkeypatch.setenv("BENCHMARK_RUN_SUFFIX", "baseline 3262")
+    result = {
+        "rfq_run": {"run_id": "project_run_001"},
+        "detected_objects": [{"run_id": "project_run_001"}],
+    }
+
+    suffixed = apply_benchmark_run_suffix(result)
+
+    assert suffixed["rfq_run"]["run_id"] == "project_run_001_baseline_3262"
+    assert suffixed["detected_objects"][0]["run_id"] == (
+        "project_run_001_baseline_3262"
+    )
+
+
 def test_processing_stage_shows_live_timer_and_original_subtitle():
     markup = processing_stage_html(
         progress_value=0.5,
@@ -67,6 +144,38 @@ def test_processing_stage_exposes_real_phase_and_completion():
 
     assert 'data-processing-phase="complete"' in markup
     assert 'data-processing-complete="true"' in markup
+
+
+def test_processing_stage_exposes_expected_detection_seconds():
+    markup = processing_stage_html(
+        processing_phase="detection",
+        expected_detection_seconds=14,
+    )
+
+    assert 'data-expected-detection-seconds="14"' in markup
+
+
+def test_detection_pacing_uses_ocr_page_buckets():
+    assert expected_detection_seconds(None) == 28
+    assert expected_detection_seconds(0) == 28
+    assert expected_detection_seconds(1) == 14
+    assert expected_detection_seconds(2) == 14
+    assert expected_detection_seconds(3) == 18
+    assert expected_detection_seconds(6) == 18
+    assert expected_detection_seconds(7) == 28
+    assert expected_detection_seconds(12) == 28
+    assert expected_detection_seconds(13) == 45
+    assert expected_detection_seconds(20) == 45
+    assert expected_detection_seconds(21) == 60
+
+
+def test_processing_progress_uses_golden_stage_weights_and_ease_in_curve():
+    source = getsource(install_upload_interaction_guards)
+
+    assert "ocr: [8, 13, 1.5]" in source
+    assert "detection: [13, 96, detectionExpectedSeconds]" in source
+    assert "saving: [96, 99, 1]" in source
+    assert "Math.pow(normalized, 1.35)" in source
 
 
 def test_detection_input_cache_is_disabled_by_default_and_can_be_enabled():
