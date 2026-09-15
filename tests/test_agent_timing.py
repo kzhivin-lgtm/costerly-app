@@ -124,6 +124,22 @@ def test_benchmark_suffix_is_applied_after_detection(monkeypatch):
     )
 
 
+def test_benchmark_suffix_can_be_unique_per_run(monkeypatch):
+    monkeypatch.setenv("BENCHMARK_RUN_SUFFIX", "duplicate-code")
+    monkeypatch.setenv("BENCHMARK_UNIQUE_RUN_ID", "true")
+    result = {
+        "rfq_run": {"run_id": "project_run_001"},
+        "detected_objects": [{"run_id": "project_run_001"}],
+    }
+
+    suffixed = apply_benchmark_run_suffix(result)
+
+    run_id = suffixed["rfq_run"]["run_id"]
+    assert run_id.startswith("project_run_001_duplicate-code_20")
+    assert run_id.endswith("Z")
+    assert suffixed["detected_objects"][0]["run_id"] == run_id
+
+
 def test_processing_stage_shows_live_timer_and_original_subtitle():
     markup = processing_stage_html(
         progress_value=0.5,
@@ -426,6 +442,32 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
     assert updates[0]["expected_name"] == "Object 1"
     assert updates[0]["object_name"] == "Display cabinet"
     assert events[0]["operation"] == "locked_object_naming_deferred"
+
+
+def test_deferred_naming_records_failure(monkeypatch):
+    events = []
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.run_naming_lab_call",
+        lambda _locked: (_ for _ in ()).throw(RuntimeError("provider failed")),
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.insert_agent_usage_event",
+        lambda _client, event: events.append(event),
+    )
+
+    result = _run_deferred_naming(
+        client=object(),
+        detected_objects=[],
+        locked_objects=[],
+        company_id="001",
+        run_id="run-001",
+        file_name="drawing.pdf",
+    )
+
+    assert result["status"] == "failed"
+    assert result["error"] == "provider failed"
+    assert events[0]["status"] == "failed"
+    assert events[0]["raw_usage"]["error"] == "provider failed"
 
 
 def test_file_review_name_is_trimmed_and_saved_immediately(monkeypatch):

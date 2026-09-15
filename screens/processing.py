@@ -77,6 +77,7 @@ def render_processing_screen(company_id: str) -> None:
         def update_phase(label: str, page_count: int | None = None) -> None:
             phase_state["value"] = {
                 "OCR reading document": "ocr",
+                "Preparing document pages": "ocr",
                 "Detection Agent": "detection",
                 "Saving results": "saving",
             }.get(label, phase_state["value"])

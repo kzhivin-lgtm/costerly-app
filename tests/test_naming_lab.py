@@ -13,7 +13,7 @@ from agents.naming_lab import (
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v5_1_english_only_mvp"
+    assert NAMING_LAB_VERSION == "naming_lab_v5_2_partial_safe_english_mvp"
 
 
 def test_extracts_authoritative_leading_index_only():
@@ -151,6 +151,16 @@ def test_rejects_source_language_name_for_english_only_mvp():
     ]
 
 
+def test_accepts_one_word_semantic_category():
+    locked = [{"object_id": "a", "object_index": "CM-10", "current_name": "CM-10"}]
+    validation = validate_locked_name_mapping(
+        locked,
+        {"names": [{"object_id": "a", "name_en": "Chair", "name_original": ""}]},
+    )
+
+    assert validation == {"accepted": True, "violations": []}
+
+
 def test_applies_validated_names_without_changing_object_identity():
     objects = [{"object_id": "a", "object_name": "Object 1", "quantity": 2}]
     locked = [{"object_id": "a", "object_index": "", "current_name": "Object 1"}]
@@ -163,6 +173,28 @@ def test_applies_validated_names_without_changing_object_identity():
     apply_name_mapping(objects, locked, result)
 
     assert objects == [{"object_id": "a", "object_name": "Display cabinet", "quantity": 2}]
+
+
+def test_invalid_row_keeps_placeholder_without_discarding_valid_names():
+    objects = [
+        {"object_id": "a", "object_name": "CM-1"},
+        {"object_id": "b", "object_name": "CM-2"},
+    ]
+    locked = [
+        {"object_id": "a", "object_index": "CM-1", "current_name": "CM-1"},
+        {"object_id": "b", "object_index": "CM-2", "current_name": "CM-2"},
+    ]
+    result = {
+        "names": [
+            {"object_id": "a", "name_en": "Very long decorative shelving unit", "name_original": ""},
+            {"object_id": "b", "name_en": "Display cabinet", "name_original": ""},
+        ]
+    }
+
+    apply_name_mapping(objects, locked, result)
+
+    assert objects[0]["object_name"] == "CM-1"
+    assert objects[1]["object_name"] == "CM-2 Display cabinet"
 
 
 def test_disambiguates_duplicate_transport_ids_without_changing_order_or_names():

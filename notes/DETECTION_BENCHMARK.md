@@ -45,6 +45,46 @@ returned byte-identical evidence in 9.512–22.486 seconds; the wide total range
 comes from provider OCR latency, while Detection remained at 30.094–31.878
 seconds. External dimension axes remain a separate known issue.
 
+## 20.10.2023_Furniture.pdf
+
+Expected commercial objects: **27**, corrected after the product owner inspected
+the object sheets on 2026-09-14. The earlier 23-object target was wrong. The
+table of contents is useful package evidence, not the final authority: the
+object sheets contain reused and conflicting codes.
+
+Canonical physical membership:
+
+- `CM-1.1`, `CM-1.2`, not the parent heading `CM-1`;
+- `CM-2`, `CM-3`, `CM-4`, `CM-4.1`, `CM-5`;
+- two independent `CM-6` products: bathroom vanity and door/panel assembly;
+- separate `CM-7.1` and `CM-7.2`, not an extra parent `CM-7`;
+- `CM-8`, `CM-8.1`, `CM-9`, `CM-10`, `CM-11`, `CM-12`, `CM-13`,
+  `CM-14`, `CM-15`, `CM-16`, `CM-16.1`, `CM-17`, `CM-18`, `CM-19`;
+- two independent `CM-20` products: bench pillows and wooden shelf/ledge.
+
+The `CM-11/CM-12` sheet internally mislabels its two chair bodies as `CM-10`.
+The `CM-17/CM-18` sheet labels the second, quantity-four product as `CM-17`.
+Resolve these against sheet titles, product bodies, dimensions, and quantities;
+do not create `CM-17.1` or a dimensionless extra `CM-18`. A benchmark match
+requires the correct physical products, not merely the total count or a flat
+set of code strings.
+
+The source is a 27,904,163-byte, 39-page A3 production drawing package. The
+original monolithic PDF fails Anthropic document processing even through the
+Files API. A 96-DPI page-image experiment produced:
+
+| Variant | Render | OCR | Detection | Effective total | Objects |
+|---|---:|---:|---:|---:|---:|
+| JPEG pages + OCR | 3.872 s | 36.397 s | 42.151 s | 78.548 s | 17 |
+| JPEG pages, no OCR | 3.872 s | 0 s | 75.038 s | 78.910 s | 23 |
+| Integrated JPEG, no OCR, run 1 | 3.892 s | 0 s | 68.683 s | 74.170 s | 26 |
+| Integrated JPEG, no OCR, run 2 | 3.722 s | 0 s | 80.991 s | 85.513 s | 26 |
+
+`Effective total` assumes JPEG rendering runs concurrently with OCR. The
+sequential sum for the OCR variant is 82.420 seconds. These are historical
+experiments measured against the superseded 23-object target. Under the
+corrected 27-object target, count alone cannot establish their quality.
+
 ## Historical cached-input reference
 
 Backup `v3.0.24_detection_v3_2_2_speed_quality_baseline` used Anthropic
@@ -63,6 +103,7 @@ Quality has priority over speed. Compare candidates on the same files with at le
 
 - `page-23.pdf`: retain 3 correct commercial objects; investigate a median total above 25 seconds.
 - `Металл (1).pdf`: retain 15 correct commercial objects; investigate a median total above 53 seconds.
+- `20.10.2023_Furniture.pdf`: compare all 27 physical products and their boundaries, including the two `CM-6` and two `CM-20` products; the monolithic PDF route is not acceptable because it fails before returning JSON.
 - Accept a material slowdown only when it produces a clear, reviewed quality improvement.
 - Treat fallback retries and validation failures as separate diagnostics rather than normal benchmark samples.
 - Never enable application-level result caching during development benchmarks.
@@ -258,3 +299,53 @@ Across 36 matched Golden runs, page count and Detection time had Pearson
 correlation `0.853`. Production upload time remains outside orchestration
 timing because the browser progress shell starts before Streamlit receives the
 file. No unverified production multiplier is applied.
+
+### v3.0.41 - Large PDF Sonnet transport and resilient Naming checkpoint
+
+The accepted experimental route keeps the Golden effective Detection prompt
+and provider schema unchanged:
+
+- prompt SHA-256 `682b91359ae4ac72b6329e1968360a63f37e714fa115725fa151d13a0ef676c5`;
+- schema SHA-256 `ec673df2276cf316fa059bda8f14b064e463a96a3c6f99fa077a73d68c1ba52c`.
+
+PDFs whose estimated inline Base64 payload reaches 30,000,000 bytes are
+rendered into ordered JPEG pages at 96 DPI and sent as one complete package to
+Sonnet 4.6. The large route skips Mistral OCR, Identity Lock, and the rejected
+flat index anchor. Smaller files retain the Golden Mistral OCR plus inline PDF
+route and Haiku Detection. The original PDF still remains available to the
+downstream workflow; Detection receives all page images together, not separate
+page-wise object decisions. Each benchmark run can append a timestamp to its
+run_id so stored outputs do not overwrite earlier trials.
+
+Naming V5.2 accepts a precise one-word physical category. A single invalid
+name no longer discards valid names for the entire locked object set: only the
+invalid row retains its original placeholder. Naming failures are logged and
+persisted as failed usage events. This fixes the observed Naming failure caused
+by one one-word category being rejected under the former 2-3-word-only rule.
+
+Three `jpeg_sonnet_clean` runs on the 27,904,163-byte, 39-page furniture PDF
+were stored under unique run_ids:
+
+| Run | Render | Detection | Total to File Review | Objects | Naming background |
+|---|---:|---:|---:|---:|---:|
+| 1 | 6.836 s | 141.315 s | 149.371 s | 25 | 17.011 s, succeeded |
+| 2 | 6.743 s | 139.057 s | 146.470 s | 26 | 18.011 s, succeeded |
+| 3 | 6.656 s | 114.593 s | 121.846 s | 27 | 5.320 s, succeeded |
+
+All three runs used 67,278 input tokens and generated 5,735-5,991 output
+tokens. Detection cost was $0.288-$0.292 per run. The median total to File
+Review was 146.470 seconds. JSON generation after the first token was stable
+at approximately 80-82 seconds; first-token time ranged 32-61 seconds.
+
+This is a working transport and Naming checkpoint, **not a 27/27 quality
+acceptance**. Run 1 missed the second `CM-6` and the pillow `CM-20`. Run 2
+found both `CM-6` bodies but joined pillows with the wooden `CM-20`. Run 3
+again missed the pillows, created a weak/dimensionless `CM-18`, and labelled
+the quantity-four `CM-18` body as a second `CM-17`. The count 27 was therefore
+accidental. File Review remains required before estimating this package.
+
+Known limitation: the one-call image route rejects PDFs over 100 pages because
+the provider request cannot contain more than 100 images. A universal route for
+such packages is still pending. The rejected duplicate-identifier addendum,
+OCR-plus-Identity-Lock path, and local index anchor are not part of this
+checkpoint.

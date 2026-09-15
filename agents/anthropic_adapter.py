@@ -477,6 +477,41 @@ def build_uploaded_file_content_block(
     raise ValueError("Unsupported RFQ file type. Upload PDF, JPEG, or PNG.")
 
 
+def build_detection_content_blocks(
+    *,
+    file_name: str,
+    file_bytes: bytes,
+    user_text: str,
+    page_images: list[bytes] | None = None,
+    cache_enabled: bool = False,
+) -> list[dict[str, Any]]:
+    """Build one ordered package from an inline file or rendered PDF pages."""
+    if page_images:
+        blocks: list[dict[str, Any]] = []
+        for page_number, page_bytes in enumerate(page_images, start=1):
+            blocks.append({"type": "text", "text": f"PDF page {page_number}"})
+            blocks.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": base64.standard_b64encode(page_bytes).decode("ascii"),
+                    },
+                }
+            )
+    else:
+        blocks = [
+            build_uploaded_file_content_block(
+                file_name,
+                file_bytes,
+                cache_enabled=cache_enabled,
+            )
+        ]
+    blocks.append({"type": "text", "text": user_text})
+    return blocks
+
+
 def _utc_now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -548,7 +583,11 @@ def apply_benchmark_run_suffix(result: dict[str, Any]) -> dict[str, Any]:
     if not run_id:
         return result
 
-    benchmark_run_id = f"{run_id}_{safe_suffix}"
+    unique_suffix = ""
+    unique_enabled = str(os.getenv("BENCHMARK_UNIQUE_RUN_ID", "false") or "false")
+    if unique_enabled.strip().lower() in {"1", "true", "yes", "on"}:
+        unique_suffix = "_" + datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    benchmark_run_id = f"{run_id}_{safe_suffix}{unique_suffix}"
     rfq_run["run_id"] = benchmark_run_id
     for detected_object in detected_objects:
         if isinstance(detected_object, dict):
@@ -658,6 +697,8 @@ def run_anthropic_detection_agent(
     company_id: str,
     file_bytes: bytes,
     ocr_package: dict[str, Any] | None = None,
+    page_images: list[bytes] | None = None,
+    page_image_diagnostics: dict[str, Any] | None = None,
     model: str | None = None,
     attempt_label: str = "primary",
 ) -> dict:
@@ -692,7 +733,6 @@ def run_anthropic_detection_agent(
         company_id=company_id,
         ocr_package=ocr_package,
     )
-
     claude_schema = strip_schema_for_claude(DETECTION_RESULT_JSON_SCHEMA)
     system_content = build_detection_system_content(
         cache_enabled=cache_enabled,
@@ -703,6 +743,7 @@ def run_anthropic_detection_agent(
     system_content_sha256 = _sha256_text(_canonical_json(system_content))
     user_text_sha256 = _sha256_text(user_text)
     pdf_sha256 = _sha256_bytes(file_bytes)
+    document_route = "jpeg_pages_96dpi" if page_images else "inline_base64"
     request_fingerprint = _sha256_text(
         _canonical_json(
             {
@@ -713,6 +754,7 @@ def run_anthropic_detection_agent(
                 "system_content_sha256": system_content_sha256,
                 "user_text_sha256": user_text_sha256,
                 "pdf_sha256": pdf_sha256,
+                "document_route": document_route,
                 "cache_enabled": cache_enabled,
                 "streaming": True,
             }
@@ -727,17 +769,13 @@ def run_anthropic_detection_agent(
         messages=[
             {
                 "role": "user",
-                "content": [
-                    build_uploaded_file_content_block(
-                        file_name,
-                        file_bytes,
-                        cache_enabled=cache_enabled,
-                    ),
-                    {
-                        "type": "text",
-                        "text": user_text,
-                    },
-                ],
+                "content": build_detection_content_blocks(
+                    file_name=file_name,
+                    file_bytes=file_bytes,
+                    user_text=user_text,
+                    page_images=page_images,
+                    cache_enabled=cache_enabled,
+                ),
             }
         ],
         output_config={
@@ -778,6 +816,8 @@ def run_anthropic_detection_agent(
             "system_content_sha256": system_content_sha256,
             "user_text_sha256": user_text_sha256,
             "pdf_sha256": pdf_sha256,
+            "document_route": document_route,
+            "page_image_diagnostics": dict(page_image_diagnostics or {}),
             "request_fingerprint": request_fingerprint,
             "response_id": str(getattr(response, "id", "") or ""),
             "response_model": str(getattr(response, "model", "") or ""),
@@ -826,13 +866,15 @@ def run_anthropic_detection_agent_with_fallback(
     company_id: str,
     file_bytes: bytes,
     ocr_package: dict[str, Any] | None = None,
+    page_images: list[bytes] | None = None,
+    page_image_diagnostics: dict[str, Any] | None = None,
+    primary_model_override: str | None = None,
 ) -> dict:
     """
     First tries Haiku. If anything breaks, retries once with Sonnet.
     """
-    primary_model = get_secret(
-        "CLAUDE_DETECTION_MODEL",
-        DEFAULT_CLAUDE_DETECTION_MODEL,
+    primary_model = primary_model_override or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL
     )
     fallback_model = get_secret(
         "CLAUDE_DETECTION_FALLBACK_MODEL",
@@ -845,6 +887,8 @@ def run_anthropic_detection_agent_with_fallback(
             company_id=company_id,
             file_bytes=file_bytes,
             ocr_package=ocr_package,
+            page_images=page_images,
+            page_image_diagnostics=page_image_diagnostics,
             model=primary_model,
             attempt_label="primary",
         )
@@ -859,6 +903,8 @@ def run_anthropic_detection_agent_with_fallback(
             company_id=company_id,
             file_bytes=file_bytes,
             ocr_package=ocr_package,
+            page_images=page_images,
+            page_image_diagnostics=page_image_diagnostics,
             model=fallback_model,
             attempt_label="fallback",
         )

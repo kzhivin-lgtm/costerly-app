@@ -22,6 +22,9 @@ def run_detection_agent(
     company_id: str = "001",
     file_bytes: bytes | None = None,
     ocr_package: dict | None = None,
+    page_images: list[bytes] | None = None,
+    page_image_diagnostics: dict | None = None,
+    model: str | None = None,
 ) -> dict:
     """
     Detection Agent entrypoint.
@@ -40,6 +43,9 @@ def run_detection_agent(
         company_id=company_id,
         file_bytes=file_bytes,
         ocr_package=ocr_package,
+        page_images=page_images,
+        page_image_diagnostics=page_image_diagnostics,
+        primary_model_override=model,
     )
 
     usage_event = result.pop("_agent_usage", None)

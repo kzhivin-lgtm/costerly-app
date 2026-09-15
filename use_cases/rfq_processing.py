@@ -14,8 +14,14 @@ import pandas as pd
 from agents.anthropic_adapter import (
     build_detection_ocr_context,
     detection_naming_split_enabled,
+    get_secret,
 )
 from agents.detection_agent import run_detection_agent
+from agents.detection_page_images import (
+    estimated_inline_pdf_bytes,
+    render_detection_pdf_pages,
+    should_use_detection_page_images,
+)
 from agents.naming_lab import (
     NAMING_LAB_VERSION,
     apply_name_mapping,
@@ -207,6 +213,7 @@ def _run_deferred_naming(
     """Name locked objects after File Review is allowed to open."""
     started_at = datetime.now(UTC).isoformat()
     started = time.perf_counter()
+    print(f"[Naming Agent] Started deferred naming for run {run_id}")
     try:
         naming_result = run_naming_lab_call(locked_objects)
         apply_name_mapping(detected_objects, locked_objects, naming_result)
@@ -252,11 +259,36 @@ def _run_deferred_naming(
             "naming_seconds": naming_seconds,
         }
     except Exception as exc:
+        finished_at = datetime.now(UTC).isoformat()
+        naming_seconds = round(time.perf_counter() - started, 3)
+        error = str(exc)
+        print(f"[Naming Agent] Deferred naming failed for run {run_id}: {error}")
+        failure_event = _runtime_event(
+            agent_name="naming",
+            operation="locked_object_naming_deferred",
+            company_id=company_id,
+            run_id=run_id,
+            file_name=file_name,
+            model="unknown",
+            prompt_version=NAMING_LAB_VERSION,
+            started_at=started_at,
+            finished_at=finished_at,
+            duration_seconds=naming_seconds,
+            raw_usage={"deferred": True, "error": error},
+            status="failed",
+        )
+        try:
+            insert_agent_usage_event(client, failure_event)
+        except Exception as telemetry_exc:
+            print(
+                "[Naming Agent] Could not persist failure telemetry for run "
+                f"{run_id}: {telemetry_exc}"
+            )
         return {
             "status": "failed",
             "names": {},
-            "naming_seconds": round(time.perf_counter() - started, 3),
-            "error": str(exc),
+            "naming_seconds": naming_seconds,
+            "error": error,
         }
 
 
@@ -270,16 +302,45 @@ def process_uploaded_rfq(
     """Run RFQ detection once and persist the validated result to Supabase."""
     cycle_started_at = datetime.now(UTC).isoformat()
     cycle_started = time.perf_counter()
-    if progress_callback:
-        progress_callback("OCR reading document", None)
-    ocr_package, detection_ocr_package = _run_optional_ocr(
+    page_images = None
+    page_image_diagnostics: dict[str, Any] = {}
+    use_page_images = should_use_detection_page_images(
         file_name=file_name,
         file_bytes=file_bytes,
     )
+    if use_page_images:
+        if progress_callback:
+            progress_callback("Preparing document pages", None)
+        page_images, page_image_diagnostics = render_detection_pdf_pages(file_bytes)
+        ocr_package = {
+            "provider": "none",
+            "model": "none",
+            "contract_version": "jpeg_pages_v1",
+            "status": "skipped_for_large_jpeg_route",
+            "file_name": file_name,
+            "page_count": len(page_images),
+            "processing_seconds": 0.0,
+            "started_at": cycle_started_at,
+            "finished_at": datetime.now(UTC).isoformat(),
+            "pages": [],
+            "evidence": {"text_blocks": [], "literal_items": []},
+            "usage": {},
+        }
+        detection_ocr_package = None
+    else:
+        if progress_callback:
+            progress_callback("OCR reading document", None)
+        ocr_package, detection_ocr_package = _run_optional_ocr(
+            file_name=file_name,
+            file_bytes=file_bytes,
+        )
     detection_context = build_detection_ocr_context(detection_ocr_package)
     if progress_callback:
-        pages = ocr_package.get("pages")
-        page_count = len(pages) if isinstance(pages, list) and pages else None
+        if page_images:
+            page_count = len(page_images)
+        else:
+            pages = ocr_package.get("pages")
+            page_count = len(pages) if isinstance(pages, list) and pages else None
         progress_callback("Detection Agent", page_count)
     detection_started = time.perf_counter()
     detection_result = run_detection_agent(
@@ -287,6 +348,13 @@ def process_uploaded_rfq(
         company_id=company_id,
         file_bytes=file_bytes,
         ocr_package=detection_ocr_package,
+        page_images=page_images,
+        page_image_diagnostics=page_image_diagnostics,
+        model=(
+            get_secret("CLAUDE_LARGE_PDF_DETECTION_MODEL", "claude-sonnet-4-6")
+            if use_page_images
+            else None
+        ),
     )
     detection_seconds = round(time.perf_counter() - detection_started, 3)
     usage_event = detection_result.pop("_agent_usage", None)
@@ -317,6 +385,7 @@ def process_uploaded_rfq(
         )
 
     ocr_seconds = float(ocr_package.get("processing_seconds") or 0)
+    render_seconds = float(page_image_diagnostics.get("render_seconds") or 0)
     cycle_finished_at = datetime.now(UTC).isoformat()
     total_seconds = round(time.perf_counter() - cycle_started, 3)
     cycle_event = _runtime_event(
@@ -332,6 +401,15 @@ def process_uploaded_rfq(
         duration_seconds=total_seconds,
         raw_usage={
             "ocr_seconds": ocr_seconds,
+            "render_seconds": render_seconds,
+            "document_route": (
+                "jpeg_pages_96dpi_sonnet_4_6"
+                if use_page_images
+                else "inline_base64"
+            ),
+            "source_bytes": len(file_bytes),
+            "estimated_inline_pdf_bytes": estimated_inline_pdf_bytes(file_bytes),
+            "page_count": int(page_image_diagnostics.get("page_count") or 0),
             "detection_seconds": detection_seconds,
             "naming_seconds": naming_seconds,
             "naming_deferred": naming_future is not None,
@@ -358,6 +436,12 @@ def process_uploaded_rfq(
         "naming_future": naming_future,
         "timings": {
             "ocr_seconds": ocr_seconds,
+            "render_seconds": render_seconds,
+            "document_route": (
+                "jpeg_pages_96dpi_sonnet_4_6"
+                if use_page_images
+                else "inline_base64"
+            ),
             "detection_seconds": detection_seconds,
             "naming_seconds": naming_seconds,
             "total_seconds": total_seconds,

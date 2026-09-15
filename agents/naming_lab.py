@@ -16,7 +16,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v5_1_english_only_mvp"
+NAMING_LAB_VERSION = "naming_lab_v5_2_partial_safe_english_mvp"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -162,7 +162,7 @@ def validate_locked_name_mapping(
     for item in names:
         name_en_words = _word_count(item.get("name_en"))
         original_words = _word_count(item.get("name_original"))
-        if name_en_words < 2 or name_en_words > 3:
+        if name_en_words < 1 or name_en_words > 3:
             violations.append(
                 {"object_id": item["object_id"], "field": "name_en", "words": name_en_words}
             )
@@ -205,15 +205,25 @@ def apply_name_mapping(
     locked_objects: list[dict[str, Any]],
     result: dict[str, Any],
 ) -> None:
-    """Apply validated display names without changing the locked object set."""
+    """Apply valid names and preserve placeholders for isolated invalid rows."""
     validation = validate_locked_name_mapping(locked_objects, result)
-    if not validation["accepted"]:
-        raise ValueError(f"Naming word-limit violations: {validation['violations']}")
+    invalid_ids = {
+        str(item.get("object_id") or "")
+        for item in validation["violations"]
+    }
     previews = compose_name_preview(locked_objects, result)
     names_by_id = {item["object_id"]: item["display_name"] for item in previews}
+    current_names = {
+        str(item.get("object_id") or ""): str(item.get("current_name") or "")
+        for item in locked_objects
+    }
     for detected_object in detected_objects:
         object_id = str(detected_object.get("object_id") or "")
-        detected_object["object_name"] = names_by_id[object_id]
+        detected_object["object_name"] = (
+            current_names[object_id]
+            if object_id in invalid_ids
+            else names_by_id[object_id]
+        )
 
 
 def run_naming_lab_call(
