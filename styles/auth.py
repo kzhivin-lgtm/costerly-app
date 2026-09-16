@@ -78,9 +78,31 @@ def install_auth_form_interactions() -> None:
             return true;
           }
 
+          function setLoadingLabel(button, text) {
+            const label = button?.querySelector('p');
+            if (label) label.textContent = text;
+          }
+
+          function endCompanyCreation(form) {
+            if (!form?.classList.contains('costerly-auth-loading')) return;
+            form.classList.remove('costerly-auth-loading');
+            form.removeAttribute('aria-busy');
+            form.querySelectorAll('input').forEach((input) => {
+              input.readOnly = false;
+              input.removeAttribute('aria-disabled');
+            });
+            const button = form.querySelector('div[data-testid="stFormSubmitButton"] button');
+            if (button) {
+              button.disabled = false;
+              setLoadingLabel(button, button.dataset.costerlyOriginalLabel || 'Create Company Account');
+            }
+            form.querySelector('.costerly-auth-loading-message')?.remove();
+          }
+
           function beginCompanyCreation(button) {
             const form = button.closest('div[data-testid="stForm"]');
             if (!form || form.classList.contains('costerly-auth-loading')) return;
+            button.dataset.costerlyOriginalLabel = button.textContent.trim();
             form.classList.add('costerly-auth-loading');
             form.setAttribute('aria-busy', 'true');
             form.querySelectorAll('input').forEach((input) => {
@@ -88,16 +110,7 @@ def install_auth_form_interactions() -> None:
               input.setAttribute('aria-disabled', 'true');
             });
             button.disabled = true;
-            const label = button.querySelector('p');
-            if (label) label.textContent = 'Creating your company...';
-            if (!form.querySelector('.costerly-auth-loading-message')) {
-              const message = doc.createElement('div');
-              message.className = 'costerly-auth-loading-message';
-              message.setAttribute('role', 'status');
-              message.setAttribute('aria-live', 'polite');
-              message.textContent = 'Setting up your company. This may take a few seconds.';
-              form.appendChild(message);
-            }
+            setLoadingLabel(button, 'Checking your details...');
           }
 
           function bindCompanyCreation() {
@@ -116,6 +129,11 @@ def install_auth_form_interactions() -> None:
           }
 
           function refresh() {
+            doc.querySelectorAll('div[data-testid="stForm"].costerly-auth-loading').forEach((form) => {
+              if (form.querySelector('.auth-field-error-marker, [data-testid="stAlert"]')) {
+                endCompanyCreation(form);
+              }
+            });
             doc.querySelectorAll('.auth-field-error-marker').forEach((marker) => {
               if (marker.dataset.costerlyApplied === '1') return;
               marker.dataset.costerlyApplied = '1';
@@ -150,6 +168,26 @@ def install_auth_form_interactions() -> None:
           const observer = new MutationObserver(refresh);
           observer.observe(doc.body, {childList: true, subtree: true});
           window.addEventListener('beforeunload', () => observer.disconnect(), {once: true});
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
+def show_company_creation_started() -> None:
+    """Advance the client label only after the account check succeeded."""
+    components.html(
+        r"""
+        <script>
+        (() => {
+          const doc = window.parent.document;
+          const button = Array.from(
+            doc.querySelectorAll('div[data-testid="stFormSubmitButton"] button')
+          ).find((node) => node.dataset.costerlyOriginalLabel === 'Create Company Account');
+          const label = button?.querySelector('p');
+          if (label) label.textContent = 'Creating your company...';
         })();
         </script>
         """,
@@ -425,28 +463,21 @@ def apply_auth_css() -> None:
             cursor: wait !important;
             transform: none !important;
             opacity: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 10px !important;
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button::before {
             content: "";
             width: 17px;
             height: 17px;
-            margin-right: 10px;
             flex: 0 0 17px;
             border: 2px solid rgba(255, 255, 255, 0.42);
             border-top-color: #FFFFFF;
             border-radius: 50%;
             animation: costerly-auth-spin 700ms linear infinite;
-        }
-
-        .stApp:has(.auth-screen-active) .costerly-auth-loading-message {
-            margin-top: 12px;
-            color: #67616C;
-            font-family: var(--font-sans);
-            font-size: 13px;
-            font-weight: 500;
-            line-height: 1.45;
-            text-align: center;
         }
 
         @keyframes costerly-auth-spin {

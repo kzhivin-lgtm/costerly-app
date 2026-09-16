@@ -449,7 +449,7 @@ def test_existing_email_with_wrong_password_gets_actionable_error(monkeypatch):
         company_auth.authenticate_invited_creator("owner@example.com", "Wrong123", company_auth.InvitationContext("create", new_invite_token()))
 
 
-def test_existing_login_error_is_shown_at_password_without_extra_button(monkeypatch):
+def test_existing_login_error_is_shown_at_email_without_extra_button(monkeypatch):
     def wrong_existing_password(*_args):
         raise company_auth.ExistingLoginPasswordError(
             "This email already has a login. Enter the password from your first attempt."
@@ -462,7 +462,9 @@ def test_existing_login_error_is_shown_at_password_without_extra_button(monkeypa
     app.text_input(key="signup_password").set_value("Wrong123")
     app.text_input(key="signup_password_confirm").set_value("Wrong123")
     next(button for button in app.button if button.label == "Create Company Account").click().run()
-    assert any("password from your first attempt" in error.value for error in app.error)
+    assert any("already registered" in error.value for error in app.error)
+    assert any('data-auth-field="email"' in item.value for item in app.markdown)
+    assert not any('data-auth-field="password"' in item.value for item in app.markdown)
     assert not any(button.label.startswith("Already have a login?") for button in app.button)
 
 
@@ -570,13 +572,15 @@ def test_company_creation_acknowledges_valid_submit_immediately():
     interactions = (Path(__file__).parents[1] / "styles/auth.py").read_text()
     guidelines = (Path(__file__).parents[1] / "notes/UI_GUIDELINES.md").read_text()
     normalized_guidelines = " ".join(guidelines.split())
+    assert "Checking your details..." in interactions
     assert "Creating your company..." in interactions
-    assert "Setting up your company. This may take a few seconds." in interactions
+    assert "Setting up your company. This may take a few seconds." not in interactions
     assert "const invalid = fields.filter((field) => !fieldIsValid(field))" in interactions
     assert "if (invalid.length > 0) return" in interactions
     assert "costerly-auth-loading" in interactions
     assert "Disable repeat submission" in normalized_guidelines
     assert "Do not enter a loading state when local validation fails" in normalized_guidelines
+    assert "advance to creation only after that check succeeds" in normalized_guidelines
 
 
 def test_signup_requires_current_invite_and_uses_mail_free_admin_path(monkeypatch):

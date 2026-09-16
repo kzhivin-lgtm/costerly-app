@@ -24,6 +24,9 @@
   current context, and show a specific progress label until success or failure.
 - Do not enter a loading state when local validation fails. Keep the user on the
   editable form and mark every invalid field instead.
+- Use a truthful progress label. A server-side uniqueness check is `Checking`,
+  not `Creating`; advance to creation only after that check succeeds. Any server
+  validation error must immediately restore the editable form.
 
 ## Visual consistency
 

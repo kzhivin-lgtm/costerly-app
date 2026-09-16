@@ -16,7 +16,12 @@ from postgrest.exceptions import APIError
 
 from config import get_optional_secret
 from db.supabase_client import get_supabase_client
-from styles.auth import apply_auth_css, install_auth_form_interactions, render_auth_field_error
+from styles.auth import (
+    apply_auth_css,
+    install_auth_form_interactions,
+    render_auth_field_error,
+    show_company_creation_started,
+)
 from use_cases.invite_links import (
     DEFAULT_PUBLIC_APP_URL,
     invite_token_hash,
@@ -382,9 +387,13 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 if access is None:
                     raise RuntimeError("Sign-in session was not returned.")
                 if access.company_id is not None:
-                    raise ValueError("This login already belongs to a company.")
-            except ExistingLoginPasswordError as exc:
-                st.session_state.company_creation_error = {"password": str(exc)}
+                    raise ExistingLoginPasswordError(
+                        "This email is already registered. Use a different email."
+                    )
+            except ExistingLoginPasswordError:
+                st.session_state.company_creation_error = {
+                    "email": "This email is already registered. Use a different email."
+                }
                 st.rerun()
             except PermissionError as exc:
                 st.session_state.company_creation_error = {"service": str(exc)}
@@ -394,17 +403,18 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 st.rerun()
             except AuthApiError as exc:
                 message = (
-                    "This email already has a login. Enter the password from your first attempt."
+                    "This email is already registered. Use a different email."
                     if exc.code in {"email_exists", "user_already_exists"}
                     else "We couldn't create your login. Check your email and try again."
                 )
-                field = "password" if exc.code in {"email_exists", "user_already_exists"} else "service"
+                field = "email" if exc.code in {"email_exists", "user_already_exists"} else "service"
                 st.session_state.company_creation_error = {field: message}
                 st.rerun()
             except Exception:
                 st.session_state.company_creation_error = {"service": "We couldn't create your login. Try again in a moment."}
                 st.rerun()
             try:
+                show_company_creation_started()
                 create_company_for_user(access, company_name, invitation.token)
                 st.session_state.screen = "account"
                 if "invite" in st.query_params:
