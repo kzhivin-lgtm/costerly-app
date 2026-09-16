@@ -322,11 +322,13 @@ def install_objects_price_input_guard(
     estimate_id: str,
     supabase_url: str | None = None,
     supabase_anon_key: str | None = None,
+    supabase_access_token: str | None = None,
 ) -> None:
     """Install always-on editing behavior for Objects sale price controls."""
     estimate_id_json = json.dumps(estimate_id)
     supabase_url_json = json.dumps(supabase_url.rstrip("/")) if supabase_url else "null"
     supabase_anon_key_json = json.dumps(supabase_anon_key) if supabase_anon_key else "null"
+    supabase_access_token_json = json.dumps(supabase_access_token) if supabase_access_token else "null"
     components.html(
         """
         <script>
@@ -336,6 +338,7 @@ def install_objects_price_input_guard(
             const ESTIMATE_ID = __ESTIMATE_ID__;
             const SUPABASE_URL = __SUPABASE_URL__;
             const SUPABASE_ANON_KEY = __SUPABASE_ANON_KEY__;
+            const SUPABASE_ACCESS_TOKEN = __SUPABASE_ACCESS_TOKEN__;
             const HANDLER_KEY = "__costerlyObjectsPriceInputGuardCleanup";
             const MANUAL_PRICES_KEY = "__costerlyObjectsManualSalePrices";
             let pointerStartedInPriceInput = false;
@@ -454,7 +457,7 @@ def install_objects_price_input_guard(
                         method: "POST",
                         headers: {
                             "apikey": SUPABASE_ANON_KEY,
-                            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                            "Authorization": `Bearer ${SUPABASE_ACCESS_TOKEN || SUPABASE_ANON_KEY}`,
                             "Content-Type": "application/json",
                             "Prefer": "resolution=merge-duplicates,return=minimal",
                         },
@@ -645,7 +648,8 @@ def install_objects_price_input_guard(
         """
         .replace("__ESTIMATE_ID__", estimate_id_json)
         .replace("__SUPABASE_URL__", supabase_url_json)
-        .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json),
+        .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json)
+        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json),
         height=0,
     )
 
@@ -1011,12 +1015,14 @@ def install_objects_progress_sync(
     *,
     supabase_url: str,
     supabase_anon_key: str,
+    supabase_access_token: str | None = None,
     estimate_id: str,
     interval_ms: int = 1500,
 ) -> None:
     """Sync object progress from Supabase without rerunning Streamlit."""
     supabase_url_json = json.dumps(supabase_url.rstrip("/"))
     supabase_anon_key_json = json.dumps(supabase_anon_key)
+    supabase_access_token_json = json.dumps(supabase_access_token) if supabase_access_token else "null"
     estimate_id_json = json.dumps(estimate_id)
     interval_json = json.dumps(interval_ms)
     components.html(
@@ -1035,6 +1041,7 @@ def install_objects_progress_sync(
             const TRANSITION_SHELL_ID = "costerly-post-upload-transition-shell";
             const SUPABASE_URL = __SUPABASE_URL__;
             const SUPABASE_ANON_KEY = __SUPABASE_ANON_KEY__;
+            const SUPABASE_ACCESS_TOKEN = __SUPABASE_ACCESS_TOKEN__;
             const ESTIMATE_ID = __ESTIMATE_ID__;
             const INTERVAL_MS = __INTERVAL_MS__;
             const TICK_MS = 500;
@@ -1476,7 +1483,7 @@ def install_objects_progress_sync(
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/rfq_object_estimate_progress_public?${query}`, {
                         headers: {
                             apikey: SUPABASE_ANON_KEY,
-                            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                            Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN || SUPABASE_ANON_KEY}`,
                             Accept: "application/json"
                         }
                     });
@@ -1536,6 +1543,7 @@ def install_objects_progress_sync(
         """
         .replace("__SUPABASE_URL__", supabase_url_json)
         .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json)
+        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json)
         .replace("__ESTIMATE_ID__", estimate_id_json)
         .replace("__INTERVAL_MS__", interval_json),
         height=0,

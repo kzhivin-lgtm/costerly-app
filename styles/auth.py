@@ -1,0 +1,248 @@
+from __future__ import annotations
+
+import streamlit as st
+
+
+def apply_auth_css() -> None:
+    """Keep account forms readable regardless of Streamlit's browser theme."""
+    st.markdown(
+        """
+        <style>
+        .stApp:has(.auth-screen-active),
+        .stApp:has(.auth-screen-active) [data-testid="stAppViewContainer"] {
+            color-scheme: light !important;
+            background: radial-gradient(circle at 12% 8%, #EFE5FA 0, #F7F3F6 34%, #F7F3F6 100%) !important;
+            color: #2A1F2C !important;
+        }
+
+        .stApp:has(.auth-screen-active) .block-container,
+        .stApp:has(.auth-screen-active) [data-testid="stMainBlockContainer"] {
+            width: min(520px, calc(100vw - 32px)) !important;
+            max-width: 520px !important;
+            box-sizing: border-box !important;
+            margin: 0 auto !important;
+            padding: clamp(40px, 8vh, 86px) 0 72px !important;
+            background: transparent !important;
+        }
+
+        .auth-brand {
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .auth-brand img {
+            display: block;
+            width: 210px;
+            height: auto;
+            max-width: 65vw;
+            margin: 0 auto 20px;
+        }
+
+        .auth-brand h1 {
+            margin: 0;
+            color: #2A1F2C;
+            font-family: var(--font-brand);
+            font-size: clamp(30px, 5vw, 35px);
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -0.045em;
+        }
+
+        .auth-brand p {
+            margin: 0;
+            color: #67616C;
+            font-family: var(--font-sans);
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] {
+            background: #FFFFFF !important;
+            border: 1px solid #E7DFE9 !important;
+            border-radius: 20px !important;
+            box-shadow: 0 18px 48px rgba(59, 46, 72, 0.08) !important;
+            padding: 30px !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] label,
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] [data-testid="stWidgetLabel"] p {
+            color: #2A1F2C !important;
+            font-size: 14px !important;
+            font-weight: 700 !important;
+            line-height: 1.35 !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] {
+            background: #FFFFFF !important;
+            border: 1px solid #CEC5D1 !important;
+            border-radius: 10px !important;
+            box-shadow: none !important;
+            height: 52px !important;
+            display: flex !important;
+            align-items: center !important;
+            overflow: hidden !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] > div,
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] > button {
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            background: #FFFFFF !important;
+            color: #51475B !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"]:focus-within {
+            border-color: #8049C6 !important;
+            box-shadow: 0 0 0 3px rgba(128, 73, 198, 0.14) !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] input {
+            height: 50px !important;
+            min-height: 50px !important;
+            box-sizing: border-box !important;
+            padding: 0 16px !important;
+            line-height: normal !important;
+            background: #FFFFFF !important;
+            color: #17191C !important;
+            -webkit-text-fill-color: #17191C !important;
+            caret-color: #8049C6 !important;
+            font-size: 16px !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] input::placeholder {
+            color: #817A85 !important;
+            -webkit-text-fill-color: #817A85 !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] input:-webkit-autofill,
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] input:-webkit-autofill:hover,
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] input:-webkit-autofill:focus,
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+            box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+            -webkit-text-fill-color: #17191C !important;
+            caret-color: #8049C6 !important;
+            transition: background-color 9999s ease-in-out 0s !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] > div:last-child,
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] button {
+            background: transparent !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] button,
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] svg {
+            background: transparent !important;
+            color: #51475B !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] button svg path {
+            fill: none !important;
+            stroke: #51475B !important;
+            stroke-width: 1.7px !important;
+            stroke-linecap: round !important;
+            stroke-linejoin: round !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] [data-testid="stCaptionContainer"] p,
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] small {
+            color: #67616C !important;
+            font-size: 13px !important;
+            line-height: 1.45 !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"],
+        .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] > div,
+        .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button {
+            width: 100% !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button {
+            min-height: 62px !important;
+            margin-top: 10px !important;
+            background: #8049C6 !important;
+            border: 1px solid #8049C6 !important;
+            border-radius: 11px !important;
+            color: #FFFFFF !important;
+            font-family: var(--font-sans) !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
+            text-transform: none !important;
+            transition: background 150ms ease, border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button p {
+            margin: 0 !important;
+            color: #FFFFFF !important;
+            font-family: var(--font-sans) !important;
+            font-size: 20px !important;
+            font-weight: 700 !important;
+            line-height: 1.2 !important;
+            letter-spacing: -0.01em !important;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stAlert"] {
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 8px 0 0 !important;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stAlert"] > div {
+            border: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stAlert"] p {
+            font-family: var(--font-sans) !important;
+            font-size: 14px !important;
+            line-height: 1.4 !important;
+            font-weight: 600 !important;
+            color: #B43E49 !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button:hover {
+            background: #6F3CB4 !important;
+            border-color: #6F3CB4 !important;
+            color: #FFFFFF !important;
+            box-shadow: 0 8px 18px rgba(111, 60, 180, 0.20) !important;
+            transform: translateY(-1px);
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 600px) {
+            .stApp:has(.auth-screen-active) .block-container,
+            .stApp:has(.auth-screen-active) [data-testid="stMainBlockContainer"] {
+                width: calc(100vw - 24px) !important;
+                max-width: none !important;
+                padding-top: 34px !important;
+                padding-bottom: 32px !important;
+            }
+            .stApp:has(.auth-screen-active) div[data-testid="stForm"] {
+                padding: 20px !important;
+            }
+            .auth-brand img { width: 185px; margin-bottom: 20px; }
+            .auth-brand h1 { font-size: clamp(27px, 8vw, 34px); }
+            .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button {
+                min-height: 58px !important;
+                font-size: 18px !important;
+            }
+            .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button p {
+                font-size: 18px !important;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )

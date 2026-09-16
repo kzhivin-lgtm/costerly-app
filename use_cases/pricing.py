@@ -13,6 +13,8 @@ from db.repositories import (
     update_rfq_object_estimate_totals,
 )
 from db.supabase_client import get_supabase_client
+from db.company_access import assert_estimate_owned
+from state.company_auth import company_auth_enabled
 
 
 def price_estimated_object(
@@ -23,6 +25,8 @@ def price_estimated_object(
 ) -> dict[str, float]:
     """Resolve catalog prices/rates and calculate object self-cost totals."""
     client = get_supabase_client()
+    if company_auth_enabled():
+        assert_estimate_owned(client, estimate_id, company_id)
     company_data = fetch_company_data(client, company_id)
     lines_df = fetch_rfq_estimate_lines_for_object(
         client,

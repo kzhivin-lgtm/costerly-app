@@ -21,6 +21,7 @@ from ui.screen_transition import (
 )
 from use_cases.estimation import load_objects_estimation_data
 from use_cases.estimation_progress import get_estimate_progress
+from state.company_auth import company_auth_enabled
 
 
 @dataclass(frozen=True)
@@ -58,10 +59,11 @@ def _consume_estimation_future() -> None:
         st.session_state.estimation_first_object_future = None
 
 
-def _objects_progress_sync_config() -> tuple[str | None, str | None]:
+def _objects_progress_sync_config() -> tuple[str | None, str | None, str | None]:
     return (
         get_optional_secret("SUPABASE_URL"),
         get_optional_secret("SUPABASE_ANON_KEY"),
+        st.session_state.get("auth_access_token") if company_auth_enabled() else None,
     )
 
 
@@ -252,6 +254,7 @@ def _install_objects_runtimes(
     estimate_id: str | None,
     supabase_url: str | None,
     supabase_anon_key: str | None,
+    supabase_access_token: str | None = None,
 ) -> None:
     """Install client-side editing/progress runtimes for the current estimate."""
     if estimate_id:
@@ -259,12 +262,14 @@ def _install_objects_runtimes(
             estimate_id=str(estimate_id),
             supabase_url=supabase_url,
             supabase_anon_key=supabase_anon_key,
+            supabase_access_token=supabase_access_token,
         )
     _install_objects_transition_guard()
     if estimate_id and supabase_url and supabase_anon_key:
         install_objects_progress_sync(
             supabase_url=supabase_url,
             supabase_anon_key=supabase_anon_key,
+            supabase_access_token=supabase_access_token,
             estimate_id=str(estimate_id),
             interval_ms=1500,
         )
@@ -296,9 +301,10 @@ def render_objects_screen(company_id: str) -> None:
     _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id)
     _render_objects_actions()
 
-    supabase_url, supabase_anon_key = _objects_progress_sync_config()
+    supabase_url, supabase_anon_key, supabase_access_token = _objects_progress_sync_config()
     _install_objects_runtimes(
         estimate_id=estimate_id,
         supabase_url=supabase_url,
         supabase_anon_key=supabase_anon_key,
+        supabase_access_token=supabase_access_token,
     )

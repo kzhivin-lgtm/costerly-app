@@ -3,6 +3,17 @@ from __future__ import annotations
 import streamlit as st
 
 from state.session import init_state, get_company_id
+from state.company_auth import (
+    company_auth_enabled,
+    current_company_access,
+    invitation_from_url,
+    render_account_control,
+    render_company_account,
+    render_company_setup,
+    render_login_or_signup,
+)
+from db.company_access import assert_estimate_owned, assert_run_owned
+from db.supabase_client import get_supabase_client
 from styles.base import apply_base_css
 from ui.js_guards import scroll_parent_to_top, signal_app_ready_to_embed
 
@@ -36,6 +47,11 @@ def _render_screen(screen: str, company_id: str) -> None:
         from screens.object_detail import render_object_detail_screen
 
         render_object_detail_screen(company_id)
+    elif screen == "account":
+        access = current_company_access()
+        if access is None or access.company_id != company_id:
+            raise PermissionError("Company access changed. Please sign in again.")
+        render_company_account(access)
     else:
         st.session_state.screen = "upload"
         st.rerun()
@@ -43,6 +59,30 @@ def _render_screen(screen: str, company_id: str) -> None:
 
 def main() -> None:
     init_state()
+    apply_base_css()
+
+    auth_enabled = company_auth_enabled()
+    if auth_enabled:
+        try:
+            access = current_company_access()
+            invitation = invitation_from_url()
+        except Exception as exc:
+            st.error(f"Company access is unavailable: {exc}")
+            signal_app_ready_to_embed("company_access_error")
+            return
+        if access is None:
+            render_login_or_signup(invitation)
+            signal_app_ready_to_embed("login")
+            return
+        if access.company_id is None:
+            render_company_setup(access, invitation)
+            signal_app_ready_to_embed("company_setup")
+            return
+        st.session_state.auth_company_id = access.company_id
+        st.session_state.auth_access_token = access.access_token
+        render_account_control(access)
+
+    company_id = get_company_id()
 
     requested_screen = st.query_params.get("screen")
     if requested_screen in {"objects", "object_detail", "file_review"}:
@@ -50,6 +90,18 @@ def main() -> None:
         requested_run_id = st.query_params.get("run_id")
         requested_estimate_id = st.query_params.get("estimate_id")
         requested_object_id = st.query_params.get("object_id")
+        if auth_enabled:
+            try:
+                client = get_supabase_client()
+                if requested_run_id:
+                    assert_run_owned(client, requested_run_id, company_id)
+                if requested_estimate_id:
+                    assert_estimate_owned(client, requested_estimate_id, company_id)
+            except PermissionError:
+                st.query_params.clear()
+                st.error("This RFQ or estimate is not available to your company.")
+                signal_app_ready_to_embed("company_access_error")
+                return
         object_detail_edit_line = st.query_params.get("od_edit_line")
         object_detail_edit_field = st.query_params.get("od_edit_field")
         object_detail_edit_value = st.query_params.get("od_edit_value")
@@ -96,8 +148,23 @@ def main() -> None:
         st.query_params.clear()
 
     screen = st.session_state.screen
-    apply_base_css()
-    company_id = get_company_id()
+    if auth_enabled:
+        try:
+            client = get_supabase_client()
+            run_id = st.session_state.get("current_run_id")
+            estimate_id = st.session_state.get("current_estimate_id")
+            if screen in {"file_review", "objects", "object_detail"} and run_id:
+                assert_run_owned(client, str(run_id), company_id)
+            if screen in {"objects", "object_detail"} and estimate_id:
+                assert_estimate_owned(client, str(estimate_id), company_id)
+        except PermissionError:
+            st.session_state.current_run_id = None
+            st.session_state.current_estimate_id = None
+            st.session_state.current_object_id = None
+            st.session_state.screen = "upload"
+            st.error("The selected RFQ or estimate is not available to your company.")
+            signal_app_ready_to_embed("company_access_error")
+            return
     last_screen_for_scroll = st.session_state.get("_last_screen_for_scroll")
     if last_screen_for_scroll != screen:
         is_initial_upload_render = last_screen_for_scroll is None and screen == "upload"

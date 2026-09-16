@@ -52,6 +52,7 @@ def _run_estimation_job(
     if edits_changed:
         ignored_object_ids = apply_file_review_edits(
             run_id=run_id,
+            company_id=company_id,
             object_edits={
                 str(object_id): dict(edit)
                 for object_id, edit in object_edits.items()

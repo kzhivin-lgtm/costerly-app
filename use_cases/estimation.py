@@ -23,10 +23,18 @@ from db.repositories import (
     upsert_rfq_estimate_shell,
 )
 from db.supabase_client import get_supabase_client
+from db.company_access import assert_estimate_owned, assert_run_owned
+from state.company_auth import company_auth_enabled
+from state.session import get_company_id
 from models.estimation import ObjectEstimateSeed
 from use_cases.estimation_progress import clear_estimate_progress, set_object_progress
 from use_cases.pricing import price_estimated_object
 from use_cases.retry import read_with_retry
+
+
+def _assert_screen_estimate_access(client: Any, estimate_id: str) -> None:
+    if company_auth_enabled():
+        assert_estimate_owned(client, estimate_id, get_company_id())
 
 
 def start_estimation_for_run(
@@ -43,6 +51,8 @@ def start_estimation_for_run(
     Estimation Agent can fill object by object.
     """
     client = get_supabase_client()
+    if company_auth_enabled():
+        assert_run_owned(client, run_id, company_id)
     run_df = fetch_rfq_run(client, run_id)
     objects_df = fetch_rfq_detected_objects(client, run_id)
     ignored_object_ids = ignored_object_ids or set()
@@ -100,6 +110,7 @@ def build_estimate_id(run_id: str) -> str:
 def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     """Load current object estimate statuses for the Objects Estimation screen."""
     client = get_supabase_client()
+    _assert_screen_estimate_access(client, estimate_id)
     objects_df = read_with_retry(lambda: fetch_rfq_object_estimates(client, estimate_id))
     try:
         overrides_df = read_with_retry(lambda: fetch_rfq_estimate_pricing_overrides(client, estimate_id))
@@ -231,6 +242,7 @@ def _objects_project_pricing(
 def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, Any]:
     """Load one object's persisted estimation lines for Object Detail."""
     client = get_supabase_client()
+    _assert_screen_estimate_access(client, estimate_id)
     objects_df = fetch_rfq_object_estimates(client, estimate_id)
     lines_df = fetch_rfq_estimate_lines_for_object(
         client,
@@ -365,6 +377,7 @@ def approve_object_estimate(
 ) -> None:
     """Mark one object estimate approved in Supabase."""
     client = get_supabase_client()
+    _assert_screen_estimate_access(client, estimate_id)
     if recalculate:
         _recalculate_object_estimate_totals(
             client,
@@ -400,6 +413,7 @@ def apply_object_detail_line_edit(
         return
 
     client = get_supabase_client()
+    _assert_screen_estimate_access(client, estimate_id)
     lines_df = fetch_rfq_estimate_lines_for_object(
         client,
         estimate_id=estimate_id,
@@ -479,6 +493,7 @@ def apply_object_detail_snapshot(
         return
 
     client = get_supabase_client()
+    _assert_screen_estimate_access(client, estimate_id)
     lines_df = fetch_rfq_estimate_lines_for_object(
         client,
         estimate_id=estimate_id,
@@ -649,6 +664,9 @@ def estimate_first_object_for_run(
 ) -> dict[str, Any]:
     """Run the first detected object estimate for an existing estimate shell."""
     client = get_supabase_client()
+    if company_auth_enabled():
+        assert_run_owned(client, run_id, company_id)
+        assert_estimate_owned(client, estimate_id, company_id)
     objects_df = fetch_rfq_detected_objects(client, run_id)
     if objects_df.empty:
         return {
@@ -678,6 +696,9 @@ def estimate_all_objects_for_run(
 ) -> dict[str, Any]:
     """Run object estimates one by one for the current estimate shell."""
     client = get_supabase_client()
+    if company_auth_enabled():
+        assert_run_owned(client, run_id, company_id)
+        assert_estimate_owned(client, estimate_id, company_id)
     objects_df = fetch_rfq_object_estimates(client, estimate_id)
     if objects_df.empty:
         return {
@@ -726,6 +747,9 @@ def estimate_one_object(
 ) -> dict[str, Any]:
     """Run Estimation Agent for one detected object and persist draft lines."""
     client = get_supabase_client()
+    if company_auth_enabled():
+        assert_run_owned(client, run_id, company_id)
+        assert_estimate_owned(client, estimate_id, company_id)
     objects_df = fetch_rfq_detected_objects(client, run_id)
     matching = objects_df[objects_df["object_id"] == object_id]
 

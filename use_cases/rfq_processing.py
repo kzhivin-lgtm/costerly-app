@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from uuid import uuid4
 from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
@@ -46,6 +47,8 @@ from db.repositories import (
     upsert_rfq_detection_result,
 )
 from db.supabase_client import get_supabase_client
+from db.company_access import assert_run_owned
+from state.session import get_company_id
 from use_cases.retry import read_with_retry
 
 
@@ -292,6 +295,15 @@ def _run_deferred_naming(
         }
 
 
+def assign_server_run_id(detection_result: dict[str, Any]) -> str:
+    """Replace a model-generated RFQ key with a globally unique server key."""
+    run_id = f"run_{uuid4().hex}"
+    detection_result["rfq_run"]["run_id"] = run_id
+    for detected_object in detection_result["detected_objects"]:
+        detected_object["run_id"] = run_id
+    return run_id
+
+
 def process_uploaded_rfq(
     *,
     file_name: str,
@@ -358,6 +370,12 @@ def process_uploaded_rfq(
     )
     detection_seconds = round(time.perf_counter() - detection_started, 3)
     usage_event = detection_result.pop("_agent_usage", None)
+    # A model-generated run_id is not globally unique. In multi-company mode,
+    # mint it on the server before any service-role upsert can overwrite another
+    # company's RFQ with the same model-generated value.
+    from state.company_auth import company_auth_enabled
+    if company_auth_enabled():
+        assign_server_run_id(detection_result)
     naming_seconds = 0.0
     naming_future = None
     locked_objects = None
@@ -452,6 +470,9 @@ def process_uploaded_rfq(
 def load_file_review_data(run_id: str) -> dict[str, Any]:
     """Load persisted detection data and adapt it for the File Review renderer."""
     client = get_supabase_client()
+    from state.company_auth import company_auth_enabled
+    if company_auth_enabled():
+        assert_run_owned(client, run_id, get_company_id())
     run_df = read_with_retry(lambda: fetch_rfq_run(client, run_id))
     objects_df = read_with_retry(lambda: fetch_rfq_detected_objects(client, run_id))
     usage_df = read_with_retry(lambda: fetch_agent_usage_events(client, run_id))
@@ -507,9 +528,15 @@ def apply_file_review_edits(
     *,
     run_id: str,
     object_edits: dict[str, dict[str, Any]],
+    company_id: str | None = None,
 ) -> set[str]:
     """Save File Review object edits and return object ids ignored for estimation."""
     client = get_supabase_client()
+    from state.company_auth import company_auth_enabled
+    if company_auth_enabled():
+        if not company_id:
+            raise PermissionError("Company ID is required for background RFQ edits.")
+        assert_run_owned(client, run_id, company_id)
     ignored_object_ids: set[str] = set()
 
     for object_id, edit in object_edits.items():
@@ -548,6 +575,9 @@ def save_file_review_object_name(
         raise ValueError("Object name cannot be empty.")
 
     client = get_supabase_client()
+    from state.company_auth import company_auth_enabled
+    if company_auth_enabled():
+        assert_run_owned(client, str(run_id), get_company_id())
     update_rfq_detected_object(
         client,
         run_id=str(run_id),

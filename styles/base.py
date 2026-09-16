@@ -47,6 +47,7 @@ def apply_base_css() -> None:
         }
 
         :root {
+            color-scheme: light !important;
             /* Primitive brand palette */
             --primitive-warm-bg: #F1EFEF;
             --primitive-purple-500: #8049C6;
@@ -226,6 +227,7 @@ def apply_base_css() -> None:
         body,
         .stApp,
         [data-testid="stAppViewContainer"] {
+            color-scheme: light !important;
             background: var(--color-bg) !important;
             color: var(--color-text) !important;
             font-family: var(--font-sans) !important;
