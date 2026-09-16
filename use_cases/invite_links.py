@@ -8,7 +8,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 
 _TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{43}$")
-DEFAULT_PUBLIC_APP_URL = "https://app.costerly.io/"
+DEFAULT_PUBLIC_APP_URL = "https://app.costerly.ai/"
 INVITATION_ROUTES = {"start", "join"}
 
 

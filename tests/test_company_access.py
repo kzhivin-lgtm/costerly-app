@@ -332,7 +332,7 @@ def test_company_join_url_has_only_random_token():
 
 def test_shared_invites_use_public_https_application_only():
     assert public_app_url() == DEFAULT_PUBLIC_APP_URL
-    assert public_app_url("https://app.costerly.io/") == "https://app.costerly.io/"
+    assert public_app_url("https://app.costerly.ai/") == "https://app.costerly.ai/"
     for local_url in (
         "http://127.0.0.1:8580",
         "https://localhost:8580",
@@ -367,7 +367,7 @@ def test_registration_rejects_explicit_local_browser_origins(monkeypatch, reques
 
 
 @pytest.mark.parametrize("request_url", [
-    "https://app.costerly.io/start/token",
+    "https://app.costerly.ai/start/token",
     "https://costerly-app.streamlit.app/?embed=true&invite=token",
     "http://testserver/",
     "",
