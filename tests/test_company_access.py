@@ -317,6 +317,22 @@ def test_live_schema_migration_precreates_staff_link_without_dropping_old_rpc():
     assert "values (p_company_id, v_join_token)" in sql
 
 
+def test_security_cutover_changes_access_only_and_preserves_rows():
+    sql = (Path(__file__).parents[1] / "db/sql/2026_09_16_company_access_security_cutover.sql").read_text().lower()
+    assert "revoke all privileges" in sql
+    assert "rfq_estimate_pricing_overrides_anon_select" in sql
+    assert "with (security_invoker = true)" in sql
+    assert "create policy company_members_self_read" in sql
+    assert "create policy company_member_read" in sql
+    assert "create policy pricing_overrides_company_member" in sql
+    assert "grant select, insert, update" in sql
+    for forbidden in (
+        "delete from", "truncate", "drop table", "drop view",
+        "alter table public.companies add", "update public.", "insert into",
+    ):
+        assert forbidden not in sql
+
+
 def test_company_join_url_has_only_random_token():
     token = new_invite_token()
     url = invite_url("https://example.com/?embed=true", token, "join")
