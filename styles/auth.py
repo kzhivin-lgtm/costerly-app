@@ -269,6 +269,12 @@ def apply_auth_css() -> None:
             letter-spacing: -0.045em;
         }
 
+        .stApp:has(.auth-screen-active) .auth-brand a,
+        .stApp:has(.auth-screen-active) .auth-brand [data-testid="stHeaderActionElements"],
+        .stApp:has(.auth-screen-active) .auth-brand [data-testid="stHeadingWithActionElements"] > a {
+            display: none !important;
+        }
+
         .auth-brand p {
             margin: 0;
             color: #67616C;
