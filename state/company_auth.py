@@ -84,8 +84,9 @@ def _brand_logo_src() -> str:
 def _render_auth_heading(title: str, subtitle: str | None = None) -> None:
     apply_auth_css()
     st.markdown('<div class="auth-screen-active" style="display:none"></div>', unsafe_allow_html=True)
+    variant = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     html = (
-        '<div class="auth-brand">'
+        f'<div class="auth-brand auth-brand-{variant}">'
         f'<img src="{_brand_logo_src()}" alt="Costerly" />'
         f'<h1>{title}</h1>'
         + (f'<p>{subtitle}</p>' if subtitle else '')
@@ -451,17 +452,22 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 st.error("We couldn't finish joining this company. If your login was created, sign in using the same link.")
         return
 
-    _render_auth_heading("Sign in", "Enter your company account to continue.")
+    _render_auth_heading("Sign in")
+    login_error = st.session_state.get("company_login_error")
     with st.form("company_login"):
         email = st.text_input("Email", key="login_email", placeholder="you@company.com")
         password = st.text_input("Password", type="password", key="login_password")
-        submit = st.form_submit_button("Sign in", type="primary")
+        if login_error:
+            st.error(login_error)
+        submit = st.form_submit_button("Sign in", type="primary", use_container_width=True)
     if submit:
+        st.session_state.pop("company_login_error", None)
         try:
             sign_in(email, password)
             st.rerun()
         except Exception:
-            st.error("Could not sign in. Check your email and password.")
+            st.session_state.company_login_error = "Could not sign in. Check your email and password."
+            st.rerun()
 
 
 def render_company_setup(

@@ -1,17 +1,30 @@
 from __future__ import annotations
 
 from html import escape
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import streamlit as st
 
 from db.company_access import assert_company_owner
 from db.supabase_client import get_supabase_client
-from use_cases.email_addresses import is_valid_email_address
 from styles.company_profile import apply_company_profile_css
+from use_cases.email_addresses import is_valid_email_address
 
 if TYPE_CHECKING:
     from state.company_auth import CompanyAccess
+
+
+PROFILE_COLUMNS = (
+    "company_id,company_name,legal_name,legal_name_hebrew,"
+    "company_registration_number,vat_file_number,public_email,public_phone,"
+    "website_url,address_street,address_house_number,address_city,"
+    "address_postal_code,address_country,linkedin_url,instagram_url,facebook_url,"
+    "bank_name,bank_number,branch_number,account_number,iban,swift,logo_url"
+)
+PROFILE_FIELDS = tuple(
+    field for field in PROFILE_COLUMNS.split(",") if field not in {"company_id", "logo_url"}
+)
 
 
 def _current_access(access: CompanyAccess) -> CompanyAccess:
@@ -28,11 +41,27 @@ def _current_access(access: CompanyAccess) -> CompanyAccess:
     return fresh
 
 
+def _clean(value: object) -> str:
+    return str(value or "").strip()
+
+
+def _optional(value: object) -> str | None:
+    cleaned = _clean(value)
+    return cleaned or None
+
+
+def _brand_mark() -> str:
+    try:
+        return Path("assets/brand/costelry_mark_indigo.svg").read_text()
+    except OSError:
+        return ""
+
+
 def load_company_profile(access: CompanyAccess) -> dict:
     fresh = _current_access(access)
     rows = (
         get_supabase_client().table("companies")
-        .select("company_id,company_name,public_email,public_phone")
+        .select(PROFILE_COLUMNS)
         .eq("company_id", fresh.company_id)
         .limit(1)
         .execute()
@@ -42,9 +71,36 @@ def load_company_profile(access: CompanyAccess) -> dict:
     return rows[0]
 
 
+def save_company_profile(access: CompanyAccess, values: dict[str, object]) -> dict:
+    fresh = _current_access(access)
+    payload = {field: _optional(values.get(field)) for field in PROFILE_FIELDS}
+    company_name = _clean(values.get("company_name"))
+    if not company_name:
+        raise ValueError("Company name is required.")
+    payload["company_name"] = company_name
+
+    public_email = _clean(values.get("public_email"))
+    if public_email and not is_valid_email_address(public_email):
+        raise ValueError("Enter a valid official email address.")
+
+    client = get_supabase_client()
+    assert_company_owner(client, fresh.user_id, fresh.company_id)
+    result = (
+        client.table("companies")
+        .update(payload)
+        .eq("company_id", fresh.company_id)
+        .execute()
+    )
+    rows = result.data or []
+    if len(rows) != 1 or str(rows[0].get("company_id")) != fresh.company_id:
+        raise RuntimeError("The company profile was not saved.")
+    return rows[0]
+
+
 def save_company_contacts(
     access: CompanyAccess, name: str, public_email: str, public_phone: str
 ) -> dict:
+    """Keep the original focused update contract for existing callers."""
     fresh = _current_access(access)
     name = name.strip()
     public_email = public_email.strip()
@@ -52,7 +108,7 @@ def save_company_contacts(
     if not name:
         raise ValueError("Company name is required.")
     if public_email and not is_valid_email_address(public_email):
-        raise ValueError("Enter a contact email like name@company.com.")
+        raise ValueError("Enter a valid official email address.")
     client = get_supabase_client()
     assert_company_owner(client, fresh.user_id, fresh.company_id)
     result = (
@@ -92,52 +148,143 @@ def load_company_members(access: CompanyAccess) -> list[dict]:
     return sorted(members, key=lambda item: (item["Role"] != "Owner", item["Email"].lower()))
 
 
-def render_company_profile(access: CompanyAccess) -> None:
+def _text_input(profile: dict, label: str, field: str, **kwargs) -> str:
+    return st.text_input(label, value=_clean(profile.get(field)), key=f"profile_{field}", **kwargs)
+
+
+def _read_only_group(title: str, items: list[tuple[str, object]]) -> None:
+    rows = "".join(
+        '<div class="company-profile-readonly-item">'
+        f'<span>{escape(label)}</span><strong>{escape(_clean(value) or "Not set")}</strong></div>'
+        for label, value in items
+    )
+    st.markdown(
+        f'<section class="company-profile-readonly"><h3>{escape(title)}</h3>'
+        f'<div class="company-profile-readonly-grid">{rows}</div></section>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_owner_details(access: CompanyAccess, profile: dict) -> None:
+    with st.form("company_profile_details"):
+        st.markdown("### Identity")
+        company_name = _text_input(profile, "Company name", "company_name")
+        identity_left, identity_right = st.columns(2)
+        with identity_left:
+            legal_name = _text_input(profile, "Legal name (English)", "legal_name")
+            registration = _text_input(
+                profile, "Company registration number (ח.פ.)", "company_registration_number"
+            )
+        with identity_right:
+            legal_name_hebrew = _text_input(profile, "Legal name (Hebrew)", "legal_name_hebrew")
+            vat_number = _text_input(profile, "VAT file number", "vat_file_number")
+
+        st.markdown("### Contact details")
+        contact_left, contact_right = st.columns(2)
+        with contact_left:
+            official_email = _text_input(
+                profile, "Official email", "public_email", placeholder="office@company.com"
+            )
+            website = _text_input(profile, "Website", "website_url", placeholder="https://company.com")
+        with contact_right:
+            phone = _text_input(profile, "Phone", "public_phone", placeholder="+972 00 000 0000")
+            country = _text_input(profile, "Country", "address_country")
+
+        address_left, address_middle, address_right = st.columns([2, 1, 2])
+        with address_left:
+            street = _text_input(profile, "Street", "address_street")
+        with address_middle:
+            house_number = _text_input(profile, "Number", "address_house_number")
+        with address_right:
+            city = _text_input(profile, "City", "address_city")
+        postal_code = _text_input(profile, "Postal code", "address_postal_code")
+
+        with st.expander("Social links"):
+            linkedin = _text_input(profile, "LinkedIn", "linkedin_url", placeholder="https://linkedin.com/company/...")
+            instagram = _text_input(profile, "Instagram", "instagram_url", placeholder="https://instagram.com/...")
+            facebook = _text_input(profile, "Facebook", "facebook_url", placeholder="https://facebook.com/...")
+
+        st.markdown("### Bank details")
+        bank_left, bank_right = st.columns(2)
+        with bank_left:
+            bank_name = _text_input(profile, "Bank name", "bank_name")
+            branch_number = _text_input(profile, "Branch number", "branch_number")
+        with bank_right:
+            bank_number = _text_input(profile, "Bank number", "bank_number")
+            account_number = _text_input(profile, "Account number", "account_number")
+        with st.expander("International bank details"):
+            international_left, international_right = st.columns(2)
+            with international_left:
+                iban = _text_input(profile, "IBAN", "iban")
+            with international_right:
+                swift = _text_input(profile, "SWIFT / BIC", "swift")
+
+        saved = st.form_submit_button("Save details", type="primary")
+
+    if not saved:
+        return
+    values = {
+        "company_name": company_name,
+        "legal_name": legal_name,
+        "legal_name_hebrew": legal_name_hebrew,
+        "company_registration_number": registration,
+        "vat_file_number": vat_number,
+        "public_email": official_email,
+        "public_phone": phone,
+        "website_url": website,
+        "address_street": street,
+        "address_house_number": house_number,
+        "address_city": city,
+        "address_postal_code": postal_code,
+        "address_country": country,
+        "linkedin_url": linkedin,
+        "instagram_url": instagram,
+        "facebook_url": facebook,
+        "bank_name": bank_name,
+        "bank_number": bank_number,
+        "branch_number": branch_number,
+        "account_number": account_number,
+        "iban": iban,
+        "swift": swift,
+    }
+    try:
+        save_company_profile(access, values)
+        st.success("Company details saved.")
+        st.rerun()
+    except ValueError as exc:
+        st.error(str(exc))
+    except PermissionError:
+        st.error("Only the company owner can save these details.")
+    except Exception:
+        st.error("Company details were not saved. Try again in a moment.")
+
+
+def _render_member_details(profile: dict) -> None:
+    _read_only_group("Identity", [
+        ("Company name", profile.get("company_name")),
+        ("Legal name (English)", profile.get("legal_name")),
+        ("Legal name (Hebrew)", profile.get("legal_name_hebrew")),
+        ("Registration number", profile.get("company_registration_number")),
+    ])
+    _read_only_group("Contact details", [
+        ("Official email", profile.get("public_email")),
+        ("Phone", profile.get("public_phone")),
+        ("Website", profile.get("website_url")),
+        ("City", profile.get("address_city")),
+        ("Country", profile.get("address_country")),
+    ])
+    _read_only_group("Bank details", [
+        ("Bank name", profile.get("bank_name")),
+        ("Branch number", profile.get("branch_number")),
+        ("Account number", profile.get("account_number")),
+        ("IBAN", profile.get("iban")),
+        ("SWIFT / BIC", profile.get("swift")),
+    ])
+
+
+def _render_users(access: CompanyAccess) -> None:
     from state.company_auth import company_join_url
 
-    apply_company_profile_css()
-    st.markdown('<div class="company-profile-active" style="display:none"></div>', unsafe_allow_html=True)
-    st.title("Company Profile")
-    st.caption("Company details and people in one place. Only the owner can make changes.")
-    try:
-        profile = load_company_profile(access)
-    except Exception:
-        st.error("Company Profile is unavailable right now. Try again in a moment.")
-        return
-
-    st.subheader("Company details")
-    if access.role == "owner":
-        with st.form("company_contact_details"):
-            name = st.text_input("Company name", value=str(profile.get("company_name") or ""))
-            email = st.text_input(
-                "Contact email", value=str(profile.get("public_email") or access.email),
-                placeholder="you@company.com",
-            )
-            phone = st.text_input("Phone", value=str(profile.get("public_phone") or ""), placeholder="+1 555 000 0000")
-            saved = st.form_submit_button("Save company details", type="primary")
-        if saved:
-            try:
-                save_company_contacts(access, name, email, phone)
-                st.success("Company details saved.")
-                st.rerun()
-            except ValueError as exc:
-                st.error(str(exc))
-            except PermissionError:
-                st.error("Only the company owner can save these details.")
-            except Exception:
-                st.error("Company details were not saved. Try again in a moment.")
-    else:
-        st.write(f"**Company name:** {profile.get('company_name') or 'Not set'}")
-        st.write(f"**Contact email:** {profile.get('public_email') or 'Not set'}")
-        st.write(f"**Phone:** {profile.get('public_phone') or 'Not set'}")
-    st.caption("Logo and billing details for proposal PDFs will be added here next.")
-
-    st.divider()
-    st.subheader("Company metrics")
-    st.info("Rent, payroll, utilities, equipment and other cost drivers will be configured here. No default costs have been assumed.")
-
-    st.divider()
-    st.subheader("Users")
     try:
         members = load_company_members(access)
         rows = "".join(
@@ -147,22 +294,58 @@ def render_company_profile(access: CompanyAccess) -> None:
         st.markdown(
             '<div class="company-profile-users"><table>'
             '<thead><tr><th>Email</th><th>Role</th></tr></thead>'
-            f'<tbody>{rows}</tbody></table></div>',
+            f"<tbody>{rows}</tbody></table></div>",
             unsafe_allow_html=True,
         )
     except Exception:
         st.error("Company users are unavailable right now.")
     if access.role == "owner":
-        st.caption("Share this reusable link to let teammates register under this company.")
+        st.markdown("### Team invitation link")
         try:
             st.code(company_join_url(access), language=None)
         except Exception:
-            st.error("The company link is unavailable right now.")
+            st.error("The team invitation link is unavailable right now.")
 
-    st.divider()
-    st.subheader("Price lists")
-    st.info("Company price-list uploads and the shared fallback library will appear here in the next step.")
 
-    if st.button("Continue to Upload", type="primary", key="profile_to_upload"):
-        st.session_state.screen = "upload"
-        st.rerun()
+def render_company_profile(access: CompanyAccess) -> None:
+    apply_company_profile_css()
+    st.markdown('<div class="company-profile-active" style="display:none"></div>', unsafe_allow_html=True)
+    header_left, header_right = st.columns([4, 1])
+    with header_left:
+        st.markdown(
+            f'<div class="company-profile-heading"><div class="company-profile-mark">{_brand_mark()}</div>'
+            '<h1>Company profile</h1></div>',
+            unsafe_allow_html=True,
+        )
+    with header_right:
+        if st.button("Continue to upload", type="primary", key="profile_to_upload"):
+            st.session_state.screen = "upload"
+            st.rerun()
+
+    try:
+        profile = load_company_profile(access)
+    except Exception:
+        st.error("Company profile is unavailable right now. Try again in a moment.")
+        return
+
+    details_tab, metrics_tab, users_tab, prices_tab = st.tabs(
+        ["Details", "Metrics", "Users", "Price lists"]
+    )
+    with details_tab:
+        st.subheader("Details")
+        if access.role == "owner":
+            _render_owner_details(access, profile)
+        else:
+            _render_member_details(profile)
+
+    with metrics_tab:
+        st.subheader("Metrics")
+        st.info("Rent, payroll, utilities, equipment and other cost drivers will be configured here.")
+
+    with users_tab:
+        st.subheader("Users")
+        _render_users(access)
+
+    with prices_tab:
+        st.subheader("Price lists")
+        st.info("Company price lists and the shared fallback library will be configured here.")

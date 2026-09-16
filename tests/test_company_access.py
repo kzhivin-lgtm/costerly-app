@@ -254,10 +254,10 @@ def test_company_profile_has_four_sections_and_owner_only_controls(monkeypatch, 
     app.run()
     assert not app.exception
     assert [heading.value for heading in app.subheader] == [
-        "Company details", "Company metrics", "Users", "Price lists",
+        "Details", "Metrics", "Users", "Price lists",
     ]
-    assert any(button.label == "Continue to Upload" for button in app.button)
-    assert any(button.label == "Save company details" for button in app.button) == (role == "owner")
+    assert any(button.label == "Continue to upload" for button in app.button)
+    assert any(button.label == "Save details" for button in app.button) == (role == "owner")
     assert len(app.code) == (1 if role == "owner" else 0)
 
 
@@ -536,7 +536,7 @@ def test_registration_and_profile_use_same_email_shape(monkeypatch):
         company_auth.validate_registration("name@company..com", "Strong123", "Strong123", "Workshop")
     access = company_auth.CompanyAccess("user-1", "owner@example.com", "company-a", "owner", "token")
     monkeypatch.setattr(company_profile, "_current_access", lambda _access: access)
-    with pytest.raises(ValueError, match="contact email"):
+    with pytest.raises(ValueError, match="official email"):
         company_profile.save_company_contacts(access, "Workshop", "name@company..com", "")
 
 

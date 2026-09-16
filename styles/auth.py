@@ -99,7 +99,7 @@ def install_auth_form_interactions() -> None:
             form.querySelector('.costerly-auth-loading-message')?.remove();
           }
 
-          function beginCompanyCreation(button) {
+          function beginAuthOperation(button, loadingLabel) {
             const form = button.closest('div[data-testid="stForm"]');
             if (!form || form.classList.contains('costerly-auth-loading')) return;
             button.dataset.costerlyOriginalLabel = button.textContent.trim();
@@ -110,7 +110,15 @@ def install_auth_form_interactions() -> None:
               input.setAttribute('aria-disabled', 'true');
             });
             button.disabled = true;
-            setLoadingLabel(button, 'Checking your details...');
+            setLoadingLabel(button, loadingLabel);
+          }
+
+          function dismissOperationError(input) {
+            const form = input.closest('div[data-testid="stForm"]');
+            form?.querySelectorAll('[data-testid="stAlert"]').forEach((alert) => {
+              const container = alert.closest('[data-testid="stElementContainer"]');
+              (container || alert).style.display = 'none';
+            });
           }
 
           function bindCompanyCreation() {
@@ -124,7 +132,24 @@ def install_auth_form_interactions() -> None:
               const invalid = fields.filter((field) => !fieldIsValid(field));
               invalid.forEach((field) => setInvalid(field, true));
               if (invalid.length > 0) return;
-              window.setTimeout(() => beginCompanyCreation(button), 0);
+              window.setTimeout(() => beginAuthOperation(button, 'Checking your details...'), 0);
+            });
+          }
+
+          function bindSignIn() {
+            const button = Array.from(
+              doc.querySelectorAll('div[data-testid="stFormSubmitButton"] button')
+            ).find((node) => node.textContent.trim() === 'Sign in');
+            if (!button || button.dataset.costerlyLoadingBound === '1') return;
+            button.dataset.costerlyLoadingBound = '1';
+            button.addEventListener('click', () => {
+              const invalid = ['email', 'password'].filter((field) => {
+                if (field === 'password') return !(fieldShell('password')?.input.value || '');
+                return !fieldIsValid(field);
+              });
+              invalid.forEach((field) => setInvalid(field, true));
+              if (invalid.length > 0) return;
+              window.setTimeout(() => beginAuthOperation(button, 'Signing in...'), 0);
             });
           }
 
@@ -143,7 +168,9 @@ def install_auth_form_interactions() -> None:
               const target = fieldShell(field);
               if (!target || target.input.dataset.costerlyAuthBound === '1') return;
               target.input.dataset.costerlyAuthBound = '1';
+              target.input.addEventListener('focus', () => dismissOperationError(target.input));
               target.input.addEventListener('input', () => {
+                dismissOperationError(target.input);
                 if (target.shell.classList.contains('costerly-auth-invalid')) {
                   setInvalid(field, !fieldIsValid(field));
                 }
@@ -162,6 +189,7 @@ def install_auth_form_interactions() -> None:
               }
             });
             bindCompanyCreation();
+            bindSignIn();
           }
 
           refresh();
@@ -247,6 +275,19 @@ def apply_auth_css() -> None:
             font-family: var(--font-sans);
             font-size: 16px;
             line-height: 1.5;
+        }
+
+        .auth-brand-sign-in {
+            margin-bottom: 28px;
+        }
+
+        .auth-brand-sign-in img {
+            width: 164px;
+            margin-bottom: 32px;
+        }
+
+        .auth-brand-sign-in h1 {
+            font-size: clamp(38px, 6vw, 44px);
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] {
@@ -497,6 +538,9 @@ def apply_auth_css() -> None:
             }
             .auth-brand img { width: 185px; margin-bottom: 20px; }
             .auth-brand h1 { font-size: clamp(27px, 8vw, 34px); }
+            .auth-brand-sign-in { margin-bottom: 24px; }
+            .auth-brand-sign-in img { width: 150px; margin-bottom: 26px; }
+            .auth-brand-sign-in h1 { font-size: 36px; }
             .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button {
                 min-height: 58px !important;
                 font-size: 18px !important;
