@@ -327,7 +327,7 @@ def company_join_url(access: CompanyAccess) -> str:
     base_url = public_app_url(
         get_optional_secret("COSTERLY_PUBLIC_URL") or DEFAULT_PUBLIC_APP_URL
     )
-    return invite_url(base_url, str(rows[0]["join_token"]))
+    return invite_url(base_url, str(rows[0]["join_token"]), "join")
 
 
 def render_login_or_signup(invitation: InvitationContext | None) -> None:

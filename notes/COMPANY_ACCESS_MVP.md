@@ -8,8 +8,10 @@
   change company-wide metrics and price-list settings when those screens land.
 - The pilot operator generates exactly one one-use company-creation link per
   counterparty, manually. Links have no expiry and are not email-bound. Both
-  owner and employee links always use `https://costerly-app.pages.dev/`; local
+  owner and employee links always use `https://app.costerly.io/`; local
   shared links are rejected.
+- One-use owner links use `/start/<token>`. Reusable employee links use
+  `/join/<token>`. No company ID or email appears in either URL.
 - The operator command generates two secrets at once. It returns only the
   one-use owner-registration URL. The future reusable staff token is stored
   server-side with that invitation, attached to the company atomically when
@@ -83,7 +85,7 @@
 
 ## Atomic rollout, not yet performed
 
-1. Configure `COSTERLY_PUBLIC_URL=https://costerly-app.pages.dev/`. The existing Supabase `Confirm Email`
+1. Configure `COSTERLY_PUBLIC_URL=https://app.costerly.io/`. The existing Supabase `Confirm Email`
    setting stays on; the invited registration path creates accounts through
    a server-only admin call and signs them in immediately. Those addresses
    are not verified, so do not treat them as proof of identity. Password

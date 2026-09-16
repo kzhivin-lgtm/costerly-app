@@ -4,11 +4,12 @@ import hashlib
 import re
 import secrets
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import urlsplit, urlunsplit
 
 
 _TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{43}$")
-DEFAULT_PUBLIC_APP_URL = "https://costerly-app.pages.dev/"
+DEFAULT_PUBLIC_APP_URL = "https://app.costerly.io/"
+INVITATION_ROUTES = {"start", "join"}
 
 
 def new_invite_token() -> str:
@@ -26,15 +27,16 @@ def invite_token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("ascii")).hexdigest()
 
 
-def invite_url(base_url: str, token: str) -> str:
+def invite_url(base_url: str, token: str, route: str) -> str:
     if not valid_invite_token(token):
         raise ValueError("Invalid invitation token format.")
+    if route not in INVITATION_ROUTES:
+        raise ValueError("Invitation route must be 'start' or 'join'.")
     parts = urlsplit(base_url.strip())
     if parts.scheme not in {"http", "https"} or not parts.netloc or parts.fragment:
         raise ValueError("A public http(s) base URL without a fragment is required.")
-    query = [(key, value) for key, value in parse_qsl(parts.query) if key != "invite"]
-    query.append(("invite", token))
-    return urlunsplit((parts.scheme, parts.netloc, parts.path or "/", urlencode(query), ""))
+    path = f"{parts.path.rstrip('/')}/{route}/{token}"
+    return urlunsplit((parts.scheme, parts.netloc, path, parts.query, ""))
 
 
 def public_app_url(configured_url: str | None = None) -> str:
@@ -53,7 +55,7 @@ def create_one_company_link(client: Any, base_url: str, label: str | None = None
     """Create the owner and future staff keys, returning only the owner URL."""
     owner_token = new_invite_token()
     staff_token = new_invite_token()
-    url = invite_url(public_app_url(base_url), owner_token)  # Validate before touching Supabase.
+    url = invite_url(public_app_url(base_url), owner_token, "start")  # Validate before touching Supabase.
     client.table("company_creation_invites").insert({
         "token_hash": invite_token_hash(owner_token),
         "join_token": staff_token,

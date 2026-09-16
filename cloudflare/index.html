@@ -78,7 +78,10 @@
       (() => {
         const mask = document.getElementById("app-loading-mask");
         const frame = document.getElementById("costerly-app-frame");
-        const inviteToken = new URLSearchParams(window.location.search).get("invite");
+        const pathInvite = window.location.pathname.match(/^\/(?:start|join)\/([A-Za-z0-9_-]{43})\/?$/);
+        const inviteToken = pathInvite
+          ? pathInvite[1]
+          : new URLSearchParams(window.location.search).get("invite");
         if (frame && inviteToken && /^[A-Za-z0-9_-]{43}$/.test(inviteToken)) {
           const appUrl = new URL(frame.src);
           appUrl.searchParams.set("invite", inviteToken);

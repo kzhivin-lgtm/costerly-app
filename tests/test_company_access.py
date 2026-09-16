@@ -227,7 +227,7 @@ def test_owner_join_link_uses_public_application_not_localhost(monkeypatch):
     monkeypatch.setattr(company_auth, "_server_client", lambda: _Client([{"join_token": join_token}]))
     monkeypatch.setattr(company_auth, "get_optional_secret", lambda *_args: None)
     url = company_auth.company_join_url(owner)
-    assert url.startswith(f"{DEFAULT_PUBLIC_APP_URL}?invite=")
+    assert url.startswith(f"{DEFAULT_PUBLIC_APP_URL}join/")
     assert "localhost" not in url and "127.0.0.1" not in url
 
 
@@ -248,7 +248,7 @@ def test_company_profile_has_four_sections_and_owner_only_controls(monkeypatch, 
     monkeypatch.setattr(company_profile, "load_company_members", lambda _access: [
         {"Email": "owner@example.com", "Role": "Owner"},
     ])
-    monkeypatch.setattr(company_auth, "company_join_url", lambda _access: "https://example.com/?invite=token")
+    monkeypatch.setattr(company_auth, "company_join_url", lambda _access: "https://example.com/join/token")
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = role
     app.run()
@@ -293,7 +293,9 @@ def test_one_creation_link_stores_only_hash_and_no_email_or_company_id():
             return InviteQuery()
 
     url = create_one_company_link(InviteClient(), "https://example.com", "Pilot company 1")
-    token = parse_qs(urlsplit(url).query)["invite"][0]
+    parts = urlsplit(url)
+    assert parts.path.startswith("/start/")
+    token = parts.path.rsplit("/", 1)[-1]
     assert len(writes) == 1
     assert writes[0]["token_hash"] == invite_token_hash(token)
     assert writes[0]["label"] == "Pilot company 1"
@@ -317,15 +319,20 @@ def test_live_schema_migration_precreates_staff_link_without_dropping_old_rpc():
 
 def test_company_join_url_has_only_random_token():
     token = new_invite_token()
-    url = invite_url("https://example.com/?embed=true", token)
-    assert parse_qs(urlsplit(url).query) == {"embed": ["true"], "invite": [token]}
+    url = invite_url("https://example.com/?embed=true", token, "join")
+    assert urlsplit(url).path == f"/join/{token}"
+    assert parse_qs(urlsplit(url).query) == {"embed": ["true"]}
     wrapper = (Path(__file__).parents[1] / "cloudflare/index.html").read_text()
+    redirects = (Path(__file__).parents[1] / "cloudflare/_redirects").read_text()
+    assert "(?:start|join)" in wrapper
     assert 'appUrl.searchParams.set("invite", inviteToken)' in wrapper
+    assert "/start/*  /index.html  200" in redirects
+    assert "/join/*   /index.html  200" in redirects
 
 
 def test_shared_invites_use_public_https_application_only():
     assert public_app_url() == DEFAULT_PUBLIC_APP_URL
-    assert public_app_url("https://costerly-app.pages.dev/") == "https://costerly-app.pages.dev/"
+    assert public_app_url("https://app.costerly.io/") == "https://app.costerly.io/"
     for local_url in (
         "http://127.0.0.1:8580",
         "https://localhost:8580",
@@ -360,7 +367,7 @@ def test_registration_rejects_explicit_local_browser_origins(monkeypatch, reques
 
 
 @pytest.mark.parametrize("request_url", [
-    "https://costerly-app.pages.dev/?invite=token",
+    "https://app.costerly.io/start/token",
     "https://costerly-app.streamlit.app/?embed=true&invite=token",
     "http://testserver/",
     "",
