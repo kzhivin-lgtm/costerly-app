@@ -9,6 +9,7 @@ _QUIET_FIELD_ERRORS = {
     "Enter your company name.",
     "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number.",
     "Passwords do not match.",
+    "Confirm your password.",
 }
 
 
@@ -61,15 +62,43 @@ def install_auth_form_interactions() -> None:
             if (target) target.classList.toggle('costerly-auth-invalid', invalid);
           }
 
+          function fieldIsValid(field) {
+            const target = fieldShell(field);
+            if (!target) return true;
+            const value = target.input.value;
+            if (field === 'company') return value.trim().length > 0;
+            if (field === 'email') return validEmail(value);
+            if (field === 'password') {
+              return value.length >= 8 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /[0-9]/.test(value);
+            }
+            if (field === 'confirm') {
+              const password = fieldShell('password')?.input.value || '';
+              return value.length > 0 && value === password;
+            }
+            return true;
+          }
+
           function refresh() {
             doc.querySelectorAll('.auth-field-error-marker').forEach((marker) => {
+              if (marker.dataset.costerlyApplied === '1') return;
+              marker.dataset.costerlyApplied = '1';
               setInvalid(marker.dataset.authField, true);
             });
             Object.keys(labels).forEach((field) => {
               const target = fieldShell(field);
               if (!target || target.input.dataset.costerlyAuthBound === '1') return;
               target.input.dataset.costerlyAuthBound = '1';
-              target.input.addEventListener('input', () => setInvalid(field, false));
+              target.input.addEventListener('input', () => {
+                if (target.shell.classList.contains('costerly-auth-invalid')) {
+                  setInvalid(field, !fieldIsValid(field));
+                }
+                if (field === 'password') {
+                  const confirm = fieldShell('confirm');
+                  if (confirm?.shell.classList.contains('costerly-auth-invalid')) {
+                    setInvalid('confirm', !fieldIsValid('confirm'));
+                  }
+                }
+              });
               if (field === 'email') {
                 target.input.addEventListener('blur', () => {
                   const value = target.input.value.trim();
@@ -179,6 +208,14 @@ def apply_auth_css() -> None:
 
         .stApp:has(.auth-screen-active) .auth-field-error-marker {
             display: none !important;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stElementContainer"]:has(.auth-field-error-marker) {
+            display: none !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] [data-testid="stTextInputRootElement"],

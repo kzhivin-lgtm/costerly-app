@@ -478,6 +478,18 @@ def test_obvious_email_error_uses_quiet_field_marker_without_text():
     assert not any("23514" in error.value or "companies_id_format" in error.value for error in app.error)
 
 
+def test_submit_marks_every_invalid_registration_field_without_error_text():
+    app = AppTest.from_function(_render_invitation_signup).run()
+    app.text_input(key="signup_company_name").set_value("Workshop")
+    next(button for button in app.button if button.label == "Create Company Account").click().run()
+    markers = "\n".join(item.value for item in app.markdown)
+    assert 'data-auth-field="company"' not in markers
+    assert 'data-auth-field="email"' in markers
+    assert 'data-auth-field="password"' in markers
+    assert 'data-auth-field="confirm"' in markers
+    assert not app.error
+
+
 @pytest.mark.parametrize("email,password,confirm,company", [
     ("bad-email", "Strong123", "Strong123", "Workshop"),
     ("owner@example.com", "password1", "password1", "Workshop"),
@@ -546,8 +558,12 @@ def test_auth_ui_contract_hides_framework_hints_and_reserves_red_for_validation(
     normalized_guidelines = " ".join(guidelines.split())
     assert '[data-testid="InputInstructions"]' in css
     assert "costerly-auth-invalid:not(:focus-within)" in css
+    assert '[data-testid="stElementContainer"]:has(.auth-field-error-marker)' in css
+    assert "marker.dataset.costerlyApplied" in css
     assert "Focus is never an error and must never be red" in normalized_guidelines
-    assert "Any input event clears the visible invalid state" in normalized_guidelines
+    assert "clears immediately when the current value becomes valid" in normalized_guidelines
+    assert "One submit validates every field" in normalized_guidelines
+    assert "Hidden validation markers must not reserve layout space" in normalized_guidelines
 
 
 def test_signup_requires_current_invite_and_uses_mail_free_admin_path(monkeypatch):

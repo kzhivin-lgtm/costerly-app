@@ -9,8 +9,10 @@
 - Empty required fields become invalid only after the user submits the form.
 - A non-empty value that can be validated locally may become invalid on blur.
   Email is the canonical example.
-- Any input event clears the visible invalid state so the interface does not
-  continue scolding the user while they correct a value.
+- After validation, an invalid state remains only while its condition is still
+  unmet and clears immediately when the current value becomes valid.
+- One submit validates every field. Do not stop at the first invalid value.
+- Hidden validation markers must not reserve layout space or shift later fields.
 - Use a red border as the primary field-level validation signal. Do not repeat
   obvious instructions such as `Enter an email address` beneath a clearly
   labelled Email field.

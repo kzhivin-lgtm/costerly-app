@@ -92,14 +92,27 @@ def _render_auth_heading(title: str, subtitle: str | None = None) -> None:
 def validate_registration(
     email: str, password: str, password_confirm: str, company_name: str | None = None
 ) -> None:
-    if not is_valid_email_address(email):
-        raise ValueError("Enter an email address like name@company.com.")
+    errors = registration_validation_errors(email, password, password_confirm, company_name)
+    if errors:
+        raise ValueError(next(iter(errors.values())))
+
+
+def registration_validation_errors(
+    email: str, password: str, password_confirm: str, company_name: str | None = None
+) -> dict[str, str]:
+    """Return every invalid registration field so one submit marks them all."""
+    errors: dict[str, str] = {}
     if company_name is not None and not company_name.strip():
-        raise ValueError("Enter your company name.")
+        errors["company"] = "Enter your company name."
+    if not is_valid_email_address(email):
+        errors["email"] = "Enter an email address like name@company.com."
     if len(password) < 8 or not re.search(r"[a-z]", password) or not re.search(r"[A-Z]", password) or not re.search(r"[0-9]", password):
-        raise ValueError("Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number.")
-    if password != password_confirm:
-        raise ValueError("Passwords do not match.")
+        errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number."
+    if not password_confirm:
+        errors["confirm"] = "Confirm your password."
+    elif password != password_confirm:
+        errors["confirm"] = "Passwords do not match."
+    return errors
 
 
 def company_auth_enabled() -> bool:
@@ -334,37 +347,34 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
     install_auth_form_interactions()
     if invitation is not None and invitation.kind == "create":
         _render_auth_heading("Create Your Company Account")
-        creation_error = st.session_state.get("company_creation_error")
+        raw_creation_error = st.session_state.get("company_creation_error") or {}
+        creation_errors = (
+            {raw_creation_error[0]: raw_creation_error[1]}
+            if isinstance(raw_creation_error, tuple)
+            else raw_creation_error
+        )
         with st.form("company_creation_registration"):
             company_name = st.text_input("Your company name", key="signup_company_name", placeholder="Company name")
-            if creation_error and creation_error[0] == "company":
-                render_auth_field_error("company", creation_error[1])
+            if "company" in creation_errors:
+                render_auth_field_error("company", creation_errors["company"])
             email = st.text_input("Email", key="signup_email", placeholder="you@company.com")
-            if creation_error and creation_error[0] == "email":
-                render_auth_field_error("email", creation_error[1])
+            if "email" in creation_errors:
+                render_auth_field_error("email", creation_errors["email"])
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm Password", type="password", key="signup_password_confirm")
-            if creation_error and creation_error[0] == "password":
-                render_auth_field_error("password", creation_error[1])
-            if creation_error and creation_error[0] == "confirm":
-                render_auth_field_error("confirm", creation_error[1])
+            if "password" in creation_errors:
+                render_auth_field_error("password", creation_errors["password"])
+            if "confirm" in creation_errors:
+                render_auth_field_error("confirm", creation_errors["confirm"])
             st.caption("Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.")
             submit = st.form_submit_button("Create Company Account", type="primary", use_container_width=True)
-            if creation_error and creation_error[0] == "service":
-                st.error(creation_error[1])
+            if "service" in creation_errors:
+                st.error(creation_errors["service"])
         if submit:
             st.session_state.pop("company_creation_error", None)
-            try:
-                validate_registration(email, password, confirm, company_name)
-            except ValueError as exc:
-                message = str(exc)
-                field = (
-                    "email" if message.startswith("Enter an email")
-                    else "company" if message.startswith("Enter your company")
-                    else "confirm" if message == "Passwords do not match."
-                    else "password"
-                )
-                st.session_state.company_creation_error = (field, message)
+            validation_errors = registration_validation_errors(email, password, confirm, company_name)
+            if validation_errors:
+                st.session_state.company_creation_error = validation_errors
                 st.rerun()
             try:
                 authenticate_invited_creator(email, password, invitation)
@@ -374,13 +384,13 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 if access.company_id is not None:
                     raise ValueError("This login already belongs to a company.")
             except ExistingLoginPasswordError as exc:
-                st.session_state.company_creation_error = ("password", str(exc))
+                st.session_state.company_creation_error = {"password": str(exc)}
                 st.rerun()
             except PermissionError as exc:
-                st.session_state.company_creation_error = ("service", str(exc))
+                st.session_state.company_creation_error = {"service": str(exc)}
                 st.rerun()
             except ValueError as exc:
-                st.session_state.company_creation_error = ("service", str(exc))
+                st.session_state.company_creation_error = {"service": str(exc)}
                 st.rerun()
             except AuthApiError as exc:
                 message = (
@@ -388,10 +398,11 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                     if exc.code in {"email_exists", "user_already_exists"}
                     else "We couldn't create your login. Check your email and try again."
                 )
-                st.session_state.company_creation_error = ("password" if exc.code in {"email_exists", "user_already_exists"} else "service", message)
+                field = "password" if exc.code in {"email_exists", "user_already_exists"} else "service"
+                st.session_state.company_creation_error = {field: message}
                 st.rerun()
             except Exception:
-                st.session_state.company_creation_error = ("service", "We couldn't create your login. Try again in a moment.")
+                st.session_state.company_creation_error = {"service": "We couldn't create your login. Try again in a moment."}
                 st.rerun()
             try:
                 create_company_for_user(access, company_name, invitation.token)
