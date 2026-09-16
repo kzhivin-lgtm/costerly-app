@@ -71,41 +71,6 @@ def test_company_auth_is_opt_in_until_database_switch(monkeypatch):
     assert company_auth.company_auth_enabled() is True
 
 
-def test_browser_session_restores_and_persists_supabase_tokens(monkeypatch):
-    st = company_auth.st
-    st.session_state.clear()
-    replies = [{
-        "status": "ready",
-        "requestId": "read-1",
-        "session": {
-            "access_token": "access-1",
-            "refresh_token": "refresh-1",
-            "expires_at": 123,
-        },
-    }]
-    st.session_state._browser_auth_read_request = "read-1"
-    monkeypatch.setattr(company_auth, "browser_session_exchange", lambda **_kwargs: replies.pop(0))
-
-    assert company_auth.sync_browser_auth_session() is True
-    assert st.session_state.auth_access_token == "access-1"
-    assert st.session_state.auth_refresh_token == "refresh-1"
-    assert st.session_state.auth_expires_at == 123
-
-    class Session:
-        access_token = "access-2"
-        refresh_token = "refresh-2"
-        expires_at = 456
-
-    company_auth._store_auth_session(Session())
-    pending = st.session_state._browser_auth_pending
-    assert pending["action"] == "store"
-    assert pending["session"] == {
-        "access_token": "access-2",
-        "refresh_token": "refresh-2",
-        "expires_at": 456,
-    }
-
-
 def test_browser_policy_migration_removes_anonymous_cost_access():
     sql = (Path(__file__).parents[1] / "db/sql/2026_09_15_company_access_foundation.sql").read_text()
     assert "drop policy if exists rfq_estimate_pricing_overrides_anon_update" in sql

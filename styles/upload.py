@@ -19,16 +19,17 @@ def apply_upload_css() -> None:
             width: 100% !important;
             max-width: none !important;
             min-height: 100vh !important;
-            padding: 0 var(--space-4) !important;
+            padding: var(--app-content-top) var(--space-4) 72px !important;
             display: flex !important;
             flex-direction: column !important;
             align-items: center !important;
-            justify-content: center !important;
-            transform: translateY(32px);
+            justify-content: flex-start !important;
+            transform: none !important;
         }
 
         .upload-screen {
             width: 100%;
+            margin-top: -70px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -40,14 +41,6 @@ def apply_upload_css() -> None:
             flex-direction: column;
             align-items: center;
             text-align: center;
-        }
-
-        .upload-screen__logo {
-            width: 323px;
-            max-width: 70vw;
-            height: auto;
-            display: block;
-            margin: 0 0 38px 0;
         }
 
         .upload-screen__hero {
@@ -88,17 +81,17 @@ def apply_upload_css() -> None:
             min-height: var(--upload-height) !important;
             padding: 0 !important;
             margin: 0 !important;
-            border: 2px dashed rgba(128, 73, 198, 0.50) !important;
-            border-radius: 18px !important;
-            background: var(--color-surface) !important;
-            box-shadow: none !important;
+            border: 0 !important;
+            border-radius: 20px !important;
+            background: #FFFFFF !important;
+            box-shadow: 0 18px 48px rgba(59, 46, 72, 0.08) !important;
             outline: none !important;
             overflow: hidden !important;
             cursor: pointer !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            transition: background-color 130ms ease, border-color 130ms ease, border-style 130ms ease !important;
+            transition: background-color 130ms ease, box-shadow 130ms ease !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] > div,
@@ -115,7 +108,7 @@ def apply_upload_css() -> None:
             content: "" !important;
             position: absolute !important;
             left: 50% !important;
-            top: 52px !important;
+            top: calc(50% - 56px) !important;
             width: 46px !important;
             height: 46px !important;
             transform: translateX(-50%) !important;
@@ -132,7 +125,7 @@ def apply_upload_css() -> None:
             position: absolute !important;
             left: 0 !important;
             right: 0 !important;
-            top: 108px !important;
+            top: calc(50% + 4px) !important;
             display: block !important;
             color: rgba(42, 31, 44, 0.72) !important;
             font-family: var(--font-mono) !important;
@@ -147,8 +140,8 @@ def apply_upload_css() -> None:
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover {
             background: var(--color-upload-lilac) !important;
-            border-color: var(--color-indigo, var(--color-accent)) !important;
-            border-style: solid !important;
+            border: 0 !important;
+            box-shadow: 0 18px 48px rgba(89, 48, 137, 0.16) !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover::before {
@@ -165,14 +158,15 @@ def apply_upload_css() -> None:
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"]:hover {
-            background: rgba(128, 73, 198, 0.045) !important;
-            border-color: rgba(128, 73, 198, 0.72) !important;
-            border-style: solid !important;
+            background: #F5EFFC !important;
+            border: 0 !important;
+            box-shadow: 0 20px 52px rgba(89, 48, 137, 0.13) !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"].costerly-upload-dragover:hover {
             background: var(--color-upload-lilac) !important;
-            border-color: var(--color-indigo, var(--color-accent)) !important;
+            border: 0 !important;
+            box-shadow: 0 18px 48px rgba(89, 48, 137, 0.16) !important;
         }
 
         div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] *,
@@ -182,13 +176,8 @@ def apply_upload_css() -> None:
         }
 
         @media (max-width: 760px) {
-            .stApp:has(.upload-screen-active) .block-container {
-                transform: translateY(24px);
-            }
-
-            .upload-screen__logo {
-                width: min(248px, 72vw);
-                margin-bottom: 38px;
+            .upload-screen {
+                margin-top: -38px;
             }
 
             .upload-screen__hero {
@@ -204,14 +193,14 @@ def apply_upload_css() -> None:
             }
 
             div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"]::before {
-                top: 42px !important;
+                top: calc(50% - 50px) !important;
                 width: 42px !important;
                 height: 42px !important;
             }
 
             div[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"]::after {
                 content: "Upload file\\A PDF/JPEG/PNG" !important;
-                top: 94px !important;
+                top: calc(50% + 2px) !important;
                 font-size: 18px !important;
             }
 
@@ -225,11 +214,7 @@ def apply_upload_css() -> None:
 
         @media (max-height: 760px) and (max-width: 760px) {
             .stApp:has(.upload-screen-active) .block-container {
-                transform: translateY(16px);
-            }
-
-            .upload-screen__logo {
-                margin-bottom: 34px;
+                padding-top: 124px !important;
             }
 
             .upload-screen__hero {

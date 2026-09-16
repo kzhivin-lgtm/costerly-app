@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import base64
-from functools import lru_cache
-from pathlib import Path
-
 import streamlit as st
 
 from agents.ocr_adapter import warm_mistral_http_client_async
@@ -12,28 +8,12 @@ from ui.js_guards import install_upload_interaction_guards
 from ui.processing_stage import processing_stage_html
 
 
-LOGO_PATH = Path("assets/brand/costelry_logo_full_cropped.svg")
-
-@lru_cache(maxsize=1)
-def _read_logo_data_uri() -> str:
-    """Return the brand logo as an inline image source for the upload screen.
-
-    Called during upload screen rendering. Keeping the SVG inline avoids layout
-    differences from Streamlit's image wrapper.
-    """
-    svg_bytes = LOGO_PATH.read_bytes()
-    encoded = base64.b64encode(svg_bytes).decode("ascii")
-    return f"data:image/svg+xml;base64,{encoded}"
-
 def _render_upload_hero() -> None:
-    """Render the static brand and hero block above the uploader."""
-    logo_src = _read_logo_data_uri()
-
+    """Render the upload value proposition below the shared app header."""
     html = (
         '<div class="upload-screen-active" style="display:none"></div>'
         '<div class="upload-screen">'
         '<div class="upload-screen__stack">'
-        f'<img class="upload-screen__logo" src="{logo_src}" alt="costerly.ai" />'
         '<div class="upload-screen__hero">'
         'AI estimating<br>'
         'Quote request to proposal<br>'

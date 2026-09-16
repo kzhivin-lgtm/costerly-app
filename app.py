@@ -11,12 +11,12 @@ from state.company_auth import (
     render_company_account,
     render_company_setup,
     render_login_or_signup,
-    sync_browser_auth_session,
 )
 from db.company_access import assert_estimate_owned, assert_run_owned
 from db.supabase_client import get_supabase_client
 from styles.base import apply_base_css
 from ui.js_guards import scroll_parent_to_top, signal_app_ready_to_embed
+from ui.app_header import render_app_header
 
 
 st.set_page_config(
@@ -61,16 +61,10 @@ def _render_screen(screen: str, company_id: str) -> None:
 def main() -> None:
     init_state()
     apply_base_css()
-    st.markdown(
-        '<div data-costerly-build="session-v1-2026-09-16" style="display:none"></div>',
-        unsafe_allow_html=True,
-    )
+    render_app_header()
 
     auth_enabled = company_auth_enabled()
     if auth_enabled:
-        if not sync_browser_auth_session():
-            st.markdown("<div style='height:1px'></div>", unsafe_allow_html=True)
-            st.stop()
         try:
             access = current_company_access()
             invitation = invitation_from_url()

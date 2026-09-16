@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import base64
 from dataclasses import dataclass
-from functools import lru_cache
-from pathlib import Path
 import re
 import secrets
 import time
@@ -31,7 +28,7 @@ from use_cases.invite_links import (
     valid_invite_token,
 )
 from use_cases.email_addresses import is_valid_email_address
-from ui.browser_session import browser_session_exchange
+from ui.app_header import render_account_header_controls
 
 
 @dataclass(frozen=True)
@@ -76,19 +73,12 @@ def require_public_invitation_request() -> None:
         )
 
 
-@lru_cache(maxsize=1)
-def _brand_logo_src() -> str:
-    logo = Path("assets/brand/costelry_logo_full_cropped.svg").read_bytes()
-    return "data:image/svg+xml;base64," + base64.b64encode(logo).decode("ascii")
-
-
 def _render_auth_heading(title: str, subtitle: str | None = None) -> None:
     apply_auth_css()
     st.markdown('<div class="auth-screen-active" style="display:none"></div>', unsafe_allow_html=True)
     variant = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     html = (
         f'<div class="auth-brand auth-brand-{variant}">'
-        f'<img src="{_brand_logo_src()}" alt="Costerly" />'
         f'<h1>{title}</h1>'
         + (f'<p>{subtitle}</p>' if subtitle else '')
         + '</div>'
@@ -150,59 +140,6 @@ def _store_auth_session(session: object) -> None:
     st.session_state.auth_access_token = session.access_token
     st.session_state.auth_refresh_token = session.refresh_token
     st.session_state.auth_expires_at = int(session.expires_at or 0)
-    st.session_state._browser_auth_pending = {
-        "action": "store",
-        "request_id": secrets.token_urlsafe(12),
-        "session": {
-            "access_token": session.access_token,
-            "refresh_token": session.refresh_token,
-            "expires_at": int(session.expires_at or 0),
-        },
-    }
-
-
-def sync_browser_auth_session() -> bool:
-    """Synchronize Streamlit state with the browser's persisted Supabase session.
-
-    Returns False only while the browser component is still loading and no
-    in-memory session is available yet.
-    """
-    pending = st.session_state.get("_browser_auth_pending")
-    if isinstance(pending, dict):
-        action = str(pending.get("action") or "read")
-        request_id = str(pending.get("request_id") or "")
-        session = pending.get("session") if isinstance(pending.get("session"), dict) else None
-    else:
-        request_id = st.session_state.setdefault(
-            "_browser_auth_read_request", secrets.token_urlsafe(12)
-        )
-        action = "read"
-        session = None
-
-    result = browser_session_exchange(
-        action=action,
-        request_id=request_id,
-        session=session,
-    )
-    has_memory_session = bool(
-        st.session_state.get("auth_access_token")
-        and st.session_state.get("auth_refresh_token")
-    )
-    if not result or result.get("requestId") != request_id:
-        return has_memory_session
-
-    if isinstance(pending, dict):
-        st.session_state.pop("_browser_auth_pending", None)
-
-    stored = result.get("session")
-    if not has_memory_session and isinstance(stored, dict):
-        access_token = stored.get("access_token")
-        refresh_token = stored.get("refresh_token")
-        if isinstance(access_token, str) and isinstance(refresh_token, str):
-            st.session_state.auth_access_token = access_token
-            st.session_state.auth_refresh_token = refresh_token
-            st.session_state.auth_expires_at = int(stored.get("expires_at") or 0)
-    return True
 
 
 def clear_auth_session() -> None:
@@ -265,11 +202,6 @@ def sign_out() -> None:
         except Exception:
             pass  # Local logout must work even if the network is unavailable.
     clear_auth_session()
-    st.session_state._browser_auth_pending = {
-        "action": "clear",
-        "request_id": secrets.token_urlsafe(12),
-        "session": None,
-    }
 
 
 def current_company_access() -> CompanyAccess | None:
@@ -435,6 +367,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             submit = st.form_submit_button("Create Company Account", type="primary", use_container_width=True)
             if "service" in creation_errors:
                 st.error(creation_errors["service"])
+        install_auth_form_interactions()
         if submit:
             st.session_state.pop("company_creation_error", None)
             validation_errors = registration_validation_errors(email, password, confirm, company_name)
@@ -494,6 +427,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             confirm = st.text_input("Confirm password", type="password", key="signup_password_confirm")
             st.caption("At least 8 characters, one uppercase letter, one lowercase letter, and one number.")
             submit = st.form_submit_button("Create account", type="primary")
+        install_auth_form_interactions()
         if submit:
             try:
                 validate_registration(email, password, confirm)
@@ -519,6 +453,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
         if login_error:
             st.error(login_error)
         submit = st.form_submit_button("Sign in", type="primary", use_container_width=True)
+    install_auth_form_interactions()
     if submit:
         st.session_state.pop("company_login_error", None)
         try:
@@ -573,15 +508,13 @@ def render_company_setup(
 
 
 def render_account_control(access: CompanyAccess) -> None:
-    with st.sidebar:
-        st.caption(access.email)
-        st.caption("Company owner" if access.role == "owner" else "Company member")
-        if st.button("Company Profile", key="open_company_account"):
-            st.session_state.screen = "account"
-            st.rerun()
-        if st.button("Sign out", key="company_sign_out"):
-            sign_out()
-            st.rerun()
+    action = render_account_header_controls()
+    if action == "profile":
+        st.session_state.screen = "account"
+        st.rerun()
+    if action == "sign_out":
+        sign_out()
+        st.rerun()
 
 
 def render_company_account(access: CompanyAccess) -> None:

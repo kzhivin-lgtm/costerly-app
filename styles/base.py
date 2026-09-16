@@ -96,8 +96,9 @@ def apply_base_css() -> None:
             --radius-lg: 8px;
 
             /* Shared layout tokens */
-            --upload-width: 600px;
-            --upload-height: 200px;
+            --primary-panel-width: 600px;
+            --upload-width: var(--primary-panel-width);
+            --upload-height: 300px;
             --post-upload-width: min(960px, calc(100vw - 56px));
             --post-upload-top: 73px;
             --post-upload-screen-top: 26px;
@@ -111,6 +112,9 @@ def apply_base_css() -> None:
             --post-upload-subtitle-margin-bottom: var(--space-3);
             --post-upload-subtitle-width: 760px;
             --progress-height: 12px;
+            --app-header-top: clamp(72px, 10vh, 104px);
+            --app-header-width: min(323px, 70vw);
+            --app-content-top: clamp(132px, 14vh, 158px);
 
             /* Shared button tokens */
             --button-height-md: 44px;
@@ -231,6 +235,79 @@ def apply_base_css() -> None:
             background: var(--color-bg) !important;
             color: var(--color-text) !important;
             font-family: var(--font-sans) !important;
+        }
+
+        .costerly-app-header {
+            position: fixed;
+            top: var(--app-header-top);
+            left: 50%;
+            z-index: 900;
+            width: var(--app-header-width);
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+
+        .costerly-app-header img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .stApp [data-testid="stElementContainer"]:has(.costerly-app-header) {
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+        }
+
+        .st-key-costerly_header_controls {
+            position: fixed !important;
+            top: calc(var(--app-header-top) + 5px);
+            right: 28px;
+            z-index: 950;
+            width: 260px !important;
+        }
+
+        .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
+            gap: 8px;
+            height: 34px !important;
+            align-items: center !important;
+        }
+
+        .st-key-costerly_header_controls [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+            min-height: 34px !important;
+            justify-content: center !important;
+        }
+
+        .st-key-costerly_header_controls button {
+            height: 34px !important;
+            min-height: 34px !important;
+            max-height: 34px !important;
+            padding: 0 12px !important;
+            border-radius: 8px !important;
+            font-family: var(--font-sans) !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            text-transform: none !important;
+            background: rgba(255, 255, 255, 0.92) !important;
+            backdrop-filter: blur(10px);
+        }
+
+        .st-key-costerly_header_controls button p {
+            white-space: nowrap !important;
+        }
+
+        .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button p::before {
+            content: "";
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            vertical-align: -2px;
+            background: currentColor;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4H5.8A1.8 1.8 0 0 0 4 5.8v12.4A1.8 1.8 0 0 0 5.8 20H10'/%3E%3Cpath d='M14 8l4 4-4 4'/%3E%3Cpath d='M8 12h10'/%3E%3C/svg%3E") center / contain no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4H5.8A1.8 1.8 0 0 0 4 5.8v12.4A1.8 1.8 0 0 0 5.8 20H10'/%3E%3Cpath d='M14 8l4 4-4 4'/%3E%3Cpath d='M8 12h10'/%3E%3C/svg%3E") center / contain no-repeat;
         }
 
         #MainMenu,
@@ -461,6 +538,20 @@ def apply_base_css() -> None:
                 --post-upload-width: calc(100vw - 32px);
                 --post-upload-top: 56px;
                 --post-upload-title-size: clamp(30px, 9vw, 40px);
+                --app-header-top: 64px;
+                --app-header-width: min(248px, 66vw);
+                --app-content-top: 132px;
+            }
+
+            .costerly-app-header {
+                top: var(--app-header-top);
+                width: var(--app-header-width);
+            }
+
+            .st-key-costerly_header_controls {
+                top: calc(var(--app-header-top) + 8px);
+                right: 14px;
+                width: 224px !important;
             }
 
             .block-container,

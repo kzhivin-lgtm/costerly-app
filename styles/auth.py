@@ -232,31 +232,24 @@ def apply_auth_css() -> None:
         .stApp:has(.auth-screen-active),
         .stApp:has(.auth-screen-active) [data-testid="stAppViewContainer"] {
             color-scheme: light !important;
-            background: radial-gradient(circle at 12% 8%, #EFE5FA 0, #F7F3F6 34%, #F7F3F6 100%) !important;
+            background: var(--color-bg) !important;
             color: #2A1F2C !important;
         }
 
         .stApp:has(.auth-screen-active) .block-container,
         .stApp:has(.auth-screen-active) [data-testid="stMainBlockContainer"] {
-            width: min(520px, calc(100vw - 32px)) !important;
-            max-width: 520px !important;
+            width: min(var(--primary-panel-width), calc(100vw - 32px)) !important;
+            max-width: var(--primary-panel-width) !important;
             box-sizing: border-box !important;
             margin: 0 auto !important;
-            padding: clamp(40px, 8vh, 86px) 0 72px !important;
+            padding: var(--app-content-top) 0 72px !important;
             background: transparent !important;
         }
 
         .auth-brand {
+            margin-top: -112px;
             margin-bottom: 10px;
             text-align: center;
-        }
-
-        .auth-brand img {
-            display: block;
-            width: 210px;
-            height: auto;
-            max-width: 65vw;
-            margin: 0 auto 20px;
         }
 
         .auth-brand h1 {
@@ -284,16 +277,19 @@ def apply_auth_css() -> None:
         }
 
         .auth-brand-sign-in {
-            margin-bottom: 28px;
-        }
-
-        .auth-brand-sign-in img {
-            width: 164px;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
         }
 
         .auth-brand-sign-in h1 {
-            font-size: clamp(38px, 6vw, 44px);
+            color: var(--color-purple, var(--primitive-purple-900));
+            font-family: var(--font-hero);
+            font-size: 46px;
+            font-weight: 400;
+            font-synthesis: none;
+            letter-spacing: -0.045em;
+            line-height: 1.18;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: geometricPrecision;
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] {
@@ -345,6 +341,14 @@ def apply_auth_css() -> None:
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="base-input"] {
             border-color: #CEC5D1 !important;
             box-shadow: none !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] > div[data-baseweb="base-input"] {
+            width: 100% !important;
+            border: 0 !important;
+            outline: 0 !important;
+            box-shadow: none !important;
+            background: transparent !important;
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] > div,
@@ -403,8 +407,15 @@ def apply_auth_css() -> None:
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] button {
             background: transparent !important;
             border: 0 !important;
+            border-left: 0 !important;
             border-radius: 0 !important;
             box-shadow: none !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] > div:last-child::before,
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] > div:last-child::after {
+            display: none !important;
+            border: 0 !important;
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] button,
@@ -516,7 +527,16 @@ def apply_auth_css() -> None:
             gap: 10px !important;
         }
 
-        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button::before {
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button p {
+            width: auto !important;
+            flex: 0 0 auto !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 10px !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button p::before {
             content: "";
             width: 17px;
             height: 17px;
@@ -536,17 +556,19 @@ def apply_auth_css() -> None:
             .stApp:has(.auth-screen-active) [data-testid="stMainBlockContainer"] {
                 width: calc(100vw - 24px) !important;
                 max-width: none !important;
-                padding-top: 34px !important;
+                padding-top: var(--app-content-top) !important;
                 padding-bottom: 32px !important;
             }
             .stApp:has(.auth-screen-active) div[data-testid="stForm"] {
                 padding: 20px !important;
             }
-            .auth-brand img { width: 185px; margin-bottom: 20px; }
             .auth-brand h1 { font-size: clamp(27px, 8vw, 34px); }
+            .auth-brand { margin-top: -48px; }
             .auth-brand-sign-in { margin-bottom: 24px; }
-            .auth-brand-sign-in img { width: 150px; margin-bottom: 26px; }
-            .auth-brand-sign-in h1 { font-size: 36px; }
+            .auth-brand-sign-in h1 {
+                font-size: clamp(30px, 9vw, 40px);
+                line-height: 1.12;
+            }
             .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button {
                 min-height: 58px !important;
                 font-size: 18px !important;
