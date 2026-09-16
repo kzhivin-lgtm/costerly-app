@@ -16,7 +16,7 @@ from postgrest.exceptions import APIError
 
 from config import get_optional_secret
 from db.supabase_client import get_supabase_client
-from styles.auth import apply_auth_css
+from styles.auth import apply_auth_css, install_auth_form_interactions, render_auth_field_error
 from use_cases.invite_links import (
     DEFAULT_PUBLIC_APP_URL,
     invite_token_hash,
@@ -331,20 +331,23 @@ def company_join_url(access: CompanyAccess) -> str:
 
 
 def render_login_or_signup(invitation: InvitationContext | None) -> None:
+    install_auth_form_interactions()
     if invitation is not None and invitation.kind == "create":
         _render_auth_heading("Create Your Company Account")
         creation_error = st.session_state.get("company_creation_error")
         with st.form("company_creation_registration"):
             company_name = st.text_input("Your company name", key="signup_company_name", placeholder="Company name")
             if creation_error and creation_error[0] == "company":
-                st.error(creation_error[1])
+                render_auth_field_error("company", creation_error[1])
             email = st.text_input("Email", key="signup_email", placeholder="you@company.com")
             if creation_error and creation_error[0] == "email":
-                st.error(creation_error[1])
+                render_auth_field_error("email", creation_error[1])
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm Password", type="password", key="signup_password_confirm")
             if creation_error and creation_error[0] == "password":
-                st.error(creation_error[1])
+                render_auth_field_error("password", creation_error[1])
+            if creation_error and creation_error[0] == "confirm":
+                render_auth_field_error("confirm", creation_error[1])
             st.caption("Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.")
             submit = st.form_submit_button("Create Company Account", type="primary", use_container_width=True)
             if creation_error and creation_error[0] == "service":
@@ -355,7 +358,12 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 validate_registration(email, password, confirm, company_name)
             except ValueError as exc:
                 message = str(exc)
-                field = "email" if message.startswith("Enter an email") else "company" if message.startswith("Enter your company") else "password"
+                field = (
+                    "email" if message.startswith("Enter an email")
+                    else "company" if message.startswith("Enter your company")
+                    else "confirm" if message == "Passwords do not match."
+                    else "password"
+                )
                 st.session_state.company_creation_error = (field, message)
                 st.rerun()
             try:

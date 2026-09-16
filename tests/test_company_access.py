@@ -466,14 +466,15 @@ def test_existing_login_error_is_shown_at_password_without_extra_button(monkeypa
     assert not any(button.label.startswith("Already have a login?") for button in app.button)
 
 
-def test_email_error_is_short_and_next_to_registration_field():
+def test_obvious_email_error_uses_quiet_field_marker_without_text():
     app = AppTest.from_function(_render_invitation_signup).run()
     app.text_input(key="signup_company_name").set_value("Workshop")
     app.text_input(key="signup_email").set_value("name@company..com")
     app.text_input(key="signup_password").set_value("Strong123")
     app.text_input(key="signup_password_confirm").set_value("Strong123")
     next(button for button in app.button if button.label == "Create Company Account").click().run()
-    assert any("Enter an email address like" in error.value for error in app.error)
+    assert not app.error
+    assert any('data-auth-field="email"' in item.value for item in app.markdown)
     assert not any("23514" in error.value or "companies_id_format" in error.value for error in app.error)
 
 
@@ -535,7 +536,18 @@ def test_mismatched_password_never_reaches_signup(monkeypatch):
     app.text_input(key="signup_password_confirm").set_value("Different123")
     app.button[0].click().run()
     assert not calls
-    assert any("Passwords do not match" in error.value for error in app.error)
+    assert not app.error
+    assert any('data-auth-field="confirm"' in item.value for item in app.markdown)
+
+
+def test_auth_ui_contract_hides_framework_hints_and_reserves_red_for_validation():
+    css = (Path(__file__).parents[1] / "styles/auth.py").read_text()
+    guidelines = (Path(__file__).parents[1] / "notes/UI_GUIDELINES.md").read_text()
+    normalized_guidelines = " ".join(guidelines.split())
+    assert '[data-testid="InputInstructions"]' in css
+    assert "costerly-auth-invalid:not(:focus-within)" in css
+    assert "Focus is never an error and must never be red" in normalized_guidelines
+    assert "Any input event clears the visible invalid state" in normalized_guidelines
 
 
 def test_signup_requires_current_invite_and_uses_mail_free_admin_path(monkeypatch):

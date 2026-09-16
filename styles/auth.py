@@ -1,12 +1,100 @@
 from __future__ import annotations
 
 import streamlit as st
+import streamlit.components.v1 as components
+
+
+_QUIET_FIELD_ERRORS = {
+    "Enter an email address like name@company.com.",
+    "Enter your company name.",
+    "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number.",
+    "Passwords do not match.",
+}
+
+
+def render_auth_field_error(field: str, message: str) -> None:
+    """Mark a field invalid; only non-obvious recovery guidance gets text."""
+    st.markdown(
+        f'<span class="auth-field-error-marker" data-auth-field="{field}"></span>',
+        unsafe_allow_html=True,
+    )
+    if message not in _QUIET_FIELD_ERRORS:
+        st.error(message)
+
+
+def install_auth_form_interactions() -> None:
+    """Add quiet blur validation without turning the Streamlit form into custom HTML."""
+    components.html(
+        r"""
+        <script>
+        (() => {
+          const doc = window.parent.document;
+          const labels = {
+            company: ["Your company name", "Company name"],
+            email: ["Email"],
+            password: ["Password"],
+            confirm: ["Confirm Password", "Confirm password"]
+          };
+
+          function fieldShell(field) {
+            const input = Array.from(doc.querySelectorAll('input')).find(
+              (node) => labels[field]?.includes(node.getAttribute('aria-label'))
+            );
+            return input ? {input, shell: input.closest('[data-testid="stTextInput"]')} : null;
+          }
+
+          function validEmail(value) {
+            const text = value.trim();
+            const pieces = text.split('@');
+            if (pieces.length !== 2) return false;
+            const [local, domain] = pieces;
+            if (!local || local.startsWith('.') || local.endsWith('.') || local.includes('..')) return false;
+            if (/\s/.test(text)) return false;
+            const labels = domain.split('.');
+            if (labels.length < 2 || labels.some((label) => !label || label.startsWith('-') || label.endsWith('-'))) return false;
+            const suffix = labels[labels.length - 1];
+            return suffix.length >= 2 && !/^\d+$/.test(suffix);
+          }
+
+          function setInvalid(field, invalid) {
+            const target = fieldShell(field)?.shell;
+            if (target) target.classList.toggle('costerly-auth-invalid', invalid);
+          }
+
+          function refresh() {
+            doc.querySelectorAll('.auth-field-error-marker').forEach((marker) => {
+              setInvalid(marker.dataset.authField, true);
+            });
+            Object.keys(labels).forEach((field) => {
+              const target = fieldShell(field);
+              if (!target || target.input.dataset.costerlyAuthBound === '1') return;
+              target.input.dataset.costerlyAuthBound = '1';
+              target.input.addEventListener('input', () => setInvalid(field, false));
+              if (field === 'email') {
+                target.input.addEventListener('blur', () => {
+                  const value = target.input.value.trim();
+                  setInvalid('email', value.length > 0 && !validEmail(value));
+                });
+              }
+            });
+          }
+
+          refresh();
+          const observer = new MutationObserver(refresh);
+          observer.observe(doc.body, {childList: true, subtree: true});
+          window.addEventListener('beforeunload', () => observer.disconnect(), {once: true});
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
 
 def apply_auth_css() -> None:
     """Keep account forms readable regardless of Streamlit's browser theme."""
     st.markdown(
-        """
+        r"""
         <style>
         .stApp:has(.auth-screen-active),
         .stApp:has(.auth-screen-active) [data-testid="stAppViewContainer"] {
@@ -83,6 +171,22 @@ def apply_auth_css() -> None:
             overflow: hidden !important;
         }
 
+        .stApp:has(.auth-screen-active) [data-testid="InputInstructions"],
+        .stApp:has(.auth-screen-active) [data-testid="stInputInstructions"],
+        .stApp:has(.auth-screen-active) [class*="InputInstructions"] {
+            display: none !important;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-field-error-marker {
+            display: none !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] [data-testid="stTextInputRootElement"],
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="base-input"] {
+            border-color: #CEC5D1 !important;
+            box-shadow: none !important;
+        }
+
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] > div,
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"] > button {
             height: 100% !important;
@@ -92,9 +196,18 @@ def apply_auth_css() -> None:
             color: #51475B !important;
         }
 
-        .stApp:has(.auth-screen-active) div[data-testid="stForm"] div[data-baseweb="input"]:focus-within {
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] [data-testid="stTextInput"]:focus-within [data-testid="stTextInputRootElement"],
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] [data-testid="stTextInput"]:focus-within div[data-baseweb="input"],
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] [data-testid="stTextInput"]:focus-within div[data-baseweb="base-input"] {
             border-color: #8049C6 !important;
             box-shadow: 0 0 0 3px rgba(128, 73, 198, 0.14) !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] [data-testid="stTextInput"].costerly-auth-invalid:not(:focus-within) [data-testid="stTextInputRootElement"],
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] [data-testid="stTextInput"].costerly-auth-invalid:not(:focus-within) div[data-baseweb="input"],
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"] [data-testid="stTextInput"].costerly-auth-invalid:not(:focus-within) div[data-baseweb="base-input"] {
+            border-color: #B43E49 !important;
+            box-shadow: 0 0 0 1px rgba(180, 62, 73, 0.10) !important;
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] input {
