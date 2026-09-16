@@ -19,8 +19,6 @@ alter table public.company_creation_invites
 create unique index if not exists company_creation_invites_join_token_idx
     on public.company_creation_invites(join_token);
 
-drop function if exists public.create_company_from_invite(text, uuid, text, text, text);
-
 create function public.create_company_from_invite(
     p_token_hash text, p_user_id uuid, p_company_id text, p_display_name text
 ) returns text

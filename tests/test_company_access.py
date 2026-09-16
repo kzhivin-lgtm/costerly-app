@@ -303,11 +303,14 @@ def test_one_creation_link_stores_only_hash_and_no_email_or_company_id():
     assert "company_id" not in url and "email" not in url
 
 
-def test_live_schema_migration_precreates_staff_link_and_replaces_rpc():
+def test_live_schema_migration_precreates_staff_link_without_dropping_old_rpc():
     sql = (Path(__file__).parents[1] / "db/sql/2026_09_16_precreate_company_join_link.sql").read_text().lower()
     assert "add column if not exists join_token text" in sql
     assert "gen_random_bytes(32)" in sql
-    assert "drop function if exists public.create_company_from_invite(text, uuid, text, text, text)" in sql
+    assert "drop function" not in sql
+    assert "drop table" not in sql
+    assert "delete from" not in sql
+    assert "truncate" not in sql
     assert "create function public.create_company_from_invite(" in sql
     assert "values (p_company_id, v_join_token)" in sql
 
