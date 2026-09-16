@@ -19,6 +19,11 @@
 - Show text only when it adds recovery information the field itself cannot
   communicate, for example an existing account or a temporary service failure.
 - Validation must never erase input values or move the user away from the form.
+- Any submitted action expected to take longer than 500 ms must acknowledge the
+  click immediately in the browser. Disable repeat submission, preserve the
+  current context, and show a specific progress label until success or failure.
+- Do not enter a loading state when local validation fails. Keep the user on the
+  editable form and mark every invalid field instead.
 
 ## Visual consistency
 

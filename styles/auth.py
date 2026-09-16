@@ -78,6 +78,43 @@ def install_auth_form_interactions() -> None:
             return true;
           }
 
+          function beginCompanyCreation(button) {
+            const form = button.closest('div[data-testid="stForm"]');
+            if (!form || form.classList.contains('costerly-auth-loading')) return;
+            form.classList.add('costerly-auth-loading');
+            form.setAttribute('aria-busy', 'true');
+            form.querySelectorAll('input').forEach((input) => {
+              input.readOnly = true;
+              input.setAttribute('aria-disabled', 'true');
+            });
+            button.disabled = true;
+            const label = button.querySelector('p');
+            if (label) label.textContent = 'Creating your company...';
+            if (!form.querySelector('.costerly-auth-loading-message')) {
+              const message = doc.createElement('div');
+              message.className = 'costerly-auth-loading-message';
+              message.setAttribute('role', 'status');
+              message.setAttribute('aria-live', 'polite');
+              message.textContent = 'Setting up your company. This may take a few seconds.';
+              form.appendChild(message);
+            }
+          }
+
+          function bindCompanyCreation() {
+            const button = Array.from(
+              doc.querySelectorAll('div[data-testid="stFormSubmitButton"] button')
+            ).find((node) => node.textContent.trim() === 'Create Company Account');
+            if (!button || button.dataset.costerlyLoadingBound === '1') return;
+            button.dataset.costerlyLoadingBound = '1';
+            button.addEventListener('click', () => {
+              const fields = ['company', 'email', 'password', 'confirm'];
+              const invalid = fields.filter((field) => !fieldIsValid(field));
+              invalid.forEach((field) => setInvalid(field, true));
+              if (invalid.length > 0) return;
+              window.setTimeout(() => beginCompanyCreation(button), 0);
+            });
+          }
+
           function refresh() {
             doc.querySelectorAll('.auth-field-error-marker').forEach((marker) => {
               if (marker.dataset.costerlyApplied === '1') return;
@@ -106,6 +143,7 @@ def install_auth_form_interactions() -> None:
                 });
               }
             });
+            bindCompanyCreation();
           }
 
           refresh();
@@ -369,6 +407,50 @@ def apply_auth_css() -> None:
 
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button:active {
             transform: translateY(0);
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading [data-testid="stTextInput"],
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading [data-testid="stCaptionContainer"] {
+            opacity: 0.48 !important;
+            pointer-events: none !important;
+            transition: opacity 160ms ease !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button,
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button:hover {
+            position: relative !important;
+            background: #7441B9 !important;
+            border-color: #7441B9 !important;
+            box-shadow: none !important;
+            cursor: wait !important;
+            transform: none !important;
+            opacity: 1 !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button::before {
+            content: "";
+            width: 17px;
+            height: 17px;
+            margin-right: 10px;
+            flex: 0 0 17px;
+            border: 2px solid rgba(255, 255, 255, 0.42);
+            border-top-color: #FFFFFF;
+            border-radius: 50%;
+            animation: costerly-auth-spin 700ms linear infinite;
+        }
+
+        .stApp:has(.auth-screen-active) .costerly-auth-loading-message {
+            margin-top: 12px;
+            color: #67616C;
+            font-family: var(--font-sans);
+            font-size: 13px;
+            font-weight: 500;
+            line-height: 1.45;
+            text-align: center;
+        }
+
+        @keyframes costerly-auth-spin {
+            to { transform: rotate(360deg); }
         }
 
         @media (max-width: 600px) {

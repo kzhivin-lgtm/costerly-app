@@ -566,6 +566,19 @@ def test_auth_ui_contract_hides_framework_hints_and_reserves_red_for_validation(
     assert "Hidden validation markers must not reserve layout space" in normalized_guidelines
 
 
+def test_company_creation_acknowledges_valid_submit_immediately():
+    interactions = (Path(__file__).parents[1] / "styles/auth.py").read_text()
+    guidelines = (Path(__file__).parents[1] / "notes/UI_GUIDELINES.md").read_text()
+    normalized_guidelines = " ".join(guidelines.split())
+    assert "Creating your company..." in interactions
+    assert "Setting up your company. This may take a few seconds." in interactions
+    assert "const invalid = fields.filter((field) => !fieldIsValid(field))" in interactions
+    assert "if (invalid.length > 0) return" in interactions
+    assert "costerly-auth-loading" in interactions
+    assert "Disable repeat submission" in normalized_guidelines
+    assert "Do not enter a loading state when local validation fails" in normalized_guidelines
+
+
 def test_signup_requires_current_invite_and_uses_mail_free_admin_path(monkeypatch):
     invitation = company_auth.InvitationContext("join", new_invite_token())
     created = []
