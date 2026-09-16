@@ -566,6 +566,11 @@ def test_auth_ui_contract_hides_framework_hints_and_reserves_red_for_validation(
     assert "clears immediately when the current value becomes valid" in normalized_guidelines
     assert "One submit validates every field" in normalized_guidelines
     assert "Hidden validation markers must not reserve layout space" in normalized_guidelines
+    assert "A missing interaction state is a product defect" in normalized_guidelines
+    assert "acknowledge pointer-down immediately" in normalized_guidelines
+    assert "Never leave a spinner or a disabled control behind after an error" in normalized_guidelines
+    assert "Multi-stage progress must reflect measured work" in normalized_guidelines
+    assert "Repeated clicks and retries cannot duplicate persistent work" in normalized_guidelines
 
 
 def test_company_creation_acknowledges_valid_submit_immediately():
@@ -578,7 +583,7 @@ def test_company_creation_acknowledges_valid_submit_immediately():
     assert "const invalid = fields.filter((field) => !fieldIsValid(field))" in interactions
     assert "if (invalid.length > 0) return" in interactions
     assert "costerly-auth-loading" in interactions
-    assert "Disable repeat submission" in normalized_guidelines
+    assert "Disable duplicate submission" in normalized_guidelines
     assert "Do not enter a loading state when local validation fails" in normalized_guidelines
     assert "advance to creation only after that check succeeds" in normalized_guidelines
 
