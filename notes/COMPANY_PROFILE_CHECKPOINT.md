@@ -34,7 +34,9 @@ Date: 2026-09-17
 
 ## Protected behavior
 
-- Auth and Upload code/layout remain byte-identical to v3.0.48.
+- Auth and Upload screens and CSS remain byte-identical to v3.0.48. The only
+  shared Auth-state change suppresses global account controls while
+  `screen == "account"`; Sign in, Sign out, and Upload transitions are unchanged.
 - The rejected browser-session persistence experiment is not part of v3.0.49.
 - Full browser refresh may still require Sign in. Resolve that as an isolated
   Auth architecture decision after this checkpoint.
