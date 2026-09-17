@@ -236,10 +236,6 @@ def apply_auth_css() -> None:
             color: #2A1F2C !important;
         }
 
-        .stApp:has(.auth-screen-active) .costerly-app-header {
-            position: absolute;
-        }
-
         .stApp:has(.auth-screen-active) .block-container,
         .stApp:has(.auth-screen-active) [data-testid="stMainBlockContainer"] {
             width: min(var(--primary-panel-width), calc(100vw - 32px)) !important;

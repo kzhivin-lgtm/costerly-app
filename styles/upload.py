@@ -14,14 +14,6 @@ def apply_upload_css() -> None:
     st.markdown(
         """
         <style>
-
-        .stApp:has(.upload-screen-active) .costerly-app-header {
-            position: absolute;
-        }
-
-        .stApp:has(.upload-screen-active) .st-key-costerly_header_controls {
-            position: absolute !important;
-        }
         
         .stApp:has(.upload-screen-active) .block-container {
             width: 100% !important;
