@@ -119,3 +119,5 @@ v3.0.51 Auth interaction checkpoint: browser storage is read only during Streaml
 Backup v3.0.51_auth_session_first_click_checkpoint created and validated, завершена 17.09
 v3.0.52 Company Profile emphasis checkpoint: renamed General to General Details, clarified Company legal name and registration field labels, and standardized every current and future Profile form on a full-width high-emphasis purple Save action with capital-letter text and a stronger purple hover; Auth v3.0.51 remained unchanged and 133 tests passed, завершена 17.09
 Backup v3.0.52_company_profile_capital_save_checkpoint created and validated, завершена 17.09
+v3.0.53 Company Profile bank-context checkpoint: enlarged the six Profile tabs, renamed Contact Number to House Number, arranged Bank Details into domestic and international rows, displayed Hebrew and English company legal names as half-width read-only context owned exclusively by General Details, retained BIC in the existing `swift` field, and verified that Bank Details cannot write either legal name; 134 tests passed, завершена 17.09
+Backup v3.0.53_company_profile_bank_context_checkpoint created and validated, завершена 17.09

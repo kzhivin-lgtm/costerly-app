@@ -392,9 +392,57 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     assert "Country" not in [field.label for field in app.text_input]
     if role == "owner":
         labels = [field.label for field in app.text_input]
+        assert "House Number" in labels
+        assert "Number" not in labels
+        assert labels.count("Company legal name (Hebrew)") == 2
+        assert labels.count("Company legal name (English)") == 2
+        assert "BIC" in labels
+        assert "SWIFT / BIC" not in labels
         assert labels.index("Facebook") < labels.index("LinkedIn") < labels.index("Instagram")
     assert not app.subheader
     assert len(app.code) == (1 if role == "owner" else 0)
+
+
+def test_bank_details_shows_read_only_legal_names_and_does_not_write_them(monkeypatch):
+    profile = {
+        "company_name": "Workshop",
+        "legal_name_hebrew": "חברה",
+        "legal_name": "Workshop Ltd",
+        "bank_name": "Bank",
+        "bank_number": "10",
+        "branch_number": "20",
+        "account_number": "30",
+        "iban": "IL00",
+        "swift": "TESTILIT",
+    }
+    writes = []
+    monkeypatch.setattr(company_profile, "load_company_profile", lambda _access: profile)
+    monkeypatch.setattr(
+        company_profile,
+        "save_company_profile",
+        lambda _access, values: writes.append(values) or {"company_id": "company-a"},
+    )
+    monkeypatch.setattr(company_profile, "load_company_members", lambda _access: [])
+    monkeypatch.setattr(company_auth, "company_join_url", lambda _access: "https://example.com/join/token")
+
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.run()
+    bank_hebrew = [
+        field for field in app.text_input if field.label == "Company legal name (Hebrew)"
+    ][1]
+    bank_english = [
+        field for field in app.text_input if field.label == "Company legal name (English)"
+    ][1]
+    assert bank_hebrew.disabled is True
+    assert bank_english.disabled is True
+    next(button for button in app.button if button.label == "Save Bank Details").click()
+    app.run()
+
+    assert "legal_name_hebrew" not in writes[-1]
+    assert "legal_name" not in writes[-1]
+    assert writes[-1]["iban"] == "IL00"
+    assert writes[-1]["swift"] == "TESTILIT"
 
 
 def test_profile_partial_update_preserves_hidden_vat_and_country(monkeypatch):

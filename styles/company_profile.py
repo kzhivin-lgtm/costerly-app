@@ -123,11 +123,11 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) [data-baseweb="tab"] {
-            min-height: 54px;
-            padding: 0 20px;
+            min-height: 62px;
+            padding: 0 26px;
             border-radius: 10px;
             color: var(--color-text-muted);
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 700;
         }
 

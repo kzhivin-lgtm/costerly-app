@@ -156,8 +156,20 @@ def load_company_members(access: CompanyAccess) -> list[dict]:
     return sorted(members, key=lambda item: (item["Role"] != "Owner", item["Email"].lower()))
 
 
-def _text_input(profile: dict, label: str, field: str, **kwargs) -> str:
-    return st.text_input(label, value=_clean(profile.get(field)), key=f"profile_{field}", **kwargs)
+def _text_input(
+    profile: dict,
+    label: str,
+    field: str,
+    *,
+    widget_key: str | None = None,
+    **kwargs,
+) -> str:
+    return st.text_input(
+        label,
+        value=_clean(profile.get(field)),
+        key=widget_key or f"profile_{field}",
+        **kwargs,
+    )
 
 
 def _profile_save_button(label: str) -> bool:
@@ -233,7 +245,7 @@ def _render_owner_contacts(access: CompanyAccess, profile: dict) -> None:
         with address_first_left:
             street = _text_input(profile, "Street", "address_street")
         with address_first_right:
-            house_number = _text_input(profile, "Number", "address_house_number")
+            house_number = _text_input(profile, "House Number", "address_house_number")
         address_second_left, address_second_right = st.columns(2)
         with address_second_left:
             city = _text_input(profile, "City", "address_city")
@@ -271,22 +283,43 @@ def _render_owner_contacts(access: CompanyAccess, profile: dict) -> None:
 
 def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
     with st.form("company_profile_bank_details"):
+        domestic_name_column, _domestic_name_space = st.columns(2)
+        with domestic_name_column:
+            _text_input(
+                profile,
+                "Company legal name (Hebrew)",
+                "legal_name_hebrew",
+                widget_key="profile_bank_legal_name_hebrew",
+                disabled=True,
+            )
+
         bank_first_left, bank_first_right = st.columns(2)
         with bank_first_left:
             bank_name = _text_input(profile, "Bank name", "bank_name")
         with bank_first_right:
             bank_number = _text_input(profile, "Bank number", "bank_number")
+
         bank_second_left, bank_second_right = st.columns(2)
         with bank_second_left:
             branch_number = _text_input(profile, "Branch number", "branch_number")
         with bank_second_right:
             account_number = _text_input(profile, "Account number", "account_number")
 
+        international_name_column, _international_name_space = st.columns(2)
+        with international_name_column:
+            _text_input(
+                profile,
+                "Company legal name (English)",
+                "legal_name",
+                widget_key="profile_bank_legal_name_english",
+                disabled=True,
+            )
+
         international_left, international_right = st.columns(2)
         with international_left:
             iban = _text_input(profile, "IBAN", "iban")
         with international_right:
-            swift = _text_input(profile, "SWIFT / BIC", "swift")
+            swift = _text_input(profile, "BIC", "swift")
         saved = _profile_save_button("Save Bank Details")
     if saved:
         _save_profile_section(access, {
@@ -314,7 +347,7 @@ def _render_member_contacts(profile: dict) -> None:
         ("Phone", profile.get("public_phone")),
         ("Website", profile.get("website_url")),
         ("Street", profile.get("address_street")),
-        ("Number", profile.get("address_house_number")),
+        ("House Number", profile.get("address_house_number")),
         ("City", profile.get("address_city")),
         ("Postal code", profile.get("address_postal_code")),
         ("LinkedIn", profile.get("linkedin_url")),
@@ -325,12 +358,14 @@ def _render_member_contacts(profile: dict) -> None:
 
 def _render_member_bank_details(profile: dict) -> None:
     _read_only_group("Bank details", [
+        ("Company legal name (Hebrew)", profile.get("legal_name_hebrew")),
         ("Bank name", profile.get("bank_name")),
         ("Bank number", profile.get("bank_number")),
         ("Branch number", profile.get("branch_number")),
         ("Account number", profile.get("account_number")),
+        ("Company legal name (English)", profile.get("legal_name")),
         ("IBAN", profile.get("iban")),
-        ("SWIFT / BIC", profile.get("swift")),
+        ("BIC", profile.get("swift")),
     ])
 
 

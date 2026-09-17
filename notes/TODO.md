@@ -5,7 +5,7 @@
 - Every new two-file benchmark cycle starts two fresh instances on separate unused ports and opens both Chrome tabs automatically so `page-23.pdf` and `Металл (1).pdf` can run in parallel under the same code version. Keep older benchmark servers and result screens available for side-by-side comparison; stop them only on explicit request or when resource/port conflicts require cleanup.
 
 ## Active
-- v3.0.52 Company Profile follow-up: decide whether Bank Details needs a distinct
+- v3.0.53 Company Profile follow-up: decide whether Bank Details needs a distinct
   `Account holder name` field. Do not duplicate editable Legal name across tabs
   or add a database column until the banking requirement is confirmed.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.

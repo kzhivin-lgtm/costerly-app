@@ -29,6 +29,12 @@ country values remain unchanged until a deliberate data-migration decision.
 Every editable Profile form renders its submit action through the shared
 `_profile_save_button` helper. Profile form submits use the same full-width,
 high-emphasis purple design regardless of the current or future tab.
+Company legal names have one editing surface: General Details. Bank Details
+renders the same stored Hebrew and English names as read-only context around
+domestic and international bank fields, and its save payload cannot update
+either legal-name column. BIC continues to use the existing `swift` database
+column because SWIFT/BIC is one banking identifier, so no duplicate column is
+introduced.
 All Profile text inputs reuse the Sign in input geometry and focus contract:
 neutral default border, purple focus ring, no red focus-only state, and no
 framework keyboard instruction. Auth and Upload styling remain separate
