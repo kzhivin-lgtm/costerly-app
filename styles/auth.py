@@ -236,6 +236,12 @@ def apply_auth_css() -> None:
             color: #2A1F2C !important;
         }
 
+        /* Keep the v3.0.43 logo coordinates, but let the shared page scroll it. */
+        .stApp:has(.auth-screen-active) .costerly-app-header {
+            position: absolute;
+            top: calc(var(--app-header-top) - var(--app-content-top) - 16px);
+        }
+
         .stApp:has(.auth-screen-active) .block-container,
         .stApp:has(.auth-screen-active) [data-testid="stMainBlockContainer"] {
             width: min(var(--primary-panel-width), calc(100vw - 32px)) !important;

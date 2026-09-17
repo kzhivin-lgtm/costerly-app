@@ -14,6 +14,25 @@ def apply_upload_css() -> None:
     st.markdown(
         """
         <style>
+
+        /*
+         * The first-screen header belongs to Streamlit's single stMain scroll
+         * container.  These offsets preserve the v3.0.43 resting coordinates
+         * while allowing the logo and account controls to scroll with the page.
+         */
+        .stApp:has(.upload-screen-active) .costerly-app-header {
+            position: absolute;
+            top: calc(var(--app-header-top) - var(--app-content-top) - 16px);
+        }
+
+        .stApp:has(.upload-screen-active) [data-testid="stLayoutWrapper"]:has(.st-key-costerly_header_controls) {
+            position: relative !important;
+        }
+
+        .stApp:has(.upload-screen-active) .st-key-costerly_header_controls {
+            position: absolute !important;
+            top: calc(var(--app-header-top) + 5px - var(--app-content-top) - 32px);
+        }
         
         .stApp:has(.upload-screen-active) .block-container {
             width: 100% !important;
