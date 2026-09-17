@@ -39,7 +39,7 @@
 | P0 | Active | Access code and SQL migration | Complete local checks |
 | P0 | Pending | Current-project SQL/Auth activation and two-company verification | Local checks and public URL |
 | P1 | Pending | Confirm Email and production SMTP | Before email recovery or verified accounts |
-| P1 | Pending | Pilot-friendly login persistence | Decide Streamlit stopgap versus React |
+| P1 | Completed | Tab-scoped login persistence | Accepted v3.0.50 checkpoint |
 | P1 | Completed | Company Profile first screen, contacts, and bank details | Accepted v3.0.49 checkpoint |
 | P1 | Pending | Pricing metrics and requisites/logo onboarding | Profile first screen accepted |
 | P1 | Pending | Company price-list library and shared fallback | Pricing onboarding contract |
@@ -81,6 +81,9 @@
   under a model-generated duplicate ID.
 - The Objects browser runtime uses the authenticated user's JWT in company
   mode. The service-role key stays on the Streamlit server.
+- The Auth session is restored after refresh from tab-scoped `sessionStorage`.
+  The bridge runs in the hidden Sidebar so it cannot alter main-screen layout.
+  Closing the tab clears this browser-held session.
 - A migration that revokes anonymous access to pricing overrides and the
   progress/cost view, then applies authenticated company-member policies.
 
@@ -109,9 +112,8 @@
 
 ## Known MVP limits
 
-- Streamlit session state does not persist login across a full browser refresh.
-  This needs a deliberate session-persistence decision, or may be solved in the
-  planned React migration, before inviting external pilot users.
+- Login persistence is tab-scoped. It survives refresh but intentionally does
+  not survive closing the tab or opening the app in a different tab.
 - Production login UI and invitation ergonomics need an end-to-end browser
   review. A leaked company join link stays valid until rotation is added.
 - Membership revocation while a background Estimation job is already running

@@ -11,6 +11,8 @@ This file explains where code belongs so the project stays understandable.
 
 - `screens/` contains one Streamlit screen per file.
 - `ui/` contains shared rendering helpers used by multiple screens.
+- `ui/browser_session.py` owns the tab-scoped Auth storage bridge. Its component
+  must remain inside the hidden Sidebar and outside the main screen layout.
 - `styles/` contains CSS grouped by responsibility.
 - `styles/base.py` owns global design tokens and base Streamlit overrides.
 

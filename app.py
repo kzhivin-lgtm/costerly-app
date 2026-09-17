@@ -11,6 +11,7 @@ from state.company_auth import (
     render_company_account,
     render_company_setup,
     render_login_or_signup,
+    sync_browser_auth_session,
 )
 from db.company_access import assert_estimate_owned, assert_run_owned
 from db.supabase_client import get_supabase_client
@@ -61,10 +62,11 @@ def _render_screen(screen: str, company_id: str) -> None:
 def main() -> None:
     init_state()
     apply_base_css()
-    render_app_header()
 
     auth_enabled = company_auth_enabled()
     if auth_enabled:
+        if not sync_browser_auth_session():
+            st.stop()
         try:
             access = current_company_access()
             invitation = invitation_from_url()
@@ -72,6 +74,7 @@ def main() -> None:
             st.error(f"Company access is unavailable: {exc}")
             signal_app_ready_to_embed("company_access_error")
             return
+        render_app_header()
         if access is None:
             render_login_or_signup(invitation)
             signal_app_ready_to_embed("login")
@@ -83,6 +86,8 @@ def main() -> None:
         st.session_state.auth_company_id = access.company_id
         st.session_state.auth_access_token = access.access_token
         render_account_control(access)
+    else:
+        render_app_header()
 
     company_id = get_company_id()
 

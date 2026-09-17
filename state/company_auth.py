@@ -29,6 +29,7 @@ from use_cases.invite_links import (
 )
 from use_cases.email_addresses import is_valid_email_address
 from ui.app_header import render_account_header_controls
+from ui.browser_session import browser_session_exchange
 
 
 @dataclass(frozen=True)
@@ -140,6 +141,58 @@ def _store_auth_session(session: object) -> None:
     st.session_state.auth_access_token = session.access_token
     st.session_state.auth_refresh_token = session.refresh_token
     st.session_state.auth_expires_at = int(session.expires_at or 0)
+    st.session_state._browser_auth_pending = {
+        "action": "store",
+        "request_id": secrets.token_urlsafe(12),
+        "session": {
+            "access_token": session.access_token,
+            "refresh_token": session.refresh_token,
+            "expires_at": int(session.expires_at or 0),
+        },
+    }
+
+
+def sync_browser_auth_session() -> bool:
+    """Restore or persist the tab-scoped Supabase session.
+
+    Returns False only while the hidden browser component has not replied yet.
+    """
+    pending = st.session_state.get("_browser_auth_pending")
+    if isinstance(pending, dict):
+        action = str(pending.get("action") or "read")
+        request_id = str(pending.get("request_id") or "")
+        session = pending.get("session") if isinstance(pending.get("session"), dict) else None
+    else:
+        request_id = st.session_state.setdefault(
+            "_browser_auth_read_request", secrets.token_urlsafe(12)
+        )
+        action = "read"
+        session = None
+
+    result = browser_session_exchange(
+        action=action,
+        request_id=request_id,
+        session=session,
+    )
+    has_memory_session = bool(
+        st.session_state.get("auth_access_token")
+        and st.session_state.get("auth_refresh_token")
+    )
+    if not result or result.get("requestId") != request_id:
+        return has_memory_session
+
+    if isinstance(pending, dict):
+        st.session_state.pop("_browser_auth_pending", None)
+
+    stored = result.get("session")
+    if not has_memory_session and isinstance(stored, dict):
+        access_token = stored.get("access_token")
+        refresh_token = stored.get("refresh_token")
+        if isinstance(access_token, str) and isinstance(refresh_token, str):
+            st.session_state.auth_access_token = access_token
+            st.session_state.auth_refresh_token = refresh_token
+            st.session_state.auth_expires_at = int(stored.get("expires_at") or 0)
+    return True
 
 
 def clear_auth_session() -> None:
@@ -202,6 +255,11 @@ def sign_out() -> None:
         except Exception:
             pass  # Local logout must work even if the network is unavailable.
     clear_auth_session()
+    st.session_state._browser_auth_pending = {
+        "action": "clear",
+        "request_id": secrets.token_urlsafe(12),
+        "session": None,
+    }
 
 
 def current_company_access() -> CompanyAccess | None:
@@ -223,6 +281,11 @@ def current_company_access() -> CompanyAccess | None:
             return None
     except AuthApiError:
         clear_auth_session()
+        st.session_state._browser_auth_pending = {
+            "action": "clear",
+            "request_id": secrets.token_urlsafe(12),
+            "session": None,
+        }
         return None
 
     members = (

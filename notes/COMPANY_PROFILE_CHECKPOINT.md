@@ -38,8 +38,12 @@ Date: 2026-09-17
   shared Auth-state change suppresses global account controls while
   `screen == "account"`; Sign in, Sign out, and Upload transitions are unchanged.
 - The rejected browser-session persistence experiment is not part of v3.0.49.
-- Full browser refresh may still require Sign in. Resolve that as an isolated
-  Auth architecture decision after this checkpoint.
+- At this checkpoint, full browser refresh may still require Sign in. Session
+  persistence is resolved separately in v3.0.50 without changing Profile UI.
+
+The separate v3.0.50 Auth checkpoint resolves refresh persistence without
+changing this accepted Profile UI. Its browser component is isolated in the
+hidden Sidebar; this document remains the UI definition for the Profile screen.
 
 ## Verification
 

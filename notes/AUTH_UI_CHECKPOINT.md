@@ -28,10 +28,11 @@ browser refresh may therefore require Sign in again.
 
 ## Protected checkpoint rule
 
-Do not reintroduce browser session persistence while fixing Sign out feedback.
-Treat persistence and transition feedback as separate experiments. Any future
-Auth revision must pass two consecutive `Sign out -> Sign in -> Upload` cycles
-without duplicate credential entry, stale screens, or a stuck loading state.
+Keep browser-session persistence isolated from Sign out feedback. The accepted
+transport must remain in the hidden Sidebar and must not intercept native
+Streamlit clicks. Any future Auth revision must pass two consecutive
+`Sign out -> Sign in -> Upload` cycles without duplicate credential entry,
+stale screens, a stuck loading state, or changed Upload geometry.
 
 ## v3.0.49 boundary
 
@@ -40,3 +41,12 @@ only suppresses the global authenticated controls while `screen == "account"`
 and renders the same Sign out action inside the Profile header. Full-refresh
 login persistence remains a separate unresolved architecture decision. Do not
 couple it to further Profile layout work.
+
+## v3.0.50 accepted session boundary
+
+The isolated follow-up is accepted. Supabase access and refresh tokens are now
+stored in tab-scoped `sessionStorage`, so a refresh no longer requires another
+Sign in. The Streamlit component runs only inside the hidden Sidebar and never
+enters the main `.block-container`; Upload and Profile CSS are unchanged. The
+user manually confirmed both session restoration and preserved layout. See
+`notes/AUTH_SESSION_CHECKPOINT.md` for the protected contract.

@@ -30,6 +30,16 @@ All Profile text inputs reuse the Sign in input geometry and focus contract:
 neutral default border, purple focus ring, no red focus-only state, and no
 framework keyboard instruction. Auth and Upload styling remain separate
 protected surfaces.
+
+Auth browser-session boundary
+Supabase access and refresh tokens are mirrored into tab-scoped browser
+`sessionStorage` so a full refresh can restore the authenticated Streamlit
+state. The browser bridge is a zero-height custom component rendered only in
+the hidden `st.sidebar`. It must not be mounted in the main block container,
+because component iframes participate in Streamlit layout and can move accepted
+screen geometry even when no screen CSS changes. Sign out and invalid-token
+handling clear both Streamlit state and browser session storage. `localStorage`
+is intentionally not used, so closing the tab ends this browser-held session.
 Responsive Policy
 Every screen should be designed for desktop and mobile from the start.
 For each screen, define:
