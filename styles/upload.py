@@ -15,15 +15,12 @@ def apply_upload_css() -> None:
         """
         <style>
 
-        html:has(.upload-screen-active),
-        body:has(.upload-screen-active),
-        .stApp:has(.upload-screen-active),
-        .stApp:has(.upload-screen-active) [data-testid="stAppViewContainer"],
-        .stApp:has(.upload-screen-active) [data-testid="stMain"] {
-            height: 100vh !important;
-            max-height: 100vh !important;
-            overflow-y: hidden !important;
-            overscroll-behavior-y: none !important;
+        .stApp:has(.upload-screen-active) .costerly-app-header {
+            position: absolute;
+        }
+
+        .stApp:has(.upload-screen-active) .st-key-costerly_header_controls {
+            position: absolute !important;
         }
         
         .stApp:has(.upload-screen-active) .block-container {
