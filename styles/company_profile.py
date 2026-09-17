@@ -235,12 +235,40 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button {
-            min-height: 56px !important;
-            font-size: 18px !important;
+            min-height: 60px !important;
+            margin-top: 8px !important;
+            background: #8049C6 !important;
+            border: 1px solid #8049C6 !important;
+            color: #FFFFFF !important;
+            font-family: var(--font-sans) !important;
+            font-size: 19px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            box-shadow: 0 8px 22px rgba(128, 73, 198, 0.22) !important;
+            transition: background 150ms ease, border-color 150ms ease,
+                        transform 150ms ease, box-shadow 150ms ease !important;
         }
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button p {
-            font-size: 18px !important;
+            color: #FFFFFF !important;
+            font-family: var(--font-sans) !important;
+            font-size: 19px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+        }
+
+        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:hover {
+            background: #6F3CB4 !important;
+            border-color: #6F3CB4 !important;
+            color: #FFFFFF !important;
+            box-shadow: 0 12px 28px rgba(111, 60, 180, 0.34) !important;
+            transform: translateY(-1px);
+        }
+
+        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:active {
+            background: #6131A3 !important;
+            border-color: #6131A3 !important;
+            transform: translateY(0) scale(0.995);
         }
 
         .stApp:has(.company-profile-active) [data-testid="stNotification"],

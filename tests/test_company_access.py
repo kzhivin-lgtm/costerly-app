@@ -370,17 +370,23 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "General", "Contacts", "Bank Details", "Metrics", "Users", "Price List",
+        "General Details", "Contacts", "Bank Details", "Metrics", "Users", "Price List",
     ]
     assert any(button.label == "Continue to upload" for button in app.button)
     assert any(button.label == "Sign out" for button in app.button)
-    save_buttons = [button.label for button in app.button if button.label == "Save"]
-    assert len(save_buttons) == (3 if role == "owner" else 0)
+    save_buttons = [
+        button.label
+        for button in app.button
+        if button.label in {"Save General Details", "Save Contacts", "Save Bank Details"}
+    ]
+    assert save_buttons == ([
+        "Save General Details", "Save Contacts", "Save Bank Details"
+    ] if role == "owner" else [])
     assert [field.label for field in app.text_input[:4]] == ([
         "Company name",
-        "Legal name (Hebrew)",
-        "Company registration number (ח.פ.)",
-        "Legal name (English)",
+        "Company legal name (Hebrew)",
+        "Company registration number",
+        "Company legal name (English)",
     ] if role == "owner" else [])
     assert "VAT file number" not in [field.label for field in app.text_input]
     assert "Country" not in [field.label for field in app.text_input]

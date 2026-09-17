@@ -160,6 +160,11 @@ def _text_input(profile: dict, label: str, field: str, **kwargs) -> str:
     return st.text_input(label, value=_clean(profile.get(field)), key=f"profile_{field}", **kwargs)
 
 
+def _profile_save_button(label: str) -> bool:
+    """Render the single emphasized Save action used by every Profile form."""
+    return st.form_submit_button(label, type="primary", use_container_width=True)
+
+
 def _read_only_group(title: str, items: list[tuple[str, object]]) -> None:
     rows = "".join(
         '<div class="company-profile-readonly-item">'
@@ -191,15 +196,19 @@ def _render_owner_general(access: CompanyAccess, profile: dict) -> None:
         with first_left:
             company_name = _text_input(profile, "Company name", "company_name")
         with first_right:
-            legal_name_hebrew = _text_input(profile, "Legal name (Hebrew)", "legal_name_hebrew")
+            legal_name_hebrew = _text_input(
+                profile, "Company legal name (Hebrew)", "legal_name_hebrew"
+            )
         second_left, second_right = st.columns(2)
         with second_left:
             registration = _text_input(
-                profile, "Company registration number (ח.פ.)", "company_registration_number"
+                profile, "Company registration number", "company_registration_number"
             )
         with second_right:
-            legal_name = _text_input(profile, "Legal name (English)", "legal_name")
-        saved = st.form_submit_button("Save", type="primary")
+            legal_name = _text_input(
+                profile, "Company legal name (English)", "legal_name"
+            )
+        saved = _profile_save_button("Save General Details")
     if saved:
         _save_profile_section(access, {
             "company_name": company_name,
@@ -244,7 +253,7 @@ def _render_owner_contacts(access: CompanyAccess, profile: dict) -> None:
             instagram = _text_input(
                 profile, "Instagram", "instagram_url", placeholder="https://instagram.com/..."
             )
-        saved = st.form_submit_button("Save", type="primary")
+        saved = _profile_save_button("Save Contacts")
     if saved:
         _save_profile_section(access, {
             "public_email": official_email,
@@ -278,7 +287,7 @@ def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
             iban = _text_input(profile, "IBAN", "iban")
         with international_right:
             swift = _text_input(profile, "SWIFT / BIC", "swift")
-        saved = st.form_submit_button("Save", type="primary")
+        saved = _profile_save_button("Save Bank Details")
     if saved:
         _save_profile_section(access, {
             "bank_name": bank_name,
@@ -291,11 +300,11 @@ def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
 
 
 def _render_member_general(profile: dict) -> None:
-    _read_only_group("General", [
+    _read_only_group("General Details", [
         ("Company name", profile.get("company_name")),
-        ("Legal name (Hebrew)", profile.get("legal_name_hebrew")),
-        ("Registration number", profile.get("company_registration_number")),
-        ("Legal name (English)", profile.get("legal_name")),
+        ("Company legal name (Hebrew)", profile.get("legal_name_hebrew")),
+        ("Company registration number", profile.get("company_registration_number")),
+        ("Company legal name (English)", profile.get("legal_name")),
     ])
 
 
@@ -385,7 +394,7 @@ def render_company_profile(access: CompanyAccess) -> None:
         return
 
     general_tab, contacts_tab, bank_tab, metrics_tab, users_tab, prices_tab = st.tabs(
-        ["General", "Contacts", "Bank Details", "Metrics", "Users", "Price List"]
+        ["General Details", "Contacts", "Bank Details", "Metrics", "Users", "Price List"]
     )
     with general_tab:
         if access.role == "owner":

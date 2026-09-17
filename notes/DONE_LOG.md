@@ -117,3 +117,5 @@ v3.0.50 tab-scoped Auth session checkpoint: refresh restores the Supabase sessio
 Backup v3.0.50_auth_session_sidebar_checkpoint created and validated, завершена 17.09
 v3.0.51 Auth interaction checkpoint: browser storage is read only during Streamlit-session bootstrap, store and clear commands no longer return component callbacks, and the first Profile click is no longer consumed by an Auth rerun; user verified first-click Profile navigation locally, Auth/Profile CSS stayed unchanged, and 133 tests passed, завершена 17.09
 Backup v3.0.51_auth_session_first_click_checkpoint created and validated, завершена 17.09
+v3.0.52 Company Profile emphasis checkpoint: renamed General to General Details, clarified Company legal name and registration field labels, and standardized every current and future Profile form on a full-width high-emphasis purple Save action with capital-letter text and a stronger purple hover; Auth v3.0.51 remained unchanged and 133 tests passed, завершена 17.09
+Backup v3.0.52_company_profile_capital_save_checkpoint created and validated, завершена 17.09
