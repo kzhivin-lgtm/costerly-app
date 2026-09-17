@@ -236,6 +236,12 @@ def apply_auth_css() -> None:
             color: #2A1F2C !important;
         }
 
+        /* Keep the v3.0.43 logo coordinates, but let the shared page scroll it. */
+        .stApp:has(.auth-screen-active) .costerly-app-header {
+            position: absolute;
+            top: calc(var(--app-header-top) - var(--app-content-top) - 16px);
+        }
+
         .stApp:has(.auth-screen-active) .block-container,
         .stApp:has(.auth-screen-active) [data-testid="stMainBlockContainer"] {
             width: min(var(--primary-panel-width), calc(100vw - 32px)) !important;
@@ -247,7 +253,7 @@ def apply_auth_css() -> None:
         }
 
         .auth-brand {
-            margin-top: -112px;
+            margin-top: -31px;
             margin-bottom: 10px;
             text-align: center;
         }
@@ -563,7 +569,7 @@ def apply_auth_css() -> None:
                 padding: 20px !important;
             }
             .auth-brand h1 { font-size: clamp(27px, 8vw, 34px); }
-            .auth-brand { margin-top: -48px; }
+            .auth-brand { margin-top: -17px; }
             .auth-brand-sign-in { margin-bottom: 24px; }
             .auth-brand-sign-in h1 {
                 font-size: clamp(30px, 9vw, 40px);
