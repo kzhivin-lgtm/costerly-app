@@ -155,13 +155,17 @@ def _store_auth_session(session: object) -> None:
 def sync_browser_auth_session() -> bool:
     """Restore or persist the tab-scoped Supabase session.
 
-    Returns False only while the hidden browser component has not replied yet.
+    Reads browser storage only while bootstrapping a new Streamlit session.
+    Store and clear commands are fire-and-forget so their component render
+    cannot schedule a rerun that consumes the next user interaction.
     """
     pending = st.session_state.get("_browser_auth_pending")
     if isinstance(pending, dict):
         action = str(pending.get("action") or "read")
         request_id = str(pending.get("request_id") or "")
         session = pending.get("session") if isinstance(pending.get("session"), dict) else None
+    elif st.session_state.get("_browser_auth_initialized"):
+        return True
     else:
         request_id = st.session_state.setdefault(
             "_browser_auth_read_request", secrets.token_urlsafe(12)
@@ -174,6 +178,11 @@ def sync_browser_auth_session() -> bool:
         request_id=request_id,
         session=session,
     )
+    if action in {"store", "clear"}:
+        st.session_state.pop("_browser_auth_pending", None)
+        st.session_state._browser_auth_initialized = True
+        return True
+
     has_memory_session = bool(
         st.session_state.get("auth_access_token")
         and st.session_state.get("auth_refresh_token")
@@ -192,6 +201,7 @@ def sync_browser_auth_session() -> bool:
             st.session_state.auth_access_token = access_token
             st.session_state.auth_refresh_token = refresh_token
             st.session_state.auth_expires_at = int(stored.get("expires_at") or 0)
+    st.session_state._browser_auth_initialized = True
     return True
 
 

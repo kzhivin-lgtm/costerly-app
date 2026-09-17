@@ -39,7 +39,7 @@
 | P0 | Active | Access code and SQL migration | Complete local checks |
 | P0 | Pending | Current-project SQL/Auth activation and two-company verification | Local checks and public URL |
 | P1 | Pending | Confirm Email and production SMTP | Before email recovery or verified accounts |
-| P1 | Completed | Tab-scoped login persistence | Accepted v3.0.50 checkpoint |
+| P1 | Completed | Tab-scoped login persistence | Accepted v3.0.51 checkpoint |
 | P1 | Completed | Company Profile first screen, contacts, and bank details | Accepted v3.0.49 checkpoint |
 | P1 | Pending | Pricing metrics and requisites/logo onboarding | Profile first screen accepted |
 | P1 | Pending | Company price-list library and shared fallback | Pricing onboarding contract |

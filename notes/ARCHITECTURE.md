@@ -37,7 +37,10 @@ Supabase access and refresh tokens are mirrored into tab-scoped browser
 state. The browser bridge is a zero-height custom component rendered only in
 the hidden `st.sidebar`. It must not be mounted in the main block container,
 because component iframes participate in Streamlit layout and can move accepted
-screen geometry even when no screen CSS changes. Sign out and invalid-token
+screen geometry even when no screen CSS changes. The component reads storage
+only during Streamlit-session bootstrap. Store and clear commands do not return
+a component value, because that callback would schedule a rerun capable of
+consuming the next button or form interaction. Sign out and invalid-token
 handling clear both Streamlit state and browser session storage. `localStorage`
 is intentionally not used, so closing the tab ends this browser-held session.
 Responsive Policy

@@ -93,6 +93,7 @@ def test_browser_session_restores_and_persists_tab_tokens(monkeypatch):
     assert st.session_state.auth_access_token == "access-1"
     assert st.session_state.auth_refresh_token == "refresh-1"
     assert st.session_state.auth_expires_at == 123
+    assert st.session_state._browser_auth_initialized is True
 
     class Session:
         access_token = "access-2"
@@ -109,12 +110,50 @@ def test_browser_session_restores_and_persists_tab_tokens(monkeypatch):
     }
 
 
+def test_browser_session_does_not_render_component_after_bootstrap(monkeypatch):
+    st = company_auth.st
+    st.session_state.clear()
+    st.session_state._browser_auth_initialized = True
+
+    def unexpected_exchange(**_kwargs):
+        raise AssertionError("Initialized sessions must not render the browser component")
+
+    monkeypatch.setattr(company_auth, "browser_session_exchange", unexpected_exchange)
+
+    assert company_auth.sync_browser_auth_session() is True
+
+
+@pytest.mark.parametrize("action", ["store", "clear"])
+def test_browser_session_write_commands_do_not_wait_for_callback(monkeypatch, action):
+    st = company_auth.st
+    st.session_state.clear()
+    st.session_state._browser_auth_pending = {
+        "action": action,
+        "request_id": f"{action}-1",
+        "session": {"access_token": "a", "refresh_token": "r"}
+        if action == "store"
+        else None,
+    }
+    calls = []
+    monkeypatch.setattr(
+        company_auth,
+        "browser_session_exchange",
+        lambda **kwargs: calls.append(kwargs),
+    )
+
+    assert company_auth.sync_browser_auth_session() is True
+    assert calls[0]["action"] == action
+    assert "_browser_auth_pending" not in st.session_state
+    assert st.session_state._browser_auth_initialized is True
+
+
 def test_browser_session_uses_session_storage_and_hidden_sidebar_transport():
     root = Path(__file__).parents[1]
     component_html = (root / "ui/browser_session_component/index.html").read_text()
 
     assert "window.sessionStorage" in component_html
     assert "window.localStorage" not in component_html
+    assert 'if (args.action === "read")' in component_html
 
 
 def test_browser_session_component_executes_inside_sidebar(monkeypatch):

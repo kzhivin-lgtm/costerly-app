@@ -50,3 +50,11 @@ Sign in. The Streamlit component runs only inside the hidden Sidebar and never
 enters the main `.block-container`; Upload and Profile CSS are unchanged. The
 user manually confirmed both session restoration and preserved layout. See
 `notes/AUTH_SESSION_CHECKPOINT.md` for the protected contract.
+
+## v3.0.51 interaction boundary
+
+The session component now reads browser storage only during bootstrap. Store
+and clear commands do not return component values, so they cannot schedule a
+rerun that consumes the next Profile or Auth interaction. The user confirmed
+that Profile opens on the first click. Auth, Upload, and Profile CSS are
+unchanged.

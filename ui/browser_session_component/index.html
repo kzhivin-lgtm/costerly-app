@@ -49,7 +49,9 @@
           } catch (_) {
             // Storage failure falls back to the normal sign-in screen.
           }
-          reply(args.requestId || "");
+          if (args.action === "read") {
+            reply(args.requestId || "");
+          }
           send("streamlit:setFrameHeight", {height: 0});
         });
 
