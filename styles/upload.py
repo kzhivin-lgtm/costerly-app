@@ -29,7 +29,7 @@ def apply_upload_css() -> None:
 
         .upload-screen {
             width: 100%;
-            margin-top: -70px;
+            margin-top: -9px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -177,7 +177,7 @@ def apply_upload_css() -> None:
 
         @media (max-width: 760px) {
             .upload-screen {
-                margin-top: -38px;
+                margin-top: -7px;
             }
 
             .upload-screen__hero {

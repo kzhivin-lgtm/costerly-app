@@ -247,7 +247,7 @@ def apply_auth_css() -> None:
         }
 
         .auth-brand {
-            margin-top: -112px;
+            margin-top: -31px;
             margin-bottom: 10px;
             text-align: center;
         }
@@ -563,7 +563,7 @@ def apply_auth_css() -> None:
                 padding: 20px !important;
             }
             .auth-brand h1 { font-size: clamp(27px, 8vw, 34px); }
-            .auth-brand { margin-top: -48px; }
+            .auth-brand { margin-top: -17px; }
             .auth-brand-sign-in { margin-bottom: 24px; }
             .auth-brand-sign-in h1 {
                 font-size: clamp(30px, 9vw, 40px);
