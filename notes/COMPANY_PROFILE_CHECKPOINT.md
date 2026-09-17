@@ -1,6 +1,6 @@
 # Company Profile checkpoint
 
-Version: v3.0.53
+Version: v3.0.54
 Date: 2026-09-17
 
 ## Accepted UI
@@ -27,6 +27,10 @@ Date: 2026-09-17
   purple hover.
 - Profile inputs follow the Sign in neutral-border and purple-focus contract.
   Streamlit's `Press Enter to submit form` instruction is hidden.
+- Metrics is a saved work-in-progress baseline. It exposes the company VAT rate,
+  the twelve existing monthly overhead fields, warranty reserve, and management
+  buffer. Monthly cost is the only editable money column. VAT and Total are
+  derived whole-shekel values, and Arnona displays no VAT.
 
 ## Persistence contract
 
@@ -37,10 +41,13 @@ Date: 2026-09-17
   displays those same stored values but never writes them. If banking requires
   a different beneficiary identity, add a separately named `Account holder
   name` field only after confirming the data requirement and migration.
+- Metrics writes only its three visible `overhead_settings` percentages and the
+  twelve visible `overhead_monthly` fields. Monthly costs are persisted as whole
+  shekels. The company-wide VAT rate is reused by deterministic Estimation totals.
 
 ## Protected behavior
 
-- Auth and Upload screens and CSS are unchanged by the v3.0.53 Profile revision.
+- Auth and Upload screens and CSS are unchanged by the v3.0.54 Profile revision.
 - Session persistence and first-click Profile navigation remain governed by the
   separately accepted v3.0.51 Auth checkpoint.
 
@@ -53,5 +60,7 @@ UI definition for the Profile screen.
 
 - User accepted the enlarged tabs and Bank Details grid, then selected General
   Details as the only editor for company legal names.
-- Automated suite: 134 tests passed before checkpoint documentation.
+- User accepted the Metrics screen as a functioning work-in-progress checkpoint
+  after a clean Streamlit restart removed the observed delay.
+- Automated suite: 137 tests passed before checkpoint documentation.
 - `git diff --check`: clean before checkpoint documentation.

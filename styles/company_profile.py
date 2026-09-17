@@ -156,7 +156,8 @@ def apply_company_profile_css() -> None:
             letter-spacing: -0.01em;
         }
 
-        .stApp:has(.company-profile-active) div[data-testid="stForm"] {
+        .stApp:has(.company-profile-active) div[data-testid="stForm"],
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card {
             padding: 28px;
             border: 1px solid var(--color-border-soft);
             border-radius: 18px;
@@ -230,11 +231,15 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"],
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] > div,
-        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button {
+        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button,
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"],
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] > div,
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button {
             width: 100% !important;
         }
 
-        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button {
+        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button,
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"] {
             min-height: 60px !important;
             margin-top: 8px !important;
             background: #8049C6 !important;
@@ -249,7 +254,8 @@ def apply_company_profile_css() -> None:
                         transform 150ms ease, box-shadow 150ms ease !important;
         }
 
-        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button p {
+        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button p,
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"] p {
             color: #FFFFFF !important;
             font-family: var(--font-sans) !important;
             font-size: 19px !important;
@@ -257,7 +263,8 @@ def apply_company_profile_css() -> None:
             text-transform: uppercase !important;
         }
 
-        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:hover {
+        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:hover,
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"]:hover {
             background: #6F3CB4 !important;
             border-color: #6F3CB4 !important;
             color: #FFFFFF !important;
@@ -265,10 +272,125 @@ def apply_company_profile_css() -> None:
             transform: translateY(-1px);
         }
 
-        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:active {
+        .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:active,
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"]:active {
             background: #6131A3 !important;
             border-color: #6131A3 !important;
             transform: translateY(0) scale(0.995);
+        }
+
+        .company-metric-group {
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            margin: 10px 0 0 !important;
+            padding: 0 12px;
+            background: rgba(128, 73, 198, 0.075);
+            color: rgba(42, 31, 44, 0.68);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .st-key-company_metrics_header {
+            margin-top: 18px;
+            padding: 0;
+        }
+
+        .st-key-company_metrics_header [data-testid="stHorizontalBlock"],
+        [class*="st-key-company_metric_row_"] [data-testid="stHorizontalBlock"] {
+            display: grid !important;
+            grid-template-columns: minmax(260px, 2.1fr) repeat(3, minmax(0, 1fr));
+            gap: 0 !important;
+            align-items: stretch !important;
+        }
+
+        .st-key-company_metrics_header [data-testid="stColumn"],
+        [class*="st-key-company_metric_row_"] [data-testid="stColumn"] {
+            width: auto !important;
+            min-width: 0 !important;
+            flex: none !important;
+            display: flex;
+            min-height: 42px;
+            align-items: center;
+            padding: 8px 12px;
+        }
+
+        .st-key-company_metrics_header [data-testid="stColumn"]:not(:first-child),
+        [class*="st-key-company_metric_row_"] [data-testid="stColumn"]:not(:first-child) {
+            justify-content: center;
+        }
+
+        .st-key-company_metrics_header [data-testid="stColumn"] > div,
+        [class*="st-key-company_metric_row_"] [data-testid="stColumn"] > div {
+            width: 100%;
+        }
+
+        .st-key-company_metrics_header p {
+            margin: 0 !important;
+            color: var(--color-text-strong) !important;
+            font-family: var(--font-mono) !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        [class*="st-key-company_metric_row_"] {
+            padding: 0;
+            border-bottom: 1px solid rgba(42, 31, 44, 0.10);
+        }
+
+        [class*="st-key-company_metric_row_"][class*="_last"] {
+            border-bottom: 0;
+        }
+
+        [class*="st-key-company_metric_row_"] [data-testid="stTextInput"] {
+            width: min(100%, 132px);
+            margin: 0 auto;
+        }
+
+        [class*="st-key-company_metric_row_"] [data-testid="stTextInputRootElement"],
+        [class*="st-key-company_metric_row_"] div[data-baseweb="input"],
+        [class*="st-key-company_metric_row_"] div[data-baseweb="base-input"] {
+            min-height: 34px !important;
+            border-color: rgba(42, 31, 44, 0.18) !important;
+            border-radius: 8px !important;
+        }
+
+        [class*="st-key-company_metric_row_"] input {
+            min-height: 32px !important;
+            padding: 0 10px !important;
+            font-family: var(--font-mono) !important;
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            text-align: center;
+        }
+
+        .company-metric-name,
+        .company-metric-readonly {
+            display: flex;
+            min-height: 34px;
+            align-items: center;
+            line-height: 1.24;
+        }
+
+        .company-metric-name {
+            color: var(--color-text-strong);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .company-metric-readonly {
+            justify-content: center;
+            padding: 0;
+            color: var(--color-text-strong);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
         }
 
         .stApp:has(.company-profile-active) [data-testid="stNotification"],
@@ -399,7 +521,8 @@ def apply_company_profile_css() -> None:
                 white-space: nowrap;
             }
 
-            .stApp:has(.company-profile-active) div[data-testid="stForm"] { padding: 18px; }
+            .stApp:has(.company-profile-active) div[data-testid="stForm"],
+            .stApp:has(.company-profile-active) .st-key-company_metrics_card { padding: 18px; }
             .company-profile-readonly-grid { grid-template-columns: 1fr; }
         }
         </style>

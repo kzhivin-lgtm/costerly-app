@@ -364,6 +364,11 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     monkeypatch.setattr(company_profile, "load_company_members", lambda _access: [
         {"Email": "owner@example.com", "Role": "Owner"},
     ])
+    monkeypatch.setattr(
+        company_profile,
+        "load_company_metrics",
+        lambda _access: ({"vat_percent": 18}, {}),
+    )
     monkeypatch.setattr(company_auth, "company_join_url", lambda _access: "https://example.com/join/token")
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = role
@@ -377,17 +382,22 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     save_buttons = [
         button.label
         for button in app.button
-        if button.label in {"Save General Details", "Save Contacts", "Save Bank Details"}
+        if button.label in {
+            "Save General Details", "Save Contacts", "Save Bank Details", "Save Metrics"
+        }
     ]
     assert save_buttons == ([
-        "Save General Details", "Save Contacts", "Save Bank Details"
+        "Save General Details", "Save Contacts", "Save Bank Details", "Save Metrics"
     ] if role == "owner" else [])
-    assert [field.label for field in app.text_input[:4]] == ([
-        "Company name",
-        "Company legal name (Hebrew)",
-        "Company registration number",
-        "Company legal name (English)",
-    ] if role == "owner" else [])
+    if role == "owner":
+        assert [field.label for field in app.text_input[:4]] == [
+            "Company name",
+            "Company legal name (Hebrew)",
+            "Company registration number",
+            "Company legal name (English)",
+        ]
+    else:
+        assert all(field.disabled for field in app.text_input)
     assert "VAT file number" not in [field.label for field in app.text_input]
     assert "Country" not in [field.label for field in app.text_input]
     if role == "owner":
@@ -423,6 +433,11 @@ def test_bank_details_shows_read_only_legal_names_and_does_not_write_them(monkey
         lambda _access, values: writes.append(values) or {"company_id": "company-a"},
     )
     monkeypatch.setattr(company_profile, "load_company_members", lambda _access: [])
+    monkeypatch.setattr(
+        company_profile,
+        "load_company_metrics",
+        lambda _access: ({"vat_percent": 18}, {}),
+    )
     monkeypatch.setattr(company_auth, "company_join_url", lambda _access: "https://example.com/join/token")
 
     app = AppTest.from_function(_render_profile_test)
@@ -443,6 +458,95 @@ def test_bank_details_shows_read_only_legal_names_and_does_not_write_them(monkey
     assert "legal_name" not in writes[-1]
     assert writes[-1]["iban"] == "IL00"
     assert writes[-1]["swift"] == "TESTILIT"
+
+
+def test_save_company_metrics_updates_only_visible_metric_fields(monkeypatch):
+    access = company_auth.CompanyAccess(
+        "user-1", "owner@example.com", "company-a", "owner", "token"
+    )
+    monkeypatch.setattr(company_profile, "_current_access", lambda _access: access)
+    writes = {}
+
+    class Query:
+        def __init__(self, table):
+            self.table = table
+
+        def upsert(self, values, **_kwargs):
+            writes[self.table] = values
+            return self
+
+        def execute(self):
+            return type("Result", (), {"data": []})()
+
+    class Client:
+        def table(self, name):
+            return Query(name)
+
+    monkeypatch.setattr(company_profile, "get_supabase_client", lambda: Client())
+    monkeypatch.setattr(company_profile, "assert_company_owner", lambda *_args: None)
+
+    monthly = {field: index for index, field in enumerate(company_profile.METRIC_MONTHLY_FIELDS)}
+    company_profile.save_company_metrics(
+        access,
+        {
+            "vat_percent": 18,
+            "warranty_reserve_percent": 2.5,
+            "management_buffer_percent": 4,
+        },
+        monthly,
+    )
+
+    assert set(writes["overhead_settings"]) == {
+        "company_id",
+        "vat_percent",
+        "warranty_reserve_percent",
+        "management_buffer_percent",
+    }
+    assert "delivery_percent" not in writes["overhead_settings"]
+    assert set(writes["overhead_monthly"]) == {
+        "company_id", *company_profile.METRIC_MONTHLY_FIELDS,
+    }
+
+
+def test_company_metrics_format_whole_shekels_and_exempt_arnona_from_vat():
+    assert company_profile._metric_money(10_000.49) == "₪10\u202f000"
+    assert company_profile._metric_money(" ₪2,500.80 ") == "₪2\u202f501"
+    assert company_profile._metric_vat("rent_facilities_cost", 10_000, 18) == 1_800
+    assert company_profile._metric_vat("arnona_facilities_cost", 2_500, 18) == 0
+
+
+def test_company_metrics_save_monthly_costs_as_whole_shekels(monkeypatch):
+    access = company_auth.CompanyAccess(
+        "user-1", "owner@example.com", "company-a", "owner", "token"
+    )
+    monkeypatch.setattr(company_profile, "_current_access", lambda _access: access)
+    writes = {}
+
+    class Query:
+        def __init__(self, table):
+            self.table = table
+
+        def upsert(self, values, **_kwargs):
+            writes[self.table] = values
+            return self
+
+        def execute(self):
+            return type("Result", (), {"data": []})()
+
+    class Client:
+        def table(self, name):
+            return Query(name)
+
+    monkeypatch.setattr(company_profile, "get_supabase_client", lambda: Client())
+    monkeypatch.setattr(company_profile, "assert_company_owner", lambda *_args: None)
+
+    company_profile.save_company_metrics(
+        access,
+        {field: 0 for field in company_profile.METRIC_SETTING_FIELDS},
+        {field: 1234.6 for field in company_profile.METRIC_MONTHLY_FIELDS},
+    )
+
+    assert set(writes["overhead_monthly"].values()) == {"company-a", 1235}
 
 
 def test_profile_partial_update_preserves_hidden_vat_and_country(monkeypatch):

@@ -35,6 +35,13 @@ domestic and international bank fields, and its save payload cannot update
 either legal-name column. BIC continues to use the existing `swift` database
 column because SWIFT/BIC is one banking identifier, so no duplicate column is
 introduced.
+Metrics reuses the existing `overhead_settings` and `overhead_monthly` records.
+Its save path is owner-only and updates only the fields visible on the Metrics
+screen, preserving other overhead settings. Monthly overhead values are stored
+as whole shekels. One company VAT percentage applies to taxable overhead rows;
+Arnona is VAT-exempt in the Metrics breakdown. VAT and Total are deterministic
+derived values, never editable inputs. The same stored VAT percentage is used
+for project and object pricing totals instead of a hard-coded 18 percent rate.
 All Profile text inputs reuse the Sign in input geometry and focus contract:
 neutral default border, purple focus ring, no red focus-only state, and no
 framework keyboard instruction. Auth and Upload styling remain separate

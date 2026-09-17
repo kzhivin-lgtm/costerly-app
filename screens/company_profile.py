@@ -25,6 +25,48 @@ PROFILE_COLUMNS = (
 PROFILE_FIELDS = tuple(
     field for field in PROFILE_COLUMNS.split(",") if field not in {"company_id", "logo_url"}
 )
+METRIC_SETTING_FIELDS = (
+    "vat_percent",
+    "warranty_reserve_percent",
+    "management_buffer_percent",
+)
+METRIC_GROUPS = (
+    (
+        "Facility / Rent / Arnona",
+        (
+            ("rent_facilities_cost", "Rent"),
+            ("arnona_facilities_cost", "Arnona"),
+            ("maintenance_fee_facilities_cost", "Maintenance fee"),
+        ),
+    ),
+    (
+        "Utilities / Safety",
+        (
+            ("electricity_utilities_cost", "Electricity"),
+            ("water_utilities_cost", "Water"),
+            ("compressed_air_gas_utilities_cost", "Compressed air / gas"),
+            ("insurance_safety_fire_utilities_cost", "Insurance / safety / fire"),
+        ),
+    ),
+    (
+        "Machinery / Equipment",
+        (
+            ("equipment_depreciation_machinery_cost", "Equipment depreciation"),
+            ("machine_consumables_wear_machinery_cost", "Machine consumables / wear"),
+        ),
+    ),
+    (
+        "Software / Shop Supplies / Waste",
+        (
+            ("software_subscriptions_admin_cost", "Software subscriptions"),
+            ("shop_supplies_cleaning_admin_cost", "Shop supplies / cleaning"),
+            ("waste_removal_admin_cost", "Waste removal"),
+        ),
+    ),
+)
+METRIC_MONTHLY_FIELDS = tuple(
+    field for _group, rows in METRIC_GROUPS for field, _label in rows
+)
 
 
 def _current_access(access: CompanyAccess) -> CompanyAccess:
@@ -71,6 +113,33 @@ def load_company_profile(access: CompanyAccess) -> dict:
     return rows[0]
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def _load_company_metrics_by_id(company_id: str) -> tuple[dict, dict]:
+    client = get_supabase_client()
+    settings_rows = (
+        client.table("overhead_settings")
+        .select("company_id," + ",".join(METRIC_SETTING_FIELDS))
+        .eq("company_id", company_id)
+        .limit(1)
+        .execute()
+    ).data or []
+    monthly_rows = (
+        client.table("overhead_monthly")
+        .select("company_id," + ",".join(METRIC_MONTHLY_FIELDS))
+        .eq("company_id", company_id)
+        .limit(1)
+        .execute()
+    ).data or []
+    settings = settings_rows[0] if settings_rows else {"company_id": company_id}
+    monthly = monthly_rows[0] if monthly_rows else {"company_id": company_id}
+    settings.setdefault("vat_percent", 18)
+    return settings, monthly
+
+
+def load_company_metrics(access: CompanyAccess) -> tuple[dict, dict]:
+    return _load_company_metrics_by_id(str(access.company_id))
+
+
 def save_company_profile(access: CompanyAccess, values: dict[str, object]) -> dict:
     fresh = _current_access(access)
     payload = {
@@ -103,6 +172,38 @@ def save_company_profile(access: CompanyAccess, values: dict[str, object]) -> di
     if len(rows) != 1 or str(rows[0].get("company_id")) != fresh.company_id:
         raise RuntimeError("The company profile was not saved.")
     return rows[0]
+
+
+def save_company_metrics(
+    access: CompanyAccess,
+    settings_values: dict[str, object],
+    monthly_values: dict[str, object],
+) -> None:
+    fresh = _current_access(access)
+    client = get_supabase_client()
+    assert_company_owner(client, fresh.user_id, fresh.company_id)
+
+    settings_payload = {"company_id": fresh.company_id}
+    for field in METRIC_SETTING_FIELDS:
+        value = float(settings_values.get(field) or 0)
+        if value < 0 or value > 100:
+            raise ValueError("VAT and reserve percentages must be between 0 and 100.")
+        settings_payload[field] = round(value, 4)
+
+    monthly_payload = {"company_id": fresh.company_id}
+    for field in METRIC_MONTHLY_FIELDS:
+        value = float(monthly_values.get(field) or 0)
+        if value < 0:
+            raise ValueError("Monthly overhead costs cannot be negative.")
+        monthly_payload[field] = int(round(value))
+
+    client.table("overhead_settings").upsert(
+        settings_payload, on_conflict="company_id"
+    ).execute()
+    client.table("overhead_monthly").upsert(
+        monthly_payload, on_conflict="company_id"
+    ).execute()
+    _load_company_metrics_by_id.clear()
 
 
 def save_company_contacts(
@@ -369,6 +470,192 @@ def _render_member_bank_details(profile: dict) -> None:
     ])
 
 
+def _metric_amount(value: object) -> float:
+    try:
+        cleaned = (
+            str(value or "0")
+            .replace("₪", "")
+            .replace("%", "")
+            .replace(",", "")
+            .replace("\u202f", "")
+            .replace(" ", "")
+            .strip()
+        )
+        return max(0.0, float(cleaned or 0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _metric_money(value: object) -> str:
+    return f"₪{round(_metric_amount(value)):,}".replace(",", "\u202f")
+
+
+def _metric_percent_text(value: object) -> str:
+    number = min(100.0, _metric_amount(value))
+    if number == int(number):
+        return str(int(number))
+    return f"{number:.2f}".rstrip("0").rstrip(".")
+
+
+def _ensure_metric_text_state(key: str, default: str) -> None:
+    if key not in st.session_state or not isinstance(st.session_state[key], str):
+        st.session_state[key] = default
+
+
+def _normalize_metric_money(key: str) -> None:
+    st.session_state[key] = _metric_money(st.session_state.get(key))
+
+
+def _normalize_metric_percent(key: str) -> None:
+    st.session_state[key] = _metric_percent_text(st.session_state.get(key))
+
+
+def _metric_vat(field: str, net_amount: float, vat_percent: float) -> int:
+    if field == "arnona_facilities_cost":
+        return 0
+    return round(net_amount * vat_percent / 100)
+
+
+def _metric_readonly_amount(value: float, *, unavailable: bool = False) -> None:
+    display = "—" if unavailable else _metric_money(value)
+    st.markdown(
+        f'<div class="company-metric-readonly">{display}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_metrics(access: CompanyAccess) -> None:
+    try:
+        settings, monthly = load_company_metrics(access)
+    except Exception:
+        st.error("Company metrics are unavailable right now. Try again in a moment.")
+        return
+
+    editable = access.role == "owner"
+    with st.container(key="company_metrics_card", border=True):
+        vat_column, _vat_space = st.columns([1, 3])
+        with vat_column:
+            vat_key = "profile_metric_vat_percent"
+            _ensure_metric_text_state(
+                vat_key, _metric_percent_text(settings.get("vat_percent"))
+            )
+            vat_raw = st.text_input(
+                "Ma'am / VAT rate, %",
+                key=vat_key,
+                on_change=_normalize_metric_percent,
+                args=(vat_key,),
+                disabled=not editable,
+            )
+            vat_percent = min(100.0, _metric_amount(vat_raw))
+
+        with st.container(key="company_metrics_header"):
+            header_name, header_net, header_vat, header_total = st.columns(
+                [2.2, 1.2, 1, 1]
+            )
+            header_name.markdown("Expense")
+            header_net.markdown("Monthly cost")
+            header_vat.markdown("VAT")
+            header_total.markdown("Total")
+
+        monthly_values: dict[str, float] = {}
+        for group_name, rows in METRIC_GROUPS:
+            st.markdown(
+                f'<div class="company-metric-group">{escape(group_name)}</div>',
+                unsafe_allow_html=True,
+            )
+            for row_index, (field, label) in enumerate(rows):
+                row_suffix = "_last" if row_index == len(rows) - 1 else ""
+                with st.container(key=f"company_metric_row_{field}{row_suffix}"):
+                    name_column, net_column, row_vat_column, total_column = st.columns(
+                        [2.2, 1.2, 1, 1]
+                    )
+                    name_column.markdown(
+                        f'<div class="company-metric-name">{escape(label)}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    with net_column:
+                        metric_key = f"profile_metric_{field}"
+                        _ensure_metric_text_state(
+                            metric_key, _metric_money(monthly.get(field))
+                        )
+                        net_raw = st.text_input(
+                            f"{label}, monthly cost",
+                            key=metric_key,
+                            on_change=_normalize_metric_money,
+                            args=(metric_key,),
+                            label_visibility="collapsed",
+                            disabled=not editable,
+                        )
+                        net_amount = round(_metric_amount(net_raw))
+                    vat_amount = _metric_vat(field, net_amount, vat_percent)
+                    with row_vat_column:
+                        _metric_readonly_amount(
+                            vat_amount,
+                            unavailable=field == "arnona_facilities_cost",
+                        )
+                    with total_column:
+                        _metric_readonly_amount(net_amount + vat_amount)
+                monthly_values[field] = net_amount
+
+        st.markdown(
+            '<div class="company-metric-group">Project Reserves</div>',
+            unsafe_allow_html=True,
+        )
+        reserve_left, reserve_right = st.columns(2)
+        with reserve_left:
+            warranty_key = "profile_metric_warranty_reserve_percent"
+            _ensure_metric_text_state(
+                warranty_key,
+                _metric_percent_text(settings.get("warranty_reserve_percent")),
+            )
+            warranty_raw = st.text_input(
+                "Warranty reserve, %",
+                key=warranty_key,
+                on_change=_normalize_metric_percent,
+                args=(warranty_key,),
+                disabled=not editable,
+            )
+            warranty_percent = min(100.0, _metric_amount(warranty_raw))
+        with reserve_right:
+            management_key = "profile_metric_management_buffer_percent"
+            _ensure_metric_text_state(
+                management_key,
+                _metric_percent_text(settings.get("management_buffer_percent")),
+            )
+            management_raw = st.text_input(
+                "Management buffer, %",
+                key=management_key,
+                on_change=_normalize_metric_percent,
+                args=(management_key,),
+                disabled=not editable,
+            )
+            management_percent = min(100.0, _metric_amount(management_raw))
+
+        if editable and st.button(
+            "Save Metrics",
+            key="save_profile_metrics",
+            type="primary",
+            use_container_width=True,
+        ):
+            try:
+                save_company_metrics(
+                    access,
+                    {
+                        "vat_percent": vat_percent,
+                        "warranty_reserve_percent": warranty_percent,
+                        "management_buffer_percent": management_percent,
+                    },
+                    monthly_values,
+                )
+                st.success("Company metrics saved.")
+            except ValueError as exc:
+                st.error(str(exc))
+            except PermissionError:
+                st.error("Only the company owner can save these metrics.")
+            except Exception:
+                st.error("Company metrics were not saved. Try again in a moment.")
+
+
 def _render_users(access: CompanyAccess) -> None:
     from state.company_auth import company_join_url
 
@@ -450,7 +737,7 @@ def render_company_profile(access: CompanyAccess) -> None:
             _render_member_bank_details(profile)
 
     with metrics_tab:
-        st.info("Rent, payroll, utilities, equipment and other cost drivers will be configured here.")
+        _render_metrics(access)
 
     with users_tab:
         _render_users(access)

@@ -146,7 +146,17 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
             }
         )
 
-    project_costs, summary = _objects_project_pricing(rows, sale_price_overrides)
+    vat_percent = 18.0
+    if not objects_df.empty:
+        company_id = str(objects_df.iloc[0].get("company_id") or "")
+        if company_id:
+            settings = _first_row(fetch_company_overhead_settings(client, company_id))
+            vat_percent = _number(settings.get("vat_percent"), 18)
+    project_costs, summary = _objects_project_pricing(
+        rows,
+        sale_price_overrides,
+        vat_percent=vat_percent,
+    )
     return {
         "rows": rows,
         "project_costs": project_costs,
@@ -187,6 +197,8 @@ def _pricing_overrides_by_object(overrides_df: Any) -> dict[str, float]:
 def _objects_project_pricing(
     rows: list[dict[str, Any]],
     sale_price_overrides: dict[str, float] | None = None,
+    *,
+    vat_percent: float = 18,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Calculate project-level suggested costs after all objects are priced."""
     sale_price_overrides = sale_price_overrides or {}
@@ -205,7 +217,11 @@ def _objects_project_pricing(
         if all_completed
         else None
     )
-    vat = round(_number(project_price, 0) * 0.18, 2) if all_completed else None
+    vat = (
+        round(_number(project_price, 0) * _number(vat_percent, 18) / 100, 2)
+        if all_completed
+        else None
+    )
     total = round(_number(project_price, 0) + _number(vat, 0), 2) if all_completed else None
 
     return (
@@ -330,7 +346,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                 "title": "Material cost",
                 "metrics": [
                     ("Cost", material_total),
-                    ("VAT 18%", round(material_total * vat_percent / 100, 2)),
+                    (f"VAT {_format_number(vat_percent)}%", round(material_total * vat_percent / 100, 2)),
                     ("Total", round(material_total * (1 + vat_percent / 100), 2)),
                 ],
                 "columns": ["Item", "Unit", "Unit cost", "Qty", "Cost"],
