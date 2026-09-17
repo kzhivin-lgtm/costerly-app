@@ -241,7 +241,7 @@ def _render_profile_test():
 
 
 @pytest.mark.parametrize("role", ["owner", "member"])
-def test_company_profile_has_four_sections_and_owner_only_controls(monkeypatch, role):
+def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role):
     monkeypatch.setattr(company_profile, "load_company_profile", lambda _access: {
         "company_name": "Workshop", "public_email": "", "public_phone": "",
     })
@@ -253,12 +253,75 @@ def test_company_profile_has_four_sections_and_owner_only_controls(monkeypatch, 
     app.session_state["test_profile_role"] = role
     app.run()
     assert not app.exception
-    assert [heading.value for heading in app.subheader] == [
-        "Details", "Metrics", "Users", "Price lists",
+    assert [tab.label for tab in app.get("tab")] == [
+        "General", "Contacts", "Bank Details", "Metrics", "Users", "Price List",
     ]
     assert any(button.label == "Continue to upload" for button in app.button)
-    assert any(button.label == "Save details" for button in app.button) == (role == "owner")
+    assert any(button.label == "Sign out" for button in app.button)
+    save_buttons = [button.label for button in app.button if button.label == "Save"]
+    assert len(save_buttons) == (3 if role == "owner" else 0)
+    assert [field.label for field in app.text_input[:4]] == ([
+        "Company name",
+        "Legal name (Hebrew)",
+        "Company registration number (ח.פ.)",
+        "Legal name (English)",
+    ] if role == "owner" else [])
+    assert "VAT file number" not in [field.label for field in app.text_input]
+    assert "Country" not in [field.label for field in app.text_input]
+    if role == "owner":
+        labels = [field.label for field in app.text_input]
+        assert labels.index("Facebook") < labels.index("LinkedIn") < labels.index("Instagram")
+    assert not app.subheader
     assert len(app.code) == (1 if role == "owner" else 0)
+
+
+def test_profile_partial_update_preserves_hidden_vat_and_country(monkeypatch):
+    access = company_auth.CompanyAccess("user-1", "owner@example.com", "company-a", "owner", "token")
+    monkeypatch.setattr(company_profile, "_current_access", lambda _access: access)
+    writes = []
+
+    class Query:
+        def __init__(self, table):
+            self.table = table
+
+        def select(self, *_args):
+            return self
+
+        def eq(self, *_args):
+            return self
+
+        def limit(self, *_args):
+            return self
+
+        def update(self, values):
+            writes.append(values)
+            return self
+
+        def execute(self):
+            if self.table == "company_members":
+                return type("Response", (), {"data": [{"company_id": "company-a", "role": "owner"}]})()
+            return type("Response", (), {"data": [{"company_id": "company-a"}]})()
+
+    class Client:
+        def table(self, name):
+            return Query(name)
+
+    monkeypatch.setattr(company_profile, "get_supabase_client", lambda: Client())
+    company_profile.save_company_profile(access, {
+        "company_name": " Workshop ",
+        "legal_name": "Workshop Ltd",
+    })
+    assert writes == [{"company_name": "Workshop", "legal_name": "Workshop Ltd"}]
+    assert "vat_file_number" not in writes[0]
+    assert "address_country" not in writes[0]
+
+
+def test_company_profile_reuses_auth_input_contract():
+    css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
+    assert '[data-testid="InputInstructions"]' in css
+    assert '[data-testid="stTextInputRootElement"]' in css
+    assert '[data-testid="stTextInput"]:focus-within' in css
+    assert "border: 1px solid #CEC5D1 !important" in css
 
 
 def test_server_run_id_replaces_model_id_on_all_objects():

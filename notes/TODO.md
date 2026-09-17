@@ -5,6 +5,9 @@
 - Every new two-file benchmark cycle starts two fresh instances on separate unused ports and opens both Chrome tabs automatically so `page-23.pdf` and `Металл (1).pdf` can run in parallel under the same code version. Keep older benchmark servers and result screens available for side-by-side comparison; stop them only on explicit request or when resource/port conflicts require cleanup.
 
 ## Active
+- v3.0.49 Company Profile follow-up: decide whether Bank Details needs a distinct
+  `Account holder name` field. Do not duplicate editable Legal name across tabs
+  or add a database column until the banking requirement is confirmed.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without reintroducing a custom component, JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve the stable pre-browser-session state transition and verify two consecutive Sign out / Sign in cycles.
 - Auth persistence follow-up: design session persistence separately from Sign in/Sign out transitions. The removed custom browser-session component caused duplicate-looking Sign in and stale Sign out UI. Until a replacement is independently verified, a full browser refresh may require Sign in again.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:

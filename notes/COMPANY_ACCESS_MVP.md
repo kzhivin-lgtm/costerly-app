@@ -25,9 +25,10 @@
 - Registration/contact email requires a public-email shape such as
   `name@company.com` or `name@company.com.ai`. This is syntax validation only;
   neither DNS nor mailbox ownership is checked in this pilot.
-- Company Profile initially has four sections: company details, metrics, users,
-  and price lists. Only company name/contact email/phone are editable now.
-  Pricing metrics and price-list uploads remain subsequent tasks.
+- Company Profile has six peer sections: General, Contacts, Bank Details,
+  Metrics, Users, and Price List. Owners can edit the current general, contact,
+  address, social, and bank fields. Pricing metrics and price-list uploads
+  remain subsequent tasks.
 - Existing Detection and Estimation benchmarks stay on the legacy path until
   the company-auth rollout is verified.
 
@@ -39,7 +40,7 @@
 | P0 | Pending | Current-project SQL/Auth activation and two-company verification | Local checks and public URL |
 | P1 | Pending | Confirm Email and production SMTP | Before email recovery or verified accounts |
 | P1 | Pending | Pilot-friendly login persistence | Decide Streamlit stopgap versus React |
-| P1 | Active | Company Profile first screen and contacts | Manual UI review after registration |
+| P1 | Completed | Company Profile first screen, contacts, and bank details | Accepted v3.0.49 checkpoint |
 | P1 | Pending | Pricing metrics and requisites/logo onboarding | Profile first screen accepted |
 | P1 | Pending | Company price-list library and shared fallback | Pricing onboarding contract |
 | P2 | Pending | Estimation Agent improvement | Trusted company inputs |
@@ -63,9 +64,9 @@
   new Auth user when login fails because credentials are unknown. No existing
   Auth user is deleted automatically.
 - A one-owner-per-company database constraint and a server-side owner guard for
-  company-wide writes. The first Profile editor saves only name and contact
-  email/phone. Company creation routes to Profile once; later login routes to
-  Upload.
+  company-wide writes. Profile sections submit partial updates so hidden VAT
+  and country values are preserved. Company creation routes to Profile once;
+  later login routes to Upload.
 - A trusted command creates exactly one manual one-use company link. Only its
   SHA-256 hash is stored. Creation and consumption happen in one SQL transaction.
 - Each company gets a permanent random join token automatically at creation.

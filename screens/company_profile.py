@@ -73,13 +73,21 @@ def load_company_profile(access: CompanyAccess) -> dict:
 
 def save_company_profile(access: CompanyAccess, values: dict[str, object]) -> dict:
     fresh = _current_access(access)
-    payload = {field: _optional(values.get(field)) for field in PROFILE_FIELDS}
-    company_name = _clean(values.get("company_name"))
-    if not company_name:
-        raise ValueError("Company name is required.")
-    payload["company_name"] = company_name
+    payload = {
+        field: _optional(values[field])
+        for field in PROFILE_FIELDS
+        if field in values
+    }
+    if not payload:
+        raise ValueError("No company details were provided.")
 
-    public_email = _clean(values.get("public_email"))
+    if "company_name" in values:
+        company_name = _clean(values.get("company_name"))
+        if not company_name:
+            raise ValueError("Company name is required.")
+        payload["company_name"] = company_name
+
+    public_email = _clean(values.get("public_email")) if "public_email" in values else ""
     if public_email and not is_valid_email_address(public_email):
         raise ValueError("Enter a valid official email address.")
 
@@ -165,92 +173,10 @@ def _read_only_group(title: str, items: list[tuple[str, object]]) -> None:
     )
 
 
-def _render_owner_details(access: CompanyAccess, profile: dict) -> None:
-    with st.form("company_profile_details"):
-        st.markdown("### Identity")
-        company_name = _text_input(profile, "Company name", "company_name")
-        identity_left, identity_right = st.columns(2)
-        with identity_left:
-            legal_name = _text_input(profile, "Legal name (English)", "legal_name")
-            registration = _text_input(
-                profile, "Company registration number (ח.פ.)", "company_registration_number"
-            )
-        with identity_right:
-            legal_name_hebrew = _text_input(profile, "Legal name (Hebrew)", "legal_name_hebrew")
-            vat_number = _text_input(profile, "VAT file number", "vat_file_number")
-
-        st.markdown("### Contact details")
-        contact_left, contact_right = st.columns(2)
-        with contact_left:
-            official_email = _text_input(
-                profile, "Official email", "public_email", placeholder="office@company.com"
-            )
-            website = _text_input(profile, "Website", "website_url", placeholder="https://company.com")
-        with contact_right:
-            phone = _text_input(profile, "Phone", "public_phone", placeholder="+972 00 000 0000")
-            country = _text_input(profile, "Country", "address_country")
-
-        address_left, address_middle, address_right = st.columns([2, 1, 2])
-        with address_left:
-            street = _text_input(profile, "Street", "address_street")
-        with address_middle:
-            house_number = _text_input(profile, "Number", "address_house_number")
-        with address_right:
-            city = _text_input(profile, "City", "address_city")
-        postal_code = _text_input(profile, "Postal code", "address_postal_code")
-
-        with st.expander("Social links"):
-            linkedin = _text_input(profile, "LinkedIn", "linkedin_url", placeholder="https://linkedin.com/company/...")
-            instagram = _text_input(profile, "Instagram", "instagram_url", placeholder="https://instagram.com/...")
-            facebook = _text_input(profile, "Facebook", "facebook_url", placeholder="https://facebook.com/...")
-
-        st.markdown("### Bank details")
-        bank_left, bank_right = st.columns(2)
-        with bank_left:
-            bank_name = _text_input(profile, "Bank name", "bank_name")
-            branch_number = _text_input(profile, "Branch number", "branch_number")
-        with bank_right:
-            bank_number = _text_input(profile, "Bank number", "bank_number")
-            account_number = _text_input(profile, "Account number", "account_number")
-        with st.expander("International bank details"):
-            international_left, international_right = st.columns(2)
-            with international_left:
-                iban = _text_input(profile, "IBAN", "iban")
-            with international_right:
-                swift = _text_input(profile, "SWIFT / BIC", "swift")
-
-        saved = st.form_submit_button("Save details", type="primary")
-
-    if not saved:
-        return
-    values = {
-        "company_name": company_name,
-        "legal_name": legal_name,
-        "legal_name_hebrew": legal_name_hebrew,
-        "company_registration_number": registration,
-        "vat_file_number": vat_number,
-        "public_email": official_email,
-        "public_phone": phone,
-        "website_url": website,
-        "address_street": street,
-        "address_house_number": house_number,
-        "address_city": city,
-        "address_postal_code": postal_code,
-        "address_country": country,
-        "linkedin_url": linkedin,
-        "instagram_url": instagram,
-        "facebook_url": facebook,
-        "bank_name": bank_name,
-        "bank_number": bank_number,
-        "branch_number": branch_number,
-        "account_number": account_number,
-        "iban": iban,
-        "swift": swift,
-    }
+def _save_profile_section(access: CompanyAccess, values: dict[str, object]) -> None:
     try:
         save_company_profile(access, values)
         st.success("Company details saved.")
-        st.rerun()
     except ValueError as exc:
         st.error(str(exc))
     except PermissionError:
@@ -259,22 +185,139 @@ def _render_owner_details(access: CompanyAccess, profile: dict) -> None:
         st.error("Company details were not saved. Try again in a moment.")
 
 
-def _render_member_details(profile: dict) -> None:
-    _read_only_group("Identity", [
+def _render_owner_general(access: CompanyAccess, profile: dict) -> None:
+    with st.form("company_profile_general"):
+        first_left, first_right = st.columns(2)
+        with first_left:
+            company_name = _text_input(profile, "Company name", "company_name")
+        with first_right:
+            legal_name_hebrew = _text_input(profile, "Legal name (Hebrew)", "legal_name_hebrew")
+        second_left, second_right = st.columns(2)
+        with second_left:
+            registration = _text_input(
+                profile, "Company registration number (ח.פ.)", "company_registration_number"
+            )
+        with second_right:
+            legal_name = _text_input(profile, "Legal name (English)", "legal_name")
+        saved = st.form_submit_button("Save", type="primary")
+    if saved:
+        _save_profile_section(access, {
+            "company_name": company_name,
+            "legal_name_hebrew": legal_name_hebrew,
+            "company_registration_number": registration,
+            "legal_name": legal_name,
+        })
+
+
+def _render_owner_contacts(access: CompanyAccess, profile: dict) -> None:
+    with st.form("company_profile_contacts"):
+        contact_left, contact_right = st.columns(2)
+        with contact_left:
+            official_email = _text_input(
+                profile, "Official email", "public_email", placeholder="office@company.com"
+            )
+        with contact_right:
+            phone = _text_input(profile, "Phone", "public_phone", placeholder="+972 00 000 0000")
+        website = _text_input(profile, "Website", "website_url", placeholder="https://company.com")
+
+        address_first_left, address_first_right = st.columns(2)
+        with address_first_left:
+            street = _text_input(profile, "Street", "address_street")
+        with address_first_right:
+            house_number = _text_input(profile, "Number", "address_house_number")
+        address_second_left, address_second_right = st.columns(2)
+        with address_second_left:
+            city = _text_input(profile, "City", "address_city")
+        with address_second_right:
+            postal_code = _text_input(profile, "Postal code", "address_postal_code")
+
+        social_left, social_middle, social_right = st.columns(3)
+        with social_left:
+            facebook = _text_input(
+                profile, "Facebook", "facebook_url", placeholder="https://facebook.com/..."
+            )
+        with social_middle:
+            linkedin = _text_input(
+                profile, "LinkedIn", "linkedin_url", placeholder="https://linkedin.com/company/..."
+            )
+        with social_right:
+            instagram = _text_input(
+                profile, "Instagram", "instagram_url", placeholder="https://instagram.com/..."
+            )
+        saved = st.form_submit_button("Save", type="primary")
+    if saved:
+        _save_profile_section(access, {
+            "public_email": official_email,
+            "public_phone": phone,
+            "website_url": website,
+            "address_street": street,
+            "address_house_number": house_number,
+            "address_city": city,
+            "address_postal_code": postal_code,
+            "linkedin_url": linkedin,
+            "instagram_url": instagram,
+            "facebook_url": facebook,
+        })
+
+
+def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
+    with st.form("company_profile_bank_details"):
+        bank_first_left, bank_first_right = st.columns(2)
+        with bank_first_left:
+            bank_name = _text_input(profile, "Bank name", "bank_name")
+        with bank_first_right:
+            bank_number = _text_input(profile, "Bank number", "bank_number")
+        bank_second_left, bank_second_right = st.columns(2)
+        with bank_second_left:
+            branch_number = _text_input(profile, "Branch number", "branch_number")
+        with bank_second_right:
+            account_number = _text_input(profile, "Account number", "account_number")
+
+        international_left, international_right = st.columns(2)
+        with international_left:
+            iban = _text_input(profile, "IBAN", "iban")
+        with international_right:
+            swift = _text_input(profile, "SWIFT / BIC", "swift")
+        saved = st.form_submit_button("Save", type="primary")
+    if saved:
+        _save_profile_section(access, {
+            "bank_name": bank_name,
+            "bank_number": bank_number,
+            "branch_number": branch_number,
+            "account_number": account_number,
+            "iban": iban,
+            "swift": swift,
+        })
+
+
+def _render_member_general(profile: dict) -> None:
+    _read_only_group("General", [
         ("Company name", profile.get("company_name")),
-        ("Legal name (English)", profile.get("legal_name")),
         ("Legal name (Hebrew)", profile.get("legal_name_hebrew")),
         ("Registration number", profile.get("company_registration_number")),
+        ("Legal name (English)", profile.get("legal_name")),
     ])
-    _read_only_group("Contact details", [
+
+
+def _render_member_contacts(profile: dict) -> None:
+    _read_only_group("Contacts", [
         ("Official email", profile.get("public_email")),
         ("Phone", profile.get("public_phone")),
         ("Website", profile.get("website_url")),
+        ("Street", profile.get("address_street")),
+        ("Number", profile.get("address_house_number")),
         ("City", profile.get("address_city")),
-        ("Country", profile.get("address_country")),
+        ("Postal code", profile.get("address_postal_code")),
+        ("LinkedIn", profile.get("linkedin_url")),
+        ("Instagram", profile.get("instagram_url")),
+        ("Facebook", profile.get("facebook_url")),
     ])
+
+
+def _render_member_bank_details(profile: dict) -> None:
     _read_only_group("Bank details", [
         ("Bank name", profile.get("bank_name")),
+        ("Bank number", profile.get("bank_number")),
         ("Branch number", profile.get("branch_number")),
         ("Account number", profile.get("account_number")),
         ("IBAN", profile.get("iban")),
@@ -310,7 +353,7 @@ def _render_users(access: CompanyAccess) -> None:
 def render_company_profile(access: CompanyAccess) -> None:
     apply_company_profile_css()
     st.markdown('<div class="company-profile-active" style="display:none"></div>', unsafe_allow_html=True)
-    header_left, header_right = st.columns([4, 1])
+    header_left, header_right = st.columns([4, 1.6])
     with header_left:
         st.markdown(
             f'<div class="company-profile-heading"><div class="company-profile-mark">{_brand_mark()}</div>'
@@ -318,9 +361,22 @@ def render_company_profile(access: CompanyAccess) -> None:
             unsafe_allow_html=True,
         )
     with header_right:
-        if st.button("Continue to upload", type="primary", key="profile_to_upload"):
-            st.session_state.screen = "upload"
-            st.rerun()
+        with st.container(key="company_profile_actions"):
+            upload_action, sign_out_action = st.columns([1.4, 0.8])
+            with upload_action:
+                if st.button(
+                    "Continue to upload",
+                    key="profile_to_upload",
+                    use_container_width=True,
+                ):
+                    st.session_state.screen = "upload"
+                    st.rerun()
+            with sign_out_action:
+                if st.button("Sign out", key="company_sign_out", use_container_width=True):
+                    from state.company_auth import sign_out
+
+                    sign_out()
+                    st.rerun()
 
     try:
         profile = load_company_profile(access)
@@ -328,24 +384,32 @@ def render_company_profile(access: CompanyAccess) -> None:
         st.error("Company profile is unavailable right now. Try again in a moment.")
         return
 
-    details_tab, metrics_tab, users_tab, prices_tab = st.tabs(
-        ["Details", "Metrics", "Users", "Price lists"]
+    general_tab, contacts_tab, bank_tab, metrics_tab, users_tab, prices_tab = st.tabs(
+        ["General", "Contacts", "Bank Details", "Metrics", "Users", "Price List"]
     )
-    with details_tab:
-        st.subheader("Details")
+    with general_tab:
         if access.role == "owner":
-            _render_owner_details(access, profile)
+            _render_owner_general(access, profile)
         else:
-            _render_member_details(profile)
+            _render_member_general(profile)
+
+    with contacts_tab:
+        if access.role == "owner":
+            _render_owner_contacts(access, profile)
+        else:
+            _render_member_contacts(profile)
+
+    with bank_tab:
+        if access.role == "owner":
+            _render_owner_bank_details(access, profile)
+        else:
+            _render_member_bank_details(profile)
 
     with metrics_tab:
-        st.subheader("Metrics")
         st.info("Rent, payroll, utilities, equipment and other cost drivers will be configured here.")
 
     with users_tab:
-        st.subheader("Users")
         _render_users(access)
 
     with prices_tab:
-        st.subheader("Price lists")
         st.info("Company price lists and the shared fallback library will be configured here.")

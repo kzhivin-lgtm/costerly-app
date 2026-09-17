@@ -17,6 +17,19 @@ Theme Policy
 The design system has light and dark token blocks.
 For now, both blocks intentionally produce the same light Costerly UI. This lets us add a real dark theme later by changing dark tokens without rewriting screens.
 The app should not follow Streamlit native dark mode yet.
+
+Company Profile UI and persistence contract
+Company Profile owns its local page heading and navigation actions. The shared
+full Costerly logo and global Profile action are not rendered on that screen.
+The page uses six peer tabs: General, Contacts, Bank Details, Metrics, Users,
+and Price List. General, Contacts, and Bank Details each submit independently.
+Their save handlers send partial company updates, so a field hidden from the UI
+is not converted to null. In particular, the retained VAT file number and
+country values remain unchanged until a deliberate data-migration decision.
+All Profile text inputs reuse the Sign in input geometry and focus contract:
+neutral default border, purple focus ring, no red focus-only state, and no
+framework keyboard instruction. Auth and Upload styling remain separate
+protected surfaces.
 Responsive Policy
 Every screen should be designed for desktop and mobile from the start.
 For each screen, define:

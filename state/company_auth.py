@@ -508,6 +508,8 @@ def render_company_setup(
 
 
 def render_account_control(access: CompanyAccess) -> None:
+    if st.session_state.get("screen") == "account":
+        return
     action = render_account_header_controls()
     if action == "profile":
         st.session_state.screen = "account"

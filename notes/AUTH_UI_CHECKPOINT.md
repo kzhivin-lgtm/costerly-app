@@ -32,3 +32,11 @@ Do not reintroduce browser session persistence while fixing Sign out feedback.
 Treat persistence and transition feedback as separate experiments. Any future
 Auth revision must pass two consecutive `Sign out -> Sign in -> Upload` cycles
 without duplicate credential entry, stale screens, or a stuck loading state.
+
+## v3.0.49 boundary
+
+The accepted Company Profile revision does not change Auth or Upload CSS. It
+only suppresses the global authenticated controls while `screen == "account"`
+and renders the same Sign out action inside the Profile header. Full-refresh
+login persistence remains a separate unresolved architecture decision. Do not
+couple it to further Profile layout work.
