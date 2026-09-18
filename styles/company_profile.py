@@ -24,14 +24,14 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active) .block-container {
             width: min(1120px, calc(100vw - 48px));
             max-width: 1120px;
-            padding-top: 48px;
+            padding-top: 34px;
             padding-bottom: 80px;
         }
 
         .company-profile-heading {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 8px;
             min-height: 56px;
         }
 
@@ -128,12 +128,13 @@ def apply_company_profile_css() -> None:
             border-radius: 10px;
             color: var(--color-text-muted);
             font-size: 18px;
-            font-weight: 700;
+            font-weight: 500;
         }
 
         .stApp:has(.company-profile-active) [data-baseweb="tab"][aria-selected="true"] {
             background: var(--color-surface);
             color: var(--color-text-strong);
+            font-weight: 700;
             box-shadow: 0 1px 2px rgba(42, 31, 44, 0.08);
         }
 

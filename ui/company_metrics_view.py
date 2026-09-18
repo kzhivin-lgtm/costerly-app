@@ -25,7 +25,7 @@ def table_html(
     *,
     editable: bool,
 ) -> str:
-    """Render Company Metrics with the exact Object Detail table primitives."""
+    """Render Overhead Expenses with the exact Object Detail table primitives."""
     headers = "".join(
         f'<div class="object-detail-table-head">{_escape(label)}</div>'
         for label in ("Expense", "Monthly cost", "VAT", "Total")
@@ -80,5 +80,5 @@ def table_html(
 def save_action_html() -> str:
     return (
         '<a class="company-metrics-save" href="#" '
-        'data-company-metrics-save="true">SAVE COMPANY METRICS</a>'
+        'data-company-metrics-save="true">SAVE METRICS</a>'
     )

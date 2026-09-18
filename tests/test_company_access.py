@@ -377,7 +377,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "Company Metrics", "General Details", "Contacts", "Bank Details", "Users", "Price List",
+        "Overhead Expenses", "Labor Costs", "Contacts", "Company Details", "Users", "Price List",
     ]
     assert any(button.label == "Continue to upload" for button in app.button)
     assert any(button.label == "Sign out" for button in app.button)
@@ -385,11 +385,11 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         button.label
         for button in app.button
         if button.label in {
-            "Save General Details", "Save Contacts", "Save Bank Details"
+            "Save Contacts", "Save Company Details"
         }
     ]
     assert save_buttons == ([
-        "Save General Details", "Save Contacts", "Save Bank Details"
+        "Save Contacts", "Save Company Details"
     ] if role == "owner" else [])
     metrics_markup = "".join(item.value for item in app.markdown)
     assert ('data-company-metrics-save="true"' in metrics_markup) is (role == "owner")
@@ -401,11 +401,11 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
             "Warranty reserve",
             "Management buffer",
         ]
-        general_start = labels.index("Company name")
-        assert labels[general_start:general_start + 4] == [
+        company_start = labels.index("Company name")
+        assert labels[company_start:company_start + 4] == [
             "Company name",
-            "Company legal name (Hebrew)",
             "Company registration number",
+            "Company legal name (Hebrew)",
             "Company legal name (English)",
         ]
     else:
@@ -416,8 +416,8 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         labels = [field.label for field in app.text_input]
         assert "House Number" in labels
         assert "Number" not in labels
-        assert labels.count("Company legal name (Hebrew)") == 2
-        assert labels.count("Company legal name (English)") == 2
+        assert labels.count("Company legal name (Hebrew)") == 1
+        assert labels.count("Company legal name (English)") == 1
         assert "BIC" in labels
         assert "SWIFT / BIC" not in labels
         assert labels.index("Facebook") < labels.index("LinkedIn") < labels.index("Instagram")
@@ -465,10 +465,10 @@ def test_other_spendings_flows_from_company_metrics_to_object_detail_pricing():
         "Other spendings",
         "Other spendings",
     )
-    assert "SAVE COMPANY METRICS" in company_metrics_view.save_action_html()
+    assert "SAVE METRICS" in company_metrics_view.save_action_html()
 
 
-def test_bank_details_shows_read_only_legal_names_and_does_not_write_them(monkeypatch):
+def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
     profile = {
         "company_name": "Workshop",
         "legal_name_hebrew": "חברה",
@@ -498,19 +498,12 @@ def test_bank_details_shows_read_only_legal_names_and_does_not_write_them(monkey
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = "owner"
     app.run()
-    bank_hebrew = [
-        field for field in app.text_input if field.label == "Company legal name (Hebrew)"
-    ][1]
-    bank_english = [
-        field for field in app.text_input if field.label == "Company legal name (English)"
-    ][1]
-    assert bank_hebrew.disabled is True
-    assert bank_english.disabled is True
-    next(button for button in app.button if button.label == "Save Bank Details").click()
+    next(button for button in app.button if button.label == "Save Company Details").click()
     app.run()
 
-    assert "legal_name_hebrew" not in writes[-1]
-    assert "legal_name" not in writes[-1]
+    assert writes[-1]["company_name"] == "Workshop"
+    assert writes[-1]["legal_name_hebrew"] == "חברה"
+    assert writes[-1]["legal_name"] == "Workshop Ltd"
     assert writes[-1]["iban"] == "IL00"
     assert writes[-1]["swift"] == "TESTILIT"
 

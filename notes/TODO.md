@@ -5,15 +5,15 @@
 - Every new two-file benchmark cycle starts two fresh instances on separate unused ports and opens both Chrome tabs automatically so `page-23.pdf` and `Металл (1).pdf` can run in parallel under the same code version. Keep older benchmark servers and result screens available for side-by-side comparison; stop them only on explicit request or when resource/port conflicts require cleanup.
 
 ## Active
-- Company Metrics follow-up after the v3.0.57 visual checkpoint: apply
-  `db/sql/2026_09_18_other_spendings_overhead.sql` to live Supabase, repair and
-  verify the Save Company Metrics confirmation and save/reload cycle, make VAT
-  changes recalculate every row immediately, and correct percentage Backspace
-  behavior. Do not fork the table geometry back into Streamlit columns or native
-  money inputs.
-- Company Profile follow-up: decide whether Bank Details needs a distinct
-  `Account holder name` field. Do not duplicate editable Legal name across tabs
-  or add a database column until the banking requirement is confirmed.
+- Company Profile save phase after the accepted v3.0.58 visual checkpoint:
+  preserve the selected tab after every Contacts or Company Details save instead
+  of returning to Overhead Expenses. Then repair and verify the Overhead Expenses
+  confirmation and a real save, logout, sign-in, reload cycle against Supabase.
+  The Other Spendings migration is already applied. Do not change the accepted
+  table geometry while repairing persistence.
+- Labor Costs: define the personnel data model and calculation rules before
+  replacing the current placeholder. Hourly workers, salaried employees, and
+  employer costs remain unresolved product requirements.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
   1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR remains the default one-PDF/one-request flow. Naming is text-only and receives locked Detection facts plus OCR snippets, never the PDF again.

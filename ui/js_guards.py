@@ -100,6 +100,15 @@ def install_company_metrics_input_guard() -> None:
                 if (totalNode) totalNode.textContent = formatMoney(net + vat);
             }
 
+            function updateAllRows(rate) {
+                for (const table of parentDoc.querySelectorAll("[data-company-metrics-table]")) {
+                    table.dataset.vatPercent = String(Math.min(100, readNumber(rate)));
+                    for (const input of table.querySelectorAll(".company-metrics-monthly-input")) {
+                        updateRow(input);
+                    }
+                }
+            }
+
             function widgetValue(key) {
                 const input = parentDoc.querySelector(`.st-key-${key} input`);
                 return input ? readNumber(input.value) : 0;
@@ -132,6 +141,10 @@ def install_company_metrics_input_guard() -> None:
                 if (input) updateRow(input);
                 const phone = phoneInput(event.target);
                 if (phone) updatePhone(phone);
+                const percent = percentInput(event.target);
+                if (percent && event.target.matches(".st-key-profile_metric_vat_percent input")) {
+                    updateAllRows(percent.value);
+                }
             }
 
             function handleBlur(event) {
@@ -147,6 +160,18 @@ def install_company_metrics_input_guard() -> None:
             }
 
             function handleKeydown(event) {
+                const percent = percentInput(event.target);
+                if (percent && event.key === "Backspace" && percent.value.endsWith("%")) {
+                    event.preventDefault();
+                    const digits = cleanNumber(percent.value).slice(0, -1);
+                    percent.value = formatPercent(digits);
+                    percent.dispatchEvent(new Event("input", { bubbles: true }));
+                    percent.setSelectionRange(
+                        Math.max(0, percent.value.length - 1),
+                        Math.max(0, percent.value.length - 1),
+                    );
+                    return;
+                }
                 const input = metricsInput(event.target);
                 if (!input) return;
                 const allowed = new Set([

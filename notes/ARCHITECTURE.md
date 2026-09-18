@@ -21,33 +21,33 @@ The app should not follow Streamlit native dark mode yet.
 Company Profile UI and persistence contract
 Company Profile owns its local page heading and navigation actions. The shared
 full Costerly logo and global Profile action are not rendered on that screen.
-The page uses six peer tabs: Company Metrics, General Details, Contacts, Bank
-Details, Users, and Price List. General Details, Contacts, and Bank Details each
-submit independently.
+The page uses six peer tabs: Overhead Expenses, Labor Costs, Contacts, Company
+Details, Users, and Price List. Overhead Expenses is first. Contacts and Company
+Details submit independently. Labor Costs is a reserved product surface and does
+not yet own persistence.
 Their save handlers send partial company updates, so a field hidden from the UI
 is not converted to null. In particular, the retained VAT file number and
 country values remain unchanged until a deliberate data-migration decision.
 Every editable Profile form renders its submit action through the shared
 `_profile_save_button` helper. Profile form submits use the same full-width,
 high-emphasis purple design regardless of the current or future tab.
-Company legal names have one editing surface: General Details. Bank Details
-renders the same stored Hebrew and English names as read-only context around
-domestic and international bank fields, and its save payload cannot update
-either legal-name column. BIC continues to use the existing `swift` database
-column because SWIFT/BIC is one banking identifier, so no duplicate column is
-introduced.
-Metrics reuses the existing `overhead_settings` and `overhead_monthly` records.
-Its save path is owner-only and updates only the fields visible on the Metrics
+Company Details is the single editing surface for company identity and banking
+data. Its five-row grid keeps Company name and registration together, both legal
+names together, then Bank name / Bank number, Branch number / Account number,
+and IBAN / BIC. BIC continues to use the existing `swift` database column because
+SWIFT/BIC is one banking identifier, so no duplicate column is introduced.
+Overhead Expenses reuses the existing `overhead_settings` and
+`overhead_monthly` records. Its save path is owner-only and updates only the fields visible on the Metrics
 screen, preserving other overhead settings. Monthly overhead values are stored
 as whole shekels. One company VAT percentage applies to taxable overhead rows;
 Arnona is VAT-exempt in the Metrics breakdown. VAT and Total are deterministic
 derived values, never editable inputs. The same stored VAT percentage is used
 for project and object pricing totals instead of a hard-coded 18 percent rate.
 `other_spendings_cost` is the shared catch-all monthly overhead field for
-Company Metrics and deterministic Object Detail allocation. It requires the
-versioned `2026_09_18_other_spendings_overhead.sql` migration before the new
-field can be persisted in a live Supabase environment.
-The Company Metrics cost table and Object Detail tables share the same
+Overhead Expenses and deterministic Object Detail allocation. The versioned
+`2026_09_18_other_spendings_overhead.sql` migration has been applied to the live
+Supabase schema.
+The Overhead Expenses cost table and Object Detail tables share the same
 `object-detail-table`, row, cell, group-summary, and cell-input CSS primitives.
 Do not rebuild Metrics cost rows with `st.columns` or native `st.text_input`:
 their framework wrappers have independent minimum heights and break the shared

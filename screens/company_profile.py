@@ -331,7 +331,7 @@ def _read_only_group(title: str, items: list[tuple[str, object]]) -> None:
 def _save_profile_section(access: CompanyAccess, values: dict[str, object]) -> None:
     try:
         save_company_profile(access, values)
-        st.success("Company details saved.")
+        st.success("Company details saved")
     except ValueError as exc:
         st.error(str(exc))
     except PermissionError:
@@ -340,31 +340,60 @@ def _save_profile_section(access: CompanyAccess, values: dict[str, object]) -> N
         st.error("Company details were not saved. Try again in a moment.")
 
 
-def _render_owner_general(access: CompanyAccess, profile: dict) -> None:
-    with st.form("company_profile_general"):
+def _render_owner_company_details(access: CompanyAccess, profile: dict) -> None:
+    with st.form("company_profile_company_details"):
         first_left, first_right = st.columns(2)
         with first_left:
             company_name = _text_input(profile, "Company name", "company_name")
         with first_right:
-            legal_name_hebrew = _text_input(
-                profile, "Company legal name (Hebrew)", "legal_name_hebrew"
-            )
-        second_left, second_right = st.columns(2)
-        with second_left:
             registration = _text_input(
                 profile, "Company registration number", "company_registration_number"
             )
-        with second_right:
-            legal_name = _text_input(
-                profile, "Company legal name (English)", "legal_name"
+
+        legal_name_left, legal_name_right = st.columns(2)
+        with legal_name_left:
+            legal_name_hebrew = _text_input(
+                profile,
+                "Company legal name (Hebrew)",
+                "legal_name_hebrew",
             )
-        saved = _profile_save_button("Save General Details")
+        with legal_name_right:
+            legal_name = _text_input(
+                profile,
+                "Company legal name (English)",
+                "legal_name",
+            )
+
+        bank_first_left, bank_first_right = st.columns(2)
+        with bank_first_left:
+            bank_name = _text_input(profile, "Bank name", "bank_name")
+        with bank_first_right:
+            bank_number = _text_input(profile, "Bank number", "bank_number")
+
+        bank_second_left, bank_second_right = st.columns(2)
+        with bank_second_left:
+            branch_number = _text_input(profile, "Branch number", "branch_number")
+        with bank_second_right:
+            account_number = _text_input(profile, "Account number", "account_number")
+
+        international_left, international_right = st.columns(2)
+        with international_left:
+            iban = _text_input(profile, "IBAN", "iban")
+        with international_right:
+            swift = _text_input(profile, "BIC", "swift")
+        saved = _profile_save_button("Save Company Details")
     if saved:
         _save_profile_section(access, {
             "company_name": company_name,
-            "legal_name_hebrew": legal_name_hebrew,
             "company_registration_number": registration,
+            "legal_name_hebrew": legal_name_hebrew,
+            "bank_name": bank_name,
+            "bank_number": bank_number,
+            "branch_number": branch_number,
+            "account_number": account_number,
             "legal_name": legal_name,
+            "iban": iban,
+            "swift": swift,
         })
 
 
@@ -424,63 +453,18 @@ def _render_owner_contacts(access: CompanyAccess, profile: dict) -> None:
         })
 
 
-def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
-    with st.form("company_profile_bank_details"):
-        domestic_name_column, _domestic_name_space = st.columns(2)
-        with domestic_name_column:
-            _text_input(
-                profile,
-                "Company legal name (Hebrew)",
-                "legal_name_hebrew",
-                widget_key="profile_bank_legal_name_hebrew",
-                disabled=True,
-            )
-
-        bank_first_left, bank_first_right = st.columns(2)
-        with bank_first_left:
-            bank_name = _text_input(profile, "Bank name", "bank_name")
-        with bank_first_right:
-            bank_number = _text_input(profile, "Bank number", "bank_number")
-
-        bank_second_left, bank_second_right = st.columns(2)
-        with bank_second_left:
-            branch_number = _text_input(profile, "Branch number", "branch_number")
-        with bank_second_right:
-            account_number = _text_input(profile, "Account number", "account_number")
-
-        international_name_column, _international_name_space = st.columns(2)
-        with international_name_column:
-            _text_input(
-                profile,
-                "Company legal name (English)",
-                "legal_name",
-                widget_key="profile_bank_legal_name_english",
-                disabled=True,
-            )
-
-        international_left, international_right = st.columns(2)
-        with international_left:
-            iban = _text_input(profile, "IBAN", "iban")
-        with international_right:
-            swift = _text_input(profile, "BIC", "swift")
-        saved = _profile_save_button("Save Bank Details")
-    if saved:
-        _save_profile_section(access, {
-            "bank_name": bank_name,
-            "bank_number": bank_number,
-            "branch_number": branch_number,
-            "account_number": account_number,
-            "iban": iban,
-            "swift": swift,
-        })
-
-
-def _render_member_general(profile: dict) -> None:
-    _read_only_group("General Details", [
+def _render_member_company_details(profile: dict) -> None:
+    _read_only_group("Company Details", [
         ("Company name", profile.get("company_name")),
-        ("Company legal name (Hebrew)", profile.get("legal_name_hebrew")),
         ("Company registration number", profile.get("company_registration_number")),
+        ("Company legal name (Hebrew)", profile.get("legal_name_hebrew")),
+        ("Bank name", profile.get("bank_name")),
+        ("Bank number", profile.get("bank_number")),
+        ("Branch number", profile.get("branch_number")),
+        ("Account number", profile.get("account_number")),
         ("Company legal name (English)", profile.get("legal_name")),
+        ("IBAN", profile.get("iban")),
+        ("BIC", profile.get("swift")),
     ])
 
 
@@ -493,22 +477,9 @@ def _render_member_contacts(profile: dict) -> None:
         ("House Number", profile.get("address_house_number")),
         ("City", profile.get("address_city")),
         ("Postal code", profile.get("address_postal_code")),
+        ("Facebook", profile.get("facebook_url")),
         ("LinkedIn", profile.get("linkedin_url")),
         ("Instagram", profile.get("instagram_url")),
-        ("Facebook", profile.get("facebook_url")),
-    ])
-
-
-def _render_member_bank_details(profile: dict) -> None:
-    _read_only_group("Bank details", [
-        ("Company legal name (Hebrew)", profile.get("legal_name_hebrew")),
-        ("Bank name", profile.get("bank_name")),
-        ("Bank number", profile.get("bank_number")),
-        ("Branch number", profile.get("branch_number")),
-        ("Account number", profile.get("account_number")),
-        ("Company legal name (English)", profile.get("legal_name")),
-        ("IBAN", profile.get("iban")),
-        ("BIC", profile.get("swift")),
     ])
 
 
@@ -728,24 +699,21 @@ def render_company_profile(access: CompanyAccess) -> None:
         st.error("Company profile is unavailable right now. Try again in a moment.")
         return
 
-    metrics_tab, general_tab, contacts_tab, bank_tab, users_tab, prices_tab = st.tabs(
+    expenses_tab, labor_tab, contacts_tab, company_tab, users_tab, prices_tab = st.tabs(
         [
-            "Company Metrics",
-            "General Details",
+            "Overhead Expenses",
+            "Labor Costs",
             "Contacts",
-            "Bank Details",
+            "Company Details",
             "Users",
             "Price List",
         ]
     )
-    with metrics_tab:
+    with expenses_tab:
         _render_metrics(access)
 
-    with general_tab:
-        if access.role == "owner":
-            _render_owner_general(access, profile)
-        else:
-            _render_member_general(profile)
+    with labor_tab:
+        st.info("Company labor costs will be configured here.")
 
     with contacts_tab:
         if access.role == "owner":
@@ -753,11 +721,11 @@ def render_company_profile(access: CompanyAccess) -> None:
         else:
             _render_member_contacts(profile)
 
-    with bank_tab:
+    with company_tab:
         if access.role == "owner":
-            _render_owner_bank_details(access, profile)
+            _render_owner_company_details(access, profile)
         else:
-            _render_member_bank_details(profile)
+            _render_member_company_details(profile)
 
     with users_tab:
         _render_users(access)
