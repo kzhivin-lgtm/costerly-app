@@ -51,11 +51,13 @@ The Overhead Expenses cost table and Object Detail tables share the same
 `object-detail-table`, row, cell, group-summary, and cell-input CSS primitives.
 Do not rebuild Metrics cost rows with `st.columns` or native `st.text_input`:
 their framework wrappers have independent minimum heights and break the shared
-grid geometry. Metrics uses editable HTML only for Monthly Cost, recalculates
-derived VAT and Total in its isolated browser guard, and submits one serialized
-snapshot to the existing owner-validated server save path. The `screen=account`
-query route exists only to return that full-page snapshot submission to Company
-Profile; it does not replace normal Profile navigation or browser Auth state.
+grid geometry. Metrics uses editable HTML only for Monthly Cost and recalculates
+derived VAT and Total in its isolated browser guard. A zero-height Streamlit
+component captures the Save Expenses action and returns one serialized snapshot
+to an `st.fragment`, without URL navigation or a full-page query-parameter
+submission. The server rechecks company ownership, updates an existing
+`overhead_settings` or `overhead_monthly` row without nulling hidden columns,
+and inserts a complete default-backed row only when the company has no row yet.
 All Profile text inputs reuse the Sign in input geometry and focus contract:
 neutral default border, purple focus ring, no red focus-only state, and no
 framework keyboard instruction. Auth and Upload styling remain separate

@@ -1,7 +1,7 @@
 # Company Profile checkpoint
 
-Version: v3.0.58
-Date: 2026-09-18
+Version: v3.0.59
+Date: 2026-09-19
 
 ## Accepted UI
 
@@ -56,10 +56,12 @@ Date: 2026-09-18
   `db/sql/2026_09_18_other_spendings_overhead.sql`. The user applied this
   migration to the live Supabase schema before the v3.0.58 checkpoint.
 - The Metrics table keeps only Monthly Cost editable. Its browser guard updates
-  VAT and Total immediately, then submits one owner-validated snapshot through
-  the existing server save function. The narrow `screen=account` query route
-  returns a full-page snapshot submission to Company Profile without changing
-  the normal Profile button or Auth session flow.
+  VAT and Total immediately. A zero-height Streamlit component returns one
+  owner-validated snapshot to an isolated fragment without URL navigation or a
+  full-page query-parameter reload.
+- Existing expense rows use partial `update` calls, preserving required hidden
+  overhead settings. A company without expense rows receives a complete
+  default-backed insert. This avoids PostgREST partial-upsert null expansion.
 
 ## Protected behavior
 
@@ -86,16 +88,21 @@ UI definition for the Profile screen.
 - User accepted the v3.0.58 information architecture with Overhead Expenses
   first, Labor Costs second, Contacts before one combined Company Details form,
   and both legal names aligned on its second row.
+- User verified on the v3.0.59 local build that Save Expenses completes quickly
+  inside the current screen and persists the edited values.
 - Live DOM verification measured 40px group bars, 51px cost rows, and 34px
   Monthly Cost inputs. A live edit from 2,000 at 18% produced VAT 360 and Total
   2,360.
-- Automated suite: 145 tests passed before checkpoint documentation.
+- Direct Supabase verification confirmed that a partial `update` preserves the
+  required hidden `overhead_settings` values for company 293.
+- Automated suite: 147 tests passed before checkpoint documentation.
 - `git diff --check`: clean before checkpoint documentation.
 
 ## Explicit next phase
 
-- Saving Contacts or Company Details currently reruns the page onto the first
-  tab. Preserve the active tab after submit.
-- Overhead Expenses saving is not accepted in this checkpoint. Repair it only as
-  the next isolated phase, then verify confirmation plus persistence through a
-  logout, sign-in, and reload cycle.
+- Diagnose the user-observed duplicate page heading after Sign out. Preserve the
+  accepted Auth session boundary and do not change Profile persistence while
+  isolating that regression.
+- Verify Contacts and Company Details remain on their selected tab after Save.
+- Run a fresh full visual and interaction pass tomorrow before promoting this
+  checkpoint to a stable release.

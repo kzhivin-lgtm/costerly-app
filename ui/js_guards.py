@@ -190,25 +190,11 @@ def install_company_metrics_input_guard() -> None:
                 parentDoc.execCommand("insertText", false, cleanNumber(text));
             }
 
-            function handleSave(event) {
-                const action = event.target && event.target.closest
-                    ? event.target.closest("[data-company-metrics-save]")
-                    : null;
-                if (!action) return;
-                event.preventDefault();
-                const params = new URLSearchParams();
-                params.set("screen", "account");
-                params.set("company_metrics_snapshot", JSON.stringify(snapshot()));
-                params.set("company_metrics_nonce", String(Date.now()));
-                parentWindow.location.search = `?${params.toString()}`;
-            }
-
             parentDoc.addEventListener("focusin", handleFocus, true);
             parentDoc.addEventListener("input", handleInput, true);
             parentDoc.addEventListener("focusout", handleBlur, true);
             parentDoc.addEventListener("keydown", handleKeydown, true);
             parentDoc.addEventListener("paste", handlePaste, true);
-            parentDoc.addEventListener("click", handleSave, true);
 
             parentWindow[HANDLER_KEY] = () => {
                 parentDoc.removeEventListener("focusin", handleFocus, true);
@@ -216,7 +202,6 @@ def install_company_metrics_input_guard() -> None:
                 parentDoc.removeEventListener("focusout", handleBlur, true);
                 parentDoc.removeEventListener("keydown", handleKeydown, true);
                 parentDoc.removeEventListener("paste", handlePaste, true);
-                parentDoc.removeEventListener("click", handleSave, true);
                 parentWindow[HANDLER_KEY] = null;
             };
         })();

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from html import escape
 import json
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,11 +13,15 @@ from db.supabase_client import get_supabase_client
 from styles.company_profile import apply_company_profile_css
 from styles.object_detail import apply_object_detail_css
 from ui import company_metrics_view
+from ui.company_metrics_bridge import company_metrics_bridge
 from ui.js_guards import install_company_metrics_input_guard
 from use_cases.email_addresses import is_valid_email_address
 
 if TYPE_CHECKING:
     from state.company_auth import CompanyAccess
+
+
+logger = logging.getLogger(__name__)
 
 
 PROFILE_COLUMNS = (
@@ -34,6 +39,20 @@ METRIC_SETTING_FIELDS = (
     "warranty_reserve_percent",
     "management_buffer_percent",
 )
+METRIC_SETTING_INSERT_DEFAULTS = {
+    "vat_percent": 18,
+    "employer_load_percent": 25,
+    "labor_contingency_percent": 10,
+    "warranty_reserve_percent": 5,
+    "management_buffer_percent": 5,
+    "design_bureau_commission_percent": 0,
+    "production_workers": 12,
+    "workdays_per_month": 21,
+    "hours_per_day": 8,
+    "sale_price_markup_percent": 30,
+    "delivery_percent": 3,
+    "installation_percent": 10,
+}
 METRIC_GROUPS = (
     (
         "Facility / Rent / Arnona",
@@ -210,7 +229,7 @@ def save_company_metrics(
         value = float(settings_values.get(field) or 0)
         if value < 0 or value > 100:
             raise ValueError("VAT and reserve percentages must be between 0 and 100.")
-        settings_payload[field] = round(value, 4)
+        settings_payload[field] = int(round(value))
 
     monthly_payload = {"company_id": fresh.company_id}
     for field in METRIC_MONTHLY_FIELDS:
@@ -219,12 +238,31 @@ def save_company_metrics(
             raise ValueError("Monthly overhead costs cannot be negative.")
         monthly_payload[field] = int(round(value))
 
-    client.table("overhead_settings").upsert(
-        settings_payload, on_conflict="company_id"
-    ).execute()
-    client.table("overhead_monthly").upsert(
-        monthly_payload, on_conflict="company_id"
-    ).execute()
+    settings_update = {key: value for key, value in settings_payload.items() if key != "company_id"}
+    settings_rows = (
+        client.table("overhead_settings")
+        .update(settings_update)
+        .eq("company_id", fresh.company_id)
+        .execute()
+    ).data or []
+    if not settings_rows:
+        client.table("overhead_settings").insert(
+            {
+                "company_id": fresh.company_id,
+                **METRIC_SETTING_INSERT_DEFAULTS,
+                **settings_update,
+            }
+        ).execute()
+
+    monthly_update = {key: value for key, value in monthly_payload.items() if key != "company_id"}
+    monthly_rows = (
+        client.table("overhead_monthly")
+        .update(monthly_update)
+        .eq("company_id", fresh.company_id)
+        .execute()
+    ).data or []
+    if not monthly_rows:
+        client.table("overhead_monthly").insert(monthly_payload).execute()
     _load_company_metrics_by_id.clear()
 
 
@@ -530,43 +568,45 @@ def _metric_vat(field: str, net_amount: float, vat_percent: float) -> int:
     return round(net_amount * vat_percent / 100)
 
 
-def _consume_company_metrics_snapshot(access: CompanyAccess) -> str | None:
-    raw_snapshot = st.query_params.get("company_metrics_snapshot")
+def _consume_company_metrics_snapshot(
+    access: CompanyAccess,
+    raw_snapshot: str | None,
+) -> str | None:
     if not raw_snapshot:
         return None
-    try:
-        snapshot = json.loads(str(raw_snapshot))
-        settings_values = snapshot.get("settings") if isinstance(snapshot, dict) else None
-        monthly_values = snapshot.get("monthly") if isinstance(snapshot, dict) else None
-        if not isinstance(settings_values, dict) or not isinstance(monthly_values, dict):
-            raise ValueError("Company metrics payload is invalid.")
-        save_company_metrics(access, settings_values, monthly_values)
-        st.session_state["profile_metric_vat_percent"] = _metric_percent_text(
-            settings_values.get("vat_percent")
-        )
-        st.session_state["profile_metric_warranty_reserve_percent"] = _metric_percent_text(
-            settings_values.get("warranty_reserve_percent")
-        )
-        st.session_state["profile_metric_management_buffer_percent"] = _metric_percent_text(
-            settings_values.get("management_buffer_percent")
-        )
-        return "Company metrics saved."
-    finally:
-        for key in ("company_metrics_snapshot", "company_metrics_nonce"):
-            if key in st.query_params:
-                del st.query_params[key]
+    snapshot = json.loads(str(raw_snapshot))
+    nonce = snapshot.get("nonce") if isinstance(snapshot, dict) else None
+    if not isinstance(nonce, str) or not nonce:
+        raise ValueError("Expenses payload is invalid.")
+    if nonce == st.session_state.get("_company_metrics_consumed_nonce"):
+        return None
+    st.session_state["_company_metrics_consumed_nonce"] = nonce
+
+    settings_values = snapshot.get("settings")
+    monthly_values = snapshot.get("monthly")
+    if not isinstance(settings_values, dict) or not isinstance(monthly_values, dict):
+        raise ValueError("Expenses payload is invalid.")
+    save_company_metrics(
+        access,
+        settings_values,
+        monthly_values,
+    )
+    return "Expenses saved"
 
 
+@st.fragment
 def _render_metrics(access: CompanyAccess) -> None:
     save_message = None
     try:
-        save_message = _consume_company_metrics_snapshot(access)
+        raw_snapshot = company_metrics_bridge(key="company_metrics_bridge")
+        save_message = _consume_company_metrics_snapshot(access, raw_snapshot)
     except ValueError as exc:
         st.error(str(exc))
     except PermissionError:
-        st.error("Only the company owner can save these metrics.")
+        st.error("Only the company owner can save these expenses.")
     except Exception:
-        st.error("Company metrics were not saved. Try again in a moment.")
+        logger.exception("Company expenses save failed")
+        st.error("Expenses were not saved. Try again in a moment.")
 
     try:
         settings, monthly = load_company_metrics(access)

@@ -465,7 +465,18 @@ def test_other_spendings_flows_from_company_metrics_to_object_detail_pricing():
         "Other spendings",
         "Other spendings",
     )
-    assert "SAVE METRICS" in company_metrics_view.save_action_html()
+    save_html = company_metrics_view.save_action_html()
+    assert "SAVE EXPENSES" in save_html
+    assert "<button" in save_html
+    assert "href=" not in save_html
+
+
+def test_company_metrics_bridge_does_not_navigate_parent_page():
+    source = Path("ui/company_metrics_bridge_component/index.html").read_text()
+    assert "streamlit:setComponentValue" in source
+    assert "data-company-metrics-save" in source
+    assert "location.search" not in source
+    assert "location.href" not in source
 
 
 def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
@@ -519,12 +530,15 @@ def test_save_company_metrics_updates_only_visible_metric_fields(monkeypatch):
         def __init__(self, table):
             self.table = table
 
-        def upsert(self, values, **_kwargs):
+        def update(self, values):
             writes[self.table] = values
             return self
 
+        def eq(self, *_args):
+            return self
+
         def execute(self):
-            return type("Result", (), {"data": []})()
+            return type("Result", (), {"data": [{"company_id": "company-a"}]})()
 
     class Client:
         def table(self, name):
@@ -545,14 +559,68 @@ def test_save_company_metrics_updates_only_visible_metric_fields(monkeypatch):
     )
 
     assert set(writes["overhead_settings"]) == {
-        "company_id",
         "vat_percent",
         "warranty_reserve_percent",
         "management_buffer_percent",
     }
     assert "delivery_percent" not in writes["overhead_settings"]
     assert set(writes["overhead_monthly"]) == {
-        "company_id", *company_profile.METRIC_MONTHLY_FIELDS,
+        *company_profile.METRIC_MONTHLY_FIELDS,
+    }
+
+
+def test_new_company_metrics_row_includes_required_legacy_defaults(monkeypatch):
+    access = company_auth.CompanyAccess(
+        "user-1", "owner@example.com", "company-new", "owner", "token"
+    )
+    monkeypatch.setattr(company_profile, "_current_access", lambda _access: access)
+    writes = []
+
+    class Query:
+        def __init__(self, table):
+            self.table = table
+
+        def update(self, values):
+            writes.append(("update", self.table, values))
+            return self
+
+        def insert(self, values):
+            writes.append(("insert", self.table, values))
+            return self
+
+        def eq(self, *_args):
+            return self
+
+        def execute(self):
+            return type("Result", (), {"data": []})()
+
+    class Client:
+        def table(self, name):
+            return Query(name)
+
+    monkeypatch.setattr(company_profile, "get_supabase_client", lambda: Client())
+    monkeypatch.setattr(company_profile, "assert_company_owner", lambda *_args: None)
+
+    company_profile.save_company_metrics(
+        access,
+        {
+            "vat_percent": 18,
+            "warranty_reserve_percent": 7,
+            "management_buffer_percent": 6,
+        },
+        {field: 0 for field in company_profile.METRIC_MONTHLY_FIELDS},
+    )
+
+    settings_insert = next(
+        values for operation, table, values in writes
+        if operation == "insert" and table == "overhead_settings"
+    )
+    assert settings_insert == {
+        "company_id": "company-new",
+        **company_profile.METRIC_SETTING_INSERT_DEFAULTS,
+        "vat_percent": 18,
+        "warranty_reserve_percent": 7,
+        "management_buffer_percent": 6,
     }
 
 
@@ -587,12 +655,15 @@ def test_company_metrics_save_monthly_costs_as_whole_shekels(monkeypatch):
         def __init__(self, table):
             self.table = table
 
-        def upsert(self, values, **_kwargs):
+        def update(self, values):
             writes[self.table] = values
             return self
 
+        def eq(self, *_args):
+            return self
+
         def execute(self):
-            return type("Result", (), {"data": []})()
+            return type("Result", (), {"data": [{"company_id": "company-a"}]})()
 
     class Client:
         def table(self, name):
@@ -607,7 +678,7 @@ def test_company_metrics_save_monthly_costs_as_whole_shekels(monkeypatch):
         {field: 1234.6 for field in company_profile.METRIC_MONTHLY_FIELDS},
     )
 
-    assert set(writes["overhead_monthly"].values()) == {"company-a", 1235}
+    assert set(writes["overhead_monthly"].values()) == {1235}
 
 
 def test_profile_partial_update_preserves_hidden_vat_and_country(monkeypatch):

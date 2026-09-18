@@ -5,12 +5,12 @@
 - Every new two-file benchmark cycle starts two fresh instances on separate unused ports and opens both Chrome tabs automatically so `page-23.pdf` and `Металл (1).pdf` can run in parallel under the same code version. Keep older benchmark servers and result screens available for side-by-side comparison; stop them only on explicit request or when resource/port conflicts require cleanup.
 
 ## Active
-- Company Profile save phase after the accepted v3.0.58 visual checkpoint:
-  preserve the selected tab after every Contacts or Company Details save instead
-  of returning to Overhead Expenses. Then repair and verify the Overhead Expenses
-  confirmation and a real save, logout, sign-in, reload cycle against Supabase.
-  The Other Spendings migration is already applied. Do not change the accepted
-  table geometry while repairing persistence.
+- Company Profile follow-up after the v3.0.59 Save Expenses checkpoint:
+  diagnose the duplicate heading observed after Sign out, then verify Contacts
+  and Company Details remain on their selected tab after Save. Recheck the full
+  sign-in, upload, profile, save, logout, sign-in, and reload cycle before
+  declaring the checkpoint stable. The Other Spendings migration is applied.
+  Do not change the accepted table geometry or the working Expenses save path.
 - Labor Costs: define the personnel data model and calculation rules before
   replacing the current placeholder. Hourly workers, salaried employees, and
   employer costs remain unresolved product requirements.

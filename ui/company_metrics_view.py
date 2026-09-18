@@ -79,6 +79,6 @@ def table_html(
 
 def save_action_html() -> str:
     return (
-        '<a class="company-metrics-save" href="#" '
-        'data-company-metrics-save="true">SAVE METRICS</a>'
+        '<button class="company-metrics-save" type="button" '
+        'data-company-metrics-save="true">SAVE EXPENSES</button>'
     )

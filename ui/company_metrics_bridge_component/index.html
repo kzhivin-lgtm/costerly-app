@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /></head>
+  <body>
+    <script>
+      (() => {
+        const parentWindow = window.parent;
+        const parentDoc = parentWindow.document;
+        const cleanupKey = "__costerlyCompanyMetricsBridgeCleanup";
+
+        function send(type, payload = {}) {
+          parentWindow.postMessage(
+            {isStreamlitMessage: true, type, ...payload},
+            "*"
+          );
+        }
+
+        function cleanNumber(value) {
+          return String(value || "")
+            .replace(/₪/g, "")
+            .replace(/[,\u202f]/g, "")
+            .replace(/[^0-9.]/g, "")
+            .trim();
+        }
+
+        function readNumber(value) {
+          const parsed = Number(cleanNumber(value));
+          return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+        }
+
+        function widgetValue(key) {
+          const input = parentDoc.querySelector(`.st-key-${key} input`);
+          return input ? readNumber(input.value) : 0;
+        }
+
+        function snapshot() {
+          const monthly = {};
+          for (const input of parentDoc.querySelectorAll(
+            ".company-metrics-monthly-input[data-field]"
+          )) {
+            monthly[input.dataset.field] = Math.round(readNumber(input.textContent));
+          }
+          return {
+            nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            settings: {
+              vat_percent: widgetValue("profile_metric_vat_percent"),
+              warranty_reserve_percent: widgetValue(
+                "profile_metric_warranty_reserve_percent"
+              ),
+              management_buffer_percent: widgetValue(
+                "profile_metric_management_buffer_percent"
+              ),
+            },
+            monthly,
+          };
+        }
+
+        function install() {
+          if (parentWindow[cleanupKey]) parentWindow[cleanupKey]();
+
+          function handleSave(event) {
+            const action = event.target && event.target.closest
+              ? event.target.closest("[data-company-metrics-save]")
+              : null;
+            if (!action) return;
+            event.preventDefault();
+            event.stopPropagation();
+            send("streamlit:setComponentValue", {
+              value: JSON.stringify(snapshot()),
+            });
+          }
+
+          parentDoc.addEventListener("click", handleSave, true);
+          parentWindow[cleanupKey] = () => {
+            parentDoc.removeEventListener("click", handleSave, true);
+            parentWindow[cleanupKey] = null;
+          };
+        }
+
+        window.addEventListener("message", (event) => {
+          const message = event.data || {};
+          if (message.type !== "streamlit:render") return;
+          install();
+          send("streamlit:setFrameHeight", {height: 0});
+        });
+
+        send("streamlit:componentReady", {apiVersion: 1});
+        send("streamlit:setFrameHeight", {height: 0});
+      })();
+    </script>
+  </body>
+</html>
