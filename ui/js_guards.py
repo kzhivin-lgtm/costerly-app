@@ -5,6 +5,148 @@ import json
 import streamlit.components.v1 as components
 
 
+def install_company_metrics_input_guard() -> None:
+    """Bridge the shared Object Detail-style Metrics table to Save Metrics."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const HANDLER_KEY = "__costerlyCompanyMetricsInputGuardCleanup";
+
+            if (parentWindow[HANDLER_KEY]) parentWindow[HANDLER_KEY]();
+
+            function cleanNumber(value) {
+                return String(value || "")
+                    .replace(/₪/g, "")
+                    .replace(/[,\u202f]/g, "")
+                    .replace(/[^0-9.]/g, "")
+                    .trim();
+            }
+
+            function readNumber(value) {
+                const parsed = Number(cleanNumber(value));
+                return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+            }
+
+            function formatMoney(value) {
+                const rounded = Math.round(Number(value) || 0);
+                return `₪${rounded.toLocaleString("en-US").replace(/,/g, "\u202f")}`;
+            }
+
+            function metricsInput(target) {
+                if (!target || !target.closest) return null;
+                return target.closest(".company-metrics-monthly-input");
+            }
+
+            function updateRow(input) {
+                const row = input ? input.closest(".company-metrics-row") : null;
+                const table = row ? row.closest("[data-company-metrics-table]") : null;
+                if (!row || !table) return;
+                const net = readNumber(input.textContent);
+                const rate = readNumber(table.dataset.vatPercent);
+                const exempt = row.dataset.vatExempt === "true";
+                const vat = exempt ? 0 : Math.round(net * rate / 100);
+                const vatNode = row.querySelector("[data-company-metrics-vat]");
+                const totalNode = row.querySelector("[data-company-metrics-total]");
+                if (vatNode) vatNode.textContent = exempt ? "—" : formatMoney(vat);
+                if (totalNode) totalNode.textContent = formatMoney(net + vat);
+            }
+
+            function widgetValue(key) {
+                const input = parentDoc.querySelector(`.st-key-${key} input`);
+                return input ? readNumber(input.value) : 0;
+            }
+
+            function snapshot() {
+                const monthly = {};
+                for (const input of parentDoc.querySelectorAll(".company-metrics-monthly-input[data-field]")) {
+                    monthly[input.dataset.field] = Math.round(readNumber(input.textContent));
+                }
+                return {
+                    settings: {
+                        vat_percent: widgetValue("profile_metric_vat_percent"),
+                        warranty_reserve_percent: widgetValue("profile_metric_warranty_reserve_percent"),
+                        management_buffer_percent: widgetValue("profile_metric_management_buffer_percent"),
+                    },
+                    monthly,
+                };
+            }
+
+            function handleFocus(event) {
+                const input = metricsInput(event.target);
+                if (input) input.textContent = cleanNumber(input.textContent);
+            }
+
+            function handleInput(event) {
+                const input = metricsInput(event.target);
+                if (input) updateRow(input);
+            }
+
+            function handleBlur(event) {
+                const input = metricsInput(event.target);
+                if (!input) return;
+                input.textContent = formatMoney(readNumber(input.textContent));
+                updateRow(input);
+            }
+
+            function handleKeydown(event) {
+                const input = metricsInput(event.target);
+                if (!input) return;
+                const allowed = new Set([
+                    "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End",
+                    "Tab", "Enter", "Escape", ".",
+                ]);
+                if (event.metaKey || event.ctrlKey || event.altKey || allowed.has(event.key)) return;
+                if (!/^[0-9]$/.test(event.key)) event.preventDefault();
+            }
+
+            function handlePaste(event) {
+                const input = metricsInput(event.target);
+                if (!input) return;
+                event.preventDefault();
+                const text = event.clipboardData ? event.clipboardData.getData("text") : "";
+                parentDoc.execCommand("insertText", false, cleanNumber(text));
+            }
+
+            function handleSave(event) {
+                const action = event.target && event.target.closest
+                    ? event.target.closest("[data-company-metrics-save]")
+                    : null;
+                if (!action) return;
+                event.preventDefault();
+                const params = new URLSearchParams();
+                params.set("screen", "account");
+                params.set("company_metrics_snapshot", JSON.stringify(snapshot()));
+                params.set("company_metrics_nonce", String(Date.now()));
+                parentWindow.location.search = `?${params.toString()}`;
+            }
+
+            parentDoc.addEventListener("focusin", handleFocus, true);
+            parentDoc.addEventListener("input", handleInput, true);
+            parentDoc.addEventListener("focusout", handleBlur, true);
+            parentDoc.addEventListener("keydown", handleKeydown, true);
+            parentDoc.addEventListener("paste", handlePaste, true);
+            parentDoc.addEventListener("click", handleSave, true);
+
+            parentWindow[HANDLER_KEY] = () => {
+                parentDoc.removeEventListener("focusin", handleFocus, true);
+                parentDoc.removeEventListener("input", handleInput, true);
+                parentDoc.removeEventListener("focusout", handleBlur, true);
+                parentDoc.removeEventListener("keydown", handleKeydown, true);
+                parentDoc.removeEventListener("paste", handlePaste, true);
+                parentDoc.removeEventListener("click", handleSave, true);
+                parentWindow[HANDLER_KEY] = null;
+            };
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def signal_app_ready_to_embed(screen: str) -> None:
     """Tell the embedding Cloudflare wrapper that a real Streamlit screen rendered."""
     screen_json = json.dumps(screen)

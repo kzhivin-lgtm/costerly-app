@@ -11,6 +11,7 @@ from streamlit.testing.v1 import AppTest
 from db.company_access import assert_company_owner, assert_estimate_owned, assert_run_owned
 from state import company_auth
 from screens import company_profile
+from ui import company_metrics_view
 from use_cases.invite_links import (
     DEFAULT_PUBLIC_APP_URL,
     create_one_company_link,
@@ -383,12 +384,14 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         button.label
         for button in app.button
         if button.label in {
-            "Save General Details", "Save Contacts", "Save Bank Details", "Save Metrics"
+            "Save General Details", "Save Contacts", "Save Bank Details"
         }
     ]
     assert save_buttons == ([
-        "Save General Details", "Save Contacts", "Save Bank Details", "Save Metrics"
+        "Save General Details", "Save Contacts", "Save Bank Details"
     ] if role == "owner" else [])
+    metrics_markup = "".join(item.value for item in app.markdown)
+    assert ('data-company-metrics-save="true"' in metrics_markup) is (role == "owner")
     if role == "owner":
         assert [field.label for field in app.text_input[:4]] == [
             "Company name",
@@ -411,6 +414,36 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         assert labels.index("Facebook") < labels.index("LinkedIn") < labels.index("Instagram")
     assert not app.subheader
     assert len(app.code) == (1 if role == "owner" else 0)
+
+
+def test_company_metrics_reuses_object_detail_table_contract():
+    html = company_metrics_view.table_html(
+        (("Facility / Rent / Arnona", (
+            ("rent_facilities_cost", "Rent"),
+            ("arnona_facilities_cost", "Arnona"),
+        )),),
+        {"rent_facilities_cost": 1000, "arnona_facilities_cost": 500},
+        18,
+        editable=True,
+    )
+    assert "object-detail-table object-detail-table--cols-4 company-metrics-table" in html
+    assert "object-detail-table-head-row" in html
+    assert "object-detail-group-summary company-metrics-group-summary" in html
+    assert html.count('contenteditable="true"') == 2
+    assert html.count("company-metrics-monthly-input") == 2
+    assert 'data-company-metrics-vat>—</span>' in html
+    assert 'data-company-metrics-total>₪500</span>' in html
+
+
+def test_company_metrics_member_table_has_no_editable_cells_or_save_action():
+    html = company_metrics_view.table_html(
+        (("Utilities / Safety", (("electricity_cost", "Electricity"),)),),
+        {"electricity_cost": 200},
+        18,
+        editable=False,
+    )
+    assert "contenteditable" not in html
+    assert 'data-company-metrics-total>₪236</span>' in html
 
 
 def test_bank_details_shows_read_only_legal_names_and_does_not_write_them(monkeypatch):

@@ -279,11 +279,30 @@ def apply_company_profile_css() -> None:
             transform: translateY(0) scale(0.995);
         }
 
-        .company-metric-group {
-            min-height: 50px;
+        .company-metrics-table {
+            margin-top: 18px;
+        }
+
+        .company-metrics-group-summary {
+            cursor: default;
+        }
+
+        .company-metrics-row--last .object-detail-table-cell {
+            border-bottom: 0;
+        }
+
+        .company-metrics-row .object-detail-table-cell:nth-child(3),
+        .company-metrics-row .object-detail-table-cell:nth-child(4) {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .company-metrics-reserve-bar {
             display: flex;
+            min-height: 40px;
             align-items: center;
-            margin: 10px 0 0 !important;
+            margin-top: 18px;
             padding: 0 12px;
             background: rgba(128, 73, 198, 0.075);
             color: rgba(42, 31, 44, 0.68);
@@ -294,116 +313,40 @@ def apply_company_profile_css() -> None:
             text-transform: uppercase;
         }
 
-        .st-key-company_metrics_header {
-            margin-top: 18px;
-            padding: 0;
-        }
-
-        .st-key-company_metrics_header [data-testid="stHorizontalBlock"],
-        [class*="st-key-company_metric_row_"] [data-testid="stHorizontalBlock"] {
-            display: grid !important;
-            grid-template-columns: minmax(260px, 2.1fr) repeat(3, minmax(0, 1fr));
-            gap: 0 !important;
-            align-items: stretch !important;
-        }
-
-        .st-key-company_metrics_header [data-testid="stColumn"],
-        [class*="st-key-company_metric_row_"] [data-testid="stColumn"] {
-            width: auto !important;
-            min-width: 0 !important;
-            flex: none !important;
-            display: flex;
-            align-items: center;
-        }
-
-        .st-key-company_metrics_header [data-testid="stColumn"] {
-            min-height: 42px;
-            padding: 8px 12px;
-        }
-
-        [class*="st-key-company_metric_row_"] [data-testid="stColumn"] {
-            min-height: 36px;
-            padding: 4px 12px;
-        }
-
-        .st-key-company_metrics_header [data-testid="stColumn"]:not(:first-child),
-        [class*="st-key-company_metric_row_"] [data-testid="stColumn"]:not(:first-child) {
-            justify-content: center;
-        }
-
-        .st-key-company_metrics_header [data-testid="stColumn"] > div,
-        [class*="st-key-company_metric_row_"] [data-testid="stColumn"] > div {
+        .company-metrics-save {
             width: 100%;
-        }
-
-        .st-key-company_metrics_header p {
-            margin: 0 !important;
-            color: var(--color-text-strong) !important;
-            font-family: var(--font-mono) !important;
-            font-size: 13px !important;
-            font-weight: 700 !important;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-
-        [class*="st-key-company_metric_row_"] {
-            padding: 0;
-            border-bottom: 1px solid rgba(42, 31, 44, 0.10);
-        }
-
-        [class*="st-key-company_metric_row_"] > [data-testid="stVerticalBlock"],
-        [class*="st-key-company_metric_row_"] [data-testid="stVerticalBlockBorderWrapper"] > div {
-            gap: 0 !important;
-        }
-
-        [class*="st-key-company_metric_row_"][class*="_last"] {
-            border-bottom: 0;
-        }
-
-        [class*="st-key-company_metric_row_"] [data-testid="stTextInput"] {
-            width: min(100%, 132px);
-            margin: 0 auto;
-        }
-
-        [class*="st-key-company_metric_row_"] [data-testid="stTextInputRootElement"],
-        [class*="st-key-company_metric_row_"] div[data-baseweb="input"],
-        [class*="st-key-company_metric_row_"] div[data-baseweb="base-input"] {
-            min-height: 28px !important;
-            border-color: rgba(42, 31, 44, 0.18) !important;
-            border-radius: 8px !important;
-        }
-
-        [class*="st-key-company_metric_row_"] input {
-            min-height: 26px !important;
-            padding: 0 8px !important;
-            font-family: var(--font-mono) !important;
-            font-size: 13px !important;
-            font-weight: 700 !important;
-            text-align: center;
-        }
-
-        .company-metric-name,
-        .company-metric-readonly {
+            min-height: 60px;
+            margin-top: 18px;
+            border: 1px solid #8049C6;
+            border-radius: var(--button-radius);
+            background: #8049C6;
+            box-shadow: 0 8px 22px rgba(128, 73, 198, 0.22);
+            color: #FFFFFF !important;
             display: flex;
-            min-height: 28px;
             align-items: center;
-            line-height: 1.24;
-        }
-
-        .company-metric-name {
-            color: var(--color-text-strong);
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        .company-metric-readonly {
             justify-content: center;
-            padding: 0;
-            color: var(--color-text-strong);
-            font-family: var(--font-mono);
-            font-size: 13px;
+            font-family: var(--font-sans);
+            font-size: 19px;
             font-weight: 700;
-            font-variant-numeric: tabular-nums;
+            text-decoration: none !important;
+            text-transform: uppercase;
+            transition: background 150ms ease, border-color 150ms ease,
+                        transform 150ms ease, box-shadow 150ms ease;
+        }
+
+        .company-metrics-save:hover,
+        .company-metrics-save:focus {
+            border-color: #6F3CB4;
+            background: #6F3CB4;
+            box-shadow: 0 12px 28px rgba(111, 60, 180, 0.34);
+            color: #FFFFFF !important;
+            transform: translateY(-1px);
+        }
+
+        .company-metrics-save:active {
+            border-color: #6131A3;
+            background: #6131A3;
+            transform: translateY(0) scale(0.995);
         }
 
         .stApp:has(.company-profile-active) [data-testid="stNotification"],

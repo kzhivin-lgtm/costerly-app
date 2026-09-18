@@ -125,3 +125,5 @@ v3.0.54 Company Profile Metrics work-in-progress checkpoint: connected the exist
 Backup v3.0.54_company_profile_metrics_wip_checkpoint created and validated, завершена 17.09
 v3.0.55 Company Metrics visual checkpoint: renamed the Profile tab to Company Metrics and enlarged the group bars to 50px; the attempted input and white-row height reductions were recorded as visually ineffective and remain explicit follow-up work rather than accepted completion, 137 tests passed, завершена 18.09
 Backup v3.0.55_company_metrics_visual_checkpoint created and validated, завершена 18.09
+v3.0.56 Company Metrics shared-table checkpoint: replaced the ineffective Streamlit column and native-input approximation with the exact Object Detail HTML-grid and CSS primitives; measured 40px group bars, 51px cost rows, and 34px Monthly Cost inputs; kept VAT and Total derived, retained the Arnona VAT dash, added live calculation and owner-validated snapshot saving, received explicit visual acceptance, and passed 139 tests, завершена 18.09
+Backup v3.0.56_company_metrics_shared_table_checkpoint created and validated, завершена 18.09

@@ -92,6 +92,8 @@ def main() -> None:
     company_id = get_company_id()
 
     requested_screen = st.query_params.get("screen")
+    if requested_screen == "account" and auth_enabled:
+        st.session_state.screen = "account"
     if requested_screen in {"objects", "object_detail", "file_review"}:
         st.session_state.screen = requested_screen
         requested_run_id = st.query_params.get("run_id")

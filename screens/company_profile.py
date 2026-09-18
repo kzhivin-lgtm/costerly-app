@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from html import escape
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -9,6 +10,9 @@ import streamlit as st
 from db.company_access import assert_company_owner
 from db.supabase_client import get_supabase_client
 from styles.company_profile import apply_company_profile_css
+from styles.object_detail import apply_object_detail_css
+from ui import company_metrics_view
+from ui.js_guards import install_company_metrics_input_guard
 from use_cases.email_addresses import is_valid_email_address
 
 if TYPE_CHECKING:
@@ -516,15 +520,44 @@ def _metric_vat(field: str, net_amount: float, vat_percent: float) -> int:
     return round(net_amount * vat_percent / 100)
 
 
-def _metric_readonly_amount(value: float, *, unavailable: bool = False) -> None:
-    display = "—" if unavailable else _metric_money(value)
-    st.markdown(
-        f'<div class="company-metric-readonly">{display}</div>',
-        unsafe_allow_html=True,
-    )
+def _consume_company_metrics_snapshot(access: CompanyAccess) -> str | None:
+    raw_snapshot = st.query_params.get("company_metrics_snapshot")
+    if not raw_snapshot:
+        return None
+    try:
+        snapshot = json.loads(str(raw_snapshot))
+        settings_values = snapshot.get("settings") if isinstance(snapshot, dict) else None
+        monthly_values = snapshot.get("monthly") if isinstance(snapshot, dict) else None
+        if not isinstance(settings_values, dict) or not isinstance(monthly_values, dict):
+            raise ValueError("Company metrics payload is invalid.")
+        save_company_metrics(access, settings_values, monthly_values)
+        st.session_state["profile_metric_vat_percent"] = _metric_percent_text(
+            settings_values.get("vat_percent")
+        )
+        st.session_state["profile_metric_warranty_reserve_percent"] = _metric_percent_text(
+            settings_values.get("warranty_reserve_percent")
+        )
+        st.session_state["profile_metric_management_buffer_percent"] = _metric_percent_text(
+            settings_values.get("management_buffer_percent")
+        )
+        return "Company metrics saved."
+    finally:
+        for key in ("company_metrics_snapshot", "company_metrics_nonce"):
+            if key in st.query_params:
+                del st.query_params[key]
 
 
 def _render_metrics(access: CompanyAccess) -> None:
+    save_message = None
+    try:
+        save_message = _consume_company_metrics_snapshot(access)
+    except ValueError as exc:
+        st.error(str(exc))
+    except PermissionError:
+        st.error("Only the company owner can save these metrics.")
+    except Exception:
+        st.error("Company metrics were not saved. Try again in a moment.")
+
     try:
         settings, monthly = load_company_metrics(access)
     except Exception:
@@ -548,57 +581,18 @@ def _render_metrics(access: CompanyAccess) -> None:
             )
             vat_percent = min(100.0, _metric_amount(vat_raw))
 
-        with st.container(key="company_metrics_header"):
-            header_name, header_net, header_vat, header_total = st.columns(
-                [2.2, 1.2, 1, 1]
-            )
-            header_name.markdown("Expense")
-            header_net.markdown("Monthly cost")
-            header_vat.markdown("VAT")
-            header_total.markdown("Total")
-
-        monthly_values: dict[str, float] = {}
-        for group_name, rows in METRIC_GROUPS:
-            st.markdown(
-                f'<div class="company-metric-group">{escape(group_name)}</div>',
-                unsafe_allow_html=True,
-            )
-            for row_index, (field, label) in enumerate(rows):
-                row_suffix = "_last" if row_index == len(rows) - 1 else ""
-                with st.container(key=f"company_metric_row_{field}{row_suffix}"):
-                    name_column, net_column, row_vat_column, total_column = st.columns(
-                        [2.2, 1.2, 1, 1]
-                    )
-                    name_column.markdown(
-                        f'<div class="company-metric-name">{escape(label)}</div>',
-                        unsafe_allow_html=True,
-                    )
-                    with net_column:
-                        metric_key = f"profile_metric_{field}"
-                        _ensure_metric_text_state(
-                            metric_key, _metric_money(monthly.get(field))
-                        )
-                        net_raw = st.text_input(
-                            f"{label}, monthly cost",
-                            key=metric_key,
-                            on_change=_normalize_metric_money,
-                            args=(metric_key,),
-                            label_visibility="collapsed",
-                            disabled=not editable,
-                        )
-                        net_amount = round(_metric_amount(net_raw))
-                    vat_amount = _metric_vat(field, net_amount, vat_percent)
-                    with row_vat_column:
-                        _metric_readonly_amount(
-                            vat_amount,
-                            unavailable=field == "arnona_facilities_cost",
-                        )
-                    with total_column:
-                        _metric_readonly_amount(net_amount + vat_amount)
-                monthly_values[field] = net_amount
+        st.markdown(
+            company_metrics_view.table_html(
+                METRIC_GROUPS,
+                monthly,
+                vat_percent,
+                editable=editable,
+            ),
+            unsafe_allow_html=True,
+        )
 
         st.markdown(
-            '<div class="company-metric-group">Project Reserves</div>',
+            '<div class="company-metrics-reserve-bar">Project Reserves</div>',
             unsafe_allow_html=True,
         )
         reserve_left, reserve_right = st.columns(2)
@@ -631,29 +625,11 @@ def _render_metrics(access: CompanyAccess) -> None:
             )
             management_percent = min(100.0, _metric_amount(management_raw))
 
-        if editable and st.button(
-            "Save Metrics",
-            key="save_profile_metrics",
-            type="primary",
-            use_container_width=True,
-        ):
-            try:
-                save_company_metrics(
-                    access,
-                    {
-                        "vat_percent": vat_percent,
-                        "warranty_reserve_percent": warranty_percent,
-                        "management_buffer_percent": management_percent,
-                    },
-                    monthly_values,
-                )
-                st.success("Company metrics saved.")
-            except ValueError as exc:
-                st.error(str(exc))
-            except PermissionError:
-                st.error("Only the company owner can save these metrics.")
-            except Exception:
-                st.error("Company metrics were not saved. Try again in a moment.")
+        if editable:
+            st.markdown(company_metrics_view.save_action_html(), unsafe_allow_html=True)
+            install_company_metrics_input_guard()
+        if save_message:
+            st.success(save_message)
 
 
 def _render_users(access: CompanyAccess) -> None:
@@ -683,6 +659,7 @@ def _render_users(access: CompanyAccess) -> None:
 
 def render_company_profile(access: CompanyAccess) -> None:
     apply_company_profile_css()
+    apply_object_detail_css()
     st.markdown('<div class="company-profile-active" style="display:none"></div>', unsafe_allow_html=True)
     header_left, header_right = st.columns([4, 1.6])
     with header_left:

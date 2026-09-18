@@ -1,6 +1,6 @@
 # Company Profile checkpoint
 
-Version: v3.0.55
+Version: v3.0.56
 Date: 2026-09-18
 
 ## Accepted UI
@@ -31,9 +31,14 @@ Date: 2026-09-18
   the twelve existing monthly overhead fields, warranty reserve, and management
   buffer. Monthly cost is the only editable money column. VAT and Total are
   derived whole-shekel values, and Arnona displays no VAT.
-- The v3.0.55 visual checkpoint includes the `Company Metrics` tab name and the
-  enlarged 50px group bars. Attempts to reduce the rendered input and white-row
-  heights are not visually effective yet and remain follow-up work.
+- Company Metrics reuses the actual Object Detail HTML-grid and CSS primitives,
+  rather than approximating them with Streamlit columns. Its group bars are
+  40px high, editable Monthly Cost fields are 34px high, and rendered cost rows
+  are 51px high, exactly matching the measured Object Detail table geometry.
+- The Expense, Monthly Cost, VAT, and Total axes, 13px typography, separators,
+  group treatment, and compact input treatment now come from the shared Object
+  Detail design contract. The last row in each group has no separator before
+  the next group bar.
 
 ## Persistence contract
 
@@ -47,10 +52,15 @@ Date: 2026-09-18
 - Metrics writes only its three visible `overhead_settings` percentages and the
   twelve visible `overhead_monthly` fields. Monthly costs are persisted as whole
   shekels. The company-wide VAT rate is reused by deterministic Estimation totals.
+- The Metrics table keeps only Monthly Cost editable. Its browser guard updates
+  VAT and Total immediately, then submits one owner-validated snapshot through
+  the existing server save function. The narrow `screen=account` query route
+  returns a full-page snapshot submission to Company Profile without changing
+  the normal Profile button or Auth session flow.
 
 ## Protected behavior
 
-- Auth and Upload screens and CSS are unchanged by the v3.0.55 Profile revision.
+- Auth and Upload screens and CSS are unchanged by the v3.0.56 Profile revision.
 - Session persistence and first-click Profile navigation remain governed by the
   separately accepted v3.0.51 Auth checkpoint.
 
@@ -65,7 +75,10 @@ UI definition for the Profile screen.
   Details as the only editor for company legal names.
 - User accepted the Metrics screen as a functioning work-in-progress checkpoint
   after a clean Streamlit restart removed the observed delay.
-- User confirmed the v3.0.55 tab rename and group-bar update, while explicitly
-  leaving input and white-row compaction unfinished.
-- Automated suite: 137 tests passed before checkpoint documentation.
+- User explicitly accepted the v3.0.56 Company Metrics table after it was moved
+  to the same implementation and measured geometry as Object Detail.
+- Live DOM verification measured 40px group bars, 51px cost rows, and 34px
+  Monthly Cost inputs. A live edit from 2,000 at 18% produced VAT 360 and Total
+  2,360.
+- Automated suite: 139 tests passed before checkpoint documentation.
 - `git diff --check`: clean before checkpoint documentation.
