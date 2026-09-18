@@ -1,7 +1,7 @@
 # Company Profile checkpoint
 
-Version: v3.0.54
-Date: 2026-09-17
+Version: v3.0.55
+Date: 2026-09-18
 
 ## Accepted UI
 
@@ -9,9 +9,9 @@ Date: 2026-09-17
   remains beside `Company profile`.
 - The redundant Profile action is absent. Compact `Continue to upload` and
   standard icon-bearing `Sign out` actions live in the page header.
-- The peer tabs are General Details, Contacts, Bank Details, Metrics, Users, and Price
-  List. Tabs use the larger Profile navigation treatment. Repeated tab headings
-  are not rendered inside their panels.
+- The peer tabs are General Details, Contacts, Bank Details, Company Metrics,
+  Users, and Price List. Tabs use the larger Profile navigation treatment.
+  Repeated tab headings are not rendered inside their panels.
 - General Details uses two rows: Company name / Company legal name (Hebrew),
   then Company registration number / Company legal name (English).
 - Contacts contains Official email, Phone, Website, Street, House Number, City,
@@ -31,6 +31,9 @@ Date: 2026-09-17
   the twelve existing monthly overhead fields, warranty reserve, and management
   buffer. Monthly cost is the only editable money column. VAT and Total are
   derived whole-shekel values, and Arnona displays no VAT.
+- The v3.0.55 visual checkpoint includes the `Company Metrics` tab name and the
+  enlarged 50px group bars. Attempts to reduce the rendered input and white-row
+  heights are not visually effective yet and remain follow-up work.
 
 ## Persistence contract
 
@@ -47,7 +50,7 @@ Date: 2026-09-17
 
 ## Protected behavior
 
-- Auth and Upload screens and CSS are unchanged by the v3.0.54 Profile revision.
+- Auth and Upload screens and CSS are unchanged by the v3.0.55 Profile revision.
 - Session persistence and first-click Profile navigation remain governed by the
   separately accepted v3.0.51 Auth checkpoint.
 
@@ -62,5 +65,7 @@ UI definition for the Profile screen.
   Details as the only editor for company legal names.
 - User accepted the Metrics screen as a functioning work-in-progress checkpoint
   after a clean Streamlit restart removed the observed delay.
+- User confirmed the v3.0.55 tab rename and group-bar update, while explicitly
+  leaving input and white-row compaction unfinished.
 - Automated suite: 137 tests passed before checkpoint documentation.
 - `git diff --check`: clean before checkpoint documentation.

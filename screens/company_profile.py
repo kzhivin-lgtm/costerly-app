@@ -716,7 +716,14 @@ def render_company_profile(access: CompanyAccess) -> None:
         return
 
     general_tab, contacts_tab, bank_tab, metrics_tab, users_tab, prices_tab = st.tabs(
-        ["General Details", "Contacts", "Bank Details", "Metrics", "Users", "Price List"]
+        [
+            "General Details",
+            "Contacts",
+            "Bank Details",
+            "Company Metrics",
+            "Users",
+            "Price List",
+        ]
     )
     with general_tab:
         if access.role == "owner":

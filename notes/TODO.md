@@ -5,9 +5,13 @@
 - Every new two-file benchmark cycle starts two fresh instances on separate unused ports and opens both Chrome tabs automatically so `page-23.pdf` and `Металл (1).pdf` can run in parallel under the same code version. Keep older benchmark servers and result screens available for side-by-side comparison; stop them only on explicit request or when resource/port conflicts require cleanup.
 
 ## Active
-- v3.0.54 Company Profile Metrics follow-up: continue visual refinement from the
-  Object Detail table geometry, validate save/reload against Supabase, and decide
-  the final treatment of reserves before calling the Metrics UI complete.
+- v3.0.55 Company Metrics follow-up: inspect the actual rendered Streamlit DOM,
+  because the attempted 28px input and 36px row CSS did not change their visible
+  height. Make the editable Monthly Cost input genuinely shorter, set group bars
+  to approximately 45px, and make every white cost row the same rendered height
+  as the group bar. Preserve the Object Detail column axes, 13px typography,
+  row separators, VAT/Total read-only behavior, and the Arnona VAT dash. Then
+  validate save/reload against Supabase and decide the final reserve treatment.
 - Company Profile follow-up: decide whether Bank Details needs a distinct
   `Account holder name` field. Do not duplicate editable Legal name across tabs
   or add a database column until the banking requirement is confirmed.

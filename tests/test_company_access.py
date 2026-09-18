@@ -375,7 +375,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "General Details", "Contacts", "Bank Details", "Metrics", "Users", "Price List",
+        "General Details", "Contacts", "Bank Details", "Company Metrics", "Users", "Price List",
     ]
     assert any(button.label == "Continue to upload" for button in app.button)
     assert any(button.label == "Sign out" for button in app.button)

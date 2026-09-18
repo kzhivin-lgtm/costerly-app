@@ -21,8 +21,9 @@ The app should not follow Streamlit native dark mode yet.
 Company Profile UI and persistence contract
 Company Profile owns its local page heading and navigation actions. The shared
 full Costerly logo and global Profile action are not rendered on that screen.
-The page uses six peer tabs: General Details, Contacts, Bank Details, Metrics,
-Users, and Price List. General Details, Contacts, and Bank Details each submit independently.
+The page uses six peer tabs: General Details, Contacts, Bank Details, Company
+Metrics, Users, and Price List. General Details, Contacts, and Bank Details each
+submit independently.
 Their save handlers send partial company updates, so a field hidden from the UI
 is not converted to null. In particular, the retained VAT file number and
 country values remain unchanged until a deliberate data-migration decision.

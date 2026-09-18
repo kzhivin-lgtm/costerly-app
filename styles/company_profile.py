@@ -280,7 +280,7 @@ def apply_company_profile_css() -> None:
         }
 
         .company-metric-group {
-            min-height: 40px;
+            min-height: 50px;
             display: flex;
             align-items: center;
             margin: 10px 0 0 !important;
@@ -313,9 +313,17 @@ def apply_company_profile_css() -> None:
             min-width: 0 !important;
             flex: none !important;
             display: flex;
-            min-height: 42px;
             align-items: center;
+        }
+
+        .st-key-company_metrics_header [data-testid="stColumn"] {
+            min-height: 42px;
             padding: 8px 12px;
+        }
+
+        [class*="st-key-company_metric_row_"] [data-testid="stColumn"] {
+            min-height: 36px;
+            padding: 4px 12px;
         }
 
         .st-key-company_metrics_header [data-testid="stColumn"]:not(:first-child),
@@ -343,6 +351,11 @@ def apply_company_profile_css() -> None:
             border-bottom: 1px solid rgba(42, 31, 44, 0.10);
         }
 
+        [class*="st-key-company_metric_row_"] > [data-testid="stVerticalBlock"],
+        [class*="st-key-company_metric_row_"] [data-testid="stVerticalBlockBorderWrapper"] > div {
+            gap: 0 !important;
+        }
+
         [class*="st-key-company_metric_row_"][class*="_last"] {
             border-bottom: 0;
         }
@@ -355,14 +368,14 @@ def apply_company_profile_css() -> None:
         [class*="st-key-company_metric_row_"] [data-testid="stTextInputRootElement"],
         [class*="st-key-company_metric_row_"] div[data-baseweb="input"],
         [class*="st-key-company_metric_row_"] div[data-baseweb="base-input"] {
-            min-height: 34px !important;
+            min-height: 28px !important;
             border-color: rgba(42, 31, 44, 0.18) !important;
             border-radius: 8px !important;
         }
 
         [class*="st-key-company_metric_row_"] input {
-            min-height: 32px !important;
-            padding: 0 10px !important;
+            min-height: 26px !important;
+            padding: 0 8px !important;
             font-family: var(--font-mono) !important;
             font-size: 13px !important;
             font-weight: 700 !important;
@@ -372,7 +385,7 @@ def apply_company_profile_css() -> None:
         .company-metric-name,
         .company-metric-readonly {
             display: flex;
-            min-height: 34px;
+            min-height: 28px;
             align-items: center;
             line-height: 1.24;
         }

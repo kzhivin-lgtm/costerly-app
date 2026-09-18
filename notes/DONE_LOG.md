@@ -123,3 +123,5 @@ v3.0.53 Company Profile bank-context checkpoint: enlarged the six Profile tabs, 
 Backup v3.0.53_company_profile_bank_context_checkpoint created and validated, завершена 17.09
 v3.0.54 Company Profile Metrics work-in-progress checkpoint: connected the existing company overhead settings and monthly cost records to the Metrics tab, added owner-only partial saves, whole-shekel monthly inputs, deterministic VAT and Total display with Arnona VAT exemption, and reused the stored company VAT rate in Estimation totals; user confirmed the current screen works without delay after a clean restart, and 137 tests passed, завершена 17.09
 Backup v3.0.54_company_profile_metrics_wip_checkpoint created and validated, завершена 17.09
+v3.0.55 Company Metrics visual checkpoint: renamed the Profile tab to Company Metrics and enlarged the group bars to 50px; the attempted input and white-row height reductions were recorded as visually ineffective and remain explicit follow-up work rather than accepted completion, 137 tests passed, завершена 18.09
+Backup v3.0.55_company_metrics_visual_checkpoint created and validated, завершена 18.09
