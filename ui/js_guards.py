@@ -40,6 +40,52 @@ def install_company_metrics_input_guard() -> None:
                 return target.closest(".company-metrics-monthly-input");
             }
 
+            function phoneInput(target) {
+                return target && target.matches && target.matches(".st-key-profile_public_phone input")
+                    ? target
+                    : null;
+            }
+
+            function percentInput(target) {
+                if (!target || !target.matches) return null;
+                return target.matches([
+                    ".st-key-profile_metric_vat_percent input",
+                    ".st-key-profile_metric_warranty_reserve_percent input",
+                    ".st-key-profile_metric_management_buffer_percent input",
+                ].join(",")) ? target : null;
+            }
+
+            function formatPercent(value, suffix = true) {
+                const number = Math.min(100, readNumber(value));
+                const text = Number.isInteger(number)
+                    ? String(number)
+                    : number.toFixed(2).replace(/0+$/, "").replace(/\\.$/, "");
+                return suffix ? `${text}%` : text;
+            }
+
+            function formatIsraeliPhone(value) {
+                let digits = String(value || "").replace(/\\D/g, "");
+                if (digits === "0") return "0";
+                if (digits.startsWith("972")) digits = digits.slice(3);
+                else if (digits.startsWith("0")) digits = digits.slice(1);
+                digits = digits.slice(0, 9);
+                if (!digits) return "";
+                const parts = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 9)]
+                    .filter(Boolean);
+                return `+972 ${parts.join(" ")}`;
+            }
+
+            function updatePhone(input) {
+                const formatted = formatIsraeliPhone(input.value);
+                if (formatted === input.value) return;
+                const setter = Object.getOwnPropertyDescriptor(
+                    parentWindow.HTMLInputElement.prototype,
+                    "value",
+                ).set;
+                setter.call(input, formatted);
+                input.setSelectionRange(formatted.length, formatted.length);
+            }
+
             function updateRow(input) {
                 const row = input ? input.closest(".company-metrics-row") : null;
                 const table = row ? row.closest("[data-company-metrics-table]") : null;
@@ -77,18 +123,27 @@ def install_company_metrics_input_guard() -> None:
             function handleFocus(event) {
                 const input = metricsInput(event.target);
                 if (input) input.textContent = cleanNumber(input.textContent);
+                const percent = percentInput(event.target);
+                if (percent) percent.value = formatPercent(percent.value, false);
             }
 
             function handleInput(event) {
                 const input = metricsInput(event.target);
                 if (input) updateRow(input);
+                const phone = phoneInput(event.target);
+                if (phone) updatePhone(phone);
             }
 
             function handleBlur(event) {
                 const input = metricsInput(event.target);
-                if (!input) return;
-                input.textContent = formatMoney(readNumber(input.textContent));
-                updateRow(input);
+                if (input) {
+                    input.textContent = formatMoney(readNumber(input.textContent));
+                    updateRow(input);
+                }
+                const phone = phoneInput(event.target);
+                if (phone) updatePhone(phone);
+                const percent = percentInput(event.target);
+                if (percent) percent.value = formatPercent(percent.value);
             }
 
             function handleKeydown(event) {

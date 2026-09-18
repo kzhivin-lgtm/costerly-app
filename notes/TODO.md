@@ -5,10 +5,12 @@
 - Every new two-file benchmark cycle starts two fresh instances on separate unused ports and opens both Chrome tabs automatically so `page-23.pdf` and `Металл (1).pdf` can run in parallel under the same code version. Keep older benchmark servers and result screens available for side-by-side comparison; stop them only on explicit request or when resource/port conflicts require cleanup.
 
 ## Active
-- Company Metrics follow-up after the accepted v3.0.56 shared Object Detail
-  table: validate one real save/reload cycle directly against Supabase, then
-  decide the final Project Reserves treatment. Do not fork the table geometry
-  back into Streamlit columns or native money inputs.
+- Company Metrics follow-up after the v3.0.57 visual checkpoint: apply
+  `db/sql/2026_09_18_other_spendings_overhead.sql` to live Supabase, repair and
+  verify the Save Company Metrics confirmation and save/reload cycle, make VAT
+  changes recalculate every row immediately, and correct percentage Backspace
+  behavior. Do not fork the table geometry back into Streamlit columns or native
+  money inputs.
 - Company Profile follow-up: decide whether Bank Details needs a distinct
   `Account holder name` field. Do not duplicate editable Legal name across tabs
   or add a database column until the banking requirement is confirmed.

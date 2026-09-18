@@ -67,6 +67,10 @@ METRIC_GROUPS = (
             ("waste_removal_admin_cost", "Waste removal"),
         ),
     ),
+    (
+        "Other Spendings",
+        (("other_spendings_cost", "Other spendings"),),
+    ),
 )
 METRIC_MONTHLY_FIELDS = tuple(
     field for _group, rows in METRIC_GROUPS for field, _label in rows
@@ -127,13 +131,27 @@ def _load_company_metrics_by_id(company_id: str) -> tuple[dict, dict]:
         .limit(1)
         .execute()
     ).data or []
-    monthly_rows = (
-        client.table("overhead_monthly")
-        .select("company_id," + ",".join(METRIC_MONTHLY_FIELDS))
-        .eq("company_id", company_id)
-        .limit(1)
-        .execute()
-    ).data or []
+    try:
+        monthly_rows = (
+            client.table("overhead_monthly")
+            .select("company_id," + ",".join(METRIC_MONTHLY_FIELDS))
+            .eq("company_id", company_id)
+            .limit(1)
+            .execute()
+        ).data or []
+    except Exception as exc:
+        if "other_spendings_cost" not in str(exc):
+            raise
+        legacy_fields = tuple(
+            field for field in METRIC_MONTHLY_FIELDS if field != "other_spendings_cost"
+        )
+        monthly_rows = (
+            client.table("overhead_monthly")
+            .select("company_id," + ",".join(legacy_fields))
+            .eq("company_id", company_id)
+            .limit(1)
+            .execute()
+        ).data or []
     settings = settings_rows[0] if settings_rows else {"company_id": company_id}
     monthly = monthly_rows[0] if monthly_rows else {"company_id": company_id}
     settings.setdefault("vat_percent", 18)
@@ -282,6 +300,21 @@ def _profile_save_button(label: str) -> bool:
     return st.form_submit_button(label, type="primary", use_container_width=True)
 
 
+def _format_israeli_phone(value: object) -> str:
+    digits = "".join(character for character in str(value or "") if character.isdigit())
+    if digits == "0":
+        return "0"
+    if digits.startswith("972"):
+        digits = digits[3:]
+    elif digits.startswith("0"):
+        digits = digits[1:]
+    digits = digits[:9]
+    if not digits:
+        return ""
+    parts = [digits[:2], digits[2:5], digits[5:9]]
+    return "+972 " + " ".join(part for part in parts if part)
+
+
 def _read_only_group(title: str, items: list[tuple[str, object]]) -> None:
     rows = "".join(
         '<div class="company-profile-readonly-item">'
@@ -343,7 +376,12 @@ def _render_owner_contacts(access: CompanyAccess, profile: dict) -> None:
                 profile, "Official email", "public_email", placeholder="office@company.com"
             )
         with contact_right:
-            phone = _text_input(profile, "Phone", "public_phone", placeholder="+972 00 000 0000")
+            phone = st.text_input(
+                "Phone",
+                value=_format_israeli_phone(profile.get("public_phone")),
+                key="profile_public_phone",
+                placeholder="+972 00 000 0000",
+            )
         website = _text_input(profile, "Website", "website_url", placeholder="https://company.com")
 
         address_first_left, address_first_right = st.columns(2)
@@ -374,7 +412,7 @@ def _render_owner_contacts(access: CompanyAccess, profile: dict) -> None:
     if saved:
         _save_profile_section(access, {
             "public_email": official_email,
-            "public_phone": phone,
+            "public_phone": _format_israeli_phone(phone),
             "website_url": website,
             "address_street": street,
             "address_house_number": house_number,
@@ -497,8 +535,9 @@ def _metric_money(value: object) -> str:
 def _metric_percent_text(value: object) -> str:
     number = min(100.0, _metric_amount(value))
     if number == int(number):
-        return str(int(number))
-    return f"{number:.2f}".rstrip("0").rstrip(".")
+        return f"{int(number)}%"
+    text = f"{number:.2f}".rstrip("0").rstrip(".")
+    return f"{text}%"
 
 
 def _ensure_metric_text_state(key: str, default: str) -> None:
@@ -566,20 +605,11 @@ def _render_metrics(access: CompanyAccess) -> None:
 
     editable = access.role == "owner"
     with st.container(key="company_metrics_card", border=True):
-        vat_column, _vat_space = st.columns([1, 3])
-        with vat_column:
-            vat_key = "profile_metric_vat_percent"
-            _ensure_metric_text_state(
-                vat_key, _metric_percent_text(settings.get("vat_percent"))
-            )
-            vat_raw = st.text_input(
-                "Ma'am / VAT rate, %",
-                key=vat_key,
-                on_change=_normalize_metric_percent,
-                args=(vat_key,),
-                disabled=not editable,
-            )
-            vat_percent = min(100.0, _metric_amount(vat_raw))
+        vat_key = "profile_metric_vat_percent"
+        _ensure_metric_text_state(
+            vat_key, _metric_percent_text(settings.get("vat_percent"))
+        )
+        vat_percent = min(100.0, _metric_amount(st.session_state[vat_key]))
 
         st.markdown(
             company_metrics_view.table_html(
@@ -591,33 +621,39 @@ def _render_metrics(access: CompanyAccess) -> None:
             unsafe_allow_html=True,
         )
 
-        st.markdown(
-            '<div class="company-metrics-reserve-bar">Project Reserves</div>',
-            unsafe_allow_html=True,
-        )
-        reserve_left, reserve_right = st.columns(2)
-        with reserve_left:
+        with st.container(key="company_metrics_settings"):
+            vat_column, warranty_column, management_column = st.columns(3)
+        with vat_column:
+            vat_raw = st.text_input(
+                "Ma'am / VAT rate",
+                key=vat_key,
+                on_change=_normalize_metric_percent,
+                args=(vat_key,),
+                disabled=not editable,
+            )
+            vat_percent = min(100.0, _metric_amount(vat_raw))
+        with warranty_column:
             warranty_key = "profile_metric_warranty_reserve_percent"
             _ensure_metric_text_state(
                 warranty_key,
                 _metric_percent_text(settings.get("warranty_reserve_percent")),
             )
             warranty_raw = st.text_input(
-                "Warranty reserve, %",
+                "Warranty reserve",
                 key=warranty_key,
                 on_change=_normalize_metric_percent,
                 args=(warranty_key,),
                 disabled=not editable,
             )
             warranty_percent = min(100.0, _metric_amount(warranty_raw))
-        with reserve_right:
+        with management_column:
             management_key = "profile_metric_management_buffer_percent"
             _ensure_metric_text_state(
                 management_key,
                 _metric_percent_text(settings.get("management_buffer_percent")),
             )
             management_raw = st.text_input(
-                "Management buffer, %",
+                "Management buffer",
                 key=management_key,
                 on_change=_normalize_metric_percent,
                 args=(management_key,),
@@ -692,16 +728,19 @@ def render_company_profile(access: CompanyAccess) -> None:
         st.error("Company profile is unavailable right now. Try again in a moment.")
         return
 
-    general_tab, contacts_tab, bank_tab, metrics_tab, users_tab, prices_tab = st.tabs(
+    metrics_tab, general_tab, contacts_tab, bank_tab, users_tab, prices_tab = st.tabs(
         [
+            "Company Metrics",
             "General Details",
             "Contacts",
             "Bank Details",
-            "Company Metrics",
             "Users",
             "Price List",
         ]
     )
+    with metrics_tab:
+        _render_metrics(access)
+
     with general_tab:
         if access.role == "owner":
             _render_owner_general(access, profile)
@@ -719,9 +758,6 @@ def render_company_profile(access: CompanyAccess) -> None:
             _render_owner_bank_details(access, profile)
         else:
             _render_member_bank_details(profile)
-
-    with metrics_tab:
-        _render_metrics(access)
 
     with users_tab:
         _render_users(access)

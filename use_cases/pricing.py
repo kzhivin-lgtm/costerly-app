@@ -296,6 +296,7 @@ def _monthly_overhead_map() -> tuple[tuple[str, str, str], ...]:
         ("software_subscriptions_admin_cost", "Software / shop supplies / waste", "Software subscriptions"),
         ("shop_supplies_cleaning_admin_cost", "Software / shop supplies / waste", "Shop supplies / cleaning"),
         ("waste_removal_admin_cost", "Software / shop supplies / waste", "Waste removal"),
+        ("other_spendings_cost", "Other spendings", "Other spendings"),
     )
 
 

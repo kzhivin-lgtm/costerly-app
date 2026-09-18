@@ -280,7 +280,7 @@ def apply_company_profile_css() -> None:
         }
 
         .company-metrics-table {
-            margin-top: 18px;
+            margin-top: 0;
         }
 
         .company-metrics-group-summary {
@@ -298,19 +298,8 @@ def apply_company_profile_css() -> None:
             font-variant-numeric: tabular-nums;
         }
 
-        .company-metrics-reserve-bar {
-            display: flex;
-            min-height: 40px;
-            align-items: center;
-            margin-top: 18px;
-            padding: 0 12px;
-            background: rgba(128, 73, 198, 0.075);
-            color: rgba(42, 31, 44, 0.68);
-            font-family: var(--font-mono);
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
+        .stApp:has(.company-profile-active) .st-key-company_metrics_settings {
+            margin-top: 34px;
         }
 
         .company-metrics-save {

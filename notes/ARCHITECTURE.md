@@ -21,8 +21,8 @@ The app should not follow Streamlit native dark mode yet.
 Company Profile UI and persistence contract
 Company Profile owns its local page heading and navigation actions. The shared
 full Costerly logo and global Profile action are not rendered on that screen.
-The page uses six peer tabs: General Details, Contacts, Bank Details, Company
-Metrics, Users, and Price List. General Details, Contacts, and Bank Details each
+The page uses six peer tabs: Company Metrics, General Details, Contacts, Bank
+Details, Users, and Price List. General Details, Contacts, and Bank Details each
 submit independently.
 Their save handlers send partial company updates, so a field hidden from the UI
 is not converted to null. In particular, the retained VAT file number and
@@ -43,6 +43,10 @@ as whole shekels. One company VAT percentage applies to taxable overhead rows;
 Arnona is VAT-exempt in the Metrics breakdown. VAT and Total are deterministic
 derived values, never editable inputs. The same stored VAT percentage is used
 for project and object pricing totals instead of a hard-coded 18 percent rate.
+`other_spendings_cost` is the shared catch-all monthly overhead field for
+Company Metrics and deterministic Object Detail allocation. It requires the
+versioned `2026_09_18_other_spendings_overhead.sql` migration before the new
+field can be persisted in a live Supabase environment.
 The Company Metrics cost table and Object Detail tables share the same
 `object-detail-table`, row, cell, group-summary, and cell-input CSS primitives.
 Do not rebuild Metrics cost rows with `st.columns` or native `st.text_input`:

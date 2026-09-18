@@ -12,6 +12,7 @@ from db.company_access import assert_company_owner, assert_estimate_owned, asser
 from state import company_auth
 from screens import company_profile
 from ui import company_metrics_view
+from use_cases import pricing
 from use_cases.invite_links import (
     DEFAULT_PUBLIC_APP_URL,
     create_one_company_link,
@@ -376,7 +377,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "General Details", "Contacts", "Bank Details", "Company Metrics", "Users", "Price List",
+        "Company Metrics", "General Details", "Contacts", "Bank Details", "Users", "Price List",
     ]
     assert any(button.label == "Continue to upload" for button in app.button)
     assert any(button.label == "Sign out" for button in app.button)
@@ -392,8 +393,16 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     ] if role == "owner" else [])
     metrics_markup = "".join(item.value for item in app.markdown)
     assert ('data-company-metrics-save="true"' in metrics_markup) is (role == "owner")
+    assert "Project Reserves" not in metrics_markup
     if role == "owner":
-        assert [field.label for field in app.text_input[:4]] == [
+        labels = [field.label for field in app.text_input]
+        assert labels[:3] == [
+            "Ma'am / VAT rate",
+            "Warranty reserve",
+            "Management buffer",
+        ]
+        general_start = labels.index("Company name")
+        assert labels[general_start:general_start + 4] == [
             "Company name",
             "Company legal name (Hebrew)",
             "Company registration number",
@@ -444,6 +453,19 @@ def test_company_metrics_member_table_has_no_editable_cells_or_save_action():
     )
     assert "contenteditable" not in html
     assert 'data-company-metrics-total>₪236</span>' in html
+
+
+def test_other_spendings_flows_from_company_metrics_to_object_detail_pricing():
+    assert company_profile.METRIC_GROUPS[-1] == (
+        "Other Spendings",
+        (("other_spendings_cost", "Other spendings"),),
+    )
+    assert pricing._monthly_overhead_map()[-1] == (
+        "other_spendings_cost",
+        "Other spendings",
+        "Other spendings",
+    )
+    assert "SAVE COMPANY METRICS" in company_metrics_view.save_action_html()
 
 
 def test_bank_details_shows_read_only_legal_names_and_does_not_write_them(monkeypatch):
@@ -546,6 +568,19 @@ def test_company_metrics_format_whole_shekels_and_exempt_arnona_from_vat():
     assert company_profile._metric_money(" ₪2,500.80 ") == "₪2\u202f501"
     assert company_profile._metric_vat("rent_facilities_cost", 10_000, 18) == 1_800
     assert company_profile._metric_vat("arnona_facilities_cost", 2_500, 18) == 0
+    assert company_profile._metric_percent_text(18) == "18%"
+    assert company_profile._metric_percent_text(2.5) == "2.5%"
+
+
+@pytest.mark.parametrize(("raw", "formatted"), [
+    ("0534000000", "+972 53 400 0000"),
+    ("+972534000000", "+972 53 400 0000"),
+    ("972 53 400 0000", "+972 53 400 0000"),
+    ("0", "0"),
+    ("", ""),
+])
+def test_company_profile_formats_israeli_phone(raw, formatted):
+    assert company_profile._format_israeli_phone(raw) == formatted
 
 
 def test_company_metrics_save_monthly_costs_as_whole_shekels(monkeypatch):
