@@ -122,6 +122,10 @@
           profile_to_sign_out: ["login"],
           upload_to_sign_out: ["login"],
         };
+        const maskedInternalTransitions = new Set([
+          "upload_to_profile",
+          "profile_to_upload",
+        ]);
         const startupPhases = new Set([
           "auth_component_script",
           "auth_component_render",
@@ -244,7 +248,7 @@
         }
 
         function concealInternalTransition(transition) {
-          if (transition !== "profile_to_upload") return;
+          if (!maskedInternalTransitions.has(transition)) return;
           window.clearTimeout(internalTransitionTimer);
           if (frame) {
             frame.classList.add("is-transitioning");
@@ -377,7 +381,7 @@
                   ...metadata,
                 },
               });
-              if (pendingTransition.name === "profile_to_upload") {
+              if (maskedInternalTransitions.has(pendingTransition.name)) {
                 revealInternalTransition("app_ready");
               }
             } else {
