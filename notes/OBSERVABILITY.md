@@ -114,6 +114,14 @@ Server:
 
 ## Production acceptance
 
+Recorded deployment restart anomaly on 2026-09-19: trace
+`a1fb00f9-c24d-459c-8faa-50a90394e2fa` loaded the Streamlit iframe in
+1.416 seconds but emitted no server run or app-ready event. The outer wrapper
+released its fallback after the configured 8.002-second timeout. This confirms
+the blank first attempt stalled after iframe load and before observable Python
+execution. The provider-side cause remains unknown; keep this separate from
+Profile render and Supabase timing.
+
 - Refresh `app.costerly.ai` five times while signed in.
 - Confirm the browser app-ready row contains the server summary and matching
   `server_run_id`; correlate any available individual server rows by

@@ -9,7 +9,14 @@
   flow, including its outer Streamlit element wrapper, so Overhead Expenses
   starts at the same height as Contacts. Rename Price List to Price Lists.
   Preserve the working expense persistence path and defer Sign out sizing,
-  Save Contacts, and Save Company Details.
+  Save Contacts, and Save Company Details. Status: production work-in-progress
+  at `9ab5814`. The rail, active-tab bold treatment, plural `Price Lists`,
+  Overhead Expenses copy, working Save, and removal of the red React Aria
+  indicator are visually confirmed. A small residual vertical offset remains
+  between the Overhead Expenses card and the other tab contents. Do not add a
+  guessed negative margin. Resume by measuring the live active panel, fragment
+  wrapper, element container, and card boundaries, then remove the earliest
+  confirmed source of the remaining gap.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the
