@@ -3,6 +3,15 @@
 Version: v3.2.3 accepted visual checkpoint
 Date: 2026-09-19
 
+## v3.2.4 candidate
+
+- The compact Profile actions move 4px lower, as requested.
+- The transition observer recognizes both the previous `Continue to upload`
+  label and the current `Upload` label as `profile_to_upload`, restoring the
+  existing Cloudflare transition curtain without changing navigation.
+- Automated suite: 186 tests passed. Production visual and transition
+  verification remain pending, so v3.2.3 is still the accepted checkpoint.
+
 ## v3.2.3 Compact Profile header
 
 - Product checkpoint: `1f30416`.

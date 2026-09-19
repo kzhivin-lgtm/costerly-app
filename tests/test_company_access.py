@@ -767,7 +767,7 @@ def test_labor_list_renders_before_editor_and_uses_profile_fonts():
     assert ".company-profile-mark {" in css
     assert "transform: translateY(3px);" in css
     assert ".st-key-company_profile_actions {" in css
-    assert "transform: translateY(10px);" in css
+    assert "transform: translateY(14px);" in css
     assert '.st-key-company_profile_actions div[data-testid="stButton"] button {' in css
     assert "min-height: 36px !important;" in css
     assert "font-family: var(--font-sans) !important" in css

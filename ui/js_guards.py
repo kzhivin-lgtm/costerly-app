@@ -247,7 +247,9 @@ def signal_app_ready_to_embed(
                 const label = String(buttonText || "").trim().toLowerCase();
                 if (label === "sign in") return "sign_in";
                 if (label === "profile") return "upload_to_profile";
-                if (label === "continue to upload") return "profile_to_upload";
+                if (label === "continue to upload" || label === "upload") {
+                    return "profile_to_upload";
+                }
                 if (label === "sign out") {
                     try {
                         return window.parent.document.querySelector(".company-profile-active")

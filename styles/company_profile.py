@@ -78,7 +78,7 @@ def apply_company_profile_css() -> None:
         }
 
         .st-key-company_profile_actions {
-            transform: translateY(10px);
+            transform: translateY(14px);
         }
 
         .st-key-company_profile_actions [data-testid="stButton"],
