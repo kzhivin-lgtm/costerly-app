@@ -41,6 +41,8 @@ record the exception type, not the exception message.
 - The Cloudflare wrapper uses `navigator.sendBeacon` or a keepalive fetch after
   the app is revealed. It never waits for the telemetry response.
 - The Pages Function returns `202` and persists through `context.waitUntil`.
+- The Pages project root is `cloudflare/`, so Functions live under
+  `cloudflare/functions/`, not the repository root.
 
 ## Initial event boundaries
 

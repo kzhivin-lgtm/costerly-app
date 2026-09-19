@@ -1,3 +1,4 @@
+// This path is relative to the configured Cloudflare Pages root: cloudflare/.
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_EVENTS = 50;
 const SAFE_NAME = /^[a-z0-9_.:-]{1,80}$/;

@@ -76,7 +76,7 @@ def test_observability_sql_is_service_role_only_and_indexed():
 
 def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     wrapper = (ROOT / "cloudflare/index.html").read_text()
-    function = (ROOT / "functions/api/runtime-events.js").read_text()
+    function = (ROOT / "cloudflare/functions/api/runtime-events.js").read_text()
     routes = (ROOT / "cloudflare/_routes.json").read_text()
 
     assert 'data-src="https://costerly-app.streamlit.app/?embed=true"' in wrapper
