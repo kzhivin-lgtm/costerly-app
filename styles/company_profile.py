@@ -229,6 +229,52 @@ def apply_company_profile_css() -> None:
             box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
         }
 
+        .stApp:has(.company-profile-active) [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+            display: flex !important;
+            align-items: center !important;
+            min-height: 52px !important;
+            background: var(--input-bg) !important;
+            border-color: #CEC5D1 !important;
+            color: var(--input-text) !important;
+            box-shadow: none !important;
+        }
+
+        .stApp:has(.company-profile-active) [data-testid="stSelectbox"] div[data-baseweb="select"] > div > div {
+            display: flex !important;
+            align-items: center !important;
+            min-height: 50px !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            color: var(--input-text) !important;
+            font-family: var(--font-sans) !important;
+            line-height: 1.2 !important;
+        }
+
+        .stApp:has(.company-profile-active) [data-testid="stSelectbox"]:focus-within div[data-baseweb="select"] > div {
+            border-color: var(--input-focus-border) !important;
+            box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
+        }
+
+        .stApp:has(.company-profile-active) [data-testid="stSelectbox"] svg {
+            fill: var(--color-text-muted) !important;
+            color: var(--color-text-muted) !important;
+        }
+
+        div[data-baseweb="popover"] [role="option"][aria-selected="true"] {
+            background: rgba(128, 73, 198, 0.14) !important;
+            color: var(--color-text-strong) !important;
+        }
+
+        div[data-baseweb="popover"] [role="option"]:hover {
+            background: rgba(128, 73, 198, 0.09) !important;
+            color: var(--color-text-strong) !important;
+        }
+
+        div[data-baseweb="popover"] [role="option"] svg {
+            fill: var(--color-accent) !important;
+            color: var(--color-accent) !important;
+        }
+
         .stApp:has(.company-profile-active) [data-testid="stTextInputRootElement"] > div,
         .stApp:has(.company-profile-active) div[data-baseweb="input"] > div {
             border: 0 !important;
@@ -438,7 +484,16 @@ def apply_company_profile_css() -> None:
         .company-profile-users th {
             background: #FAF8FC;
             color: var(--color-text-strong);
+            font-family: var(--font-mono) !important;
+            font-size: 13px;
             font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .company-profile-users td,
+        .company-profile-users td strong {
+            font-family: var(--font-sans) !important;
         }
 
         .company-profile-users tr:last-child td {
@@ -449,7 +504,7 @@ def apply_company_profile_css() -> None:
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin: 24px 0 12px;
+            margin: 0 0 12px;
             padding: 18px 20px;
             border: 1px solid var(--color-border-soft);
             border-radius: 12px;
@@ -458,8 +513,11 @@ def apply_company_profile_css() -> None:
         }
 
         .company-labor-summary span {
+            font-family: var(--font-mono);
             font-size: 15px;
             font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
 
         .company-labor-summary strong {
@@ -480,6 +538,23 @@ def apply_company_profile_css() -> None:
         .company-labor-list td:nth-child(6) {
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-company_labor_card {
+            margin-top: 18px;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-company_labor_card input:disabled {
+            opacity: 1 !important;
+            color: var(--color-text-strong) !important;
+            -webkit-text-fill-color: var(--color-text-strong) !important;
+            font-weight: 700 !important;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-company_labor_card
+        [data-testid="stHorizontalBlock"]:has(button[kind="primary"]) button {
+            min-height: 60px !important;
+            margin-top: 8px !important;
         }
 
         .stApp:has(.company-profile-active) [data-testid="stCode"] {

@@ -48,9 +48,10 @@ Overhead Expenses and deterministic Object Detail allocation. The versioned
 Supabase schema.
 Labor Costs stores owner-only worker compensation in `company_employees`, never
 in the Estimation `labor` catalog. The first contract uses one informal Worker
-name, controlled Department and Position values, and either Gross monthly salary
-or Gross hourly rate plus Hours per month. Monthly Gross is derived rather than
-stored. Net salary and statutory employer-cost calculations remain out of scope.
+name, controlled Department and Position values, and either Avg Monthly Bruto or
+Hourly Rate plus integer Average Hours per Month. Monthly Bruto is derived rather
+than stored. Each worker can be edited through the same owner-only validation
+path. Net salary and statutory employer-cost calculations remain out of scope.
 The `2026_09_19_company_employees.sql` migration has been applied to the live
 Supabase schema.
 The Overhead Expenses cost table and Object Detail tables share the same

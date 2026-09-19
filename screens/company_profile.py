@@ -385,6 +385,36 @@ def add_company_employee(
     gross_hourly_rate: float = 0,
     monthly_hours: float = 0,
 ) -> dict:
+    payload = _company_employee_payload(
+        worker_name=worker_name,
+        department=department,
+        position_code=position_code,
+        pay_type=pay_type,
+        gross_monthly_salary=gross_monthly_salary,
+        gross_hourly_rate=gross_hourly_rate,
+        monthly_hours=monthly_hours,
+    )
+    fresh, client = _owner_access(access)
+    result = client.table("company_employees").insert({
+        "company_id": fresh.company_id,
+        **payload,
+    }).execute()
+    rows = result.data or []
+    if len(rows) != 1 or str(rows[0].get("company_id")) != fresh.company_id:
+        raise RuntimeError("The worker was not added.")
+    return rows[0]
+
+
+def _company_employee_payload(
+    *,
+    worker_name: str,
+    department: str,
+    position_code: str,
+    pay_type: str,
+    gross_monthly_salary: float = 0,
+    gross_hourly_rate: float = 0,
+    monthly_hours: float = 0,
+) -> dict:
     worker_name = _clean(worker_name)
     if not worker_name:
         raise ValueError("Worker name is required.")
@@ -408,26 +438,47 @@ def add_company_employee(
     if pay_type == "monthly_salary":
         salary = round(float(gross_monthly_salary or 0), 2)
         if salary <= 0:
-            raise ValueError("Gross monthly salary must be greater than zero.")
+            raise ValueError("Avg monthly bruto must be greater than zero.")
         payload["gross_monthly_salary"] = salary
     else:
-        hourly_rate = round(float(gross_hourly_rate or 0), 2)
-        hours = round(float(monthly_hours or 0), 2)
+        hourly_rate = round(float(gross_hourly_rate or 0), 1)
+        hours_value = float(monthly_hours or 0)
+        hours = int(hours_value)
         if hourly_rate <= 0:
-            raise ValueError("Gross hourly rate must be greater than zero.")
+            raise ValueError("Hourly rate must be greater than zero.")
         if hours <= 0:
-            raise ValueError("Hours per month must be greater than zero.")
+            raise ValueError("Average hours per month must be greater than zero.")
+        if hours_value != hours:
+            raise ValueError("Average hours per month must be a whole number.")
         payload["gross_hourly_rate"] = hourly_rate
         payload["monthly_hours"] = hours
+    return payload
 
+
+def update_company_employee(
+    access: CompanyAccess,
+    employee_id: str,
+    **values: object,
+) -> dict:
+    employee_id = _clean(employee_id)
+    if not employee_id:
+        raise ValueError("Select a worker to edit.")
+    payload = _company_employee_payload(**values)
     fresh, client = _owner_access(access)
-    result = client.table("company_employees").insert({
-        "company_id": fresh.company_id,
-        **payload,
-    }).execute()
+    result = (
+        client.table("company_employees")
+        .update(payload)
+        .eq("company_id", fresh.company_id)
+        .eq("employee_id", employee_id)
+        .execute()
+    )
     rows = result.data or []
-    if len(rows) != 1 or str(rows[0].get("company_id")) != fresh.company_id:
-        raise RuntimeError("The employee was not added.")
+    if (
+        len(rows) != 1
+        or str(rows[0].get("company_id")) != fresh.company_id
+        or str(rows[0].get("employee_id")) != employee_id
+    ):
+        raise RuntimeError("The worker was not updated.")
     return rows[0]
 
 
@@ -858,10 +909,10 @@ def _labor_number(value: object) -> str:
 def _labor_pay_details(employee: dict) -> str:
     if employee.get("pay_type") == "hourly_rate":
         return (
-            f"{_labor_money(employee.get('gross_hourly_rate'))} / hour, "
-            f"{_labor_number(employee.get('monthly_hours'))} hours / month"
+            f"{_labor_money(employee.get('gross_hourly_rate'))} / h · "
+            f"{_labor_number(employee.get('monthly_hours'))} h"
         )
-    return f"{_labor_money(employee.get('gross_monthly_salary'))} / month"
+    return _labor_money(employee.get("gross_monthly_salary"))
 
 
 def _render_employee_list(employees: list[dict]) -> None:
@@ -882,33 +933,70 @@ def _render_employee_list(employees: list[dict]) -> None:
     total = sum(_labor_monthly_gross(employee) for employee in employees)
     st.markdown(
         '<div class="company-labor-summary">'
-        '<span>Total monthly gross</span>'
+        '<span>Total Monthly Bruto</span>'
         f'<strong>{escape(_labor_money(total))}</strong></div>'
         '<div class="company-profile-users company-labor-list"><table>'
         '<thead><tr><th>Worker</th><th>Department</th><th>Position</th>'
-        '<th>Pay Type</th><th>Pay Details</th><th>Monthly Gross</th></tr></thead>'
+        '<th>Pay Type</th><th>Pay Details</th><th>Monthly Bruto</th></tr></thead>'
         f"<tbody>{rows}</tbody></table></div>",
         unsafe_allow_html=True,
     )
 
 
-def _reset_labor_form_if_requested() -> None:
-    if not st.session_state.pop("_labor_reset_requested", False):
+def _apply_labor_form_reset() -> None:
+    if not st.session_state.pop("_labor_form_reset_pending", False):
         return
-    for key in (
-        "labor_worker_name",
-        "labor_department",
-        "labor_position",
-        "labor_pay_type",
-        "labor_gross_monthly_salary",
-        "labor_gross_hourly_rate",
-        "labor_monthly_hours",
-    ):
-        st.session_state.pop(key, None)
+    st.session_state["_labor_form_version"] = int(
+        st.session_state.get("_labor_form_version", 0)
+    ) + 1
+    st.session_state["labor_edit_worker"] = ""
+    for key in list(st.session_state):
+        if str(key).startswith("labor_form_"):
+            st.session_state.pop(key, None)
 
 
-def _clear_labor_position() -> None:
-    st.session_state.pop("labor_position", None)
+def _clear_labor_position(position_key: str) -> None:
+    st.session_state.pop(position_key, None)
+
+
+def _labor_input_number(
+    value: object,
+    *,
+    label: str,
+    decimals: int,
+    whole: bool = False,
+) -> float:
+    cleaned = (
+        str(value or "")
+        .replace("₪", "")
+        .replace(",", "")
+        .replace("\u202f", "")
+        .replace(" ", "")
+        .strip()
+    )
+    try:
+        number = float(cleaned)
+    except (TypeError, ValueError):
+        raise ValueError(f"{label} must be a number.") from None
+    if number <= 0:
+        raise ValueError(f"{label} must be greater than zero.")
+    if whole and number != int(number):
+        raise ValueError(f"{label} must be a whole number.")
+    return float(int(number)) if whole else round(number, decimals)
+
+
+def _labor_form_number(value: object, *, decimals: int = 2) -> str:
+    number = round(float(value or 0), decimals)
+    if number == int(number):
+        return str(int(number))
+    return f"{number:.{decimals}f}".rstrip("0").rstrip(".")
+
+
+def _labor_worker_option(employee: dict) -> str:
+    return (
+        f"{_clean(employee.get('worker_name'))} · "
+        f"{_labor_position_label(employee.get('position_code'))}"
+    )
 
 
 def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
@@ -916,116 +1004,11 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
         st.info("Labor cost details are available only to the company owner.")
         return
 
-    _reset_labor_form_if_requested()
+    _apply_labor_form_reset()
     if st.session_state.pop("_labor_employee_added", False):
         st.success("Worker added")
-
-    with st.container(key="company_labor_card", border=True):
-        worker_name = st.text_input(
-            "Worker name",
-            key="labor_worker_name",
-            placeholder="Name, nickname, or identifier",
-        )
-
-        role_left, role_right = st.columns(2)
-        with role_left:
-            department_label = st.selectbox(
-                "Department",
-                options=tuple(LABOR_DEPARTMENTS.values()),
-                index=None,
-                placeholder="Select department",
-                key="labor_department",
-                on_change=_clear_labor_position,
-            )
-        department = next(
-            (code for code, label in LABOR_DEPARTMENTS.items() if label == department_label),
-            None,
-        )
-        position_options = LABOR_POSITIONS.get(department, ())
-        with role_right:
-            position_label = st.selectbox(
-                "Position",
-                options=tuple(label for _code, label in position_options),
-                index=None,
-                placeholder="Select position",
-                disabled=department is None,
-                key="labor_position",
-            )
-        position_code = next(
-            (code for code, label in position_options if label == position_label),
-            None,
-        )
-
-        pay_label = st.selectbox(
-            "Pay type",
-            options=tuple(LABOR_PAY_TYPES.values()),
-            index=None,
-            placeholder="Select pay type",
-            key="labor_pay_type",
-        )
-        pay_type = next(
-            (code for code, label in LABOR_PAY_TYPES.items() if label == pay_label),
-            None,
-        )
-        gross_monthly_salary = 0.0
-        gross_hourly_rate = 0.0
-        monthly_hours = 0.0
-        if pay_type == "monthly_salary":
-            gross_monthly_salary = st.number_input(
-                "Gross monthly salary",
-                min_value=0.0,
-                step=100.0,
-                key="labor_gross_monthly_salary",
-            )
-        elif pay_type == "hourly_rate":
-            pay_left, pay_right = st.columns(2)
-            with pay_left:
-                gross_hourly_rate = st.number_input(
-                    "Gross hourly rate",
-                    min_value=0.0,
-                    step=1.0,
-                    key="labor_gross_hourly_rate",
-                )
-            with pay_right:
-                monthly_hours = st.number_input(
-                    "Hours per month",
-                    min_value=0.0,
-                    step=1.0,
-                    key="labor_monthly_hours",
-                )
-
-        added = st.button(
-            "Add Worker",
-            key="labor_add_employee",
-            type="primary",
-            use_container_width=True,
-        )
-    if added:
-        try:
-            values = {
-                "worker_name": worker_name,
-                "department": department or "",
-                "position_code": position_code or "",
-                "pay_type": pay_type or "",
-                "gross_monthly_salary": gross_monthly_salary,
-                "gross_hourly_rate": gross_hourly_rate,
-                "monthly_hours": monthly_hours,
-            }
-            if trace is None:
-                add_company_employee(access, **values)
-            else:
-                with trace.span("server.labor_employee_insert"):
-                    add_company_employee(access, **values)
-            st.session_state["_labor_reset_requested"] = True
-            st.session_state["_labor_employee_added"] = True
-            st.rerun()
-        except ValueError as exc:
-            st.error(str(exc))
-        except PermissionError:
-            st.error("Only the company owner can add employee costs.")
-        except Exception:
-            logger.exception("Company employee insert failed")
-            st.error("The worker was not added. Try again in a moment.")
+    if st.session_state.pop("_labor_employee_updated", False):
+        st.success("Worker updated")
 
     try:
         if trace is None:
@@ -1040,7 +1023,223 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
         logger.exception("Company employee list load failed")
         st.error("Worker costs are unavailable right now. Try again in a moment.")
         return
+
     _render_employee_list(employees)
+    employee_by_id = {
+        str(employee.get("employee_id")): employee
+        for employee in employees
+        if employee.get("employee_id")
+    }
+    edit_employee_id = ""
+    if employee_by_id:
+        edit_employee_id = st.selectbox(
+            "Edit worker",
+            options=("", *employee_by_id),
+            format_func=lambda employee_id: (
+                "Select a worker" if not employee_id
+                else _labor_worker_option(employee_by_id[employee_id])
+            ),
+            key="labor_edit_worker",
+        )
+    editing = employee_by_id.get(str(edit_employee_id))
+    version = int(st.session_state.get("_labor_form_version", 0))
+    mode = str(edit_employee_id or "new")
+    key_prefix = f"labor_form_{version}_{mode}"
+
+    default_department = _clean(editing.get("department")) if editing else ""
+    department_labels = tuple(LABOR_DEPARTMENTS.values())
+    default_department_label = LABOR_DEPARTMENTS.get(default_department)
+    department_index = (
+        department_labels.index(default_department_label)
+        if default_department_label in department_labels else None
+    )
+    default_pay_type = _clean(editing.get("pay_type")) if editing else ""
+    pay_labels = tuple(LABOR_PAY_TYPES.values())
+    default_pay_label = LABOR_PAY_TYPES.get(default_pay_type)
+    pay_index = pay_labels.index(default_pay_label) if default_pay_label in pay_labels else None
+
+    with st.container(key="company_labor_card", border=True):
+        worker_name = st.text_input(
+            "Worker name",
+            value=_clean(editing.get("worker_name")) if editing else "",
+            key=f"{key_prefix}_worker_name",
+            placeholder="Name, nickname, or identifier",
+        )
+
+        department_column, position_column, pay_type_column = st.columns(3)
+        position_key = f"{key_prefix}_position"
+        with department_column:
+            department_label = st.selectbox(
+                "Department",
+                options=department_labels,
+                index=department_index,
+                placeholder="Select department",
+                key=f"{key_prefix}_department",
+                on_change=_clear_labor_position,
+                args=(position_key,),
+            )
+        department = next(
+            (code for code, label in LABOR_DEPARTMENTS.items() if label == department_label),
+            None,
+        )
+        position_options = LABOR_POSITIONS.get(department, ())
+        position_labels = tuple(label for _code, label in position_options)
+        default_position_label = (
+            _labor_position_label(editing.get("position_code"))
+            if editing and department == default_department else None
+        )
+        position_index = (
+            position_labels.index(default_position_label)
+            if default_position_label in position_labels else None
+        )
+        with position_column:
+            position_label = st.selectbox(
+                "Position",
+                options=position_labels,
+                index=position_index,
+                placeholder="Select position",
+                disabled=department is None,
+                key=position_key,
+            )
+        position_code = next(
+            (code for code, label in position_options if label == position_label),
+            None,
+        )
+        with pay_type_column:
+            pay_label = st.selectbox(
+                "Pay type",
+                options=pay_labels,
+                index=pay_index,
+                placeholder="Select pay type",
+                key=f"{key_prefix}_pay_type",
+            )
+        pay_type = next(
+            (code for code, label in LABOR_PAY_TYPES.items() if label == pay_label),
+            None,
+        )
+        gross_monthly_salary_raw = ""
+        gross_hourly_rate_raw = ""
+        monthly_hours_raw = ""
+        if pay_type == "monthly_salary":
+            gross_monthly_salary_raw = st.text_input(
+                "Avg Monthly Bruto",
+                value=_labor_form_number(editing.get("gross_monthly_salary")) if editing else "",
+                key=f"{key_prefix}_gross_monthly_salary",
+                placeholder="12000",
+            )
+        elif pay_type == "hourly_rate":
+            rate_column, hours_column, bruto_column = st.columns(3)
+            with rate_column:
+                gross_hourly_rate_raw = st.text_input(
+                    "Hourly Rate",
+                    value=_labor_form_number(
+                        editing.get("gross_hourly_rate"), decimals=1
+                    ) if editing else "",
+                    key=f"{key_prefix}_gross_hourly_rate",
+                    placeholder="50.0",
+                )
+            with hours_column:
+                monthly_hours_raw = st.text_input(
+                    "Average Hours per Month",
+                    value=_labor_form_number(
+                        editing.get("monthly_hours"), decimals=0
+                    ) if editing else "",
+                    key=f"{key_prefix}_monthly_hours",
+                    placeholder="160",
+                )
+            estimated_bruto = (
+                _metric_amount(gross_hourly_rate_raw)
+                * _metric_amount(monthly_hours_raw)
+            )
+            with bruto_column:
+                st.text_input(
+                    "Avg Monthly Bruto",
+                    value=_labor_money(estimated_bruto),
+                    disabled=True,
+                    key=f"{key_prefix}_calculated_bruto",
+                )
+
+        if editing:
+            save_column, cancel_column = st.columns([3, 1])
+            with save_column:
+                submitted = st.button(
+                    "Save Worker",
+                    key=f"{key_prefix}_save",
+                    type="primary",
+                    use_container_width=True,
+                )
+            with cancel_column:
+                cancelled = st.button(
+                    "Cancel Edit",
+                    key=f"{key_prefix}_cancel",
+                    use_container_width=True,
+                )
+        else:
+            submitted = st.button(
+                "Add Worker",
+                key=f"{key_prefix}_add",
+                type="primary",
+                use_container_width=True,
+            )
+            cancelled = False
+    if cancelled:
+        st.session_state["_labor_form_reset_pending"] = True
+        st.rerun()
+    if submitted:
+        try:
+            gross_monthly_salary = 0.0
+            gross_hourly_rate = 0.0
+            monthly_hours = 0.0
+            if pay_type == "monthly_salary":
+                gross_monthly_salary = _labor_input_number(
+                    gross_monthly_salary_raw,
+                    label="Avg monthly bruto",
+                    decimals=2,
+                )
+            elif pay_type == "hourly_rate":
+                gross_hourly_rate = _labor_input_number(
+                    gross_hourly_rate_raw,
+                    label="Hourly rate",
+                    decimals=1,
+                )
+                monthly_hours = _labor_input_number(
+                    monthly_hours_raw,
+                    label="Average hours per month",
+                    decimals=0,
+                    whole=True,
+                )
+            values = {
+                "worker_name": worker_name,
+                "department": department or "",
+                "position_code": position_code or "",
+                "pay_type": pay_type or "",
+                "gross_monthly_salary": gross_monthly_salary,
+                "gross_hourly_rate": gross_hourly_rate,
+                "monthly_hours": monthly_hours,
+            }
+            if editing and trace is None:
+                update_company_employee(access, str(edit_employee_id), **values)
+            elif editing:
+                with trace.span("server.labor_employee_update"):
+                    update_company_employee(access, str(edit_employee_id), **values)
+            elif trace is None:
+                add_company_employee(access, **values)
+            else:
+                with trace.span("server.labor_employee_insert"):
+                    add_company_employee(access, **values)
+            st.session_state["_labor_form_reset_pending"] = True
+            st.session_state[
+                "_labor_employee_updated" if editing else "_labor_employee_added"
+            ] = True
+            st.rerun()
+        except ValueError as exc:
+            st.error(str(exc))
+        except PermissionError:
+            st.error("Only the company owner can change worker costs.")
+        except Exception:
+            logger.exception("Company employee write failed")
+            action = "updated" if editing else "added"
+            st.error(f"The worker was not {action}. Try again in a moment.")
 
 
 def _open_upload_screen() -> None:

@@ -660,6 +660,135 @@ def test_add_company_employee_writes_only_selected_pay_model(
     }]
 
 
+def test_labor_hourly_values_use_tenths_and_whole_monthly_hours():
+    payload = company_profile._company_employee_payload(
+        worker_name="Worker",
+        department="production",
+        position_code="general_worker",
+        pay_type="hourly_rate",
+        gross_hourly_rate=50.26,
+        monthly_hours=160,
+    )
+    assert payload["gross_hourly_rate"] == 50.3
+    assert payload["monthly_hours"] == 160
+    with pytest.raises(ValueError, match="whole number"):
+        company_profile._company_employee_payload(
+            worker_name="Worker",
+            department="production",
+            position_code="general_worker",
+            pay_type="hourly_rate",
+            gross_hourly_rate=50,
+            monthly_hours=160.5,
+        )
+
+
+def test_update_company_employee_is_scoped_to_company_and_worker(monkeypatch):
+    access = company_auth.CompanyAccess(
+        "user-1", "owner@example.com", "company-a", "owner", "token"
+    )
+    monkeypatch.setattr(company_profile, "_current_access", lambda _access: access)
+    writes = []
+    filters = []
+
+    class Query:
+        def update(self, values):
+            writes.append(values)
+            return self
+
+        def eq(self, field, value):
+            filters.append((field, value))
+            return self
+
+        def execute(self):
+            return type("Result", (), {"data": [{
+                "company_id": "company-a",
+                "employee_id": "employee-1",
+                **writes[-1],
+            }]})()
+
+    class Client:
+        def table(self, name):
+            assert name == "company_employees"
+            return Query()
+
+    monkeypatch.setattr(company_profile, "get_supabase_client", Client)
+    monkeypatch.setattr(company_profile, "assert_company_owner", lambda *_args: None)
+
+    company_profile.update_company_employee(
+        access,
+        "employee-1",
+        worker_name="Guy",
+        department="production",
+        position_code="general_worker",
+        pay_type="monthly_salary",
+        gross_monthly_salary=9_000,
+    )
+
+    assert filters == [
+        ("company_id", "company-a"),
+        ("employee_id", "employee-1"),
+    ]
+    assert writes[-1]["gross_monthly_salary"] == 9_000
+
+
+def test_labor_form_reset_rotates_widget_keys_and_clears_edit_mode():
+    company_profile.st.session_state.clear()
+    company_profile.st.session_state.update({
+        "_labor_form_reset_pending": True,
+        "_labor_form_version": 4,
+        "labor_edit_worker": "employee-1",
+        "labor_form_4_new_worker_name": "Guy",
+    })
+    company_profile._apply_labor_form_reset()
+    assert company_profile.st.session_state["_labor_form_version"] == 5
+    assert company_profile.st.session_state["labor_edit_worker"] == ""
+    assert "labor_form_4_new_worker_name" not in company_profile.st.session_state
+
+
+def test_labor_list_renders_before_editor_and_uses_profile_fonts():
+    source = (Path(__file__).parents[1] / "screens/company_profile.py").read_text()
+    render_source = source.split("def _render_labor_costs", 1)[1].split(
+        "def _open_upload_screen", 1
+    )[0]
+    assert render_source.index("_render_employee_list(employees)") < render_source.index(
+        'with st.container(key="company_labor_card"'
+    )
+    css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
+    assert ".company-profile-users th" in css
+    assert "font-family: var(--font-mono) !important" in css
+    assert ".company-profile-users td strong" in css
+    assert "font-family: var(--font-sans) !important" in css
+
+
+def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):
+    monkeypatch.setattr(company_profile, "load_company_employees", lambda _access: [{
+        "employee_id": "employee-1",
+        "company_id": "company-a",
+        "worker_name": "Guy",
+        "department": "production",
+        "position_code": "general_worker",
+        "pay_type": "hourly_rate",
+        "gross_monthly_salary": None,
+        "gross_hourly_rate": 50.5,
+        "monthly_hours": 160,
+    }])
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Labor Costs"
+    app.session_state["labor_edit_worker"] = "employee-1"
+    app.run()
+
+    assert not app.exception
+    fields = {field.label: field for field in app.text_input}
+    assert fields["Worker name"].value == "Guy"
+    assert fields["Hourly Rate"].value == "50.5"
+    assert fields["Average Hours per Month"].value == "160"
+    assert fields["Avg Monthly Bruto"].value == "₪8\u202f080"
+    assert fields["Avg Monthly Bruto"].disabled is True
+    assert any(button.label == "Save Worker" for button in app.button)
+    assert any(button.label == "Cancel Edit" for button in app.button)
+
+
 def test_company_employee_access_is_owner_only(monkeypatch):
     member = company_auth.CompanyAccess(
         "user-2", "member@example.com", "company-a", "member", "token"
