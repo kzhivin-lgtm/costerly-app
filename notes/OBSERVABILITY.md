@@ -1,6 +1,6 @@
 # Production observability
 
-Version: 3.1.2
+Version: 3.1.7
 Status: implementation checkpoint, production verification in progress
 
 ## Purpose
@@ -62,6 +62,8 @@ Browser:
 - `browser.app_ready_received`
 - `browser.app_ready_timeout`
 - `browser.app_reveal`
+- `browser.transition_click`
+- `browser.transition_ready`, with the complete click-to-ready duration
 
 The four `browser.auth_*` boundaries are emitted from the existing hidden
 browser-session component. They separate Streamlit iframe navigation from
@@ -94,6 +96,9 @@ Server:
 - `server.screen_render`
 - `server.app_ready_component_enqueued`
 - `server.run_complete`
+- `server.action_completed`, for safe Sign in and Sign out network durations
+- `server.profile_load`
+- `server.account_access_recheck`, for the Profile-only second access validation
 
 ## Production prerequisites
 
@@ -102,7 +107,7 @@ Server:
    `SUPABASE_SERVICE_ROLE_KEY`.
 3. Configure `COSTERLY_ALLOWED_ORIGIN=https://app.costerly.ai` or retain the
    identical built-in default.
-4. Set `COSTERLY_BUILD_VERSION=3.1.2` in Streamlit production secrets.
+4. Set `COSTERLY_BUILD_VERSION=3.1.7` in Streamlit production secrets.
 5. Deploy the same Git commit to Streamlit and Cloudflare Pages.
 
 ## Production acceptance

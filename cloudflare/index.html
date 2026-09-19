@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="v3.1.2-fast-resume" />
+    <meta name="costerly-wrapper-version" content="v3.1.7-transition-trace" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -74,7 +74,7 @@
     <div class="embed-footer-mask" aria-hidden="true"></div>
     <script>
       (() => {
-        const BUILD_VERSION = "3.1.2";
+        const BUILD_VERSION = "3.1.7";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -95,7 +95,8 @@
         }
         let fallbackTimer = null;
         let ready = false;
-        let appReadyRecorded = false;
+        const readyRunIds = new Set();
+        let pendingTransition = null;
         const startupPhases = new Set([
           "auth_component_script",
           "auth_component_render",
@@ -116,6 +117,9 @@
             elapsed_ms: Math.round((performance.now() - startedAt) * 1000) / 1000,
             metadata: detail.metadata || {},
           };
+          if (detail.duration_ms !== undefined) {
+            event.duration_ms = Math.round(Number(detail.duration_ms) * 1000) / 1000;
+          }
           timeline.push(event);
           performance.mark(`costerly:${eventName}`);
         }
@@ -181,6 +185,22 @@
           if (
             event.origin === "https://costerly-app.streamlit.app" &&
             event.data &&
+            event.data.type === "costerly:transition-click" &&
+            typeof event.data.transition === "string"
+          ) {
+            pendingTransition = {
+              name: event.data.transition,
+              startedAt: performance.now(),
+            };
+            mark("browser.transition_click", {
+              metadata: {transition: pendingTransition.name},
+            });
+            if (ready) persistTimeline();
+            return;
+          }
+          if (
+            event.origin === "https://costerly-app.streamlit.app" &&
+            event.data &&
             event.data.type === "costerly:startup-phase" &&
             event.data.traceId === traceId &&
             startupPhases.has(event.data.phase)
@@ -196,16 +216,27 @@
             event.data.type === "costerly:app-ready" &&
             event.data.traceId === traceId
           ) {
-            if (appReadyRecorded) return;
-            appReadyRecorded = true;
+            const runId = String(event.data.runId || "");
+            if (runId && readyRunIds.has(runId)) return;
+            if (runId) readyRunIds.add(runId);
             const screen = event.data.screen || "unknown";
-            mark("browser.app_ready_received", {
-              screen,
-              metadata: {
-                server_run_id: event.data.runId || "",
-                ...(event.data.metrics || {}),
-              },
-            });
+            const metadata = {
+              server_run_id: runId,
+              ...(event.data.metrics || {}),
+            };
+            if (pendingTransition) {
+              mark("browser.transition_ready", {
+                screen,
+                duration_ms: performance.now() - pendingTransition.startedAt,
+                metadata: {
+                  transition: pendingTransition.name,
+                  ...metadata,
+                },
+              });
+              pendingTransition = null;
+            } else {
+              mark("browser.app_ready_received", {screen, metadata});
+            }
             if (ready) {
               persistTimeline();
             } else {

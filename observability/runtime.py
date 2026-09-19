@@ -19,7 +19,7 @@ logger = logging.getLogger("costerly.runtime")
 logger.setLevel(logging.INFO)
 
 OBSERVABILITY_SCHEMA_VERSION = "runtime_v1"
-DEFAULT_BUILD_VERSION = "3.1.2"
+DEFAULT_BUILD_VERSION = "3.1.7"
 _QUEUE: queue.Queue[dict[str, object]] = queue.Queue(maxsize=1000)
 _SINK_LOCK = threading.Lock()
 _SINK_URL: str | None = None
@@ -269,4 +269,20 @@ def new_runtime_trace(
         screen=_safe_name(screen, "unknown"),
         started_at=started_at,
         build_version=build_version,
+    )
+
+
+def emit_completed_action(session_state: Any, trace: RuntimeTrace) -> None:
+    """Attach a completed action from the preceding rerun to the new trace."""
+    completed = session_state.pop("_runtime_completed_action", None)
+    if not isinstance(completed, dict):
+        return
+    action = str(completed.get("action") or "unknown")
+    status = str(completed.get("status") or "unknown")
+    trace.annotate(completed_action=action, completed_action_status=status)
+    trace.event(
+        "server.action_completed",
+        status=status,
+        duration_ms=float(completed.get("duration_ms") or 0),
+        metadata={"action": action},
     )

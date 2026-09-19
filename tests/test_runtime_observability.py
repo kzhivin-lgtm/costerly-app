@@ -87,6 +87,36 @@ def test_runtime_summary_relays_safe_phase_metrics(monkeypatch):
     assert isinstance(summary["server_elapsed_ms"], float)
 
 
+def test_completed_action_is_emitted_once_without_sensitive_values(monkeypatch):
+    captured = []
+    monkeypatch.setattr(runtime, "_enqueue", captured.append)
+    state = {
+        "_runtime_completed_action": {
+            "action": "auth_sign_in",
+            "status": "ok",
+            "duration_ms": 321.4567,
+        }
+    }
+    trace = runtime.RuntimeTrace(
+        trace_id="10000000-0000-4000-8000-000000000001",
+        session_id="10000000-0000-4000-8000-000000000002",
+        run_id="10000000-0000-4000-8000-000000000003",
+        screen="login",
+        started_at=time.perf_counter(),
+    )
+
+    runtime.emit_completed_action(state, trace)
+    runtime.emit_completed_action(state, trace)
+
+    assert "_runtime_completed_action" not in state
+    assert len(captured) == 1
+    assert captured[0]["event_name"] == "server.action_completed"
+    assert captured[0]["duration_ms"] == 321.457
+    assert captured[0]["metadata"] == {"action": "auth_sign_in"}
+    assert trace.summary()["completed_action"] == "auth_sign_in"
+    assert trace.summary()["completed_action_status"] == "ok"
+
+
 def test_runtime_persistence_retries_transient_failure(monkeypatch):
     attempts = []
 
@@ -131,7 +161,9 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'event.data.traceId === traceId' in wrapper
     assert 'event.origin === "https://costerly-app.streamlit.app"' in wrapper
     assert "visibility: hidden" not in wrapper
-    assert "appReadyRecorded" in wrapper
+    assert "readyRunIds" in wrapper
+    assert 'event.data.type === "costerly:transition-click"' in wrapper
+    assert 'mark("browser.transition_ready"' in wrapper
     assert 'event.data.type === "costerly:startup-phase"' in wrapper
     assert "startupPhases.has(event.data.phase)" in wrapper
     assert "...(event.data.metrics || {})" in wrapper
@@ -158,5 +190,16 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'startupPhase(args, "auth_component_render"' in component
     assert 'startupPhase(args, "auth_storage_read"' in component
     assert 'startupPhase(args, "auth_value_sent"' in component
+    assert "preventDefault" not in component
+
+    ready_signal = (ROOT / "ui/js_guards.py").read_text()
+    assert 'type: "costerly:transition-click"' in ready_signal
+    assert 'parentDocument.addEventListener("click", handler, {' in ready_signal
+    assert "capture: false" in ready_signal
+    assert "passive: true" in ready_signal
+    observer_source = ready_signal.split("function installTransitionObserver()", 1)[1].split(
+        "function postReady()", 1
+    )[0]
+    assert "preventDefault" not in observer_source
     assert "access_token" not in component
     assert "refresh_token" not in component

@@ -277,11 +277,25 @@ def clear_auth_session() -> None:
 
 
 def sign_in(email: str, password: str) -> None:
-    response = _auth_client().auth.sign_in_with_password(
-        {"email": email.strip(), "password": password}
-    )
+    started_at = time.perf_counter()
+    try:
+        response = _auth_client().auth.sign_in_with_password(
+            {"email": email.strip(), "password": password}
+        )
+    except Exception:
+        st.session_state._runtime_completed_action = {
+            "action": "auth_sign_in",
+            "status": "error",
+            "duration_ms": (time.perf_counter() - started_at) * 1000,
+        }
+        raise
     clear_auth_session()
     _store_auth_session(response.session)
+    st.session_state._runtime_completed_action = {
+        "action": "auth_sign_in",
+        "status": "ok",
+        "duration_ms": (time.perf_counter() - started_at) * 1000,
+    }
 
 
 def sign_up(email: str, password: str, invitation: InvitationContext) -> None:
@@ -320,6 +334,8 @@ def authenticate_invited_creator(email: str, password: str, invitation: Invitati
 
 
 def sign_out() -> None:
+    started_at = time.perf_counter()
+    network_status = "ok"
     access_token = st.session_state.get("auth_access_token")
     refresh_token = st.session_state.get("auth_refresh_token")
     if access_token and refresh_token:
@@ -328,12 +344,17 @@ def sign_out() -> None:
             client.auth.set_session(access_token, refresh_token)
             client.auth.sign_out()
         except Exception:
-            pass  # Local logout must work even if the network is unavailable.
+            network_status = "error"  # Local logout must still complete.
     clear_auth_session()
     st.session_state._browser_auth_pending = {
         "action": "clear",
         "request_id": secrets.token_urlsafe(12),
         "session": None,
+    }
+    st.session_state._runtime_completed_action = {
+        "action": "auth_sign_out",
+        "status": network_status,
+        "duration_ms": (time.perf_counter() - started_at) * 1000,
     }
 
 
@@ -709,7 +730,7 @@ def render_account_control(access: CompanyAccess) -> None:
         st.rerun()
 
 
-def render_company_account(access: CompanyAccess) -> None:
+def render_company_account(access: CompanyAccess, *, trace=None) -> None:
     from screens.company_profile import render_company_profile
 
-    render_company_profile(access)
+    render_company_profile(access, trace=trace)

@@ -9,7 +9,11 @@ _SCRIPT_STARTED_AT = time.perf_counter()
 import streamlit as st
 
 from config import get_optional_secret
-from observability.runtime import configure_runtime_sink, new_runtime_trace
+from observability.runtime import (
+    configure_runtime_sink,
+    emit_completed_action,
+    new_runtime_trace,
+)
 from state.session import init_state, get_company_id
 from state.company_auth import (
     company_auth_enabled,
@@ -62,7 +66,7 @@ def _signal_ready(trace, screen: str) -> None:
     trace.event("server.run_complete")
 
 
-def _render_screen(screen: str, company_id: str) -> None:
+def _render_screen(screen: str, company_id: str, *, trace=None) -> None:
     if screen == "upload":
         from screens.upload import render_upload_screen
 
@@ -84,10 +88,14 @@ def _render_screen(screen: str, company_id: str) -> None:
 
         render_object_detail_screen(company_id)
     elif screen == "account":
-        access = current_company_access()
+        if trace is None:
+            access = current_company_access()
+        else:
+            with trace.span("server.account_access_recheck"):
+                access = current_company_access()
         if access is None or access.company_id != company_id:
             raise PermissionError("Company access changed. Please sign in again.")
-        render_company_account(access)
+        render_company_account(access, trace=trace)
     else:
         st.session_state.screen = "upload"
         st.rerun()
@@ -108,13 +116,14 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version=str(get_optional_secret("COSTERLY_BUILD_VERSION", "3.1.2")),
+        build_version=str(get_optional_secret("COSTERLY_BUILD_VERSION", "3.1.7")),
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,
         python_imports_ms=round((init_started_at - _SCRIPT_STARTED_AT) * 1000, 3),
         **_RUNTIME_VERSIONS,
     )
+    emit_completed_action(st.session_state, trace)
     trace.event(
         "server.run_start",
         duration_ms=(time.perf_counter() - init_started_at) * 1000,
@@ -298,7 +307,7 @@ def main() -> None:
 
     trace.set_screen(screen)
     with trace.span("server.screen_render", route=screen):
-        _render_screen(screen, company_id)
+        _render_screen(screen, company_id, trace=trace)
 
     _signal_ready(trace, screen)
 

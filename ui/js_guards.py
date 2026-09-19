@@ -229,6 +229,7 @@ def signal_app_ready_to_embed(
         """
         <script>
         (() => {
+            const transitionHandlerKey = "__costerlyRuntimeTransitionHandlerV1";
             const message = {
                 type: "costerly:app-ready",
                 screen: __SCREEN__,
@@ -237,6 +238,51 @@ def signal_app_ready_to_embed(
                 metrics: __METRICS__,
                 sentAt: Date.now()
             };
+
+            function transitionName(buttonText) {
+                const label = String(buttonText || "").trim().toLowerCase();
+                if (label === "sign in") return "sign_in";
+                if (label === "profile") return "upload_to_profile";
+                if (label === "continue to upload") return "profile_to_upload";
+                if (label === "sign out") {
+                    try {
+                        return window.parent.document.querySelector(".company-profile-active")
+                            ? "profile_to_sign_out"
+                            : "upload_to_sign_out";
+                    } catch (_) {
+                        return "sign_out";
+                    }
+                }
+                if (label === "create account") return "registration_submit";
+                if (label === "continue") return "company_setup_submit";
+                return null;
+            }
+
+            function installTransitionObserver() {
+                try {
+                    const parentWindow = window.parent;
+                    const parentDocument = parentWindow.document;
+                    const previous = parentWindow[transitionHandlerKey];
+                    if (previous) parentDocument.removeEventListener("click", previous, false);
+                    const handler = (event) => {
+                        const button = event.target && event.target.closest
+                            ? event.target.closest("button")
+                            : null;
+                        if (!button) return;
+                        const transition = transitionName(button.innerText || button.textContent);
+                        if (!transition) return;
+                        window.top.postMessage({
+                            type: "costerly:transition-click",
+                            transition,
+                        }, "*");
+                    };
+                    parentWindow[transitionHandlerKey] = handler;
+                    parentDocument.addEventListener("click", handler, {
+                        capture: false,
+                        passive: true,
+                    });
+                } catch (_) {}
+            }
 
             function postReady() {
                 try {
@@ -252,6 +298,7 @@ def signal_app_ready_to_embed(
                 } catch (error) {}
             }
 
+            installTransitionObserver();
             postReady();
             window.requestAnimationFrame(() => {
                 window.requestAnimationFrame(postReady);

@@ -704,7 +704,7 @@ def _render_users(access: CompanyAccess) -> None:
             st.error("The team invitation link is unavailable right now.")
 
 
-def render_company_profile(access: CompanyAccess) -> None:
+def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
     apply_company_profile_css()
     apply_object_detail_css()
     st.markdown('<div class="company-profile-active" style="display:none"></div>', unsafe_allow_html=True)
@@ -734,7 +734,11 @@ def render_company_profile(access: CompanyAccess) -> None:
                     st.rerun()
 
     try:
-        profile = load_company_profile(access)
+        if trace is None:
+            profile = load_company_profile(access)
+        else:
+            with trace.span("server.profile_load"):
+                profile = load_company_profile(access)
     except Exception:
         st.error("Company profile is unavailable right now. Try again in a moment.")
         return
