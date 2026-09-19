@@ -4,7 +4,9 @@
   Streamlit 1.64.0 while the verified local environment uses 1.58.0. Pin 1.58.0,
   rebuild production, and compare the same deep iframe startup boundaries. If
   startup does not improve or protected behavior regresses, revert the pin.
-  Status: production experiment in progress.
+  Status: rejected. The first 1.58.0 Login took 7.06 seconds, followed by four
+  iframe-only traces that never reached the auth component and timed out after
+  8.26-8.39 seconds. Production is pinned back to 1.64.0 to prevent drift.
 
 - 3.1.5 Deep iframe startup telemetry: split the embedded Streamlit startup
   gap into component script, component render, browser storage read, callback,
