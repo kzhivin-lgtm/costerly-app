@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 from pathlib import Path
 import time
 from urllib.parse import parse_qs, urlsplit
@@ -1153,3 +1155,63 @@ def test_authenticated_members_can_share_one_company(monkeypatch):
     second = company_auth.current_company_access()
     assert first.user_id != second.user_id
     assert first.company_id == second.company_id == "company-a"
+
+
+def test_company_access_uses_one_rls_request_for_valid_token(monkeypatch):
+    def segment(value):
+        raw = json.dumps(value, separators=(",", ":")).encode("utf-8")
+        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+    access_token = ".".join([
+        segment({"alg": "HS256", "typ": "JWT"}),
+        segment({"sub": "user-1", "email": "member@example.com"}),
+        "signature",
+    ])
+    state = {
+        "auth_access_token": access_token,
+        "auth_refresh_token": "refresh",
+        "auth_expires_at": time.time() + 3600,
+    }
+    monkeypatch.setattr(company_auth.st, "session_state", state)
+
+    class Postgrest:
+        token = None
+
+        def auth(self, token):
+            self.token = token
+
+    class Auth:
+        def get_user(self, _token):
+            raise AssertionError("The successful RLS path must not call get_user")
+
+    class Client(_Client):
+        def __init__(self):
+            super().__init__([{
+                "user_id": "user-1",
+                "company_id": "company-a",
+                "role": "member",
+            }])
+            self.postgrest = Postgrest()
+            self.auth = Auth()
+
+    client = Client()
+    monkeypatch.setattr(company_auth, "_auth_client", lambda: client)
+    monkeypatch.setattr(
+        company_auth,
+        "_server_client",
+        lambda: (_ for _ in ()).throw(
+            AssertionError("The successful RLS path must not use service role")
+        ),
+    )
+
+    access = company_auth.current_company_access()
+
+    assert client.postgrest.token == access_token
+    assert client.table_name == "company_members"
+    assert access == company_auth.CompanyAccess(
+        user_id="user-1",
+        email="member@example.com",
+        company_id="company-a",
+        role="member",
+        access_token=access_token,
+    )

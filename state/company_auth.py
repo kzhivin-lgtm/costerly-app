@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
+import json
 import re
 import secrets
 import time
@@ -325,6 +327,52 @@ def sign_out() -> None:
     }
 
 
+def _verified_token_identity(access_token: str) -> tuple[str, str]:
+    """Read identity claims only after Supabase has accepted the token."""
+    parts = access_token.split(".")
+    if len(parts) != 3:
+        raise ValueError("Access token is not a JWT.")
+    payload = parts[1] + "=" * (-len(parts[1]) % 4)
+    claims = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
+    user_id = claims.get("sub") if isinstance(claims, dict) else None
+    email = claims.get("email") if isinstance(claims, dict) else None
+    if not isinstance(user_id, str) or not user_id:
+        raise ValueError("Verified access token has no subject.")
+    return user_id, email if isinstance(email, str) else ""
+
+
+def _company_access_via_rls(access_token: str) -> CompanyAccess:
+    """Validate the JWT and read its own membership in one PostgREST request."""
+    client = _auth_client()
+    client.postgrest.auth(access_token)
+    rows = (
+        client.table("company_members")
+        .select("user_id,company_id,role")
+        .limit(1)
+        .execute()
+    ).data or []
+    user_id, email = _verified_token_identity(access_token)
+    membership = rows[0] if rows else {}
+    member_user_id = membership.get("user_id")
+    if member_user_id is not None and str(member_user_id) != user_id:
+        raise PermissionError("Company membership identity does not match the session.")
+    return CompanyAccess(
+        user_id=user_id,
+        email=email,
+        company_id=(
+            str(membership["company_id"])
+            if membership.get("company_id") is not None
+            else None
+        ),
+        role=(
+            str(membership["role"])
+            if membership.get("role") is not None
+            else None
+        ),
+        access_token=access_token,
+    )
+
+
 def current_company_access() -> CompanyAccess | None:
     access_token = st.session_state.get("auth_access_token")
     refresh_token = st.session_state.get("auth_refresh_token")
@@ -337,6 +385,12 @@ def current_company_access() -> CompanyAccess | None:
             refreshed = client.auth.refresh_session(refresh_token)
             _store_auth_session(refreshed.session)
             access_token = st.session_state.auth_access_token
+        try:
+            return _company_access_via_rls(str(access_token))
+        except (APIError, AttributeError, UnicodeError, ValueError):
+            # Compatibility fallback preserves the established auth path if the
+            # installed client or production schema cannot use the RLS shortcut.
+            pass
         response = client.auth.get_user(access_token)
         user = response.user if response else None
         if user is None:
