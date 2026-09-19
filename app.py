@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import time
+
+_SCRIPT_STARTED_AT = time.perf_counter()
+
 import streamlit as st
 
+from config import get_optional_secret
+from observability.runtime import configure_runtime_sink, new_runtime_trace
 from state.session import init_state, get_company_id
 from state.company_auth import (
     company_auth_enabled,
@@ -26,6 +32,17 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+
+def _signal_ready(trace, screen: str) -> None:
+    trace.set_screen(screen)
+    trace.event("server.app_ready_component_enqueued")
+    signal_app_ready_to_embed(
+        screen,
+        trace_id=trace.trace_id,
+        run_id=trace.run_id,
+    )
+    trace.event("server.run_complete")
 
 
 def _render_screen(screen: str, company_id: str) -> None:
@@ -60,36 +77,71 @@ def _render_screen(screen: str, company_id: str) -> None:
 
 
 def main() -> None:
+    init_started_at = time.perf_counter()
     init_state()
-    apply_base_css()
+    configure_runtime_sink(
+        get_optional_secret("SUPABASE_URL"),
+        get_optional_secret("SUPABASE_SERVICE_ROLE_KEY"),
+    )
+    trace = new_runtime_trace(
+        session_state=st.session_state,
+        requested_trace_id=st.query_params.get("obs_trace"),
+        screen=str(st.session_state.get("screen") or "upload"),
+        started_at=_SCRIPT_STARTED_AT,
+        build_version=str(get_optional_secret("COSTERLY_BUILD_VERSION", "3.1.1")),
+    )
+    trace.event(
+        "server.run_start",
+        duration_ms=(time.perf_counter() - init_started_at) * 1000,
+        metadata={"phase": "init_state"},
+    )
+    with trace.span("server.base_css"):
+        apply_base_css()
 
     auth_enabled = company_auth_enabled()
     if auth_enabled:
-        if not sync_browser_auth_session():
+        with trace.span("server.auth.browser_session_sync"):
+            browser_session_ready = sync_browser_auth_session()
+        if not browser_session_ready:
+            trace.event("server.auth.browser_session_wait", status="unknown")
             st.stop()
         try:
-            access = current_company_access()
-            invitation = invitation_from_url()
+            with trace.span("server.auth.access_lookup"):
+                access = current_company_access()
+                invitation = invitation_from_url()
         except Exception as exc:
+            trace.event(
+                "server.auth.access_error",
+                status="error",
+                metadata={"error_type": type(exc).__name__},
+            )
             st.error(f"Company access is unavailable: {exc}")
-            signal_app_ready_to_embed("company_access_error")
+            _signal_ready(trace, "company_access_error")
             return
-        render_app_header()
+        with trace.span("server.app_header_render"):
+            render_app_header()
         if access is None:
-            render_login_or_signup(invitation)
-            signal_app_ready_to_embed("login")
+            trace.set_screen("login")
+            with trace.span("server.login_render"):
+                render_login_or_signup(invitation)
+            _signal_ready(trace, "login")
             return
         if access.company_id is None:
-            render_company_setup(access, invitation)
-            signal_app_ready_to_embed("company_setup")
+            trace.set_screen("company_setup")
+            with trace.span("server.company_setup_render"):
+                render_company_setup(access, invitation)
+            _signal_ready(trace, "company_setup")
             return
         st.session_state.auth_company_id = access.company_id
         st.session_state.auth_access_token = access.access_token
-        render_account_control(access)
+        with trace.span("server.account_controls_render"):
+            render_account_control(access)
     else:
-        render_app_header()
+        with trace.span("server.app_header_render"):
+            render_app_header()
 
-    company_id = get_company_id()
+    with trace.span("server.company_id_resolve"):
+        company_id = get_company_id()
 
     requested_screen = st.query_params.get("screen")
     if requested_screen == "account" and auth_enabled:
@@ -109,7 +161,7 @@ def main() -> None:
             except PermissionError:
                 st.query_params.clear()
                 st.error("This RFQ or estimate is not available to your company.")
-                signal_app_ready_to_embed("company_access_error")
+                _signal_ready(trace, "company_access_error")
                 return
         object_detail_edit_line = st.query_params.get("od_edit_line")
         object_detail_edit_field = st.query_params.get("od_edit_field")
@@ -172,7 +224,7 @@ def main() -> None:
             st.session_state.current_object_id = None
             st.session_state.screen = "upload"
             st.error("The selected RFQ or estimate is not available to your company.")
-            signal_app_ready_to_embed("company_access_error")
+            _signal_ready(trace, "company_access_error")
             return
     last_screen_for_scroll = st.session_state.get("_last_screen_for_scroll")
     if last_screen_for_scroll != screen:
@@ -181,9 +233,11 @@ def main() -> None:
             scroll_parent_to_top()
         st.session_state._last_screen_for_scroll = screen
 
-    _render_screen(screen, company_id)
+    trace.set_screen(screen)
+    with trace.span("server.screen_render", route=screen):
+        _render_screen(screen, company_id)
 
-    signal_app_ready_to_embed(screen)
+    _signal_ready(trace, screen)
 
 
 if __name__ == "__main__":

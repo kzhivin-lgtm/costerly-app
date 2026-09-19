@@ -159,6 +159,17 @@ Processing screen without resetting or competing with server-rendered timer valu
 `raw_usage.duration_seconds` remains the backward-compatible source until the explicit
 duration column migration is applied.
 
+Production Runtime Observability v1
+The Cloudflare wrapper creates one `trace_id` per outer-page load and passes it
+to the embedded Streamlit URL. Streamlit retains one `session_id` across Auth
+transitions and creates one `run_id` for every Python rerun. Browser and server
+events use the shared `app_runtime_events` schema. Browser writes go through a
+same-origin Cloudflare Pages Function; server writes use a bounded background
+queue. Telemetry is best-effort, cannot block rendering, and contains no
+credentials, email addresses, file names, uploaded content, prompts, or RFQ
+content. `notes/OBSERVABILITY.md` is the authoritative event and deployment
+contract.
+
 Pricing Runtime v1
 `price_estimated_object()` is the deterministic pricing entrypoint after one object is estimated.
 It reads the object's persisted material/labor lines, matches materials to the `materials` catalog, matches labor roles to the `labor` table, fills `unit_cost`, `rate`, and `cost`, then updates object self-cost totals.

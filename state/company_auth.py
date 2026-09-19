@@ -207,7 +207,7 @@ def sync_browser_auth_session() -> bool:
 
 def clear_auth_session() -> None:
     for key in list(st.session_state.keys()):
-        if key not in {"_app_boot_id"}:
+        if key not in {"_app_boot_id", "_runtime_session_id", "_runtime_trace_id"}:
             del st.session_state[key]
 
 

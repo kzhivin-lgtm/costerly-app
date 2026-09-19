@@ -102,3 +102,26 @@ Avoid:
 - deleting and recreating an invalid backup without explaining the validation failure.
 
 Short version: backup first, helper only, validation required.
+
+## Production Observability Rule
+
+Every new production workflow must ship with diagnostic boundaries in the same
+change. Instrument the earliest useful start, meaningful dependency waits,
+completion, and failure. Reuse the shared runtime event contract and correlation
+IDs instead of creating feature-specific log formats.
+
+Do:
+- emit start, completion, and error events for user-visible actions and external calls;
+- include durations and bounded technical metadata needed to distinguish causes;
+- preserve `trace_id`, `session_id`, and `run_id` through reruns and transitions;
+- keep browser and server telemetry asynchronous and best-effort;
+- verify persisted production rows as part of feature acceptance.
+
+Avoid:
+- adding visible debug panels, spinners, or layout changes only for telemetry;
+- logging tokens, secrets, passwords, emails, file names, uploaded content,
+  prompts, OCR output, or exception messages;
+- blocking product work on a telemetry request or retry;
+- treating local console output as proof that production telemetry was stored.
+
+Short version: observable by default, correlated, private, and never UI-blocking.

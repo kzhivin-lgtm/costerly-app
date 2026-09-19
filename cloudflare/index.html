@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="v3.0-runtime-cleanup" />
+    <meta name="costerly-wrapper-version" content="v3.1.1-observability" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -69,44 +69,126 @@
     <div class="app-loading-mask" id="app-loading-mask" aria-hidden="true"></div>
     <iframe
       id="costerly-app-frame"
-      src="https://costerly-app.streamlit.app/?embed=true"
+      data-src="https://costerly-app.streamlit.app/?embed=true"
       title="costerly.ai"
       allow="clipboard-write; clipboard-read; fullscreen"
     ></iframe>
     <div class="embed-footer-mask" aria-hidden="true"></div>
     <script>
       (() => {
+        const BUILD_VERSION = "3.1.1";
+        const startedAt = performance.now();
+        const traceId = crypto.randomUUID();
+        const timeline = [];
         const mask = document.getElementById("app-loading-mask");
         const frame = document.getElementById("costerly-app-frame");
         const pathInvite = window.location.pathname.match(/^\/(?:start|join)\/([A-Za-z0-9_-]{43})\/?$/);
         const inviteToken = pathInvite
           ? pathInvite[1]
           : new URLSearchParams(window.location.search).get("invite");
-        if (frame && inviteToken && /^[A-Za-z0-9_-]{43}$/.test(inviteToken)) {
-          const appUrl = new URL(frame.src);
+        const appUrl = new URL(frame.dataset.src);
+        appUrl.searchParams.set("obs_trace", traceId);
+        if (inviteToken && /^[A-Za-z0-9_-]{43}$/.test(inviteToken)) {
           appUrl.searchParams.set("invite", inviteToken);
-          frame.src = appUrl.toString();
         }
         let fallbackTimer = null;
         let ready = false;
-        function revealApp() {
+
+        function mark(eventName, detail = {}) {
+          const event = {
+            occurred_at: new Date().toISOString(),
+            schema_version: "runtime_v1",
+            build_version: BUILD_VERSION,
+            source: "browser",
+            trace_id: traceId,
+            event_name: eventName,
+            screen: detail.screen || "unknown",
+            status: detail.status || "ok",
+            elapsed_ms: Math.round((performance.now() - startedAt) * 1000) / 1000,
+            metadata: detail.metadata || {},
+          };
+          timeline.push(event);
+          performance.mark(`costerly:${eventName}`);
+        }
+
+        function navigationMetadata() {
+          const navigation = performance.getEntriesByType("navigation")[0];
+          if (!navigation) return {};
+          return {
+            navigation_type: navigation.type,
+            ttfb_ms: Math.round(navigation.responseStart * 1000) / 1000,
+            response_end_ms: Math.round(navigation.responseEnd * 1000) / 1000,
+            dom_interactive_ms: Math.round(navigation.domInteractive * 1000) / 1000,
+            dom_content_loaded_ms: Math.round(navigation.domContentLoadedEventEnd * 1000) / 1000,
+            load_event_ms: Math.round(navigation.loadEventEnd * 1000) / 1000,
+          };
+        }
+
+        function persistTimeline() {
+          if (!timeline.length) return;
+          const payload = JSON.stringify(timeline.splice(0, timeline.length));
+          try {
+            if (navigator.sendBeacon) {
+              navigator.sendBeacon(
+                "/api/runtime-events",
+                new Blob([payload], {type: "application/json"})
+              );
+              return;
+            }
+            fetch("/api/runtime-events", {
+              method: "POST",
+              headers: {"content-type": "application/json"},
+              body: payload,
+              keepalive: true,
+            }).catch(() => {});
+          } catch (_) {}
+        }
+
+        function revealApp(source, screen = "unknown") {
           if (ready) return;
           ready = true;
           window.clearTimeout(fallbackTimer);
+          mark("browser.app_reveal", {
+            screen,
+            status: source === "fallback" ? "timeout" : "ok",
+            metadata: {source, ...navigationMetadata()},
+          });
           if (frame) frame.classList.add("is-ready");
           if (mask) {
             mask.classList.add("is-hidden");
             window.setTimeout(() => mask.remove(), 220);
           }
+          persistTimeline();
+        }
+
+        mark("browser.wrapper_start", {metadata: navigationMetadata()});
+        if (frame) {
+          frame.addEventListener("load", () => mark("browser.iframe_load"), {once: true});
+          mark("browser.iframe_request");
+          frame.src = appUrl.toString();
         }
 
         window.addEventListener("message", (event) => {
-          if (event.data && event.data.type === "costerly:app-ready") {
-            revealApp();
+          if (
+            event.origin === "https://costerly-app.streamlit.app" &&
+            event.data &&
+            event.data.type === "costerly:app-ready" &&
+            event.data.traceId === traceId
+          ) {
+            const screen = event.data.screen || "unknown";
+            mark("browser.app_ready_received", {
+              screen,
+              metadata: {server_run_id: event.data.runId || ""},
+            });
+            revealApp("app_ready", screen);
           }
         });
 
-        fallbackTimer = window.setTimeout(() => revealApp(), 8000);
+        window.addEventListener("pagehide", persistTimeline, {once: true});
+        fallbackTimer = window.setTimeout(() => {
+          mark("browser.app_ready_timeout", {status: "timeout"});
+          revealApp("fallback");
+        }, 8000);
       })();
     </script>
   </body>

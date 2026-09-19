@@ -5,6 +5,10 @@
 - Every new two-file benchmark cycle starts two fresh instances on separate unused ports and opens both Chrome tabs automatically so `page-23.pdf` and `Металл (1).pdf` can run in parallel under the same code version. Keep older benchmark servers and result screens available for side-by-side comparison; stop them only on explicit request or when resource/port conflicts require cleanup.
 
 ## Active
+- 3.1.1 Production Observability Foundation: persist correlated browser and
+  server timing boundaries without blocking render, changing UI geometry, or
+  recording credentials, PII, file names, or RFQ content. Apply the Supabase
+  migration and Cloudflare Function secrets before production verification.
 - Company Profile follow-up after the v3.0.59 Save Expenses checkpoint:
   diagnose the duplicate heading observed after Sign out, then verify Contacts
   and Company Details remain on their selected tab after Save. Recheck the full
