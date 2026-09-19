@@ -24,8 +24,19 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active) .block-container {
             width: min(1120px, calc(100vw - 48px));
             max-width: 1120px;
-            padding-top: 34px;
+            padding-top: 34px !important;
             padding-bottom: 80px;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stMainBlockContainer"]
+        > [data-testid="stVerticalBlock"]
+        > [data-testid="stElementContainer"]:has(style),
+        .stApp:has(.company-profile-active)
+        [data-testid="stMainBlockContainer"]
+        > [data-testid="stVerticalBlock"]
+        > [data-testid="stElementContainer"]:has(.company-profile-active) {
+            display: none !important;
         }
 
         .company-profile-heading {
@@ -52,6 +63,10 @@ def apply_company_profile_css() -> None:
             flex: 0 0 42px;
         }
 
+        .company-profile-mark {
+            transform: translateY(3px);
+        }
+
         .stApp:has(.company-profile-active) div[data-testid="stHorizontalBlock"]:has(.company-profile-heading) {
             align-items: center;
             margin-bottom: 34px;
@@ -62,23 +77,29 @@ def apply_company_profile_css() -> None:
             gap: 10px;
         }
 
+        .st-key-company_profile_actions {
+            transform: translateY(10px);
+        }
+
         .st-key-company_profile_actions [data-testid="stButton"],
         .st-key-company_profile_actions [data-testid="stButton"] > div,
         .st-key-company_profile_actions button {
             width: 100%;
         }
 
-        .st-key-company_profile_actions button {
-            height: 40px !important;
-            min-height: 40px !important;
-            max-height: 40px !important;
-            padding: 0 12px !important;
-            font-size: 13px !important;
+        .stApp:has(.company-profile-active)
+        .st-key-company_profile_actions div[data-testid="stButton"] button {
+            height: 36px !important;
+            min-height: 36px !important;
+            max-height: 36px !important;
+            padding: 0 10px !important;
+            font-size: 12px !important;
             font-weight: 700 !important;
         }
 
-        .st-key-company_profile_actions button p {
-            font-size: 13px !important;
+        .stApp:has(.company-profile-active)
+        .st-key-company_profile_actions div[data-testid="stButton"] button p {
+            font-size: 12px !important;
             white-space: nowrap !important;
         }
 
@@ -725,8 +746,8 @@ def apply_company_profile_css() -> None:
             }
 
             .st-key-company_profile_actions [data-testid="stColumn"] {
-                width: calc(50% - 5px) !important;
-                flex: 1 1 calc(50% - 5px) !important;
+                width: calc((100% - 20px) / 3) !important;
+                flex: 1 1 calc((100% - 20px) / 3) !important;
             }
 
             .stApp:has(.company-profile-active) [data-baseweb="tab-list"],

@@ -477,7 +477,8 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     assert [tab.label for tab in app.get("tab")] == [
         "Overhead Expenses", "Labor Costs", "Contacts", "Company Details", "Users", "Price Lists",
     ]
-    assert any(button.label == "Continue to upload" for button in app.button)
+    assert any(button.label == "Projects" and button.disabled for button in app.button)
+    assert any(button.label == "Upload" for button in app.button)
     assert any(button.label == "Sign out" for button in app.button)
     assert not any(
         button.label in {"Save Contacts", "Save Company Details"}
@@ -763,6 +764,12 @@ def test_labor_list_renders_before_editor_and_uses_profile_fonts():
     assert ".company-profile-users th" in css
     assert "font-family: var(--font-mono) !important" in css
     assert ".company-profile-users td strong" in css
+    assert ".company-profile-mark {" in css
+    assert "transform: translateY(3px);" in css
+    assert ".st-key-company_profile_actions {" in css
+    assert "transform: translateY(10px);" in css
+    assert '.st-key-company_profile_actions div[data-testid="stButton"] button {' in css
+    assert "min-height: 36px !important;" in css
     assert "font-family: var(--font-sans) !important" in css
 
 
@@ -926,7 +933,7 @@ def test_only_company_metrics_save_bridge_is_fragment_scoped():
 
 def test_profile_to_upload_navigation_runs_before_render():
     source = Path("screens/company_profile.py").read_text()
-    button_source = source.split('"Continue to upload"', 1)[1].split(")", 1)[0]
+    button_source = source.split('"Upload"', 1)[1].split(")", 1)[0]
 
     assert "on_click=_open_upload_screen" in button_source
     assert "st.rerun" not in button_source

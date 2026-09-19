@@ -59,6 +59,12 @@ The Users tab renders the owner-only team invitation URL with the same
 link, not a code block, and uses a 12px section gap so the two related tables
 read as one compact group. Non-owners do not receive or render the invitation
 URL.
+The Company Profile header removes top-level zero-height CSS and screen-marker
+wrappers from layout flow so Streamlit's vertical gap cannot accumulate above
+visible content. The page and heading-to-tabs gaps are both 34px. Header actions
+use a real 36px compact-button override, align with the title's visual axis, and
+show Projects as an intentionally disabled placeholder until a project-history
+route and persistence contract exist.
 The Overhead Expenses cost table and Object Detail tables share the same
 `object-detail-table`, row, cell, group-summary, and cell-input CSS primitives.
 Do not rebuild Metrics cost rows with `st.columns` or native `st.text_input`:

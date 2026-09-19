@@ -1278,7 +1278,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
     apply_company_profile_css()
     apply_object_detail_css()
     st.markdown('<div class="company-profile-active" style="display:none"></div>', unsafe_allow_html=True)
-    header_left, header_right = st.columns([4, 1.6])
+    header_left, header_right = st.columns([3.6, 2])
     with header_left:
         st.markdown(
             f'<div class="company-profile-heading"><div class="company-profile-mark">{_brand_mark()}</div>'
@@ -1287,10 +1287,18 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         )
     with header_right:
         with st.container(key="company_profile_actions"):
-            upload_action, sign_out_action = st.columns([1.4, 0.8])
+            projects_action, upload_action, sign_out_action = st.columns([1, 0.85, 1])
+            with projects_action:
+                st.button(
+                    "Projects",
+                    key="profile_projects_placeholder",
+                    use_container_width=True,
+                    disabled=True,
+                    help="Project history is coming next.",
+                )
             with upload_action:
                 st.button(
-                    "Continue to upload",
+                    "Upload",
                     key="profile_to_upload",
                     use_container_width=True,
                     on_click=_open_upload_screen,

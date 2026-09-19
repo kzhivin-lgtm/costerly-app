@@ -1,7 +1,19 @@
 # Company Profile checkpoint
 
-Version: v3.2.2 accepted visual checkpoint
+Version: v3.2.3 accepted visual checkpoint
 Date: 2026-09-19
+
+## v3.2.3 Compact Profile header
+
+- Top-level CSS and screen-marker wrappers no longer consume Streamlit's 16px
+  vertical gaps before the visible header.
+- The top page gap and visual title-to-tabs gap both measure 34px on Streamlit
+  1.64.
+- Projects is visible but disabled until its screen and persistence contract are
+  defined. Upload and Sign out retain their existing behavior.
+- Profile actions are actual 36px buttons. Their measured center is 78.14px,
+  the brand mark center is 79.14px, and both align with the title's visual axis.
+- The user accepted the rendered preview. Automated suite: 186 tests passed.
 
 ## v3.2.2 Users invitation link
 
@@ -149,12 +161,14 @@ UI definition for the Profile screen.
   consistent and the disabled `Select position` placeholder is not bold.
 - User accepted the v3.2.2 rendered preview with the invitation link presented
   as a compact second Users table-card.
+- User accepted the v3.2.3 rendered preview with equal 34px header spacing,
+  aligned compact actions, and a disabled Projects placeholder.
 - Live DOM verification measured 40px group bars, 51px cost rows, and 34px
   Monthly Cost inputs. A live edit from 2,000 at 18% produced VAT 360 and Total
   2,360.
 - Direct Supabase verification confirmed that a partial `update` preserves the
   required hidden `overhead_settings` values for company 293.
-- Automated suite: 186 tests passed before the v3.2.2 checkpoint packaging.
+- Automated suite: 186 tests passed before the v3.2.3 checkpoint packaging.
 - `git diff --check`: clean before checkpoint documentation.
 
 ## Explicit next phase
