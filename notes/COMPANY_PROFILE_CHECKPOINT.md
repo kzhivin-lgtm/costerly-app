@@ -5,6 +5,7 @@ Date: 2026-09-19
 
 ## v3.2.2 Users invitation link
 
+- Product checkpoint: `dff220c`.
 - The owner-only Team Invitation Link now reuses the existing Users table-card
   instead of a loose heading and Streamlit code block.
 - Its uppercase table header matches EMAIL and ROLE, the URL remains a real
