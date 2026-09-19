@@ -1,7 +1,21 @@
 # Company Profile checkpoint
 
-Version: v3.1.10 production work-in-progress
+Version: v3.2.1 accepted production checkpoint
 Date: 2026-09-19
+
+## v3.2.1 Labor Costs continuation
+
+- Current accepted Git checkpoint: `1df98c5`.
+- Labor Costs is an owner-only employee cost register backed by
+  `company_employees`, with one informal Worker name, controlled Department and
+  Position values, Monthly Salary or Hourly Rate, and derived Monthly Bruto.
+- Saved workers appear above the editor and open the same validated edit path
+  through a compact pencil before each worker name.
+- Streamlit 1.64 React Aria selectors match the 52px Profile input contract,
+  center their text vertically, and use the Costerly purple focus border and
+  ring. The older BaseWeb selectors remain for runtime compatibility.
+- The user accepted the production pencil alignment and all selector states.
+- Automated suite: 185 tests passed.
 
 ## v3.1.10 production continuation
 
@@ -32,8 +46,8 @@ Date: 2026-09-19
 - The peer tabs are Overhead Expenses, Labor Costs, Contacts, Company Details,
   Users, and Price Lists. Overhead Expenses is first. Tabs use the larger Profile navigation treatment.
   Repeated tab headings are not rendered inside their panels.
-- Labor Costs is reserved as a separate second tab and currently renders only a
-  placeholder until its personnel model is approved.
+- Labor Costs is the separate second tab and follows the accepted v3.2.1
+  owner-only employee cost contract above.
 - Contacts contains Official email, Phone, Website, Street, House Number, City,
   Postal code, Facebook, LinkedIn, and Instagram without redundant Address or
   Social links headings. Israeli phone input is normalized to the
@@ -114,12 +128,15 @@ UI definition for the Profile screen.
   bold selected tab, plural `Price Lists`, removed red indicator, terminology,
   and Save Overhead Expenses behavior work. The remaining vertical offset is
   explicitly not accepted as finished.
+- User verified in production at `1df98c5` that Labor Costs edit pencils align
+  before worker names, selector text is vertically centered, and selector focus
+  uses the purple Costerly border and ring.
 - Live DOM verification measured 40px group bars, 51px cost rows, and 34px
   Monthly Cost inputs. A live edit from 2,000 at 18% produced VAT 360 and Total
   2,360.
 - Direct Supabase verification confirmed that a partial `update` preserves the
   required hidden `overhead_settings` values for company 293.
-- Automated suite: 147 tests passed before checkpoint documentation.
+- Automated suite: 185 tests passed before the v3.2.1 checkpoint documentation.
 - `git diff --check`: clean before checkpoint documentation.
 
 ## Explicit next phase
