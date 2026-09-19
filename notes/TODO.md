@@ -153,14 +153,14 @@
   contract. Status: visually accepted and pushed at `1f30416`; 186 tests passed.
 - 3.2.4 Profile transition compatibility: keep the accepted v3.2.3 action
   alignment and bind the existing Profile-to-Upload transition curtain to the
-  stable `profile_to_upload` key instead of visible copy. Status: implementation
-  candidate; production transition and timing verification pending.
+  stable `profile_to_upload` key instead of visible copy. Status: accepted in
+  production as part of v3.2.5.
 - 3.2.5 Profile navigation priority: rename the file-workspace action to
   `New Estimate`, keep `Projects` first and `Sign out` last, and prioritize the
   profile tabs as Overhead Expenses, Labor Costs, Price Lists, Contacts,
   Company Details, and Users. Remove the manually maintained build-version
   secret override and enforce matching Streamlit/Cloudflare versions in tests.
-  Status: implementation candidate; production verification pending.
+  Status: accepted in production at `b372d3d`; 187 tests passed.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
   1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR remains the default one-PDF/one-request flow. Naming is text-only and receives locked Detection facts plus OCR snippets, never the PDF again.

@@ -1,9 +1,11 @@
 # Company Profile checkpoint
 
-Version: v3.2.3 accepted visual checkpoint
+Version: v3.2.5 accepted production checkpoint
 Date: 2026-09-19
 
-## v3.2.5 candidate
+## v3.2.5 Profile navigation checkpoint
+
+- Product checkpoint: `b372d3d`.
 
 - Header actions are ordered `Projects`, `New Estimate`, `Sign out`.
 - Profile tabs prioritize costing configuration: Overhead Expenses, Labor
@@ -11,16 +13,16 @@ Date: 2026-09-19
 - Tab restoration remains label/slug based, not position based.
 - Streamlit and Cloudflare build versions are code-owned and checked for an
   exact match, so production no longer needs a manually updated build secret.
-- Production verification remains pending.
+- The user accepted the production presentation and behavior. Automated suite:
+  187 tests passed.
 
-## v3.2.4 candidate
+## v3.2.4 Transition identity correction
 
 - The compact Profile actions retain the accepted v3.2.3 alignment.
 - The transition observer binds the `profile_to_upload` action to its stable
   Streamlit key. Previous visible labels remain temporary compatibility
   fallbacks for browser tabs that were already open during deployment.
-- Automated suite: 186 tests passed. Production visual and transition
-  verification remain pending, so v3.2.3 is still the accepted checkpoint.
+- The production result was accepted as part of the v3.2.5 checkpoint.
 
 ## v3.2.3 Compact Profile header
 
