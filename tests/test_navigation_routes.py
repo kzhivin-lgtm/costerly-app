@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
 import app
@@ -43,3 +45,12 @@ def test_processing_refresh_fails_safe_to_upload():
     st.session_state.clear()
 
     assert app._browser_route("processing") == {"screen": "upload"}
+
+
+def test_profile_route_is_restored_before_account_controls_render():
+    source = Path("app.py").read_text()
+
+    restore_position = source.index('if requested_screen == "account":')
+    controls_position = source.index("render_account_control(access)")
+
+    assert restore_position < controls_position

@@ -11,8 +11,12 @@
   and reuses the existing Supabase ownership checks before rendering protected
   resources. Auth and invite-driven screens remain derived from their existing
   authorities. Active Processing intentionally fails safe to Upload because its
-  file bytes and futures are not durable yet. Status: ready for production
-  verification.
+  file bytes and futures are not durable yet. The first production revision
+  restored Profile after shared account controls had already rendered, causing
+  duplicate `company_sign_out` keys. The corrected revision restores Profile
+  and its tab before account controls render. The Cloudflare transition layer
+  now covers both Profile to Upload and Upload to Profile while the restored
+  screen is assembled. Status: corrected and ready for production verification.
 
 - 3.1.11 Profile to Upload transition integrity: identify and remove the
   intermediate stale or partial screen visible after Continue to upload.

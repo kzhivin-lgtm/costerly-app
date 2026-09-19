@@ -251,6 +251,15 @@ def main() -> None:
             return
         st.session_state.auth_company_id = access.company_id
         st.session_state.auth_access_token = access.access_token
+        requested_screen = st.query_params.get("screen")
+        if requested_screen == "account":
+            st.session_state.screen = "account"
+            requested_profile_tab = str(st.query_params.get("profile_tab") or "")
+            if requested_profile_tab in _PROFILE_TAB_ROUTES:
+                st.session_state.company_profile_tab = _PROFILE_TAB_ROUTES[requested_profile_tab]
+            for route_key in ("screen", "profile_tab"):
+                if route_key in st.query_params:
+                    del st.query_params[route_key]
         with trace.span("server.account_controls_render"):
             render_account_control(access)
     else:
@@ -261,14 +270,6 @@ def main() -> None:
         company_id = get_company_id()
 
     requested_screen = st.query_params.get("screen")
-    if requested_screen == "account" and auth_enabled:
-        st.session_state.screen = "account"
-        requested_profile_tab = str(st.query_params.get("profile_tab") or "")
-        if requested_profile_tab in _PROFILE_TAB_ROUTES:
-            st.session_state.company_profile_tab = _PROFILE_TAB_ROUTES[requested_profile_tab]
-        for route_key in ("screen", "profile_tab"):
-            if route_key in st.query_params:
-                del st.query_params[route_key]
     if requested_screen in {"objects", "object_detail", "file_review"}:
         st.session_state.screen = requested_screen
         requested_run_id = st.query_params.get("run_id")
