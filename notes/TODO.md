@@ -6,9 +6,10 @@
   Expenses consistently in the table heading, save action, success message,
   and save errors. Remove the current React Aria selection underline, emphasize
   only the active tab, and remove the zero-height save bridge from document
-  flow so Overhead Expenses starts at the same height as Contacts. Preserve the
-  working expense persistence path and defer Sign out sizing, Save Contacts,
-  and Save Company Details.
+  flow, including its outer Streamlit element wrapper, so Overhead Expenses
+  starts at the same height as Contacts. Rename Price List to Price Lists.
+  Preserve the working expense persistence path and defer Sign out sizing,
+  Save Contacts, and Save Company Details.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the

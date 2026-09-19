@@ -470,7 +470,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "Overhead Expenses", "Labor Costs", "Contacts", "Company Details", "Users", "Price List",
+        "Overhead Expenses", "Labor Costs", "Contacts", "Company Details", "Users", "Price Lists",
     ]
     assert any(button.label == "Continue to upload" for button in app.button)
     assert any(button.label == "Sign out" for button in app.button)
@@ -603,6 +603,8 @@ def test_company_profile_tabs_support_stateful_streamlit_dom():
     assert ".react-aria-SelectionIndicator" in css
     assert '[role="tablist"]::after' in css
     assert ".st-key-company_metrics_bridge_host" in css
+    assert ':has(.st-key-company_metrics_bridge_host)' in css
+    assert '[role="tab"][data-selected] p' in css
 
 
 def test_company_metrics_bridge_does_not_navigate_parent_page():

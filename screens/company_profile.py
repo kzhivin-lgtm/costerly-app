@@ -743,7 +743,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
             "Contacts",
             "Company Details",
             "Users",
-            "Price List",
+            "Price Lists",
         ],
         key="company_profile_tab",
         on_change="rerun",

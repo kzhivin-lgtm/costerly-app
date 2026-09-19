@@ -113,6 +113,8 @@ def apply_company_profile_css() -> None:
             outline-offset: 2px;
         }
 
+        .stApp:has(.company-profile-active)
+        [data-testid="stElementContainer"]:has(.st-key-company_metrics_bridge_host),
         .st-key-company_metrics_bridge_host {
             display: none !important;
         }
@@ -142,8 +144,15 @@ def apply_company_profile_css() -> None:
         .st-key-company_profile_tab [role="tab"][data-selected] {
             background: var(--color-surface);
             color: var(--color-text-strong);
-            font-weight: 700;
+            font-weight: 700 !important;
             box-shadow: 0 1px 2px rgba(42, 31, 44, 0.08);
+        }
+
+        .st-key-company_profile_tab [role="tab"][aria-selected="true"] p,
+        .st-key-company_profile_tab [role="tab"][aria-selected="true"] span,
+        .st-key-company_profile_tab [role="tab"][data-selected] p,
+        .st-key-company_profile_tab [role="tab"][data-selected] span {
+            font-weight: 700 !important;
         }
 
         .stApp:has(.company-profile-active) [data-baseweb="tab-highlight"],
