@@ -63,6 +63,7 @@ Browser:
 - `browser.app_ready_timeout`
 - `browser.app_reveal`
 - `browser.transition_click`
+- `browser.transition_visible`, when the target screen marker reaches the DOM
 - `browser.transition_ready`, with the complete click-to-ready duration
 
 The four `browser.auth_*` boundaries are emitted from the existing hidden
@@ -97,7 +98,7 @@ Server:
 - `server.app_ready_component_enqueued`
 - `server.run_complete`
 - `server.action_completed`, for safe Sign in and Sign out network durations
-- `server.profile_load`
+- `server.company_settings_load`
 - `server.account_access_recheck`, for the Profile-only second access validation
 
 ## Production prerequisites

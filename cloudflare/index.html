@@ -96,7 +96,14 @@
         let fallbackTimer = null;
         let ready = false;
         const readyRunIds = new Set();
-        let pendingTransition = null;
+        const pendingTransitions = [];
+        const expectedScreens = {
+          sign_in: ["upload", "account", "company_setup"],
+          upload_to_profile: ["account"],
+          profile_to_upload: ["upload"],
+          profile_to_sign_out: ["login"],
+          upload_to_sign_out: ["login"],
+        };
         const startupPhases = new Set([
           "auth_component_script",
           "auth_component_render",
@@ -188,12 +195,39 @@
             event.data.type === "costerly:transition-click" &&
             typeof event.data.transition === "string"
           ) {
-            pendingTransition = {
+            const pendingTransition = {
+              id: String(event.data.transitionId || crypto.randomUUID()),
               name: event.data.transition,
               startedAt: performance.now(),
+              visible: false,
             };
+            pendingTransitions.push(pendingTransition);
             mark("browser.transition_click", {
-              metadata: {transition: pendingTransition.name},
+              metadata: {
+                transition: pendingTransition.name,
+                transition_id: pendingTransition.id,
+              },
+            });
+            if (ready) persistTimeline();
+            return;
+          }
+          if (
+            event.origin === "https://costerly-app.streamlit.app" &&
+            event.data &&
+            event.data.type === "costerly:transition-visible" &&
+            typeof event.data.transitionId === "string"
+          ) {
+            const pendingTransition = pendingTransitions.find(
+              (item) => item.id === event.data.transitionId
+            );
+            if (!pendingTransition || pendingTransition.visible) return;
+            pendingTransition.visible = true;
+            mark("browser.transition_visible", {
+              duration_ms: performance.now() - pendingTransition.startedAt,
+              metadata: {
+                transition: pendingTransition.name,
+                transition_id: pendingTransition.id,
+              },
             });
             if (ready) persistTimeline();
             return;
@@ -224,16 +258,20 @@
               server_run_id: runId,
               ...(event.data.metrics || {}),
             };
-            if (pendingTransition) {
+            const transitionIndex = pendingTransitions.findIndex((item) =>
+              (expectedScreens[item.name] || []).includes(screen)
+            );
+            if (transitionIndex >= 0) {
+              const pendingTransition = pendingTransitions.splice(transitionIndex, 1)[0];
               mark("browser.transition_ready", {
                 screen,
                 duration_ms: performance.now() - pendingTransition.startedAt,
                 metadata: {
                   transition: pendingTransition.name,
+                  transition_id: pendingTransition.id,
                   ...metadata,
                 },
               });
-              pendingTransition = null;
             } else {
               mark("browser.app_ready_received", {screen, metadata});
             }

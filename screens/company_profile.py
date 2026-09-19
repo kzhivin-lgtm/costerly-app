@@ -737,7 +737,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         if trace is None:
             profile = load_company_profile(access)
         else:
-            with trace.span("server.profile_load"):
+            with trace.span("server.company_settings_load"):
                 profile = load_company_profile(access)
     except Exception:
         st.error("Company profile is unavailable right now. Try again in a moment.")

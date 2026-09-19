@@ -678,6 +678,10 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
 def render_company_setup(
     access: CompanyAccess, invitation: InvitationContext | None
 ) -> None:
+    st.markdown(
+        '<div class="company-setup-active" style="display:none"></div>',
+        unsafe_allow_html=True,
+    )
     if invitation is None:
         st.error("A valid invitation link is required to join or create a company.")
     elif invitation.kind == "create":

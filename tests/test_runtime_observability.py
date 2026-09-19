@@ -163,6 +163,8 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "visibility: hidden" not in wrapper
     assert "readyRunIds" in wrapper
     assert 'event.data.type === "costerly:transition-click"' in wrapper
+    assert 'event.data.type === "costerly:transition-visible"' in wrapper
+    assert 'mark("browser.transition_visible"' in wrapper
     assert 'mark("browser.transition_ready"' in wrapper
     assert 'event.data.type === "costerly:startup-phase"' in wrapper
     assert "startupPhases.has(event.data.phase)" in wrapper
@@ -194,6 +196,8 @@ def test_auth_component_reports_safe_iframe_startup_phases():
 
     ready_signal = (ROOT / "ui/js_guards.py").read_text()
     assert 'type: "costerly:transition-click"' in ready_signal
+    assert 'type: "costerly:transition-visible"' in ready_signal
+    assert "new MutationObserver(reportIfVisible)" in ready_signal
     assert 'parentDocument.addEventListener("click", handler, {' in ready_signal
     assert "capture: false" in ready_signal
     assert "passive: true" in ready_signal

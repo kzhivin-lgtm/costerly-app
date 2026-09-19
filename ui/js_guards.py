@@ -258,6 +258,42 @@ def signal_app_ready_to_embed(
                 return null;
             }
 
+            function targetSelector(transition) {
+                if (transition === "sign_in") {
+                    return ".upload-screen-active, .company-profile-active, .company-setup-active";
+                }
+                if (transition === "upload_to_profile") return ".company-profile-active";
+                if (transition === "profile_to_upload") return ".upload-screen-active";
+                if (transition === "profile_to_sign_out" || transition === "upload_to_sign_out") {
+                    return ".auth-screen-active";
+                }
+                return null;
+            }
+
+            function observeTargetScreen(transition, transitionId) {
+                const selector = targetSelector(transition);
+                if (!selector) return;
+                const parentDocument = window.parent.document;
+                let observer = null;
+                const reportIfVisible = () => {
+                    if (!parentDocument.querySelector(selector)) return false;
+                    window.top.postMessage({
+                        type: "costerly:transition-visible",
+                        transition,
+                        transitionId,
+                    }, "*");
+                    if (observer) observer.disconnect();
+                    return true;
+                };
+                if (reportIfVisible()) return;
+                observer = new MutationObserver(reportIfVisible);
+                observer.observe(parentDocument.documentElement, {
+                    childList: true,
+                    subtree: true,
+                });
+                window.setTimeout(() => observer.disconnect(), 15000);
+            }
+
             function installTransitionObserver() {
                 try {
                     const parentWindow = window.parent;
@@ -271,10 +307,13 @@ def signal_app_ready_to_embed(
                         if (!button) return;
                         const transition = transitionName(button.innerText || button.textContent);
                         if (!transition) return;
+                        const transitionId = crypto.randomUUID();
                         window.top.postMessage({
                             type: "costerly:transition-click",
                             transition,
+                            transitionId,
                         }, "*");
+                        observeTargetScreen(transition, transitionId);
                     };
                     parentWindow[transitionHandlerKey] = handler;
                     parentDocument.addEventListener("click", handler, {
