@@ -119,12 +119,6 @@ def apply_company_profile_css() -> None:
             display: none !important;
         }
 
-        .st-key-company_profile_tab
-        [role="tabpanel"]:has(.st-key-company_metrics_card)
-        > [data-testid="stVerticalBlock"] {
-            gap: 0 !important;
-        }
-
         .stApp:has(.company-profile-active) [data-baseweb="tab-list"],
         .st-key-company_profile_tab [role="tablist"] {
             gap: 6px;
