@@ -243,8 +243,13 @@ def signal_app_ready_to_embed(
                 sentAt: Date.now()
             };
 
-            function transitionName(buttonText) {
-                const label = String(buttonText || "").trim().toLowerCase();
+            function transitionName(button) {
+                if (button.closest(".st-key-profile_to_upload")) {
+                    return "profile_to_upload";
+                }
+                const label = String(button.innerText || button.textContent || "")
+                    .trim()
+                    .toLowerCase();
                 if (label === "sign in") return "sign_in";
                 if (label === "profile") return "upload_to_profile";
                 if (label === "continue to upload" || label === "upload") {
@@ -311,7 +316,7 @@ def signal_app_ready_to_embed(
                             ? event.target.closest("button")
                             : null;
                         if (!button) return;
-                        const transition = transitionName(button.innerText || button.textContent);
+                        const transition = transitionName(button);
                         if (!transition) return;
                         const transitionId = crypto.randomUUID();
                         window.top.postMessage({

@@ -5,10 +5,10 @@ Date: 2026-09-19
 
 ## v3.2.4 candidate
 
-- The compact Profile actions move 4px lower, as requested.
-- The transition observer recognizes both the previous `Continue to upload`
-  label and the current `Upload` label as `profile_to_upload`, restoring the
-  existing Cloudflare transition curtain without changing navigation.
+- The compact Profile actions retain the accepted v3.2.3 alignment.
+- The transition observer binds the `profile_to_upload` action to its stable
+  Streamlit key. Previous visible labels remain temporary compatibility
+  fallbacks for browser tabs that were already open during deployment.
 - Automated suite: 186 tests passed. Production visual and transition
   verification remain pending, so v3.2.3 is still the accepted checkpoint.
 

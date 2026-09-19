@@ -218,6 +218,7 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'parentDocument.addEventListener("click", handler, {' in ready_signal
     assert "capture: false" in ready_signal
     assert "passive: true" in ready_signal
+    assert 'button.closest(".st-key-profile_to_upload")' in ready_signal
     assert 'label === "continue to upload" || label === "upload"' in ready_signal
     observer_source = ready_signal.split("function installTransitionObserver()", 1)[1].split(
         "function postReady()", 1
