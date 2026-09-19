@@ -16,7 +16,9 @@
   duplicate `company_sign_out` keys. The corrected revision restores Profile
   and its tab before account controls render. The Cloudflare transition layer
   now covers both Profile to Upload and Upload to Profile while the restored
-  screen is assembled. Status: corrected and ready for production verification.
+  screen is assembled. Status: accepted production checkpoint at `e48bb71`;
+  the user confirmed refresh preserves Profile and its selected tab, no
+  duplicate-key error remains, and both transition directions are clean.
 
 - 3.1.11 Profile to Upload transition integrity: identify and remove the
   intermediate stale or partial screen visible after Continue to upload.
