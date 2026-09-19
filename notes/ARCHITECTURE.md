@@ -54,6 +54,11 @@ than stored. Each worker can be edited through the same owner-only validation
 path. Net salary and statutory employer-cost calculations remain out of scope.
 The `2026_09_19_company_employees.sql` migration has been applied to the live
 Supabase schema.
+The Users tab renders the owner-only team invitation URL with the same
+`company-profile-users` table-card primitive as the member list. It is a real
+link, not a code block, and uses a 12px section gap so the two related tables
+read as one compact group. Non-owners do not receive or render the invitation
+URL.
 The Overhead Expenses cost table and Object Detail tables share the same
 `object-detail-table`, row, cell, group-summary, and cell-input CSS primitives.
 Do not rebuild Metrics cost rows with `st.columns` or native `st.text_input`:

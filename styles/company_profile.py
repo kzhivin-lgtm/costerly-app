@@ -574,6 +574,24 @@ def apply_company_profile_css() -> None:
             border-bottom: 0;
         }
 
+        .company-profile-invite {
+            margin-top: 12px;
+        }
+
+        .company-profile-invite-link {
+            display: block;
+            overflow-wrap: anywhere;
+            color: var(--color-text) !important;
+            font-family: var(--font-mono) !important;
+            text-decoration: none !important;
+        }
+
+        .company-profile-invite-link:hover,
+        .company-profile-invite-link:focus-visible {
+            color: var(--color-accent) !important;
+            text-decoration: underline !important;
+        }
+
         .company-labor-summary {
             display: flex;
             align-items: center;

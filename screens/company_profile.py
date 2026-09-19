@@ -860,20 +860,31 @@ def _render_users(access: CompanyAccess) -> None:
             f"<tr><td>{escape(member['Email'])}</td><td>{escape(member['Role'])}</td></tr>"
             for member in members
         )
-        st.markdown(
+        markup = (
             '<div class="company-profile-users"><table>'
             '<thead><tr><th>Email</th><th>Role</th></tr></thead>'
-            f"<tbody>{rows}</tbody></table></div>",
-            unsafe_allow_html=True,
+            f"<tbody>{rows}</tbody></table></div>"
         )
     except Exception:
         st.error("Company users are unavailable right now.")
+        return
+
     if access.role == "owner":
-        st.markdown("### Team invitation link")
         try:
-            st.code(company_join_url(access), language=None)
+            join_url = escape(company_join_url(access), quote=True)
+            markup += (
+                '<div class="company-profile-users company-profile-invite">'
+                '<table><thead><tr><th>Team Invitation Link</th></tr></thead>'
+                '<tbody><tr><td><a class="company-profile-invite-link" '
+                f'href="{join_url}" target="_blank" rel="noopener noreferrer">'
+                f"{join_url}</a></td></tr></tbody></table></div>"
+            )
         except Exception:
+            st.markdown(markup, unsafe_allow_html=True)
             st.error("The team invitation link is unavailable right now.")
+            return
+
+    st.markdown(markup, unsafe_allow_html=True)
 
 
 def _labor_position_label(position_code: object) -> str:

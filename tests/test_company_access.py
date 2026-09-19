@@ -560,7 +560,13 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         "employees": 1 if role == "owner" else 0,
     }
     assert not app.subheader
-    assert len(app.code) == (1 if role == "owner" else 0)
+    assert not app.code
+    users_markup = "".join(item.value for item in app.markdown)
+    assert ('class="company-profile-users company-profile-invite"' in users_markup) is (
+        role == "owner"
+    )
+    assert ("Team Invitation Link" in users_markup) is (role == "owner")
+    assert ("https://example.com/join/token" in users_markup) is (role == "owner")
 
 
 def test_company_metrics_reuses_object_detail_table_contract():

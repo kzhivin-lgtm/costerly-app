@@ -1,7 +1,17 @@
 # Company Profile checkpoint
 
-Version: v3.2.1 accepted production checkpoint
+Version: v3.2.2 accepted visual checkpoint
 Date: 2026-09-19
+
+## v3.2.2 Users invitation link
+
+- The owner-only Team Invitation Link now reuses the existing Users table-card
+  instead of a loose heading and Streamlit code block.
+- Its uppercase table header matches EMAIL and ROLE, the URL remains a real
+  clickable link, and the 12px gap matches the compact Labor Costs section gap.
+- Non-owner behavior is unchanged and does not render or fetch an invitation
+  URL.
+- The user accepted the rendered preview. Automated suite: 186 tests passed.
 
 ## v3.2.1 Labor Costs continuation
 
@@ -136,12 +146,14 @@ UI definition for the Profile screen.
   uses the purple Costerly border and ring.
 - User verified in production at `dfcf5ef` that the final Add Worker spacing is
   consistent and the disabled `Select position` placeholder is not bold.
+- User accepted the v3.2.2 rendered preview with the invitation link presented
+  as a compact second Users table-card.
 - Live DOM verification measured 40px group bars, 51px cost rows, and 34px
   Monthly Cost inputs. A live edit from 2,000 at 18% produced VAT 360 and Total
   2,360.
 - Direct Supabase verification confirmed that a partial `update` preserves the
   required hidden `overhead_settings` values for company 293.
-- Automated suite: 186 tests passed before the final v3.2.1 checkpoint documentation.
+- Automated suite: 186 tests passed before the v3.2.2 checkpoint packaging.
 - `git diff --check`: clean before checkpoint documentation.
 
 ## Explicit next phase
