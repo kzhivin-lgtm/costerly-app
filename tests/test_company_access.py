@@ -615,6 +615,9 @@ def test_company_metrics_bridge_does_not_navigate_parent_page():
     assert "location.href" not in source
     assert "costerly:profile-layout-probe" in source
     assert "tab_to_card_px" in source
+    assert "window_scroll_y_px" in source
+    assert "block_top_px" in source
+    assert "heading_top_px" in source
 
 
 def test_only_company_metrics_save_bridge_is_fragment_scoped():

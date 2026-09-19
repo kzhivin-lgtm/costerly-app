@@ -80,6 +80,10 @@
           const cardRect = card.getBoundingClientRect();
           const firstChild = panel.firstElementChild;
           const cardParent = card.parentElement;
+          const appView = parentDoc.querySelector('[data-testid="stAppViewContainer"]');
+          const main = parentDoc.querySelector('[data-testid="stMain"]');
+          const block = parentDoc.querySelector('.block-container');
+          const heading = parentDoc.querySelector('.company-profile-heading');
           const panelStyle = parentWindow.getComputedStyle(panel);
           const firstStyle = firstChild
             ? parentWindow.getComputedStyle(firstChild)
@@ -114,6 +118,24 @@
                 card_parent_gap_px: parentStyle
                   ? round(parseFloat(parentStyle.gap))
                   : null,
+                window_scroll_y_px: round(parentWindow.scrollY),
+                document_scroll_top_px: round(
+                  parentDoc.documentElement.scrollTop
+                ),
+                body_scroll_top_px: round(parentDoc.body.scrollTop),
+                app_view_scroll_top_px: appView ? round(appView.scrollTop) : null,
+                main_scroll_top_px: main ? round(main.scrollTop) : null,
+                block_top_px: block
+                  ? round(block.getBoundingClientRect().top)
+                  : null,
+                block_padding_top_px: block
+                  ? round(parseFloat(parentWindow.getComputedStyle(block).paddingTop))
+                  : null,
+                heading_top_px: heading
+                  ? round(heading.getBoundingClientRect().top)
+                  : null,
+                tab_offset_top_px: round(tabList.offsetTop),
+                card_offset_top_px: round(card.offsetTop),
               },
             },
             "*"

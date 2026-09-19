@@ -21,8 +21,11 @@
   that disappears after leaving and returning to Overhead Expenses. A passive
   `browser.profile_layout_probe` now records tab, active panel, first child,
   card, padding, and gap boundaries at two animation frames and after 250 ms,
-  without changing layout or triggering a rerun. Compare first entry with the
-  return entry before the next CSS change.
+  without changing layout or triggering a rerun. The rejected `142407b`
+  scroll-preservation guard did not change the visible jump and was reverted by
+  `f277805`. The probe now also records window, document, body, app-view, and
+  main scroll positions plus the shared block and heading positions, so the
+  next run can distinguish actual scrolling from a full-page layout reflow.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the
