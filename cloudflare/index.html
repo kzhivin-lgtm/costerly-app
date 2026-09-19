@@ -96,6 +96,12 @@
         let fallbackTimer = null;
         let ready = false;
         let appReadyRecorded = false;
+        const startupPhases = new Set([
+          "auth_component_script",
+          "auth_component_render",
+          "auth_storage_read",
+          "auth_value_sent",
+        ]);
 
         function mark(eventName, detail = {}) {
           const event = {
@@ -172,6 +178,18 @@
         }
 
         window.addEventListener("message", (event) => {
+          if (
+            event.origin === "https://costerly-app.streamlit.app" &&
+            event.data &&
+            event.data.type === "costerly:startup-phase" &&
+            event.data.traceId === traceId &&
+            startupPhases.has(event.data.phase)
+          ) {
+            mark(`browser.${event.data.phase}`, {
+              metadata: event.data.metadata || {},
+            });
+            return;
+          }
           if (
             event.origin === "https://costerly-app.streamlit.app" &&
             event.data &&

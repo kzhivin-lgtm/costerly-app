@@ -55,16 +55,29 @@ Browser:
 - `browser.wrapper_start`
 - `browser.iframe_request`
 - `browser.iframe_load`
+- `browser.auth_component_script`
+- `browser.auth_component_render`
+- `browser.auth_storage_read`
+- `browser.auth_value_sent`
 - `browser.app_ready_received`
 - `browser.app_ready_timeout`
 - `browser.app_reveal`
 
+The four `browser.auth_*` boundaries are emitted from the existing hidden
+browser-session component. They separate Streamlit iframe navigation from
+component execution, the `sessionStorage` read, and the callback that requests
+the second Python run. Their metadata contains only timings, run correlation,
+and a boolean indicating whether browser storage was populated. Tokens and the
+stored session value are never included.
+
 `browser.app_ready_received.metadata` includes a bounded, filtered server
 summary. Its diagnostic fields are `server_run_id`, `run_sequence`,
 `auth_outcome`, `fast_resume`, `server_elapsed_ms`, and the safe phase-duration
-keys ending in `_ms`. `run_sequence=1` means the final screen was produced by
-the first Python run. A value greater than one identifies one or more Streamlit
-reruns during startup.
+keys ending in `_ms`. It also records `python_version`, `streamlit_version`,
+`supabase_version`, and `python_imports_ms` so dependency drift and import cost
+can be distinguished from browser and Streamlit session startup. `run_sequence=1`
+means the final screen was produced by the first Python run. A value greater
+than one identifies one or more Streamlit reruns during startup.
 
 Server:
 

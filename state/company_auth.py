@@ -161,7 +161,13 @@ def _store_auth_session(session: object) -> None:
     }
 
 
-def sync_browser_auth_session() -> bool:
+def sync_browser_auth_session(
+    *,
+    trace_id: str | None = None,
+    run_id: str | None = None,
+    run_sequence: int | None = None,
+    server_elapsed_before_component_ms: float | None = None,
+) -> bool:
     """Restore or persist the tab-scoped Supabase session.
 
     Reads browser storage only while bootstrapping a new Streamlit session.
@@ -213,6 +219,10 @@ def sync_browser_auth_session() -> bool:
         request_id=request_id,
         session=session,
         resume_blob=resume_blob,
+        trace_id=trace_id,
+        run_id=run_id,
+        run_sequence=run_sequence,
+        server_elapsed_before_component_ms=server_elapsed_before_component_ms,
     )
     if action in {"store", "clear"}:
         st.session_state.pop("_browser_auth_pending", None)

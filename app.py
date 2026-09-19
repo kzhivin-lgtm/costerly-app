@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version as package_version
+import platform
 import time
 
 _SCRIPT_STARTED_AT = time.perf_counter()
@@ -24,6 +26,20 @@ from db.supabase_client import get_supabase_client
 from styles.base import apply_base_css
 from ui.js_guards import scroll_parent_to_top, signal_app_ready_to_embed
 from ui.app_header import render_app_header
+
+
+def _installed_version(distribution: str) -> str:
+    try:
+        return package_version(distribution)
+    except PackageNotFoundError:
+        return "unknown"
+
+
+_RUNTIME_VERSIONS = {
+    "python_version": platform.python_version(),
+    "streamlit_version": st.__version__,
+    "supabase_version": _installed_version("supabase"),
+}
 
 
 st.set_page_config(
@@ -94,7 +110,11 @@ def main() -> None:
         started_at=_SCRIPT_STARTED_AT,
         build_version=str(get_optional_secret("COSTERLY_BUILD_VERSION", "3.1.2")),
     )
-    trace.annotate(run_sequence=st.session_state._runtime_run_sequence)
+    trace.annotate(
+        run_sequence=st.session_state._runtime_run_sequence,
+        python_imports_ms=round((init_started_at - _SCRIPT_STARTED_AT) * 1000, 3),
+        **_RUNTIME_VERSIONS,
+    )
     trace.event(
         "server.run_start",
         duration_ms=(time.perf_counter() - init_started_at) * 1000,
@@ -119,7 +139,12 @@ def main() -> None:
             _signal_ready(trace, "login")
             return
         with trace.span("server.auth.browser_session_sync"):
-            browser_session_ready = sync_browser_auth_session()
+            browser_session_ready = sync_browser_auth_session(
+                trace_id=trace.trace_id,
+                run_id=trace.run_id,
+                run_sequence=st.session_state._runtime_run_sequence,
+                server_elapsed_before_component_ms=trace.summary()["server_elapsed_ms"],
+            )
         trace.event(
             "server.auth.browser_session_sync_result",
             metadata={

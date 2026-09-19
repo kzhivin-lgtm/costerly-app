@@ -132,6 +132,8 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'event.origin === "https://costerly-app.streamlit.app"' in wrapper
     assert "visibility: hidden" not in wrapper
     assert "appReadyRecorded" in wrapper
+    assert 'event.data.type === "costerly:startup-phase"' in wrapper
+    assert "startupPhases.has(event.data.phase)" in wrapper
     assert "...(event.data.metrics || {})" in wrapper
     assert 'startupProbe === "anonymous"' in wrapper
     assert 'appUrl.searchParams.set("startup_probe", "anonymous")' in wrapper
@@ -143,3 +145,18 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "onRequestPost" not in function
     assert '"include": ["/api/*"]' in routes
     assert "must-not-leak" not in wrapper + function
+
+
+def test_auth_component_reports_safe_iframe_startup_phases():
+    component = (
+        ROOT / "ui/browser_session_component/index.html"
+    ).read_text()
+
+    assert 'window.parent.performance.getEntriesByType("navigation")' in component
+    assert 'type: "costerly:startup-phase"' in component
+    assert 'startupPhase(args, "auth_component_script"' in component
+    assert 'startupPhase(args, "auth_component_render"' in component
+    assert 'startupPhase(args, "auth_storage_read"' in component
+    assert 'startupPhase(args, "auth_value_sent"' in component
+    assert "access_token" not in component
+    assert "refresh_token" not in component

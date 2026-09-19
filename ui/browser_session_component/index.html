@@ -9,6 +9,52 @@
         const resumeCookieMaxAge = 30 * 60;
         let lastValue = null;
 
+        function iframePerformanceNow() {
+          try {
+            return Math.round(window.parent.performance.now() * 1000) / 1000;
+          } catch (_) {
+            return null;
+          }
+        }
+
+        const componentScriptEvaluatedAt = iframePerformanceNow();
+
+        function iframeNavigationTiming() {
+          try {
+            const navigation = window.parent.performance.getEntriesByType("navigation")[0];
+            if (!navigation) return {};
+            return {
+              iframe_response_start_ms: Math.round(navigation.responseStart * 1000) / 1000,
+              iframe_response_end_ms: Math.round(navigation.responseEnd * 1000) / 1000,
+              iframe_dom_interactive_ms: Math.round(navigation.domInteractive * 1000) / 1000,
+              iframe_dom_content_loaded_ms:
+                Math.round(navigation.domContentLoadedEventEnd * 1000) / 1000,
+              iframe_load_event_end_ms: Math.round(navigation.loadEventEnd * 1000) / 1000,
+            };
+          } catch (_) {
+            return {};
+          }
+        }
+
+        function startupPhase(args, phase, metadata = {}) {
+          if (!args.traceId) return;
+          try {
+            window.top.postMessage({
+              type: "costerly:startup-phase",
+              traceId: args.traceId,
+              phase,
+              metadata: {
+                run_sequence: Number(args.runSequence || 0),
+                server_run_id: String(args.runId || ""),
+                iframe_performance_now_ms: iframePerformanceNow(),
+                server_elapsed_before_component_ms:
+                  Number(args.serverElapsedBeforeComponentMs || 0),
+                ...metadata,
+              },
+            }, "*");
+          } catch (_) {}
+        }
+
         function storeResumeCookie(value) {
           if (!value || typeof value !== "string") return;
           document.cookie =
@@ -39,21 +85,35 @@
           }
         }
 
-        function reply(requestId) {
+        function reply(args) {
+          const readStartedAt = iframePerformanceNow();
+          const session = readSession();
+          startupPhase(args, "auth_storage_read", {
+            storage_present: Boolean(session),
+            storage_read_ms: Math.max(
+              0,
+              Number(iframePerformanceNow() || 0) - Number(readStartedAt || 0),
+            ),
+          });
           const value = JSON.stringify({
             status: "ready",
-            requestId,
-            session: readSession()
+            requestId: args.requestId || "",
+            session,
           });
           if (value === lastValue) return;
           lastValue = value;
           send("streamlit:setComponentValue", {value});
+          startupPhase(args, "auth_value_sent");
         }
 
         window.addEventListener("message", (event) => {
           const message = event.data || {};
           if (message.type !== "streamlit:render") return;
           const args = message.args || {};
+          startupPhase(args, "auth_component_script", {
+            component_script_evaluated_ms: componentScriptEvaluatedAt,
+          });
+          startupPhase(args, "auth_component_render", iframeNavigationTiming());
           try {
             if (args.action === "store" && args.session) {
               window.sessionStorage.setItem(storageKey, JSON.stringify(args.session));
@@ -66,7 +126,7 @@
             // Storage failure falls back to the normal sign-in screen.
           }
           if (args.action === "read") {
-            reply(args.requestId || "");
+            reply(args);
           }
           send("streamlit:setFrameHeight", {height: 0});
         });

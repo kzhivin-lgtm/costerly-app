@@ -1,5 +1,11 @@
 # TODO
 
+- 3.1.5 Deep iframe startup telemetry: split the embedded Streamlit startup
+  gap into component script, component render, browser storage read, callback,
+  and final app-ready boundaries. Record production Python, Streamlit, and
+  Supabase versions before deciding whether to pin currently floating runtime
+  dependencies. Status: implementation ready for production verification.
+
 ## Working rule
 - A broken core layer must be repaired and validated at its actual integration point. Disabling or bypassing it is not an acceptable primary fix; fallback behavior is only an additional production safety mechanism.
 - Every new two-file benchmark cycle starts two fresh instances on separate unused ports and opens both Chrome tabs automatically so `page-23.pdf` and `Металл (1).pdf` can run in parallel under the same code version. Keep older benchmark servers and result screens available for side-by-side comparison; stop them only on explicit request or when resource/port conflicts require cleanup.
