@@ -13,10 +13,11 @@
   at `9ab5814`. The rail, active-tab bold treatment, plural `Price Lists`,
   Overhead Expenses copy, working Save, and removal of the red React Aria
   indicator are visually confirmed. A small residual vertical offset remains
-  between the Overhead Expenses card and the other tab contents. Do not add a
-  guessed negative margin. Resume by measuring the live active panel, fragment
-  wrapper, element container, and card boundaries, then remove the earliest
-  confirmed source of the remaining gap.
+  between the Overhead Expenses card and the other tab contents. The rejected
+  `b58b1f5` CSS-gap experiment moved the card down and was reverted by
+  `5fd2e26`. The root-level Metrics fragment is now removed: only the hidden
+  Save bridge remains fragment-scoped, while the visible card renders directly
+  like the neighboring tabs. Production visual verification remains required.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the

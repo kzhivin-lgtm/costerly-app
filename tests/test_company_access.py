@@ -615,6 +615,12 @@ def test_company_metrics_bridge_does_not_navigate_parent_page():
     assert "location.href" not in source
 
 
+def test_only_company_metrics_save_bridge_is_fragment_scoped():
+    source = Path("screens/company_profile.py").read_text()
+    assert "@st.fragment\ndef _render_metrics_save" in source
+    assert "@st.fragment\ndef _render_metrics(" not in source
+
+
 def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
     profile = {
         "company_name": "Workshop",

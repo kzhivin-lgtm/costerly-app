@@ -594,7 +594,7 @@ def _consume_company_metrics_snapshot(
 
 
 @st.fragment
-def _render_metrics(access: CompanyAccess) -> None:
+def _render_metrics_save(access: CompanyAccess) -> None:
     save_message = None
     try:
         with st.container(key="company_metrics_bridge_host"):
@@ -607,7 +607,13 @@ def _render_metrics(access: CompanyAccess) -> None:
     except Exception:
         logger.exception("Company overhead expenses save failed")
         st.error("Overhead expenses were not saved. Try again in a moment.")
+        return
 
+    if save_message:
+        st.success(save_message)
+
+
+def _render_metrics(access: CompanyAccess) -> None:
     try:
         settings, monthly = load_company_metrics(access)
     except Exception:
@@ -675,8 +681,7 @@ def _render_metrics(access: CompanyAccess) -> None:
         if editable:
             st.markdown(company_metrics_view.save_action_html(), unsafe_allow_html=True)
             install_company_metrics_input_guard()
-        if save_message:
-            st.success(save_message)
+            _render_metrics_save(access)
 
 
 def _render_users(access: CompanyAccess) -> None:
