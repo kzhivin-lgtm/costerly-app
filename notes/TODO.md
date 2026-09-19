@@ -17,7 +17,12 @@
   `b58b1f5` CSS-gap experiment moved the card down and was reverted by
   `5fd2e26`. The root-level Metrics fragment is now removed: only the hidden
   Save bridge remains fragment-scoped, while the visible card renders directly
-  like the neighboring tabs. Production visual verification remains required.
+  like the neighboring tabs. Production then showed a first-mount-only offset
+  that disappears after leaving and returning to Overhead Expenses. A passive
+  `browser.profile_layout_probe` now records tab, active panel, first child,
+  card, padding, and gap boundaries at two animation frames and after 250 ms,
+  without changing layout or triggering a rerun. Compare first entry with the
+  return entry before the next CSS change.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the

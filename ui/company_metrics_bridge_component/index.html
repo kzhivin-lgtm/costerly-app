@@ -55,6 +55,78 @@
           };
         }
 
+        function visiblePanel() {
+          return Array.from(
+            parentDoc.querySelectorAll(
+              '.st-key-company_profile_tab [role="tabpanel"]'
+            )
+          ).find((panel) => parentWindow.getComputedStyle(panel).display !== "none");
+        }
+
+        function round(value) {
+          return Math.round(Number(value || 0) * 100) / 100;
+        }
+
+        function emitLayoutProbe(sample) {
+          const tabList = parentDoc.querySelector(
+            '.st-key-company_profile_tab [role="tablist"]'
+          );
+          const panel = visiblePanel();
+          const card = parentDoc.querySelector(".st-key-company_metrics_card");
+          if (!tabList || !panel || !card) return;
+
+          const tabRect = tabList.getBoundingClientRect();
+          const panelRect = panel.getBoundingClientRect();
+          const cardRect = card.getBoundingClientRect();
+          const firstChild = panel.firstElementChild;
+          const cardParent = card.parentElement;
+          const panelStyle = parentWindow.getComputedStyle(panel);
+          const firstStyle = firstChild
+            ? parentWindow.getComputedStyle(firstChild)
+            : null;
+          const parentStyle = cardParent
+            ? parentWindow.getComputedStyle(cardParent)
+            : null;
+
+          parentWindow.__costerlyProfileLayoutProbeSequence =
+            Number(parentWindow.__costerlyProfileLayoutProbeSequence || 0) + 1;
+          window.top.postMessage(
+            {
+              type: "costerly:profile-layout-probe",
+              metadata: {
+                sample,
+                sequence: parentWindow.__costerlyProfileLayoutProbeSequence,
+                tab_bottom_px: round(tabRect.bottom),
+                panel_top_px: round(panelRect.top),
+                card_top_px: round(cardRect.top),
+                tab_to_card_px: round(cardRect.top - tabRect.bottom),
+                panel_to_card_px: round(cardRect.top - panelRect.top),
+                panel_padding_top_px: round(parseFloat(panelStyle.paddingTop)),
+                first_child_top_px: firstChild
+                  ? round(firstChild.getBoundingClientRect().top)
+                  : null,
+                first_child_gap_px: firstStyle
+                  ? round(parseFloat(firstStyle.gap))
+                  : null,
+                card_parent_top_px: cardParent
+                  ? round(cardParent.getBoundingClientRect().top)
+                  : null,
+                card_parent_gap_px: parentStyle
+                  ? round(parseFloat(parentStyle.gap))
+                  : null,
+              },
+            },
+            "*"
+          );
+        }
+
+        function scheduleLayoutProbes() {
+          parentWindow.requestAnimationFrame(() => {
+            parentWindow.requestAnimationFrame(() => emitLayoutProbe("raf2"));
+          });
+          parentWindow.setTimeout(() => emitLayoutProbe("settled_250ms"), 250);
+        }
+
         function install() {
           if (parentWindow[cleanupKey]) parentWindow[cleanupKey]();
 
@@ -82,6 +154,7 @@
           if (message.type !== "streamlit:render") return;
           install();
           send("streamlit:setFrameHeight", {height: 0});
+          scheduleLayoutProbes();
         });
 
         send("streamlit:componentReady", {apiVersion: 1});

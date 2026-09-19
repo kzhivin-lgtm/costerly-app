@@ -192,6 +192,19 @@
           if (
             event.origin === "https://costerly-app.streamlit.app" &&
             event.data &&
+            event.data.type === "costerly:profile-layout-probe" &&
+            event.data.metadata
+          ) {
+            mark("browser.profile_layout_probe", {
+              screen: "account",
+              metadata: event.data.metadata,
+            });
+            if (ready) persistTimeline();
+            return;
+          }
+          if (
+            event.origin === "https://costerly-app.streamlit.app" &&
+            event.data &&
             event.data.type === "costerly:transition-click" &&
             typeof event.data.transition === "string"
           ) {
