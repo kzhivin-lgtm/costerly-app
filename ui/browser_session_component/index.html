@@ -58,8 +58,6 @@
             if (args.action === "store" && args.session) {
               window.sessionStorage.setItem(storageKey, JSON.stringify(args.session));
               storeResumeCookie(args.resumeBlob);
-            } else if (args.action === "store_resume") {
-              storeResumeCookie(args.resumeBlob);
             } else if (args.action === "clear") {
               window.sessionStorage.removeItem(storageKey);
               clearResumeCookie();

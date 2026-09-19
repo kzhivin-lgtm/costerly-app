@@ -6,6 +6,8 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
+from state.session_resume import COOKIE_NAME, COOKIE_TTL_SECONDS
+
 
 _SESSION_COMPONENT = components.declare_component(
     "costerly_browser_session",
@@ -14,15 +16,24 @@ _SESSION_COMPONENT = components.declare_component(
 
 
 def write_fast_resume_cookie(resume_blob: str) -> None:
-    """Persist an opaque resume blob through the existing session component."""
+    """Persist an opaque resume blob without creating a component callback."""
+    cookie_name = json.dumps(COOKIE_NAME)
+    cookie_value = json.dumps(resume_blob)
     with st.sidebar:
-        _SESSION_COMPONENT(
-            action="store_resume",
-            requestId="",
-            session=None,
-            resumeBlob=resume_blob,
-            key="costerly_fast_resume_writer",
-            default=None,
+        components.html(
+            f"""
+            <script>
+            (() => {{
+              const name = {cookie_name};
+              const value = {cookie_value};
+              document.cookie =
+                `${{name}}=${{encodeURIComponent(value)}}; ` +
+                `Max-Age={COOKIE_TTL_SECONDS}; Path=/; Secure; SameSite=None; Partitioned`;
+            }})();
+            </script>
+            """,
+            height=0,
+            width=0,
         )
 
 

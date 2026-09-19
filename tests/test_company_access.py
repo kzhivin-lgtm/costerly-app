@@ -162,7 +162,6 @@ def test_browser_session_uses_session_storage_and_hidden_sidebar_transport():
     assert "window.sessionStorage" in component_html
     assert "window.localStorage" not in component_html
     assert 'if (args.action === "read")' in component_html
-    assert 'args.action === "store_resume"' in component_html
     assert "__Host-costerly-resume-v1" in component_html
     assert "SameSite=None; Partitioned" in component_html
     assert "Max-Age=0" in component_html
@@ -228,42 +227,6 @@ def test_browser_session_component_executes_inside_sidebar(monkeypatch):
         "requestId": "read-1",
         "session": None,
     }
-
-
-def test_fast_resume_writer_reuses_session_component(monkeypatch):
-    from ui import browser_session
-
-    class Sidebar:
-        active = False
-
-        def __enter__(self):
-            self.active = True
-
-        def __exit__(self, *_args):
-            self.active = False
-
-    sidebar = Sidebar()
-    calls = []
-
-    def component(**kwargs):
-        assert sidebar.active is True
-        calls.append(kwargs)
-
-    monkeypatch.setattr(browser_session.st, "sidebar", sidebar)
-    monkeypatch.setattr(browser_session, "_SESSION_COMPONENT", component)
-
-    browser_session.write_fast_resume_cookie("opaque-encrypted-blob")
-
-    assert calls == [
-        {
-            "action": "store_resume",
-            "requestId": "",
-            "session": None,
-            "resumeBlob": "opaque-encrypted-blob",
-            "key": "costerly_fast_resume_writer",
-            "default": None,
-        }
-    ]
 
 
 def test_browser_policy_migration_removes_anonymous_cost_access():
