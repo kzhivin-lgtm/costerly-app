@@ -736,12 +736,12 @@ def test_labor_form_reset_rotates_widget_keys_and_clears_edit_mode():
     company_profile.st.session_state.update({
         "_labor_form_reset_pending": True,
         "_labor_form_version": 4,
-        "labor_edit_worker": "employee-1",
+        "_labor_edit_employee_id": "employee-1",
         "labor_form_4_new_worker_name": "Guy",
     })
     company_profile._apply_labor_form_reset()
     assert company_profile.st.session_state["_labor_form_version"] == 5
-    assert company_profile.st.session_state["labor_edit_worker"] == ""
+    assert company_profile.st.session_state["_labor_edit_employee_id"] == ""
     assert "labor_form_4_new_worker_name" not in company_profile.st.session_state
 
 
@@ -754,9 +754,9 @@ def test_labor_list_renders_before_editor_and_uses_profile_fonts():
         'with st.container(key="company_labor_card"'
     )
     css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
-    assert ".company-profile-users th" in css
+    assert ".company-labor-cell--heading" in css
     assert "font-family: var(--font-mono) !important" in css
-    assert ".company-profile-users td strong" in css
+    assert ".company-labor-cell" in css
     assert "font-family: var(--font-sans) !important" in css
 
 
@@ -775,7 +775,8 @@ def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = "owner"
     app.session_state["company_profile_tab"] = "Labor Costs"
-    app.session_state["labor_edit_worker"] = "employee-1"
+    app.run()
+    next(button for button in app.button if button.label == "✎  Guy").click()
     app.run()
 
     assert not app.exception
@@ -783,8 +784,9 @@ def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):
     assert fields["Worker name"].value == "Guy"
     assert fields["Hourly Rate"].value == "50.5"
     assert fields["Average Hours per Month"].value == "160"
-    assert fields["Avg Monthly Bruto"].value == "₪8\u202f080"
-    assert fields["Avg Monthly Bruto"].disabled is True
+    assert fields["Total Monthly Salary Brutto"].value == "₪8\u202f080"
+    assert fields["Total Monthly Salary Brutto"].disabled is True
+    assert any(button.label == "✎  Guy" for button in app.button)
     assert any(button.label == "Save Worker" for button in app.button)
     assert any(button.label == "Cancel Edit" for button in app.button)
 
