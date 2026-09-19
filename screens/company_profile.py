@@ -754,7 +754,11 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         ]
     )
     with expenses_tab:
-        _render_metrics(access)
+        if trace is None:
+            _render_metrics(access)
+        else:
+            with trace.span("server.expenses_render"):
+                _render_metrics(access)
 
     with labor_tab:
         st.info("Company labor costs will be configured here.")
@@ -772,7 +776,11 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
             _render_member_company_details(profile)
 
     with users_tab:
-        _render_users(access)
+        if trace is None:
+            _render_users(access)
+        else:
+            with trace.span("server.users_render"):
+                _render_users(access)
 
     with prices_tab:
         st.info("Company price lists and the shared fallback library will be configured here.")

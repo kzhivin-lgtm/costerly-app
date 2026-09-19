@@ -100,6 +100,8 @@ Server:
 - `server.action_completed`, for safe Sign in and Sign out network durations
 - `server.company_settings_load`
 - `server.account_access_recheck`, for the Profile-only second access validation
+- `server.expenses_render` and `server.users_render`, because Streamlit tabs
+  execute eagerly even when their content is not selected
 
 ## Production prerequisites
 
