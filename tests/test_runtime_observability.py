@@ -166,6 +166,9 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'event.data.type === "costerly:transition-visible"' in wrapper
     assert 'mark("browser.transition_visible"' in wrapper
     assert 'mark("browser.transition_ready"' in wrapper
+    assert 'metadata.completed_action === "auth_sign_in"' in wrapper
+    assert 'metadata.completed_action_status === "error"' in wrapper
+    assert 'status: failedSignIn ? "error" : "ok"' in wrapper
     assert 'event.data.type === "costerly:startup-phase"' in wrapper
     assert "startupPhases.has(event.data.phase)" in wrapper
     assert "...(event.data.metrics || {})" in wrapper

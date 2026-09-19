@@ -258,13 +258,20 @@
               server_run_id: runId,
               ...(event.data.metrics || {}),
             };
+            const failedSignIn =
+              screen === "login" &&
+              metadata.completed_action === "auth_sign_in" &&
+              metadata.completed_action_status === "error";
             const transitionIndex = pendingTransitions.findIndex((item) =>
-              (expectedScreens[item.name] || []).includes(screen)
+              failedSignIn
+                ? item.name === "sign_in"
+                : (expectedScreens[item.name] || []).includes(screen)
             );
             if (transitionIndex >= 0) {
               const pendingTransition = pendingTransitions.splice(transitionIndex, 1)[0];
               mark("browser.transition_ready", {
                 screen,
+                status: failedSignIn ? "error" : "ok",
                 duration_ms: performance.now() - pendingTransition.startedAt,
                 metadata: {
                   transition: pendingTransition.name,

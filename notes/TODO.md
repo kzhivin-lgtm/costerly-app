@@ -4,8 +4,11 @@
   native Streamlit callbacks before the next script render. Remove the
   intermediate Login/Profile render that can expose a broken screen or two
   logos. Preserve the current cookie, sessionStorage fallback, telemetry,
-  native click behavior, and accepted layout. Status: implementation in
-  progress.
+  native click behavior, and accepted layout. Status: functional production
+  acceptance at `8182c51`. Clean Sign out measured 0.75-1.22 seconds and clean
+  Sign in measured 1.29 seconds, with no broken screen observed. A telemetry
+  follow-up closes failed Sign in transitions so later successful timings do
+  not inherit stale correlation IDs.
 
 - 3.1.8 Profile latency optimization: preserve the accepted six-tab geometry
   and working Save Expenses path, but render only the selected tab. Reuse the
