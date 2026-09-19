@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="v3.1.10-profile-copy" />
+    <meta name="costerly-wrapper-version" content="v3.1.11-profile-upload-transition" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -37,6 +37,12 @@
         opacity: 1;
       }
 
+      iframe.is-transitioning {
+        opacity: 0;
+        pointer-events: none;
+        transition: none;
+      }
+
       .app-loading-mask {
         position: fixed;
         inset: 0;
@@ -49,6 +55,11 @@
 
       .app-loading-mask.is-hidden {
         opacity: 0;
+      }
+
+      .app-loading-mask.is-transitioning {
+        opacity: 1;
+        transition: none;
       }
 
       .embed-footer-mask {
@@ -94,6 +105,7 @@
           appUrl.searchParams.set("startup_probe", "anonymous");
         }
         let fallbackTimer = null;
+        let internalTransitionTimer = null;
         let ready = false;
         const readyRunIds = new Set();
         const pendingTransitions = [];
@@ -176,9 +188,42 @@
           if (frame) frame.classList.add("is-ready");
           if (mask) {
             mask.classList.add("is-hidden");
-            window.setTimeout(() => mask.remove(), 220);
           }
           persistTimeline();
+        }
+
+        function concealInternalTransition(transition) {
+          if (transition !== "profile_to_upload") return;
+          window.clearTimeout(internalTransitionTimer);
+          if (frame) {
+            frame.classList.add("is-transitioning");
+            frame.classList.remove("is-ready");
+          }
+          if (mask) {
+            mask.classList.add("is-transitioning");
+            mask.classList.remove("is-hidden");
+          }
+          internalTransitionTimer = window.setTimeout(
+            () => revealInternalTransition("timeout"),
+            5000
+          );
+        }
+
+        function revealInternalTransition(source) {
+          window.clearTimeout(internalTransitionTimer);
+          internalTransitionTimer = null;
+          if (frame) {
+            frame.classList.remove("is-transitioning");
+            frame.classList.add("is-ready");
+          }
+          if (mask) {
+            mask.classList.remove("is-transitioning");
+            mask.classList.add("is-hidden");
+          }
+          if (source === "timeout") {
+            mark("browser.internal_transition_timeout", {status: "timeout"});
+            persistTimeline();
+          }
         }
 
         mark("browser.wrapper_start", {metadata: navigationMetadata()});
@@ -202,6 +247,7 @@
               visible: false,
             };
             pendingTransitions.push(pendingTransition);
+            concealInternalTransition(pendingTransition.name);
             mark("browser.transition_click", {
               metadata: {
                 transition: pendingTransition.name,
@@ -279,6 +325,9 @@
                   ...metadata,
                 },
               });
+              if (pendingTransition.name === "profile_to_upload") {
+                revealInternalTransition("app_ready");
+              }
             } else {
               mark("browser.app_ready_received", {screen, metadata});
             }

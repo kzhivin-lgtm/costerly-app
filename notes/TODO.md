@@ -10,7 +10,13 @@
 - 3.1.11 Profile to Upload transition integrity: identify and remove the
   intermediate stale or partial screen visible after Continue to upload.
   Preserve the accepted Profile and Upload layouts, native button behavior,
-  transition telemetry, and the v3.1.10 navigation callback. Status: active.
+  transition telemetry, and the v3.1.10 navigation callback. Production logs
+  confirm a 0.712-second click-to-ready transition with only 0.291 seconds of
+  server work and a 1.3ms Upload render; the visible defect is Streamlit's
+  incremental client DOM patch while the old Profile marker is still present.
+  The current revision reuses the Cloudflare startup mask only for this
+  transition, reveals the iframe on the correlated Upload `app-ready`, and has
+  a five-second fail-open timeout. Status: ready for production verification.
 
 - 3.1.10 Company Profile navigation and Overhead Expenses copy: restore the
   accepted v3.0.57 full-width tab rail on the current stateful, lazy-rendered
