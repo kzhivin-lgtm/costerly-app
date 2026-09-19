@@ -14,9 +14,9 @@
   Overhead Expenses copy, working Save, and removal of the red React Aria
   indicator are visually confirmed. A small residual vertical offset remains
   between the Overhead Expenses card and the other tab contents. Do not add a
-  guessed negative margin. Resume by measuring the live active panel, fragment
-  wrapper, element container, and card boundaries, then remove the earliest
-  confirmed source of the remaining gap.
+  guessed negative margin. Current revision removes the top-level vertical gap
+  from the Overhead Expenses tab panel while preserving the fragment and its
+  internal card spacing. Production visual verification remains required.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the
