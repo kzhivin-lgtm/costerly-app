@@ -50,7 +50,7 @@ function normalizeEvent(raw) {
   return {
     occurred_at: new Date(raw.occurred_at || Date.now()).toISOString(),
     schema_version: "runtime_v1",
-    build_version: String(raw.build_version || "3.1.8").slice(0, 40),
+    build_version: String(raw.build_version || "3.1.9").slice(0, 40),
     source: "browser",
     trace_id: raw.trace_id,
     session_id: validUuid(raw.session_id) ? raw.session_id : null,

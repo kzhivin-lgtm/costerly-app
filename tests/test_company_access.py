@@ -231,6 +231,47 @@ def test_browser_session_component_executes_inside_sidebar(monkeypatch):
     }
 
 
+def _render_login_test():
+    from state import company_auth
+
+    company_auth.render_login_or_signup(None)
+
+
+def test_sign_in_submit_uses_native_pre_render_callback(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        company_auth,
+        "sign_in",
+        lambda email, password: calls.append((email, password)),
+    )
+
+    app = AppTest.from_function(_render_login_test).run()
+    app.text_input(key="login_email").set_value("owner@example.com")
+    app.text_input(key="login_password").set_value("Password123")
+    next(button for button in app.button if button.label == "Sign in").click().run()
+
+    assert calls == [("owner@example.com", "Password123")]
+    assert not app.exception
+
+
+def test_sign_in_callback_returns_failure_to_login_form(monkeypatch):
+    monkeypatch.setattr(
+        company_auth,
+        "sign_in",
+        lambda *_args: (_ for _ in ()).throw(RuntimeError("unavailable")),
+    )
+
+    app = AppTest.from_function(_render_login_test).run()
+    app.text_input(key="login_email").set_value("owner@example.com")
+    app.text_input(key="login_password").set_value("wrong")
+    next(button for button in app.button if button.label == "Sign in").click().run()
+
+    assert [error.value for error in app.error] == [
+        "Could not sign in. Check your email and password."
+    ]
+    assert not app.exception
+
+
 def test_browser_policy_migration_removes_anonymous_cost_access():
     sql = (Path(__file__).parents[1] / "db/sql/2026_09_15_company_access_foundation.sql").read_text()
     assert "drop policy if exists rfq_estimate_pricing_overrides_anon_update" in sql

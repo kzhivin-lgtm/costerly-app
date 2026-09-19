@@ -358,6 +358,19 @@ def sign_out() -> None:
     }
 
 
+def _submit_login() -> None:
+    """Authenticate before Streamlit renders the post-submit script run."""
+    email = str(st.session_state.get("login_email") or "")
+    password = str(st.session_state.get("login_password") or "")
+    st.session_state.pop("company_login_error", None)
+    try:
+        sign_in(email, password)
+    except Exception:
+        st.session_state.company_login_error = (
+            "Could not sign in. Check your email and password."
+        )
+
+
 def _verified_token_identity(access_token: str) -> tuple[str, str]:
     """Read identity claims only after Supabase has accepted the token."""
     parts = access_token.split(".")
@@ -659,20 +672,17 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
     _render_auth_heading("Sign in")
     login_error = st.session_state.get("company_login_error")
     with st.form("company_login"):
-        email = st.text_input("Email", key="login_email", placeholder="you@company.com")
-        password = st.text_input("Password", type="password", key="login_password")
+        st.text_input("Email", key="login_email", placeholder="you@company.com")
+        st.text_input("Password", type="password", key="login_password")
         if login_error:
             st.error(login_error)
-        submit = st.form_submit_button("Sign in", type="primary", use_container_width=True)
+        st.form_submit_button(
+            "Sign in",
+            type="primary",
+            use_container_width=True,
+            on_click=_submit_login,
+        )
     install_auth_form_interactions()
-    if submit:
-        st.session_state.pop("company_login_error", None)
-        try:
-            sign_in(email, password)
-            st.rerun()
-        except Exception:
-            st.session_state.company_login_error = "Could not sign in. Check your email and password."
-            st.rerun()
 
 
 def render_company_setup(
@@ -717,20 +727,15 @@ def render_company_setup(
                 st.error(str(exc))
             except Exception:
                 st.error("This company link is no longer valid.")
-    if st.button("Sign out", key="setup_sign_out"):
-        sign_out()
-        st.rerun()
+    st.button("Sign out", key="setup_sign_out", on_click=sign_out)
 
 
 def render_account_control(access: CompanyAccess) -> None:
     if st.session_state.get("screen") == "account":
         return
-    action = render_account_header_controls()
+    action = render_account_header_controls(on_sign_out=sign_out)
     if action == "profile":
         st.session_state.screen = "account"
-        st.rerun()
-    if action == "sign_out":
-        sign_out()
         st.rerun()
 
 

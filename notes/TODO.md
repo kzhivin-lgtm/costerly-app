@@ -1,10 +1,20 @@
 # TODO
 
+- 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
+  native Streamlit callbacks before the next script render. Remove the
+  intermediate Login/Profile render that can expose a broken screen or two
+  logos. Preserve the current cookie, sessionStorage fallback, telemetry,
+  native click behavior, and accepted layout. Status: implementation in
+  progress.
+
 - 3.1.8 Profile latency optimization: preserve the accepted six-tab geometry
   and working Save Expenses path, but render only the selected tab. Reuse the
   company access already verified in the current Python run and load the
-  company profile row only for Contacts or Company Details. Status:
-  implementation in verification.
+  company profile row only for Contacts or Company Details. Status: accepted
+  production checkpoint at `4c6d628`. Repeated Upload to Profile improved from
+  3.36 seconds to 1.06-1.12 seconds, with server time reduced from 2.36 seconds
+  to 0.29-0.30 seconds. The first cold transition improved from 4.23 seconds
+  to 2.66 seconds.
 
 - 3.1.7 Internal transition telemetry: measure Sign in, Upload to Profile,
   Profile to Upload, and Sign out from the browser click to the next rendered

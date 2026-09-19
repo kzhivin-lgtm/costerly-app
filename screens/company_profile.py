@@ -726,11 +726,14 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                     st.session_state.screen = "upload"
                     st.rerun()
             with sign_out_action:
-                if st.button("Sign out", key="company_sign_out", use_container_width=True):
-                    from state.company_auth import sign_out
+                from state.company_auth import sign_out
 
-                    sign_out()
-                    st.rerun()
+                st.button(
+                    "Sign out",
+                    key="company_sign_out",
+                    use_container_width=True,
+                    on_click=sign_out,
+                )
 
     expenses_tab, labor_tab, contacts_tab, company_tab, users_tab, prices_tab = st.tabs(
         [

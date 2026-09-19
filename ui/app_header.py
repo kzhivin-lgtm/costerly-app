@@ -23,14 +23,18 @@ def render_app_header() -> None:
     )
 
 
-def render_account_header_controls() -> str | None:
-    """Render top-level authenticated actions and return the selected action."""
+def render_account_header_controls(*, on_sign_out) -> str | None:
+    """Render authenticated actions and return a non-callback navigation action."""
     with st.container(key="costerly_header_controls"):
         left, right = st.columns(2)
         with left:
             if st.button("Profile", key="open_company_account", use_container_width=True):
                 return "profile"
         with right:
-            if st.button("Sign out", key="company_sign_out", use_container_width=True):
-                return "sign_out"
+            st.button(
+                "Sign out",
+                key="company_sign_out",
+                use_container_width=True,
+                on_click=on_sign_out,
+            )
     return None
