@@ -69,6 +69,11 @@ All Profile text inputs reuse the Sign in input geometry and focus contract:
 neutral default border, purple focus ring, no red focus-only state, and no
 framework keyboard instruction. Auth and Upload styling remain separate
 protected surfaces.
+Profile selectboxes support both the older BaseWeb Select DOM and the Streamlit
+1.64 React Aria ComboBox DOM. React Aria control groups own the 52px outer
+geometry and purple focus ring; their 50px input and button children must not
+overflow the group. Disabled select placeholders keep regular font weight.
+Bold disabled styling is limited to calculated text inputs.
 
 SQL migration safety rule
 Before a SQL migration is handed to the user, inspect the complete final query

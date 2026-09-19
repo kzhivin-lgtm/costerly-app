@@ -5,7 +5,7 @@ Date: 2026-09-19
 
 ## v3.2.1 Labor Costs continuation
 
-- Current accepted Git checkpoint: `1df98c5`.
+- Current accepted Git checkpoint: `dfcf5ef`.
 - Labor Costs is an owner-only employee cost register backed by
   `company_employees`, with one informal Worker name, controlled Department and
   Position values, Monthly Salary or Hourly Rate, and derived Monthly Bruto.
@@ -15,7 +15,10 @@ Date: 2026-09-19
   center their text vertically, and use the Costerly purple focus border and
   ring. The older BaseWeb selectors remain for runtime compatibility.
 - The user accepted the production pencil alignment and all selector states.
-- Automated suite: 185 tests passed.
+- The Add Worker card uses the same compact section spacing as the summary and
+  worker table. Disabled Position placeholders remain regular weight, while
+  calculated disabled text values retain their intended bold emphasis.
+- Automated suite: 186 tests passed.
 
 ## v3.1.10 production continuation
 
@@ -131,12 +134,14 @@ UI definition for the Profile screen.
 - User verified in production at `1df98c5` that Labor Costs edit pencils align
   before worker names, selector text is vertically centered, and selector focus
   uses the purple Costerly border and ring.
+- User verified in production at `dfcf5ef` that the final Add Worker spacing is
+  consistent and the disabled `Select position` placeholder is not bold.
 - Live DOM verification measured 40px group bars, 51px cost rows, and 34px
   Monthly Cost inputs. A live edit from 2,000 at 18% produced VAT 360 and Total
   2,360.
 - Direct Supabase verification confirmed that a partial `update` preserves the
   required hidden `overhead_settings` values for company 293.
-- Automated suite: 185 tests passed before the v3.2.1 checkpoint documentation.
+- Automated suite: 186 tests passed before the final v3.2.1 checkpoint documentation.
 - `git diff --check`: clean before checkpoint documentation.
 
 ## Explicit next phase
