@@ -20,7 +20,11 @@
   zero-height `scroll_parent_to_top()` component occupies one 16px root layout
   gap on the first Profile render and disappears on the tab rerun. The current
   revision moves that utility component into the hidden Sidebar while preserving
-  its scroll-reset behavior. Production visual verification remains required.
+  its scroll-reset behavior. The remaining Expenses-only offset is addressed by
+  limiting `@st.fragment` to the save bridge instead of wrapping the complete
+  tab. Profile to Upload navigation now changes screen state in a pre-render
+  callback, preventing a partial Profile delta before the Upload rerun.
+  Production visual verification remains required.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the

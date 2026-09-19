@@ -623,6 +623,14 @@ def test_only_company_metrics_save_bridge_is_fragment_scoped():
     assert "@st.fragment\ndef _render_metrics(" not in source
 
 
+def test_profile_to_upload_navigation_runs_before_render():
+    source = Path("screens/company_profile.py").read_text()
+    button_source = source.split('"Continue to upload"', 1)[1].split(")", 1)[0]
+
+    assert "on_click=_open_upload_screen" in button_source
+    assert "st.rerun" not in button_source
+
+
 def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
     profile = {
         "company_name": "Workshop",

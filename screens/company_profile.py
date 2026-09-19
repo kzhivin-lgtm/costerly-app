@@ -709,6 +709,11 @@ def _render_users(access: CompanyAccess) -> None:
             st.error("The team invitation link is unavailable right now.")
 
 
+def _open_upload_screen() -> None:
+    """Set navigation state before Streamlit starts the next script render."""
+    st.session_state.screen = "upload"
+
+
 def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
     apply_company_profile_css()
     apply_object_detail_css()
@@ -724,13 +729,12 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         with st.container(key="company_profile_actions"):
             upload_action, sign_out_action = st.columns([1.4, 0.8])
             with upload_action:
-                if st.button(
+                st.button(
                     "Continue to upload",
                     key="profile_to_upload",
                     use_container_width=True,
-                ):
-                    st.session_state.screen = "upload"
-                    st.rerun()
+                    on_click=_open_upload_screen,
+                )
             with sign_out_action:
                 from state.company_auth import sign_out
 
