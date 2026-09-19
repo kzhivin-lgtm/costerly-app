@@ -84,6 +84,7 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "navigator.sendBeacon" in wrapper
     assert 'event.data.traceId === traceId' in wrapper
     assert 'event.origin === "https://costerly-app.streamlit.app"' in wrapper
+    assert "visibility: hidden" not in wrapper
     assert "SUPABASE_SERVICE_ROLE_KEY" in function
     assert 'request.headers.get("origin")' in function
     assert 'request.method !== "POST"' in function
