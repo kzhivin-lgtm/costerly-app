@@ -569,9 +569,36 @@ def test_other_spendings_flows_from_company_metrics_to_object_detail_pricing():
         "Other spendings",
     )
     save_html = company_metrics_view.save_action_html()
-    assert "SAVE EXPENSES" in save_html
+    assert "SAVE OVERHEAD EXPENSES" in save_html
     assert "<button" in save_html
     assert "href=" not in save_html
+
+
+def test_company_metrics_uses_overhead_expenses_copy_everywhere(monkeypatch):
+    table = company_metrics_view.table_html(
+        (("Utilities / Safety", (("electricity_cost", "Electricity"),)),),
+        {"electricity_cost": 200},
+        18,
+        editable=True,
+    )
+    assert "Overhead Expense" in table
+    assert ">Expense<" not in table
+    access = company_auth.CompanyAccess(
+        "user-1", "owner@example.com", "company-a", "owner", "token"
+    )
+    monkeypatch.setattr(company_profile, "save_company_metrics", lambda *_args: None)
+    company_profile.st.session_state.clear()
+    snapshot = json.dumps({"nonce": "copy-test", "settings": {}, "monthly": {}})
+    assert (
+        company_profile._consume_company_metrics_snapshot(access, snapshot)
+        == "Overhead expenses saved"
+    )
+
+
+def test_company_profile_tabs_support_stateful_streamlit_dom():
+    css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
+    assert '.st-key-company_profile_tab [role="tablist"]' in css
+    assert '.st-key-company_profile_tab [role="tab"]' in css
 
 
 def test_company_metrics_bridge_does_not_navigate_parent_page():

@@ -1,5 +1,12 @@
 # TODO
 
+- 3.1.10 Company Profile navigation and Overhead Expenses copy: restore the
+  accepted v3.0.57 full-width tab rail on the current stateful, lazy-rendered
+  tabs without reverting the v3.1.8 performance improvement. Use Overhead
+  Expenses consistently in the table heading, save action, success message,
+  and save errors. Preserve the working expense persistence path and defer
+  Sign out sizing, Save Contacts, and Save Company Details.
+
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the
   intermediate Login/Profile render that can expose a broken screen or two
