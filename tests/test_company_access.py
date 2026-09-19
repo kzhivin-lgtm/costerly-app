@@ -402,16 +402,26 @@ def _render_profile_test():
 
 @pytest.mark.parametrize("role", ["owner", "member"])
 def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role):
-    monkeypatch.setattr(company_profile, "load_company_profile", lambda _access: {
-        "company_name": "Workshop", "public_email": "", "public_phone": "",
-    })
-    monkeypatch.setattr(company_profile, "load_company_members", lambda _access: [
-        {"Email": "owner@example.com", "Role": "Owner"},
-    ])
+    calls = {"profile": 0, "members": 0, "metrics": 0}
+
+    def load_profile(_access):
+        calls["profile"] += 1
+        return {"company_name": "Workshop", "public_email": "", "public_phone": ""}
+
+    def load_members(_access):
+        calls["members"] += 1
+        return [{"Email": "owner@example.com", "Role": "Owner"}]
+
+    def load_metrics(_access):
+        calls["metrics"] += 1
+        return {"vat_percent": 18}, {}
+
+    monkeypatch.setattr(company_profile, "load_company_profile", load_profile)
+    monkeypatch.setattr(company_profile, "load_company_members", load_members)
     monkeypatch.setattr(
         company_profile,
         "load_company_metrics",
-        lambda _access: ({"vat_percent": 18}, {}),
+        load_metrics,
     )
     monkeypatch.setattr(company_auth, "company_join_url", lambda _access: "https://example.com/join/token")
     app = AppTest.from_function(_render_profile_test)
@@ -423,16 +433,11 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     ]
     assert any(button.label == "Continue to upload" for button in app.button)
     assert any(button.label == "Sign out" for button in app.button)
-    save_buttons = [
-        button.label
+    assert not any(
+        button.label in {"Save Contacts", "Save Company Details"}
         for button in app.button
-        if button.label in {
-            "Save Contacts", "Save Company Details"
-        }
-    ]
-    assert save_buttons == ([
-        "Save Contacts", "Save Company Details"
-    ] if role == "owner" else [])
+    )
+    assert calls == {"profile": 0, "members": 0, "metrics": 1}
     metrics_markup = "".join(item.value for item in app.markdown)
     assert ('data-company-metrics-save="true"' in metrics_markup) is (role == "owner")
     assert "Project Reserves" not in metrics_markup
@@ -443,26 +448,41 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
             "Warranty reserve",
             "Management buffer",
         ]
-        company_start = labels.index("Company name")
-        assert labels[company_start:company_start + 4] == [
+    else:
+        assert all(field.disabled for field in app.text_input)
+
+    app.session_state["company_profile_tab"] = "Contacts"
+    app.run()
+    assert calls == {"profile": 1, "members": 0, "metrics": 1}
+    if role == "owner":
+        labels = [field.label for field in app.text_input]
+        assert any(button.label == "Save Contacts" for button in app.button)
+        assert "House Number" in labels
+        assert "Number" not in labels
+        assert labels.index("Facebook") < labels.index("LinkedIn") < labels.index("Instagram")
+
+    app.session_state["company_profile_tab"] = "Company Details"
+    app.run()
+    assert calls == {"profile": 2, "members": 0, "metrics": 1}
+    if role == "owner":
+        labels = [field.label for field in app.text_input]
+        assert any(button.label == "Save Company Details" for button in app.button)
+        assert labels[:4] == [
             "Company name",
             "Company registration number",
             "Company legal name (Hebrew)",
             "Company legal name (English)",
         ]
-    else:
-        assert all(field.disabled for field in app.text_input)
-    assert "VAT file number" not in [field.label for field in app.text_input]
-    assert "Country" not in [field.label for field in app.text_input]
-    if role == "owner":
-        labels = [field.label for field in app.text_input]
-        assert "House Number" in labels
-        assert "Number" not in labels
         assert labels.count("Company legal name (Hebrew)") == 1
         assert labels.count("Company legal name (English)") == 1
         assert "BIC" in labels
         assert "SWIFT / BIC" not in labels
-        assert labels.index("Facebook") < labels.index("LinkedIn") < labels.index("Instagram")
+    assert "VAT file number" not in [field.label for field in app.text_input]
+    assert "Country" not in [field.label for field in app.text_input]
+
+    app.session_state["company_profile_tab"] = "Users"
+    app.run()
+    assert calls == {"profile": 2, "members": 1, "metrics": 1}
     assert not app.subheader
     assert len(app.code) == (1 if role == "owner" else 0)
 
@@ -550,10 +570,13 @@ def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
 
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Company Details"
     app.run()
     next(button for button in app.button if button.label == "Save Company Details").click()
     app.run()
 
+    assert app.session_state["company_profile_tab"] == "Company Details"
+    assert any(button.label == "Save Company Details" for button in app.button)
     assert writes[-1]["company_name"] == "Workshop"
     assert writes[-1]["legal_name_hebrew"] == "חברה"
     assert writes[-1]["legal_name"] == "Workshop Ltd"

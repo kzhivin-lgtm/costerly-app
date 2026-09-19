@@ -1,11 +1,17 @@
 # TODO
 
+- 3.1.8 Profile latency optimization: preserve the accepted six-tab geometry
+  and working Save Expenses path, but render only the selected tab. Reuse the
+  company access already verified in the current Python run and load the
+  company profile row only for Contacts or Company Details. Status:
+  implementation in verification.
+
 - 3.1.7 Internal transition telemetry: measure Sign in, Upload to Profile,
   Profile to Upload, and Sign out from the browser click to the next rendered
   screen. Correlate each result with auth network time, company access lookup,
   Profile load, screen render, and Python reruns. The browser observer is
   passive and bubble-phase only. It must never cancel, delay, disable, or
-  replace a native Streamlit click. Status: implementation in verification.
+  replace a native Streamlit click. Status: production measurements complete.
 
 - 3.1.6 Streamlit runtime regression test: production was observed on unpinned
   Streamlit 1.64.0 while the verified local environment uses 1.58.0. Pin 1.58.0,

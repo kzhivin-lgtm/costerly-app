@@ -66,7 +66,7 @@ def _signal_ready(trace, screen: str) -> None:
     trace.event("server.run_complete")
 
 
-def _render_screen(screen: str, company_id: str, *, trace=None) -> None:
+def _render_screen(screen: str, company_id: str, *, access=None, trace=None) -> None:
     if screen == "upload":
         from screens.upload import render_upload_screen
 
@@ -88,11 +88,6 @@ def _render_screen(screen: str, company_id: str, *, trace=None) -> None:
 
         render_object_detail_screen(company_id)
     elif screen == "account":
-        if trace is None:
-            access = current_company_access()
-        else:
-            with trace.span("server.account_access_recheck"):
-                access = current_company_access()
         if access is None or access.company_id != company_id:
             raise PermissionError("Company access changed. Please sign in again.")
         render_company_account(access, trace=trace)
@@ -116,7 +111,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version=str(get_optional_secret("COSTERLY_BUILD_VERSION", "3.1.7")),
+        build_version=str(get_optional_secret("COSTERLY_BUILD_VERSION", "3.1.8")),
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,
@@ -133,6 +128,7 @@ def main() -> None:
         apply_base_css()
 
     auth_enabled = company_auth_enabled()
+    access = None
     if auth_enabled:
         startup_probe = str(st.query_params.get("startup_probe") or "")
         if startup_probe == "anonymous":
@@ -307,7 +303,7 @@ def main() -> None:
 
     trace.set_screen(screen)
     with trace.span("server.screen_render", route=screen):
-        _render_screen(screen, company_id, trace=trace)
+        _render_screen(screen, company_id, access=access, trace=trace)
 
     _signal_ready(trace, screen)
 

@@ -127,11 +127,10 @@ def _brand_mark() -> str:
 
 
 def load_company_profile(access: CompanyAccess) -> dict:
-    fresh = _current_access(access)
     rows = (
         get_supabase_client().table("companies")
         .select(PROFILE_COLUMNS)
-        .eq("company_id", fresh.company_id)
+        .eq("company_id", access.company_id)
         .limit(1)
         .execute()
     ).data or []
@@ -733,16 +732,6 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                     sign_out()
                     st.rerun()
 
-    try:
-        if trace is None:
-            profile = load_company_profile(access)
-        else:
-            with trace.span("server.company_settings_load"):
-                profile = load_company_profile(access)
-    except Exception:
-        st.error("Company profile is unavailable right now. Try again in a moment.")
-        return
-
     expenses_tab, labor_tab, contacts_tab, company_tab, users_tab, prices_tab = st.tabs(
         [
             "Overhead Expenses",
@@ -751,36 +740,51 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
             "Company Details",
             "Users",
             "Price List",
-        ]
+        ],
+        key="company_profile_tab",
+        on_change="rerun",
     )
-    with expenses_tab:
-        if trace is None:
-            _render_metrics(access)
-        else:
-            with trace.span("server.expenses_render"):
+
+    if expenses_tab.open:
+        with expenses_tab:
+            if trace is None:
                 _render_metrics(access)
+            else:
+                with trace.span("server.expenses_render"):
+                    _render_metrics(access)
+    elif labor_tab.open:
+        with labor_tab:
+            st.info("Company labor costs will be configured here.")
+    elif contacts_tab.open or company_tab.open:
+        try:
+            if trace is None:
+                profile = load_company_profile(access)
+            else:
+                with trace.span("server.company_settings_load"):
+                    profile = load_company_profile(access)
+        except Exception:
+            st.error("Company profile is unavailable right now. Try again in a moment.")
+            return
 
-    with labor_tab:
-        st.info("Company labor costs will be configured here.")
-
-    with contacts_tab:
-        if access.role == "owner":
-            _render_owner_contacts(access, profile)
+        if contacts_tab.open:
+            with contacts_tab:
+                if access.role == "owner":
+                    _render_owner_contacts(access, profile)
+                else:
+                    _render_member_contacts(profile)
         else:
-            _render_member_contacts(profile)
-
-    with company_tab:
-        if access.role == "owner":
-            _render_owner_company_details(access, profile)
-        else:
-            _render_member_company_details(profile)
-
-    with users_tab:
-        if trace is None:
-            _render_users(access)
-        else:
-            with trace.span("server.users_render"):
+            with company_tab:
+                if access.role == "owner":
+                    _render_owner_company_details(access, profile)
+                else:
+                    _render_member_company_details(profile)
+    elif users_tab.open:
+        with users_tab:
+            if trace is None:
                 _render_users(access)
-
-    with prices_tab:
-        st.info("Company price lists and the shared fallback library will be configured here.")
+            else:
+                with trace.span("server.users_render"):
+                    _render_users(access)
+    elif prices_tab.open:
+        with prices_tab:
+            st.info("Company price lists and the shared fallback library will be configured here.")

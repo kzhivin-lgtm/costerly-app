@@ -1,6 +1,6 @@
 # Production observability
 
-Version: 3.1.7
+Version: 3.1.8
 Status: implementation checkpoint, production verification in progress
 
 ## Purpose
@@ -17,7 +17,7 @@ user interface.
 - `session_id`: one Streamlit session, retained across sign-in and sign-out.
 - `run_id`: one Python rerun.
 - `schema_version`: event contract version, currently `runtime_v1`.
-- `build_version`: deployed code checkpoint, currently `3.1.2`.
+- `build_version`: deployed code checkpoint, currently `3.1.8`.
 
 ## Data contract
 
@@ -98,10 +98,9 @@ Server:
 - `server.app_ready_component_enqueued`
 - `server.run_complete`
 - `server.action_completed`, for safe Sign in and Sign out network durations
-- `server.company_settings_load`
-- `server.account_access_recheck`, for the Profile-only second access validation
-- `server.expenses_render` and `server.users_render`, because Streamlit tabs
-  execute eagerly even when their content is not selected
+- `server.company_settings_load`, emitted only for Contacts or Company Details
+- `server.expenses_render`, emitted only when Overhead Expenses is selected
+- `server.users_render`, emitted only when Users is selected
 
 ## Production prerequisites
 
@@ -110,7 +109,7 @@ Server:
    `SUPABASE_SERVICE_ROLE_KEY`.
 3. Configure `COSTERLY_ALLOWED_ORIGIN=https://app.costerly.ai` or retain the
    identical built-in default.
-4. Set `COSTERLY_BUILD_VERSION=3.1.7` in Streamlit production secrets.
+4. Set `COSTERLY_BUILD_VERSION=3.1.8` in Streamlit production secrets.
 5. Deploy the same Git commit to Streamlit and Cloudflare Pages.
 
 ## Production acceptance
