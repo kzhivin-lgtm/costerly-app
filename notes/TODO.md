@@ -1,5 +1,11 @@
 # TODO
 
+- 3.1.6 Streamlit runtime regression test: production was observed on unpinned
+  Streamlit 1.64.0 while the verified local environment uses 1.58.0. Pin 1.58.0,
+  rebuild production, and compare the same deep iframe startup boundaries. If
+  startup does not improve or protected behavior regresses, revert the pin.
+  Status: production experiment in progress.
+
 - 3.1.5 Deep iframe startup telemetry: split the embedded Streamlit startup
   gap into component script, component render, browser storage read, callback,
   and final app-ready boundaries. Record production Python, Streamlit, and
