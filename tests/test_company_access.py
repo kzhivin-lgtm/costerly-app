@@ -736,12 +736,12 @@ def test_labor_form_reset_rotates_widget_keys_and_clears_edit_mode():
     company_profile.st.session_state.update({
         "_labor_form_reset_pending": True,
         "_labor_form_version": 4,
-        "labor_edit_worker": "employee-1",
+        "_labor_edit_employee_id": "employee-1",
         "labor_form_4_new_worker_name": "Guy",
     })
     company_profile._apply_labor_form_reset()
     assert company_profile.st.session_state["_labor_form_version"] == 5
-    assert company_profile.st.session_state["labor_edit_worker"] == ""
+    assert company_profile.st.session_state["_labor_edit_employee_id"] == ""
     assert "labor_form_4_new_worker_name" not in company_profile.st.session_state
 
 
@@ -775,7 +775,7 @@ def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = "owner"
     app.session_state["company_profile_tab"] = "Labor Costs"
-    app.session_state["labor_edit_worker"] = "employee-1"
+    app.session_state["_labor_edit_employee_id"] = "employee-1"
     app.run()
 
     assert not app.exception
@@ -787,6 +787,36 @@ def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):
     assert fields["Avg Monthly Bruto"].disabled is True
     assert any(button.label == "Save Worker" for button in app.button)
     assert any(button.label == "Cancel Edit" for button in app.button)
+
+
+def test_labor_edit_request_is_consumed_once_and_rejects_invalid_payloads():
+    company_profile.st.session_state.clear()
+
+    request = '{"employeeId":"employee-1","nonce":"request-1"}'
+    assert company_profile._consume_labor_edit_request(request) == "employee-1"
+    assert company_profile._consume_labor_edit_request(request) is None
+    assert company_profile._consume_labor_edit_request("not-json") is None
+    assert company_profile._consume_labor_edit_request(
+        '{"employeeId":"","nonce":"request-2"}'
+    ) is None
+
+
+def test_labor_worker_table_uses_pencil_bridge_without_edit_selectbox():
+    root = Path(__file__).parents[1]
+    source = (root / "screens/company_profile.py").read_text()
+    render_source = source.split("def _render_labor_costs", 1)[1].split(
+        "def _open_upload_screen", 1
+    )[0]
+    component = (root / "ui/company_labor_bridge_component/index.html").read_text()
+    css = (root / "styles/company_profile.py").read_text()
+
+    assert "data-company-labor-edit" in source
+    assert 'aria-label="Edit worker"' in source
+    assert 'st.selectbox(\n            "Edit worker"' not in render_source
+    assert '[data-company-labor-edit]' in component
+    assert 'send("streamlit:setComponentValue"' in component
+    assert ".company-labor-edit" in css
+    assert ".st-key-company_labor_bridge_host" in css
 
 
 def test_company_employee_access_is_owner_only(monkeypatch):

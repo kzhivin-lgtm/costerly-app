@@ -13,6 +13,7 @@ from db.supabase_client import get_supabase_client
 from styles.company_profile import apply_company_profile_css
 from styles.object_detail import apply_object_detail_css
 from ui import company_metrics_view
+from ui.company_labor_bridge import company_labor_bridge
 from ui.company_metrics_bridge import company_metrics_bridge
 from ui.js_guards import install_company_metrics_input_guard
 from use_cases.email_addresses import is_valid_email_address
@@ -921,7 +922,11 @@ def _render_employee_list(employees: list[dict]) -> None:
         return
     rows = "".join(
         "<tr>"
-        f"<td><strong>{escape(_clean(employee.get('worker_name')))}</strong></td>"
+        '<td><div class="company-labor-worker">'
+        f"<strong>{escape(_clean(employee.get('worker_name')))}</strong>"
+        '<button type="button" class="company-labor-edit" data-company-labor-edit '
+        f'data-employee-id="{escape(_clean(employee.get("employee_id")))}" '
+        'aria-label="Edit worker" title="Edit worker">✎</button></div></td>'
         f"<td>{escape(LABOR_DEPARTMENTS.get(_clean(employee.get('department')), 'Not set'))}</td>"
         f"<td>{escape(_labor_position_label(employee.get('position_code')))}</td>"
         f"<td>{escape(LABOR_PAY_TYPES.get(_clean(employee.get('pay_type')), 'Not set'))}</td>"
@@ -949,7 +954,7 @@ def _apply_labor_form_reset() -> None:
     st.session_state["_labor_form_version"] = int(
         st.session_state.get("_labor_form_version", 0)
     ) + 1
-    st.session_state["labor_edit_worker"] = ""
+    st.session_state["_labor_edit_employee_id"] = ""
     for key in list(st.session_state):
         if str(key).startswith("labor_form_"):
             st.session_state.pop(key, None)
@@ -992,11 +997,23 @@ def _labor_form_number(value: object, *, decimals: int = 2) -> str:
     return f"{number:.{decimals}f}".rstrip("0").rstrip(".")
 
 
-def _labor_worker_option(employee: dict) -> str:
-    return (
-        f"{_clean(employee.get('worker_name'))} · "
-        f"{_labor_position_label(employee.get('position_code'))}"
-    )
+def _consume_labor_edit_request(raw_request: str | None) -> str | None:
+    if not raw_request:
+        return None
+    try:
+        request = json.loads(raw_request)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if not isinstance(request, dict):
+        return None
+    nonce = _clean(request.get("nonce"))
+    employee_id = _clean(request.get("employeeId"))
+    if not nonce or not employee_id:
+        return None
+    if nonce == st.session_state.get("_labor_edit_consumed_nonce"):
+        return None
+    st.session_state["_labor_edit_consumed_nonce"] = nonce
+    return employee_id
 
 
 def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
@@ -1030,17 +1047,16 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
         for employee in employees
         if employee.get("employee_id")
     }
-    edit_employee_id = ""
-    if employee_by_id:
-        edit_employee_id = st.selectbox(
-            "Edit worker",
-            options=("", *employee_by_id),
-            format_func=lambda employee_id: (
-                "Select a worker" if not employee_id
-                else _labor_worker_option(employee_by_id[employee_id])
-            ),
-            key="labor_edit_worker",
-        )
+    raw_edit_request = None
+    with st.container(key="company_labor_bridge_host"):
+        raw_edit_request = company_labor_bridge(key="company_labor_bridge")
+    requested_employee_id = _consume_labor_edit_request(raw_edit_request)
+    if requested_employee_id in employee_by_id:
+        st.session_state["_labor_edit_employee_id"] = requested_employee_id
+        st.session_state["_labor_form_version"] = int(
+            st.session_state.get("_labor_form_version", 0)
+        ) + 1
+    edit_employee_id = _clean(st.session_state.get("_labor_edit_employee_id"))
     editing = employee_by_id.get(str(edit_employee_id))
     version = int(st.session_state.get("_labor_form_version", 0))
     mode = str(edit_employee_id or "new")

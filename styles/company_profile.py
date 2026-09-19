@@ -115,7 +115,10 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         [data-testid="stElementContainer"]:has(.st-key-company_metrics_bridge_host),
-        .st-key-company_metrics_bridge_host {
+        .st-key-company_metrics_bridge_host,
+        .stApp:has(.company-profile-active)
+        [data-testid="stElementContainer"]:has(.st-key-company_labor_bridge_host),
+        .st-key-company_labor_bridge_host {
             display: none !important;
         }
 
@@ -538,6 +541,38 @@ def apply_company_profile_css() -> None:
         .company-labor-list td:nth-child(6) {
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
+        }
+
+        .company-labor-worker {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .stApp:has(.company-profile-active) .company-labor-edit,
+        .stApp:has(.company-profile-active) .company-labor-edit:hover,
+        .stApp:has(.company-profile-active) .company-labor-edit:focus {
+            width: 22px !important;
+            min-width: 22px !important;
+            height: 22px !important;
+            min-height: 22px !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 5px !important;
+            background: transparent !important;
+            color: var(--color-text-muted) !important;
+            font-family: var(--font-sans) !important;
+            font-size: 16px !important;
+            line-height: 1 !important;
+            box-shadow: none !important;
+            transform: none !important;
+            cursor: pointer;
+        }
+
+        .stApp:has(.company-profile-active) .company-labor-edit:hover,
+        .stApp:has(.company-profile-active) .company-labor-edit:focus-visible {
+            background: rgba(128, 73, 198, 0.10) !important;
+            color: var(--color-accent) !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card {

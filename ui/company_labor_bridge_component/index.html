@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /></head>
+  <body>
+    <script>
+      (() => {
+        const parentWindow = window.parent;
+        const parentDoc = parentWindow.document;
+        const cleanupKey = "__costerlyCompanyLaborBridgeCleanup";
+
+        function send(type, payload = {}) {
+          parentWindow.postMessage(
+            {isStreamlitMessage: true, type, ...payload},
+            "*"
+          );
+        }
+
+        function install() {
+          if (parentWindow[cleanupKey]) parentWindow[cleanupKey]();
+
+          function handleEdit(event) {
+            const action = event.target && event.target.closest
+              ? event.target.closest("[data-company-labor-edit]")
+              : null;
+            if (!action) return;
+            event.preventDefault();
+            event.stopPropagation();
+            send("streamlit:setComponentValue", {
+              value: JSON.stringify({
+                employeeId: action.dataset.employeeId || "",
+                nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+              }),
+            });
+          }
+
+          parentDoc.addEventListener("click", handleEdit, true);
+          parentWindow[cleanupKey] = () => {
+            parentDoc.removeEventListener("click", handleEdit, true);
+            parentWindow[cleanupKey] = null;
+          };
+        }
+
+        window.addEventListener("message", (event) => {
+          const message = event.data || {};
+          if (message.type !== "streamlit:render") return;
+          install();
+          send("streamlit:setFrameHeight", {height: 0});
+        });
+
+        send("streamlit:componentReady", {apiVersion: 1});
+        send("streamlit:setFrameHeight", {height: 0});
+      })();
+    </script>
+  </body>
+</html>
