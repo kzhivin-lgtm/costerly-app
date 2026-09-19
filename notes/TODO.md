@@ -132,9 +132,10 @@
   the Overhead Expenses typography, uses three-column role and hourly rows,
   removes numeric steppers, resets every field after Add, and opens owner-only
   editing from a small pencil beside the worker name. The rejected native-grid
-  rewrite was reverted. Selector colors and vertical alignment remain a separate
-  follow-up. Status: deployment and production visual interaction verification
-  of the pencil are pending.
+  rewrite was reverted. The pencil is now before the name so edit controls form
+  one vertical column. The selector fix targets Streamlit 1.64 React Aria groups,
+  inputs, buttons, and option states while retaining the older BaseWeb rules.
+  Status: deployment and production visual interaction verification are pending.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
   1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR remains the default one-PDF/one-request flow. Naming is text-only and receives locked Detection facts plus OCR snippets, never the PDF again.

@@ -1178,6 +1178,10 @@ def test_company_profile_reuses_auth_input_contract():
     assert '[data-testid="stTextInputRootElement"]' in css
     assert '[data-testid="stTextInput"]:focus-within' in css
     assert "border: 1px solid #CEC5D1 !important" in css
+    assert '.react-aria-ComboBox [role="group"]' in css
+    assert '[role="group"][data-focus-within="true"]' in css
+    assert '.react-aria-ComboBox input[role="combobox"]' in css
+    assert '[role="option"][aria-selected="true"] [data-item-hl]' in css
 
 
 def test_server_run_id_replaces_model_id_on_all_objects():

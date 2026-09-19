@@ -122,6 +122,14 @@ the blank first attempt stalled after iframe load and before observable Python
 execution. The provider-side cause remains unknown; keep this separate from
 Profile render and Supabase timing.
 
+Recorded warm-session variation after the Labor Costs pencil deployment on
+2026-09-19, trace `ce55e370-8ce6-40a0-8f4d-ce88fbc38169`: the first observed
+Upload to Profile transition took 6.206 seconds, with 1.186 seconds on the
+server and 0.791 seconds in Expenses render. The immediate repeat took 1.118
+seconds, with 0.309 seconds on the server and 0.016 seconds in Expenses render.
+This rejects a persistent Labor-pencil regression, but the roughly five-second
+first-transition client and Streamlit gap remains a production outlier to track.
+
 - Refresh `app.costerly.ai` five times while signed in.
 - Confirm the browser app-ready row contains the server summary and matching
   `server_run_id`; correlate any available individual server rows by

@@ -258,6 +258,77 @@ def apply_company_profile_css() -> None:
             box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
         }
 
+        /* Streamlit 1.64 replaced the BaseWeb Select with React Aria ComboBox. */
+        .stApp:has(.company-profile-active) [data-testid="stSelectbox"]
+        .react-aria-ComboBox [role="group"] {
+            display: flex !important;
+            align-items: center !important;
+            width: 100% !important;
+            height: 52px !important;
+            min-height: 52px !important;
+            overflow: hidden !important;
+            border: 1px solid #CEC5D1 !important;
+            border-radius: var(--input-radius) !important;
+            background: var(--input-bg) !important;
+            box-shadow: none !important;
+            transition: border-color 120ms ease, box-shadow 120ms ease;
+        }
+
+        .stApp:has(.company-profile-active) [data-testid="stSelectbox"]
+        .react-aria-ComboBox [role="group"][data-focus-within="true"] {
+            border-color: var(--input-focus-border) !important;
+            box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
+        }
+
+        .stApp:has(.company-profile-active) [data-testid="stSelectbox"]
+        .react-aria-ComboBox input[role="combobox"] {
+            height: 50px !important;
+            min-height: 50px !important;
+            padding: 0 16px !important;
+            border: 0 !important;
+            outline: 0 !important;
+            background: var(--input-bg) !important;
+            box-shadow: none !important;
+            color: var(--input-text) !important;
+            -webkit-text-fill-color: var(--input-text) !important;
+            font-family: var(--font-sans) !important;
+            font-size: 16px !important;
+            line-height: normal !important;
+        }
+
+        .stApp:has(.company-profile-active) [data-testid="stSelectbox"]
+        .react-aria-ComboBox button[aria-haspopup="listbox"] {
+            align-self: stretch !important;
+            width: 42px !important;
+            min-width: 42px !important;
+            height: 50px !important;
+            min-height: 50px !important;
+            padding: 0 12px 0 6px !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            outline: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: var(--color-text-muted) !important;
+            transform: none !important;
+        }
+
+        body:has(.company-profile-active) [data-st-overlay-root="true"]
+        [role="option"][aria-selected="true"],
+        body:has(.company-profile-active) [data-st-overlay-root="true"]
+        [role="option"][aria-selected="true"] [data-item-hl] {
+            background: rgba(128, 73, 198, 0.14) !important;
+            color: var(--color-text-strong) !important;
+        }
+
+        body:has(.company-profile-active) [data-st-overlay-root="true"]
+        [role="option"]:hover,
+        body:has(.company-profile-active) [data-st-overlay-root="true"]
+        [role="option"][data-focused="true"] [data-item-hl] {
+            background: rgba(128, 73, 198, 0.09) !important;
+            color: var(--color-text-strong) !important;
+        }
+
         .stApp:has(.company-profile-active) [data-testid="stSelectbox"] svg {
             fill: var(--color-text-muted) !important;
             color: var(--color-text-muted) !important;

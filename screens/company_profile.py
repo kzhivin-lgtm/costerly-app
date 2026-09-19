@@ -923,10 +923,10 @@ def _render_employee_list(employees: list[dict]) -> None:
     rows = "".join(
         "<tr>"
         '<td><div class="company-labor-worker">'
-        f"<strong>{escape(_clean(employee.get('worker_name')))}</strong>"
         '<button type="button" class="company-labor-edit" data-company-labor-edit '
         f'data-employee-id="{escape(_clean(employee.get("employee_id")))}" '
-        'aria-label="Edit worker" title="Edit worker">✎</button></div></td>'
+        'aria-label="Edit worker" title="Edit worker">✎</button>'
+        f"<strong>{escape(_clean(employee.get('worker_name')))}</strong></div></td>"
         f"<td>{escape(LABOR_DEPARTMENTS.get(_clean(employee.get('department')), 'Not set'))}</td>"
         f"<td>{escape(_labor_position_label(employee.get('position_code')))}</td>"
         f"<td>{escape(LABOR_PAY_TYPES.get(_clean(employee.get('pay_type')), 'Not set'))}</td>"
