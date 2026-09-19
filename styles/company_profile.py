@@ -113,6 +113,10 @@ def apply_company_profile_css() -> None:
             outline-offset: 2px;
         }
 
+        .st-key-company_metrics_bridge_host {
+            display: none !important;
+        }
+
         .stApp:has(.company-profile-active) [data-baseweb="tab-list"],
         .st-key-company_profile_tab [role="tablist"] {
             gap: 6px;
@@ -130,11 +134,12 @@ def apply_company_profile_css() -> None:
             border-radius: 10px;
             color: var(--color-text-muted);
             font-size: 18px;
-            font-weight: 700;
+            font-weight: 500;
         }
 
         .stApp:has(.company-profile-active) [data-baseweb="tab"][aria-selected="true"],
-        .st-key-company_profile_tab [role="tab"][aria-selected="true"] {
+        .st-key-company_profile_tab [role="tab"][aria-selected="true"],
+        .st-key-company_profile_tab [role="tab"][data-selected] {
             background: var(--color-surface);
             color: var(--color-text-strong);
             font-weight: 700;
@@ -142,8 +147,11 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) [data-baseweb="tab-highlight"],
-        .stApp:has(.company-profile-active) [data-baseweb="tab-border"] {
-            display: none;
+        .stApp:has(.company-profile-active) [data-baseweb="tab-border"],
+        .st-key-company_profile_tab [role="tablist"]::after,
+        .st-key-company_profile_tab .react-aria-SelectionIndicator {
+            display: none !important;
+            content: none !important;
         }
 
         .stApp:has(.company-profile-active) h2 {

@@ -599,6 +599,10 @@ def test_company_profile_tabs_support_stateful_streamlit_dom():
     css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
     assert '.st-key-company_profile_tab [role="tablist"]' in css
     assert '.st-key-company_profile_tab [role="tab"]' in css
+    assert '[role="tab"][data-selected]' in css
+    assert ".react-aria-SelectionIndicator" in css
+    assert '[role="tablist"]::after' in css
+    assert ".st-key-company_metrics_bridge_host" in css
 
 
 def test_company_metrics_bridge_does_not_navigate_parent_page():

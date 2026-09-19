@@ -4,8 +4,11 @@
   accepted v3.0.57 full-width tab rail on the current stateful, lazy-rendered
   tabs without reverting the v3.1.8 performance improvement. Use Overhead
   Expenses consistently in the table heading, save action, success message,
-  and save errors. Preserve the working expense persistence path and defer
-  Sign out sizing, Save Contacts, and Save Company Details.
+  and save errors. Remove the current React Aria selection underline, emphasize
+  only the active tab, and remove the zero-height save bridge from document
+  flow so Overhead Expenses starts at the same height as Contacts. Preserve the
+  working expense persistence path and defer Sign out sizing, Save Contacts,
+  and Save Company Details.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the

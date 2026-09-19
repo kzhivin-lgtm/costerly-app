@@ -597,7 +597,8 @@ def _consume_company_metrics_snapshot(
 def _render_metrics(access: CompanyAccess) -> None:
     save_message = None
     try:
-        raw_snapshot = company_metrics_bridge(key="company_metrics_bridge")
+        with st.container(key="company_metrics_bridge_host"):
+            raw_snapshot = company_metrics_bridge(key="company_metrics_bridge")
         save_message = _consume_company_metrics_snapshot(access, raw_snapshot)
     except ValueError as exc:
         st.error(str(exc))
