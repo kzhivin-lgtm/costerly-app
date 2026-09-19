@@ -54,6 +54,54 @@ st.set_page_config(
 )
 
 
+_PROFILE_TAB_ROUTES = {
+    "overhead-expenses": "Overhead Expenses",
+    "labor-costs": "Labor Costs",
+    "contacts": "Contacts",
+    "company-details": "Company Details",
+    "users": "Users",
+    "price-lists": "Price Lists",
+}
+
+
+def _browser_route(screen: str) -> dict[str, str]:
+    """Return the safe, durable browser route for the rendered screen."""
+    if screen == "account":
+        selected_tab = str(
+            st.session_state.get("company_profile_tab") or "Overhead Expenses"
+        )
+        tab_route = next(
+            (
+                route
+                for route, label in _PROFILE_TAB_ROUTES.items()
+                if label == selected_tab
+            ),
+            "overhead-expenses",
+        )
+        return {"screen": "account", "profile_tab": tab_route}
+
+    if screen == "file_review":
+        run_id = str(st.session_state.get("current_run_id") or "")
+        return {"screen": screen, "run_id": run_id} if run_id else {"screen": "upload"}
+
+    if screen in {"objects", "object_detail"}:
+        run_id = str(st.session_state.get("current_run_id") or "")
+        estimate_id = str(st.session_state.get("current_estimate_id") or "")
+        if not run_id or not estimate_id:
+            return {"screen": "upload"}
+        route = {"screen": screen, "run_id": run_id, "estimate_id": estimate_id}
+        if screen == "object_detail":
+            object_id = str(st.session_state.get("current_object_id") or "")
+            if not object_id:
+                return {"screen": "objects", "run_id": run_id, "estimate_id": estimate_id}
+            route["object_id"] = object_id
+        return route
+
+    # Processing cannot survive a destroyed Python session yet. Auth,
+    # registration, and company setup are derived from verified auth/invite state.
+    return {"screen": "upload"}
+
+
 def _signal_ready(trace, screen: str) -> None:
     trace.set_screen(screen)
     trace.event("server.app_ready_component_enqueued")
@@ -62,6 +110,7 @@ def _signal_ready(trace, screen: str) -> None:
         trace_id=trace.trace_id,
         run_id=trace.run_id,
         metrics=trace.summary(),
+        route=_browser_route(screen),
     )
     trace.event("server.run_complete")
 
@@ -214,6 +263,12 @@ def main() -> None:
     requested_screen = st.query_params.get("screen")
     if requested_screen == "account" and auth_enabled:
         st.session_state.screen = "account"
+        requested_profile_tab = str(st.query_params.get("profile_tab") or "")
+        if requested_profile_tab in _PROFILE_TAB_ROUTES:
+            st.session_state.company_profile_tab = _PROFILE_TAB_ROUTES[requested_profile_tab]
+        for route_key in ("screen", "profile_tab"):
+            if route_key in st.query_params:
+                del st.query_params[route_key]
     if requested_screen in {"objects", "object_detail", "file_review"}:
         st.session_state.screen = requested_screen
         requested_run_id = st.query_params.get("run_id")

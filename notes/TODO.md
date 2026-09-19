@@ -5,7 +5,14 @@
   Apply one explicit navigation-state contract to Profile, File Review,
   Objects, Object Detail, Registration, Company Setup, Auth, and future screens.
   Preserve authorization checks and never restore a company-scoped resource
-  without revalidating access. Status: pending after 3.1.11.
+  without revalidating access. The current revision mirrors only safe route
+  state into the outer Cloudflare URL, forwards it to each new Streamlit iframe,
+  restores the selected Profile tab and persisted RFQ/estimate/object context,
+  and reuses the existing Supabase ownership checks before rendering protected
+  resources. Auth and invite-driven screens remain derived from their existing
+  authorities. Active Processing intentionally fails safe to Upload because its
+  file bytes and futures are not durable yet. Status: ready for production
+  verification.
 
 - 3.1.11 Profile to Upload transition integrity: identify and remove the
   intermediate stale or partial screen visible after Continue to upload.

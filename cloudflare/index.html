@@ -97,7 +97,13 @@
           : new URLSearchParams(window.location.search).get("invite");
         const startupProbe = new URLSearchParams(window.location.search).get("startup_probe");
         const appUrl = new URL(frame.dataset.src);
+        const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id"];
+        const outerParams = new URLSearchParams(window.location.search);
         appUrl.searchParams.set("obs_trace", traceId);
+        routeKeys.forEach((key) => {
+          const value = outerParams.get(key);
+          if (value) appUrl.searchParams.set(key, value);
+        });
         if (inviteToken && /^[A-Za-z0-9_-]{43}$/.test(inviteToken)) {
           appUrl.searchParams.set("invite", inviteToken);
         }
@@ -154,6 +160,51 @@
             dom_content_loaded_ms: Math.round(navigation.domContentLoadedEventEnd * 1000) / 1000,
             load_event_ms: Math.round(navigation.loadEventEnd * 1000) / 1000,
           };
+        }
+
+        function safeRouteValue(value) {
+          const text = String(value || "");
+          return /^[A-Za-z0-9_-]{1,160}$/.test(text) ? text : "";
+        }
+
+        function syncOuterRoute(route, renderedScreen) {
+          const nextUrl = new URL(window.location.href);
+          routeKeys.forEach((key) => nextUrl.searchParams.delete(key));
+
+          const requestedScreen = safeRouteValue(route && route.screen);
+          const screen = requestedScreen || safeRouteValue(renderedScreen);
+          if (screen === "account") {
+            nextUrl.searchParams.set("screen", "account");
+            const profileTab = safeRouteValue(route && route.profile_tab);
+            const allowedTabs = new Set([
+              "overhead-expenses",
+              "labor-costs",
+              "contacts",
+              "company-details",
+              "users",
+              "price-lists",
+            ]);
+            if (allowedTabs.has(profileTab)) {
+              nextUrl.searchParams.set("profile_tab", profileTab);
+            }
+          } else if (["file_review", "objects", "object_detail"].includes(screen)) {
+            const runId = safeRouteValue(route && route.run_id);
+            const estimateId = safeRouteValue(route && route.estimate_id);
+            const objectId = safeRouteValue(route && route.object_id);
+            if (runId) {
+              nextUrl.searchParams.set("screen", screen);
+              nextUrl.searchParams.set("run_id", runId);
+              if (screen !== "file_review" && estimateId) {
+                nextUrl.searchParams.set("estimate_id", estimateId);
+                if (screen === "object_detail" && objectId) {
+                  nextUrl.searchParams.set("object_id", objectId);
+                }
+              }
+            }
+          }
+
+          const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+          window.history.replaceState(window.history.state, "", nextPath);
         }
 
         function persistTimeline() {
@@ -300,6 +351,7 @@
             if (runId && readyRunIds.has(runId)) return;
             if (runId) readyRunIds.add(runId);
             const screen = event.data.screen || "unknown";
+            syncOuterRoute(event.data.route || {}, screen);
             const metadata = {
               server_run_id: runId,
               ...(event.data.metrics || {}),

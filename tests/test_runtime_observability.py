@@ -157,6 +157,11 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
 
     assert 'data-src="https://costerly-app.streamlit.app/?embed=true"' in wrapper
     assert 'appUrl.searchParams.set("obs_trace", traceId)' in wrapper
+    assert 'const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id"]' in wrapper
+    assert "appUrl.searchParams.set(key, value)" in wrapper
+    assert "function syncOuterRoute(route, renderedScreen)" in wrapper
+    assert "window.history.replaceState" in wrapper
+    assert "syncOuterRoute(event.data.route || {}, screen)" in wrapper
     assert "navigator.sendBeacon" in wrapper
     assert 'event.data.traceId === traceId' in wrapper
     assert 'event.origin === "https://costerly-app.streamlit.app"' in wrapper
@@ -217,6 +222,9 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "preventDefault" not in observer_source
     assert "access_token" not in component
     assert "refresh_token" not in component
+
+    assert "route: __ROUTE__" in ready_signal
+    assert '.replace("__ROUTE__", route_json)' in ready_signal
 
 
 def test_scroll_reset_component_stays_out_of_main_layout(monkeypatch):

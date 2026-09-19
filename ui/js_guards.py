@@ -219,12 +219,14 @@ def signal_app_ready_to_embed(
     trace_id: str | None = None,
     run_id: str | None = None,
     metrics: dict[str, object] | None = None,
+    route: dict[str, str] | None = None,
 ) -> None:
     """Tell the embedding Cloudflare wrapper that a real Streamlit screen rendered."""
     screen_json = json.dumps(screen)
     trace_id_json = json.dumps(trace_id or "")
     run_id_json = json.dumps(run_id or "")
     metrics_json = json.dumps(metrics or {})
+    route_json = json.dumps(route or {})
 
     components.html(
         """
@@ -237,6 +239,7 @@ def signal_app_ready_to_embed(
                 traceId: __TRACE_ID__,
                 runId: __RUN_ID__,
                 metrics: __METRICS__,
+                route: __ROUTE__,
                 sentAt: Date.now()
             };
 
@@ -349,7 +352,8 @@ def signal_app_ready_to_embed(
         """.replace("__SCREEN__", screen_json)
         .replace("__TRACE_ID__", trace_id_json)
         .replace("__RUN_ID__", run_id_json)
-        .replace("__METRICS__", metrics_json),
+        .replace("__METRICS__", metrics_json)
+        .replace("__ROUTE__", route_json),
         height=0,
         width=0,
     )
