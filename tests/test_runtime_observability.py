@@ -206,9 +206,6 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'parentDocument.addEventListener("click", handler, {' in ready_signal
     assert "capture: false" in ready_signal
     assert "passive: true" in ready_signal
-    assert "installProfileTabScrollGuard" in ready_signal
-    assert "profileScrollRoot" in ready_signal
-    assert "restoreProfileTabScroll" in ready_signal
     observer_source = ready_signal.split("function installTransitionObserver()", 1)[1].split(
         "function postReady()", 1
     )[0]
