@@ -120,9 +120,15 @@
   sign-in, upload, profile, save, logout, sign-in, and reload cycle before
   declaring the checkpoint stable. The Other Spendings migration is applied.
   Do not change the accepted table geometry or the working Expenses save path.
-- Labor Costs: define the personnel data model and calculation rules before
-  replacing the current placeholder. Hourly workers, salaried employees, and
-  employer costs remain unresolved product requirements.
+- 3.2.1 Labor Costs: replace the placeholder with an owner-only employee cost
+  register. The first production candidate uses one informal `Worker name`
+  field, managed Department and Position lists, Monthly Salary or Hourly Rate,
+  Hours per Month for hourly workers, and a derived Monthly Gross total. The
+  personnel records live in `company_employees`, separately from the Estimation
+  `labor` catalog. Net salary, tax, pension, National Insurance, and total
+  employer burden remain deliberately out of scope until their calculation
+  contract is defined. Status: production database migration applied and
+  directly verified; deployment and visual interaction verification are pending.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
   1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR remains the default one-PDF/one-request flow. Naming is text-only and receives locked Detection facts plus OCR snippets, never the PDF again.

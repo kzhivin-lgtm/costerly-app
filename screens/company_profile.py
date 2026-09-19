@@ -94,6 +94,44 @@ METRIC_GROUPS = (
 METRIC_MONTHLY_FIELDS = tuple(
     field for _group, rows in METRIC_GROUPS for field, _label in rows
 )
+LABOR_DEPARTMENTS = {
+    "management": "Management",
+    "office": "Office",
+    "production": "Production",
+}
+LABOR_POSITIONS = {
+    "management": (
+        ("owner_director", "Owner / Director"),
+        ("general_manager", "General Manager"),
+        ("project_manager", "Project Manager"),
+        ("production_manager", "Production Manager"),
+    ),
+    "office": (
+        ("accountant", "Accountant"),
+        ("office_administrator", "Office Administrator"),
+        ("estimator", "Estimator"),
+        ("sales_manager", "Sales Manager"),
+        ("purchasing_manager", "Purchasing Manager"),
+        ("designer_draftsperson", "Designer / Draftsperson"),
+    ),
+    "production": (
+        ("cabinetmaker_joiner", "Cabinetmaker / Joiner"),
+        ("carpenter", "Carpenter"),
+        ("welder", "Welder"),
+        ("cnc_operator", "CNC Operator"),
+        ("painter_finisher", "Painter / Finisher"),
+        ("installer", "Installer"),
+        ("general_worker", "General Worker"),
+    ),
+}
+LABOR_PAY_TYPES = {
+    "monthly_salary": "Monthly Salary",
+    "hourly_rate": "Hourly Rate",
+}
+LABOR_EMPLOYEE_COLUMNS = (
+    "employee_id,company_id,worker_name,department,position_code,"
+    "pay_type,gross_monthly_salary,gross_hourly_rate,monthly_hours,created_at"
+)
 
 
 def _current_access(access: CompanyAccess) -> CompanyAccess:
@@ -314,6 +352,83 @@ def load_company_members(access: CompanyAccess) -> list[dict]:
             email = fresh.email if user_id == fresh.user_id else "Email unavailable"
         members.append({"Email": email, "Role": "Owner" if row["role"] == "owner" else "Member"})
     return sorted(members, key=lambda item: (item["Role"] != "Owner", item["Email"].lower()))
+
+
+def _owner_access(access: CompanyAccess) -> tuple[CompanyAccess, object]:
+    fresh = _current_access(access)
+    if fresh.role != "owner":
+        raise PermissionError("Only the company owner can access employee costs.")
+    client = get_supabase_client()
+    assert_company_owner(client, fresh.user_id, fresh.company_id)
+    return fresh, client
+
+
+def load_company_employees(access: CompanyAccess) -> list[dict]:
+    fresh, client = _owner_access(access)
+    return (
+        client.table("company_employees")
+        .select(LABOR_EMPLOYEE_COLUMNS)
+        .eq("company_id", fresh.company_id)
+        .order("worker_name")
+        .execute()
+    ).data or []
+
+
+def add_company_employee(
+    access: CompanyAccess,
+    *,
+    worker_name: str,
+    department: str,
+    position_code: str,
+    pay_type: str,
+    gross_monthly_salary: float = 0,
+    gross_hourly_rate: float = 0,
+    monthly_hours: float = 0,
+) -> dict:
+    worker_name = _clean(worker_name)
+    if not worker_name:
+        raise ValueError("Worker name is required.")
+    if department not in LABOR_DEPARTMENTS:
+        raise ValueError("Select a valid department.")
+    allowed_positions = {code for code, _label in LABOR_POSITIONS[department]}
+    if position_code not in allowed_positions:
+        raise ValueError("Select a valid position for this department.")
+    if pay_type not in LABOR_PAY_TYPES:
+        raise ValueError("Select a valid pay type.")
+
+    payload = {
+        "worker_name": worker_name,
+        "department": department,
+        "position_code": position_code,
+        "pay_type": pay_type,
+        "gross_monthly_salary": None,
+        "gross_hourly_rate": None,
+        "monthly_hours": None,
+    }
+    if pay_type == "monthly_salary":
+        salary = round(float(gross_monthly_salary or 0), 2)
+        if salary <= 0:
+            raise ValueError("Gross monthly salary must be greater than zero.")
+        payload["gross_monthly_salary"] = salary
+    else:
+        hourly_rate = round(float(gross_hourly_rate or 0), 2)
+        hours = round(float(monthly_hours or 0), 2)
+        if hourly_rate <= 0:
+            raise ValueError("Gross hourly rate must be greater than zero.")
+        if hours <= 0:
+            raise ValueError("Hours per month must be greater than zero.")
+        payload["gross_hourly_rate"] = hourly_rate
+        payload["monthly_hours"] = hours
+
+    fresh, client = _owner_access(access)
+    result = client.table("company_employees").insert({
+        "company_id": fresh.company_id,
+        **payload,
+    }).execute()
+    rows = result.data or []
+    if len(rows) != 1 or str(rows[0].get("company_id")) != fresh.company_id:
+        raise RuntimeError("The employee was not added.")
+    return rows[0]
 
 
 def _text_input(
@@ -709,6 +824,225 @@ def _render_users(access: CompanyAccess) -> None:
             st.error("The team invitation link is unavailable right now.")
 
 
+def _labor_position_label(position_code: object) -> str:
+    code = _clean(position_code)
+    for positions in LABOR_POSITIONS.values():
+        for candidate, label in positions:
+            if candidate == code:
+                return label
+    return code.replace("_", " ").title() or "Not set"
+
+
+def _labor_monthly_gross(employee: dict) -> float:
+    if employee.get("pay_type") == "hourly_rate":
+        return round(
+            float(employee.get("gross_hourly_rate") or 0)
+            * float(employee.get("monthly_hours") or 0),
+            2,
+        )
+    return round(float(employee.get("gross_monthly_salary") or 0), 2)
+
+
+def _labor_money(value: object) -> str:
+    amount = round(float(value or 0), 2)
+    if amount == int(amount):
+        return f"₪{int(amount):,}".replace(",", "\u202f")
+    return f"₪{amount:,.2f}".replace(",", "\u202f")
+
+
+def _labor_number(value: object) -> str:
+    amount = round(float(value or 0), 2)
+    return str(int(amount)) if amount == int(amount) else f"{amount:.2f}".rstrip("0")
+
+
+def _labor_pay_details(employee: dict) -> str:
+    if employee.get("pay_type") == "hourly_rate":
+        return (
+            f"{_labor_money(employee.get('gross_hourly_rate'))} / hour, "
+            f"{_labor_number(employee.get('monthly_hours'))} hours / month"
+        )
+    return f"{_labor_money(employee.get('gross_monthly_salary'))} / month"
+
+
+def _render_employee_list(employees: list[dict]) -> None:
+    if not employees:
+        st.info("No workers have been added yet.")
+        return
+    rows = "".join(
+        "<tr>"
+        f"<td><strong>{escape(_clean(employee.get('worker_name')))}</strong></td>"
+        f"<td>{escape(LABOR_DEPARTMENTS.get(_clean(employee.get('department')), 'Not set'))}</td>"
+        f"<td>{escape(_labor_position_label(employee.get('position_code')))}</td>"
+        f"<td>{escape(LABOR_PAY_TYPES.get(_clean(employee.get('pay_type')), 'Not set'))}</td>"
+        f"<td>{escape(_labor_pay_details(employee))}</td>"
+        f"<td><strong>{escape(_labor_money(_labor_monthly_gross(employee)))}</strong></td>"
+        "</tr>"
+        for employee in employees
+    )
+    total = sum(_labor_monthly_gross(employee) for employee in employees)
+    st.markdown(
+        '<div class="company-labor-summary">'
+        '<span>Total monthly gross</span>'
+        f'<strong>{escape(_labor_money(total))}</strong></div>'
+        '<div class="company-profile-users company-labor-list"><table>'
+        '<thead><tr><th>Worker</th><th>Department</th><th>Position</th>'
+        '<th>Pay Type</th><th>Pay Details</th><th>Monthly Gross</th></tr></thead>'
+        f"<tbody>{rows}</tbody></table></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _reset_labor_form_if_requested() -> None:
+    if not st.session_state.pop("_labor_reset_requested", False):
+        return
+    for key in (
+        "labor_worker_name",
+        "labor_department",
+        "labor_position",
+        "labor_pay_type",
+        "labor_gross_monthly_salary",
+        "labor_gross_hourly_rate",
+        "labor_monthly_hours",
+    ):
+        st.session_state.pop(key, None)
+
+
+def _clear_labor_position() -> None:
+    st.session_state.pop("labor_position", None)
+
+
+def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
+    if access.role != "owner":
+        st.info("Labor cost details are available only to the company owner.")
+        return
+
+    _reset_labor_form_if_requested()
+    if st.session_state.pop("_labor_employee_added", False):
+        st.success("Worker added")
+
+    with st.container(key="company_labor_card", border=True):
+        worker_name = st.text_input(
+            "Worker name",
+            key="labor_worker_name",
+            placeholder="Name, nickname, or identifier",
+        )
+
+        role_left, role_right = st.columns(2)
+        with role_left:
+            department_label = st.selectbox(
+                "Department",
+                options=tuple(LABOR_DEPARTMENTS.values()),
+                index=None,
+                placeholder="Select department",
+                key="labor_department",
+                on_change=_clear_labor_position,
+            )
+        department = next(
+            (code for code, label in LABOR_DEPARTMENTS.items() if label == department_label),
+            None,
+        )
+        position_options = LABOR_POSITIONS.get(department, ())
+        with role_right:
+            position_label = st.selectbox(
+                "Position",
+                options=tuple(label for _code, label in position_options),
+                index=None,
+                placeholder="Select position",
+                disabled=department is None,
+                key="labor_position",
+            )
+        position_code = next(
+            (code for code, label in position_options if label == position_label),
+            None,
+        )
+
+        pay_label = st.selectbox(
+            "Pay type",
+            options=tuple(LABOR_PAY_TYPES.values()),
+            index=None,
+            placeholder="Select pay type",
+            key="labor_pay_type",
+        )
+        pay_type = next(
+            (code for code, label in LABOR_PAY_TYPES.items() if label == pay_label),
+            None,
+        )
+        gross_monthly_salary = 0.0
+        gross_hourly_rate = 0.0
+        monthly_hours = 0.0
+        if pay_type == "monthly_salary":
+            gross_monthly_salary = st.number_input(
+                "Gross monthly salary",
+                min_value=0.0,
+                step=100.0,
+                key="labor_gross_monthly_salary",
+            )
+        elif pay_type == "hourly_rate":
+            pay_left, pay_right = st.columns(2)
+            with pay_left:
+                gross_hourly_rate = st.number_input(
+                    "Gross hourly rate",
+                    min_value=0.0,
+                    step=1.0,
+                    key="labor_gross_hourly_rate",
+                )
+            with pay_right:
+                monthly_hours = st.number_input(
+                    "Hours per month",
+                    min_value=0.0,
+                    step=1.0,
+                    key="labor_monthly_hours",
+                )
+
+        added = st.button(
+            "Add Worker",
+            key="labor_add_employee",
+            type="primary",
+            use_container_width=True,
+        )
+    if added:
+        try:
+            values = {
+                "worker_name": worker_name,
+                "department": department or "",
+                "position_code": position_code or "",
+                "pay_type": pay_type or "",
+                "gross_monthly_salary": gross_monthly_salary,
+                "gross_hourly_rate": gross_hourly_rate,
+                "monthly_hours": monthly_hours,
+            }
+            if trace is None:
+                add_company_employee(access, **values)
+            else:
+                with trace.span("server.labor_employee_insert"):
+                    add_company_employee(access, **values)
+            st.session_state["_labor_reset_requested"] = True
+            st.session_state["_labor_employee_added"] = True
+            st.rerun()
+        except ValueError as exc:
+            st.error(str(exc))
+        except PermissionError:
+            st.error("Only the company owner can add employee costs.")
+        except Exception:
+            logger.exception("Company employee insert failed")
+            st.error("The worker was not added. Try again in a moment.")
+
+    try:
+        if trace is None:
+            employees = load_company_employees(access)
+        else:
+            with trace.span("server.labor_employee_list_load"):
+                employees = load_company_employees(access)
+    except PermissionError:
+        st.error("Only the company owner can view employee costs.")
+        return
+    except Exception:
+        logger.exception("Company employee list load failed")
+        st.error("Worker costs are unavailable right now. Try again in a moment.")
+        return
+    _render_employee_list(employees)
+
+
 def _open_upload_screen() -> None:
     """Set navigation state before Streamlit starts the next script render."""
     st.session_state.screen = "upload"
@@ -767,7 +1101,11 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                     _render_metrics(access)
     elif labor_tab.open:
         with labor_tab:
-            st.info("Company labor costs will be configured here.")
+            if trace is None:
+                _render_labor_costs(access)
+            else:
+                with trace.span("server.labor_costs_render"):
+                    _render_labor_costs(access, trace=trace)
     elif contacts_tab.open or company_tab.open:
         try:
             if trace is None:

@@ -22,9 +22,8 @@ Company Profile UI and persistence contract
 Company Profile owns its local page heading and navigation actions. The shared
 full Costerly logo and global Profile action are not rendered on that screen.
 The page uses six peer tabs: Overhead Expenses, Labor Costs, Contacts, Company
-Details, Users, and Price List. Overhead Expenses is first. Contacts and Company
-Details submit independently. Labor Costs is a reserved product surface and does
-not yet own persistence.
+Details, Users, and Price Lists. Overhead Expenses is first. Contacts and Company
+Details submit independently.
 Their save handlers send partial company updates, so a field hidden from the UI
 is not converted to null. In particular, the retained VAT file number and
 country values remain unchanged until a deliberate data-migration decision.
@@ -47,6 +46,13 @@ for project and object pricing totals instead of a hard-coded 18 percent rate.
 Overhead Expenses and deterministic Object Detail allocation. The versioned
 `2026_09_18_other_spendings_overhead.sql` migration has been applied to the live
 Supabase schema.
+Labor Costs stores owner-only worker compensation in `company_employees`, never
+in the Estimation `labor` catalog. The first contract uses one informal Worker
+name, controlled Department and Position values, and either Gross monthly salary
+or Gross hourly rate plus Hours per month. Monthly Gross is derived rather than
+stored. Net salary and statutory employer-cost calculations remain out of scope.
+The `2026_09_19_company_employees.sql` migration has been applied to the live
+Supabase schema.
 The Overhead Expenses cost table and Object Detail tables share the same
 `object-detail-table`, row, cell, group-summary, and cell-input CSS primitives.
 Do not rebuild Metrics cost rows with `st.columns` or native `st.text_input`:
@@ -62,6 +68,13 @@ All Profile text inputs reuse the Sign in input geometry and focus contract:
 neutral default border, purple focus ring, no red focus-only state, and no
 framework keyboard instruction. Auth and Upload styling remain separate
 protected surfaces.
+
+SQL migration safety rule
+Before a SQL migration is handed to the user, inspect the complete final query
+for `DROP`, `DELETE`, `TRUNCATE`, cascading foreign-key actions, destructive
+`ALTER`, privilege changes, RLS effects, and repeat-run behavior. Remove any
+destructive operation that is not required. Explicitly state the remaining data
+and access impact instead of relying on the SQL editor warning.
 
 Auth browser-session boundary
 Supabase access and refresh tokens are mirrored into tab-scoped browser

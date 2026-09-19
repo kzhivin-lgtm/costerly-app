@@ -443,7 +443,7 @@ def _render_profile_test():
 
 @pytest.mark.parametrize("role", ["owner", "member"])
 def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role):
-    calls = {"profile": 0, "members": 0, "metrics": 0}
+    calls = {"profile": 0, "members": 0, "metrics": 0, "employees": 0}
 
     def load_profile(_access):
         calls["profile"] += 1
@@ -457,6 +457,10 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         calls["metrics"] += 1
         return {"vat_percent": 18}, {}
 
+    def load_employees(_access):
+        calls["employees"] += 1
+        return []
+
     monkeypatch.setattr(company_profile, "load_company_profile", load_profile)
     monkeypatch.setattr(company_profile, "load_company_members", load_members)
     monkeypatch.setattr(
@@ -464,6 +468,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         "load_company_metrics",
         load_metrics,
     )
+    monkeypatch.setattr(company_profile, "load_company_employees", load_employees)
     monkeypatch.setattr(company_auth, "company_join_url", lambda _access: "https://example.com/join/token")
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = role
@@ -478,7 +483,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         button.label in {"Save Contacts", "Save Company Details"}
         for button in app.button
     )
-    assert calls == {"profile": 0, "members": 0, "metrics": 1}
+    assert calls == {"profile": 0, "members": 0, "metrics": 1, "employees": 0}
     metrics_markup = "".join(item.value for item in app.markdown)
     assert ('data-company-metrics-save="true"' in metrics_markup) is (role == "owner")
     assert "Project Reserves" not in metrics_markup
@@ -492,9 +497,29 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     else:
         assert all(field.disabled for field in app.text_input)
 
+    app.session_state["company_profile_tab"] = "Labor Costs"
+    app.run()
+    if role == "owner":
+        assert calls["employees"] == 1
+        assert any(button.label == "Add Worker" for button in app.button)
+        assert [item.label for item in app.selectbox] == [
+            "Department", "Position", "Pay type",
+        ]
+    else:
+        assert calls["employees"] == 0
+        assert not any(button.label == "Add Worker" for button in app.button)
+        assert "available only to the company owner" in " ".join(
+            item.value for item in app.info
+        )
+
     app.session_state["company_profile_tab"] = "Contacts"
     app.run()
-    assert calls == {"profile": 1, "members": 0, "metrics": 1}
+    assert calls == {
+        "profile": 1,
+        "members": 0,
+        "metrics": 1,
+        "employees": 1 if role == "owner" else 0,
+    }
     if role == "owner":
         labels = [field.label for field in app.text_input]
         assert any(button.label == "Save Contacts" for button in app.button)
@@ -504,7 +529,12 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
 
     app.session_state["company_profile_tab"] = "Company Details"
     app.run()
-    assert calls == {"profile": 2, "members": 0, "metrics": 1}
+    assert calls == {
+        "profile": 2,
+        "members": 0,
+        "metrics": 1,
+        "employees": 1 if role == "owner" else 0,
+    }
     if role == "owner":
         labels = [field.label for field in app.text_input]
         assert any(button.label == "Save Company Details" for button in app.button)
@@ -523,7 +553,12 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
 
     app.session_state["company_profile_tab"] = "Users"
     app.run()
-    assert calls == {"profile": 2, "members": 1, "metrics": 1}
+    assert calls == {
+        "profile": 2,
+        "members": 1,
+        "metrics": 1,
+        "employees": 1 if role == "owner" else 0,
+    }
     assert not app.subheader
     assert len(app.code) == (1 if role == "owner" else 0)
 
@@ -545,6 +580,107 @@ def test_company_metrics_reuses_object_detail_table_contract():
     assert html.count("company-metrics-monthly-input") == 2
     assert 'data-company-metrics-vat>—</span>' in html
     assert 'data-company-metrics-total>₪500</span>' in html
+
+
+def test_labor_position_list_is_managed_and_includes_general_worker():
+    assert company_profile.LABOR_DEPARTMENTS == {
+        "management": "Management",
+        "office": "Office",
+        "production": "Production",
+    }
+    assert ("general_worker", "General Worker") in company_profile.LABOR_POSITIONS["production"]
+    assert ("cabinetmaker_joiner", "Cabinetmaker / Joiner") in company_profile.LABOR_POSITIONS["production"]
+
+
+@pytest.mark.parametrize(
+    ("pay_type", "pay_values", "expected"),
+    [
+        (
+            "monthly_salary",
+            {"gross_monthly_salary": 12_000},
+            {
+                "gross_monthly_salary": 12_000.0,
+                "gross_hourly_rate": None,
+                "monthly_hours": None,
+            },
+        ),
+        (
+            "hourly_rate",
+            {"gross_hourly_rate": 65.5, "monthly_hours": 160},
+            {
+                "gross_monthly_salary": None,
+                "gross_hourly_rate": 65.5,
+                "monthly_hours": 160.0,
+            },
+        ),
+    ],
+)
+def test_add_company_employee_writes_only_selected_pay_model(
+    monkeypatch, pay_type, pay_values, expected
+):
+    access = company_auth.CompanyAccess(
+        "user-1", "owner@example.com", "company-a", "owner", "token"
+    )
+    monkeypatch.setattr(company_profile, "_current_access", lambda _access: access)
+    inserted = []
+
+    class Query:
+        def insert(self, values):
+            inserted.append(values)
+            return self
+
+        def execute(self):
+            return type("Result", (), {"data": [inserted[-1]]})()
+
+    class Client:
+        def table(self, name):
+            assert name == "company_employees"
+            return Query()
+
+    client = Client()
+    monkeypatch.setattr(company_profile, "get_supabase_client", lambda: client)
+    monkeypatch.setattr(company_profile, "assert_company_owner", lambda *_args: None)
+
+    company_profile.add_company_employee(
+        access,
+        worker_name=" Guy ",
+        department="production",
+        position_code="general_worker",
+        pay_type=pay_type,
+        **pay_values,
+    )
+
+    assert inserted == [{
+        "company_id": "company-a",
+        "worker_name": "Guy",
+        "department": "production",
+        "position_code": "general_worker",
+        "pay_type": pay_type,
+        **expected,
+    }]
+
+
+def test_company_employee_access_is_owner_only(monkeypatch):
+    member = company_auth.CompanyAccess(
+        "user-2", "member@example.com", "company-a", "member", "token"
+    )
+    monkeypatch.setattr(company_profile, "_current_access", lambda _access: member)
+    monkeypatch.setattr(
+        company_profile,
+        "get_supabase_client",
+        lambda: pytest.fail("member access must stop before opening a database client"),
+    )
+    with pytest.raises(PermissionError):
+        company_profile.load_company_employees(member)
+
+
+def test_company_employees_migration_keeps_salary_data_owner_only():
+    sql = (Path(__file__).parents[1] / "db/sql/2026_09_19_company_employees.sql").read_text()
+    assert "create table if not exists public.company_employees" in sql
+    assert "worker_name text not null" in sql
+    assert "first_name" not in sql and "last_name" not in sql
+    assert sql.count("and m.role = 'owner'") == 5
+    assert "revoke all on public.company_employees from anon" in sql
 
 
 def test_company_metrics_member_table_has_no_editable_cells_or_save_action():

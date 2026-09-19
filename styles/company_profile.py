@@ -184,7 +184,8 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) div[data-testid="stForm"],
-        .stApp:has(.company-profile-active) .st-key-company_metrics_card {
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card,
+        .stApp:has(.company-profile-active) .st-key-company_labor_card {
             padding: 28px;
             border: 1px solid var(--color-border-soft);
             border-radius: 18px;
@@ -212,7 +213,8 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) [data-testid="stTextInputRootElement"],
         .stApp:has(.company-profile-active) div[data-baseweb="input"],
-        .stApp:has(.company-profile-active) div[data-baseweb="base-input"] {
+        .stApp:has(.company-profile-active) div[data-baseweb="base-input"],
+        .stApp:has(.company-profile-active) div[data-baseweb="select"] > div {
             min-height: 52px !important;
             border: 1px solid #CEC5D1 !important;
             border-radius: var(--input-radius) !important;
@@ -261,12 +263,16 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button,
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"],
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] > div,
-        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button {
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button,
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"],
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] > div,
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button {
             width: 100% !important;
         }
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button,
-        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"] {
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"],
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"] {
             min-height: 60px !important;
             margin-top: 8px !important;
             background: #8049C6 !important;
@@ -282,7 +288,8 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button p,
-        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"] p {
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"] p,
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"] p {
             color: #FFFFFF !important;
             font-family: var(--font-sans) !important;
             font-size: 19px !important;
@@ -291,7 +298,8 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:hover,
-        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"]:hover {
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"]:hover,
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"]:hover {
             background: #6F3CB4 !important;
             border-color: #6F3CB4 !important;
             color: #FFFFFF !important;
@@ -300,7 +308,8 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:active,
-        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"]:active {
+        .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"]:active,
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"]:active {
             background: #6131A3 !important;
             border-color: #6131A3 !important;
             transform: translateY(0) scale(0.995);
@@ -436,6 +445,43 @@ def apply_company_profile_css() -> None:
             border-bottom: 0;
         }
 
+        .company-labor-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 24px 0 12px;
+            padding: 18px 20px;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 12px;
+            background: #FAF8FC;
+            color: var(--color-text-strong);
+        }
+
+        .company-labor-summary span {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .company-labor-summary strong {
+            font-family: var(--font-mono);
+            font-size: 20px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .company-labor-list {
+            overflow-x: auto;
+        }
+
+        .company-labor-list table {
+            min-width: 980px;
+        }
+
+        .company-labor-list td:nth-child(5),
+        .company-labor-list td:nth-child(6) {
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
         .stApp:has(.company-profile-active) [data-testid="stCode"] {
             color-scheme: light !important;
             border: 1px solid var(--color-border-soft);
@@ -496,7 +542,8 @@ def apply_company_profile_css() -> None:
             }
 
             .stApp:has(.company-profile-active) div[data-testid="stForm"],
-            .stApp:has(.company-profile-active) .st-key-company_metrics_card { padding: 18px; }
+            .stApp:has(.company-profile-active) .st-key-company_metrics_card,
+            .stApp:has(.company-profile-active) .st-key-company_labor_card { padding: 18px; }
             .company-profile-readonly-grid { grid-template-columns: 1fr; }
         }
         </style>
