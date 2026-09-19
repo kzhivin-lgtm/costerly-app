@@ -5,6 +5,11 @@
 - Every new two-file benchmark cycle starts two fresh instances on separate unused ports and opens both Chrome tabs automatically so `page-23.pdf` and `Металл (1).pdf` can run in parallel under the same code version. Keep older benchmark servers and result screens available for side-by-side comparison; stop them only on explicit request or when resource/port conflicts require cleanup.
 
 ## Active
+- 3.1.2 Pilot Fast Resume: remove the initial browser-session rerun with a
+  30-minute encrypted partitioned resume cookie, retain sessionStorage as the
+  compatibility fallback, and keep Supabase as the authority for user and
+  company access. Ship disabled first, then verify production enablement,
+  fallback, expiry, tamper rejection, and two Sign out / Sign in cycles.
 - 3.1.1 Production Observability Foundation: persist correlated browser and
   server timing boundaries without blocking render, changing UI geometry, or
   recording credentials, PII, file names, or RFQ content. Apply the Supabase

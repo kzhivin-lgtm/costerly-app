@@ -4,3 +4,4 @@ supabase
 anthropic==0.111.0
 httpx
 PyMuPDF
+cryptography>=49,<50

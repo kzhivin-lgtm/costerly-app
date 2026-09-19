@@ -88,7 +88,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version=str(get_optional_secret("COSTERLY_BUILD_VERSION", "3.1.1")),
+        build_version=str(get_optional_secret("COSTERLY_BUILD_VERSION", "3.1.2")),
     )
     trace.event(
         "server.run_start",
@@ -108,6 +108,9 @@ def main() -> None:
                 "ready": browser_session_ready,
                 "outcome": str(
                     st.session_state.get("_browser_auth_sync_outcome") or "unknown"
+                ),
+                "fast_resume": str(
+                    st.session_state.get("_fast_resume_outcome") or "unknown"
                 ),
             },
         )

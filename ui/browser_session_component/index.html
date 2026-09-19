@@ -5,7 +5,21 @@
     <script>
       (() => {
         const storageKey = "costerly.supabase.session.v1";
+        const resumeCookieName = "__Host-costerly-resume-v1";
+        const resumeCookieMaxAge = 30 * 60;
         let lastValue = null;
+
+        function storeResumeCookie(value) {
+          if (!value || typeof value !== "string") return;
+          document.cookie =
+            `${resumeCookieName}=${encodeURIComponent(value)}; ` +
+            `Max-Age=${resumeCookieMaxAge}; Path=/; Secure; SameSite=None; Partitioned`;
+        }
+
+        function clearResumeCookie() {
+          document.cookie =
+            `${resumeCookieName}=; Max-Age=0; Path=/; Secure; SameSite=None; Partitioned`;
+        }
 
         function send(type, payload = {}) {
           window.parent.postMessage(
@@ -43,8 +57,10 @@
           try {
             if (args.action === "store" && args.session) {
               window.sessionStorage.setItem(storageKey, JSON.stringify(args.session));
+              storeResumeCookie(args.resumeBlob);
             } else if (args.action === "clear") {
               window.sessionStorage.removeItem(storageKey);
+              clearResumeCookie();
             }
           } catch (_) {
             // Storage failure falls back to the normal sign-in screen.

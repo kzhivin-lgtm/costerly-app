@@ -170,6 +170,17 @@ credentials, email addresses, file names, uploaded content, prompts, or RFQ
 content. `notes/OBSERVABILITY.md` is the authoritative event and deployment
 contract.
 
+Pilot Fast Resume v1
+For the early-bird Streamlit release, an optional 30-minute Fernet-sealed
+resume blob may be stored as a `Secure`, `SameSite=None`, `Partitioned`,
+host-only cookie. It contains only the existing Supabase session needed to
+avoid the initial browser component rerun. Supabase still validates the user
+and company membership on every new Streamlit session. The existing
+sessionStorage transport remains the compatibility fallback. The feature is
+disabled unless `COSTERLY_FAST_RESUME_ENABLED` and a valid
+`COSTERLY_SESSION_SEAL_KEY` are both configured. Cookie contents, tokens, and
+decrypt errors must never be written to runtime telemetry.
+
 Pricing Runtime v1
 `price_estimated_object()` is the deterministic pricing entrypoint after one object is estimated.
 It reads the object's persisted material/labor lines, matches materials to the `materials` catalog, matches labor roles to the `labor` table, fills `unit_cost`, `rate`, and `cost`, then updates object self-cost totals.

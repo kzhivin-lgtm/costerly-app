@@ -1,6 +1,6 @@
 # Production observability
 
-Version: 3.1.1
+Version: 3.1.2
 Status: implementation checkpoint, not yet deployed or production-verified
 
 ## Purpose
@@ -17,7 +17,7 @@ user interface.
 - `session_id`: one Streamlit session, retained across sign-in and sign-out.
 - `run_id`: one Python rerun.
 - `schema_version`: event contract version, currently `runtime_v1`.
-- `build_version`: deployed code checkpoint, currently `3.1.1`.
+- `build_version`: deployed code checkpoint, currently `3.1.2`.
 
 ## Data contract
 
@@ -60,6 +60,8 @@ Server:
 - `server.run_start`
 - `server.base_css`
 - `server.auth.browser_session_sync`
+- `server.auth.browser_session_sync_result`, including only safe outcome names
+  for Fast Resume and sessionStorage fallback
 - `server.auth.access_lookup`
 - `server.app_header_render`
 - `server.login_render` or `server.company_setup_render`
@@ -76,7 +78,7 @@ Server:
    `SUPABASE_SERVICE_ROLE_KEY`.
 3. Configure `COSTERLY_ALLOWED_ORIGIN=https://app.costerly.ai` or retain the
    identical built-in default.
-4. Set `COSTERLY_BUILD_VERSION=3.1.1` in Streamlit production secrets.
+4. Set `COSTERLY_BUILD_VERSION=3.1.2` in Streamlit production secrets.
 5. Deploy the same Git commit to Streamlit and Cloudflare Pages.
 
 ## Production acceptance

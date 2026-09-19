@@ -90,6 +90,9 @@ def test_browser_session_restores_and_persists_tab_tokens(monkeypatch):
             },
         },
     )
+    promoted = []
+    monkeypatch.setattr(company_auth, "write_fast_resume_cookie", promoted.append)
+    monkeypatch.setattr(company_auth, "seal_resume_session", lambda **_kwargs: "sealed")
 
     assert company_auth.sync_browser_auth_session() is True
     assert st.session_state.auth_access_token == "access-1"
@@ -97,6 +100,8 @@ def test_browser_session_restores_and_persists_tab_tokens(monkeypatch):
     assert st.session_state.auth_expires_at == 123
     assert st.session_state._browser_auth_initialized is True
     assert st.session_state._browser_auth_sync_outcome == "browser_session_restored"
+    assert st.session_state._fast_resume_outcome == "promoted_from_browser"
+    assert promoted == ["sealed"]
 
     class Session:
         access_token = "access-2"
@@ -157,6 +162,40 @@ def test_browser_session_uses_session_storage_and_hidden_sidebar_transport():
     assert "window.sessionStorage" in component_html
     assert "window.localStorage" not in component_html
     assert 'if (args.action === "read")' in component_html
+    assert "__Host-costerly-resume-v1" in component_html
+    assert "SameSite=None; Partitioned" in component_html
+    assert "Max-Age=0" in component_html
+
+
+def test_fast_resume_skips_browser_component(monkeypatch):
+    st = company_auth.st
+    st.session_state.clear()
+    monkeypatch.setattr(
+        company_auth,
+        "restore_resume_session",
+        lambda _cookies: (
+            "restored",
+            {
+                "access_token": "access-fast",
+                "refresh_token": "refresh-fast",
+                "expires_at": 789,
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        company_auth,
+        "browser_session_exchange",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("Fast Resume must skip the browser component")
+        ),
+    )
+
+    assert company_auth.sync_browser_auth_session() is True
+    assert st.session_state.auth_access_token == "access-fast"
+    assert st.session_state.auth_refresh_token == "refresh-fast"
+    assert st.session_state._browser_auth_initialized is True
+    assert st.session_state._browser_auth_sync_outcome == "fast_resume_restored"
+    assert st.session_state._fast_resume_outcome == "restored"
 
 
 def test_browser_session_component_executes_inside_sidebar(monkeypatch):

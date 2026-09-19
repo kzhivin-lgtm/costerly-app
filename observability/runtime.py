@@ -19,7 +19,7 @@ logger = logging.getLogger("costerly.runtime")
 logger.setLevel(logging.INFO)
 
 OBSERVABILITY_SCHEMA_VERSION = "runtime_v1"
-DEFAULT_BUILD_VERSION = "3.1.1"
+DEFAULT_BUILD_VERSION = "3.1.2"
 _QUEUE: queue.Queue[dict[str, object]] = queue.Queue(maxsize=1000)
 _SINK_LOCK = threading.Lock()
 _SINK_URL: str | None = None

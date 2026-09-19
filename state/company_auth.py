@@ -29,7 +29,8 @@ from use_cases.invite_links import (
 )
 from use_cases.email_addresses import is_valid_email_address
 from ui.app_header import render_account_header_controls
-from ui.browser_session import browser_session_exchange
+from ui.browser_session import browser_session_exchange, write_fast_resume_cookie
+from state.session_resume import restore_resume_session, seal_resume_session
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,11 @@ def _store_auth_session(session: object) -> None:
     st.session_state.auth_access_token = session.access_token
     st.session_state.auth_refresh_token = session.refresh_token
     st.session_state.auth_expires_at = int(session.expires_at or 0)
+    resume_blob = seal_resume_session(
+        access_token=session.access_token,
+        refresh_token=session.refresh_token,
+        expires_at=int(session.expires_at or 0),
+    )
     st.session_state._browser_auth_pending = {
         "action": "store",
         "request_id": secrets.token_urlsafe(12),
@@ -149,6 +155,7 @@ def _store_auth_session(session: object) -> None:
             "refresh_token": session.refresh_token,
             "expires_at": int(session.expires_at or 0),
         },
+        "resume_blob": resume_blob,
     }
 
 
@@ -160,10 +167,34 @@ def sync_browser_auth_session() -> bool:
     cannot schedule a rerun that consumes the next user interaction.
     """
     pending = st.session_state.get("_browser_auth_pending")
+    has_memory_session = bool(
+        st.session_state.get("auth_access_token")
+        and st.session_state.get("auth_refresh_token")
+    )
+    if (
+        not isinstance(pending, dict)
+        and not st.session_state.get("_browser_auth_initialized")
+        and not has_memory_session
+    ):
+        outcome, restored = restore_resume_session(st.context.cookies)
+        st.session_state._fast_resume_outcome = outcome
+        if restored is not None:
+            st.session_state.auth_access_token = restored["access_token"]
+            st.session_state.auth_refresh_token = restored["refresh_token"]
+            st.session_state.auth_expires_at = restored["expires_at"]
+            st.session_state._browser_auth_initialized = True
+            st.session_state._browser_auth_sync_outcome = "fast_resume_restored"
+            return True
+    elif "_fast_resume_outcome" not in st.session_state:
+        st.session_state._fast_resume_outcome = "not_attempted"
+
     if isinstance(pending, dict):
         action = str(pending.get("action") or "read")
         request_id = str(pending.get("request_id") or "")
         session = pending.get("session") if isinstance(pending.get("session"), dict) else None
+        resume_blob = (
+            str(pending.get("resume_blob")) if pending.get("resume_blob") else None
+        )
     elif st.session_state.get("_browser_auth_initialized"):
         st.session_state._browser_auth_sync_outcome = "already_initialized"
         return True
@@ -173,11 +204,13 @@ def sync_browser_auth_session() -> bool:
         )
         action = "read"
         session = None
+        resume_blob = None
 
     result = browser_session_exchange(
         action=action,
         request_id=request_id,
         session=session,
+        resume_blob=resume_blob,
     )
     if action in {"store", "clear"}:
         st.session_state.pop("_browser_auth_pending", None)
@@ -185,10 +218,6 @@ def sync_browser_auth_session() -> bool:
         st.session_state._browser_auth_sync_outcome = f"{action}_dispatched"
         return True
 
-    has_memory_session = bool(
-        st.session_state.get("auth_access_token")
-        and st.session_state.get("auth_refresh_token")
-    )
     if not result or result.get("requestId") != request_id:
         st.session_state._browser_auth_sync_outcome = (
             "memory_session" if has_memory_session else "waiting_for_browser"
@@ -205,7 +234,16 @@ def sync_browser_auth_session() -> bool:
         if isinstance(access_token, str) and isinstance(refresh_token, str):
             st.session_state.auth_access_token = access_token
             st.session_state.auth_refresh_token = refresh_token
-            st.session_state.auth_expires_at = int(stored.get("expires_at") or 0)
+            expires_at = int(stored.get("expires_at") or 0)
+            st.session_state.auth_expires_at = expires_at
+            resume_blob = seal_resume_session(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_at=expires_at,
+            )
+            if resume_blob:
+                write_fast_resume_cookie(resume_blob)
+                st.session_state._fast_resume_outcome = "promoted_from_browser"
     st.session_state._browser_auth_initialized = True
     st.session_state._browser_auth_sync_outcome = (
         "browser_session_restored"
