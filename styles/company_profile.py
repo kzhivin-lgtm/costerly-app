@@ -113,7 +113,20 @@ def apply_company_profile_css() -> None:
             outline-offset: 2px;
         }
 
-        .stApp:has(.company-profile-active) [data-baseweb="tab-list"] {
+        .stApp:has(.company-profile-active)
+        [data-testid="stElementContainer"]:has(.st-key-company_metrics_bridge_host),
+        .st-key-company_metrics_bridge_host {
+            display: none !important;
+        }
+
+        .st-key-company_profile_tab
+        [role="tabpanel"]:has(.st-key-company_metrics_card)
+        > [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active) [data-baseweb="tab-list"],
+        .st-key-company_profile_tab [role="tablist"] {
             gap: 6px;
             padding: 6px;
             margin-bottom: 28px;
@@ -122,7 +135,8 @@ def apply_company_profile_css() -> None:
             background: rgba(255, 255, 255, 0.64);
         }
 
-        .stApp:has(.company-profile-active) [data-baseweb="tab"] {
+        .stApp:has(.company-profile-active) [data-baseweb="tab"],
+        .st-key-company_profile_tab [role="tab"] {
             min-height: 62px;
             padding: 0 26px;
             border-radius: 10px;
@@ -131,16 +145,28 @@ def apply_company_profile_css() -> None:
             font-weight: 500;
         }
 
-        .stApp:has(.company-profile-active) [data-baseweb="tab"][aria-selected="true"] {
+        .stApp:has(.company-profile-active) [data-baseweb="tab"][aria-selected="true"],
+        .st-key-company_profile_tab [role="tab"][aria-selected="true"],
+        .st-key-company_profile_tab [role="tab"][data-selected] {
             background: var(--color-surface);
             color: var(--color-text-strong);
-            font-weight: 700;
+            font-weight: 700 !important;
             box-shadow: 0 1px 2px rgba(42, 31, 44, 0.08);
         }
 
+        .st-key-company_profile_tab [role="tab"][aria-selected="true"] p,
+        .st-key-company_profile_tab [role="tab"][aria-selected="true"] span,
+        .st-key-company_profile_tab [role="tab"][data-selected] p,
+        .st-key-company_profile_tab [role="tab"][data-selected] span {
+            font-weight: 700 !important;
+        }
+
         .stApp:has(.company-profile-active) [data-baseweb="tab-highlight"],
-        .stApp:has(.company-profile-active) [data-baseweb="tab-border"] {
-            display: none;
+        .stApp:has(.company-profile-active) [data-baseweb="tab-border"],
+        .st-key-company_profile_tab [role="tablist"]::after,
+        .st-key-company_profile_tab .react-aria-SelectionIndicator {
+            display: none !important;
+            content: none !important;
         }
 
         .stApp:has(.company-profile-active) h2 {
@@ -457,12 +483,14 @@ def apply_company_profile_css() -> None:
                 flex: 1 1 calc(50% - 5px) !important;
             }
 
-            .stApp:has(.company-profile-active) [data-baseweb="tab-list"] {
+            .stApp:has(.company-profile-active) [data-baseweb="tab-list"],
+            .st-key-company_profile_tab [role="tablist"] {
                 overflow-x: auto;
                 justify-content: flex-start;
             }
 
-            .stApp:has(.company-profile-active) [data-baseweb="tab"] {
+            .stApp:has(.company-profile-active) [data-baseweb="tab"],
+            .st-key-company_profile_tab [role="tab"] {
                 flex: 0 0 auto;
                 white-space: nowrap;
             }

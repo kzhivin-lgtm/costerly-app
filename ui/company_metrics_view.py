@@ -28,7 +28,7 @@ def table_html(
     """Render Overhead Expenses with the exact Object Detail table primitives."""
     headers = "".join(
         f'<div class="object-detail-table-head">{_escape(label)}</div>'
-        for label in ("Expense", "Monthly cost", "VAT", "Total")
+        for label in ("Overhead Expense", "Monthly cost", "VAT", "Total")
     )
     body: list[str] = []
     for group_name, rows in groups:
@@ -80,5 +80,5 @@ def table_html(
 def save_action_html() -> str:
     return (
         '<button class="company-metrics-save" type="button" '
-        'data-company-metrics-save="true">SAVE EXPENSES</button>'
+        'data-company-metrics-save="true">SAVE OVERHEAD EXPENSES</button>'
     )

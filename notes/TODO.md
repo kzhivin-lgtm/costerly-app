@@ -1,5 +1,23 @@
 # TODO
 
+- 3.1.10 Company Profile navigation and Overhead Expenses copy: restore the
+  accepted v3.0.57 full-width tab rail on the current stateful, lazy-rendered
+  tabs without reverting the v3.1.8 performance improvement. Use Overhead
+  Expenses consistently in the table heading, save action, success message,
+  and save errors. Remove the current React Aria selection underline, emphasize
+  only the active tab, and remove the zero-height save bridge from document
+  flow, including its outer Streamlit element wrapper, so Overhead Expenses
+  starts at the same height as Contacts. Rename Price List to Price Lists.
+  Preserve the working expense persistence path and defer Sign out sizing,
+  Save Contacts, and Save Company Details. Status: production work-in-progress
+  at `9ab5814`. The rail, active-tab bold treatment, plural `Price Lists`,
+  Overhead Expenses copy, working Save, and removal of the red React Aria
+  indicator are visually confirmed. A small residual vertical offset remains
+  between the Overhead Expenses card and the other tab contents. Do not add a
+  guessed negative margin. Current revision removes the top-level vertical gap
+  from the Overhead Expenses tab panel while preserving the fragment and its
+  internal card spacing. Production visual verification remains required.
+
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the
   intermediate Login/Profile render that can expose a broken screen or two
