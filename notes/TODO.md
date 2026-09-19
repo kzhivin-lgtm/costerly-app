@@ -123,8 +123,7 @@
 - 3.2.1 Labor Costs: replace the placeholder with an owner-only employee cost
   register. The first production candidate uses one informal `Worker name`
   field, managed Department and Position lists, Monthly Salary or Hourly Rate,
-  Average Hours per Month for hourly workers, and a derived Total Monthly Salary
-  Brutto. The
+  Average Hours per Month for hourly workers, and a derived Monthly Bruto total. The
   personnel records live in `company_employees`, separately from the Estimation
   `labor` catalog. Net salary, tax, pension, National Insurance, and total
   employer burden remain deliberately out of scope until their calculation
@@ -132,10 +131,8 @@
   rollback point. The current revision moves saved workers above the form, uses
   the Overhead Expenses typography, normalizes selector focus and vertical
   alignment, uses three-column role and hourly rows, removes numeric steppers,
-  resets every field after Add, and starts owner-only edits from a pencil beside
-  each worker name. User-facing salary terminology is Brutto and Netto, both
-  with two `t`; Netto and statutory employer-cost calculations remain pending.
-  Status: deployment and production visual interaction verification are pending.
+  resets every field after Add, and supports owner-only edits. Status: deployment
+  and production visual interaction verification are pending.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
   1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR remains the default one-PDF/one-request flow. Naming is text-only and receives locked Detection facts plus OCR snippets, never the PDF again.

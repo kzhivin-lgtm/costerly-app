@@ -237,7 +237,6 @@ def apply_company_profile_css() -> None:
             border-color: #CEC5D1 !important;
             color: var(--input-text) !important;
             box-shadow: none !important;
-            outline: none !important;
         }
 
         .stApp:has(.company-profile-active) [data-testid="stSelectbox"] div[data-baseweb="select"] > div > div {
@@ -251,45 +250,8 @@ def apply_company_profile_css() -> None:
             line-height: 1.2 !important;
         }
 
-        .stApp:has(.company-profile-active) .st-key-company_labor_card
-        [data-testid="stSelectbox"] [data-baseweb="select"] [role="combobox"],
-        .stApp:has(.company-profile-active) .st-key-company_labor_card
-        [data-testid="stSelectbox"] [data-baseweb="select"] [aria-expanded] {
-            display: flex !important;
-            align-items: center !important;
-            height: 50px !important;
-            min-height: 50px !important;
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            background: var(--input-bg) !important;
-            border-color: #CEC5D1 !important;
-            color: var(--input-text) !important;
-            outline: none !important;
-            box-shadow: none !important;
-        }
-
-        .stApp:has(.company-profile-active) .st-key-company_labor_card
-        [data-testid="stSelectbox"] [data-baseweb="select"] span,
-        .stApp:has(.company-profile-active) .st-key-company_labor_card
-        [data-testid="stSelectbox"] [data-baseweb="select"] p,
-        .stApp:has(.company-profile-active) .st-key-company_labor_card
-        [data-testid="stSelectbox"] [data-baseweb="select"] div {
-            font-family: var(--font-sans) !important;
-            font-weight: 400 !important;
-            line-height: 1.2 !important;
-        }
-
         .stApp:has(.company-profile-active) [data-testid="stSelectbox"]:focus-within div[data-baseweb="select"] > div {
             border-color: var(--input-focus-border) !important;
-            box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
-        }
-
-        .stApp:has(.company-profile-active) .st-key-company_labor_card
-        [data-testid="stSelectbox"]:focus-within [data-baseweb="select"] [role="combobox"],
-        .stApp:has(.company-profile-active) .st-key-company_labor_card
-        [data-testid="stSelectbox"]:focus-within [data-baseweb="select"] [aria-expanded="true"] {
-            border-color: var(--input-focus-border) !important;
-            outline: none !important;
             box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
         }
 
@@ -564,85 +526,18 @@ def apply_company_profile_css() -> None:
             font-variant-numeric: tabular-nums;
         }
 
-        .stApp:has(.company-profile-active) .st-key-company_labor_list {
-            width: 100%;
-            padding: 0 !important;
+        .company-labor-list {
             overflow-x: auto;
-            border: 1px solid var(--color-border-soft);
-            border-radius: 12px;
-            background: var(--color-surface);
         }
 
-        .stApp:has(.company-profile-active) .st-key-company_labor_list
-        > [data-testid="stVerticalBlock"] {
+        .company-labor-list table {
             min-width: 980px;
-            gap: 0 !important;
         }
 
-        .stApp:has(.company-profile-active) .st-key-company_labor_list
-        [data-testid="stHorizontalBlock"] {
-            align-items: center;
-            min-height: 52px;
-            padding: 6px 16px;
-            border-bottom: 1px solid var(--color-border-soft);
-        }
-
-        .stApp:has(.company-profile-active) .st-key-company_labor_list
-        [data-testid="stHorizontalBlock"]:first-child {
-            min-height: 46px;
-            background: #FAF8FC;
-        }
-
-        .stApp:has(.company-profile-active) .st-key-company_labor_list
-        [data-testid="stHorizontalBlock"]:last-child {
-            border-bottom: 0;
-        }
-
-        .company-labor-cell {
-            display: flex;
-            align-items: center;
-            min-height: 32px;
-            color: var(--color-text);
-            font-family: var(--font-sans) !important;
-            font-size: 14px;
-            line-height: 1.25;
-        }
-
-        .company-labor-cell--heading {
-            color: var(--color-text-strong);
-            font-family: var(--font-mono) !important;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-
-        .company-labor-cell--strong {
-            color: var(--color-text-strong);
-            font-weight: 700;
+        .company-labor-list td:nth-child(5),
+        .company-labor-list td:nth-child(6) {
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
-        }
-
-        .stApp:has(.company-profile-active) .st-key-company_labor_list button,
-        .stApp:has(.company-profile-active) .st-key-company_labor_list button:hover,
-        .stApp:has(.company-profile-active) .st-key-company_labor_list button:focus {
-            width: auto !important;
-            min-height: 32px !important;
-            padding: 0 4px !important;
-            justify-content: flex-start !important;
-            background: transparent !important;
-            border: 0 !important;
-            color: var(--color-text-strong) !important;
-            box-shadow: none !important;
-            transform: none !important;
-        }
-
-        .stApp:has(.company-profile-active) .st-key-company_labor_list button p {
-            font-family: var(--font-sans) !important;
-            font-size: 14px !important;
-            font-weight: 700 !important;
-            text-align: left !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card {

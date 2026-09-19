@@ -438,7 +438,7 @@ def _company_employee_payload(
     if pay_type == "monthly_salary":
         salary = round(float(gross_monthly_salary or 0), 2)
         if salary <= 0:
-            raise ValueError("Total monthly salary brutto must be greater than zero.")
+            raise ValueError("Avg monthly bruto must be greater than zero.")
         payload["gross_monthly_salary"] = salary
     else:
         hourly_rate = round(float(gross_hourly_rate or 0), 1)
@@ -915,72 +915,32 @@ def _labor_pay_details(employee: dict) -> str:
     return _labor_money(employee.get("gross_monthly_salary"))
 
 
-def _labor_cell(value: object, *, heading: bool = False, strong: bool = False) -> None:
-    classes = ["company-labor-cell"]
-    if heading:
-        classes.append("company-labor-cell--heading")
-    if strong:
-        classes.append("company-labor-cell--strong")
-    st.markdown(
-        f'<div class="{" ".join(classes)}">{escape(_clean(value))}</div>',
-        unsafe_allow_html=True,
-    )
-
-
-def _start_labor_edit(employee_id: str) -> None:
-    st.session_state["_labor_edit_employee_id"] = employee_id
-    st.session_state["_labor_form_version"] = int(
-        st.session_state.get("_labor_form_version", 0)
-    ) + 1
-
-
 def _render_employee_list(employees: list[dict]) -> None:
     if not employees:
         st.info("No workers have been added yet.")
         return
+    rows = "".join(
+        "<tr>"
+        f"<td><strong>{escape(_clean(employee.get('worker_name')))}</strong></td>"
+        f"<td>{escape(LABOR_DEPARTMENTS.get(_clean(employee.get('department')), 'Not set'))}</td>"
+        f"<td>{escape(_labor_position_label(employee.get('position_code')))}</td>"
+        f"<td>{escape(LABOR_PAY_TYPES.get(_clean(employee.get('pay_type')), 'Not set'))}</td>"
+        f"<td>{escape(_labor_pay_details(employee))}</td>"
+        f"<td><strong>{escape(_labor_money(_labor_monthly_gross(employee)))}</strong></td>"
+        "</tr>"
+        for employee in employees
+    )
     total = sum(_labor_monthly_gross(employee) for employee in employees)
     st.markdown(
         '<div class="company-labor-summary">'
-        '<span>Total Monthly Salary Brutto</span>'
-        f'<strong>{escape(_labor_money(total))}</strong></div>',
+        '<span>Total Monthly Bruto</span>'
+        f'<strong>{escape(_labor_money(total))}</strong></div>'
+        '<div class="company-profile-users company-labor-list"><table>'
+        '<thead><tr><th>Worker</th><th>Department</th><th>Position</th>'
+        '<th>Pay Type</th><th>Pay Details</th><th>Monthly Bruto</th></tr></thead>'
+        f"<tbody>{rows}</tbody></table></div>",
         unsafe_allow_html=True,
     )
-    column_widths = (2.0, 1.25, 1.6, 1.25, 1.75, 1.4)
-    with st.container(key="company_labor_list", border=True):
-        header_columns = st.columns(column_widths, gap="small")
-        headings = (
-            "Worker",
-            "Department",
-            "Position",
-            "Pay Type",
-            "Pay Details",
-            "Monthly Salary Brutto",
-        )
-        for column, heading in zip(header_columns, headings):
-            with column:
-                _labor_cell(heading, heading=True)
-
-        for employee in employees:
-            employee_id = _clean(employee.get("employee_id"))
-            columns = st.columns(column_widths, gap="small")
-            with columns[0]:
-                st.button(
-                    f"✎  {_clean(employee.get('worker_name'))}",
-                    key=f"labor_edit_{employee_id}",
-                    help="Edit worker",
-                    on_click=_start_labor_edit,
-                    args=(employee_id,),
-                )
-            values = (
-                LABOR_DEPARTMENTS.get(_clean(employee.get("department")), "Not set"),
-                _labor_position_label(employee.get("position_code")),
-                LABOR_PAY_TYPES.get(_clean(employee.get("pay_type")), "Not set"),
-                _labor_pay_details(employee),
-                _labor_money(_labor_monthly_gross(employee)),
-            )
-            for column, value in zip(columns[1:], values):
-                with column:
-                    _labor_cell(value, strong=column is columns[-1])
 
 
 def _apply_labor_form_reset() -> None:
@@ -989,7 +949,7 @@ def _apply_labor_form_reset() -> None:
     st.session_state["_labor_form_version"] = int(
         st.session_state.get("_labor_form_version", 0)
     ) + 1
-    st.session_state["_labor_edit_employee_id"] = ""
+    st.session_state["labor_edit_worker"] = ""
     for key in list(st.session_state):
         if str(key).startswith("labor_form_"):
             st.session_state.pop(key, None)
@@ -1032,6 +992,13 @@ def _labor_form_number(value: object, *, decimals: int = 2) -> str:
     return f"{number:.{decimals}f}".rstrip("0").rstrip(".")
 
 
+def _labor_worker_option(employee: dict) -> str:
+    return (
+        f"{_clean(employee.get('worker_name'))} · "
+        f"{_labor_position_label(employee.get('position_code'))}"
+    )
+
+
 def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
     if access.role != "owner":
         st.info("Labor cost details are available only to the company owner.")
@@ -1063,11 +1030,18 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
         for employee in employees
         if employee.get("employee_id")
     }
-    edit_employee_id = _clean(st.session_state.get("_labor_edit_employee_id"))
+    edit_employee_id = ""
+    if employee_by_id:
+        edit_employee_id = st.selectbox(
+            "Edit worker",
+            options=("", *employee_by_id),
+            format_func=lambda employee_id: (
+                "Select a worker" if not employee_id
+                else _labor_worker_option(employee_by_id[employee_id])
+            ),
+            key="labor_edit_worker",
+        )
     editing = employee_by_id.get(str(edit_employee_id))
-    if edit_employee_id and editing is None:
-        st.session_state["_labor_edit_employee_id"] = ""
-        edit_employee_id = ""
     version = int(st.session_state.get("_labor_form_version", 0))
     mode = str(edit_employee_id or "new")
     key_prefix = f"labor_form_{version}_{mode}"
@@ -1148,7 +1122,7 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
         monthly_hours_raw = ""
         if pay_type == "monthly_salary":
             gross_monthly_salary_raw = st.text_input(
-                "Total Monthly Salary Brutto",
+                "Avg Monthly Bruto",
                 value=_labor_form_number(editing.get("gross_monthly_salary")) if editing else "",
                 key=f"{key_prefix}_gross_monthly_salary",
                 placeholder="12000",
@@ -1179,7 +1153,7 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
             )
             with bruto_column:
                 st.text_input(
-                    "Total Monthly Salary Brutto",
+                    "Avg Monthly Bruto",
                     value=_labor_money(estimated_bruto),
                     disabled=True,
                     key=f"{key_prefix}_calculated_bruto",
@@ -1219,7 +1193,7 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
             if pay_type == "monthly_salary":
                 gross_monthly_salary = _labor_input_number(
                     gross_monthly_salary_raw,
-                    label="Total monthly salary brutto",
+                    label="Avg monthly bruto",
                     decimals=2,
                 )
             elif pay_type == "hourly_rate":
