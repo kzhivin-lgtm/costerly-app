@@ -150,8 +150,7 @@
   visible header, equalize the page-to-title and title-to-tabs spacing at 34px,
   use actual 36px Profile action buttons, align their visual axis with the logo,
   and expose Projects as a disabled placeholder pending its route and data
-  contract. Status: visually accepted before checkpoint packaging; 186 tests
-  passed.
+  contract. Status: visually accepted and pushed at `1f30416`; 186 tests passed.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
   1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR remains the default one-PDF/one-request flow. Naming is text-only and receives locked Detection facts plus OCR snippets, never the PDF again.

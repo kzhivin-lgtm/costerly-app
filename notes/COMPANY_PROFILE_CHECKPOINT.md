@@ -5,6 +5,7 @@ Date: 2026-09-19
 
 ## v3.2.3 Compact Profile header
 
+- Product checkpoint: `1f30416`.
 - Top-level CSS and screen-marker wrappers no longer consume Streamlit's 16px
   vertical gaps before the visible header.
 - The top page gap and visual title-to-tabs gap both measure 34px on Streamlit
