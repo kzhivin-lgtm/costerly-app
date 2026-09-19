@@ -105,6 +105,19 @@ def main() -> None:
 
     auth_enabled = company_auth_enabled()
     if auth_enabled:
+        startup_probe = str(st.query_params.get("startup_probe") or "")
+        if startup_probe == "anonymous":
+            trace.annotate(
+                auth_outcome="anonymous_probe",
+                fast_resume="bypassed_for_probe",
+            )
+            with trace.span("server.app_header_render"):
+                render_app_header()
+            trace.set_screen("login")
+            with trace.span("server.login_render"):
+                render_login_or_signup(None)
+            _signal_ready(trace, "login")
+            return
         with trace.span("server.auth.browser_session_sync"):
             browser_session_ready = sync_browser_auth_session()
         trace.event(

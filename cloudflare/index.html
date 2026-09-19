@@ -84,10 +84,14 @@
         const inviteToken = pathInvite
           ? pathInvite[1]
           : new URLSearchParams(window.location.search).get("invite");
+        const startupProbe = new URLSearchParams(window.location.search).get("startup_probe");
         const appUrl = new URL(frame.dataset.src);
         appUrl.searchParams.set("obs_trace", traceId);
         if (inviteToken && /^[A-Za-z0-9_-]{43}$/.test(inviteToken)) {
           appUrl.searchParams.set("invite", inviteToken);
+        }
+        if (startupProbe === "anonymous") {
+          appUrl.searchParams.set("startup_probe", "anonymous");
         }
         let fallbackTimer = null;
         let ready = false;

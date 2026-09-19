@@ -133,6 +133,8 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "visibility: hidden" not in wrapper
     assert "appReadyRecorded" in wrapper
     assert "...(event.data.metrics || {})" in wrapper
+    assert 'startupProbe === "anonymous"' in wrapper
+    assert 'appUrl.searchParams.set("startup_probe", "anonymous")' in wrapper
     assert 'key.toLowerCase() !== "dom_content_loaded_ms"' in function
     assert "SUPABASE_SERVICE_ROLE_KEY" in function
     assert 'request.headers.get("origin")' in function
