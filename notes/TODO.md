@@ -16,7 +16,9 @@
   incremental client DOM patch while the old Profile marker is still present.
   The current revision reuses the Cloudflare startup mask only for this
   transition, reveals the iframe on the correlated Upload `app-ready`, and has
-  a five-second fail-open timeout. Status: ready for production verification.
+  a five-second fail-open timeout. Status: accepted production checkpoint at
+  `4738cb3`; the user confirmed no intermediate screen in either direction
+  between Profile and Upload.
 
 - 3.1.10 Company Profile navigation and Overhead Expenses copy: restore the
   accepted v3.0.57 full-width tab rail on the current stateful, lazy-rendered
