@@ -28,6 +28,7 @@ _WORKER_THREAD: threading.Thread | None = None
 _BLOCKED_KEY_PARTS = ("token", "password", "secret", "email", "file", "content")
 _SAFE_TECHNICAL_KEYS = {"dom_content_loaded_ms"}
 _SAFE_NAME = re.compile(r"^[a-z0-9_.:-]{1,80}$")
+_PERSIST_ATTEMPTS = 3
 
 
 def configure_runtime_sink(url: str | None, service_role_key: str | None) -> None:
@@ -112,23 +113,46 @@ def _persist_next_batch() -> None:
             sink_url = _SINK_URL
             sink_key = _SINK_KEY
         if sink_url and sink_key:
-            try:
-                httpx.post(
-                    sink_url,
-                    headers={
-                        "apikey": sink_key,
-                        "authorization": f"Bearer {sink_key}",
-                        "content-type": "application/json",
-                        "prefer": "return=minimal",
-                    },
-                    json=batch,
-                    timeout=2.0,
-                ).raise_for_status()
-            except Exception as exc:
-                logger.warning("runtime_event_persist_failed count=%s error=%s", len(batch), exc)
+            _post_batch_with_retry(sink_url, sink_key, batch)
     finally:
         for _event in batch:
             _QUEUE.task_done()
+
+
+def _post_batch_with_retry(
+    sink_url: str, sink_key: str, batch: list[dict[str, object]]
+) -> None:
+    last_error: Exception | None = None
+    for attempt in range(1, _PERSIST_ATTEMPTS + 1):
+        try:
+            httpx.post(
+                sink_url,
+                headers={
+                    "apikey": sink_key,
+                    "authorization": f"Bearer {sink_key}",
+                    "content-type": "application/json",
+                    "prefer": "return=minimal",
+                },
+                json=batch,
+                timeout=2.0,
+            ).raise_for_status()
+            if attempt > 1:
+                logger.info(
+                    "runtime_event_persist_recovered count=%s attempt=%s",
+                    len(batch),
+                    attempt,
+                )
+            return
+        except Exception as exc:
+            last_error = exc
+            if attempt < _PERSIST_ATTEMPTS:
+                time.sleep(0.1 * attempt)
+    logger.warning(
+        "runtime_event_persist_failed count=%s attempts=%s error_type=%s",
+        len(batch),
+        _PERSIST_ATTEMPTS,
+        type(last_error).__name__ if last_error else "Unknown",
+    )
 
 
 def _runtime_worker() -> None:

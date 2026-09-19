@@ -67,6 +67,30 @@ def test_runtime_span_records_error_type_without_error_message(monkeypatch):
     assert "private detail" not in str(captured[0])
 
 
+def test_runtime_persistence_retries_transient_failure(monkeypatch):
+    attempts = []
+
+    class Response:
+        def raise_for_status(self):
+            if len(attempts) < 3:
+                raise RuntimeError("transient private detail")
+
+    def post(*_args, **_kwargs):
+        attempts.append(1)
+        return Response()
+
+    monkeypatch.setattr(runtime.httpx, "post", post)
+    monkeypatch.setattr(runtime.time, "sleep", lambda _seconds: None)
+
+    runtime._post_batch_with_retry(
+        "https://example.invalid/rest/v1/app_runtime_events",
+        "private-key",
+        [{"event_name": "server.test"}],
+    )
+
+    assert len(attempts) == 3
+
+
 def test_observability_sql_is_service_role_only_and_indexed():
     sql = (ROOT / "db/sql/2026_09_19_app_runtime_events.sql").read_text().lower()
     assert "create table if not exists public.app_runtime_events" in sql
