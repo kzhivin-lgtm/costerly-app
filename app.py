@@ -41,6 +41,7 @@ def _signal_ready(trace, screen: str) -> None:
         screen,
         trace_id=trace.trace_id,
         run_id=trace.run_id,
+        metrics=trace.summary(),
     )
     trace.event("server.run_complete")
 
@@ -79,6 +80,9 @@ def _render_screen(screen: str, company_id: str) -> None:
 def main() -> None:
     init_started_at = time.perf_counter()
     init_state()
+    st.session_state._runtime_run_sequence = (
+        int(st.session_state.get("_runtime_run_sequence") or 0) + 1
+    )
     configure_runtime_sink(
         get_optional_secret("SUPABASE_URL"),
         get_optional_secret("SUPABASE_SERVICE_ROLE_KEY"),
@@ -90,6 +94,7 @@ def main() -> None:
         started_at=_SCRIPT_STARTED_AT,
         build_version=str(get_optional_secret("COSTERLY_BUILD_VERSION", "3.1.2")),
     )
+    trace.annotate(run_sequence=st.session_state._runtime_run_sequence)
     trace.event(
         "server.run_start",
         duration_ms=(time.perf_counter() - init_started_at) * 1000,
@@ -113,6 +118,14 @@ def main() -> None:
                     st.session_state.get("_fast_resume_outcome") or "unknown"
                 ),
             },
+        )
+        trace.annotate(
+            auth_outcome=str(
+                st.session_state.get("_browser_auth_sync_outcome") or "unknown"
+            ),
+            fast_resume=str(
+                st.session_state.get("_fast_resume_outcome") or "unknown"
+            ),
         )
         if not browser_session_ready:
             trace.event("server.auth.browser_session_wait", status="unknown")

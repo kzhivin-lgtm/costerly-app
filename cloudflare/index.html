@@ -179,7 +179,10 @@
             const screen = event.data.screen || "unknown";
             mark("browser.app_ready_received", {
               screen,
-              metadata: {server_run_id: event.data.runId || ""},
+              metadata: {
+                server_run_id: event.data.runId || "",
+                ...(event.data.metrics || {}),
+              },
             });
             if (ready) {
               persistTimeline();

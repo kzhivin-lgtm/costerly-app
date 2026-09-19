@@ -1,7 +1,7 @@
 # Production observability
 
 Version: 3.1.2
-Status: implementation checkpoint, not yet deployed or production-verified
+Status: implementation checkpoint, production verification in progress
 
 ## Purpose
 
@@ -41,6 +41,10 @@ record the exception type, not the exception message.
 - The Cloudflare wrapper uses `navigator.sendBeacon` or a keepalive fetch after
   the app is revealed. It never waits for the telemetry response.
 - The Pages Function returns `202` and persists through `context.waitUntil`.
+- The Python background writer is best-effort because Streamlit can end a run
+  before its daemon batch is persisted. Startup acceptance therefore uses the
+  server summary relayed inside the reliable `browser.app_ready_received`
+  event. Individual server rows remain useful supporting evidence.
 - The Pages project root is `cloudflare/`, so Functions live under
   `cloudflare/functions/`, not the repository root.
 
@@ -54,6 +58,13 @@ Browser:
 - `browser.app_ready_received`
 - `browser.app_ready_timeout`
 - `browser.app_reveal`
+
+`browser.app_ready_received.metadata` includes a bounded, filtered server
+summary. Its diagnostic fields are `server_run_id`, `run_sequence`,
+`auth_outcome`, `fast_resume`, `server_elapsed_ms`, and the safe phase-duration
+keys ending in `_ms`. `run_sequence=1` means the final screen was produced by
+the first Python run. A value greater than one identifies one or more Streamlit
+reruns during startup.
 
 Server:
 
@@ -84,7 +95,9 @@ Server:
 ## Production acceptance
 
 - Refresh `app.costerly.ai` five times while signed in.
-- Confirm browser and server rows share each `trace_id`.
+- Confirm the browser app-ready row contains the server summary and matching
+  `server_run_id`; correlate any available individual server rows by
+  `trace_id` and `run_id`.
 - Confirm one `run_id` identifies each Python rerun.
 - Confirm UI timing and geometry are unchanged.
 - Confirm missing telemetry storage does not break Refresh, Sign in, Profile,

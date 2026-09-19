@@ -181,9 +181,22 @@ class RuntimeTrace:
         self.screen = screen
         self.started_at = started_at
         self.build_version = build_version
+        self._summary: dict[str, object] = {}
 
     def set_screen(self, screen: str) -> None:
         self.screen = _safe_name(screen, "unknown")
+
+    def annotate(self, **metadata: object) -> None:
+        self._summary.update(_safe_metadata(metadata))
+
+    def summary(self) -> dict[str, object]:
+        return {
+            **self._summary,
+            "server_elapsed_ms": round(
+                (time.perf_counter() - self.started_at) * 1000,
+                3,
+            ),
+        }
 
     def event(
         self,
@@ -208,7 +221,10 @@ class RuntimeTrace:
             "metadata": _safe_metadata(metadata),
         }
         if duration_ms is not None:
-            event["duration_ms"] = round(max(0.0, float(duration_ms)), 3)
+            rounded_duration = round(max(0.0, float(duration_ms)), 3)
+            event["duration_ms"] = rounded_duration
+            summary_key = name.removeprefix("server.").replace(".", "_") + "_ms"
+            self._summary[_safe_name(summary_key, "phase_ms")] = rounded_duration
         _enqueue(event)
 
     @contextmanager

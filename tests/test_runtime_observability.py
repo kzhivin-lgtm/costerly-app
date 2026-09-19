@@ -67,6 +67,26 @@ def test_runtime_span_records_error_type_without_error_message(monkeypatch):
     assert "private detail" not in str(captured[0])
 
 
+def test_runtime_summary_relays_safe_phase_metrics(monkeypatch):
+    monkeypatch.setattr(runtime, "_enqueue", lambda _event: None)
+    trace = runtime.RuntimeTrace(
+        trace_id="11111111-1111-4111-8111-111111111111",
+        session_id="22222222-2222-4222-8222-222222222222",
+        run_id="33333333-3333-4333-8333-333333333333",
+        screen="upload",
+        started_at=time.perf_counter(),
+    )
+    trace.annotate(run_sequence=2, fast_resume="restored", access_token="hidden")
+    trace.event("server.auth.access_lookup", duration_ms=12.3456)
+
+    summary = trace.summary()
+    assert summary["run_sequence"] == 2
+    assert summary["fast_resume"] == "restored"
+    assert summary["access_token"] == "[redacted]"
+    assert summary["auth_access_lookup_ms"] == 12.346
+    assert isinstance(summary["server_elapsed_ms"], float)
+
+
 def test_runtime_persistence_retries_transient_failure(monkeypatch):
     attempts = []
 
@@ -112,6 +132,7 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'event.origin === "https://costerly-app.streamlit.app"' in wrapper
     assert "visibility: hidden" not in wrapper
     assert "appReadyRecorded" in wrapper
+    assert "...(event.data.metrics || {})" in wrapper
     assert 'key.toLowerCase() !== "dom_content_loaded_ms"' in function
     assert "SUPABASE_SERVICE_ROLE_KEY" in function
     assert 'request.headers.get("origin")' in function
