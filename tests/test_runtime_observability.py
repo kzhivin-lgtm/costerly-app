@@ -210,3 +210,30 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "preventDefault" not in observer_source
     assert "access_token" not in component
     assert "refresh_token" not in component
+
+
+def test_scroll_reset_component_stays_out_of_main_layout(monkeypatch):
+    from ui import js_guards
+
+    class Sidebar:
+        active = False
+
+        def __enter__(self):
+            self.active = True
+
+        def __exit__(self, *_args):
+            self.active = False
+
+    sidebar = Sidebar()
+    calls = []
+
+    def render_component(*_args, **kwargs):
+        assert sidebar.active is True
+        calls.append(kwargs)
+
+    monkeypatch.setattr(js_guards.st, "sidebar", sidebar)
+    monkeypatch.setattr(js_guards.components, "html", render_component)
+
+    js_guards.scroll_parent_to_top()
+
+    assert calls == [{"height": 0, "width": 0}]

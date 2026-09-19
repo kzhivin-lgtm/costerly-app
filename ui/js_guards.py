@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+import streamlit as st
 import streamlit.components.v1 as components
 
 
@@ -592,37 +593,41 @@ def clear_upload_processing_shell() -> None:
 
 def scroll_parent_to_top() -> None:
     """Reset browser scroll after a screen-level Streamlit navigation."""
-    components.html(
-        """
-        <script>
-        (() => {
-            const parentWindow = window.parent;
-            const parentDoc = parentWindow.document;
+    # Keep the zero-height utility component out of the main vertical block.
+    # Its Streamlit element container otherwise consumes one root gap on the
+    # first render after screen navigation and disappears on the next rerun.
+    with st.sidebar:
+        components.html(
+            """
+            <script>
+            (() => {
+                const parentWindow = window.parent;
+                const parentDoc = parentWindow.document;
 
-            function scrollTopNow() {
-                parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
-                parentDoc.documentElement.scrollTop = 0;
-                parentDoc.body.scrollTop = 0;
+                function scrollTopNow() {
+                    parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
+                    parentDoc.documentElement.scrollTop = 0;
+                    parentDoc.body.scrollTop = 0;
 
-                parentDoc
-                    .querySelectorAll('section, main, div, [data-testid="stAppViewContainer"]')
-                    .forEach((node) => {
-                        if (node.scrollTop) {
-                            node.scrollTop = 0;
-                        }
-                    });
-            }
+                    parentDoc
+                        .querySelectorAll('section, main, div, [data-testid="stAppViewContainer"]')
+                        .forEach((node) => {
+                            if (node.scrollTop) {
+                                node.scrollTop = 0;
+                            }
+                        });
+                }
 
-            scrollTopNow();
-            parentWindow.requestAnimationFrame(scrollTopNow);
-            parentWindow.setTimeout(scrollTopNow, 50);
-            parentWindow.setTimeout(scrollTopNow, 250);
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
+                scrollTopNow();
+                parentWindow.requestAnimationFrame(scrollTopNow);
+                parentWindow.setTimeout(scrollTopNow, 50);
+                parentWindow.setTimeout(scrollTopNow, 250);
+            })();
+            </script>
+            """,
+            height=0,
+            width=0,
+        )
 
 
 def install_objects_price_input_guard(

@@ -14,9 +14,13 @@
   Overhead Expenses copy, working Save, and removal of the red React Aria
   indicator are visually confirmed. A small residual vertical offset remains
   between the Overhead Expenses card and the other tab contents. Do not add a
-  guessed negative margin. Current revision removes the top-level vertical gap
-  from the Overhead Expenses tab panel while preserving the fragment and its
-  internal card spacing. Production visual verification remains required.
+  guessed negative margin. The accepted rollback boundary is `b58b1f5`, restored
+  without history rewriting at `6a403b0`. Production telemetry then confirmed
+  that the remaining whole-page jump is not scrolling or tab CSS: the transient
+  zero-height `scroll_parent_to_top()` component occupies one 16px root layout
+  gap on the first Profile render and disappears on the tab rerun. The current
+  revision moves that utility component into the hidden Sidebar while preserving
+  its scroll-reset behavior. Production visual verification remains required.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the
