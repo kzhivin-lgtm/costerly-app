@@ -576,7 +576,7 @@ def _consume_company_metrics_snapshot(
     snapshot = json.loads(str(raw_snapshot))
     nonce = snapshot.get("nonce") if isinstance(snapshot, dict) else None
     if not isinstance(nonce, str) or not nonce:
-        raise ValueError("Overhead expenses payload is invalid.")
+        raise ValueError("Expenses payload is invalid.")
     if nonce == st.session_state.get("_company_metrics_consumed_nonce"):
         return None
     st.session_state["_company_metrics_consumed_nonce"] = nonce
@@ -584,40 +584,33 @@ def _consume_company_metrics_snapshot(
     settings_values = snapshot.get("settings")
     monthly_values = snapshot.get("monthly")
     if not isinstance(settings_values, dict) or not isinstance(monthly_values, dict):
-        raise ValueError("Overhead expenses payload is invalid.")
+        raise ValueError("Expenses payload is invalid.")
     save_company_metrics(
         access,
         settings_values,
         monthly_values,
     )
-    return "Overhead expenses saved"
+    return "Expenses saved"
 
 
 @st.fragment
-def _render_metrics_save(access: CompanyAccess) -> None:
+def _render_metrics(access: CompanyAccess) -> None:
     save_message = None
     try:
-        with st.container(key="company_metrics_bridge_host"):
-            raw_snapshot = company_metrics_bridge(key="company_metrics_bridge")
+        raw_snapshot = company_metrics_bridge(key="company_metrics_bridge")
         save_message = _consume_company_metrics_snapshot(access, raw_snapshot)
     except ValueError as exc:
         st.error(str(exc))
     except PermissionError:
-        st.error("Only the company owner can save these overhead expenses.")
+        st.error("Only the company owner can save these expenses.")
     except Exception:
-        logger.exception("Company overhead expenses save failed")
-        st.error("Overhead expenses were not saved. Try again in a moment.")
-        return
+        logger.exception("Company expenses save failed")
+        st.error("Expenses were not saved. Try again in a moment.")
 
-    if save_message:
-        st.success(save_message)
-
-
-def _render_metrics(access: CompanyAccess) -> None:
     try:
         settings, monthly = load_company_metrics(access)
     except Exception:
-        st.error("Overhead expenses are unavailable right now. Try again in a moment.")
+        st.error("Company metrics are unavailable right now. Try again in a moment.")
         return
 
     editable = access.role == "owner"
@@ -681,7 +674,8 @@ def _render_metrics(access: CompanyAccess) -> None:
         if editable:
             st.markdown(company_metrics_view.save_action_html(), unsafe_allow_html=True)
             install_company_metrics_input_guard()
-            _render_metrics_save(access)
+        if save_message:
+            st.success(save_message)
 
 
 def _render_users(access: CompanyAccess) -> None:
@@ -748,7 +742,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
             "Contacts",
             "Company Details",
             "Users",
-            "Price Lists",
+            "Price List",
         ],
         key="company_profile_tab",
         on_change="rerun",

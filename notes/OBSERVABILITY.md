@@ -1,6 +1,6 @@
 # Production observability
 
-Version: 3.1.10
+Version: 3.1.9
 Status: implementation checkpoint, production verification in progress
 
 ## Purpose
@@ -17,7 +17,7 @@ user interface.
 - `session_id`: one Streamlit session, retained across sign-in and sign-out.
 - `run_id`: one Python rerun.
 - `schema_version`: event contract version, currently `runtime_v1`.
-- `build_version`: deployed code checkpoint, currently `3.1.10`.
+- `build_version`: deployed code checkpoint, currently `3.1.9`.
 
 ## Data contract
 
@@ -109,18 +109,10 @@ Server:
    `SUPABASE_SERVICE_ROLE_KEY`.
 3. Configure `COSTERLY_ALLOWED_ORIGIN=https://app.costerly.ai` or retain the
    identical built-in default.
-4. Set `COSTERLY_BUILD_VERSION=3.1.10` in Streamlit production secrets.
+4. Set `COSTERLY_BUILD_VERSION=3.1.9` in Streamlit production secrets.
 5. Deploy the same Git commit to Streamlit and Cloudflare Pages.
 
 ## Production acceptance
-
-Recorded deployment restart anomaly on 2026-09-19: trace
-`a1fb00f9-c24d-459c-8faa-50a90394e2fa` loaded the Streamlit iframe in
-1.416 seconds but emitted no server run or app-ready event. The outer wrapper
-released its fallback after the configured 8.002-second timeout. This confirms
-the blank first attempt stalled after iframe load and before observable Python
-execution. The provider-side cause remains unknown; keep this separate from
-Profile render and Supabase timing.
 
 - Refresh `app.costerly.ai` five times while signed in.
 - Confirm the browser app-ready row contains the server summary and matching

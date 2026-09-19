@@ -170,8 +170,6 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'metadata.completed_action_status === "error"' in wrapper
     assert 'status: failedSignIn ? "error" : "ok"' in wrapper
     assert 'event.data.type === "costerly:startup-phase"' in wrapper
-    assert 'event.data.type === "costerly:profile-layout-probe"' in wrapper
-    assert 'mark("browser.profile_layout_probe"' in wrapper
     assert "startupPhases.has(event.data.phase)" in wrapper
     assert "...(event.data.metrics || {})" in wrapper
     assert 'startupProbe === "anonymous"' in wrapper

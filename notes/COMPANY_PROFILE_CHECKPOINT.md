@@ -1,27 +1,7 @@
 # Company Profile checkpoint
 
-Version: v3.1.10 production work-in-progress
+Version: v3.0.59
 Date: 2026-09-19
-
-## v3.1.10 production continuation
-
-- Current Git checkpoint: `9ab5814`. The prior accepted fast Auth checkpoint is
-  `9a43cd3`; the lazy Profile rendering checkpoint remains `4c6d628`.
-- The full-width Profile navigation rail is restored without reverting lazy
-  tab rendering. The selected tab uses a white card and bold label. The React
-  Aria red selection indicator is removed, and `Price List` is now
-  `Price Lists`.
-- Overhead Expenses terminology is consistent in the tab, singular table
-  column `Overhead Expense`, `Save Overhead Expenses` action, success message,
-  and save errors.
-- The zero-height Save bridge and its outer Streamlit element wrapper are
-  hidden from document flow. Save still works in production.
-- Production screenshots confirm a small residual vertical offset below the
-  navigation on Overhead Expenses compared with the other tab contents. This
-  remains unresolved and prevents visual completion. The next pass must inspect
-  live computed layout boundaries before changing CSS; do not mask it with an
-  assumed negative margin.
-- Automated suite: 165 tests passed for the current code checkpoint.
 
 ## Accepted UI
 
@@ -30,7 +10,7 @@ Date: 2026-09-19
 - The redundant Profile action is absent. Compact `Continue to upload` and
   standard icon-bearing `Sign out` actions live in the page header.
 - The peer tabs are Overhead Expenses, Labor Costs, Contacts, Company Details,
-  Users, and Price Lists. Overhead Expenses is first. Tabs use the larger Profile navigation treatment.
+  Users, and Price List. Overhead Expenses is first. Tabs use the larger Profile navigation treatment.
   Repeated tab headings are not rendered inside their panels.
 - Labor Costs is reserved as a separate second tab and currently renders only a
   placeholder until its personnel model is approved.
@@ -110,10 +90,6 @@ UI definition for the Profile screen.
   and both legal names aligned on its second row.
 - User verified on the v3.0.59 local build that Save Expenses completes quickly
   inside the current screen and persists the edited values.
-- User verified in production at `9ab5814` that the restored navigation rail,
-  bold selected tab, plural `Price Lists`, removed red indicator, terminology,
-  and Save Overhead Expenses behavior work. The remaining vertical offset is
-  explicitly not accepted as finished.
 - Live DOM verification measured 40px group bars, 51px cost rows, and 34px
   Monthly Cost inputs. A live edit from 2,000 at 18% produced VAT 360 and Total
   2,360.
@@ -124,9 +100,6 @@ UI definition for the Profile screen.
 
 ## Explicit next phase
 
-- Measure and remove the remaining Overhead Expenses vertical offset using the
-  live production DOM. Compare the active tab panel, fragment wrapper, outer
-  element container, hidden bridge host, and metrics card top boundaries.
 - Diagnose the user-observed duplicate page heading after Sign out. Preserve the
   accepted Auth session boundary and do not change Profile persistence while
   isolating that regression.
