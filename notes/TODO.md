@@ -1,5 +1,14 @@
 # TODO
 
+- 3.1.11 Safe screen resume on refresh: authentication currently resumes from
+  the encrypted cookie or sessionStorage, but `screen="account"` exists only in
+  Streamlit session state. A browser refresh creates a new Streamlit session,
+  whose safe default is Upload. Persist only the non-sensitive top-level route
+  (`account` or `upload`) in browser storage or the outer wrapper, then restore
+  Profile only after auth and company access succeed. Do not restore Processing,
+  File Review, Estimation, agent execution, IDs, tokens, or form payloads as part
+  of this task. Status: pending after 3.1.10 visual acceptance.
+
 - 3.1.10 Company Profile navigation and Overhead Expenses copy: restore the
   accepted v3.0.57 full-width tab rail on the current stateful, lazy-rendered
   tabs without reverting the v3.1.8 performance improvement. Use Overhead
@@ -17,12 +26,14 @@
   `b58b1f5` CSS-gap experiment moved the card down and was reverted by
   `5fd2e26`. The root-level Metrics fragment is now removed: only the hidden
   Save bridge remains fragment-scoped, while the visible card renders directly
-  like the neighboring tabs. Production then showed a first-mount-only offset
-  that disappears after leaving and returning to Overhead Expenses. A passive
+  like the neighboring tabs. Production layout probes then confirmed that the
+  panel-to-card and tabs-to-card distances stay constant while the entire page
+  moves by 16px on a stateful-tab rerun. A passive
   `browser.profile_layout_probe` now records tab, active panel, first child,
   card, padding, and gap boundaries at two animation frames and after 250 ms,
-  without changing layout or triggering a rerun. Compare first entry with the
-  return entry before the next CSS change.
+  without changing layout or triggering a rerun. The current revision preserves
+  the actual scroll root around Profile tab reruns with a passive bubble-phase
+  listener; production visual verification remains required.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the

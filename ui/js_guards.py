@@ -230,6 +230,8 @@ def signal_app_ready_to_embed(
         <script>
         (() => {
             const transitionHandlerKey = "__costerlyRuntimeTransitionHandlerV1";
+            const profileTabScrollHandlerKey = "__costerlyProfileTabScrollHandlerV1";
+            const profileTabScrollStateKey = "__costerlyProfileTabScrollStateV1";
             const message = {
                 type: "costerly:app-ready",
                 screen: __SCREEN__,
@@ -323,6 +325,94 @@ def signal_app_ready_to_embed(
                 } catch (_) {}
             }
 
+            function profileScrollRoot(tab, parentDocument) {
+                let node = tab ? tab.parentElement : null;
+                while (node && node !== parentDocument.documentElement) {
+                    const style = window.parent.getComputedStyle(node);
+                    if (
+                        /(auto|scroll)/.test(style.overflowY || "") &&
+                        node.scrollHeight > node.clientHeight
+                    ) {
+                        return node;
+                    }
+                    node = node.parentElement;
+                }
+                return parentDocument.scrollingElement || parentDocument.documentElement;
+            }
+
+            function restoreProfileTabScroll() {
+                const parentWindow = window.parent;
+                const parentDocument = parentWindow.document;
+                const state = parentWindow[profileTabScrollStateKey];
+                if (!state || Date.now() > state.expiresAt) return;
+                const activeTab = parentDocument.querySelector(
+                    '.st-key-company_profile_tab [role="tab"][data-selected], ' +
+                    '.st-key-company_profile_tab [role="tab"][aria-selected="true"]'
+                );
+                const root = state.root && state.root.isConnected
+                    ? state.root
+                    : profileScrollRoot(activeTab, parentDocument);
+                if (!root) return;
+                if (
+                    root === parentDocument.scrollingElement ||
+                    root === parentDocument.documentElement ||
+                    root === parentDocument.body
+                ) {
+                    parentWindow.scrollTo({top: state.top, left: 0, behavior: "auto"});
+                } else {
+                    root.scrollTop = state.top;
+                }
+            }
+
+            function scheduleProfileTabScrollRestore() {
+                const parentWindow = window.parent;
+                parentWindow.requestAnimationFrame(() => {
+                    restoreProfileTabScroll();
+                    parentWindow.requestAnimationFrame(restoreProfileTabScroll);
+                });
+                parentWindow.setTimeout(restoreProfileTabScroll, 50);
+                parentWindow.setTimeout(restoreProfileTabScroll, 120);
+                parentWindow.setTimeout(restoreProfileTabScroll, 250);
+                parentWindow.setTimeout(restoreProfileTabScroll, 500);
+            }
+
+            function installProfileTabScrollGuard() {
+                const parentWindow = window.parent;
+                const parentDocument = parentWindow.document;
+                const previous = parentWindow[profileTabScrollHandlerKey];
+                if (previous) parentDocument.removeEventListener("click", previous, false);
+                if (message.screen !== "account") {
+                    parentWindow[profileTabScrollHandlerKey] = null;
+                    parentWindow[profileTabScrollStateKey] = null;
+                    return;
+                }
+
+                const handler = (event) => {
+                    const tab = event.target && event.target.closest
+                        ? event.target.closest('.st-key-company_profile_tab [role="tab"]')
+                        : null;
+                    if (!tab) return;
+                    const root = profileScrollRoot(tab, parentDocument);
+                    const top = (
+                        root === parentDocument.scrollingElement ||
+                        root === parentDocument.documentElement ||
+                        root === parentDocument.body
+                    ) ? parentWindow.scrollY : root.scrollTop;
+                    parentWindow[profileTabScrollStateKey] = {
+                        root,
+                        top: Number(top || 0),
+                        expiresAt: Date.now() + 1200,
+                    };
+                    scheduleProfileTabScrollRestore();
+                };
+                parentWindow[profileTabScrollHandlerKey] = handler;
+                parentDocument.addEventListener("click", handler, {
+                    capture: false,
+                    passive: true,
+                });
+                scheduleProfileTabScrollRestore();
+            }
+
             function postReady() {
                 try {
                     window.parent.postMessage(message, "*");
@@ -338,6 +428,7 @@ def signal_app_ready_to_embed(
             }
 
             installTransitionObserver();
+            installProfileTabScrollGuard();
             postReady();
             window.requestAnimationFrame(() => {
                 window.requestAnimationFrame(postReady);
