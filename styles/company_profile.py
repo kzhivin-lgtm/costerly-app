@@ -647,10 +647,11 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card {
-            margin-top: 18px;
+            margin-top: 0;
         }
 
-        .stApp:has(.company-profile-active) .st-key-company_labor_card input:disabled {
+        .stApp:has(.company-profile-active) .st-key-company_labor_card
+        [data-testid="stTextInput"] input:disabled {
             opacity: 1 !important;
             color: var(--color-text-strong) !important;
             -webkit-text-fill-color: var(--color-text-strong) !important;

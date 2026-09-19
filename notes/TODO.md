@@ -137,6 +137,10 @@
   inputs, buttons, and option states while retaining the older BaseWeb rules.
   Status: accepted production checkpoint at `1df98c5`; the user confirmed the
   pencil alignment, vertically centered selector text, and purple focus states.
+  The current minor candidate removes the extra Add Worker card top margin and
+  limits bold disabled styling to calculated text inputs so the disabled
+  `Select position` placeholder stays regular weight. Production visual
+  verification is pending.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
   1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR remains the default one-PDF/one-request flow. Naming is text-only and receives locked Detection facts plus OCR snippets, never the PDF again.

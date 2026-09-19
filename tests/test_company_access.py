@@ -1184,6 +1184,13 @@ def test_company_profile_reuses_auth_input_contract():
     assert '[role="option"][aria-selected="true"] [data-item-hl]' in css
 
 
+def test_labor_card_spacing_and_disabled_select_placeholder_contract():
+    css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
+    assert ".st-key-company_labor_card {\n            margin-top: 0;" in css
+    assert '[data-testid="stTextInput"] input:disabled' in css
+    assert ".st-key-company_labor_card input:disabled" not in css
+
+
 def test_server_run_id_replaces_model_id_on_all_objects():
     result = {
         "rfq_run": {"run_id": "unknown_project_run_001"},
