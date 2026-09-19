@@ -1,5 +1,17 @@
 # TODO
 
+- 3.1.12 Refresh route persistence: after browser refresh, restore the same
+  authenticated product screen and, where applicable, the same nested tab.
+  Apply one explicit navigation-state contract to Profile, File Review,
+  Objects, Object Detail, Registration, Company Setup, Auth, and future screens.
+  Preserve authorization checks and never restore a company-scoped resource
+  without revalidating access. Status: pending after 3.1.11.
+
+- 3.1.11 Profile to Upload transition integrity: identify and remove the
+  intermediate stale or partial screen visible after Continue to upload.
+  Preserve the accepted Profile and Upload layouts, native button behavior,
+  transition telemetry, and the v3.1.10 navigation callback. Status: active.
+
 - 3.1.10 Company Profile navigation and Overhead Expenses copy: restore the
   accepted v3.0.57 full-width tab rail on the current stateful, lazy-rendered
   tabs without reverting the v3.1.8 performance improvement. Use Overhead
@@ -20,11 +32,12 @@
   zero-height `scroll_parent_to_top()` component occupies one 16px root layout
   gap on the first Profile render and disappears on the tab rerun. The current
   revision moves that utility component into the hidden Sidebar while preserving
-  its scroll-reset behavior. The remaining Expenses-only offset is addressed by
+  its scroll-reset behavior. The remaining Expenses-only offset was addressed by
   limiting `@st.fragment` to the save bridge instead of wrapping the complete
   tab. Profile to Upload navigation now changes screen state in a pre-render
-  callback, preventing a partial Profile delta before the Upload rerun.
-  Production visual verification remains required.
+  callback, preventing a partial Profile delta before the Upload rerun. Status:
+  accepted production checkpoint at `3f8c80a`; the user confirmed the page no
+  longer jumps, the Expenses alignment is correct, and Save remains functional.
 
 - 3.1.9 Auth transition integrity: execute Sign in and every Sign out through
   native Streamlit callbacks before the next script render. Remove the
