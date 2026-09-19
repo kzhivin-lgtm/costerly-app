@@ -96,6 +96,7 @@ def test_browser_session_restores_and_persists_tab_tokens(monkeypatch):
     assert st.session_state.auth_refresh_token == "refresh-1"
     assert st.session_state.auth_expires_at == 123
     assert st.session_state._browser_auth_initialized is True
+    assert st.session_state._browser_auth_sync_outcome == "browser_session_restored"
 
     class Session:
         access_token = "access-2"

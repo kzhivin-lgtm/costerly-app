@@ -165,6 +165,7 @@ def sync_browser_auth_session() -> bool:
         request_id = str(pending.get("request_id") or "")
         session = pending.get("session") if isinstance(pending.get("session"), dict) else None
     elif st.session_state.get("_browser_auth_initialized"):
+        st.session_state._browser_auth_sync_outcome = "already_initialized"
         return True
     else:
         request_id = st.session_state.setdefault(
@@ -181,6 +182,7 @@ def sync_browser_auth_session() -> bool:
     if action in {"store", "clear"}:
         st.session_state.pop("_browser_auth_pending", None)
         st.session_state._browser_auth_initialized = True
+        st.session_state._browser_auth_sync_outcome = f"{action}_dispatched"
         return True
 
     has_memory_session = bool(
@@ -188,6 +190,9 @@ def sync_browser_auth_session() -> bool:
         and st.session_state.get("auth_refresh_token")
     )
     if not result or result.get("requestId") != request_id:
+        st.session_state._browser_auth_sync_outcome = (
+            "memory_session" if has_memory_session else "waiting_for_browser"
+        )
         return has_memory_session
 
     if isinstance(pending, dict):
@@ -202,6 +207,11 @@ def sync_browser_auth_session() -> bool:
             st.session_state.auth_refresh_token = refresh_token
             st.session_state.auth_expires_at = int(stored.get("expires_at") or 0)
     st.session_state._browser_auth_initialized = True
+    st.session_state._browser_auth_sync_outcome = (
+        "browser_session_restored"
+        if not has_memory_session and isinstance(stored, dict)
+        else "browser_session_empty"
+    )
     return True
 
 

@@ -102,6 +102,15 @@ def main() -> None:
     if auth_enabled:
         with trace.span("server.auth.browser_session_sync"):
             browser_session_ready = sync_browser_auth_session()
+        trace.event(
+            "server.auth.browser_session_sync_result",
+            metadata={
+                "ready": browser_session_ready,
+                "outcome": str(
+                    st.session_state.get("_browser_auth_sync_outcome") or "unknown"
+                ),
+            },
+        )
         if not browser_session_ready:
             trace.event("server.auth.browser_session_wait", status="unknown")
             st.stop()

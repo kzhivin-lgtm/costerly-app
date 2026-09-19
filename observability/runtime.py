@@ -24,8 +24,9 @@ _QUEUE: queue.Queue[dict[str, object]] = queue.Queue(maxsize=1000)
 _SINK_LOCK = threading.Lock()
 _SINK_URL: str | None = None
 _SINK_KEY: str | None = None
-_WORKER_STARTED = False
+_WORKER_THREAD: threading.Thread | None = None
 _BLOCKED_KEY_PARTS = ("token", "password", "secret", "email", "file", "content")
+_SAFE_TECHNICAL_KEYS = {"dom_content_loaded_ms"}
 _SAFE_NAME = re.compile(r"^[a-z0-9_.:-]{1,80}$")
 
 
@@ -56,7 +57,9 @@ def _safe_metadata(metadata: Mapping[str, object] | None) -> dict[str, object]:
     safe: dict[str, object] = {}
     for raw_key, value in (metadata or {}).items():
         key = str(raw_key)[:80]
-        if any(part in key.lower() for part in _BLOCKED_KEY_PARTS):
+        if key.lower() not in _SAFE_TECHNICAL_KEYS and any(
+            part in key.lower() for part in _BLOCKED_KEY_PARTS
+        ):
             safe[key] = "[redacted]"
         elif value is None or isinstance(value, (bool, int, float)):
             safe[key] = value
@@ -68,16 +71,15 @@ def _safe_metadata(metadata: Mapping[str, object] | None) -> dict[str, object]:
 
 
 def _start_worker_locked() -> None:
-    global _WORKER_STARTED
-    if _WORKER_STARTED:
+    global _WORKER_THREAD
+    if _WORKER_THREAD is not None and _WORKER_THREAD.is_alive():
         return
-    worker = threading.Thread(
+    _WORKER_THREAD = threading.Thread(
         target=_runtime_worker,
         name="costerly-runtime-events",
         daemon=True,
     )
-    worker.start()
-    _WORKER_STARTED = True
+    _WORKER_THREAD.start()
 
 
 def _enqueue(event: dict[str, object]) -> None:
@@ -92,20 +94,20 @@ def _enqueue(event: dict[str, object]) -> None:
         logger.warning("runtime_event_dropped reason=queue_full")
 
 
-def _runtime_worker() -> None:
-    while True:
-        first = _QUEUE.get()
-        batch = [first]
-        deadline = time.monotonic() + 0.15
-        while len(batch) < 50:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                break
-            try:
-                batch.append(_QUEUE.get(timeout=remaining))
-            except queue.Empty:
-                break
+def _persist_next_batch() -> None:
+    first = _QUEUE.get()
+    batch = [first]
+    deadline = time.monotonic() + 0.15
+    while len(batch) < 50:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        try:
+            batch.append(_QUEUE.get(timeout=remaining))
+        except queue.Empty:
+            break
 
+    try:
         with _SINK_LOCK:
             sink_url = _SINK_URL
             sink_key = _SINK_KEY
@@ -124,8 +126,18 @@ def _runtime_worker() -> None:
                 ).raise_for_status()
             except Exception as exc:
                 logger.warning("runtime_event_persist_failed count=%s error=%s", len(batch), exc)
+    finally:
         for _event in batch:
             _QUEUE.task_done()
+
+
+def _runtime_worker() -> None:
+    while True:
+        try:
+            _persist_next_batch()
+        except Exception:
+            logger.exception("runtime_event_worker_recovered")
+            time.sleep(0.1)
 
 
 class RuntimeTrace:

@@ -91,6 +91,7 @@
         }
         let fallbackTimer = null;
         let ready = false;
+        let appReadyRecorded = false;
 
         function mark(eventName, detail = {}) {
           const event = {
@@ -173,12 +174,18 @@
             event.data.type === "costerly:app-ready" &&
             event.data.traceId === traceId
           ) {
+            if (appReadyRecorded) return;
+            appReadyRecorded = true;
             const screen = event.data.screen || "unknown";
             mark("browser.app_ready_received", {
               screen,
               metadata: {server_run_id: event.data.runId || ""},
             });
-            revealApp("app_ready", screen);
+            if (ready) {
+              persistTimeline();
+            } else {
+              revealApp("app_ready", screen);
+            }
           }
         });
 

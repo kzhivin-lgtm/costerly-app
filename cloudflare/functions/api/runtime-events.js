@@ -23,7 +23,10 @@ function safeMetadata(value) {
   const result = {};
   for (const [rawKey, rawValue] of Object.entries(value).slice(0, 30)) {
     const key = String(rawKey).slice(0, 80);
-    if (/token|password|secret|email|file|content/i.test(key)) {
+    if (
+      key.toLowerCase() !== "dom_content_loaded_ms" &&
+      /token|password|secret|email|file|content/i.test(key)
+    ) {
       result[key] = "[redacted]";
     } else if (rawValue === null || ["boolean", "number"].includes(typeof rawValue)) {
       result[key] = rawValue;

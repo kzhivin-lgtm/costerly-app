@@ -29,6 +29,7 @@ def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monke
             "route": "upload",
             "access_token": "must-not-leak",
             "email_address": "must-not-leak",
+            "dom_content_loaded_ms": 123.4,
         },
     )
 
@@ -42,6 +43,7 @@ def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monke
         "route": "upload",
         "access_token": "[redacted]",
         "email_address": "[redacted]",
+        "dom_content_loaded_ms": 123.4,
     }
 
 
@@ -85,6 +87,8 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'event.data.traceId === traceId' in wrapper
     assert 'event.origin === "https://costerly-app.streamlit.app"' in wrapper
     assert "visibility: hidden" not in wrapper
+    assert "appReadyRecorded" in wrapper
+    assert 'key.toLowerCase() !== "dom_content_loaded_ms"' in function
     assert "SUPABASE_SERVICE_ROLE_KEY" in function
     assert 'request.headers.get("origin")' in function
     assert 'request.method !== "POST"' in function
