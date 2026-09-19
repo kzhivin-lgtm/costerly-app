@@ -1287,7 +1287,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         )
     with header_right:
         with st.container(key="company_profile_actions"):
-            projects_action, upload_action, sign_out_action = st.columns([1, 0.85, 1])
+            projects_action, estimate_action, sign_out_action = st.columns([1, 1.15, 1])
             with projects_action:
                 st.button(
                     "Projects",
@@ -1296,9 +1296,9 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                     disabled=True,
                     help="Project history is coming next.",
                 )
-            with upload_action:
+            with estimate_action:
                 st.button(
-                    "Upload",
+                    "New Estimate",
                     key="profile_to_upload",
                     use_container_width=True,
                     on_click=_open_upload_screen,
@@ -1313,14 +1313,14 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                     on_click=sign_out,
                 )
 
-    expenses_tab, labor_tab, contacts_tab, company_tab, users_tab, prices_tab = st.tabs(
+    expenses_tab, labor_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
         [
             "Overhead Expenses",
             "Labor Costs",
+            "Price Lists",
             "Contacts",
             "Company Details",
             "Users",
-            "Price Lists",
         ],
         key="company_profile_tab",
         on_change="rerun",

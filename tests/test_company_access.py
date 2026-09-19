@@ -475,10 +475,10 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "Overhead Expenses", "Labor Costs", "Contacts", "Company Details", "Users", "Price Lists",
+        "Overhead Expenses", "Labor Costs", "Price Lists", "Contacts", "Company Details", "Users",
     ]
     assert any(button.label == "Projects" and button.disabled for button in app.button)
-    assert any(button.label == "Upload" for button in app.button)
+    assert any(button.label == "New Estimate" for button in app.button)
     assert any(button.label == "Sign out" for button in app.button)
     assert not any(
         button.label in {"Save Contacts", "Save Company Details"}
@@ -933,8 +933,9 @@ def test_only_company_metrics_save_bridge_is_fragment_scoped():
 
 def test_profile_to_upload_navigation_runs_before_render():
     source = Path("screens/company_profile.py").read_text()
-    button_source = source.split('"Upload"', 1)[1].split(")", 1)[0]
+    button_source = source.split('"New Estimate"', 1)[1].split(")", 1)[0]
 
+    assert 'key="profile_to_upload"' in button_source
     assert "on_click=_open_upload_screen" in button_source
     assert "st.rerun" not in button_source
 

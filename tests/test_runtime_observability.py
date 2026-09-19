@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import time
 
 import pytest
@@ -9,6 +10,19 @@ from observability import runtime
 
 
 ROOT = Path(__file__).parents[1]
+
+
+def test_streamlit_and_cloudflare_build_versions_match():
+    app_source = (ROOT / "app.py").read_text()
+    wrapper = (ROOT / "cloudflare/index.html").read_text()
+
+    app_version = re.search(r'build_version="([^"]+)"', app_source)
+    wrapper_version = re.search(r'const BUILD_VERSION = "([^"]+)"', wrapper)
+
+    assert app_version is not None
+    assert wrapper_version is not None
+    assert app_version.group(1) == wrapper_version.group(1)
+    assert "COSTERLY_BUILD_VERSION" not in app_source
 
 
 def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monkeypatch):

@@ -3,6 +3,16 @@
 Version: v3.2.3 accepted visual checkpoint
 Date: 2026-09-19
 
+## v3.2.5 candidate
+
+- Header actions are ordered `Projects`, `New Estimate`, `Sign out`.
+- Profile tabs prioritize costing configuration: Overhead Expenses, Labor
+  Costs, Price Lists, Contacts, Company Details, Users.
+- Tab restoration remains label/slug based, not position based.
+- Streamlit and Cloudflare build versions are code-owned and checked for an
+  exact match, so production no longer needs a manually updated build secret.
+- Production verification remains pending.
+
 ## v3.2.4 candidate
 
 - The compact Profile actions retain the accepted v3.2.3 alignment.

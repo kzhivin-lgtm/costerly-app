@@ -1,6 +1,6 @@
 # Production observability
 
-Version: 3.2.4
+Version: 3.2.5
 Status: implementation checkpoint, production verification in progress
 
 ## Purpose
@@ -17,7 +17,7 @@ user interface.
 - `session_id`: one Streamlit session, retained across sign-in and sign-out.
 - `run_id`: one Python rerun.
 - `schema_version`: event contract version, currently `runtime_v1`.
-- `build_version`: deployed code checkpoint, currently `3.2.4`.
+- `build_version`: deployed code checkpoint, currently `3.2.5`.
 
 ## Data contract
 
@@ -109,7 +109,9 @@ Server:
    `SUPABASE_SERVICE_ROLE_KEY`.
 3. Configure `COSTERLY_ALLOWED_ORIGIN=https://app.costerly.ai` or retain the
    identical built-in default.
-4. Set `COSTERLY_BUILD_VERSION=3.2.4` in Streamlit production secrets.
+4. Confirm the automated test reports matching Streamlit and Cloudflare build
+   versions. `COSTERLY_BUILD_VERSION` is not a deployment secret and must not be
+   maintained manually.
 5. Deploy the same Git commit to Streamlit and Cloudflare Pages.
 
 ## Production acceptance
