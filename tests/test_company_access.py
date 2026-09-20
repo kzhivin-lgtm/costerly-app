@@ -675,14 +675,25 @@ def test_company_metrics_reuses_object_detail_table_contract():
     assert 'data-company-metrics-total>₪500</span>' in html
 
 
-def test_labor_position_list_is_managed_and_includes_general_worker():
+def test_labor_position_list_uses_compact_labels_and_keeps_legacy_display():
     assert company_profile.LABOR_DEPARTMENTS == {
         "management": "Management",
         "office": "Office",
         "production": "Production",
     }
-    assert ("general_worker", "General Worker") in company_profile.LABOR_POSITIONS["production"]
-    assert ("cabinetmaker_joiner", "Cabinetmaker / Joiner") in company_profile.LABOR_POSITIONS["production"]
+    assert ("general_worker", "Worker") in company_profile.LABOR_POSITIONS["production"]
+    assert ("painter_finisher", "Painter") in company_profile.LABOR_POSITIONS["production"]
+    assert ("designer_draftsperson", "Designer") in company_profile.LABOR_POSITIONS["office"]
+    assert not any(
+        code == "cabinetmaker_joiner"
+        for code, _label in company_profile.LABOR_POSITIONS["production"]
+    )
+    assert not any(
+        code == "purchasing_manager"
+        for code, _label in company_profile.LABOR_POSITIONS["office"]
+    )
+    assert company_profile._labor_position_label("cabinetmaker_joiner") == "Carpenter"
+    assert company_profile._labor_position_label("purchasing_manager") == "Purchasing Manager"
 
 
 @pytest.mark.parametrize(
@@ -1089,14 +1100,37 @@ def test_labor_table_keeps_compact_columns_and_aligned_totals():
     assert 'class="company-labor-col-pay-type"' in source
     assert 'class="company-labor-col-details"' in source
     assert ".company-labor-col-actions" in css
-    assert "width: 64px;" in css
+    assert "width: 38px;" in css
+    assert "flex-direction: column;" in css
     assert ".company-labor-col-details" in css
-    assert "width: 214px;" in css
+    assert "width: 146px;" in css
+    assert "min-width: 0;" in css
+    assert 'button:not([aria-haspopup="listbox"])' in css
     assert "box-sizing: border-box;" in css
     assert "border-left: 0 !important;" in css
     assert "border-right: 0 !important;" in css
     assert "align-items: flex-end !important;" in css
     assert '[data-testid="stWidgetLabel"]' in css
+
+
+def test_labor_table_uses_short_pay_types_and_omits_employment_factor():
+    hourly = {
+        "pay_type": "hourly_rate",
+        "gross_hourly_rate": 50,
+        "monthly_hours": 160,
+        "employment_factor": 1.25,
+    }
+    monthly = {
+        "pay_type": "monthly_salary",
+        "gross_monthly_salary": 12_000,
+        "employment_factor": 1.25,
+    }
+
+    assert company_profile._labor_table_pay_type("hourly_rate") == "Hourly"
+    assert company_profile._labor_table_pay_type("monthly_salary") == "Monthly"
+    assert company_profile._labor_pay_details(hourly) == "₪50/h · 160h"
+    assert company_profile._labor_pay_details(monthly) == "₪12\u202f000"
+    assert "1.25" not in company_profile._labor_pay_details(hourly)
 
 
 def test_labor_empty_amounts_use_zero_placeholders_and_structured_factor_help():

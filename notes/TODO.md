@@ -1,5 +1,17 @@
 # TODO
 
+- 3.6.1 Labor Costs table compaction: fit the complete worker summary table
+  inside the Profile content width without horizontal clipping. Stack Edit and
+  Remove vertically in a narrow action column, show `Hourly` and `Monthly` only
+  in the table, omit the employment factor from Pay Details, and size the
+  controlled-value columns around their longest supported labels. Shorten the
+  managed Position labels, remove Cabinetmaker / Joiner and Purchasing Manager
+  from new selections, and hide the optional clear control in the three Labor
+  Costs selectors without changing their dropdown action. Existing archived or
+  active records retain their stored codes; the retired cabinetmaker code is
+  presented as Carpenter. Status: production candidate v3.6.1, visual
+  acceptance pending. Protected rollback checkpoint: v3.5.11 (`aa05a5d`).
+
 - 3.5.2 Profile and Auth performance stabilization: keep v3.4.2 (`86117ba`)
   as the emergency rollback boundary without treating it as a measured speed
   baseline. Split the first Profile path into lazy module import, Profile shell,

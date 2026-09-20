@@ -126,18 +126,19 @@ LABOR_POSITIONS = {
         ("office_administrator", "Office Administrator"),
         ("estimator", "Estimator"),
         ("sales_manager", "Sales Manager"),
-        ("purchasing_manager", "Purchasing Manager"),
-        ("designer_draftsperson", "Designer / Draftsperson"),
+        ("designer_draftsperson", "Designer"),
     ),
     "production": (
-        ("cabinetmaker_joiner", "Cabinetmaker / Joiner"),
         ("carpenter", "Carpenter"),
         ("welder", "Welder"),
         ("cnc_operator", "CNC Operator"),
-        ("painter_finisher", "Painter / Finisher"),
+        ("painter_finisher", "Painter"),
         ("installer", "Installer"),
-        ("general_worker", "General Worker"),
+        ("general_worker", "Worker"),
     ),
+}
+LABOR_LEGACY_POSITION_LABELS = {
+    "cabinetmaker_joiner": "Carpenter",
 }
 LABOR_PAY_TYPES = {
     "monthly_salary": "Monthly Salary",
@@ -1224,6 +1225,8 @@ def _labor_position_label(position_code: object) -> str:
         for candidate, label in positions:
             if candidate == code:
                 return label
+    if code in LABOR_LEGACY_POSITION_LABELS:
+        return LABOR_LEGACY_POSITION_LABELS[code]
     return code.replace("_", " ").title() or "Not set"
 
 
@@ -1274,13 +1277,19 @@ def _labor_number(value: object) -> str:
 
 
 def _labor_pay_details(employee: dict) -> str:
-    factor = f"×{_labor_employment_factor(employee):.2f}"
     if employee.get("pay_type") == "hourly_rate":
         return (
             f"{_labor_money(employee.get('gross_hourly_rate'))}/h · "
-            f"{_labor_number(employee.get('monthly_hours'))}h · {factor}"
+            f"{_labor_number(employee.get('monthly_hours'))}h"
         )
-    return f"{_labor_money(employee.get('gross_monthly_salary'))} · {factor}"
+    return _labor_money(employee.get("gross_monthly_salary"))
+
+
+def _labor_table_pay_type(pay_type: object) -> str:
+    return {
+        "hourly_rate": "Hourly",
+        "monthly_salary": "Monthly",
+    }.get(_clean(pay_type), "Not set")
 
 
 def _render_employee_list(employees: list[dict]) -> None:
@@ -1300,7 +1309,7 @@ def _render_employee_list(employees: list[dict]) -> None:
         f"<td><strong>{escape(_clean(employee.get('worker_name')))}</strong></td>"
         f"<td>{escape(LABOR_DEPARTMENTS.get(_clean(employee.get('department')), 'Not set'))}</td>"
         f"<td>{escape(_labor_position_label(employee.get('position_code')))}</td>"
-        f"<td>{escape(LABOR_PAY_TYPES.get(_clean(employee.get('pay_type')), 'Not set'))}</td>"
+        f"<td>{escape(_labor_table_pay_type(employee.get('pay_type')))}</td>"
         f"<td>{escape(_labor_pay_details(employee))}</td>"
         f"<td><strong>{escape(_labor_money(_labor_monthly_cost(employee)))}</strong></td>"
         "</tr>"

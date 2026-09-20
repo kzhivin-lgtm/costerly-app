@@ -816,41 +816,43 @@ def apply_company_profile_css() -> None:
 
         .company-labor-list table {
             width: 100%;
-            min-width: 900px;
+            min-width: 0;
             table-layout: fixed;
         }
 
         .company-labor-list th,
         .company-labor-list td {
             box-sizing: border-box;
+            padding-left: 8px;
+            padding-right: 8px;
         }
 
         .company-labor-col-actions {
-            width: 64px;
+            width: 38px;
         }
 
         .company-labor-col-worker {
-            width: 210px;
+            width: 20%;
         }
 
         .company-labor-col-department {
-            width: 160px;
+            width: 112px;
         }
 
         .company-labor-col-position {
-            width: 210px;
+            width: 170px;
         }
 
         .company-labor-col-pay-type {
-            width: 160px;
+            width: 82px;
         }
 
         .company-labor-col-details {
-            width: 214px;
+            width: 146px;
         }
 
         .company-labor-col-monthly {
-            width: 142px;
+            width: 106px;
         }
 
         .company-labor-total-row th {
@@ -877,24 +879,20 @@ def apply_company_profile_css() -> None:
 
         .company-labor-list th:first-child,
         .company-labor-list td:first-child {
-            width: 64px;
-            min-width: 64px;
-            padding-left: 12px;
-            padding-right: 8px;
+            width: 38px;
+            min-width: 38px;
+            padding-left: 8px;
+            padding-right: 6px;
         }
 
         .company-labor-list th:nth-child(6),
         .company-labor-list td:nth-child(6) {
-            width: 214px;
-            padding-left: 12px;
-            padding-right: 10px;
+            width: 146px;
         }
 
         .company-labor-list th:nth-child(7),
         .company-labor-list td:nth-child(7) {
-            width: 142px;
-            padding-left: 12px;
-            padding-right: 10px;
+            width: 106px;
         }
 
         .company-labor-list td:nth-child(6),
@@ -905,8 +903,10 @@ def apply_company_profile_css() -> None:
 
         .company-labor-actions {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 4px;
+            justify-content: center;
+            gap: 0;
         }
 
         .stApp:has(.company-profile-active) .company-labor-edit,
@@ -930,6 +930,13 @@ def apply_company_profile_css() -> None:
             box-shadow: none !important;
             transform: none !important;
             cursor: pointer;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-company_labor_card
+        .react-aria-ComboBox [role="group"] > button:not([aria-haspopup="listbox"]),
+        .stApp:has(.company-profile-active) .st-key-company_labor_card
+        .react-aria-ComboBox button[aria-label*="Clear"] {
+            display: none !important;
         }
 
         .stApp:has(.company-profile-active) .company-labor-edit:hover,
