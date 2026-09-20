@@ -821,12 +821,20 @@ def test_company_logo_card_uses_profile_table_header_and_two_square_panels():
     assert "disabled=pending_logo is None" in logo_source
     assert ".company-logo-table-heading {" in css
     assert ".st-key-company_logo_body" in css
-    assert ".st-key-company_logo_body {\n            padding: 28px;" in css
+    assert (
+        ".st-key-company_logo_body {\n"
+        "            padding: var(--profile-action-gap) 28px 28px;"
+    ) in css
     assert "max-width: 760px;" in css
     assert "height: 220px;" in css
     assert 'content: "Drop or Upload\\\\A PNG/SVG/PDF";' in css
-    assert "gap: 28px !important;" in css
+    assert "gap: var(--profile-action-gap) !important;" in css
     assert "margin-top: 0 !important;" in css
+    assert 'button_label = "Change Logo" if reference else "Save Logo"' in logo_source
+    assert "install_company_logo_picker_guard()" in logo_source
+    assert "disabled=pending_logo is None and not reference" in logo_source
+    base_css = (Path(__file__).parents[1] / "styles/base.py").read_text()
+    assert "--profile-action-gap: var(--space-6);" in base_css
     assert "company-logo-notice-dismiss 180ms ease 5s forwards" in css
 
 

@@ -90,6 +90,9 @@ def apply_base_css() -> None:
             --space-6: 32px;
             --space-8: 48px;
 
+            /* Profile action rhythm: final field/content to its full-width action. */
+            --profile-action-gap: var(--space-6);
+
             /* Radius scale */
             --radius-sm: 4px;
             --radius-md: 6px;

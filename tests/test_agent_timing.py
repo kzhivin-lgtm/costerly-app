@@ -14,7 +14,10 @@ from agents.anthropic_adapter import (
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
-from ui.js_guards import install_upload_interaction_guards
+from ui.js_guards import (
+    install_company_logo_picker_guard,
+    install_upload_interaction_guards,
+)
 from screens.processing import expected_detection_seconds
 from use_cases.rfq_processing import (
     _normalize_run,
@@ -202,6 +205,16 @@ def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
     assert "if (uploadScreenIsActive() && dropzone && dropHasFiles(event))" in source
+
+
+def test_company_logo_change_action_opens_picker_until_replacement_is_pending():
+    source = getsource(install_company_logo_picker_guard)
+
+    assert ".st-key-save_company_logo button" in source
+    assert ".company-logo-change-mode" in source
+    assert ".company-logo-pending" in source
+    assert "input[type='file']" in source
+    assert "input.click()" in source
 
 
 def test_detection_input_cache_is_disabled_by_default_and_can_be_enabled():

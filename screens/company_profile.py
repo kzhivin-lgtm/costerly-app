@@ -18,7 +18,10 @@ from styles.object_detail import apply_object_detail_css
 from ui import company_metrics_view
 from ui.company_labor_bridge import company_labor_bridge
 from ui.company_metrics_bridge import company_metrics_bridge
-from ui.js_guards import install_company_metrics_input_guard
+from ui.js_guards import (
+    install_company_logo_picker_guard,
+    install_company_metrics_input_guard,
+)
 from use_cases.email_addresses import is_valid_email_address
 from use_cases.company_logo import (
     CompanyLogoError,
@@ -733,13 +736,25 @@ def _render_company_logo_card(
                 st.success(notice)
 
             button_label = "Change Logo" if reference else "Save Logo"
-            if editable and st.button(
+            if editable and reference:
+                st.markdown(
+                    '<div class="company-logo-change-mode" style="display:none"></div>',
+                    unsafe_allow_html=True,
+                )
+                install_company_logo_picker_guard()
+            if pending_logo is not None:
+                st.markdown(
+                    '<div class="company-logo-pending" style="display:none"></div>',
+                    unsafe_allow_html=True,
+                )
+            logo_action_clicked = editable and st.button(
                 button_label,
                 key="save_company_logo",
                 type="primary",
                 use_container_width=True,
-                disabled=pending_logo is None,
-            ):
+                disabled=pending_logo is None and not reference,
+            )
+            if logo_action_clicked and pending_logo is not None:
                 try:
                     _save_company_logo(
                         access,

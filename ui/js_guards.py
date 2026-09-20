@@ -2532,3 +2532,49 @@ def install_upload_dragover_guard() -> None:
         height=0,
         width=0,
     )
+
+
+def install_company_logo_picker_guard() -> None:
+    """Let the full-width Change Logo action open the native logo picker."""
+    with st.sidebar:
+        components.html(
+            """
+            <script>
+            (() => {
+                const parentWindow = window.parent;
+                const parentDoc = parentWindow.document;
+                const CLEANUP_KEY = "__costerlyCompanyLogoPickerGuardCleanup";
+
+                if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
+
+                function handleClick(event) {
+                    const button = event.target.closest(
+                        ".st-key-save_company_logo button"
+                    );
+                    if (!button || button.disabled) return;
+                    if (!parentDoc.querySelector(".company-logo-change-mode")) return;
+                    if (parentDoc.querySelector(".company-logo-pending")) return;
+
+                    const input = parentDoc.querySelector(
+                        ".st-key-company_logo_body " +
+                        "[data-testid='stFileUploader'] input[type='file']"
+                    );
+                    if (!input) return;
+
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
+                    input.click();
+                }
+
+                parentDoc.addEventListener("click", handleClick, true);
+                parentWindow[CLEANUP_KEY] = () => {
+                    parentDoc.removeEventListener("click", handleClick, true);
+                    delete parentWindow[CLEANUP_KEY];
+                };
+            })();
+            </script>
+            """,
+            height=0,
+            width=0,
+        )

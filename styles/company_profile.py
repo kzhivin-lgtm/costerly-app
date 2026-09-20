@@ -239,12 +239,14 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) .st-key-company_logo_body {
-            padding: 28px;
+            padding: var(--profile-action-gap) 28px 28px;
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-company_logo_body[data-testid="stVerticalBlock"],
+        .stApp:has(.company-profile-active)
         .st-key-company_logo_body > [data-testid="stVerticalBlock"] {
-            gap: 28px !important;
+            gap: var(--profile-action-gap) !important;
         }
 
         .stApp:has(.company-profile-active)
@@ -253,6 +255,15 @@ def apply_company_profile_css() -> None:
             max-width: 760px;
             margin: 0 auto;
             align-items: flex-start;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body
+        [data-testid="stElementContainer"]:has(.company-logo-change-mode),
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body
+        [data-testid="stElementContainer"]:has(.company-logo-pending) {
+            display: none !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-company_logo_empty_upload {
@@ -303,11 +314,13 @@ def apply_company_profile_css() -> None:
             width: 100%;
             height: 220px;
             min-height: 220px;
-            padding: 0;
+            padding: 0 !important;
             overflow: hidden;
-            border: 1px dashed #BFAFD0;
-            border-radius: 20px;
-            background: #FBF9FD;
+            border: 1px dashed #BFAFD0 !important;
+            border-radius: 20px !important;
+            outline: 0 !important;
+            background: #FBF9FD !important;
+            box-shadow: none !important;
             cursor: pointer;
         }
 
@@ -362,9 +375,15 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-company_logo_body [data-testid="stFileUploader"] section:hover {
-            border-color: var(--color-accent);
-            background: #F7F1FC;
+        .st-key-company_logo_body [data-testid="stFileUploader"] section:hover,
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stFileUploader"] section:focus-within,
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stFileUploader"] section.costerly-upload-dragover {
+            border-color: var(--color-accent) !important;
+            outline: 0 !important;
+            background: #F7F1FC !important;
+            box-shadow: 0 0 0 3px rgba(128, 73, 198, 0.14) !important;
         }
 
         @keyframes company-logo-notice-dismiss {
@@ -943,7 +962,7 @@ def apply_company_profile_css() -> None:
             .stApp:has(.company-profile-active) div[data-testid="stForm"],
             .stApp:has(.company-profile-active) .st-key-company_metrics_card,
             .stApp:has(.company-profile-active) .st-key-company_labor_card { padding: 18px; }
-            .stApp:has(.company-profile-active) .st-key-company_logo_body { padding: 18px; }
+            .stApp:has(.company-profile-active) .st-key-company_logo_body { padding: 24px 18px 18px; }
             .company-logo-preview,
             .stApp:has(.company-profile-active)
             .st-key-company_logo_body [data-testid="stFileUploader"] section {
