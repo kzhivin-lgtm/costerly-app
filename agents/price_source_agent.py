@@ -17,11 +17,13 @@ from agents.anthropic_adapter import (
 from agents.prompt_loader import load_price_source_agent_prompt
 from agents.schemas.price_source_schema import (
     PRICE_SOURCE_RESULT_JSON_SCHEMA,
+    reconcile_price_source_arithmetic,
     validate_price_source_result,
 )
 
 
 PRICE_SOURCE_PROMPT_VERSION = "price_source_v1"
+PRICE_SOURCE_MAX_OUTPUT_TOKENS = 32_768
 
 
 def run_price_source_agent(
@@ -64,7 +66,7 @@ def run_price_source_agent(
     response, diagnostics = create_claude_message_streamed(
         get_anthropic_client(),
         model=selected_model,
-        max_tokens=8192,
+        max_tokens=PRICE_SOURCE_MAX_OUTPUT_TOKENS,
         system=prompt,
         messages=[{"role": "user", "content": content}],
         output_config={
@@ -74,12 +76,17 @@ def run_price_source_agent(
             }
         },
     )
+    if getattr(response, "stop_reason", None) == "max_tokens":
+        raise RuntimeError(
+            "The price source contains too many rows for one extraction. "
+            "Split it into smaller files or pages and try again."
+        )
     raw_text = extract_text_from_claude_response(response)
     try:
         result = json.loads(raw_text)
     except json.JSONDecodeError as exc:
         raise RuntimeError("Price source processing returned invalid JSON.") from exc
-    validated = validate_price_source_result(result)
+    validated = validate_price_source_result(reconcile_price_source_arithmetic(result))
     validated["_agent_usage"] = build_agent_usage_event(
         agent_name="price_source",
         operation="company_price_source_extract",

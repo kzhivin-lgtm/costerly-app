@@ -283,3 +283,11 @@
   `233 passed` on the production candidate. Verify one photographed invoice and
   one static public supplier page on production. Existing `materials` and the
   current Estimation resolver remain unchanged until import evidence is accepted.
+  First production URL test exposed output truncation on the 15k-character
+  Rotenberg catalog page; the extraction budget was raised from 8,192 to 32,768
+  tokens and explicit max-token failure handling was added. The same page then
+  exposed a model arithmetic mismatch, so ready-row normalized prices are now
+  calculated deterministically. The final no-write diagnostic completed in
+  48.252 seconds with supplier `Rotenberg 1929`, document type `price_list`, and
+  48 of 48 rows validated as ready. Production persistence still requires a
+  user-visible retest after the hotfix deployment.

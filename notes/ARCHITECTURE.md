@@ -224,6 +224,9 @@ unresolved and never become active offers. Delivery, assembly, labor, credits,
 subtotal rows, VAT or tax total rows, grand totals, and amounts due are excluded
 as non-product rows. Their presence never causes VAT to be added to or removed
 from an extracted item price. Every item retains the VAT basis shown by its source.
+For ready rows, deterministic code calculates `normalized_price` from the model's
+evidenced `raw_price` and `conversion_factor`; a conflicting model calculation is
+replaced and recorded with `normalized_price_recalculated`.
 
 The source value and unit are retained separately from `purchase_unit`,
 `calculation_unit`, `conversion_factor`, and the normalized Estimation price.

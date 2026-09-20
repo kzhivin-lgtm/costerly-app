@@ -93,6 +93,33 @@ class PriceSourceSchemaError(ValueError):
     pass
 
 
+def reconcile_price_source_arithmetic(result: dict[str, Any]) -> dict[str, Any]:
+    """Make price division deterministic while preserving the model's evidence choices."""
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("status") != "ready":
+            continue
+        raw_price = row.get("raw_price")
+        conversion_factor = row.get("conversion_factor")
+        if not isinstance(raw_price, (int, float)) or not isinstance(
+            conversion_factor, (int, float)
+        ):
+            continue
+        if raw_price <= 0 or conversion_factor <= 0:
+            continue
+        expected_price = raw_price / conversion_factor
+        current_price = row.get("normalized_price")
+        tolerance = max(0.01, abs(expected_price) * 0.01)
+        if (
+            not isinstance(current_price, (int, float))
+            or abs(current_price - expected_price) > tolerance
+        ):
+            row["normalized_price"] = expected_price
+            row["reason_codes"] = sorted(
+                set((row.get("reason_codes") or []) + ["normalized_price_recalculated"])
+            )
+    return result
+
+
 def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(result, dict):
         raise PriceSourceSchemaError("price source result must be an object")

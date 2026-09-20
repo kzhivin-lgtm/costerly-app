@@ -8,8 +8,10 @@ import pytest
 
 from agents.schemas.price_source_schema import (
     PriceSourceSchemaError,
+    reconcile_price_source_arithmetic,
     validate_price_source_result,
 )
+from agents.price_source_agent import PRICE_SOURCE_MAX_OUTPUT_TOKENS
 from use_cases.price_sources import (
     PriceSourceError,
     _VisibleTextParser,
@@ -58,6 +60,10 @@ def test_price_source_schema_accepts_evidenced_unit_conversion():
     assert validate_price_source_result(result) is result
 
 
+def test_price_source_output_budget_supports_large_supplier_pages():
+    assert PRICE_SOURCE_MAX_OUTPUT_TOKENS >= 32_768
+
+
 def test_ready_price_requires_currency_and_positive_normalized_price():
     missing_currency = _result()
     missing_currency["currency"] = ""
@@ -81,6 +87,15 @@ def test_ready_price_requires_supported_units_and_matching_arithmetic():
     wrong_arithmetic["rows"][0]["normalized_price"] = 90
     with pytest.raises(PriceSourceSchemaError, match="conversion factor"):
         validate_price_source_result(wrong_arithmetic)
+
+
+def test_ready_price_arithmetic_is_reconciled_deterministically():
+    result = _result()
+    result["rows"][0]["normalized_price"] = 90
+    reconciled = reconcile_price_source_arithmetic(result)
+    assert reconciled["rows"][0]["normalized_price"] == pytest.approx(90 / 2.9768)
+    assert "normalized_price_recalculated" in reconciled["rows"][0]["reason_codes"]
+    assert validate_price_source_result(reconciled) is reconciled
 
 
 def test_prompt_preserves_item_vat_basis_and_excludes_document_totals():
