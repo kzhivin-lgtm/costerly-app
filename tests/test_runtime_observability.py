@@ -190,6 +190,7 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert '"profile_to_upload"' in wrapper
     assert '"profile_to_sign_out"' in wrapper
     assert '"upload_to_sign_out"' in wrapper
+    assert 'const maskedInternalTransitions = new Set([\n          "sign_in"' in wrapper
     assert "maskedInternalTransitions.has(pendingTransition.name)" in wrapper
     assert 'revealInternalTransition("app_ready")' in wrapper
     assert 'mark("browser.internal_transition_timeout"' in wrapper

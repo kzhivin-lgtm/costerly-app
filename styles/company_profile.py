@@ -820,8 +820,13 @@ def apply_company_profile_css() -> None:
             table-layout: fixed;
         }
 
+        .company-labor-list th,
+        .company-labor-list td {
+            box-sizing: border-box;
+        }
+
         .company-labor-col-actions {
-            width: 56px;
+            width: 64px;
         }
 
         .company-labor-col-worker {
@@ -851,6 +856,8 @@ def apply_company_profile_css() -> None:
         .company-labor-total-row th {
             padding-top: 18px !important;
             padding-bottom: 18px !important;
+            border-left: 0 !important;
+            border-right: 0 !important;
             background: #FAF8FC !important;
             color: var(--color-text-strong) !important;
             font-family: var(--font-mono) !important;
@@ -870,10 +877,10 @@ def apply_company_profile_css() -> None:
 
         .company-labor-list th:first-child,
         .company-labor-list td:first-child {
-            width: 56px;
-            min-width: 56px;
-            padding-left: 10px;
-            padding-right: 6px;
+            width: 64px;
+            min-width: 64px;
+            padding-left: 12px;
+            padding-right: 8px;
         }
 
         .company-labor-list th:nth-child(6),
@@ -956,6 +963,21 @@ def apply_company_profile_css() -> None:
             display: flex !important;
             align-items: center !important;
             min-height: 22px !important;
+        }
+
+        div[role="tooltip"] p {
+            margin: 0 0 4px !important;
+            line-height: 1.2 !important;
+        }
+
+        div[role="tooltip"] ul {
+            margin: 2px 0 6px !important;
+            padding-left: 18px !important;
+        }
+
+        div[role="tooltip"] li {
+            margin: 0 !important;
+            line-height: 1.2 !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card

@@ -150,7 +150,6 @@ LABOR_EMPLOYEE_COLUMNS = (
 )
 LABOR_DEFAULT_EMPLOYMENT_FACTOR = 1.25
 LABOR_EMPLOYMENT_FACTOR_HELP = (
-    "Planning multiplier for employer costs.\n\n"
     "**Includes:**\n"
     "- Employer pension\n"
     "- Severance pay\n"

@@ -1031,9 +1031,12 @@ def test_labor_table_keeps_compact_columns_and_aligned_totals():
     assert 'class="company-labor-col-pay-type"' in source
     assert 'class="company-labor-col-details"' in source
     assert ".company-labor-col-actions" in css
-    assert "width: 56px;" in css
+    assert "width: 64px;" in css
     assert ".company-labor-col-details" in css
     assert "width: 214px;" in css
+    assert "box-sizing: border-box;" in css
+    assert "border-left: 0 !important;" in css
+    assert "border-right: 0 !important;" in css
     assert "align-items: flex-end !important;" in css
     assert '[data-testid="stWidgetLabel"]' in css
 
@@ -1045,6 +1048,7 @@ def test_labor_empty_amounts_use_zero_placeholders_and_structured_factor_help():
     assert source.count('placeholder="0"') >= 3
     assert 'if editing else "0"' not in source
     assert '"**Includes:**\\n"' in source
+    assert "Planning multiplier for employer costs" not in source
     assert '"- Employer pension\\n"' in source
     assert '"**Excludes:**\\n"' in source
     assert '"- Overtime\\n"' in source
