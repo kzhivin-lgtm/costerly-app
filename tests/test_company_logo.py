@@ -99,6 +99,32 @@ def test_company_logo_accepts_svg_with_embedded_raster_artwork():
         assert image.size == (1024, 1024)
 
 
+def test_company_logo_accepts_standard_svg_11_public_doctype():
+    source = b'''<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800"
+  viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="35" fill="#8049C6"/>
+</svg>'''
+
+    result = normalize_company_logo(source)
+
+    assert result.source_format == "svg"
+    assert result.source_width == 2048
+    assert result.source_height == 2048
+
+
+def test_company_logo_still_rejects_xml_entities():
+    source = b'''<!DOCTYPE svg [<!ENTITY unsafe SYSTEM "file:///etc/passwd">]>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800">
+  <text>&unsafe;</text>
+</svg>'''
+
+    with pytest.raises(CompanyLogoError, match="linked or unsupported resource"):
+        normalize_company_logo(source)
+
+
 class _Response:
     def __init__(self, data):
         self.data = data

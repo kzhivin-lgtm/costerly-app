@@ -46,17 +46,14 @@ def _source_format(source: bytes) -> str:
     if source.startswith(b"%PDF-"):
         return "pdf"
     prefix = source[:4096].lstrip(b"\xef\xbb\xbf\x00\t\r\n ").lower()
-    if prefix.startswith(b"<svg") or (
-        prefix.startswith(b"<?xml") and b"<svg" in prefix
-    ):
+    if b"<svg" in prefix:
         return "svg"
     raise CompanyLogoError("Upload a PNG, SVG, or PDF logo.")
 
 
-def _validate_svg(source: bytes) -> None:
+def _sanitize_svg(source: bytes) -> bytes:
     lowered = source.lower()
     blocked = (
-        b"<!doctype",
         b"<!entity",
         b"<script",
         b"<foreignobject",
@@ -95,11 +92,12 @@ def _validate_svg(source: bytes) -> None:
         raise CompanyLogoError(
             "The SVG includes a linked or unsupported resource. Export it with images embedded."
         )
+    return re.sub(rb"<!doctype[^>]*>", b"", source, flags=re.IGNORECASE | re.DOTALL)
 
 
 def _render_document(source: bytes, source_format: str) -> Image.Image:
     if source_format == "svg":
-        _validate_svg(source)
+        source = _sanitize_svg(source)
     try:
         document = pymupdf.open(stream=source, filetype=source_format)
     except Exception as exc:
