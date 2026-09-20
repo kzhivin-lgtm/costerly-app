@@ -735,7 +735,7 @@ def render_account_control(access: CompanyAccess) -> None:
         return
     action = render_account_header_controls(
         on_sign_out=sign_out,
-        show_projects=st.session_state.get("screen") == "upload",
+        show_projects=st.session_state.get("screen", "upload") == "upload",
     )
     if action == "profile":
         st.session_state.screen = "account"

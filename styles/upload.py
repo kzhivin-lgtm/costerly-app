@@ -37,8 +37,31 @@ def apply_upload_css() -> None:
             position: static !important;
             top: auto !important;
             right: auto !important;
-            width: 326px !important;
-            margin: 26px auto 36px !important;
+            width: 304px !important;
+            /* Streamlit overlaps this ordered wrapper by 16px above the hero. */
+            margin: 48px auto 32px !important;
+        }
+
+        .stApp:has(.upload-screen-active)
+        .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
+            gap: 8px !important;
+            height: 36px !important;
+        }
+
+        .stApp:has(.upload-screen-active)
+        .st-key-costerly_header_controls [data-testid="stVerticalBlock"] {
+            min-height: 36px !important;
+        }
+
+        .stApp:has(.upload-screen-active)
+        .st-key-costerly_header_controls button {
+            height: 36px !important;
+            min-height: 36px !important;
+            max-height: 36px !important;
+            padding: 0 10px !important;
+            border-radius: var(--button-radius) !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
         }
         
         .stApp:has(.upload-screen-active) .block-container {
@@ -50,7 +73,13 @@ def apply_upload_css() -> None:
             flex-direction: column !important;
             align-items: center !important;
             justify-content: flex-start !important;
+            gap: 0 !important;
             transform: none !important;
+        }
+
+        .stApp:has(.upload-screen-active)
+        [data-testid="stVerticalBlock"]:has(> [data-testid="stLayoutWrapper"] .st-key-costerly_header_controls) {
+            gap: 0 !important;
         }
 
         .upload-screen {
