@@ -503,13 +503,13 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "Overhead Expenses", "Labor Costs", "Price Lists", "Contacts", "Company Details", "Users",
+        "Overhead Expenses", "Labor Costs", "Price Lists", "Contacts", "Bank Details", "Users",
     ]
     assert any(button.label == "Projects" and button.disabled for button in app.button)
     assert any(button.label == "New Estimate" for button in app.button)
     assert any(button.label == "Sign out" for button in app.button)
     assert not any(
-        button.label in {"Save Contacts", "Save Company Details"}
+        button.label in {"Save Contacts", "Save Bank Details"}
         for button in app.button
     )
     assert calls == {"profile": 0, "members": 0, "metrics": 1, "employees": 0}
@@ -556,7 +556,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         assert "Number" not in labels
         assert labels.index("Facebook") < labels.index("LinkedIn") < labels.index("Instagram")
 
-    app.session_state["company_profile_tab"] = "Company Details"
+    app.session_state["company_profile_tab"] = "Bank Details"
     app.run()
     assert calls == {
         "profile": 2,
@@ -566,7 +566,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     }
     if role == "owner":
         labels = [field.label for field in app.text_input]
-        assert any(button.label == "Save Company Details" for button in app.button)
+        assert any(button.label == "Save Bank Details" for button in app.button)
         assert labels[:4] == [
             "Company name",
             "Company registration number",
@@ -997,13 +997,13 @@ def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
 
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = "owner"
-    app.session_state["company_profile_tab"] = "Company Details"
+    app.session_state["company_profile_tab"] = "Bank Details"
     app.run()
-    next(button for button in app.button if button.label == "Save Company Details").click()
+    next(button for button in app.button if button.label == "Save Bank Details").click()
     app.run()
 
-    assert app.session_state["company_profile_tab"] == "Company Details"
-    assert any(button.label == "Save Company Details" for button in app.button)
+    assert app.session_state["company_profile_tab"] == "Bank Details"
+    assert any(button.label == "Save Bank Details" for button in app.button)
     assert writes[-1]["company_name"] == "Workshop"
     assert writes[-1]["legal_name_hebrew"] == "חברה"
     assert writes[-1]["legal_name"] == "Workshop Ltd"

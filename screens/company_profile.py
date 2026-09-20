@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 from html import escape
 import json
 import logging
 from pathlib import Path
+import time
 from typing import TYPE_CHECKING
 
 import streamlit as st
@@ -17,6 +20,13 @@ from ui.company_labor_bridge import company_labor_bridge
 from ui.company_metrics_bridge import company_metrics_bridge
 from ui.js_guards import install_company_metrics_input_guard
 from use_cases.email_addresses import is_valid_email_address
+from use_cases.company_logo import (
+    CompanyLogoError,
+    NormalizedCompanyLogo,
+    load_company_logo_bytes,
+    normalize_company_logo,
+    persist_company_logo,
+)
 
 if TYPE_CHECKING:
     from state.company_auth import CompanyAccess
@@ -532,10 +542,15 @@ def _read_only_group(title: str, items: list[tuple[str, object]]) -> None:
     )
 
 
-def _save_profile_section(access: CompanyAccess, values: dict[str, object]) -> None:
+def _save_profile_section(
+    access: CompanyAccess,
+    values: dict[str, object],
+    *,
+    success_message: str,
+) -> None:
     try:
         save_company_profile(access, values)
-        st.success("Company details saved")
+        st.success(success_message)
     except ValueError as exc:
         st.error(str(exc))
     except PermissionError:
@@ -544,7 +559,170 @@ def _save_profile_section(access: CompanyAccess, values: dict[str, object]) -> N
         st.error("Company details were not saved. Try again in a moment.")
 
 
-def _render_owner_company_details(access: CompanyAccess, profile: dict) -> None:
+@st.cache_data(ttl=300, show_spinner=False)
+def _load_company_logo_preview(company_id: str, reference: str) -> bytes | None:
+    return load_company_logo_bytes(
+        client=get_supabase_client(),
+        company_id=company_id,
+        reference=reference,
+    )
+
+
+def _logo_preview_html(png_bytes: bytes | None) -> str:
+    if png_bytes:
+        source = "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
+        body = f'<img src="{source}" alt="Company logo preview" />'
+    else:
+        body = "<span>No logo</span>"
+    return f'<div class="company-logo-preview">{body}</div>'
+
+
+def _pending_company_logo(uploaded_file, trace=None) -> tuple[NormalizedCompanyLogo | None, str | None]:
+    source = uploaded_file.getvalue()
+    digest = hashlib.sha256(source).hexdigest()
+    pending = st.session_state.get("_company_logo_pending")
+    if isinstance(pending, dict) and pending.get("digest") == digest:
+        return pending.get("logo"), pending.get("error")
+
+    started_at = time.perf_counter()
+    try:
+        logo = normalize_company_logo(source)
+    except CompanyLogoError as exc:
+        duration_ms = (time.perf_counter() - started_at) * 1000
+        if trace is not None:
+            trace.event(
+                "server.company_logo_normalize",
+                status="error",
+                duration_ms=duration_ms,
+                metadata={
+                    "source_bytes": len(source),
+                    "error_type": type(exc).__name__,
+                },
+            )
+        st.session_state._company_logo_pending = {
+            "digest": digest,
+            "logo": None,
+            "error": str(exc),
+        }
+        return None, str(exc)
+
+    if trace is not None:
+        trace.event(
+            "server.company_logo_normalize",
+            duration_ms=(time.perf_counter() - started_at) * 1000,
+            metadata={
+                "source_format": logo.source_format,
+                "source_bytes": len(source),
+                "source_width": logo.source_width,
+                "source_height": logo.source_height,
+                "content_width": logo.content_width,
+                "content_height": logo.content_height,
+                "output_bytes": len(logo.png_bytes),
+            },
+        )
+    st.session_state._company_logo_pending = {
+        "digest": digest,
+        "logo": logo,
+        "error": None,
+    }
+    return logo, None
+
+
+def _save_company_logo(
+    access: CompanyAccess,
+    logo: NormalizedCompanyLogo,
+    previous_reference: str | None,
+    *,
+    trace=None,
+) -> None:
+    fresh = _current_access(access)
+    client = get_supabase_client()
+    assert_company_owner(client, fresh.user_id, fresh.company_id)
+    persist_company_logo(
+        client=client,
+        company_id=fresh.company_id,
+        png_bytes=logo.png_bytes,
+        previous_reference=previous_reference,
+        trace=trace,
+    )
+
+
+def _render_company_logo_card(
+    access: CompanyAccess,
+    profile: dict,
+    *,
+    editable: bool,
+    trace=None,
+) -> None:
+    reference = _clean(profile.get("logo_url"))
+    current_logo = None
+    if reference:
+        try:
+            if trace is None:
+                current_logo = _load_company_logo_preview(str(access.company_id), reference)
+            else:
+                with trace.span("server.company_logo_load"):
+                    current_logo = _load_company_logo_preview(str(access.company_id), reference)
+        except Exception:
+            logger.exception("Company logo preview load failed")
+
+    with st.container(key="company_logo_card"):
+        st.markdown(
+            '<div class="company-logo-heading"><h3>Company Logo</h3>'
+            '<p>PNG, SVG, or PDF. The saved logo is converted to a standard square PNG.</p></div>',
+            unsafe_allow_html=True,
+        )
+        pending_logo = None
+        pending_error = None
+        if editable:
+            uploader_version = int(st.session_state.get("_company_logo_uploader_version") or 0)
+            uploaded_file = st.file_uploader(
+                "Company logo",
+                type=["png", "svg", "pdf"],
+                accept_multiple_files=False,
+                key=f"company_logo_upload_{uploader_version}",
+                label_visibility="collapsed",
+                help="PNG, SVG, or PDF, up to 50 MB. PDF uses its first page.",
+            )
+            if uploaded_file is not None:
+                pending_logo, pending_error = _pending_company_logo(uploaded_file, trace=trace)
+
+        preview = pending_logo.png_bytes if pending_logo is not None else current_logo
+        st.markdown(_logo_preview_html(preview), unsafe_allow_html=True)
+        if pending_error:
+            st.error(pending_error)
+        if notice := st.session_state.pop("_company_logo_notice", None):
+            st.success(notice)
+
+        if editable and st.button(
+            "Save Logo",
+            key="save_company_logo",
+            type="primary",
+            use_container_width=True,
+            disabled=pending_logo is None,
+        ):
+            try:
+                _save_company_logo(
+                    access,
+                    pending_logo,
+                    reference,
+                    trace=trace,
+                )
+            except PermissionError:
+                st.error("Only the company owner can save the logo.")
+            except Exception:
+                logger.exception("Company logo save failed")
+                st.error("The company logo was not saved. Try again in a moment.")
+            else:
+                st.session_state.pop("_company_logo_pending", None)
+                st.session_state._company_logo_uploader_version = (
+                    int(st.session_state.get("_company_logo_uploader_version") or 0) + 1
+                )
+                st.session_state._company_logo_notice = "Company logo saved"
+                st.rerun()
+
+
+def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
     with st.form("company_profile_company_details"):
         first_left, first_right = st.columns(2)
         with first_left:
@@ -585,7 +763,7 @@ def _render_owner_company_details(access: CompanyAccess, profile: dict) -> None:
             iban = _text_input(profile, "IBAN", "iban")
         with international_right:
             swift = _text_input(profile, "BIC", "swift")
-        saved = _profile_save_button("Save Company Details")
+        saved = _profile_save_button("Save Bank Details")
     if saved:
         _save_profile_section(access, {
             "company_name": company_name,
@@ -598,10 +776,10 @@ def _render_owner_company_details(access: CompanyAccess, profile: dict) -> None:
             "legal_name": legal_name,
             "iban": iban,
             "swift": swift,
-        })
+        }, success_message="Bank details saved")
 
 
-def _render_owner_contacts(access: CompanyAccess, profile: dict) -> None:
+def _render_owner_contacts(access: CompanyAccess, profile: dict, *, trace=None) -> None:
     with st.form("company_profile_contacts"):
         contact_left, contact_right = st.columns(2)
         with contact_left:
@@ -654,11 +832,12 @@ def _render_owner_contacts(access: CompanyAccess, profile: dict) -> None:
             "linkedin_url": linkedin,
             "instagram_url": instagram,
             "facebook_url": facebook,
-        })
+        }, success_message="Contacts saved")
+    _render_company_logo_card(access, profile, editable=True, trace=trace)
 
 
-def _render_member_company_details(profile: dict) -> None:
-    _read_only_group("Company Details", [
+def _render_member_bank_details(profile: dict) -> None:
+    _read_only_group("Bank Details", [
         ("Company name", profile.get("company_name")),
         ("Company registration number", profile.get("company_registration_number")),
         ("Company legal name (Hebrew)", profile.get("legal_name_hebrew")),
@@ -672,7 +851,7 @@ def _render_member_company_details(profile: dict) -> None:
     ])
 
 
-def _render_member_contacts(profile: dict) -> None:
+def _render_member_contacts(access: CompanyAccess, profile: dict, *, trace=None) -> None:
     _read_only_group("Contacts", [
         ("Official email", profile.get("public_email")),
         ("Phone", profile.get("public_phone")),
@@ -685,6 +864,7 @@ def _render_member_contacts(profile: dict) -> None:
         ("LinkedIn", profile.get("linkedin_url")),
         ("Instagram", profile.get("instagram_url")),
     ])
+    _render_company_logo_card(access, profile, editable=False, trace=trace)
 
 
 def _metric_amount(value: object) -> float:
@@ -1319,7 +1499,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
             "Labor Costs",
             "Price Lists",
             "Contacts",
-            "Company Details",
+            "Bank Details",
             "Users",
         ],
         key="company_profile_tab",
@@ -1354,15 +1534,15 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         if contacts_tab.open:
             with contacts_tab:
                 if access.role == "owner":
-                    _render_owner_contacts(access, profile)
+                    _render_owner_contacts(access, profile, trace=trace)
                 else:
-                    _render_member_contacts(profile)
+                    _render_member_contacts(access, profile, trace=trace)
         else:
             with company_tab:
                 if access.role == "owner":
-                    _render_owner_company_details(access, profile)
+                    _render_owner_bank_details(access, profile)
                 else:
-                    _render_member_company_details(profile)
+                    _render_member_bank_details(profile)
     elif users_tab.open:
         with users_tab:
             if trace is None:

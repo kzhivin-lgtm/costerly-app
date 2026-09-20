@@ -167,6 +167,13 @@
   card, and keep Projects visibly disabled until its route exists. Status:
   accepted in production at `cf35d9b`; the full Sign out label is visible, the
   two lower gaps are code-defined at 32px, and 188 tests passed.
+- 3.4.1 Company logo normalization: rename the Profile tab to Bank Details and
+  add a separate owner-only Company Logo card below Save Contacts. Accept PNG,
+  self-contained SVG, and first-page PDF sources, normalize them without AI to
+  a private 1024px square PNG card, retain only its private Storage reference,
+  and instrument conversion, upload, database update, cleanup, and load.
+  Status: implementation candidate; 198 tests passed, production visual and
+  three-format persistence verification pending.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
   1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR remains the default one-PDF/one-request flow. Naming is text-only and receives locked Detection facts plus OCR snippets, never the PDF again.

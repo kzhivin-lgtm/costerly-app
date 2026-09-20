@@ -58,7 +58,8 @@ _PROFILE_TAB_ROUTES = {
     "overhead-expenses": "Overhead Expenses",
     "labor-costs": "Labor Costs",
     "contacts": "Contacts",
-    "company-details": "Company Details",
+    "bank-details": "Bank Details",
+    "company-details": "Bank Details",
     "users": "Users",
     "price-lists": "Price Lists",
 }
@@ -160,7 +161,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="3.3.1",
+        build_version="3.4.1",
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,

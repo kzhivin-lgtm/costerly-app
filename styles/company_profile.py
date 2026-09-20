@@ -209,12 +209,69 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) div[data-testid="stForm"],
         .stApp:has(.company-profile-active) .st-key-company_metrics_card,
-        .stApp:has(.company-profile-active) .st-key-company_labor_card {
+        .stApp:has(.company-profile-active) .st-key-company_labor_card,
+        .stApp:has(.company-profile-active) .st-key-company_logo_card {
             padding: 28px;
             border: 1px solid var(--color-border-soft);
             border-radius: 18px;
             background: var(--color-surface);
             box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+        }
+
+        .stApp:has(.company-profile-active) .st-key-company_logo_card {
+            margin-top: 12px;
+        }
+
+        .company-logo-heading h3 {
+            margin: 0 0 4px !important;
+        }
+
+        .company-logo-heading p {
+            margin: 0 0 16px;
+            color: var(--color-text-muted);
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .company-logo-preview {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 180px;
+            height: 180px;
+            margin: 16px auto 8px;
+            overflow: hidden;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 18px;
+            background: #FFFFFF;
+            color: var(--color-text-muted);
+            font-size: 14px;
+        }
+
+        .company-logo-preview img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .company-logo-preview:has(img) {
+            border: 0;
+            background: transparent;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_card [data-testid="stFileUploader"] section {
+            min-height: 104px;
+            border: 1px dashed #BFAFD0;
+            border-radius: var(--input-radius);
+            background: #FBF9FD;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_card [data-testid="stFileUploader"] section:hover {
+            border-color: var(--color-accent);
+            background: #F7F1FC;
         }
 
         .stApp:has(.company-profile-active) label,
@@ -407,13 +464,17 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button,
         .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"],
         .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] > div,
-        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button {
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button,
+        .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"],
+        .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"] > div,
+        .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"] button {
             width: 100% !important;
         }
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button,
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"],
-        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"] {
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"],
+        .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"] button[kind="primary"] {
             min-height: 60px !important;
             margin-top: 8px !important;
             background: #8049C6 !important;
@@ -430,7 +491,8 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button p,
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"] p,
-        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"] p {
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"] p,
+        .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"] button[kind="primary"] p {
             color: #FFFFFF !important;
             font-family: var(--font-sans) !important;
             font-size: 19px !important;
@@ -440,7 +502,8 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:hover,
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"]:hover,
-        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"]:hover {
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"]:hover,
+        .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"] button[kind="primary"]:hover {
             background: #6F3CB4 !important;
             border-color: #6F3CB4 !important;
             color: #FFFFFF !important;
@@ -450,7 +513,8 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) [data-testid="stFormSubmitButton"] button:active,
         .stApp:has(.company-profile-active) .st-key-company_metrics_card [data-testid="stButton"] button[kind="primary"]:active,
-        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"]:active {
+        .stApp:has(.company-profile-active) .st-key-company_labor_card [data-testid="stButton"] button[kind="primary"]:active,
+        .stApp:has(.company-profile-active) .st-key-company_logo_card [data-testid="stButton"] button[kind="primary"]:active {
             background: #6131A3 !important;
             border-color: #6131A3 !important;
             transform: translateY(0) scale(0.995);
@@ -764,7 +828,8 @@ def apply_company_profile_css() -> None:
 
             .stApp:has(.company-profile-active) div[data-testid="stForm"],
             .stApp:has(.company-profile-active) .st-key-company_metrics_card,
-            .stApp:has(.company-profile-active) .st-key-company_labor_card { padding: 18px; }
+            .stApp:has(.company-profile-active) .st-key-company_labor_card,
+            .stApp:has(.company-profile-active) .st-key-company_logo_card { padding: 18px; }
             .company-profile-readonly-grid { grid-template-columns: 1fr; }
         }
         </style>

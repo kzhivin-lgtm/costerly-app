@@ -17,6 +17,17 @@ def test_profile_route_preserves_selected_tab():
     }
 
 
+def test_profile_route_uses_bank_details_slug_and_accepts_legacy_slug():
+    st.session_state.clear()
+    st.session_state.company_profile_tab = "Bank Details"
+
+    assert app._browser_route("account") == {
+        "screen": "account",
+        "profile_tab": "bank-details",
+    }
+    assert app._PROFILE_TAB_ROUTES["company-details"] == "Bank Details"
+
+
 def test_file_review_route_preserves_run_context():
     st.session_state.clear()
     st.session_state.current_run_id = "run-123"

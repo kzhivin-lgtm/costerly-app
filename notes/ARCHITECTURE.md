@@ -21,8 +21,8 @@ The app should not follow Streamlit native dark mode yet.
 Company Profile UI and persistence contract
 Company Profile owns its local page heading and navigation actions. The shared
 full Costerly logo and global Profile action are not rendered on that screen.
-The page uses six peer tabs: Overhead Expenses, Labor Costs, Contacts, Company
-Details, Users, and Price Lists. Overhead Expenses is first. Contacts and Company
+The page uses six peer tabs: Overhead Expenses, Labor Costs, Price Lists,
+Contacts, Bank Details, and Users. Overhead Expenses is first. Contacts and Bank
 Details submit independently.
 Their save handlers send partial company updates, so a field hidden from the UI
 is not converted to null. In particular, the retained VAT file number and
@@ -30,11 +30,24 @@ country values remain unchanged until a deliberate data-migration decision.
 Every editable Profile form renders its submit action through the shared
 `_profile_save_button` helper. Profile form submits use the same full-width,
 high-emphasis purple design regardless of the current or future tab.
-Company Details is the single editing surface for company identity and banking
+Bank Details is the single editing surface for company identity and banking
 data. Its five-row grid keeps Company name and registration together, both legal
 names together, then Bank name / Bank number, Branch number / Account number,
 and IBAN / BIC. BIC continues to use the existing `swift` database column because
 SWIFT/BIC is one banking identifier, so no duplicate column is introduced.
+Contacts also owns a separate Company Logo card below its independent Save
+Contacts form. Owners may submit PNG, self-contained SVG, or the first page of a
+PDF, up to 50 MB. A deterministic server pipeline validates the actual content,
+rejects active or externally referenced SVG content, trims empty margins,
+preserves proportions, and places the artwork inside a 1024 by 1024 white PNG
+card with the shared contour. Raster PNG artwork below the minimum usable
+resolution is rejected rather than invented or AI-upscaled. Source bytes are
+never stored. Only the normalized PNG, capped at 2 MB, is written to the private
+`company-logos` Supabase Storage bucket. `companies.logo_url` retains the
+server-only `storage://company-logos/...` reference. The server uploads a new
+unique object, updates the company row, rolls the object back if that update
+fails, and removes the prior normalized object only after success. Members may
+view the server-loaded normalized logo but cannot upload one.
 Overhead Expenses reuses the existing `overhead_settings` and
 `overhead_monthly` records. Its save path is owner-only and updates only the fields visible on the Metrics
 screen, preserving other overhead settings. Monthly overhead values are stored
