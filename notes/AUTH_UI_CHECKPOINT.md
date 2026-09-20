@@ -1,17 +1,24 @@
 # Auth and Upload UI checkpoint
 
-Date: 2026-09-16
+Date: 2026-09-20
 
-## v3.3.1 candidate
+## v3.3.1 accepted authenticated home
+
+- Product checkpoint: `cf35d9b`.
 
 - The accepted large Upload logo keeps its existing CSS, size, and position.
 - The product credo remains on the authenticated home page at a compact 24px.
 - Upload-only navigation is centered below the credo with compact Projects,
   Profile, and Sign out controls. Projects remains disabled until its route and
   persistence contract are implemented.
+- The full below-logo composition is 32px lower than the initial v3.3.1
+  candidate. The code compensates for Streamlit's 16px wrapper overlap so the
+  credo-to-controls and controls-to-uploader gaps are both 32px.
+- The 340px controls group keeps the complete `Sign out` label visible.
 - The native uploader, drag interaction, transition markers, authentication,
   and post-upload state reset are unchanged.
-- Production visual acceptance remains pending.
+- The user accepted the production presentation. Automated suite: 188 tests
+  passed.
 
 ## Accepted state
 
