@@ -438,11 +438,14 @@ def _render_file_review_header_only() -> None:
 
 def _back_to_upload_button(*, clear_processing_error: bool = False) -> None:
     """Render the shared Back to Upload action for non-review states."""
-    if st.button("BACK TO UPLOAD", type="secondary"):
-        st.session_state.screen = "upload"
+    from state.session import set_screen
+
+    def return_to_upload() -> None:
+        set_screen("upload")
         if clear_processing_error:
             st.session_state.processing_error = None
-        st.rerun()
+
+    st.button("BACK TO UPLOAD", type="secondary", on_click=return_to_upload)
 
 
 def _render_processing_error(message: object) -> None:

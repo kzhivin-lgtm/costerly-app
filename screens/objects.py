@@ -225,11 +225,17 @@ def _render_pricing_table(
 
 def _render_objects_actions() -> None:
     """Render bottom navigation actions for Objects Estimation."""
+    from state.session import set_screen
+
     col_back, col_generate = st.columns(2, gap="small")
 
-    if col_back.button("BACK TO FILE REVIEW", type="secondary", use_container_width=True):
-        st.session_state.screen = "file_review"
-        st.rerun()
+    col_back.button(
+        "BACK TO FILE REVIEW",
+        type="secondary",
+        use_container_width=True,
+        on_click=set_screen,
+        args=("file_review",),
+    )
 
     if col_generate.button("GENERATE PROPOSAL", type="primary", use_container_width=True):
         st.session_state.screen = "objects"

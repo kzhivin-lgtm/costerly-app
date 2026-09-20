@@ -86,6 +86,12 @@ def init_state() -> None:
         st.session_state.objects_estimation_cache_dirty = set()
 
 
-def go_to(screen: str) -> None:
+def set_screen(screen: str) -> None:
+    """Change the active screen from a widget callback before the next render."""
     st.session_state.screen = screen
+
+
+def go_to(screen: str) -> None:
+    """Change screens from non-widget control flow and rerun immediately."""
+    set_screen(screen)
     st.rerun()

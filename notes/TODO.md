@@ -9,6 +9,17 @@
   Streamlit actions, encrypted Fast Resume, sessionStorage fallback, route
   restoration, and the Cloudflare transition mask, and accept only after two
   complete user-visible cycles show no broken intermediate screen.
+  Production evidence for candidate 3.5.6 identified and removed a redundant
+  Upload-to-Profile rerun: navigation now changes screen state in the native
+  Profile button callback before the next script render. Acceptance remains
+  pending a deployed full-page reload with matching wrapper/server build and
+  two clean cycles. The next isolated target is the 1.9-second synchronous
+  browser-session store measured during Sign in.
+  Regression protection now includes a shared callback-safe screen setter, a
+  source test rejecting widget navigation followed by explicit rerun, a
+  wrapper/server build handshake with one guarded reload, and per-transition
+  Python-run counts. Production acceptance must show matching builds and
+  `python_runs=1` for both Profile directions.
 
 - 3.1.12 Refresh route persistence: after browser refresh, restore the same
   authenticated product screen and, where applicable, the same nested tab.

@@ -216,6 +216,7 @@ def install_company_metrics_input_guard() -> None:
 def signal_app_ready_to_embed(
     screen: str,
     *,
+    build_version: str,
     trace_id: str | None = None,
     run_id: str | None = None,
     metrics: dict[str, object] | None = None,
@@ -223,6 +224,7 @@ def signal_app_ready_to_embed(
 ) -> None:
     """Tell the embedding Cloudflare wrapper that a real Streamlit screen rendered."""
     screen_json = json.dumps(screen)
+    build_version_json = json.dumps(build_version)
     trace_id_json = json.dumps(trace_id or "")
     run_id_json = json.dumps(run_id or "")
     metrics_json = json.dumps(metrics or {})
@@ -236,6 +238,7 @@ def signal_app_ready_to_embed(
             const message = {
                 type: "costerly:app-ready",
                 screen: __SCREEN__,
+                buildVersion: __BUILD_VERSION__,
                 traceId: __TRACE_ID__,
                 runId: __RUN_ID__,
                 metrics: __METRICS__,
@@ -357,6 +360,7 @@ def signal_app_ready_to_embed(
         })();
         </script>
         """.replace("__SCREEN__", screen_json)
+        .replace("__BUILD_VERSION__", build_version_json)
         .replace("__TRACE_ID__", trace_id_json)
         .replace("__RUN_ID__", run_id_json)
         .replace("__METRICS__", metrics_json)

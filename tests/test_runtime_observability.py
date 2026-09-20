@@ -42,7 +42,11 @@ def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monke
         metadata={
             "route": "upload",
             "access_token": "must-not-leak",
+            "refreshToken": "must-not-leak",
             "email_address": "must-not-leak",
+            "file_name": "must-not-leak.pdf",
+            "filename": "must-not-leak.pdf",
+            "company_profile_import_ms": 1.25,
             "dom_content_loaded_ms": 123.4,
         },
     )
@@ -56,7 +60,11 @@ def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monke
     assert event["metadata"] == {
         "route": "upload",
         "access_token": "[redacted]",
+        "refreshToken": "[redacted]",
         "email_address": "[redacted]",
+        "file_name": "[redacted]",
+        "filename": "[redacted]",
+        "company_profile_import_ms": 1.25,
         "dom_content_loaded_ms": 123.4,
     }
 
@@ -203,6 +211,12 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'event.data.type === "costerly:startup-phase"' in wrapper
     assert "startupPhases.has(event.data.phase)" in wrapper
     assert "...(event.data.metrics || {})" in wrapper
+    assert "event.data.buildVersion" in wrapper
+    assert 'mark("browser.build_mismatch"' in wrapper
+    assert 'window.sessionStorage.getItem(reloadGuardKey) !== mismatchPair' in wrapper
+    assert "window.location.reload()" in wrapper
+    assert "pythonRuns: 0" in wrapper
+    assert "python_runs: pendingTransition.pythonRuns" in wrapper
     assert 'startupProbe === "anonymous"' in wrapper
     assert 'appUrl.searchParams.set("startup_probe", "anonymous")' in wrapper
     assert 'key.toLowerCase() !== "dom_content_loaded_ms"' in function
@@ -213,6 +227,15 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "onRequestPost" not in function
     assert '"include": ["/api/*"]' in routes
     assert "must-not-leak" not in wrapper + function
+
+
+def test_streamlit_ready_message_carries_server_build_version():
+    source = (ROOT / "ui/js_guards.py").read_text()
+    app_source = (ROOT / "app.py").read_text()
+
+    assert "buildVersion: __BUILD_VERSION__" in source
+    assert '.replace("__BUILD_VERSION__", build_version_json)' in source
+    assert "build_version=trace.build_version" in app_source
 
 
 def test_auth_component_reports_safe_iframe_startup_phases():

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 import streamlit as st
@@ -68,3 +69,30 @@ def test_profile_route_is_restored_before_account_controls_render():
     controls_position = source.index("render_account_control(access)")
 
     assert restore_position < controls_position
+
+
+def test_widget_navigation_never_adds_a_second_explicit_rerun():
+    """A widget click already reruns Streamlit; navigation must use on_click."""
+    root = Path(__file__).parents[1]
+    violations = []
+
+    for path in root.rglob("*.py"):
+        if any(part in {"tests", "tmp", ".venv"} for part in path.parts):
+            continue
+        source = path.read_text()
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.If) or not isinstance(node.test, ast.Call):
+                continue
+            function = node.test.func
+            if not isinstance(function, ast.Attribute) or function.attr not in {
+                "button",
+                "form_submit_button",
+            }:
+                continue
+            block = ast.get_source_segment(source, node) or ""
+            changes_screen = "session_state.screen" in block or "session_state[\"screen\"]" in block
+            if changes_screen and "st.rerun()" in block:
+                violations.append(f"{path.relative_to(root)}:{node.lineno}")
+
+    assert violations == []

@@ -1,6 +1,6 @@
 # Production observability
 
-Version: 3.5.5
+Version: 3.5.6
 Status: performance investigation after the Labor Costs production candidate
 
 Emergency rollback boundary: v3.4.2, finalized at `86117ba` after the accepted
@@ -113,6 +113,46 @@ Server:
 - `server.company_settings_load`, emitted only for Contacts or Company Details
 - `server.expenses_render`, emitted only when Overhead Expenses is selected
 - `server.users_render`, emitted only when Users is selected
+
+## Confirmed 3.5.6 findings
+
+- Trace `57790147-e5ac-4c35-a4a5-cc51ee244cb2` retained outer-wrapper build
+  3.5.2 while the embedded Streamlit server had advanced to 3.5.5. The stale
+  wrapper did not contain the newer Sign in and Sign out transition masking, so
+  that test cannot validate the current mask. Cloudflare currently serves the
+  repository build with `max-age=0`, `must-revalidate`, and a dynamic cache
+  status. Acceptance must verify the wrapper build after a complete page reload.
+- The same Sign in took 3.369 seconds end to end. The server spent 1.905 seconds
+  synchronously storing the browser session and 0.353 seconds in the auth
+  action. Browser-session storage is the next isolated optimization target.
+- The latest Upload-to-Profile click took 1.803 seconds but the final Profile
+  run took 0.382 seconds, including 0.015 seconds of screen rendering and 0.354
+  seconds of access lookup. Its run sequence advanced by two because Profile
+  navigation changed state after rendering Upload controls and then called
+  `st.rerun()`. Version 3.5.6 moves that state change into the native button
+  callback, matching the accepted Profile-to-Upload pattern and removing the
+  redundant partial run.
+- Metadata filtering previously treated the substring `file` inside `profile`
+  as sensitive and redacted the new Profile timings. Version 3.5.6 tokenizes
+  metadata keys, retaining `company_profile_*` timings while continuing to
+  redact token, email, file-name, password, secret, and content fields.
+- Version 3.5.6 establishes a runtime build handshake. Every Streamlit
+  `app-ready` message carries the server build. The wrapper compares it with
+  its own build, records `browser.build_mismatch`, synchronizes the safe route,
+  and performs at most one guarded top-level reload for each mismatched pair.
+  A sessionStorage guard prevents reload loops if the two independent
+  deployments have not converged yet.
+- Each pending browser transition now counts correlated `app-ready` messages
+  as `python_runs`. A normal screen navigation must complete with one run.
+  Source tests also reject widget handlers that change `screen` and then call
+  an explicit second `st.rerun()`.
+- Local direct-Streamlit acceptance on port 8593 confirmed fast Profile and
+  surrounding navigation. The recorded Sign in server action was 0.821
+  seconds. A sampled Profile run spent 0.230 seconds in access lookup, 0.005
+  milliseconds importing the already-loaded module, about 0.007 seconds on
+  the Profile shell, and 0.169 seconds loading the active company data. The
+  direct local URL has no Cloudflare wrapper, so its visible Sign in rerun
+  cannot validate the wrapper transition mask or browser end-to-end duration.
 
 ## Production prerequisites
 

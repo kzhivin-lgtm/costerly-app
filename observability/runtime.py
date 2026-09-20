@@ -25,7 +25,7 @@ _SINK_LOCK = threading.Lock()
 _SINK_URL: str | None = None
 _SINK_KEY: str | None = None
 _WORKER_THREAD: threading.Thread | None = None
-_BLOCKED_KEY_PARTS = ("token", "password", "secret", "email", "file", "content")
+_BLOCKED_KEY_WORDS = {"token", "password", "secret", "email", "file", "filename", "content"}
 _SAFE_TECHNICAL_KEYS = {"dom_content_loaded_ms"}
 _SAFE_NAME = re.compile(r"^[a-z0-9_.:-]{1,80}$")
 _PERSIST_ATTEMPTS = 3
@@ -58,9 +58,9 @@ def _safe_metadata(metadata: Mapping[str, object] | None) -> dict[str, object]:
     safe: dict[str, object] = {}
     for raw_key, value in (metadata or {}).items():
         key = str(raw_key)[:80]
-        if key.lower() not in _SAFE_TECHNICAL_KEYS and any(
-            part in key.lower() for part in _BLOCKED_KEY_PARTS
-        ):
+        normalized_key = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", key).lower()
+        key_words = set(re.findall(r"[a-z0-9]+", normalized_key))
+        if key.lower() not in _SAFE_TECHNICAL_KEYS and key_words & _BLOCKED_KEY_WORDS:
             safe[key] = "[redacted]"
         elif value is None or isinstance(value, (bool, int, float)):
             safe[key] = value

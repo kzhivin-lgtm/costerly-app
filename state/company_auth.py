@@ -730,16 +730,21 @@ def render_company_setup(
     st.button("Sign out", key="setup_sign_out", on_click=sign_out)
 
 
+def _open_company_account() -> None:
+    """Set navigation state before Streamlit starts the Profile render."""
+    from state.session import set_screen
+
+    set_screen("account")
+
+
 def render_account_control(access: CompanyAccess) -> None:
     if st.session_state.get("screen") == "account":
         return
-    action = render_account_header_controls(
+    render_account_header_controls(
+        on_profile=_open_company_account,
         on_sign_out=sign_out,
         show_projects=st.session_state.get("screen", "upload") == "upload",
     )
-    if action == "profile":
-        st.session_state.screen = "account"
-        st.rerun()
 
 
 def render_company_account(access: CompanyAccess, *, trace=None) -> None:

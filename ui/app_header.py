@@ -25,10 +25,11 @@ def render_app_header() -> None:
 
 def render_account_header_controls(
     *,
+    on_profile,
     on_sign_out,
     show_projects: bool = False,
-) -> str | None:
-    """Render authenticated actions and return a non-callback navigation action."""
+) -> None:
+    """Render authenticated actions with navigation applied before the next run."""
     with st.container(key="costerly_header_controls"):
         if show_projects:
             projects, profile, sign_out_control = st.columns(3)
@@ -43,8 +44,12 @@ def render_account_header_controls(
         else:
             profile, sign_out_control = st.columns(2)
         with profile:
-            if st.button("Profile", key="open_company_account", use_container_width=True):
-                return "profile"
+            st.button(
+                "Profile",
+                key="open_company_account",
+                use_container_width=True,
+                on_click=on_profile,
+            )
         with sign_out_control:
             st.button(
                 "Sign out",
@@ -52,4 +57,3 @@ def render_account_header_controls(
                 use_container_width=True,
                 on_click=on_sign_out,
             )
-    return None

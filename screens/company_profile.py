@@ -1883,7 +1883,9 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
 
 def _open_upload_screen() -> None:
     """Set navigation state before Streamlit starts the next script render."""
-    st.session_state.screen = "upload"
+    from state.session import set_screen
+
+    set_screen("upload")
 
 
 def render_company_profile(access: CompanyAccess, *, trace=None) -> None:

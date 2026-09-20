@@ -62,9 +62,14 @@ def _render_missing_object_detail_context() -> None:
 
 
 def _back_to_objects_button() -> None:
-    if st.button("BACK TO OBJECTS", type="secondary"):
-        st.session_state.screen = "objects"
-        st.rerun()
+    from state.session import set_screen
+
+    st.button(
+        "BACK TO OBJECTS",
+        type="secondary",
+        on_click=set_screen,
+        args=("objects",),
+    )
 
 
 def _consume_pending_object_detail_changes() -> None:

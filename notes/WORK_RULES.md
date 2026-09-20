@@ -67,6 +67,31 @@ Avoid:
 
 Short version: repeated navigation must reinstall guards and clear from the current screen.
 
+## Streamlit Navigation Run Rule
+
+A Streamlit widget click already starts a script rerun. Screen navigation from
+a button must set the destination in `on_click` through `state.session.set_screen`
+before that rerun renders. Do not render the old screen, inspect a returned
+button action, change `session_state.screen`, and call another `st.rerun()`.
+
+Every screen transition must report exactly one correlated `app-ready` run in
+production. Tests must cover both directions of a reversible transition. The
+source regression test must remain project-wide rather than allowlisting known
+violations.
+
+Short version: one navigation click, one callback-safe screen change, one run.
+
+## Deployed Build Coherence Rule
+
+Cloudflare and Streamlit deploy independently, so equality in Git does not
+prove equality in an open browser. Every `app-ready` message must carry the
+server build. The wrapper compares that value with its own build, records a
+build-mismatch event, and may perform only one session-guarded top-level reload
+for a mismatched pair. A mismatch invalidates performance and visual acceptance
+for that trace.
+
+Short version: measure and accept only matching wrapper and server builds.
+
 ## Local Verification Before Push Rule
 
 Changes that affect UI, browser JavaScript, uploads, timers, navigation, screen transitions, or asynchronous state must be manually verified in the local browser before they are committed or pushed.

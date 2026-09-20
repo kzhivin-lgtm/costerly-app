@@ -85,7 +85,7 @@
     <div class="embed-footer-mask" aria-hidden="true"></div>
     <script>
       (() => {
-        const BUILD_VERSION = "3.5.5";
+        const BUILD_VERSION = "3.5.6";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -304,6 +304,7 @@
               name: event.data.transition,
               startedAt: performance.now(),
               visible: false,
+              pythonRuns: 0,
             };
             pendingTransitions.push(pendingTransition);
             concealInternalTransition(pendingTransition.name);
@@ -360,10 +361,44 @@
             if (runId) readyRunIds.add(runId);
             const screen = event.data.screen || "unknown";
             syncOuterRoute(event.data.route || {}, screen);
+            const serverBuildVersion = String(event.data.buildVersion || "");
+            if (serverBuildVersion && serverBuildVersion !== BUILD_VERSION) {
+              const mismatchPair = `${BUILD_VERSION}:${serverBuildVersion}`;
+              const reloadGuardKey = "costerly:build-mismatch-reload";
+              let reloadOnce = false;
+              try {
+                if (window.sessionStorage.getItem(reloadGuardKey) !== mismatchPair) {
+                  window.sessionStorage.setItem(reloadGuardKey, mismatchPair);
+                  reloadOnce = true;
+                }
+              } catch (_) {}
+              mark("browser.build_mismatch", {
+                screen,
+                status: "error",
+                metadata: {
+                  wrapper_build: BUILD_VERSION,
+                  server_build: serverBuildVersion,
+                  reload_once: reloadOnce,
+                },
+              });
+              persistTimeline();
+              if (reloadOnce) {
+                window.setTimeout(() => window.location.reload(), 50);
+                return;
+              }
+            } else if (serverBuildVersion) {
+              try {
+                window.sessionStorage.removeItem("costerly:build-mismatch-reload");
+              } catch (_) {}
+            }
             const metadata = {
               server_run_id: runId,
+              server_build_version: serverBuildVersion,
               ...(event.data.metrics || {}),
             };
+            pendingTransitions.forEach((item) => {
+              item.pythonRuns += 1;
+            });
             const failedSignIn =
               screen === "login" &&
               metadata.completed_action === "auth_sign_in" &&
@@ -382,6 +417,7 @@
                 metadata: {
                   transition: pendingTransition.name,
                   transition_id: pendingTransition.id,
+                  python_runs: pendingTransition.pythonRuns,
                   ...metadata,
                 },
               });

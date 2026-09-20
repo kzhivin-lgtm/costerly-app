@@ -108,6 +108,7 @@ def _signal_ready(trace, screen: str) -> None:
     trace.event("server.app_ready_component_enqueued")
     signal_app_ready_to_embed(
         screen,
+        build_version=trace.build_version,
         trace_id=trace.trace_id,
         run_id=trace.run_id,
         metrics=trace.summary(),
@@ -161,7 +162,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="3.5.5",
+        build_version="3.5.6",
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,

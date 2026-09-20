@@ -475,9 +475,18 @@ def _render_profile_test():
 
 
 def _render_upload_header_controls_test():
+    import streamlit as st
+
     from ui.app_header import render_account_header_controls
 
-    render_account_header_controls(on_sign_out=lambda: None, show_projects=True)
+    def open_profile():
+        st.session_state["header_profile_opened"] = True
+
+    render_account_header_controls(
+        on_profile=open_profile,
+        on_sign_out=lambda: None,
+        show_projects=True,
+    )
 
 
 def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
@@ -486,6 +495,9 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert not app.exception
     assert [button.label for button in app.button] == ["Projects", "Profile", "Sign out"]
     assert app.button[0].disabled is True
+
+    app.button[1].click().run()
+    assert app.session_state["header_profile_opened"] is True
 
     css = (Path(__file__).parents[1] / "styles/upload.py").read_text()
     assert "top: calc(var(--app-header-top) - var(--app-content-top) - 16px);" in css
@@ -500,6 +512,19 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert '[data-testid="stVerticalBlock"]:has(> [data-testid="stLayoutWrapper"] .st-key-costerly_header_controls)' in css
     assert "gap: 0 !important;" in css
     assert "font-size: 24px;" in css
+
+
+def test_upload_to_profile_navigation_runs_before_render_without_explicit_rerun():
+    header_source = Path("ui/app_header.py").read_text()
+    auth_source = Path("state/company_auth.py").read_text()
+    button_source = header_source.split('"Profile"', 1)[1].split(")", 1)[0]
+    control_source = auth_source.split("def render_account_control", 1)[1].split(
+        "def render_company_account", 1
+    )[0]
+
+    assert "on_click=on_profile" in button_source
+    assert "on_profile=_open_company_account" in control_source
+    assert "st.rerun" not in control_source
 
 
 @pytest.mark.parametrize("role", ["owner", "member"])
