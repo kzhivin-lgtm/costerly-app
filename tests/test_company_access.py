@@ -1841,6 +1841,16 @@ def test_company_creation_acknowledges_valid_submit_immediately():
     assert "advance to creation only after that check succeeds" in normalized_guidelines
 
 
+def test_sign_in_keeps_the_existing_auth_screen_until_the_target_is_ready():
+    interactions = (Path(__file__).parents[1] / "styles/auth.py").read_text()
+    ready_signal = (Path(__file__).parents[1] / "ui/js_guards.py").read_text()
+    assert "if (originalLabel === 'Sign in')" in interactions
+    assert "costerly-auth-sign-in-shell" in interactions
+    assert "app.cloneNode(true)" in interactions
+    assert "pointerEvents: 'none'" in interactions
+    assert "costerly-auth-sign-in-shell" in ready_signal
+
+
 def test_signup_requires_current_invite_and_uses_mail_free_admin_path(monkeypatch):
     invitation = company_auth.InvitationContext("join", new_invite_token())
     created = []

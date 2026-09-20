@@ -102,7 +102,8 @@ def install_auth_form_interactions() -> None:
           function beginAuthOperation(button, loadingLabel) {
             const form = button.closest('div[data-testid="stForm"]');
             if (!form || form.classList.contains('costerly-auth-loading')) return;
-            button.dataset.costerlyOriginalLabel = button.textContent.trim();
+            const originalLabel = button.textContent.trim();
+            button.dataset.costerlyOriginalLabel = originalLabel;
             form.classList.add('costerly-auth-loading');
             form.setAttribute('aria-busy', 'true');
             form.querySelectorAll('input').forEach((input) => {
@@ -111,6 +112,28 @@ def install_auth_form_interactions() -> None:
             });
             button.disabled = true;
             setLoadingLabel(button, loadingLabel);
+            if (originalLabel === 'Sign in') {
+              const oldShell = doc.getElementById('costerly-auth-sign-in-shell');
+              if (oldShell) oldShell.remove();
+              const app = doc.querySelector('.stApp');
+              if (app) {
+                const shell = app.cloneNode(true);
+                shell.id = 'costerly-auth-sign-in-shell';
+                shell.setAttribute('aria-hidden', 'true');
+                Object.assign(shell.style, {
+                  position: 'fixed',
+                  inset: '0',
+                  zIndex: '2147483200',
+                  width: '100vw',
+                  height: '100vh',
+                  overflow: 'hidden',
+                  pointerEvents: 'none',
+                  background: '#F1EFEF',
+                });
+                doc.body.appendChild(shell);
+                window.setTimeout(() => shell.remove(), 15000);
+              }
+            }
           }
 
           function dismissOperationError(input) {

@@ -1,6 +1,6 @@
 # Production observability
 
-Version: 3.5.9
+Version: 3.5.10
 Status: performance investigation after the Labor Costs production candidate
 
 Emergency rollback boundary: v3.4.2, finalized at `86117ba` after the accepted
@@ -169,6 +169,13 @@ Server:
   remains visible, the existing in-button loading state provides feedback, and
   the target screen replaces it only when the Sign in rerun completes. Profile,
   Upload, and Sign out transition masks remain unchanged.
+- Production showed that Streamlit still dismantled the Auth DOM during the
+  one-run Sign in, leaving only the loading control centered on the page.
+  Version 3.5.10 preserves the current rendered Auth DOM as a non-interactive
+  visual shell during that same one-run operation. The existing button loading
+  state remains visible in its original position. The shell is removed by the
+  next correlated app-ready signal, including a failed Sign in, with a 15-second
+  fail-open timeout. Authentication and navigation code are unchanged.
 
 ## Production prerequisites
 

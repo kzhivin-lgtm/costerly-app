@@ -336,6 +336,12 @@ def signal_app_ready_to_embed(
 
             function postReady() {
                 try {
+                    window.parent.document
+                        .getElementById("costerly-auth-sign-in-shell")
+                        ?.remove();
+                } catch (error) {}
+
+                try {
                     window.parent.postMessage(message, "*");
                 } catch (error) {}
 
