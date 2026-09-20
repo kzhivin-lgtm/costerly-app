@@ -26,6 +26,9 @@ def test_profile_route_uses_bank_details_slug_and_accepts_legacy_slug():
         "profile_tab": "bank-details",
     }
     assert app._PROFILE_TAB_ROUTES["company-details"] == "Bank Details"
+    wrapper = (Path(__file__).parents[1] / "cloudflare" / "index.html").read_text()
+    assert '"bank-details"' in wrapper
+    assert '"company-details"' in wrapper
 
 
 def test_file_review_route_preserves_run_context():
