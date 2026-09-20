@@ -1025,12 +1025,29 @@ def test_labor_table_keeps_compact_columns_and_aligned_totals():
     assert '<th colspan="5">Total Monthly</th>' in source
     assert '<th>Pay Details</th><th>Monthly</th>' in source
     assert 'class="company-labor-col-actions"' in source
+    assert 'class="company-labor-col-worker"' in source
+    assert 'class="company-labor-col-department"' in source
+    assert 'class="company-labor-col-position"' in source
+    assert 'class="company-labor-col-pay-type"' in source
     assert 'class="company-labor-col-details"' in source
     assert ".company-labor-col-actions" in css
     assert "width: 56px;" in css
     assert ".company-labor-col-details" in css
     assert "width: 214px;" in css
     assert "align-items: flex-end !important;" in css
+    assert '[data-testid="stWidgetLabel"]' in css
+
+
+def test_labor_empty_amounts_use_zero_placeholders_and_structured_factor_help():
+    root = Path(__file__).parents[1]
+    source = (root / "screens/company_profile.py").read_text()
+
+    assert source.count('placeholder="0"') >= 3
+    assert 'if editing else "0"' not in source
+    assert '"**Includes:**\\n"' in source
+    assert '"- Employer pension\\n"' in source
+    assert '"**Excludes:**\\n"' in source
+    assert '"- Overtime\\n"' in source
 
 
 def test_company_employee_access_is_owner_only(monkeypatch):

@@ -824,6 +824,22 @@ def apply_company_profile_css() -> None:
             width: 56px;
         }
 
+        .company-labor-col-worker {
+            width: 210px;
+        }
+
+        .company-labor-col-department {
+            width: 160px;
+        }
+
+        .company-labor-col-position {
+            width: 210px;
+        }
+
+        .company-labor-col-pay-type {
+            width: 160px;
+        }
+
         .company-labor-col-details {
             width: 214px;
         }
@@ -924,6 +940,22 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active) .st-key-company_labor_card
         [data-testid="stHorizontalBlock"] {
             align-items: flex-end !important;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-company_labor_card
+        [data-testid="stWidgetLabel"] {
+            display: flex !important;
+            align-items: center !important;
+            height: 22px !important;
+            min-height: 22px !important;
+            margin-bottom: 6px !important;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-company_labor_card
+        [data-testid="stWidgetLabel"] > div {
+            display: flex !important;
+            align-items: center !important;
+            min-height: 22px !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card

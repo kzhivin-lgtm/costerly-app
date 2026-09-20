@@ -150,10 +150,19 @@ LABOR_EMPLOYEE_COLUMNS = (
 )
 LABOR_DEFAULT_EMPLOYMENT_FACTOR = 1.25
 LABOR_EMPLOYMENT_FACTOR_HELP = (
-    "Planning multiplier for employer costs. Includes employer pension, "
-    "severance pay, National Insurance (Bituach Leumi), vacation, public "
-    "holidays, sick leave, and recuperation pay. Excludes overtime, Shabbat "
-    "and holiday premiums, bonuses, and meals."
+    "Planning multiplier for employer costs.\n\n"
+    "**Includes:**\n"
+    "- Employer pension\n"
+    "- Severance pay\n"
+    "- National Insurance (Bituach Leumi)\n"
+    "- Vacation and public holidays\n"
+    "- Sick leave\n"
+    "- Recuperation pay\n\n"
+    "**Excludes:**\n"
+    "- Overtime\n"
+    "- Shabbat and holiday premiums\n"
+    "- Bonuses\n"
+    "- Meals"
 )
 
 
@@ -400,8 +409,13 @@ def _load_company_employees_by_id(company_id: str) -> list[dict]:
 
 
 def load_company_employees(access: CompanyAccess) -> list[dict]:
-    fresh, _client = _owner_access(access)
-    return _load_company_employees_by_id(str(fresh.company_id))
+    # ``access`` was resolved from the authenticated session in this same app
+    # run. Repeating the privileged owner lookup here added a network roundtrip
+    # to every form-widget rerun. Mutations still revalidate through
+    # ``_owner_access`` immediately before writing.
+    if access.role != "owner" or not access.company_id:
+        raise PermissionError("Only the company owner can access employee costs.")
+    return _load_company_employees_by_id(str(access.company_id))
 
 
 def add_company_employee(
@@ -1309,7 +1323,11 @@ def _render_employee_list(employees: list[dict]) -> None:
     total_cost = sum(_labor_monthly_cost(employee) for employee in employees)
     st.markdown(
         '<div class="company-profile-users company-labor-list"><table>'
-        '<colgroup><col class="company-labor-col-actions"><col><col><col><col>'
+        '<colgroup><col class="company-labor-col-actions">'
+        '<col class="company-labor-col-worker">'
+        '<col class="company-labor-col-department">'
+        '<col class="company-labor-col-position">'
+        '<col class="company-labor-col-pay-type">'
         '<col class="company-labor-col-details"><col class="company-labor-col-monthly">'
         '</colgroup>'
         '<thead><tr class="company-labor-total-row">'
@@ -1544,11 +1562,17 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
             st.rerun()
         if confirmed:
             try:
+                action_started_at = time.perf_counter()
                 if trace is None:
                     archive_company_employee(access, delete_employee_id)
                 else:
                     with trace.span("server.labor_employee_archive"):
                         archive_company_employee(access, delete_employee_id)
+                st.session_state["_runtime_completed_action"] = {
+                    "action": "labor_employee_archive",
+                    "status": "ok",
+                    "duration_ms": (time.perf_counter() - action_started_at) * 1000,
+                }
                 st.session_state["_labor_delete_employee_id"] = ""
                 st.session_state["_labor_employee_archived"] = True
                 st.rerun()
@@ -1657,8 +1681,9 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                         editing.get("gross_monthly_salary"),
                         decimals=0,
                         grouped=True,
-                    ) if editing else "0",
+                    ) if editing else "",
                     key=f"{key_prefix}_gross_monthly_salary",
+                    placeholder="0",
                     on_change=_sync_labor_totals,
                     args=(key_prefix, "monthly_salary"),
                 )
@@ -1691,8 +1716,9 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                         editing.get("gross_hourly_rate"),
                         decimals=0,
                         grouped=True,
-                    ) if editing else "0",
+                    ) if editing else "",
                     key=f"{key_prefix}_gross_hourly_rate",
+                    placeholder="0",
                     on_change=_sync_labor_totals,
                     args=(key_prefix, "hourly_rate"),
                 )
@@ -1703,8 +1729,9 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                         editing.get("monthly_hours"),
                         decimals=0,
                         grouped=True,
-                    ) if editing else "0",
+                    ) if editing else "",
                     key=f"{key_prefix}_monthly_hours",
+                    placeholder="0",
                     on_change=_sync_labor_totals,
                     args=(key_prefix, "hourly_rate"),
                 )
@@ -1822,6 +1849,7 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                 "total_hourly_cost": total_hourly_cost,
                 "total_monthly_cost": total_monthly_cost,
             }
+            action_started_at = time.perf_counter()
             if editing and trace is None:
                 update_company_employee(access, str(edit_employee_id), **values)
             elif editing:
@@ -1832,6 +1860,13 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
             else:
                 with trace.span("server.labor_employee_insert"):
                     add_company_employee(access, **values)
+            st.session_state["_runtime_completed_action"] = {
+                "action": (
+                    "labor_employee_update" if editing else "labor_employee_insert"
+                ),
+                "status": "ok",
+                "duration_ms": (time.perf_counter() - action_started_at) * 1000,
+            }
             st.session_state["_labor_form_reset_pending"] = True
             st.session_state[
                 "_labor_employee_updated" if editing else "_labor_employee_added"
