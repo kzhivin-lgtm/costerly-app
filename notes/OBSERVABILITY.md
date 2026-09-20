@@ -1,7 +1,15 @@
 # Production observability
 
-Version: 3.6.2
-Status: v3.6.2 accepted production checkpoint
+Version: 3.7.1
+Status: v3.7.1 accepted production transition checkpoint
+
+Accepted transition checkpoint: `a626462`. Production trace
+`3ae650ed-7e9e-4b15-b333-3e4691e4c227` measured Upload to Profile styled reveal
+twice at 704ms. Profile to Upload styled reveal measured 663ms and 895ms. Each
+transition used one Python run. The owner confirmed that the accepted production
+session was fast. This checkpoint accepts navigation readiness only. Company
+Price Sources remains active because its extracted prices have not yet passed
+product acceptance.
 
 Emergency rollback boundary: v3.4.2, finalized at `86117ba` after the accepted
 Company Logo behavior at `32497dc`. This boundary predates the Labor Costs
@@ -69,6 +77,8 @@ Browser:
 - `browser.app_reveal`
 - `browser.transition_click`
 - `browser.transition_visible`, when the target screen marker reaches the DOM
+- `browser.transition_styled`, when the target marker and its screen-specific
+  computed-style contract both pass
 - `browser.transition_ready`, with the complete click-to-ready duration
 
 The four `browser.auth_*` boundaries are emitted from the existing hidden

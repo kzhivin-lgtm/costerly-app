@@ -302,13 +302,15 @@
   in 22.9 and 9.5 seconds. Both persisted as `partial`, with zero ready prices:
   one returned 27 unresolved rows, the other 6 unresolved and 1 excluded row.
   Price ingestion therefore remains active work, not an accepted completion.
-  The same session measured Upload to Profile at 3.65 seconds. Its Profile marker
+  The preceding session measured Upload to Profile at 3.65 seconds. Its Profile marker
   reached the DOM after 0.68 seconds and its server work was about 0.72 seconds;
   roughly 2.97 seconds were spent waiting for the late general `app-ready`
-  component before the Cloudflare transition mask was removed. The next production
-  candidate reuses the verified styled-target event path for both Upload to
+  component before the Cloudflare transition mask was removed. Checkpoint
+  `a626462` reuses the verified styled-target event path for both Upload to
   Profile and Profile to Upload. It verifies screen-specific computed styles before
   revealing either target and leaves the general `app-ready` event unchanged for
-  final server-run telemetry. Production must confirm both directions remain free
-  of partial or unstyled frames and compare `transition_styled` with the prior
-  3.65-second Upload to Profile baseline.
+  final server-run telemetry. Production trace
+  `3ae650ed-7e9e-4b15-b333-3e4691e4c227` measured two Upload to Profile styled
+  reveals at 704ms and two Profile to Upload styled reveals at 663ms and 895ms,
+  each with one Python run. The user accepted the navigation speed. No further
+  transition change is pending unless a new production regression is observed.

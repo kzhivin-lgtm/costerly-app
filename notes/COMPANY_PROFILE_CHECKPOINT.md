@@ -1,7 +1,21 @@
 # Company Profile checkpoint
 
-Version: v3.4.2 accepted Company Logo production checkpoint
-Date: 2026-09-20
+Version: v3.7.1 accepted Profile transition checkpoint
+Date: 2026-09-21
+
+## v3.7.1 Profile transition performance
+
+- Accepted production checkpoint: `a626462`.
+- Upload to Profile and Profile to Upload reuse the existing transition observer
+  and screen-specific computed-style readiness contracts. No parallel wrapper,
+  navigation path, or synthetic loading screen was added.
+- Production trace `3ae650ed-7e9e-4b15-b333-3e4691e4c227` recorded Upload to
+  Profile styled reveal at 704ms on both attempts. Profile to Upload recorded
+  663ms and 895ms. Every transition used one Python run.
+- The user accepted the production result as fast. Price Sources remains active
+  work and is not part of this accepted checkpoint.
+
+Previous completed Profile feature checkpoint: v3.4.2 Company Logo
 
 ## v3.4.2 Company Logo completed UI
 

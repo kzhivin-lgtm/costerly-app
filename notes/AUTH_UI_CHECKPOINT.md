@@ -1,5 +1,25 @@
 # Auth and Upload UI checkpoint
 
+## v3.7.1 accepted production transition checkpoint
+
+- Product checkpoint: `a626462`.
+- The existing transition observer now releases Upload to Profile and Profile
+  to Upload only after the target marker and its screen-specific computed-style
+  contract pass. It does not wait for the later general `app-ready` component.
+- The general `app-ready` event remains the authoritative end-of-run telemetry
+  boundary. Authentication, routing, native controls, and Python-run count are
+  unchanged.
+- Production trace `3ae650ed-7e9e-4b15-b333-3e4691e4c227` measured two Upload
+  to Profile styled reveals at 704ms and two Profile to Upload styled reveals at
+  663ms and 895ms. All four transitions used one Python run.
+- The previous Upload to Profile measurement was 3.650s because the wrapper
+  waited about 2.97s after the target screen was already visible. The accepted
+  path removes that wait without exposing an unstyled target.
+- The user explicitly accepted the production speed. Company Price Sources is
+  still active and is not completed by this checkpoint.
+
+Date: 2026-09-21
+
 ## v3.6.2 accepted hard-refresh Sign in checkpoint
 
 - Product checkpoint: `fb1ad97`.
