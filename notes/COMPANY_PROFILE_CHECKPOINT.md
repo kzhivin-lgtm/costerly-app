@@ -6,6 +6,10 @@ Date: 2026-09-20
 ## v3.4.2 Company Logo completed UI
 
 - Accepted production checkpoint: `32497dc`.
+- Emergency rollback boundary for the v3.5 Labor Costs performance
+  investigation: `86117ba`, which finalizes this checkpoint before the Labor
+  Costs rewrite begins at `8ef2131`. This is a product rollback boundary, not a
+  verified performance baseline.
 - The owner view always keeps the Drop or Upload surface. With a saved or
   newly selected logo, the normalized preview forms the right side of the same
   two-column composition. Before the first selection there is no empty preview

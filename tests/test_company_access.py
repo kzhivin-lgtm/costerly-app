@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from contextlib import contextmanager
 import json
 from pathlib import Path
 import time
@@ -419,6 +420,38 @@ def test_member_cannot_get_company_join_link():
     member = company_auth.CompanyAccess("user-2", "member@example.com", "company-a", "member", "token")
     with pytest.raises(PermissionError):
         company_auth.company_join_url(member)
+
+
+def test_company_account_traces_lazy_profile_import_and_render(monkeypatch):
+    events = []
+
+    class Trace:
+        @contextmanager
+        def span(self, name):
+            events.append(("start", name))
+            yield
+            events.append(("end", name))
+
+    rendered = []
+    monkeypatch.setattr(
+        company_profile,
+        "render_company_profile",
+        lambda access, *, trace=None: rendered.append((access, trace)),
+    )
+    access = company_auth.CompanyAccess(
+        "user-1", "owner@example.com", "company-a", "owner", "token"
+    )
+    trace = Trace()
+
+    company_auth.render_company_account(access, trace=trace)
+
+    assert events == [
+        ("start", "server.company_profile_import"),
+        ("end", "server.company_profile_import"),
+        ("start", "server.company_profile_render"),
+        ("end", "server.company_profile_render"),
+    ]
+    assert rendered == [(access, trace)]
 
 
 def test_owner_join_link_uses_public_application_not_localhost(monkeypatch):

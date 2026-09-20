@@ -743,6 +743,14 @@ def render_account_control(access: CompanyAccess) -> None:
 
 
 def render_company_account(access: CompanyAccess, *, trace=None) -> None:
-    from screens.company_profile import render_company_profile
+    if trace is None:
+        from screens.company_profile import render_company_profile
 
-    render_company_profile(access, trace=trace)
+        render_company_profile(access)
+        return
+
+    with trace.span("server.company_profile_import"):
+        from screens.company_profile import render_company_profile
+
+    with trace.span("server.company_profile_render"):
+        render_company_profile(access, trace=trace)

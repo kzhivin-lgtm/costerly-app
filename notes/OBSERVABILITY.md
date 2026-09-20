@@ -1,7 +1,12 @@
 # Production observability
 
-Version: 3.4.2
-Status: accepted completed Company Logo production checkpoint at `32497dc`
+Version: 3.5.5
+Status: performance investigation after the Labor Costs production candidate
+
+Emergency rollback boundary: v3.4.2, finalized at `86117ba` after the accepted
+Company Logo behavior at `32497dc`. This boundary predates the Labor Costs
+rewrite. It is not a verified performance baseline: the recorded 6.206-second
+first Upload-to-Profile outlier already existed before the rewrite.
 
 ## Purpose
 
@@ -95,6 +100,13 @@ Server:
 - `server.account_controls_render`
 - `server.company_id_resolve`
 - `server.screen_render`
+- `server.company_profile_import`, separating the lazy Python module import from
+  the actual Profile render
+- `server.company_profile_render`
+- `server.company_profile_styles`
+- `server.company_profile_header`
+- `server.company_profile_tabs`
+- `server.company_profile_content`
 - `server.app_ready_component_enqueued`
 - `server.run_complete`
 - `server.action_completed`, for safe Sign in and Sign out network durations

@@ -1887,9 +1887,26 @@ def _open_upload_screen() -> None:
 
 
 def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
+    phase_started_at = time.perf_counter()
+
+    def finish_phase(name: str) -> None:
+        nonlocal phase_started_at
+        finished_at = time.perf_counter()
+        if trace is not None:
+            trace.event(
+                name,
+                duration_ms=(finished_at - phase_started_at) * 1000,
+            )
+        phase_started_at = finished_at
+
     apply_company_profile_css()
     apply_object_detail_css()
-    st.markdown('<div class="company-profile-active" style="display:none"></div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="company-profile-active" style="display:none"></div>',
+        unsafe_allow_html=True,
+    )
+    finish_phase("server.company_profile_styles")
+
     header_left, header_right = st.columns([3.6, 2])
     with header_left:
         st.markdown(
@@ -1924,6 +1941,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                     use_container_width=True,
                     on_click=sign_out,
                 )
+    finish_phase("server.company_profile_header")
 
     expenses_tab, labor_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
         [
@@ -1937,6 +1955,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         key="company_profile_tab",
         on_change="rerun",
     )
+    finish_phase("server.company_profile_tabs")
 
     if expenses_tab.open:
         with expenses_tab:
@@ -1961,6 +1980,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                     profile = load_company_profile(access)
         except Exception:
             st.error("Company profile is unavailable right now. Try again in a moment.")
+            finish_phase("server.company_profile_content")
             return
 
         if contacts_tab.open:
@@ -1985,3 +2005,5 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
     elif prices_tab.open:
         with prices_tab:
             st.info("Company price lists and the shared fallback library will be configured here.")
+
+    finish_phase("server.company_profile_content")

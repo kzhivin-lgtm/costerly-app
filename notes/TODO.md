@@ -1,5 +1,15 @@
 # TODO
 
+- 3.5.2 Profile and Auth performance stabilization: keep v3.4.2 (`86117ba`)
+  as the emergency rollback boundary without treating it as a measured speed
+  baseline. Split the first Profile path into lazy module import, Profile shell,
+  styles, header, tabs, and active content. Use complete production traces to
+  identify the earliest slow boundary before changing behavior. Restore warm
+  Profile and Auth transitions to the previously accepted range, retain native
+  Streamlit actions, encrypted Fast Resume, sessionStorage fallback, route
+  restoration, and the Cloudflare transition mask, and accept only after two
+  complete user-visible cycles show no broken intermediate screen.
+
 - 3.1.12 Refresh route persistence: after browser refresh, restore the same
   authenticated product screen and, where applicable, the same nested tab.
   Apply one explicit navigation-state contract to Profile, File Review,
