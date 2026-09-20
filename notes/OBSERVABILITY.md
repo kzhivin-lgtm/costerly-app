@@ -1,7 +1,7 @@
 # Production observability
 
-Version: 3.5.11
-Status: v3.5.11 accepted production checkpoint
+Version: 3.6.2
+Status: v3.6.2 accepted production checkpoint
 
 Emergency rollback boundary: v3.4.2, finalized at `86117ba` after the accepted
 Company Logo behavior at `32497dc`. This boundary predates the Labor Costs
@@ -192,6 +192,14 @@ Server:
   `p_tabs_ms`, and `p_body_ms` summary fields preserve phase visibility without
   weakening telemetry redaction. The user accepted the slightly slower first
   cold Upload to Profile transition for this stage. Checkpoint: `aa05a5d`.
+- Production trace `eaf99421-c863-4886-ac74-e34f8d56298b` on v3.6.1 measured
+  Sign in at 1.106 seconds with one Python run. The target marker became visible
+  at 1.077 seconds and app-ready followed 29ms later. Version 3.6.2 replaces the
+  two-frame Auth-shell release rule with 120ms of target DOM quiet and a 450ms
+  fail-open. The user accepted the production result after a hard-refresh test:
+  Sign in remained fast, the in-button spinner remained, and no fragment was
+  visible. This evidence validates the release behavior, but not the exact
+  visual identity of the earlier fragment. Checkpoint: `fb1ad97`.
 
 ## Production prerequisites
 

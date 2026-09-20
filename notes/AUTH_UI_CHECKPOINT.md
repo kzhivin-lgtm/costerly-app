@@ -1,5 +1,24 @@
 # Auth and Upload UI checkpoint
 
+## v3.6.2 accepted hard-refresh Sign in checkpoint
+
+- Product checkpoint: `fb1ad97`.
+- The user verified on production that Sign in remains fast, the spinner stays
+  inside the existing Sign in button, and no partial screen appears after the
+  tested hard-refresh cycle.
+- The preserved Auth shell now waits for 120ms without target-app DOM changes
+  before release, with a 450ms fail-open. Authentication, routing, and the
+  one-Python-run Sign in path are unchanged.
+- Production trace `eaf99421-c863-4886-ac74-e34f8d56298b` measured the preceding
+  Sign in at 1.106 seconds with one Python run. Target visibility preceded
+  app-ready by only 29ms, which showed that the former two-frame release rule
+  did not establish visual stability. The trace does not identify the exact
+  pixels shown by the reported fragment, so no stronger root-cause claim is
+  recorded.
+- Automated suite: 217 tests passed.
+
+Date: 2026-09-20
+
 ## v3.5.11 accepted production checkpoint
 
 - Product checkpoint: `aa05a5d`.

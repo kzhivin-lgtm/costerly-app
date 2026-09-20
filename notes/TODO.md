@@ -6,9 +6,10 @@
   `eaf99421-c863-4886-ac74-e34f8d56298b` measured Sign in at 1.106 seconds with
   one Python run, target visibility at 1.077 seconds, and app-ready only 29ms
   later. Replace the insufficient two-frame release criterion with 120ms of DOM
-  quiet and a 450ms fail-open. Status: production candidate, acceptance pending.
-  Protected rollback points: v3.5.11 (`aa05a5d`) and the Labor Costs candidate
-  v3.6.1 (`f334338`).
+  quiet and a 450ms fail-open. Status: accepted production checkpoint at
+  `fb1ad97` (v3.6.2). The user confirmed fast Sign in, the accepted in-button
+  spinner, and no partial screen in the tested hard-refresh cycle. Protected
+  rollback points: v3.5.11 (`aa05a5d`) and v3.6.1 (`f334338`).
 
 - 3.6.1 Labor Costs table compaction: fit the complete worker summary table
   inside the Profile content width without horizontal clipping. Stack Edit and
@@ -19,8 +20,9 @@
   from new selections, and hide the optional clear control in the three Labor
   Costs selectors without changing their dropdown action. Existing archived or
   active records retain their stored codes; the retired cabinetmaker code is
-  presented as Carpenter. Status: production candidate v3.6.1, visual
-  acceptance pending. Protected rollback checkpoint: v3.5.11 (`aa05a5d`).
+  presented as Carpenter. Status: accepted in production at `f334338`
+  (v3.6.1); the user confirmed the compact table result. Protected rollback
+  checkpoint: v3.5.11 (`aa05a5d`).
 
 - 3.5.2 Profile and Auth performance stabilization: keep v3.4.2 (`86117ba`)
   as the emergency rollback boundary without treating it as a measured speed

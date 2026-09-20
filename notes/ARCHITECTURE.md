@@ -78,6 +78,12 @@ name, controlled Department and Position values, and either Avg Monthly Bruto or
 Hourly Rate plus integer Average Hours per Month. Monthly Bruto is derived rather
 than stored. Each worker can be edited through the same owner-only validation
 path. Net salary and statutory employer-cost calculations remain out of scope.
+The compact summary table uses table-only `Hourly` and `Monthly` labels and
+omits the employment factor from Pay Details because the Monthly result already
+contains it. Selector labels are intentionally bounded for table layout:
+`Painter`, `Worker`, `Designer`, and `Carpenter` replace longer variants.
+Retired position codes remain readable and are never rewritten by presentation
+changes.
 The `2026_09_19_company_employees.sql` migration has been applied to the live
 Supabase schema.
 The Users tab renders the owner-only team invitation URL with the same

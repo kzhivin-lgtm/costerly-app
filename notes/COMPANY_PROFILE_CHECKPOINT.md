@@ -103,6 +103,18 @@ Date: 2026-09-20
 
 ## v3.2.1 Labor Costs continuation
 
+- v3.6.1 compact table checkpoint: `f334338`.
+- Edit and Remove are stacked in a 38px action column. Table-only Pay Type
+  values are `Hourly` and `Monthly`; Pay Details no longer repeats the
+  employment factor. Controlled-value columns use compact widths and the table
+  no longer enforces a 900px minimum.
+- New selections use short Position labels. Cabinetmaker / Joiner and
+  Purchasing Manager are retired from the selector; legacy stored codes remain
+  readable, with Cabinetmaker / Joiner presented as Carpenter. The Labor Costs
+  selectors keep their dropdown triggers but hide the optional clear control.
+- The user accepted the production presentation. Automated suite: 217 tests
+  passed in the subsequent v3.6.2 checkpoint.
+
 - Current accepted Git checkpoint: `dfcf5ef`.
 - Labor Costs is an owner-only employee cost register backed by
   `company_employees`, with one informal Worker name, controlled Department and
