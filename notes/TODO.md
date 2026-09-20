@@ -296,4 +296,15 @@
   upload a PDF, screenshot, or photo. A no-write automatic-category diagnostic
   on the Tsidky page inferred `Sheet Materials`, identified the supplier, and
   validated 39 of 42 rows as ready. Production still needs the exact failing URL
-  to determine whether a safe dynamic-page importer is justified.
+  to determine whether a safe dynamic-page importer is justified. Production
+  user testing on checkpoint `4a5fd9a` confirmed that Sign Out no longer reveals
+  an unstyled Auth screen and that two automatic-category URL imports completed
+  in 22.9 and 9.5 seconds. Both persisted as `partial`, with zero ready prices:
+  one returned 27 unresolved rows, the other 6 unresolved and 1 excluded row.
+  Price ingestion therefore remains active work, not an accepted completion.
+  The same session measured Upload to Profile at 3.65 seconds. Its Profile marker
+  reached the DOM after 0.68 seconds and its server work was about 0.72 seconds;
+  roughly 2.97 seconds were spent waiting for the late general `app-ready`
+  component before the Cloudflare transition mask was removed. Reuse the verified
+  styled-target event path from Sign Out for Profile only after protecting the
+  accepted Profile layout and transition behavior.
