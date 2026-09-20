@@ -289,10 +289,38 @@ def signal_app_ready_to_embed(
                 let visibleReported = false;
                 let styledReported = false;
                 let frameRequest = null;
-                const requiresStyledAuth =
+                const requiresStyledTarget =
+                    transition === "upload_to_profile" ||
+                    transition === "profile_to_upload" ||
                     transition === "profile_to_sign_out" ||
                     transition === "upload_to_sign_out";
-                const styledAuthReady = () => {
+                const styledTargetReady = () => {
+                    if (transition === "upload_to_profile") {
+                        const heading = parentDocument.querySelector(".company-profile-heading");
+                        const tabs = parentDocument.querySelector(
+                            '.st-key-company_profile_tab [role="tablist"]'
+                        );
+                        if (!heading || !tabs) return false;
+                        const headingStyle = window.parent.getComputedStyle(heading);
+                        const tabsStyle = window.parent.getComputedStyle(tabs);
+                        return headingStyle.display === "flex"
+                            && headingStyle.minHeight === "56px"
+                            && tabsStyle.borderTopLeftRadius === "14px"
+                            && tabsStyle.paddingTop === "6px";
+                    }
+                    if (transition === "profile_to_upload") {
+                        const hero = parentDocument.querySelector(".upload-screen__hero");
+                        const dropzone = parentDocument.querySelector(
+                            'section[data-testid="stFileUploaderDropzone"]'
+                        );
+                        if (!hero || !dropzone) return false;
+                        const heroStyle = window.parent.getComputedStyle(hero);
+                        const dropzoneStyle = window.parent.getComputedStyle(dropzone);
+                        return Number.parseFloat(heroStyle.fontSize) >= 20
+                            && dropzoneStyle.borderTopLeftRadius === "20px"
+                            && dropzoneStyle.display === "flex"
+                            && Number.parseFloat(dropzoneStyle.height) >= 180;
+                    }
                     const form = parentDocument.querySelector('div[data-testid="stForm"]');
                     const brand = parentDocument.querySelector(".auth-brand");
                     if (!form || !brand) return false;
@@ -312,11 +340,11 @@ def signal_app_ready_to_embed(
                             transitionId,
                         }, "*");
                     }
-                    if (!requiresStyledAuth) {
+                    if (!requiresStyledTarget) {
                         if (observer) observer.disconnect();
                         return true;
                     }
-                    if (!styledAuthReady()) {
+                    if (!styledTargetReady()) {
                         if (frameRequest === null) {
                             frameRequest = window.parent.requestAnimationFrame(() => {
                                 frameRequest = null;

@@ -145,10 +145,12 @@ applied. The current contract checks the auth marker and brand plus the form's
 20 px radius and 30 px padding, then waits two animation frames before emitting
 `app-ready`. A bounded fail-open prevents the wrapper from remaining masked if
 the Auth CSS contract changes unexpectedly, and telemetry records whether the
-style check succeeded and how long it waited. During Sign Out, the transition
-observer applies the same computed-style contract and lets the wrapper reveal
-the completed login screen immediately, without waiting for a newly mounted
-Streamlit component to relay the later general `app-ready` event.
+style check succeeded and how long it waited. During masked Sign Out, Upload to
+Profile, and Profile to Upload transitions, the transition observer applies a
+screen-specific computed-style contract and lets the wrapper reveal the completed
+target immediately, without waiting for a newly mounted Streamlit component to
+relay the later general `app-ready` event. The general event remains the final
+server-run and telemetry boundary.
 Responsive Policy
 Every screen should be designed for desktop and mobile from the start.
 For each screen, define:

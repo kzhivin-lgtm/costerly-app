@@ -333,10 +333,7 @@
                 transition_id: pendingTransition.id,
               },
             });
-            if (
-              pendingTransition.name === "profile_to_sign_out" ||
-              pendingTransition.name === "upload_to_sign_out"
-            ) {
+            if (maskedInternalTransitions.has(pendingTransition.name)) {
               revealInternalTransition("target_styled");
             }
             if (ready) persistTimeline();

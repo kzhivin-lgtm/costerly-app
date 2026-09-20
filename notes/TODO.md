@@ -305,6 +305,10 @@
   The same session measured Upload to Profile at 3.65 seconds. Its Profile marker
   reached the DOM after 0.68 seconds and its server work was about 0.72 seconds;
   roughly 2.97 seconds were spent waiting for the late general `app-ready`
-  component before the Cloudflare transition mask was removed. Reuse the verified
-  styled-target event path from Sign Out for Profile only after protecting the
-  accepted Profile layout and transition behavior.
+  component before the Cloudflare transition mask was removed. The next production
+  candidate reuses the verified styled-target event path for both Upload to
+  Profile and Profile to Upload. It verifies screen-specific computed styles before
+  revealing either target and leaves the general `app-ready` event unchanged for
+  final server-run telemetry. Production must confirm both directions remain free
+  of partial or unstyled frames and compare `transition_styled` with the prior
+  3.65-second Upload to Profile baseline.

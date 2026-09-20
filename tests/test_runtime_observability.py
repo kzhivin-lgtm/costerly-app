@@ -260,7 +260,14 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'type: "costerly:transition-visible"' in ready_signal
     assert 'type: "costerly:transition-styled"' in ready_signal
     assert "new MutationObserver(reportIfVisible)" in ready_signal
-    assert "const styledAuthReady = () =>" in ready_signal
+    assert "const styledTargetReady = () =>" in ready_signal
+    assert 'transition === "upload_to_profile"' in ready_signal
+    assert 'transition === "profile_to_upload"' in ready_signal
+    assert 'parentDocument.querySelector(".company-profile-heading")' in ready_signal
+    assert 'headingStyle.minHeight === "56px"' in ready_signal
+    assert 'parentDocument.querySelector(".upload-screen__hero")' in ready_signal
+    assert "Number.parseFloat(heroStyle.fontSize) >= 20" in ready_signal
+    assert "Number.parseFloat(dropzoneStyle.height) >= 180" in ready_signal
     assert "function releaseAuthShellWhenStable()" in ready_signal
     assert 'shell.dataset.costerlyStableRelease === "1"' in ready_signal
     assert "const stableForMs = 120;" in ready_signal
@@ -300,6 +307,12 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'event.data.type === "costerly:transition-styled"' in wrapper
     assert 'mark("browser.transition_styled"' in wrapper
     assert 'revealInternalTransition("target_styled")' in wrapper
+    styled_handler = wrapper.split(
+        'event.data.type === "costerly:transition-styled"', 1
+    )[1].split(
+        'event.data.type === "costerly:transition-visible"', 1
+    )[0]
+    assert "maskedInternalTransitions.has(pendingTransition.name)" in styled_handler
 
 
 def test_scroll_reset_component_stays_out_of_main_layout(monkeypatch):
