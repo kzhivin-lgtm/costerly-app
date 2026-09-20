@@ -1,5 +1,22 @@
 # Auth and Upload UI checkpoint
 
+## v3.5.11 accepted production checkpoint
+
+- Product checkpoint: `aa05a5d`.
+- The user confirmed production Sign in, Sign out, Upload, and Profile behavior
+  is satisfactory. The accepted Sign in interaction keeps the existing Auth
+  screen visible with the spinner inside the Sign in button.
+- The preserved Auth shell is released after two browser animation frames,
+  rather than on the first app-ready callback. This prevents partial target
+  DOM from appearing without changing authentication or navigation.
+- The first cold Upload to Profile transition remains slightly slower than
+  repeated transitions. The user accepted that behavior for this stage, so it
+  is not an active defect. The safe phase metrics added in this version remain
+  available if cold Profile latency becomes a priority again.
+- Automated suite: 216 tests passed.
+
+Date: 2026-09-20
+
 ## v3.5.10 production working reference
 
 - Commit `95b3bdc` preserves the one-run Sign in path and keeps the accepted

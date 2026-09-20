@@ -1,7 +1,7 @@
 # Production observability
 
-Version: 3.5.10
-Status: performance investigation after the Labor Costs production candidate
+Version: 3.5.11
+Status: v3.5.11 accepted production checkpoint
 
 Emergency rollback boundary: v3.4.2, finalized at `86117ba` after the accepted
 Company Logo behavior at `32497dc`. This boundary predates the Labor Costs
@@ -185,6 +185,13 @@ Server:
   Expenses rendering accounted for 0.464 seconds. Profile to Upload took 0.691
   seconds. Therefore the next investigation is scoped to first Profile render
   and Auth-shell release timing, not authentication or navigation semantics.
+- Version 3.5.11 delays removal of the preserved Auth shell until two browser
+  animation frames after app-ready, with a 250ms fail-open. Production
+  acceptance confirmed satisfactory Sign in and transition behavior without
+  replacing the accepted in-button spinner. Safe `p_styles_ms`, `p_header_ms`,
+  `p_tabs_ms`, and `p_body_ms` summary fields preserve phase visibility without
+  weakening telemetry redaction. The user accepted the slightly slower first
+  cold Upload to Profile transition for this stage. Checkpoint: `aa05a5d`.
 
 ## Production prerequisites
 

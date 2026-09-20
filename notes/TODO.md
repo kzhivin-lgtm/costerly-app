@@ -19,7 +19,11 @@
   source test rejecting widget navigation followed by explicit rerun, a
   wrapper/server build handshake with one guarded reload, and per-transition
   Python-run counts. Production acceptance must show matching builds and
-  `python_runs=1` for both Profile directions.
+  `python_runs=1` for both Profile directions. Status: accepted production
+  checkpoint at `aa05a5d` (v3.5.11). The user confirmed satisfactory behavior,
+  the in-button Sign in spinner, and clean transitions. The first cold Upload
+  to Profile remains somewhat slower than repeated transitions and is accepted
+  for this stage rather than retained as an active defect.
 
 - 3.1.12 Refresh route persistence: after browser refresh, restore the same
   authenticated product screen and, where applicable, the same nested tab.
