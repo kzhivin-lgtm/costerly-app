@@ -286,10 +286,52 @@ def signal_app_ready_to_embed(
                 if (!selector) return;
                 const parentDocument = window.parent.document;
                 let observer = null;
+                let visibleReported = false;
+                let styledReported = false;
+                let frameRequest = null;
+                const requiresStyledAuth =
+                    transition === "profile_to_sign_out" ||
+                    transition === "upload_to_sign_out";
+                const styledAuthReady = () => {
+                    const form = parentDocument.querySelector('div[data-testid="stForm"]');
+                    const brand = parentDocument.querySelector(".auth-brand");
+                    if (!form || !brand) return false;
+                    const style = window.parent.getComputedStyle(form);
+                    return style.borderTopLeftRadius === "20px"
+                        && style.paddingTop === "30px"
+                        && style.paddingRight === "30px";
+                };
                 const reportIfVisible = () => {
+                    if (styledReported) return true;
                     if (!parentDocument.querySelector(selector)) return false;
+                    if (!visibleReported) {
+                        visibleReported = true;
+                        window.top.postMessage({
+                            type: "costerly:transition-visible",
+                            transition,
+                            transitionId,
+                        }, "*");
+                    }
+                    if (!requiresStyledAuth) {
+                        if (observer) observer.disconnect();
+                        return true;
+                    }
+                    if (!styledAuthReady()) {
+                        if (frameRequest === null) {
+                            frameRequest = window.parent.requestAnimationFrame(() => {
+                                frameRequest = null;
+                                reportIfVisible();
+                            });
+                        }
+                        return false;
+                    }
+                    styledReported = true;
+                    if (frameRequest !== null) {
+                        window.parent.cancelAnimationFrame(frameRequest);
+                        frameRequest = null;
+                    }
                     window.top.postMessage({
-                        type: "costerly:transition-visible",
+                        type: "costerly:transition-styled",
                         transition,
                         transitionId,
                     }, "*");
@@ -302,7 +344,12 @@ def signal_app_ready_to_embed(
                     childList: true,
                     subtree: true,
                 });
-                window.setTimeout(() => observer.disconnect(), 15000);
+                window.setTimeout(() => {
+                    observer.disconnect();
+                    if (frameRequest !== null) {
+                        window.parent.cancelAnimationFrame(frameRequest);
+                    }
+                }, 15000);
             }
 
             function installTransitionObserver() {

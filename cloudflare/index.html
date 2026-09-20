@@ -319,6 +319,32 @@
           if (
             event.origin === "https://costerly-app.streamlit.app" &&
             event.data &&
+            event.data.type === "costerly:transition-styled" &&
+            typeof event.data.transitionId === "string"
+          ) {
+            const pendingTransition = pendingTransitions.find(
+              (item) => item.id === event.data.transitionId
+            );
+            if (!pendingTransition) return;
+            mark("browser.transition_styled", {
+              duration_ms: performance.now() - pendingTransition.startedAt,
+              metadata: {
+                transition: pendingTransition.name,
+                transition_id: pendingTransition.id,
+              },
+            });
+            if (
+              pendingTransition.name === "profile_to_sign_out" ||
+              pendingTransition.name === "upload_to_sign_out"
+            ) {
+              revealInternalTransition("target_styled");
+            }
+            if (ready) persistTimeline();
+            return;
+          }
+          if (
+            event.origin === "https://costerly-app.streamlit.app" &&
+            event.data &&
             event.data.type === "costerly:transition-visible" &&
             typeof event.data.transitionId === "string"
           ) {

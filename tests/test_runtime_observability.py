@@ -258,7 +258,9 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     ready_signal = (ROOT / "ui/js_guards.py").read_text()
     assert 'type: "costerly:transition-click"' in ready_signal
     assert 'type: "costerly:transition-visible"' in ready_signal
+    assert 'type: "costerly:transition-styled"' in ready_signal
     assert "new MutationObserver(reportIfVisible)" in ready_signal
+    assert "const styledAuthReady = () =>" in ready_signal
     assert "function releaseAuthShellWhenStable()" in ready_signal
     assert 'shell.dataset.costerlyStableRelease === "1"' in ready_signal
     assert "const stableForMs = 120;" in ready_signal
@@ -293,6 +295,11 @@ def test_auth_component_reports_safe_iframe_startup_phases():
 
     assert "route: __ROUTE__" in ready_signal
     assert '.replace("__ROUTE__", route_json)' in ready_signal
+
+    wrapper = (ROOT / "cloudflare/index.html").read_text()
+    assert 'event.data.type === "costerly:transition-styled"' in wrapper
+    assert 'mark("browser.transition_styled"' in wrapper
+    assert 'revealInternalTransition("target_styled")' in wrapper
 
 
 def test_scroll_reset_component_stays_out_of_main_layout(monkeypatch):
