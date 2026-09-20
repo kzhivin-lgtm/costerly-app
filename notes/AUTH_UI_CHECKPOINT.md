@@ -2,6 +2,17 @@
 
 Date: 2026-09-16
 
+## v3.3.1 candidate
+
+- The accepted large Upload logo keeps its existing CSS, size, and position.
+- The product credo remains on the authenticated home page at a compact 24px.
+- Upload-only navigation is centered below the credo with compact Projects,
+  Profile, and Sign out controls. Projects remains disabled until its route and
+  persistence contract are implemented.
+- The native uploader, drag interaction, transition markers, authentication,
+  and post-upload state reset are unchanged.
+- Production visual acceptance remains pending.
+
 ## Accepted state
 
 - Sign in completes from one credential submission.

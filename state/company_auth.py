@@ -733,7 +733,10 @@ def render_company_setup(
 def render_account_control(access: CompanyAccess) -> None:
     if st.session_state.get("screen") == "account":
         return
-    action = render_account_header_controls(on_sign_out=sign_out)
+    action = render_account_header_controls(
+        on_sign_out=sign_out,
+        show_projects=st.session_state.get("screen") == "upload",
+    )
     if action == "profile":
         st.session_state.screen = "account"
         st.rerun()

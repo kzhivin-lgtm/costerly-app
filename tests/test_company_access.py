@@ -441,6 +441,29 @@ def _render_profile_test():
     render_company_profile(CompanyAccess("user-1", "owner@example.com", "company-a", role, "token"))
 
 
+def _render_upload_header_controls_test():
+    from ui.app_header import render_account_header_controls
+
+    render_account_header_controls(on_sign_out=lambda: None, show_projects=True)
+
+
+def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
+    app = AppTest.from_function(_render_upload_header_controls_test).run()
+
+    assert not app.exception
+    assert [button.label for button in app.button] == ["Projects", "Profile", "Sign out"]
+    assert app.button[0].disabled is True
+
+    css = (Path(__file__).parents[1] / "styles/upload.py").read_text()
+    assert "top: calc(var(--app-header-top) - var(--app-content-top) - 16px);" in css
+    assert "order: 10 !important;" in css
+    assert "order: 20 !important;" in css
+    assert "order: 30 !important;" in css
+    assert "width: 326px !important;" in css
+    assert "margin: 26px auto 36px !important;" in css
+    assert "font-size: 24px;" in css
+
+
 @pytest.mark.parametrize("role", ["owner", "member"])
 def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role):
     calls = {"profile": 0, "members": 0, "metrics": 0, "employees": 0}

@@ -27,11 +27,18 @@ def apply_upload_css() -> None:
 
         .stApp:has(.upload-screen-active) [data-testid="stLayoutWrapper"]:has(.st-key-costerly_header_controls) {
             position: relative !important;
+            order: 20 !important;
+            width: 100% !important;
+            display: flex !important;
+            justify-content: center !important;
         }
 
         .stApp:has(.upload-screen-active) .st-key-costerly_header_controls {
-            position: absolute !important;
-            top: calc(var(--app-header-top) + 5px - var(--app-content-top) - 32px);
+            position: static !important;
+            top: auto !important;
+            right: auto !important;
+            width: 326px !important;
+            margin: 26px auto 36px !important;
         }
         
         .stApp:has(.upload-screen-active) .block-container {
@@ -54,6 +61,14 @@ def apply_upload_css() -> None:
             justify-content: center;
         }
 
+        .stApp:has(.upload-screen-active) [data-testid="stElementContainer"]:has(.upload-screen) {
+            order: 10 !important;
+        }
+
+        .stApp:has(.upload-screen-active) [data-testid="stElementContainer"]:has(> [data-testid="stFileUploader"]) {
+            order: 30 !important;
+        }
+
         .upload-screen__stack {
             width: min(100%, 1040px);
             display: flex;
@@ -63,10 +78,10 @@ def apply_upload_css() -> None:
         }
 
         .upload-screen__hero {
-            margin: 0 0 58px 0;
+            margin: 0;
             color: var(--color-purple, var(--primitive-purple-900));
             font-family: var(--font-hero);
-            font-size: 46px;
+            font-size: 24px;
             font-weight: 400;
             font-synthesis: none;
             letter-spacing: -0.045em;
@@ -200,10 +215,10 @@ def apply_upload_css() -> None:
             }
 
             .upload-screen__hero {
-                font-size: clamp(30px, 9vw, 40px);
-                line-height: 1.12;
+                font-size: clamp(20px, 6vw, 24px);
+                line-height: 1.18;
                 letter-spacing: -0.045em;
-                margin-bottom: 58px;
+                margin: 0;
             }
 
             div[data-testid="stFileUploader"] {
@@ -237,7 +252,7 @@ def apply_upload_css() -> None:
             }
 
             .upload-screen__hero {
-                margin-bottom: 52px;
+                margin: 0;
             }
         }
         

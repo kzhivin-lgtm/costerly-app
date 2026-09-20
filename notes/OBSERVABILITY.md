@@ -1,7 +1,7 @@
 # Production observability
 
-Version: 3.2.5
-Status: accepted production checkpoint
+Version: 3.3.1
+Status: implementation candidate, production verification pending
 
 ## Purpose
 

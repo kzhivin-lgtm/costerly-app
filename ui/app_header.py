@@ -23,14 +23,29 @@ def render_app_header() -> None:
     )
 
 
-def render_account_header_controls(*, on_sign_out) -> str | None:
+def render_account_header_controls(
+    *,
+    on_sign_out,
+    show_projects: bool = False,
+) -> str | None:
     """Render authenticated actions and return a non-callback navigation action."""
     with st.container(key="costerly_header_controls"):
-        left, right = st.columns(2)
-        with left:
+        if show_projects:
+            projects, profile, sign_out_control = st.columns(3)
+            with projects:
+                st.button(
+                    "Projects",
+                    key="open_projects_placeholder",
+                    use_container_width=True,
+                    disabled=True,
+                    help="Project history is coming next.",
+                )
+        else:
+            profile, sign_out_control = st.columns(2)
+        with profile:
             if st.button("Profile", key="open_company_account", use_container_width=True):
                 return "profile"
-        with right:
+        with sign_out_control:
             st.button(
                 "Sign out",
                 key="company_sign_out",

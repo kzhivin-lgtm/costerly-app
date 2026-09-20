@@ -161,6 +161,12 @@
   Company Details, and Users. Remove the manually maintained build-version
   secret override and enforce matching Streamlit/Cloudflare versions in tests.
   Status: accepted in production at `b372d3d`; 187 tests passed.
+- 3.3.1 Authenticated home composition: preserve the accepted Upload logo size
+  and position exactly, reduce the three-line product credo, place compact
+  Projects, Profile, and Sign out controls between the credo and native upload
+  card, and keep Projects visibly disabled until its route exists. Status:
+  implementation candidate; local rendered-viewport and production acceptance
+  pending.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
   1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR remains the default one-PDF/one-request flow. Naming is text-only and receives locked Detection facts plus OCR snippets, never the PDF again.
