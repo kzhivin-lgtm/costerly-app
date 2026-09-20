@@ -337,20 +337,49 @@ def signal_app_ready_to_embed(
             function releaseAuthShellWhenStable() {
                 try {
                     const parentWindow = window.parent;
-                    const shell = parentWindow.document
+                    const parentDocument = parentWindow.document;
+                    const shell = parentDocument
                         .getElementById("costerly-auth-sign-in-shell");
                     if (!shell || shell.dataset.costerlyStableRelease === "1") return;
                     shell.dataset.costerlyStableRelease = "1";
+                    const targetApp = parentDocument.querySelector(
+                        ".stApp:not(#costerly-auth-sign-in-shell)"
+                    );
+                    const stableForMs = 120;
+                    const failOpenMs = 450;
+                    let lastMutationAt = parentWindow.performance.now();
+                    let renderedFrames = 0;
                     let removed = false;
+                    let observer = null;
                     const removeOnce = () => {
                         if (removed) return;
                         removed = true;
+                        if (observer) observer.disconnect();
                         shell.remove();
                     };
-                    parentWindow.requestAnimationFrame(() => {
-                        parentWindow.requestAnimationFrame(removeOnce);
-                    });
-                    parentWindow.setTimeout(removeOnce, 250);
+                    const releaseIfStable = () => {
+                        if (removed) return;
+                        renderedFrames += 1;
+                        const quietForMs = parentWindow.performance.now() - lastMutationAt;
+                        if (renderedFrames >= 2 && quietForMs >= stableForMs) {
+                            removeOnce();
+                            return;
+                        }
+                        parentWindow.requestAnimationFrame(releaseIfStable);
+                    };
+                    if (targetApp) {
+                        observer = new MutationObserver(() => {
+                            lastMutationAt = parentWindow.performance.now();
+                        });
+                        observer.observe(targetApp, {
+                            attributes: true,
+                            characterData: true,
+                            childList: true,
+                            subtree: true,
+                        });
+                    }
+                    parentWindow.requestAnimationFrame(releaseIfStable);
+                    parentWindow.setTimeout(removeOnce, failOpenMs);
                 } catch (error) {}
             }
 

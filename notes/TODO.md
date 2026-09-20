@@ -1,5 +1,15 @@
 # TODO
 
+- 3.6.2 Hard-refresh Sign in reveal stability: preserve the accepted in-button
+  spinner and one-run Sign in while preventing partial Upload DOM from appearing
+  after Command-Shift-R. Production trace
+  `eaf99421-c863-4886-ac74-e34f8d56298b` measured Sign in at 1.106 seconds with
+  one Python run, target visibility at 1.077 seconds, and app-ready only 29ms
+  later. Replace the insufficient two-frame release criterion with 120ms of DOM
+  quiet and a 450ms fail-open. Status: production candidate, acceptance pending.
+  Protected rollback points: v3.5.11 (`aa05a5d`) and the Labor Costs candidate
+  v3.6.1 (`f334338`).
+
 - 3.6.1 Labor Costs table compaction: fit the complete worker summary table
   inside the Profile content width without horizontal clipping. Stack Edit and
   Remove vertically in a narrow action column, show `Hourly` and `Monthly` only
