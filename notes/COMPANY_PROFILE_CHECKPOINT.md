@@ -1,7 +1,33 @@
 # Company Profile checkpoint
 
-Version: v3.4.1 accepted Company Logo production checkpoint
+Version: v3.4.2 accepted Company Logo production checkpoint
 Date: 2026-09-20
+
+## v3.4.2 Company Logo completed UI
+
+- Accepted production checkpoint: `32497dc`.
+- The owner view always keeps the Drop or Upload surface. With a saved or
+  newly selected logo, the normalized preview forms the right side of the same
+  two-column composition. Before the first selection there is no empty preview
+  frame.
+- The full-width action matches Save Contacts exactly. It reads Save Logo for
+  the first logo and Change Logo for an existing company logo. Change Logo is
+  active in the idle saved state and opens the same native file picker as the
+  upload surface; once a valid replacement is pending, it performs the guarded
+  server save.
+- `--profile-action-gap` is the shared 32px design token for the accepted final
+  content-to-action rhythm. Invisible interaction markers and Sidebar bridge
+  components do not participate in main-page layout.
+- Logo drag-over uses the Costerly purple focus treatment, not Streamlit's
+  native red state. Logo success feedback renders above the action and visually
+  dismisses after five seconds.
+- The user accepted the complete production setup. Automated suite: 204 tests
+  passed. Separate live PNG and PDF checks were not required for visual
+  acceptance; both formats remain covered by deterministic conversion tests.
+- Local rollback archive:
+  `v3.4.2_company_logo_completed_production_checkpoint`, 520,271 bytes,
+  SHA-256
+  `343da7e34a197e27e9d8629381d1320134f74cc5b65dccdc44534d5a2160e4d6`.
 
 ## v3.4.1 Company Logo checkpoint
 

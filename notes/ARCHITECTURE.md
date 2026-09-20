@@ -49,6 +49,18 @@ server-only `storage://company-logos/...` reference. The server uploads a new
 unique object, updates the company row, rolls the object back if that update
 fails, and removes the prior normalized object only after success. Members may
 view the server-loaded normalized logo but cannot upload one.
+The owner card keeps the native Drop or Upload surface available for both first
+save and replacement. A saved or newly selected logo renders in the right-hand
+preview; no empty preview is rendered before the first selection. The same
+full-width action reads Save Logo for the first object and Change Logo when a
+stored reference exists. In the idle saved state a Sidebar-hosted browser guard
+uses the active Change Logo click only to open the native picker. Once a valid
+replacement is pending, the click reaches the normal owner-validated server
+save. The hidden state markers and guard component never participate in page
+layout. Logo drag-over is forced to the shared purple focus treatment.
+`--profile-action-gap` is the 32px design-system token for the final visible
+content-to-full-width-action rhythm, derived from the accepted Contacts layout.
+Company Logo uses it above and below the upload/preview composition.
 Overhead Expenses reuses the existing `overhead_settings` and
 `overhead_monthly` records. Its save path is owner-only and updates only the fields visible on the Metrics
 screen, preserving other overhead settings. Monthly overhead values are stored

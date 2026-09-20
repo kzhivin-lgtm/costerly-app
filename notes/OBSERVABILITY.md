@@ -1,7 +1,7 @@
 # Production observability
 
-Version: 3.4.1
-Status: accepted Company Logo production checkpoint at `2a6ac0f`
+Version: 3.4.2
+Status: accepted completed Company Logo production checkpoint at `32497dc`
 
 ## Purpose
 
@@ -17,7 +17,7 @@ user interface.
 - `session_id`: one Streamlit session, retained across sign-in and sign-out.
 - `run_id`: one Python rerun.
 - `schema_version`: event contract version, currently `runtime_v1`.
-- `build_version`: deployed code candidate, currently `3.4.1`.
+- `build_version`: deployed accepted checkpoint, currently `3.4.2`.
 
 ## Data contract
 
