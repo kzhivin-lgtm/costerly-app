@@ -1,7 +1,30 @@
 # Company Profile checkpoint
 
-Version: v3.2.5 accepted production checkpoint
-Date: 2026-09-19
+Version: v3.4.1 accepted Company Logo production checkpoint
+Date: 2026-09-20
+
+## v3.4.1 Company Logo checkpoint
+
+- Product checkpoint: `2a6ac0f`.
+- Contacts owns a separate Company Logo card below its independent Save
+  Contacts form. Upload and Detection interactions are isolated, so selecting a
+  logo cannot activate the New Estimate processing shell.
+- Owners may upload PNG, SVG, or first-page PDF sources. Standard SVG 1.1
+  `DOCTYPE` declarations are removed before rendering, embedded PNG/JPEG/WebP
+  artwork is accepted, and scripts, XML entities, HTML, event handlers, local
+  files, and external resources remain blocked.
+- The deterministic server pipeline trims the visible artwork and stores only
+  the normalized private 1024px PNG plus its `companies.logo_url` reference.
+  The raw source is not retained.
+- The user verified the supplied SVG on production, including conversion,
+  preview, save, and the persisted logo. Automated suite: 203 tests passed.
+- Local rollback archive:
+  `v3.4.1_company_logo_production_checkpoint`, 516,861 bytes, SHA-256
+  `fe9f105127175e8847b411f11b12bcefca75be406ae2b0f20c9cc102af197120`.
+- Follow-up UI work is intentionally outside this checkpoint: hide the empty
+  preview frame, align the upload/preview row, replace the idle saved state with
+  Change Logo, auto-dismiss success feedback, and standardize success placement
+  above Save actions across Profile tabs.
 
 ## v3.2.5 Profile navigation checkpoint
 

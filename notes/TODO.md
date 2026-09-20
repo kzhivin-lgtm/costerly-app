@@ -169,11 +169,18 @@
   two lower gaps are code-defined at 32px, and 188 tests passed.
 - 3.4.1 Company logo normalization: rename the Profile tab to Bank Details and
   add a separate owner-only Company Logo card below Save Contacts. Accept PNG,
-  self-contained SVG, and first-page PDF sources, normalize them without AI to
+  safe self-contained SVG, and first-page PDF sources, normalize them without AI to
   a private 1024px square PNG card, retain only its private Storage reference,
   and instrument conversion, upload, database update, cleanup, and load.
-  Status: implementation candidate; 198 tests passed, production visual and
-  three-format persistence verification pending.
+  Status: accepted production checkpoint at `2a6ac0f`; the supplied SVG was
+  converted, previewed, saved, and persisted in production, and 203 tests
+  passed. Separate PNG and PDF production checks remain pending.
+- 3.4.2 Company Logo saved-state UI: hide the empty right-side preview frame,
+  align the upload and preview row, show Change Logo after a saved logo becomes
+  idle, expose Save Logo only for a newly selected replacement, and dismiss the
+  success notice after five seconds. Then standardize Profile success notices
+  above their Save actions without changing persistence handlers. Status:
+  pending after the accepted v3.4.1 rollback checkpoint.
 - Auth UI follow-up: improve Sign out press/progress/completion feedback without changing the accepted Sidebar session component, adding JavaScript click interception, `pointer-events: none`, capture handlers, or focus-based infinite spinners. Preserve v3.0.51 refresh persistence and verify two consecutive Sign out / Sign in cycles.
 - Unified Detection/OCR experiment sequence — quality first; every step must preserve the stable 3-object and 15-object boundaries before the next step begins:
   1. Make benchmark run IDs unique so repeated runs cannot overwrite prior object results. Direct PDF OCR remains the default one-PDF/one-request flow. Naming is text-only and receives locked Detection facts plus OCR snippets, never the PDF again.

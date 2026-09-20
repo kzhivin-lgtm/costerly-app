@@ -1,7 +1,7 @@
 # Production observability
 
 Version: 3.4.1
-Status: implementation candidate, production verification pending
+Status: accepted Company Logo production checkpoint at `2a6ac0f`
 
 ## Purpose
 

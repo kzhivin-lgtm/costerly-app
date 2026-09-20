@@ -36,9 +36,10 @@ names together, then Bank name / Bank number, Branch number / Account number,
 and IBAN / BIC. BIC continues to use the existing `swift` database column because
 SWIFT/BIC is one banking identifier, so no duplicate column is introduced.
 Contacts also owns a separate Company Logo card below its independent Save
-Contacts form. Owners may submit PNG, self-contained SVG, or the first page of a
-PDF, up to 50 MB. A deterministic server pipeline validates the actual content,
-rejects active or externally referenced SVG content, trims empty margins,
+Contacts form. Owners may submit PNG, safe self-contained SVG, or the first page
+of a PDF, up to 50 MB. A deterministic server pipeline validates the actual
+content, strips standard SVG 1.1 DOCTYPE declarations, accepts embedded
+PNG/JPEG/WebP artwork, rejects active or externally referenced SVG content, trims empty margins,
 preserves proportions, and places the artwork inside a 1024 by 1024 white PNG
 card with the shared contour. Raster PNG artwork below the minimum usable
 resolution is rejected rather than invented or AI-upscaled. Source bytes are
