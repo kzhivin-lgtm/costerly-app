@@ -1891,14 +1891,16 @@ def _open_upload_screen() -> None:
 def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
     phase_started_at = time.perf_counter()
 
-    def finish_phase(name: str) -> None:
+    def finish_phase(name: str, summary_key: str) -> None:
         nonlocal phase_started_at
         finished_at = time.perf_counter()
         if trace is not None:
+            duration_ms = (finished_at - phase_started_at) * 1000
             trace.event(
                 name,
-                duration_ms=(finished_at - phase_started_at) * 1000,
+                duration_ms=duration_ms,
             )
+            trace.annotate(**{summary_key: round(duration_ms, 3)})
         phase_started_at = finished_at
 
     apply_company_profile_css()
@@ -1907,7 +1909,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         '<div class="company-profile-active" style="display:none"></div>',
         unsafe_allow_html=True,
     )
-    finish_phase("server.company_profile_styles")
+    finish_phase("server.company_profile_styles", "p_styles_ms")
 
     header_left, header_right = st.columns([3.6, 2])
     with header_left:
@@ -1943,7 +1945,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                     use_container_width=True,
                     on_click=sign_out,
                 )
-    finish_phase("server.company_profile_header")
+    finish_phase("server.company_profile_header", "p_header_ms")
 
     expenses_tab, labor_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
         [
@@ -1957,7 +1959,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         key="company_profile_tab",
         on_change="rerun",
     )
-    finish_phase("server.company_profile_tabs")
+    finish_phase("server.company_profile_tabs", "p_tabs_ms")
 
     if expenses_tab.open:
         with expenses_tab:
@@ -1982,7 +1984,7 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                     profile = load_company_profile(access)
         except Exception:
             st.error("Company profile is unavailable right now. Try again in a moment.")
-            finish_phase("server.company_profile_content")
+            finish_phase("server.company_profile_content", "p_body_ms")
             return
 
         if contacts_tab.open:
@@ -2008,4 +2010,4 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         with prices_tab:
             st.info("Company price lists and the shared fallback library will be configured here.")
 
-    finish_phase("server.company_profile_content")
+    finish_phase("server.company_profile_content", "p_body_ms")

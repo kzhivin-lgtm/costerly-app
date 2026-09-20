@@ -334,12 +334,27 @@ def signal_app_ready_to_embed(
                 } catch (_) {}
             }
 
-            function postReady() {
+            function releaseAuthShellWhenStable() {
                 try {
-                    window.parent.document
-                        .getElementById("costerly-auth-sign-in-shell")
-                        ?.remove();
+                    const parentWindow = window.parent;
+                    const shell = parentWindow.document
+                        .getElementById("costerly-auth-sign-in-shell");
+                    if (!shell || shell.dataset.costerlyStableRelease === "1") return;
+                    shell.dataset.costerlyStableRelease = "1";
+                    let removed = false;
+                    const removeOnce = () => {
+                        if (removed) return;
+                        removed = true;
+                        shell.remove();
+                    };
+                    parentWindow.requestAnimationFrame(() => {
+                        parentWindow.requestAnimationFrame(removeOnce);
+                    });
+                    parentWindow.setTimeout(removeOnce, 250);
                 } catch (error) {}
+            }
+
+            function postReady() {
 
                 try {
                     window.parent.postMessage(message, "*");
@@ -355,6 +370,7 @@ def signal_app_ready_to_embed(
             }
 
             installTransitionObserver();
+            releaseAuthShellWhenStable();
             postReady();
             window.requestAnimationFrame(() => {
                 window.requestAnimationFrame(postReady);

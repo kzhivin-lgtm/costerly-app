@@ -259,6 +259,14 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'type: "costerly:transition-click"' in ready_signal
     assert 'type: "costerly:transition-visible"' in ready_signal
     assert "new MutationObserver(reportIfVisible)" in ready_signal
+    assert "function releaseAuthShellWhenStable()" in ready_signal
+    assert 'shell.dataset.costerlyStableRelease === "1"' in ready_signal
+    assert "parentWindow.requestAnimationFrame(() => {" in ready_signal
+    assert "parentWindow.requestAnimationFrame(removeOnce);" in ready_signal
+    post_ready_source = ready_signal.split("function postReady()", 1)[1].split(
+        "installTransitionObserver();", 1
+    )[0]
+    assert "costerly-auth-sign-in-shell" not in post_ready_source
     assert 'parentDocument.addEventListener("click", handler, {' in ready_signal
     assert "capture: false" in ready_signal
     assert "passive: true" in ready_signal
