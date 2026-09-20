@@ -402,6 +402,129 @@ def apply_company_profile_css() -> None:
             animation: company-logo-notice-dismiss 180ms ease 5s forwards;
         }
 
+        .stApp:has(.company-profile-active) .st-key-price_source_add_card,
+        .stApp:has(.company-profile-active) .st-key-price_source_list_card,
+        .stApp:has(.company-profile-active) .st-key-price_source_detail_card {
+            margin-top: 12px;
+            overflow: hidden;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 12px;
+            background: var(--color-surface);
+            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+        }
+
+        .stApp:has(.company-profile-active) .st-key-price_source_add_body {
+            padding: var(--profile-action-gap) 28px 28px;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body[data-testid="stVerticalBlock"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body > [data-testid="stVerticalBlock"] {
+            gap: var(--profile-action-gap) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"] section {
+            min-height: 116px;
+            border: 1px dashed #BFAFD0 !important;
+            border-radius: var(--input-radius) !important;
+            background: #FBF9FD !important;
+        }
+
+        .price-source-or {
+            margin: -4px 0;
+            color: var(--color-text-muted);
+            font-size: 12px;
+            font-weight: 700;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-price_source_list_card {
+            padding-bottom: 10px;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_list_card > [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_list_card [data-testid="stHorizontalBlock"] {
+            min-height: 68px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--color-border-soft);
+        }
+
+        .price-source-file {
+            display: block;
+            max-width: 360px;
+            overflow: hidden;
+            color: var(--color-text-muted);
+            font-size: 12px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .price-source-detail-heading {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            padding: 20px 24px 8px;
+        }
+
+        .price-source-detail-heading > div {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .price-source-detail-heading > div:last-child {
+            text-align: right;
+        }
+
+        .price-source-detail-heading span {
+            color: var(--color-text-muted);
+            font-size: 12px;
+        }
+
+        .st-key-price_source_detail_card [data-testid="stCaptionContainer"] {
+            padding: 0 24px 14px;
+        }
+
+        .price-source-table {
+            overflow-x: auto;
+            border-top: 1px solid var(--color-border-soft);
+        }
+
+        .price-source-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .price-source-table th,
+        .price-source-table td {
+            padding: 14px 16px;
+            border-right: 1px solid var(--color-border-soft);
+            border-bottom: 1px solid var(--color-border-soft);
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .price-source-table th {
+            background: #FAF8FC;
+            color: var(--color-text-strong);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .price-source-table td {
+            font-size: 13px;
+        }
+
         .stApp:has(.company-profile-active) label,
         .stApp:has(.company-profile-active) [data-testid="stWidgetLabel"] p {
             color: var(--color-text-strong) !important;

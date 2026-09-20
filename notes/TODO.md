@@ -275,3 +275,11 @@
 - Polish negative/error states with project button styles.
 - Add XLS proposal export.
 - Add missing-object second-pass detection flow.
+- 3.7.1 Company Price Sources: active. Local candidate adds one-source upload or
+  public-URL ingestion, mandatory category selection, automatic supplier and
+  document classification, unit-preserving normalization, private versioned
+  offers, unresolved-row quarantine, source inspection, and private source
+  storage. The owner applied the additive database migration before deployment;
+  `233 passed` on the production candidate. Verify one photographed invoice and
+  one static public supplier page on production. Existing `materials` and the
+  current Estimation resolver remain unchanged until import evidence is accepted.

@@ -208,6 +208,34 @@ Each labor row must explain hours through `hours_basis`, `evidence_pages`, `conf
 `catalog_match_query` is a search hint for matching the agent line to company material catalog rows; it is not a price.
 Deterministic engine code owns catalog matching, prices, rates, overhead allocation, multiplication, VAT, and totals.
 
+Company Price Sources contract (3.7.1)
+
+Price Lists accepts exactly one file or one public URL per operation. The owner
+must choose the material category; supplier identity, document type, date,
+currency, VAT basis, product rows, units, package quantities, and conversions are
+inferred by the import pipeline. The default path never asks the owner to verify
+rows. A source and every extracted row remain inspectable after processing.
+
+The model has no database access. It returns a validated extraction package.
+Deterministic code enforces supported file types, public-only URL fetching,
+non-negative values, currency presence, explicit conversion evidence, unique row
+numbers, and an auto-activation confidence floor. Ambiguous rows are persisted as
+unresolved and never become active offers. Delivery, assembly, labor, credits,
+subtotal rows, VAT or tax total rows, grand totals, and amounts due are excluded
+as non-product rows. Their presence never causes VAT to be added to or removed
+from an extracted item price. Every item retains the VAT basis shown by its source.
+
+The source value and unit are retained separately from `purchase_unit`,
+`calculation_unit`, `conversion_factor`, and the normalized Estimation price.
+Aliases such as `sqm`, `m2`, `m^2`, `m²`, and supported language equivalents
+normalize to `m2`, while the exact source spelling remains evidence. A conversion
+is allowed only when every required package size,
+length, volume, count, or sheet dimension is explicit in the source. Company
+materials begin private. Repeated private evidence may later propose a country
+catalog identity, but company prices, discounts, and purchasing terms remain
+private. Existing scraped materials remain an unverified benchmark until a later
+resolver task explicitly changes pricing precedence.
+
 Estimation Agent Runtime v1
 `estimate_one_object()` is the application-layer entrypoint for one object.
 It loads the detected object from Supabase, calls the Estimation Agent with the original uploaded file bytes, validates the returned JSON, replaces that object's estimate lines, and records an `agent_usage_events` row with `agent_name = estimation`.

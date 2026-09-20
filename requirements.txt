@@ -1,5 +1,6 @@
 streamlit==1.64.0
 pandas
+openpyxl
 supabase
 anthropic==0.111.0
 httpx

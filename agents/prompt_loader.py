@@ -7,6 +7,7 @@ import re
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 DETECTION_PROMPT_PATH = PROMPTS_DIR / "detection_agent_prompt.md"
 ESTIMATION_PROMPT_PATH = PROMPTS_DIR / "estimation_agent_prompt.md"
+PRICE_SOURCE_PROMPT_PATH = PROMPTS_DIR / "price_source_agent_prompt.md"
 
 
 def load_detection_agent_prompt() -> str:
@@ -126,4 +127,13 @@ def load_estimation_agent_prompt() -> str:
     if not prompt:
         raise ValueError(f"Estimation prompt is empty: {ESTIMATION_PROMPT_PATH}")
 
+    return prompt
+
+
+def load_price_source_agent_prompt() -> str:
+    if not PRICE_SOURCE_PROMPT_PATH.exists():
+        raise FileNotFoundError(f"Price source prompt not found: {PRICE_SOURCE_PROMPT_PATH}")
+    prompt = PRICE_SOURCE_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    if not prompt:
+        raise ValueError(f"Price source prompt is empty: {PRICE_SOURCE_PROMPT_PATH}")
     return prompt

@@ -31,6 +31,14 @@ from use_cases.company_logo import (
     normalize_company_logo,
     persist_company_logo,
 )
+from use_cases.price_sources import (
+    PRICE_SOURCE_CATEGORIES,
+    PriceSourceError,
+    list_price_sources,
+    load_price_source_bytes,
+    load_price_source_rows,
+    process_price_source,
+)
 
 if TYPE_CHECKING:
     from state.company_auth import CompanyAccess
@@ -872,6 +880,214 @@ def _render_company_logo_card(
                     )
                     st.session_state._company_logo_notice = "Company logo saved"
                     st.rerun()
+
+
+def _price_source_supplier(source: dict) -> str:
+    supplier = source.get("company_suppliers")
+    if isinstance(supplier, dict):
+        return str(supplier.get("supplier_name") or "Unknown supplier")
+    if isinstance(supplier, list) and supplier:
+        return str(supplier[0].get("supplier_name") or "Unknown supplier")
+    return "Unknown supplier"
+
+
+def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
+    rows = load_price_source_rows(access, str(source["source_id"]))
+    summary = source.get("processing_summary") or {}
+    st.markdown(
+        '<div class="price-source-detail-heading">'
+        f'<div><strong>{escape(_price_source_supplier(source))}</strong>'
+        f'<span>{escape(str(source.get("source_name") or ""))}</span></div>'
+        f'<div><span>{escape(str(source.get("category") or ""))}</span>'
+        f'<span>{escape(str(source.get("document_type") or "Unknown document"))}</span></div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        f'{int(summary.get("ready") or 0)} prices updated · '
+        f'{int(summary.get("unresolved") or 0)} unresolved · '
+        f'{int(summary.get("excluded") or 0)} excluded'
+    )
+    if source.get("source_kind") == "url" and source.get("source_url"):
+        st.link_button("Open Original Source", str(source["source_url"]))
+    elif source.get("storage_path"):
+        try:
+            original = load_price_source_bytes(access, str(source["storage_path"]))
+        except Exception:
+            logger.exception("Price source original load failed")
+            original = None
+        if original:
+            mime_type = str(source.get("mime_type") or "application/octet-stream")
+            if mime_type in {"image/jpeg", "image/png"}:
+                st.image(original, caption="Original source", use_container_width=True)
+            st.download_button(
+                "Download Original Source",
+                data=original,
+                file_name=Path(str(source.get("source_name") or "price-source")).name,
+                mime=mime_type,
+                key=f'download_price_source_{source["source_id"]}',
+            )
+    if not rows:
+        st.info("No product rows were extracted from this source.")
+        return
+    table_rows = []
+    for row in rows:
+        source_price = row.get("raw_price")
+        normalized_price = row.get("normalized_price")
+        source_value = (
+            f'{escape(str(row.get("raw_currency") or ""))} {source_price:g} / '
+            f'{escape(str(row.get("raw_unit") or "?"))}'
+            if isinstance(source_price, (int, float)) and source_price > 0
+            else ""
+        )
+        normalized_value = (
+            f'{normalized_price:g} / '
+            f'{escape(str(row.get("calculation_unit") or row.get("normalized_unit") or "?"))}'
+            if isinstance(normalized_price, (int, float)) and normalized_price > 0
+            else ""
+        )
+        purchase_unit = str(row.get("purchase_unit") or "")
+        calculation_unit = str(row.get("calculation_unit") or row.get("normalized_unit") or "")
+        conversion_factor = row.get("conversion_factor")
+        if (
+            normalized_value
+            and purchase_unit
+            and calculation_unit
+            and isinstance(conversion_factor, (int, float))
+            and (purchase_unit != calculation_unit or conversion_factor != 1)
+        ):
+            normalized_value += (
+                f'<br><small>{escape(purchase_unit)} = '
+                f'{conversion_factor:g} {escape(calculation_unit)}</small>'
+            )
+        table_rows.append(
+            "<tr>"
+            f'<td>{escape(str(row.get("raw_description") or ""))}</td>'
+            f'<td>{source_value}</td>'
+            f'<td>{normalized_value}</td>'
+            f'<td>{escape(str(row.get("result_status") or "").title())}</td>'
+            f'<td>{float(row.get("confidence") or 0):.0f}%</td>'
+            "</tr>"
+        )
+    st.markdown(
+        '<div class="price-source-table"><table><thead><tr>'
+        '<th>Source Item</th><th>Source Price</th><th>Estimation Price</th>'
+        '<th>Result</th><th>Confidence</th></tr></thead><tbody>'
+        + "".join(table_rows)
+        + "</tbody></table></div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
+    if access.role != "owner":
+        st.info("Price sources are available to the company owner.")
+        return
+
+    with st.container(key="price_source_add_card"):
+        st.markdown(
+            '<div class="company-logo-table-heading">Add Price Source</div>',
+            unsafe_allow_html=True,
+        )
+        with st.container(key="price_source_add_body"):
+            uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
+            category = st.selectbox(
+                "Category",
+                PRICE_SOURCE_CATEGORIES,
+                index=None,
+                placeholder="Select material category",
+                key="price_source_category",
+            )
+            uploaded_file = st.file_uploader(
+                "Price source",
+                type=["pdf", "xlsx", "csv", "jpg", "jpeg", "png"],
+                accept_multiple_files=False,
+                key=f"price_source_upload_{uploader_version}",
+                help="Upload one PDF, spreadsheet, scan, or photo at a time.",
+            )
+            st.markdown('<div class="price-source-or">or</div>', unsafe_allow_html=True)
+            source_url = st.text_input(
+                "Supplier page URL",
+                placeholder="https://supplier.example/prices",
+                key=f"price_source_url_{uploader_version}",
+            )
+            notice = st.session_state.pop("_price_source_notice", None)
+            if notice:
+                st.success(notice)
+            if st.button(
+                "Process Price Source",
+                key="process_price_source",
+                type="primary",
+                use_container_width=True,
+            ):
+                try:
+                    with st.spinner("Reading and organizing this price source..."):
+                        process_price_source(
+                            access,
+                            category=str(category or ""),
+                            uploaded_file=uploaded_file,
+                            source_url=source_url,
+                            trace=trace,
+                        )
+                except PriceSourceError as exc:
+                    st.error(str(exc))
+                except PermissionError:
+                    st.error("Only the company owner can add price sources.")
+                except Exception:
+                    logger.exception("Price source processing failed")
+                    st.error("The price source could not be processed. Try again in a moment.")
+                else:
+                    st.session_state._price_source_uploader_version = uploader_version + 1
+                    st.session_state._price_source_notice = "Price source processed"
+                    st.rerun()
+
+    try:
+        sources = list_price_sources(access)
+    except Exception:
+        logger.exception("Price source list failed")
+        st.info("Price Sources storage is not configured yet.")
+        return
+
+    if not sources:
+        st.info("No price sources yet. Add the first supplier file or link above.")
+        return
+
+    with st.container(key="price_source_list_card"):
+        st.markdown(
+            '<div class="company-logo-table-heading">Price Sources</div>',
+            unsafe_allow_html=True,
+        )
+        for source in sources:
+            summary = source.get("processing_summary") or {}
+            left, category_col, status_col, items_col, action_col = st.columns(
+                [2.3, 1.45, 0.8, 0.65, 0.65],
+                vertical_alignment="center",
+            )
+            with left:
+                st.markdown(
+                    f'**{escape(_price_source_supplier(source))}**  \n'
+                    f'<span class="price-source-file">{escape(str(source.get("source_name") or ""))}</span>',
+                    unsafe_allow_html=True,
+                )
+            with category_col:
+                st.write(source.get("category") or "")
+            with status_col:
+                st.write(str(source.get("status") or "").title())
+            with items_col:
+                st.write(int(summary.get("total") or 0))
+            with action_col:
+                if st.button("View", key=f'view_price_source_{source["source_id"]}'):
+                    st.session_state._selected_price_source_id = source["source_id"]
+
+    selected_id = st.session_state.get("_selected_price_source_id")
+    selected = next((source for source in sources if source["source_id"] == selected_id), None)
+    if selected:
+        with st.container(key="price_source_detail_card"):
+            st.markdown(
+                '<div class="company-logo-table-heading">Source Details</div>',
+                unsafe_allow_html=True,
+            )
+            _render_price_source_details(access, selected)
 
 
 def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
@@ -2017,6 +2233,10 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                     _render_users(access)
     elif prices_tab.open:
         with prices_tab:
-            st.info("Company price lists and the shared fallback library will be configured here.")
+            if trace is None:
+                _render_price_lists(access)
+            else:
+                with trace.span("server.price_sources_render"):
+                    _render_price_lists(access, trace=trace)
 
     finish_phase("server.company_profile_content", "p_body_ms")
