@@ -67,6 +67,19 @@ Avoid:
 
 Short version: repeated navigation must reinstall guards and clear from the current screen.
 
+## Accepted Interaction Preservation Rule
+
+When an interaction has been accepted, preserve its visible behavior unless the
+user explicitly approves a replacement. A bug fix must reuse the established
+component and feedback path before introducing a new overlay, screen, message,
+or interaction pattern.
+
+For Sign in specifically, keep the Auth screen visible after submit, show the
+existing in-button loading state, and replace the screen only when the target
+route is ready. Do not put Sign in behind the outer Cloudflare transition mask.
+
+Short version: fix accepted behavior in place, do not redesign it implicitly.
+
 ## Streamlit Navigation Run Rule
 
 A Streamlit widget click already starts a script rerun. Screen navigation from
@@ -92,23 +105,26 @@ for that trace.
 
 Short version: measure and accept only matching wrapper and server builds.
 
-## Local Verification Before Push Rule
+## Production-Only Interaction Verification Rule
 
-Changes that affect UI, browser JavaScript, uploads, timers, navigation, screen transitions, or asynchronous state must be manually verified in the local browser before they are committed or pushed.
+Costerly UI and interaction acceptance is performed only on production. Do not
+ask the user to validate a localhost or direct Streamlit URL, because it does not
+exercise the deployed Cloudflare wrapper and is not the accepted test surface.
 
 Required sequence:
-- implement the change locally;
+- implement the smallest scoped change;
 - run automated tests and syntax checks;
-- close old local ports and start the single current local port;
-- open the updated local app in Chrome;
-- wait for the user to manually verify both the requested behavior and the surrounding flow;
-- only after explicit user confirmation, create the backup, commit, and push.
+- create a backup, commit, and push the candidate;
+- confirm matching Cloudflare and Streamlit build versions;
+- ask the user to verify the requested behavior and protected surrounding flow
+  on `app.costerly.ai`;
+- establish a checkpoint only after explicit production acceptance.
 
-Automated tests, compilation, and code inspection do not replace manual browser verification for interactive behavior.
+Automated tests, compilation, and code inspection do not replace production
+browser verification for interactive behavior. A pushed candidate is not an
+accepted checkpoint until the production cycle passes.
 
-If local verification exposes a regression, fix it locally and repeat the full manual check. Do not push an unverified hotfix merely because the previous version is already on production.
-
-Short version: local browser confirmation first; backup, commit, and push only after.
+Short version: deploy a tested candidate, accept it only on production.
 
 ## Backup Rule
 

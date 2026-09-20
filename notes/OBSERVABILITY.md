@@ -1,6 +1,6 @@
 # Production observability
 
-Version: 3.5.8
+Version: 3.5.9
 Status: performance investigation after the Labor Costs production candidate
 
 Emergency rollback boundary: v3.4.2, finalized at `86117ba` after the accepted
@@ -163,10 +163,12 @@ Server:
 - The compatibility hotfix has its own 3.5.7 build identity. Reusing 3.5.6
   would make the runtime handshake unable to distinguish the failed deployment
   from its replacement.
-- Version 3.5.8 restores explicit Sign in progress feedback without exposing
-  stale Streamlit DOM. The existing in-form spinner remains in place, and the
-  Cloudflare mask now renders its own `Signing in...` spinner while it hides
-  the iframe during the successful screen transition.
+- Version 3.5.8's outer `Signing in...` mask was rejected because it replaced
+  the accepted Auth interaction with a gray transition screen.
+- Version 3.5.9 removes Sign in from the outer transition mask. The Auth screen
+  remains visible, the existing in-button loading state provides feedback, and
+  the target screen replaces it only when the Sign in rerun completes. Profile,
+  Upload, and Sign out transition masks remain unchanged.
 
 ## Production prerequisites
 

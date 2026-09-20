@@ -198,16 +198,16 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert '"profile_to_upload"' in wrapper
     assert '"profile_to_sign_out"' in wrapper
     assert '"upload_to_sign_out"' in wrapper
-    assert 'const maskedInternalTransitions = new Set([\n          "sign_in"' in wrapper
+    masked_transitions = wrapper.split("const maskedInternalTransitions = new Set([", 1)[1].split("]);", 1)[0]
+    assert '"sign_in"' not in masked_transitions
     assert "maskedInternalTransitions.has(pendingTransition.name)" in wrapper
     assert 'revealInternalTransition("app_ready")' in wrapper
     assert 'mark("browser.internal_transition_timeout"' in wrapper
     assert 'window.setTimeout(() => mask.remove()' not in wrapper
     assert "iframe.is-transitioning" in wrapper
     assert ".app-loading-mask.is-transitioning" in wrapper
-    assert ".app-loading-mask.is-transitioning.is-sign-in .app-transition-status" in wrapper
-    assert 'mask.classList.toggle("is-sign-in", transition === "sign_in")' in wrapper
-    assert '<span>Signing in...</span>' in wrapper
+    assert "app-transition-status" not in wrapper
+    assert "is-sign-in" not in wrapper
     assert 'metadata.completed_action === "auth_sign_in"' in wrapper
     assert 'metadata.completed_action_status === "error"' in wrapper
     assert 'status: failedSignIn ? "error" : "ok"' in wrapper
