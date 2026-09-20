@@ -676,7 +676,6 @@ def _render_company_logo_card(
             pending_error = None
             uploaded_file = None
             notice = st.session_state.pop("_company_logo_notice", None)
-            notice_rendered = False
             if editable:
                 uploader_version = int(
                     st.session_state.get("_company_logo_uploader_version") or 0
@@ -699,7 +698,12 @@ def _render_company_logo_card(
                             label_visibility="collapsed",
                         )
 
-                if pending_logo is not None:
+                preview = (
+                    pending_logo.png_bytes
+                    if pending_logo is not None
+                    else current_logo
+                )
+                if preview is not None:
                     upload_column, preview_column = st.columns(
                         2,
                         gap="medium",
@@ -711,21 +715,9 @@ def _render_company_logo_card(
                         )
                     with preview_column:
                         st.markdown(
-                            _logo_preview_html(pending_logo.png_bytes),
+                            _logo_preview_html(preview),
                             unsafe_allow_html=True,
                         )
-                elif selected_file is not None:
-                    uploaded_file = render_logo_uploader("company_logo_empty_upload")
-                elif current_logo is not None:
-                    with st.container(key="company_logo_saved_state"):
-                        st.markdown(
-                            _logo_preview_html(current_logo),
-                            unsafe_allow_html=True,
-                        )
-                    if notice:
-                        st.success(notice)
-                        notice_rendered = True
-                    uploaded_file = render_logo_uploader("company_logo_change_upload")
                 else:
                     uploaded_file = render_logo_uploader("company_logo_empty_upload")
 
@@ -737,14 +729,16 @@ def _render_company_logo_card(
 
             if pending_error:
                 st.error(pending_error)
-            if notice and not notice_rendered:
+            if notice:
                 st.success(notice)
 
-            if editable and pending_logo is not None and st.button(
-                "Save Logo",
+            button_label = "Change Logo" if reference else "Save Logo"
+            if editable and st.button(
+                button_label,
                 key="save_company_logo",
                 type="primary",
                 use_container_width=True,
+                disabled=pending_logo is None,
             ):
                 try:
                     _save_company_logo(

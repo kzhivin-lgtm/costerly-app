@@ -816,15 +816,17 @@ def test_company_logo_card_uses_profile_table_header_and_two_square_panels():
     assert "upload_column, preview_column = st.columns(" in logo_source
     assert 'type=["png", "svg", "pdf"]' in logo_source
     assert 'body = "<span>Logo</span>"' in screen_source
-    assert 'elif current_logo is not None:' in logo_source
-    assert '"company_logo_change_upload"' in logo_source
-    assert "editable and pending_logo is not None and st.button(" in logo_source
+    assert "else current_logo" in logo_source
+    assert 'button_label = "Change Logo" if reference else "Save Logo"' in logo_source
+    assert "disabled=pending_logo is None" in logo_source
     assert ".company-logo-table-heading {" in css
     assert ".st-key-company_logo_body" in css
+    assert ".st-key-company_logo_body {\n            padding: 28px;" in css
     assert "max-width: 760px;" in css
     assert "height: 220px;" in css
     assert 'content: "Drop or Upload\\\\A PNG/SVG/PDF";' in css
-    assert 'content: "Change Logo";' in css
+    assert "gap: 28px !important;" in css
+    assert "margin-top: 0 !important;" in css
     assert "company-logo-notice-dismiss 180ms ease 5s forwards" in css
 
 
