@@ -1,6 +1,6 @@
 # Production observability
 
-Version: 3.5.6
+Version: 3.5.7
 Status: performance investigation after the Labor Costs production candidate
 
 Emergency rollback boundary: v3.4.2, finalized at `86117ba` after the accepted
@@ -160,6 +160,9 @@ Server:
   hotfix removes the new function argument and transports the build through
   the pre-existing `metrics` parameter, which is compatible across both module
   generations during a partial deployment.
+- The compatibility hotfix has its own 3.5.7 build identity. Reusing 3.5.6
+  would make the runtime handshake unable to distinguish the failed deployment
+  from its replacement.
 
 ## Production prerequisites
 
