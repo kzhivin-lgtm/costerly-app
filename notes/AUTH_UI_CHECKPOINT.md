@@ -1,5 +1,20 @@
 # Auth and Upload UI checkpoint
 
+## v3.5.10 production working reference
+
+- Commit `95b3bdc` preserves the one-run Sign in path and keeps the accepted
+  Auth screen visible with the spinner inside the Sign in button.
+- The user confirmed on production that the spinner presentation is restored
+  and that the Sign in action itself is fast.
+- This is a working reference, not a stable checkpoint. Two defects remain:
+  fragments of the next screen can appear at the end of Sign in, and the first
+  Upload to Profile transition is materially slower than later transitions.
+- Production trace `2a93527c-f100-4d5f-9507-b1d4fa58b8ba` measured Sign in at
+  1.041 and 1.131 seconds, each with one Python run. The first Upload to Profile
+  took 2.799 seconds, while Profile to Upload took 0.691 seconds.
+- Preserve the v3.5.10 Sign in behavior while diagnosing those defects. Do not
+  replace the accepted button spinner or restore the rejected gray mask.
+
 Date: 2026-09-20
 
 ## v3.3.1 accepted authenticated home

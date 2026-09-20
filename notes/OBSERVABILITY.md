@@ -176,6 +176,15 @@ Server:
   state remains visible in its original position. The shell is removed by the
   next correlated app-ready signal, including a failed Sign in, with a 15-second
   fail-open timeout. Authentication and navigation code are unchanged.
+- Production acceptance of v3.5.10 confirmed the restored in-button spinner
+  and fast one-run Sign in. It also exposed two remaining defects: transient
+  next-screen fragments after Sign in and a slow first Upload to Profile.
+  Trace `2a93527c-f100-4d5f-9507-b1d4fa58b8ba` measured two Sign ins at 1.041
+  and 1.131 seconds. Its first Upload to Profile took 2.799 seconds, including
+  1.952 seconds server-side and 1.679 seconds in Profile screen rendering.
+  Expenses rendering accounted for 0.464 seconds. Profile to Upload took 0.691
+  seconds. Therefore the next investigation is scoped to first Profile render
+  and Auth-shell release timing, not authentication or navigation semantics.
 
 ## Production prerequisites
 
