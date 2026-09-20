@@ -137,7 +137,8 @@ Server:
   metadata keys, retaining `company_profile_*` timings while continuing to
   redact token, email, file-name, password, secret, and content fields.
 - Version 3.5.6 establishes a runtime build handshake. Every Streamlit
-  `app-ready` message carries the server build. The wrapper compares it with
+  `app-ready` message carries the server build inside the established metrics
+  contract. The wrapper compares it with
   its own build, records `browser.build_mismatch`, synchronizes the safe route,
   and performs at most one guarded top-level reload for each mismatched pair.
   A sessionStorage guard prevents reload loops if the two independent
@@ -153,6 +154,12 @@ Server:
   the Profile shell, and 0.169 seconds loading the active company data. The
   direct local URL has no Cloudflare wrapper, so its visible Sign in rerun
   cannot validate the wrapper transition mask or browser end-to-end duration.
+- Production initially exposed a Streamlit hot-reload compatibility failure:
+  new `app.py` called `signal_app_ready_to_embed(build_version=...)` while the
+  live process could retain the previous imported function signature. The
+  hotfix removes the new function argument and transports the build through
+  the pre-existing `metrics` parameter, which is compatible across both module
+  generations during a partial deployment.
 
 ## Production prerequisites
 

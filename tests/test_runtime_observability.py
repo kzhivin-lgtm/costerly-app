@@ -212,6 +212,7 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "startupPhases.has(event.data.phase)" in wrapper
     assert "...(event.data.metrics || {})" in wrapper
     assert "event.data.buildVersion" in wrapper
+    assert "event.data.metrics && event.data.metrics.server_build_version" in wrapper
     assert 'mark("browser.build_mismatch"' in wrapper
     assert 'window.sessionStorage.getItem(reloadGuardKey) !== mismatchPair' in wrapper
     assert "window.location.reload()" in wrapper
@@ -233,9 +234,9 @@ def test_streamlit_ready_message_carries_server_build_version():
     source = (ROOT / "ui/js_guards.py").read_text()
     app_source = (ROOT / "app.py").read_text()
 
-    assert "buildVersion: __BUILD_VERSION__" in source
-    assert '.replace("__BUILD_VERSION__", build_version_json)' in source
-    assert "build_version=trace.build_version" in app_source
+    assert "trace.annotate(server_build_version=trace.build_version)" in app_source
+    assert "        build_version=trace.build_version,\n" not in app_source
+    assert "build_version: str" not in source
 
 
 def test_auth_component_reports_safe_iframe_startup_phases():

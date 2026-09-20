@@ -361,7 +361,11 @@
             if (runId) readyRunIds.add(runId);
             const screen = event.data.screen || "unknown";
             syncOuterRoute(event.data.route || {}, screen);
-            const serverBuildVersion = String(event.data.buildVersion || "");
+            const serverBuildVersion = String(
+              event.data.buildVersion ||
+              (event.data.metrics && event.data.metrics.server_build_version) ||
+              ""
+            );
             if (serverBuildVersion && serverBuildVersion !== BUILD_VERSION) {
               const mismatchPair = `${BUILD_VERSION}:${serverBuildVersion}`;
               const reloadGuardKey = "costerly:build-mismatch-reload";

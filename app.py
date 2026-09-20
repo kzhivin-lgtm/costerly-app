@@ -105,10 +105,10 @@ def _browser_route(screen: str) -> dict[str, str]:
 
 def _signal_ready(trace, screen: str) -> None:
     trace.set_screen(screen)
+    trace.annotate(server_build_version=trace.build_version)
     trace.event("server.app_ready_component_enqueued")
     signal_app_ready_to_embed(
         screen,
-        build_version=trace.build_version,
         trace_id=trace.trace_id,
         run_id=trace.run_id,
         metrics=trace.summary(),
