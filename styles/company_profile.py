@@ -810,51 +810,67 @@ def apply_company_profile_css() -> None:
             text-decoration: underline !important;
         }
 
-        .company-labor-summary {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 0 0 12px;
-            padding: 18px 20px;
-            border: 1px solid var(--color-border-soft);
-            border-radius: 12px;
-            background: #FAF8FC;
-            color: var(--color-text-strong);
-        }
-
-        .company-labor-summary span {
-            font-family: var(--font-mono);
-            font-size: 15px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-
-        .company-labor-summary strong {
-            font-family: var(--font-mono);
-            font-size: 20px;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .company-labor-summary > div {
-            display: flex;
-            align-items: baseline;
-            gap: 18px;
-        }
-
         .company-labor-list {
             overflow-x: auto;
         }
 
         .company-labor-list table {
-            min-width: 1040px;
+            width: 100%;
+            min-width: 900px;
+            table-layout: fixed;
+        }
+
+        .company-labor-col-actions {
+            width: 56px;
+        }
+
+        .company-labor-col-details {
+            width: 214px;
+        }
+
+        .company-labor-col-monthly {
+            width: 142px;
+        }
+
+        .company-labor-total-row th {
+            padding-top: 18px !important;
+            padding-bottom: 18px !important;
+            background: #FAF8FC !important;
+            color: var(--color-text-strong) !important;
+            font-family: var(--font-mono) !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .company-labor-total-row th:first-child {
+            text-align: left !important;
+        }
+
+        .company-labor-total-row th:nth-child(2),
+        .company-labor-total-row th:nth-child(3) {
+            text-align: left !important;
         }
 
         .company-labor-list th:first-child,
         .company-labor-list td:first-child {
-            width: 76px;
-            min-width: 76px;
-            padding-left: 14px;
+            width: 56px;
+            min-width: 56px;
+            padding-left: 10px;
+            padding-right: 6px;
+        }
+
+        .company-labor-list th:nth-child(6),
+        .company-labor-list td:nth-child(6) {
+            width: 214px;
+            padding-left: 12px;
+            padding-right: 10px;
+        }
+
+        .company-labor-list th:nth-child(7),
+        .company-labor-list td:nth-child(7) {
+            width: 142px;
+            padding-left: 12px;
             padding-right: 10px;
         }
 
@@ -903,6 +919,11 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card {
             margin-top: 0;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-company_labor_card
+        [data-testid="stHorizontalBlock"] {
+            align-items: flex-end !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card

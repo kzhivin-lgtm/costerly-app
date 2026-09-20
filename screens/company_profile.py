@@ -146,7 +146,7 @@ LABOR_PAY_TYPES = {
 LABOR_EMPLOYEE_COLUMNS = (
     "employee_id,company_id,worker_name,department,position_code,"
     "pay_type,gross_monthly_salary,gross_hourly_rate,monthly_hours,"
-    "employment_factor,deleted_at,created_at"
+    "employment_factor,total_hourly_cost,total_monthly_cost,deleted_at,created_at"
 )
 LABOR_DEFAULT_EMPLOYMENT_FACTOR = 1.25
 LABOR_EMPLOYMENT_FACTOR_HELP = (
@@ -386,16 +386,22 @@ def _owner_access(access: CompanyAccess) -> tuple[CompanyAccess, object]:
     return fresh, client
 
 
-def load_company_employees(access: CompanyAccess) -> list[dict]:
-    fresh, client = _owner_access(access)
+@st.cache_data(ttl=60, show_spinner=False)
+def _load_company_employees_by_id(company_id: str) -> list[dict]:
+    client = get_supabase_client()
     return (
         client.table("company_employees")
         .select(LABOR_EMPLOYEE_COLUMNS)
-        .eq("company_id", fresh.company_id)
+        .eq("company_id", company_id)
         .is_("deleted_at", "null")
         .order("worker_name")
         .execute()
     ).data or []
+
+
+def load_company_employees(access: CompanyAccess) -> list[dict]:
+    fresh, _client = _owner_access(access)
+    return _load_company_employees_by_id(str(fresh.company_id))
 
 
 def add_company_employee(
@@ -409,6 +415,8 @@ def add_company_employee(
     gross_hourly_rate: float = 0,
     monthly_hours: float = 0,
     employment_factor: float = LABOR_DEFAULT_EMPLOYMENT_FACTOR,
+    total_hourly_cost: float = 0,
+    total_monthly_cost: float = 0,
 ) -> dict:
     payload = _company_employee_payload(
         worker_name=worker_name,
@@ -419,6 +427,8 @@ def add_company_employee(
         gross_hourly_rate=gross_hourly_rate,
         monthly_hours=monthly_hours,
         employment_factor=employment_factor,
+        total_hourly_cost=total_hourly_cost,
+        total_monthly_cost=total_monthly_cost,
     )
     fresh, client = _owner_access(access)
     result = client.table("company_employees").insert({
@@ -428,6 +438,7 @@ def add_company_employee(
     rows = result.data or []
     if len(rows) != 1 or str(rows[0].get("company_id")) != fresh.company_id:
         raise RuntimeError("The worker was not added.")
+    _load_company_employees_by_id.clear()
     return rows[0]
 
 
@@ -441,6 +452,8 @@ def _company_employee_payload(
     gross_hourly_rate: float = 0,
     monthly_hours: float = 0,
     employment_factor: float = LABOR_DEFAULT_EMPLOYMENT_FACTOR,
+    total_hourly_cost: float = 0,
+    total_monthly_cost: float = 0,
 ) -> dict:
     worker_name = _clean(worker_name)
     if not worker_name:
@@ -465,6 +478,8 @@ def _company_employee_payload(
         "gross_hourly_rate": None,
         "monthly_hours": None,
         "employment_factor": factor,
+        "total_hourly_cost": None,
+        "total_monthly_cost": None,
     }
     if pay_type == "monthly_salary":
         salary_value = float(gross_monthly_salary or 0)
@@ -473,7 +488,14 @@ def _company_employee_payload(
             raise ValueError("Monthly salary must be greater than zero.")
         if salary_value != salary:
             raise ValueError("Monthly salary must be a whole number.")
+        monthly_cost = round(
+            float(total_monthly_cost or (salary * factor)),
+            2,
+        )
+        if monthly_cost <= 0:
+            raise ValueError("Total monthly cost must be greater than zero.")
         payload["gross_monthly_salary"] = salary
+        payload["total_monthly_cost"] = monthly_cost
     else:
         hourly_rate_value = float(gross_hourly_rate or 0)
         hourly_rate = int(hourly_rate_value)
@@ -487,8 +509,22 @@ def _company_employee_payload(
             raise ValueError("Average hours per month must be greater than zero.")
         if hours_value != hours:
             raise ValueError("Average hours per month must be a whole number.")
+        hourly_cost = round(
+            float(total_hourly_cost or (hourly_rate * factor)),
+            2,
+        )
+        monthly_cost = round(
+            float(total_monthly_cost or (hourly_rate * hours * factor)),
+            2,
+        )
+        if hourly_cost <= 0:
+            raise ValueError("Total hourly cost must be greater than zero.")
+        if monthly_cost <= 0:
+            raise ValueError("Total monthly cost must be greater than zero.")
         payload["gross_hourly_rate"] = hourly_rate
         payload["monthly_hours"] = hours
+        payload["total_hourly_cost"] = hourly_cost
+        payload["total_monthly_cost"] = monthly_cost
     return payload
 
 
@@ -516,6 +552,7 @@ def update_company_employee(
         or str(rows[0].get("employee_id")) != employee_id
     ):
         raise RuntimeError("The worker was not updated.")
+    _load_company_employees_by_id.clear()
     return rows[0]
 
 
@@ -539,6 +576,7 @@ def archive_company_employee(access: CompanyAccess, employee_id: str) -> dict:
         or str(rows[0].get("employee_id")) != employee_id
     ):
         raise RuntimeError("The worker was not removed.")
+    _load_company_employees_by_id.clear()
     return rows[0]
 
 
@@ -1189,6 +1227,8 @@ def _labor_employment_factor(employee: dict) -> float:
 def _labor_hourly_cost(employee: dict) -> float | None:
     if employee.get("pay_type") != "hourly_rate":
         return None
+    if employee.get("total_hourly_cost") is not None:
+        return round(float(employee.get("total_hourly_cost") or 0), 2)
     return round(
         float(employee.get("gross_hourly_rate") or 0)
         * _labor_employment_factor(employee),
@@ -1197,6 +1237,8 @@ def _labor_hourly_cost(employee: dict) -> float | None:
 
 
 def _labor_monthly_cost(employee: dict) -> float:
+    if employee.get("total_monthly_cost") is not None:
+        return round(float(employee.get("total_monthly_cost") or 0), 2)
     base_cost = (
         float(employee.get("gross_hourly_rate") or 0)
         * float(employee.get("monthly_hours") or 0)
@@ -1222,8 +1264,8 @@ def _labor_pay_details(employee: dict) -> str:
     factor = f"×{_labor_employment_factor(employee):.2f}"
     if employee.get("pay_type") == "hourly_rate":
         return (
-            f"{_labor_money(employee.get('gross_hourly_rate'))} / h · "
-            f"{_labor_number(employee.get('monthly_hours'))} h · {factor}"
+            f"{_labor_money(employee.get('gross_hourly_rate'))}/h · "
+            f"{_labor_number(employee.get('monthly_hours'))}h · {factor}"
         )
     return f"{_labor_money(employee.get('gross_monthly_salary'))} · {factor}"
 
@@ -1266,13 +1308,15 @@ def _render_employee_list(employees: list[dict]) -> None:
     )
     total_cost = sum(_labor_monthly_cost(employee) for employee in employees)
     st.markdown(
-        '<div class="company-labor-summary">'
-        '<div><span>Total Hours</span>'
-        f'<strong>{escape(_labor_number(total_hours))} h</strong></div>'
-        '<div><span>Total Monthly Cost</span>'
-        f'<strong>{escape(_labor_money(total_cost))}</strong></div></div>'
         '<div class="company-profile-users company-labor-list"><table>'
-        '<thead><tr><th aria-label="Actions"></th><th>Worker</th><th>Department</th>'
+        '<colgroup><col class="company-labor-col-actions"><col><col><col><col>'
+        '<col class="company-labor-col-details"><col class="company-labor-col-monthly">'
+        '</colgroup>'
+        '<thead><tr class="company-labor-total-row">'
+        '<th colspan="5">Total Monthly</th>'
+        f'<th>{escape(_labor_number(total_hours))} h</th>'
+        f'<th>{escape(_labor_money(total_cost))}</th></tr>'
+        '<tr><th aria-label="Actions"></th><th>Worker</th><th>Department</th>'
         '<th>Position</th><th>Pay Type</th><th>Pay Details</th><th>Monthly</th></tr></thead>'
         f"<tbody>{rows}</tbody></table></div>",
         unsafe_allow_html=True,
@@ -1322,11 +1366,77 @@ def _labor_input_number(
     return float(int(number)) if whole else round(number, decimals)
 
 
-def _labor_form_number(value: object, *, decimals: int = 2) -> str:
+def _labor_form_number(
+    value: object,
+    *,
+    decimals: int = 2,
+    grouped: bool = False,
+) -> str:
     number = round(float(value or 0), decimals)
     if number == int(number):
-        return str(int(number))
+        integer = f"{int(number):,}" if grouped else str(int(number))
+        return integer.replace(",", "\u202f")
     return f"{number:.{decimals}f}".rstrip("0").rstrip(".")
+
+
+def _clear_labor_pay_values(key_prefix: str) -> None:
+    for suffix in (
+        "gross_monthly_salary",
+        "gross_hourly_rate",
+        "monthly_hours",
+        "employment_factor",
+        "total_hourly_cost",
+        "total_monthly_cost",
+    ):
+        st.session_state.pop(f"{key_prefix}_{suffix}", None)
+
+
+def _sync_labor_totals(key_prefix: str, pay_type: str) -> None:
+    factor = _metric_amount(
+        st.session_state.get(
+            f"{key_prefix}_employment_factor",
+            LABOR_DEFAULT_EMPLOYMENT_FACTOR,
+        )
+    )
+    st.session_state[f"{key_prefix}_employment_factor"] = f"{factor:.2f}"
+    if pay_type == "monthly_salary":
+        salary_key = f"{key_prefix}_gross_monthly_salary"
+        salary = _metric_amount(st.session_state.get(salary_key))
+        st.session_state[salary_key] = _labor_form_number(
+            salary,
+            decimals=0,
+            grouped=True,
+        )
+        st.session_state[f"{key_prefix}_total_monthly_cost"] = _labor_money(
+            salary * factor
+        )
+        return
+    rate_key = f"{key_prefix}_gross_hourly_rate"
+    hours_key = f"{key_prefix}_monthly_hours"
+    hourly_rate = _metric_amount(st.session_state.get(rate_key))
+    monthly_hours = _metric_amount(st.session_state.get(hours_key))
+    st.session_state[rate_key] = _labor_form_number(
+        hourly_rate,
+        decimals=0,
+        grouped=True,
+    )
+    st.session_state[hours_key] = _labor_form_number(
+        monthly_hours,
+        decimals=0,
+        grouped=True,
+    )
+    st.session_state[f"{key_prefix}_total_hourly_cost"] = _labor_money(
+        hourly_rate * factor
+    )
+    st.session_state[f"{key_prefix}_total_monthly_cost"] = _labor_money(
+        hourly_rate * monthly_hours * factor
+    )
+
+
+def _format_labor_total_input(widget_key: str) -> None:
+    st.session_state[widget_key] = _labor_money(
+        _metric_amount(st.session_state.get(widget_key))
+    )
 
 
 def _consume_labor_action_request(
@@ -1522,6 +1632,8 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                 index=pay_index,
                 placeholder="Select pay type",
                 key=f"{key_prefix}_pay_type",
+                on_change=_clear_labor_pay_values,
+                args=(key_prefix,),
             )
         pay_type = next(
             (code for code, label in LABOR_PAY_TYPES.items() if label == pay_label),
@@ -1530,6 +1642,8 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
         gross_monthly_salary_raw = ""
         gross_hourly_rate_raw = ""
         monthly_hours_raw = ""
+        total_hourly_cost_raw = ""
+        total_monthly_cost_raw = ""
         employment_factor_raw = (
             f"{_labor_employment_factor(editing):.2f}"
             if editing else f"{LABOR_DEFAULT_EMPLOYMENT_FACTOR:.2f}"
@@ -1540,10 +1654,13 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                 gross_monthly_salary_raw = st.text_input(
                     "Monthly Salary",
                     value=_labor_form_number(
-                        editing.get("gross_monthly_salary"), decimals=0
-                    ) if editing else "",
+                        editing.get("gross_monthly_salary"),
+                        decimals=0,
+                        grouped=True,
+                    ) if editing else "0",
                     key=f"{key_prefix}_gross_monthly_salary",
-                    placeholder="12000",
+                    on_change=_sync_labor_totals,
+                    args=(key_prefix, "monthly_salary"),
                 )
             with factor_column:
                 employment_factor_raw = st.text_input(
@@ -1551,17 +1668,19 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                     value=employment_factor_raw,
                     key=f"{key_prefix}_employment_factor",
                     help=LABOR_EMPLOYMENT_FACTOR_HELP,
+                    on_change=_sync_labor_totals,
+                    args=(key_prefix, "monthly_salary"),
                 )
-            estimated_monthly_cost = (
-                _metric_amount(gross_monthly_salary_raw)
-                * _metric_amount(employment_factor_raw)
+            initial_monthly_cost = (
+                _labor_monthly_cost(editing) if editing else 0
             )
             with total_column:
-                st.text_input(
+                total_monthly_cost_raw = st.text_input(
                     "Total Monthly Cost",
-                    value=_labor_money(estimated_monthly_cost),
-                    disabled=True,
-                    key=f"{key_prefix}_calculated_monthly_cost",
+                    value=_labor_money(initial_monthly_cost),
+                    key=f"{key_prefix}_total_monthly_cost",
+                    on_change=_format_labor_total_input,
+                    args=(f"{key_prefix}_total_monthly_cost",),
                 )
         elif pay_type == "hourly_rate":
             rate_column, hours_column = st.columns(2)
@@ -1569,19 +1688,25 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                 gross_hourly_rate_raw = st.text_input(
                     "Hourly Rate",
                     value=_labor_form_number(
-                        editing.get("gross_hourly_rate"), decimals=0
-                    ) if editing else "",
+                        editing.get("gross_hourly_rate"),
+                        decimals=0,
+                        grouped=True,
+                    ) if editing else "0",
                     key=f"{key_prefix}_gross_hourly_rate",
-                    placeholder="50",
+                    on_change=_sync_labor_totals,
+                    args=(key_prefix, "hourly_rate"),
                 )
             with hours_column:
                 monthly_hours_raw = st.text_input(
                     "Average Hours per Month",
                     value=_labor_form_number(
-                        editing.get("monthly_hours"), decimals=0
-                    ) if editing else "",
+                        editing.get("monthly_hours"),
+                        decimals=0,
+                        grouped=True,
+                    ) if editing else "0",
                     key=f"{key_prefix}_monthly_hours",
-                    placeholder="160",
+                    on_change=_sync_labor_totals,
+                    args=(key_prefix, "hourly_rate"),
                 )
             factor_column, hourly_total_column, monthly_total_column = st.columns(3)
             with factor_column:
@@ -1590,29 +1715,26 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                     value=employment_factor_raw,
                     key=f"{key_prefix}_employment_factor",
                     help=LABOR_EMPLOYMENT_FACTOR_HELP,
+                    on_change=_sync_labor_totals,
+                    args=(key_prefix, "hourly_rate"),
                 )
-            estimated_hourly_cost = (
-                _metric_amount(gross_hourly_rate_raw)
-                * _metric_amount(employment_factor_raw)
-            )
-            estimated_monthly_cost = (
-                _metric_amount(gross_hourly_rate_raw)
-                * _metric_amount(monthly_hours_raw)
-                * _metric_amount(employment_factor_raw)
-            )
+            initial_hourly_cost = _labor_hourly_cost(editing) if editing else 0
+            initial_monthly_cost = _labor_monthly_cost(editing) if editing else 0
             with hourly_total_column:
-                st.text_input(
+                total_hourly_cost_raw = st.text_input(
                     "Total Hourly Cost",
-                    value=_labor_money(estimated_hourly_cost),
-                    disabled=True,
-                    key=f"{key_prefix}_calculated_hourly_cost",
+                    value=_labor_money(initial_hourly_cost),
+                    key=f"{key_prefix}_total_hourly_cost",
+                    on_change=_format_labor_total_input,
+                    args=(f"{key_prefix}_total_hourly_cost",),
                 )
             with monthly_total_column:
-                st.text_input(
+                total_monthly_cost_raw = st.text_input(
                     "Total Monthly Cost",
-                    value=_labor_money(estimated_monthly_cost),
-                    disabled=True,
-                    key=f"{key_prefix}_calculated_monthly_cost",
+                    value=_labor_money(initial_monthly_cost),
+                    key=f"{key_prefix}_total_monthly_cost",
+                    on_change=_format_labor_total_input,
+                    args=(f"{key_prefix}_total_monthly_cost",),
                 )
 
         if editing:
@@ -1646,6 +1768,8 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
             gross_monthly_salary = 0.0
             gross_hourly_rate = 0.0
             monthly_hours = 0.0
+            total_hourly_cost = 0.0
+            total_monthly_cost = 0.0
             employment_factor = _labor_input_number(
                 employment_factor_raw,
                 label="Employment factor",
@@ -1658,12 +1782,27 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                     decimals=0,
                     whole=True,
                 )
+                total_monthly_cost = _labor_input_number(
+                    total_monthly_cost_raw,
+                    label="Total monthly cost",
+                    decimals=2,
+                )
             elif pay_type == "hourly_rate":
                 gross_hourly_rate = _labor_input_number(
                     gross_hourly_rate_raw,
                     label="Hourly rate",
                     decimals=0,
                     whole=True,
+                )
+                total_hourly_cost = _labor_input_number(
+                    total_hourly_cost_raw,
+                    label="Total hourly cost",
+                    decimals=2,
+                )
+                total_monthly_cost = _labor_input_number(
+                    total_monthly_cost_raw,
+                    label="Total monthly cost",
+                    decimals=2,
                 )
                 monthly_hours = _labor_input_number(
                     monthly_hours_raw,
@@ -1680,6 +1819,8 @@ def _render_labor_costs(access: CompanyAccess, *, trace=None) -> None:
                 "gross_hourly_rate": gross_hourly_rate,
                 "monthly_hours": monthly_hours,
                 "employment_factor": employment_factor,
+                "total_hourly_cost": total_hourly_cost,
+                "total_monthly_cost": total_monthly_cost,
             }
             if editing and trace is None:
                 update_company_employee(access, str(edit_employee_id), **values)

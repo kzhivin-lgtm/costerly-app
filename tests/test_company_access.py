@@ -638,6 +638,8 @@ def test_labor_position_list_is_managed_and_includes_general_worker():
                 "gross_hourly_rate": None,
                 "monthly_hours": None,
                 "employment_factor": 1.25,
+                "total_hourly_cost": None,
+                "total_monthly_cost": 15_000.0,
             },
         ),
         (
@@ -648,6 +650,8 @@ def test_labor_position_list_is_managed_and_includes_general_worker():
                 "gross_hourly_rate": 65,
                 "monthly_hours": 160.0,
                 "employment_factor": 1.25,
+                "total_hourly_cost": 81.25,
+                "total_monthly_cost": 13_000.0,
             },
         ),
     ],
@@ -710,6 +714,8 @@ def test_labor_pay_values_are_whole_and_factor_uses_two_decimals():
     assert payload["gross_hourly_rate"] == 50
     assert payload["monthly_hours"] == 160
     assert payload["employment_factor"] == 1.26
+    assert payload["total_hourly_cost"] == 63.0
+    assert payload["total_monthly_cost"] == 10_080.0
     with pytest.raises(ValueError, match="Hourly rate must be a whole number"):
         company_profile._company_employee_payload(
             worker_name="Worker",
@@ -844,6 +850,34 @@ def test_labor_costs_apply_factor_and_hours_only_to_hourly_workers():
     assert company_profile._labor_monthly_cost(hourly) == 10_000
     assert company_profile._labor_monthly_cost(monthly) == 15_000
 
+    overridden = company_profile._company_employee_payload(
+        worker_name="Worker",
+        department="production",
+        position_code="general_worker",
+        pay_type="hourly_rate",
+        gross_hourly_rate=50,
+        monthly_hours=160,
+        employment_factor=1.25,
+        total_hourly_cost=70,
+        total_monthly_cost=11_000,
+    )
+    assert overridden["total_hourly_cost"] == 70
+    assert overridden["total_monthly_cost"] == 11_000
+
+
+def test_labor_input_change_synchronizes_editable_totals():
+    company_profile.st.session_state.clear()
+    company_profile.st.session_state.update({
+        "labor_test_gross_hourly_rate": "50",
+        "labor_test_monthly_hours": "160",
+        "labor_test_employment_factor": "1.25",
+    })
+
+    company_profile._sync_labor_totals("labor_test", "hourly_rate")
+
+    assert company_profile.st.session_state["labor_test_total_hourly_cost"] == "₪62.50"
+    assert company_profile.st.session_state["labor_test_total_monthly_cost"] == "₪10\u202f000"
+
 
 def test_labor_form_reset_rotates_widget_keys_and_clears_edit_mode():
     company_profile.st.session_state.clear()
@@ -926,7 +960,7 @@ def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):
         "position_code": "general_worker",
         "pay_type": "hourly_rate",
         "gross_monthly_salary": None,
-        "gross_hourly_rate": 50.5,
+        "gross_hourly_rate": 50,
         "monthly_hours": 160,
         "employment_factor": 1.25,
     }])
@@ -943,9 +977,9 @@ def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):
     assert fields["Average Hours per Month"].value == "160"
     assert fields["Employment Factor"].value == "1.25"
     assert fields["Total Hourly Cost"].value == "₪62.50"
-    assert fields["Total Hourly Cost"].disabled is True
     assert fields["Total Monthly Cost"].value == "₪10\u202f000"
-    assert fields["Total Monthly Cost"].disabled is True
+    assert fields["Total Hourly Cost"].disabled is False
+    assert fields["Total Monthly Cost"].disabled is False
     assert any(button.label == "Save Worker" for button in app.button)
     assert any(button.label == "Cancel Edit" for button in app.button)
 
@@ -983,6 +1017,22 @@ def test_labor_worker_table_uses_pencil_bridge_without_edit_selectbox():
     assert ".st-key-company_labor_bridge_host" in css
 
 
+def test_labor_table_keeps_compact_columns_and_aligned_totals():
+    root = Path(__file__).parents[1]
+    source = (root / "screens/company_profile.py").read_text()
+    css = (root / "styles/company_profile.py").read_text()
+
+    assert '<th colspan="5">Total Monthly</th>' in source
+    assert '<th>Pay Details</th><th>Monthly</th>' in source
+    assert 'class="company-labor-col-actions"' in source
+    assert 'class="company-labor-col-details"' in source
+    assert ".company-labor-col-actions" in css
+    assert "width: 56px;" in css
+    assert ".company-labor-col-details" in css
+    assert "width: 214px;" in css
+    assert "align-items: flex-end !important;" in css
+
+
 def test_company_employee_access_is_owner_only(monkeypatch):
     member = company_auth.CompanyAccess(
         "user-2", "member@example.com", "company-a", "member", "token"
@@ -1015,6 +1065,20 @@ def test_company_employee_factor_soft_delete_migration_is_non_destructive():
     assert "add column if not exists deleted_at" in sql
     assert "default 1.25" in sql
     assert "where deleted_at is null" in sql
+    assert "drop table" not in sql
+    assert "drop column" not in sql
+    assert "truncate" not in sql
+    assert "delete from" not in sql
+
+
+def test_company_employee_manual_totals_migration_retains_rows():
+    sql = (
+        Path(__file__).parents[1]
+        / "db/sql/2026_09_20_company_employee_manual_totals.sql"
+    ).read_text().lower()
+    assert "add column if not exists total_hourly_cost" in sql
+    assert "add column if not exists total_monthly_cost" in sql
+    assert "where total_monthly_cost is null" in sql
     assert "drop table" not in sql
     assert "drop column" not in sql
     assert "truncate" not in sql
