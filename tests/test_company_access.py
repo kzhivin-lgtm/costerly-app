@@ -801,6 +801,27 @@ def test_labor_list_renders_before_editor_and_uses_profile_fonts():
     assert "font-family: var(--font-sans) !important" in css
 
 
+def test_company_logo_card_uses_profile_table_header_and_two_square_panels():
+    screen_source = (
+        Path(__file__).parents[1] / "screens/company_profile.py"
+    ).read_text()
+    logo_source = screen_source.split("def _render_company_logo_card", 1)[1].split(
+        "def _render_owner_bank_details", 1
+    )[0]
+    css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
+
+    assert '<div class="company-logo-table-heading">Company Logo</div>' in logo_source
+    assert '<h3>Company Logo</h3>' not in logo_source
+    assert "converted to a standard square PNG" not in logo_source
+    assert "upload_column, preview_column = st.columns(" in logo_source
+    assert 'type=["png", "svg", "pdf"]' in logo_source
+    assert 'body = "<span>Logo</span>"' in screen_source
+    assert ".company-logo-table-heading {" in css
+    assert ".st-key-company_logo_body" in css
+    assert "aspect-ratio: 1 / 1;" in css
+    assert 'content: "Drop or Upload\\\\A PNG/SVG/PDF";' in css
+
+
 def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):
     monkeypatch.setattr(company_profile, "load_company_employees", lambda _access: [{
         "employee_id": "employee-1",

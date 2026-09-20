@@ -2073,7 +2073,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
         <script>
         (() => {
             const parentDoc = window.parent.document;
-            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_10";
+            const markerId = "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_11";
             const oldMarker = parentDoc.getElementById(markerId);
 
             if (oldMarker) {
@@ -2093,9 +2093,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const REAL_PROCESSING_MARKER_ID = 'costerly-processing-screen-active';
                 const FILE_REVIEW_MARKER_ID = 'costerly-file-review-screen-active';
                 const SHELL_ACTIVE_CLASS = 'costerly-upload-processing-shell-active';
-                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1110';
-                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1110';
-                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1110Installed';
+                const SHELL_BOUND_ATTR = 'data-costerly-processing-shell-bound-v1111';
+                const GUARD_BOUND_ATTR = 'data-costerly-upload-interaction-bound-v1111';
+                const INSTALLED_FLAG = '__costerlyUploadInteractionGuardsV1111Installed';
                 const ELAPSED_STARTED_AT_KEY = '__costerlyProcessingElapsedStartedAt';
                 const ELAPSED_TIMER_KEY = '__costerlyProcessingElapsedTimer';
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSeconds';
@@ -2113,6 +2113,10 @@ def install_upload_interaction_guards(shell_html: str) -> None:
 
                 function getDropzones() {
                     return Array.from(document.querySelectorAll(DROPZONE_SELECTOR));
+                }
+
+                function uploadScreenIsActive() {
+                    return Boolean(document.querySelector('.upload-screen-active'));
                 }
 
                 function dragHasFiles(event) {
@@ -2135,6 +2139,10 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 function forceDragover(event) {
+                    if (!uploadScreenIsActive()) {
+                        clearDragover();
+                        return;
+                    }
                     if (!dragHasFiles(event)) return;
 
                     const dropzone = event.target.closest(DROPZONE_SELECTOR);
@@ -2326,6 +2334,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 }
 
                 function showShell(source) {
+                    if (!uploadScreenIsActive()) return;
                     if (realProcessingIsActive()) return;
 
                     installStyle();
@@ -2380,7 +2389,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     document.addEventListener('drop', (event) => {
                         const dropzone = event.target.closest(DROPZONE_SELECTOR);
                         clearDragover();
-                        if (dropzone && dropHasFiles(event)) {
+                        if (uploadScreenIsActive() && dropzone && dropHasFiles(event)) {
                             window.setTimeout(() => showShell('drop'), 0);
                         }
                     }, true);
@@ -2403,6 +2412,9 @@ def install_upload_interaction_guards(shell_html: str) -> None:
 
                 const observer = new MutationObserver(() => {
                     bindInputs();
+                    if (!uploadScreenIsActive() && !realProcessingIsActive()) {
+                        clearDragover();
+                    }
                     const shellIsActive = Boolean(document.getElementById(SHELL_ID));
                     if (
                         window[ELAPSED_STARTED_AT_KEY] &&

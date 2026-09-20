@@ -194,6 +194,16 @@ def test_processing_progress_uses_golden_stage_weights_and_ease_in_curve():
     assert "Math.pow(normalized, 1.35)" in source
 
 
+def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
+    source = getsource(install_upload_interaction_guards)
+
+    assert "COSTERLY_UPLOAD_INTERACTION_GUARDS_V1_1_11" in source
+    assert "function uploadScreenIsActive()" in source
+    assert "document.querySelector('.upload-screen-active')" in source
+    assert "if (!uploadScreenIsActive()) return;" in source
+    assert "if (uploadScreenIsActive() && dropzone && dropHasFiles(event))" in source
+
+
 def test_detection_input_cache_is_disabled_by_default_and_can_be_enabled():
     system = build_detection_system_content()
     document = build_uploaded_file_content_block("drawing.pdf", b"pdf")

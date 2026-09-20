@@ -209,8 +209,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) div[data-testid="stForm"],
         .stApp:has(.company-profile-active) .st-key-company_metrics_card,
-        .stApp:has(.company-profile-active) .st-key-company_labor_card,
-        .stApp:has(.company-profile-active) .st-key-company_logo_card {
+        .stApp:has(.company-profile-active) .st-key-company_labor_card {
             padding: 28px;
             border: 1px solid var(--color-border-soft);
             border-radius: 18px;
@@ -220,32 +219,44 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) .st-key-company_logo_card {
             margin-top: 12px;
+            overflow: hidden;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 12px;
+            background: var(--color-surface);
+            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
         }
 
-        .company-logo-heading h3 {
-            margin: 0 0 4px !important;
+        .company-logo-table-heading {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--color-border-soft);
+            background: #FAF8FC;
+            color: var(--color-text-strong);
+            font-family: var(--font-mono) !important;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
 
-        .company-logo-heading p {
-            margin: 0 0 16px;
-            color: var(--color-text-muted);
-            font-size: 14px;
-            line-height: 1.45;
+        .stApp:has(.company-profile-active) .st-key-company_logo_body {
+            padding: 28px;
         }
 
         .company-logo-preview {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 180px;
-            height: 180px;
-            margin: 16px auto 8px;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            margin: 0;
             overflow: hidden;
             border: 1px solid var(--color-border-soft);
-            border-radius: 18px;
+            border-radius: 20px;
             background: #FFFFFF;
-            color: var(--color-text-muted);
-            font-size: 14px;
+            color: rgba(42, 31, 44, 0.72);
+            font-family: var(--font-mono);
+            font-size: 20px;
+            font-weight: 700;
         }
 
         .company-logo-preview img {
@@ -261,15 +272,78 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-company_logo_card [data-testid="stFileUploader"] section {
-            min-height: 104px;
-            border: 1px dashed #BFAFD0;
-            border-radius: var(--input-radius);
-            background: #FBF9FD;
+        .st-key-company_logo_body [data-testid="stFileUploader"] {
+            width: 100%;
+            height: 100%;
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-company_logo_card [data-testid="stFileUploader"] section:hover {
+        .st-key-company_logo_body [data-testid="stFileUploader"] section {
+            position: relative;
+            width: 100%;
+            height: auto;
+            min-height: 0;
+            aspect-ratio: 1 / 1;
+            padding: 0;
+            overflow: hidden;
+            border: 1px dashed #BFAFD0;
+            border-radius: 20px;
+            background: #FBF9FD;
+            cursor: pointer;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stFileUploader"] section > div,
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stFileUploader"] section small,
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stFileUploader"] section span,
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stFileUploader"] section p,
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stFileUploader"] section button {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stFileUploader"] section::before {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: calc(50% - 48px);
+            z-index: 2;
+            width: 46px;
+            height: 46px;
+            transform: translateX(-50%);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 18 V82 M18 50 H82' stroke='%238049C6' stroke-width='9' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            pointer-events: none;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stFileUploader"] section::after {
+            content: "Drop or Upload\\A PNG/SVG/PDF";
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(50% + 12px);
+            z-index: 2;
+            color: rgba(42, 31, 44, 0.72);
+            font-family: var(--font-mono);
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.55;
+            text-align: center;
+            white-space: pre-line;
+            pointer-events: none;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stFileUploader"] section:hover {
             border-color: var(--color-accent);
             background: #F7F1FC;
         }
@@ -828,8 +902,8 @@ def apply_company_profile_css() -> None:
 
             .stApp:has(.company-profile-active) div[data-testid="stForm"],
             .stApp:has(.company-profile-active) .st-key-company_metrics_card,
-            .stApp:has(.company-profile-active) .st-key-company_labor_card,
-            .stApp:has(.company-profile-active) .st-key-company_logo_card { padding: 18px; }
+            .stApp:has(.company-profile-active) .st-key-company_labor_card { padding: 18px; }
+            .stApp:has(.company-profile-active) .st-key-company_logo_body { padding: 18px; }
             .company-profile-readonly-grid { grid-template-columns: 1fr; }
         }
         </style>

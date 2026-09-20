@@ -573,7 +573,7 @@ def _logo_preview_html(png_bytes: bytes | None) -> str:
         source = "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
         body = f'<img src="{source}" alt="Company logo preview" />'
     else:
-        body = "<span>No logo</span>"
+        body = "<span>Logo</span>"
     return f'<div class="company-logo-preview">{body}</div>'
 
 
@@ -668,58 +668,73 @@ def _render_company_logo_card(
 
     with st.container(key="company_logo_card"):
         st.markdown(
-            '<div class="company-logo-heading"><h3>Company Logo</h3>'
-            '<p>PNG, SVG, or PDF. The saved logo is converted to a standard square PNG.</p></div>',
+            '<div class="company-logo-table-heading">Company Logo</div>',
             unsafe_allow_html=True,
         )
-        pending_logo = None
-        pending_error = None
-        if editable:
-            uploader_version = int(st.session_state.get("_company_logo_uploader_version") or 0)
-            uploaded_file = st.file_uploader(
-                "Company logo",
-                type=["png", "svg", "pdf"],
-                accept_multiple_files=False,
-                key=f"company_logo_upload_{uploader_version}",
-                label_visibility="collapsed",
-                help="PNG, SVG, or PDF, up to 50 MB. PDF uses its first page.",
-            )
-            if uploaded_file is not None:
-                pending_logo, pending_error = _pending_company_logo(uploaded_file, trace=trace)
-
-        preview = pending_logo.png_bytes if pending_logo is not None else current_logo
-        st.markdown(_logo_preview_html(preview), unsafe_allow_html=True)
-        if pending_error:
-            st.error(pending_error)
-        if notice := st.session_state.pop("_company_logo_notice", None):
-            st.success(notice)
-
-        if editable and st.button(
-            "Save Logo",
-            key="save_company_logo",
-            type="primary",
-            use_container_width=True,
-            disabled=pending_logo is None,
-        ):
-            try:
-                _save_company_logo(
-                    access,
-                    pending_logo,
-                    reference,
-                    trace=trace,
+        with st.container(key="company_logo_body"):
+            pending_logo = None
+            pending_error = None
+            if editable:
+                upload_column, preview_column = st.columns(
+                    2,
+                    gap="medium",
+                    vertical_alignment="center",
                 )
-            except PermissionError:
-                st.error("Only the company owner can save the logo.")
-            except Exception:
-                logger.exception("Company logo save failed")
-                st.error("The company logo was not saved. Try again in a moment.")
+                with upload_column:
+                    uploader_version = int(
+                        st.session_state.get("_company_logo_uploader_version") or 0
+                    )
+                    uploaded_file = st.file_uploader(
+                        "Company logo",
+                        type=["png", "svg", "pdf"],
+                        accept_multiple_files=False,
+                        key=f"company_logo_upload_{uploader_version}",
+                        label_visibility="collapsed",
+                    )
+                    if uploaded_file is not None:
+                        pending_logo, pending_error = _pending_company_logo(
+                            uploaded_file,
+                            trace=trace,
+                        )
+                with preview_column:
+                    preview = (
+                        pending_logo.png_bytes if pending_logo is not None else current_logo
+                    )
+                    st.markdown(_logo_preview_html(preview), unsafe_allow_html=True)
             else:
-                st.session_state.pop("_company_logo_pending", None)
-                st.session_state._company_logo_uploader_version = (
-                    int(st.session_state.get("_company_logo_uploader_version") or 0) + 1
-                )
-                st.session_state._company_logo_notice = "Company logo saved"
-                st.rerun()
+                st.markdown(_logo_preview_html(current_logo), unsafe_allow_html=True)
+
+            if pending_error:
+                st.error(pending_error)
+            if notice := st.session_state.pop("_company_logo_notice", None):
+                st.success(notice)
+
+            if editable and st.button(
+                "Save Logo",
+                key="save_company_logo",
+                type="primary",
+                use_container_width=True,
+                disabled=pending_logo is None,
+            ):
+                try:
+                    _save_company_logo(
+                        access,
+                        pending_logo,
+                        reference,
+                        trace=trace,
+                    )
+                except PermissionError:
+                    st.error("Only the company owner can save the logo.")
+                except Exception:
+                    logger.exception("Company logo save failed")
+                    st.error("The company logo was not saved. Try again in a moment.")
+                else:
+                    st.session_state.pop("_company_logo_pending", None)
+                    st.session_state._company_logo_uploader_version = (
+                        int(st.session_state.get("_company_logo_uploader_version") or 0) + 1
+                    )
+                    st.session_state._company_logo_notice = "Company logo saved"
+                    st.rerun()
 
 
 def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
