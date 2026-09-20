@@ -37,7 +37,7 @@ def apply_upload_css() -> None:
             position: static !important;
             top: auto !important;
             right: auto !important;
-            width: 304px !important;
+            width: 340px !important;
             /* Streamlit overlaps this ordered wrapper by 16px above the hero. */
             margin: 48px auto 32px !important;
         }
@@ -84,7 +84,7 @@ def apply_upload_css() -> None:
 
         .upload-screen {
             width: 100%;
-            margin-top: -9px;
+            margin-top: 23px;
             display: flex;
             align-items: center;
             justify-content: center;

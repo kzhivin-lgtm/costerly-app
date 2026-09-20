@@ -459,8 +459,9 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert "order: 10 !important;" in css
     assert "order: 20 !important;" in css
     assert "order: 30 !important;" in css
-    assert "width: 304px !important;" in css
+    assert "width: 340px !important;" in css
     assert "margin: 48px auto 32px !important;" in css
+    assert "margin-top: 23px;" in css
     assert "height: 36px !important;" in css
     assert "padding: 0 10px !important;" in css
     assert '[data-testid="stVerticalBlock"]:has(> [data-testid="stLayoutWrapper"] .st-key-costerly_header_controls)' in css
