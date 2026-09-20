@@ -267,6 +267,14 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "quietForMs >= stableForMs" in ready_signal
     assert "parentWindow.requestAnimationFrame(releaseIfStable);" in ready_signal
     assert "parentWindow.setTimeout(removeOnce, failOpenMs);" in ready_signal
+    assert "function authStylesReady()" in ready_signal
+    assert 'parentWindow.getComputedStyle(form)' in ready_signal
+    assert 'style.borderTopLeftRadius === "20px"' in ready_signal
+    assert 'style.paddingTop === "30px"' in ready_signal
+    assert "function announceWhenStyled()" in ready_signal
+    assert "message.metrics.auth_css_ready = ready;" in ready_signal
+    assert "message.metrics.auth_css_wait_ms" in ready_signal
+    assert "announceWhenStyled();" in ready_signal
     post_ready_source = ready_signal.split("function postReady()", 1)[1].split(
         "installTransitionObserver();", 1
     )[0]

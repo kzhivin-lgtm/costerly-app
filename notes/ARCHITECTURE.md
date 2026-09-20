@@ -137,6 +137,15 @@ a component value, because that callback would schedule a rerun capable of
 consuming the next button or form interaction. Sign out and invalid-token
 handling clear both Streamlit state and browser session storage. `localStorage`
 is intentionally not used, so closing the tab ends this browser-held session.
+
+The Cloudflare transition mask may reveal the Sign In screen only after the
+rendered auth form satisfies its computed-style contract. DOM presence alone is
+not readiness because Streamlit can insert the form before the Auth stylesheet is
+applied. The current contract checks the auth marker and brand plus the form's
+20 px radius and 30 px padding, then waits two animation frames before emitting
+`app-ready`. A bounded fail-open prevents the wrapper from remaining masked if
+the Auth CSS contract changes unexpectedly, and telemetry records whether the
+style check succeeded and how long it waited.
 Responsive Policy
 Every screen should be designed for desktop and mobile from the start.
 For each screen, define:
@@ -211,7 +220,8 @@ Deterministic engine code owns catalog matching, prices, rates, overhead allocat
 Company Price Sources contract (3.7.1)
 
 Price Lists accepts exactly one file or one public URL per operation. The owner
-must choose the material category; supplier identity, document type, date,
+may choose the material category or leave it for automatic classification;
+supplier identity, document type, date,
 currency, VAT basis, product rows, units, package quantities, and conversions are
 inferred by the import pipeline. The default path never asks the owner to verify
 rows. A source and every extracted row remain inspectable after processing.

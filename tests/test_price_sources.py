@@ -15,14 +15,17 @@ from agents.price_source_agent import PRICE_SOURCE_MAX_OUTPUT_TOKENS
 from use_cases.price_sources import (
     PriceSourceError,
     _VisibleTextParser,
+    _validate_category,
     _validate_public_url,
     apply_legacy_price_benchmark,
     extract_spreadsheet_text,
+    fetch_public_page,
 )
 
 
 def _result(*, status: str = "ready", confidence: float = 96) -> dict:
     return {
+        "category": "Sheet Materials",
         "supplier_name": "Supplier Ltd",
         "document_type": "price_list",
         "document_date": "2026-09-20",
@@ -58,6 +61,17 @@ def _result(*, status: str = "ready", confidence: float = 96) -> dict:
 def test_price_source_schema_accepts_evidenced_unit_conversion():
     result = _result()
     assert validate_price_source_result(result) is result
+
+
+def test_price_source_schema_requires_a_supported_inferred_category():
+    result = _result()
+    result["category"] = "Unknown category"
+    with pytest.raises(PriceSourceSchemaError, match="material category"):
+        validate_price_source_result(result)
+
+
+def test_category_can_be_left_for_automatic_detection():
+    assert _validate_category("") == ""
 
 
 def test_price_source_output_budget_supports_large_supplier_pages():
@@ -181,6 +195,31 @@ def test_visible_html_text_ignores_scripts_and_keeps_rows():
     assert "ignore" not in parser.text()
     assert "Panel" in parser.text()
     assert "90 ILS" in parser.text()
+
+
+def test_script_only_supplier_page_returns_actionable_error(monkeypatch):
+    class Response:
+        status_code = 200
+        headers = {"content-type": "text/html"}
+        content = b"<html><script>renderPrices()</script></html>"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class Client:
+        @staticmethod
+        def get(_url, *, follow_redirects=False):
+            assert follow_redirects is False
+            return Response()
+
+    monkeypatch.setattr(
+        "use_cases.price_sources._validate_public_url",
+        lambda value: value,
+    )
+    with pytest.raises(PriceSourceError, match="does not expose readable text"):
+        fetch_public_page("https://example.com/prices", client=Client())
 
 
 @pytest.mark.parametrize(

@@ -6,6 +6,17 @@ from typing import Any
 DOCUMENT_TYPES = {"price_list", "catalog", "quote", "invoice", "order", "other"}
 VAT_MODES = {"included", "excluded", "mixed", "unknown"}
 ROW_STATUSES = {"ready", "unresolved", "excluded"}
+PRICE_SOURCE_CATEGORIES = (
+    "Sheet Materials",
+    "Solid Wood",
+    "Hardware",
+    "Edgebanding",
+    "Finishes and Coatings",
+    "Adhesives and Consumables",
+    "Metal",
+    "Glass",
+    "Other",
+)
 CANONICAL_UNIT_CODES = {
     "piece", "pair", "set", "dozen",
     "mm", "cm", "m", "linear_m",
@@ -21,6 +32,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
+        "category",
         "supplier_name",
         "document_type",
         "document_date",
@@ -29,6 +41,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
         "rows",
     ],
     "properties": {
+        "category": {"type": "string", "enum": list(PRICE_SOURCE_CATEGORIES)},
         "supplier_name": {"type": "string"},
         "document_type": {"type": "string", "enum": sorted(DOCUMENT_TYPES)},
         "document_date": {"type": "string"},
@@ -128,6 +141,8 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         raise PriceSourceSchemaError("price source result fields do not match the contract")
     if result["document_type"] not in DOCUMENT_TYPES:
         raise PriceSourceSchemaError("unsupported document type")
+    if result["category"] not in PRICE_SOURCE_CATEGORIES:
+        raise PriceSourceSchemaError("unsupported material category")
     if result["vat_mode"] not in VAT_MODES:
         raise PriceSourceSchemaError("unsupported VAT mode")
     if not isinstance(result["rows"], list):

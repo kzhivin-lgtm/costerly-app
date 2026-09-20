@@ -19,6 +19,7 @@ import httpx
 import pandas as pd
 
 from agents.price_source_agent import run_price_source_agent
+from agents.schemas.price_source_schema import PRICE_SOURCE_CATEGORIES
 from db.company_access import assert_company_owner
 from db.repositories import insert_agent_usage_event
 from db.supabase_client import get_supabase_client
@@ -29,17 +30,6 @@ MAX_SOURCE_BYTES = 50 * 1024 * 1024
 AUTO_ACTIVATION_CONFIDENCE = 85
 LEGACY_EXTREME_RATIO = 3.0
 LEGACY_CONFIDENCE_PENALTY = 15.0
-PRICE_SOURCE_CATEGORIES = (
-    "Sheet Materials",
-    "Solid Wood",
-    "Hardware",
-    "Edgebanding",
-    "Finishes and Coatings",
-    "Adhesives and Consumables",
-    "Metal",
-    "Glass",
-    "Other",
-)
 SUPPORTED_SUFFIXES = {".pdf", ".xlsx", ".csv", ".jpg", ".jpeg", ".png"}
 CONTENT_TYPES = {
     ".pdf": "application/pdf",
@@ -156,9 +146,10 @@ def apply_legacy_price_benchmark(result: dict, legacy_materials: list[dict]) -> 
 
 
 def _validate_category(category: str) -> str:
-    if category not in PRICE_SOURCE_CATEGORIES:
+    normalized = category.strip()
+    if normalized and normalized not in PRICE_SOURCE_CATEGORIES:
         raise PriceSourceError("Choose a material category.")
-    return category
+    return normalized
 
 
 def _validate_public_url(url: str) -> str:
@@ -204,7 +195,13 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
                 raise PriceSourceError("The supplier page is too large to process.")
             parser = _VisibleTextParser()
             parser.feed(response.text)
-            return current, content, parser.text()
+            visible_text = parser.text()
+            if not visible_text:
+                raise PriceSourceError(
+                    "This supplier page does not expose readable text. "
+                    "Upload its PDF, screenshot, or photo instead."
+                )
+            return current, content, visible_text
         raise PriceSourceError("The supplier page redirected too many times.")
     except httpx.HTTPError as exc:
         raise PriceSourceError("The supplier page could not be downloaded.") from exc
@@ -349,6 +346,7 @@ def process_price_source(
         import_id=source_id,
         trace=trace,
     )
+    category = category or str(result["category"])
     _emit_duration(
         trace,
         "server.price_source_agent",

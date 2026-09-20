@@ -398,13 +398,50 @@ def signal_app_ready_to_embed(
                 } catch (error) {}
             }
 
+            function authStylesReady() {
+                if (message.screen !== "login") return true;
+                try {
+                    const parentWindow = window.parent;
+                    const parentDocument = parentWindow.document;
+                    const marker = parentDocument.querySelector(".auth-screen-active");
+                    const brand = parentDocument.querySelector(".auth-brand");
+                    const form = parentDocument.querySelector('div[data-testid="stForm"]');
+                    if (!marker || !brand || !form) return false;
+                    const style = parentWindow.getComputedStyle(form);
+                    return style.borderTopLeftRadius === "20px"
+                        && style.paddingTop === "30px"
+                        && style.paddingRight === "30px";
+                } catch (error) {
+                    return false;
+                }
+            }
+
+            function announceWhenStyled() {
+                const parentWindow = window.parent;
+                const startedAt = parentWindow.performance.now();
+                const failOpenMs = 1500;
+                const check = () => {
+                    const ready = authStylesReady();
+                    const elapsedMs = parentWindow.performance.now() - startedAt;
+                    if (!ready && elapsedMs < failOpenMs) {
+                        parentWindow.requestAnimationFrame(check);
+                        return;
+                    }
+                    message.metrics.auth_css_ready = ready;
+                    message.metrics.auth_css_wait_ms = Math.round(elapsedMs * 10) / 10;
+                    parentWindow.requestAnimationFrame(() => {
+                        parentWindow.requestAnimationFrame(() => {
+                            postReady();
+                            parentWindow.setTimeout(postReady, 120);
+                        });
+                    });
+                };
+                check();
+            }
+
             installTransitionObserver();
             releaseAuthShellWhenStable();
-            postReady();
-            window.requestAnimationFrame(() => {
-                window.requestAnimationFrame(postReady);
-            });
-            window.setTimeout(postReady, 120);
+            announceWhenStyled();
         })();
         </script>
         """.replace("__SCREEN__", screen_json)

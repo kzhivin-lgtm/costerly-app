@@ -992,10 +992,10 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         with st.container(key="price_source_add_body"):
             uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
             category = st.selectbox(
-                "Category",
+                "Category (optional)",
                 PRICE_SOURCE_CATEGORIES,
                 index=None,
-                placeholder="Select material category",
+                placeholder="Detect automatically",
                 key="price_source_category",
             )
             uploaded_file = st.file_uploader(

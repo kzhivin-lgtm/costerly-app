@@ -275,8 +275,8 @@
 - Polish negative/error states with project button styles.
 - Add XLS proposal export.
 - Add missing-object second-pass detection flow.
-- 3.7.1 Company Price Sources: active. Local candidate adds one-source upload or
-  public-URL ingestion, mandatory category selection, automatic supplier and
+- 3.7.1 Company Price Sources: active. Production candidate adds one-source upload or
+  public-URL ingestion, optional category selection with automatic classification, automatic supplier and
   document classification, unit-preserving normalization, private versioned
   offers, unresolved-row quarantine, source inspection, and private source
   storage. The owner applied the additive database migration before deployment;
@@ -290,4 +290,10 @@
   calculated deterministically. The final no-write diagnostic completed in
   48.252 seconds with supplier `Rotenberg 1929`, document type `price_list`, and
   48 of 48 rows validated as ready. Production persistence still requires a
-  user-visible retest after the hotfix deployment.
+  user-visible retest after the hotfix deployment. A later production URL test
+  failed before the agent: the page returned only 190 bytes and no readable HTML
+  text. Script-only or protected pages now receive a specific instruction to
+  upload a PDF, screenshot, or photo. A no-write automatic-category diagnostic
+  on the Tsidky page inferred `Sheet Materials`, identified the supplier, and
+  validated 39 of 42 rows as ready. Production still needs the exact failing URL
+  to determine whether a safe dynamic-page importer is justified.
