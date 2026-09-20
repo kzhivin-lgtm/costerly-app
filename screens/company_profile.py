@@ -674,47 +674,77 @@ def _render_company_logo_card(
         with st.container(key="company_logo_body"):
             pending_logo = None
             pending_error = None
+            uploaded_file = None
+            notice = st.session_state.pop("_company_logo_notice", None)
+            notice_rendered = False
             if editable:
-                upload_column, preview_column = st.columns(
-                    2,
-                    gap="medium",
-                    vertical_alignment="center",
+                uploader_version = int(
+                    st.session_state.get("_company_logo_uploader_version") or 0
                 )
-                with upload_column:
-                    uploader_version = int(
-                        st.session_state.get("_company_logo_uploader_version") or 0
+                uploader_key = f"company_logo_upload_{uploader_version}"
+                selected_file = st.session_state.get(uploader_key)
+                if selected_file is not None:
+                    pending_logo, pending_error = _pending_company_logo(
+                        selected_file,
+                        trace=trace,
                     )
-                    uploaded_file = st.file_uploader(
-                        "Company logo",
-                        type=["png", "svg", "pdf"],
-                        accept_multiple_files=False,
-                        key=f"company_logo_upload_{uploader_version}",
-                        label_visibility="collapsed",
-                    )
-                    if uploaded_file is not None:
-                        pending_logo, pending_error = _pending_company_logo(
-                            uploaded_file,
-                            trace=trace,
+
+                def render_logo_uploader(container_key: str):
+                    with st.container(key=container_key):
+                        return st.file_uploader(
+                            "Company logo",
+                            type=["png", "svg", "pdf"],
+                            accept_multiple_files=False,
+                            key=uploader_key,
+                            label_visibility="collapsed",
                         )
-                with preview_column:
-                    preview = (
-                        pending_logo.png_bytes if pending_logo is not None else current_logo
+
+                if pending_logo is not None:
+                    upload_column, preview_column = st.columns(
+                        2,
+                        gap="medium",
+                        vertical_alignment="top",
                     )
-                    st.markdown(_logo_preview_html(preview), unsafe_allow_html=True)
-            else:
+                    with upload_column:
+                        uploaded_file = render_logo_uploader(
+                            "company_logo_pending_upload"
+                        )
+                    with preview_column:
+                        st.markdown(
+                            _logo_preview_html(pending_logo.png_bytes),
+                            unsafe_allow_html=True,
+                        )
+                elif selected_file is not None:
+                    uploaded_file = render_logo_uploader("company_logo_empty_upload")
+                elif current_logo is not None:
+                    with st.container(key="company_logo_saved_state"):
+                        st.markdown(
+                            _logo_preview_html(current_logo),
+                            unsafe_allow_html=True,
+                        )
+                    if notice:
+                        st.success(notice)
+                        notice_rendered = True
+                    uploaded_file = render_logo_uploader("company_logo_change_upload")
+                else:
+                    uploaded_file = render_logo_uploader("company_logo_empty_upload")
+
+                if uploaded_file is not None and selected_file is None:
+                    _pending_company_logo(uploaded_file, trace=trace)
+                    st.rerun()
+            elif current_logo is not None:
                 st.markdown(_logo_preview_html(current_logo), unsafe_allow_html=True)
 
             if pending_error:
                 st.error(pending_error)
-            if notice := st.session_state.pop("_company_logo_notice", None):
+            if notice and not notice_rendered:
                 st.success(notice)
 
-            if editable and st.button(
+            if editable and pending_logo is not None and st.button(
                 "Save Logo",
                 key="save_company_logo",
                 type="primary",
                 use_container_width=True,
-                disabled=pending_logo is None,
             ):
                 try:
                     _save_company_logo(

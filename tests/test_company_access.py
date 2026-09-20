@@ -816,11 +816,16 @@ def test_company_logo_card_uses_profile_table_header_and_two_square_panels():
     assert "upload_column, preview_column = st.columns(" in logo_source
     assert 'type=["png", "svg", "pdf"]' in logo_source
     assert 'body = "<span>Logo</span>"' in screen_source
+    assert 'elif current_logo is not None:' in logo_source
+    assert '"company_logo_change_upload"' in logo_source
+    assert "editable and pending_logo is not None and st.button(" in logo_source
     assert ".company-logo-table-heading {" in css
     assert ".st-key-company_logo_body" in css
     assert "max-width: 760px;" in css
     assert "height: 220px;" in css
     assert 'content: "Drop or Upload\\\\A PNG/SVG/PDF";' in css
+    assert 'content: "Change Logo";' in css
+    assert "company-logo-notice-dismiss 180ms ease 5s forwards" in css
 
 
 def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):

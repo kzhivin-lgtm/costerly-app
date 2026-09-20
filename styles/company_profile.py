@@ -247,6 +247,20 @@ def apply_company_profile_css() -> None:
             width: 100%;
             max-width: 760px;
             margin: 0 auto 16px;
+            align-items: flex-start;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-company_logo_empty_upload,
+        .stApp:has(.company-profile-active) .st-key-company_logo_saved_state,
+        .stApp:has(.company-profile-active) .st-key-company_logo_change_upload {
+            width: 100%;
+            max-width: 360px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-company_logo_saved_state {
+            margin-bottom: 16px;
         }
 
         .company-logo-preview {
@@ -352,6 +366,56 @@ def apply_company_profile_css() -> None:
         .st-key-company_logo_body [data-testid="stFileUploader"] section:hover {
             border-color: var(--color-accent);
             background: #F7F1FC;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_change_upload [data-testid="stFileUploader"] section {
+            height: 52px;
+            min-height: 52px;
+            border: 1px solid #8049C6;
+            border-radius: var(--input-radius);
+            background: #8049C6;
+            box-shadow: 0 8px 22px rgba(128, 73, 198, 0.22);
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_change_upload [data-testid="stFileUploader"] section::before {
+            display: none;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_change_upload [data-testid="stFileUploader"] section::after {
+            content: "Change Logo";
+            top: 50%;
+            color: #FFFFFF;
+            font-family: var(--font-sans);
+            font-size: 17px;
+            line-height: 1;
+            text-transform: uppercase;
+            transform: translateY(-50%);
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_change_upload [data-testid="stFileUploader"] section:hover {
+            border-color: #6F3CB4;
+            background: #6F3CB4;
+            box-shadow: 0 12px 28px rgba(111, 60, 180, 0.34);
+        }
+
+        @keyframes company-logo-notice-dismiss {
+            to {
+                max-height: 0;
+                margin: 0;
+                padding: 0;
+                opacity: 0;
+                overflow: hidden;
+                visibility: hidden;
+            }
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stAlert"] {
+            animation: company-logo-notice-dismiss 180ms ease 5s forwards;
         }
 
         .stApp:has(.company-profile-active) label,
