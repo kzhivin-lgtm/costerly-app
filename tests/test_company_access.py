@@ -818,7 +818,8 @@ def test_company_logo_card_uses_profile_table_header_and_two_square_panels():
     assert 'body = "<span>Logo</span>"' in screen_source
     assert ".company-logo-table-heading {" in css
     assert ".st-key-company_logo_body" in css
-    assert "aspect-ratio: 1 / 1;" in css
+    assert "max-width: 760px;" in css
+    assert "height: 220px;" in css
     assert 'content: "Drop or Upload\\\\A PNG/SVG/PDF";' in css
 
 

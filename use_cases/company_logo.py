@@ -60,25 +60,40 @@ def _validate_svg(source: bytes) -> None:
         b"<!entity",
         b"<script",
         b"<foreignobject",
-        b"<image",
     )
-    external_reference = re.search(
-        rb"(?:href|xlink:href)\s*=\s*['\"]\s*(?:https?:|file:|javascript:|data:)",
+    references = re.findall(
+        rb"(?:href|xlink:href)\s*=\s*['\"]\s*([^'\"]+)",
         lowered,
     )
-    external_css = re.search(
-        rb"url\(\s*['\"]?\s*(?:https?:|file:|data:)",
+    css_references = re.findall(
+        rb"url\(\s*['\"]?\s*([^'\")\s]+)",
         lowered,
+    )
+
+    def reference_is_safe(reference: bytes) -> bool:
+        reference = reference.strip()
+        if reference.startswith(b"#"):
+            return True
+        return bool(
+            re.match(
+                rb"data:image/(?:png|jpe?g|webp)(?:;[^,]*)?,",
+                reference,
+            )
+        )
+
+    unsafe_reference = any(
+        not reference_is_safe(reference)
+        for reference in (*references, *css_references)
     )
     event_handler = re.search(rb"\son[a-z]+\s*=", lowered)
     if (
         any(marker in lowered for marker in blocked)
-        or external_reference
-        or external_css
+        or b"@import" in lowered
+        or unsafe_reference
         or event_handler
     ):
         raise CompanyLogoError(
-            "The SVG must contain only self-contained vector artwork."
+            "The SVG includes a linked or unsupported resource. Export it with images embedded."
         )
 
 

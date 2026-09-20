@@ -239,7 +239,14 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) .st-key-company_logo_body {
-            padding: 28px;
+            padding: 28px 48px;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-company_logo_body [data-testid="stHorizontalBlock"] {
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto 16px;
         }
 
         .company-logo-preview {
@@ -247,7 +254,7 @@ def apply_company_profile_css() -> None:
             align-items: center;
             justify-content: center;
             width: 100%;
-            aspect-ratio: 1 / 1;
+            height: 220px;
             margin: 0;
             overflow: hidden;
             border: 1px solid var(--color-border-soft);
@@ -281,9 +288,8 @@ def apply_company_profile_css() -> None:
         .st-key-company_logo_body [data-testid="stFileUploader"] section {
             position: relative;
             width: 100%;
-            height: auto;
-            min-height: 0;
-            aspect-ratio: 1 / 1;
+            height: 220px;
+            min-height: 220px;
             padding: 0;
             overflow: hidden;
             border: 1px dashed #BFAFD0;
@@ -904,6 +910,12 @@ def apply_company_profile_css() -> None:
             .stApp:has(.company-profile-active) .st-key-company_metrics_card,
             .stApp:has(.company-profile-active) .st-key-company_labor_card { padding: 18px; }
             .stApp:has(.company-profile-active) .st-key-company_logo_body { padding: 18px; }
+            .company-logo-preview,
+            .stApp:has(.company-profile-active)
+            .st-key-company_logo_body [data-testid="stFileUploader"] section {
+                height: 180px;
+                min-height: 180px;
+            }
             .company-profile-readonly-grid { grid-template-columns: 1fr; }
         }
         </style>

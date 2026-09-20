@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from io import BytesIO
 
 import pymupdf
@@ -75,11 +76,27 @@ def test_company_logo_rejects_small_png_and_external_svg():
     with pytest.raises(CompanyLogoError, match="at least 512 px"):
         normalize_company_logo(_png(200, 100))
 
-    with pytest.raises(CompanyLogoError, match="self-contained vector"):
+    with pytest.raises(CompanyLogoError, match="linked or unsupported resource"):
         normalize_company_logo(
             b'<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400">'
             b'<image href="https://example.com/logo.png"/></svg>'
         )
+
+
+def test_company_logo_accepts_svg_with_embedded_raster_artwork():
+    embedded_png = base64.b64encode(_png(800, 400))
+    source = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400">'
+        b'<image width="800" height="400" href="data:image/png;base64,'
+        + embedded_png
+        + b'"/></svg>'
+    )
+
+    result = normalize_company_logo(source)
+
+    assert result.source_format == "svg"
+    with Image.open(BytesIO(result.png_bytes)) as image:
+        assert image.size == (1024, 1024)
 
 
 class _Response:
