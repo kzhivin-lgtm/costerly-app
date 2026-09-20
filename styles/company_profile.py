@@ -836,29 +836,46 @@ def apply_company_profile_css() -> None:
             font-variant-numeric: tabular-nums;
         }
 
+        .company-labor-summary > div {
+            display: flex;
+            align-items: baseline;
+            gap: 18px;
+        }
+
         .company-labor-list {
             overflow-x: auto;
         }
 
         .company-labor-list table {
-            min-width: 980px;
+            min-width: 1040px;
         }
 
-        .company-labor-list td:nth-child(5),
-        .company-labor-list td:nth-child(6) {
+        .company-labor-list th:first-child,
+        .company-labor-list td:first-child {
+            width: 76px;
+            min-width: 76px;
+            padding-left: 14px;
+            padding-right: 10px;
+        }
+
+        .company-labor-list td:nth-child(6),
+        .company-labor-list td:nth-child(7) {
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
 
-        .company-labor-worker {
+        .company-labor-actions {
             display: flex;
             align-items: center;
-            gap: 7px;
+            gap: 4px;
         }
 
         .stApp:has(.company-profile-active) .company-labor-edit,
+        .stApp:has(.company-profile-active) .company-labor-delete,
         .stApp:has(.company-profile-active) .company-labor-edit:hover,
-        .stApp:has(.company-profile-active) .company-labor-edit:focus {
+        .stApp:has(.company-profile-active) .company-labor-delete:hover,
+        .stApp:has(.company-profile-active) .company-labor-edit:focus,
+        .stApp:has(.company-profile-active) .company-labor-delete:focus {
             width: 22px !important;
             min-width: 22px !important;
             height: 22px !important;
@@ -877,7 +894,9 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) .company-labor-edit:hover,
-        .stApp:has(.company-profile-active) .company-labor-edit:focus-visible {
+        .stApp:has(.company-profile-active) .company-labor-edit:focus-visible,
+        .stApp:has(.company-profile-active) .company-labor-delete:hover,
+        .stApp:has(.company-profile-active) .company-labor-delete:focus-visible {
             background: rgba(128, 73, 198, 0.10) !important;
             color: var(--color-accent) !important;
         }

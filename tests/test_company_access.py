@@ -637,15 +637,17 @@ def test_labor_position_list_is_managed_and_includes_general_worker():
                 "gross_monthly_salary": 12_000.0,
                 "gross_hourly_rate": None,
                 "monthly_hours": None,
+                "employment_factor": 1.25,
             },
         ),
         (
             "hourly_rate",
-            {"gross_hourly_rate": 65.5, "monthly_hours": 160},
+            {"gross_hourly_rate": 65, "monthly_hours": 160},
             {
                 "gross_monthly_salary": None,
-                "gross_hourly_rate": 65.5,
+                "gross_hourly_rate": 65,
                 "monthly_hours": 160.0,
+                "employment_factor": 1.25,
             },
         ),
     ],
@@ -695,17 +697,28 @@ def test_add_company_employee_writes_only_selected_pay_model(
     }]
 
 
-def test_labor_hourly_values_use_tenths_and_whole_monthly_hours():
+def test_labor_pay_values_are_whole_and_factor_uses_two_decimals():
     payload = company_profile._company_employee_payload(
         worker_name="Worker",
         department="production",
         position_code="general_worker",
         pay_type="hourly_rate",
-        gross_hourly_rate=50.26,
+        gross_hourly_rate=50,
         monthly_hours=160,
+        employment_factor=1.256,
     )
-    assert payload["gross_hourly_rate"] == 50.3
+    assert payload["gross_hourly_rate"] == 50
     assert payload["monthly_hours"] == 160
+    assert payload["employment_factor"] == 1.26
+    with pytest.raises(ValueError, match="Hourly rate must be a whole number"):
+        company_profile._company_employee_payload(
+            worker_name="Worker",
+            department="production",
+            position_code="general_worker",
+            pay_type="hourly_rate",
+            gross_hourly_rate=50.5,
+            monthly_hours=160,
+        )
     with pytest.raises(ValueError, match="whole number"):
         company_profile._company_employee_payload(
             worker_name="Worker",
@@ -764,6 +777,72 @@ def test_update_company_employee_is_scoped_to_company_and_worker(monkeypatch):
         ("employee_id", "employee-1"),
     ]
     assert writes[-1]["gross_monthly_salary"] == 9_000
+
+
+def test_archive_company_employee_retains_row_and_scopes_update(monkeypatch):
+    access = company_auth.CompanyAccess(
+        "user-1", "owner@example.com", "company-a", "owner", "token"
+    )
+    monkeypatch.setattr(company_profile, "_current_access", lambda _access: access)
+    writes = []
+    filters = []
+
+    class Query:
+        def update(self, values):
+            writes.append(values)
+            return self
+
+        def eq(self, field, value):
+            filters.append(("eq", field, value))
+            return self
+
+        def is_(self, field, value):
+            filters.append(("is", field, value))
+            return self
+
+        def execute(self):
+            return type("Result", (), {"data": [{
+                "company_id": "company-a",
+                "employee_id": "employee-1",
+                **writes[-1],
+            }]})()
+
+    class Client:
+        def table(self, name):
+            assert name == "company_employees"
+            return Query()
+
+    monkeypatch.setattr(company_profile, "get_supabase_client", Client)
+    monkeypatch.setattr(company_profile, "assert_company_owner", lambda *_args: None)
+
+    archived = company_profile.archive_company_employee(access, "employee-1")
+
+    assert set(writes[-1]) == {"deleted_at"}
+    assert archived["deleted_at"].endswith("+00:00")
+    assert filters == [
+        ("eq", "company_id", "company-a"),
+        ("eq", "employee_id", "employee-1"),
+        ("is", "deleted_at", "null"),
+    ]
+
+
+def test_labor_costs_apply_factor_and_hours_only_to_hourly_workers():
+    hourly = {
+        "pay_type": "hourly_rate",
+        "gross_hourly_rate": 50,
+        "monthly_hours": 160,
+        "employment_factor": 1.25,
+    }
+    monthly = {
+        "pay_type": "monthly_salary",
+        "gross_monthly_salary": 12_000,
+        "employment_factor": 1.25,
+    }
+
+    assert company_profile._labor_hourly_cost(hourly) == 62.5
+    assert company_profile._labor_hourly_cost(monthly) is None
+    assert company_profile._labor_monthly_cost(hourly) == 10_000
+    assert company_profile._labor_monthly_cost(monthly) == 15_000
 
 
 def test_labor_form_reset_rotates_widget_keys_and_clears_edit_mode():
@@ -849,6 +928,7 @@ def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):
         "gross_monthly_salary": None,
         "gross_hourly_rate": 50.5,
         "monthly_hours": 160,
+        "employment_factor": 1.25,
     }])
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = "owner"
@@ -859,10 +939,13 @@ def test_labor_existing_worker_opens_prefilled_edit_form(monkeypatch):
     assert not app.exception
     fields = {field.label: field for field in app.text_input}
     assert fields["Worker name"].value == "Guy"
-    assert fields["Hourly Rate"].value == "50.5"
+    assert fields["Hourly Rate"].value == "50"
     assert fields["Average Hours per Month"].value == "160"
-    assert fields["Avg Monthly Bruto"].value == "₪8\u202f080"
-    assert fields["Avg Monthly Bruto"].disabled is True
+    assert fields["Employment Factor"].value == "1.25"
+    assert fields["Total Hourly Cost"].value == "₪62.50"
+    assert fields["Total Hourly Cost"].disabled is True
+    assert fields["Total Monthly Cost"].value == "₪10\u202f000"
+    assert fields["Total Monthly Cost"].disabled is True
     assert any(button.label == "Save Worker" for button in app.button)
     assert any(button.label == "Cancel Edit" for button in app.button)
 
@@ -889,11 +972,14 @@ def test_labor_worker_table_uses_pencil_bridge_without_edit_selectbox():
     css = (root / "styles/company_profile.py").read_text()
 
     assert "data-company-labor-edit" in source
+    assert "data-company-labor-delete" in source
     assert 'aria-label="Edit worker"' in source
+    assert 'aria-label="Remove worker"' in source
     assert 'st.selectbox(\n            "Edit worker"' not in render_source
-    assert '[data-company-labor-edit]' in component
+    assert '[data-company-labor-edit], [data-company-labor-delete]' in component
     assert 'send("streamlit:setComponentValue"' in component
     assert ".company-labor-edit" in css
+    assert ".company-labor-delete" in css
     assert ".st-key-company_labor_bridge_host" in css
 
 
@@ -918,6 +1004,21 @@ def test_company_employees_migration_keeps_salary_data_owner_only():
     assert "first_name" not in sql and "last_name" not in sql
     assert sql.count("and m.role = 'owner'") == 5
     assert "revoke all on public.company_employees from anon" in sql
+
+
+def test_company_employee_factor_soft_delete_migration_is_non_destructive():
+    sql = (
+        Path(__file__).parents[1]
+        / "db/sql/2026_09_20_company_employee_cost_factor_soft_delete.sql"
+    ).read_text().lower()
+    assert "add column if not exists employment_factor" in sql
+    assert "add column if not exists deleted_at" in sql
+    assert "default 1.25" in sql
+    assert "where deleted_at is null" in sql
+    assert "drop table" not in sql
+    assert "drop column" not in sql
+    assert "truncate" not in sql
+    assert "delete from" not in sql
 
 
 def test_company_metrics_member_table_has_no_editable_cells_or_save_action():

@@ -18,24 +18,29 @@
         function install() {
           if (parentWindow[cleanupKey]) parentWindow[cleanupKey]();
 
-          function handleEdit(event) {
-            const action = event.target && event.target.closest
-              ? event.target.closest("[data-company-labor-edit]")
+          function handleAction(event) {
+            const actionElement = event.target && event.target.closest
+              ? event.target.closest(
+                  "[data-company-labor-edit], [data-company-labor-delete]"
+                )
               : null;
-            if (!action) return;
+            if (!actionElement) return;
             event.preventDefault();
             event.stopPropagation();
             send("streamlit:setComponentValue", {
               value: JSON.stringify({
-                employeeId: action.dataset.employeeId || "",
+                action: actionElement.hasAttribute("data-company-labor-delete")
+                  ? "delete"
+                  : "edit",
+                employeeId: actionElement.dataset.employeeId || "",
                 nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
               }),
             });
           }
 
-          parentDoc.addEventListener("click", handleEdit, true);
+          parentDoc.addEventListener("click", handleAction, true);
           parentWindow[cleanupKey] = () => {
-            parentDoc.removeEventListener("click", handleEdit, true);
+            parentDoc.removeEventListener("click", handleAction, true);
             parentWindow[cleanupKey] = null;
           };
         }

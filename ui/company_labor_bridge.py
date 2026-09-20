@@ -12,6 +12,6 @@ _COMPONENT = components.declare_component(
 
 
 def company_labor_bridge(*, key: str) -> str | None:
-    """Return an edit request from a pencil rendered in the worker table."""
+    """Return an edit or remove request from the worker table actions."""
     value = _COMPONENT(key=key, default=None)
     return value if isinstance(value, str) else None
