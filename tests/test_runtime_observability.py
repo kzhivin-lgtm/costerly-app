@@ -205,6 +205,9 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'window.setTimeout(() => mask.remove()' not in wrapper
     assert "iframe.is-transitioning" in wrapper
     assert ".app-loading-mask.is-transitioning" in wrapper
+    assert ".app-loading-mask.is-transitioning.is-sign-in .app-transition-status" in wrapper
+    assert 'mask.classList.toggle("is-sign-in", transition === "sign_in")' in wrapper
+    assert '<span>Signing in...</span>' in wrapper
     assert 'metadata.completed_action === "auth_sign_in"' in wrapper
     assert 'metadata.completed_action_status === "error"' in wrapper
     assert 'status: failedSignIn ? "error" : "ok"' in wrapper

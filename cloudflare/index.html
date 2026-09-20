@@ -62,6 +62,35 @@
         transition: none;
       }
 
+      .app-transition-status {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: #3A2A42;
+        font: 600 16px/1.2 Arial, sans-serif;
+      }
+
+      .app-loading-mask.is-transitioning.is-sign-in .app-transition-status {
+        display: flex;
+      }
+
+      .app-transition-spinner {
+        width: 18px;
+        height: 18px;
+        box-sizing: border-box;
+        border: 2px solid rgba(132, 70, 201, 0.28);
+        border-top-color: #8446C9;
+        border-radius: 50%;
+        animation: costerly-transition-spin 700ms linear infinite;
+      }
+
+      @keyframes costerly-transition-spin {
+        to { transform: rotate(360deg); }
+      }
+
       .embed-footer-mask {
         position: fixed;
         left: 0;
@@ -75,7 +104,12 @@
   </head>
 
   <body>
-    <div class="app-loading-mask" id="app-loading-mask" aria-hidden="true"></div>
+    <div class="app-loading-mask" id="app-loading-mask" aria-hidden="true">
+      <div class="app-transition-status" role="status" aria-live="polite">
+        <span class="app-transition-spinner" aria-hidden="true"></span>
+        <span>Signing in...</span>
+      </div>
+    </div>
     <iframe
       id="costerly-app-frame"
       data-src="https://costerly-app.streamlit.app/?embed=true"
@@ -85,7 +119,7 @@
     <div class="embed-footer-mask" aria-hidden="true"></div>
     <script>
       (() => {
-        const BUILD_VERSION = "3.5.7";
+        const BUILD_VERSION = "3.5.8";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
@@ -259,6 +293,7 @@
             frame.classList.remove("is-ready");
           }
           if (mask) {
+            mask.classList.toggle("is-sign-in", transition === "sign_in");
             mask.classList.add("is-transitioning");
             mask.classList.remove("is-hidden");
           }
@@ -277,6 +312,7 @@
           }
           if (mask) {
             mask.classList.remove("is-transitioning");
+            mask.classList.remove("is-sign-in");
             mask.classList.add("is-hidden");
           }
           if (source === "timeout") {
