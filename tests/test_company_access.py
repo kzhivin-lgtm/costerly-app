@@ -247,6 +247,12 @@ def _render_join_registration_test():
     )
 
 
+def _render_password_reset_test():
+    from state import company_auth
+
+    company_auth.render_password_reset()
+
+
 def test_sign_in_submit_uses_native_pre_render_callback(monkeypatch):
     calls = []
     monkeypatch.setattr(
@@ -291,14 +297,39 @@ def test_forgot_password_uses_neutral_response_and_existing_auth_layout(monkeypa
     )
     app = AppTest.from_function(_render_login_test).run()
     assert [field.label for field in app.text_input] == ["Email", "Password"]
+    assert [button.label for button in app.button] == [
+        "Forgot password?", "Sign in",
+    ]
     app.text_input(key="login_email").set_value("owner@example.com")
     next(button for button in app.button if button.label == "Forgot password?").click().run()
     assert requested == ["owner@example.com"]
     markup = "".join(item.value for item in app.markdown)
-    assert "If an account exists for this email, we’ve sent a password reset link." in markup
-    assert 'class="auth-recovery-notice"' in markup
+    assert "If an account exists for this email, a reset link has been sent." in markup
+    assert 'class="auth-recovery-sent"' in markup
+    assert any(button.label == "Link sent" for button in app.button)
     assert any("Sign in" in item.value for item in app.markdown)
     assert not app.exception
+
+
+def test_reset_password_reuses_auth_form_and_displays_recovery_email():
+    app = AppTest.from_function(_render_password_reset_test)
+    app.session_state.auth_recovery_mode = True
+    app.session_state.auth_recovery_email = "owner@example.com"
+    app.run()
+    assert [field.label for field in app.text_input] == [
+        "Email", "New password", "Confirm password",
+    ]
+    assert app.text_input(key="recovery_email").value == "owner@example.com"
+    assert app.text_input(key="recovery_email").disabled is True
+    assert any(button.label == "Reset password" for button in app.button)
+    assert not app.exception
+
+
+def test_auth_loading_restores_only_the_trigger_button():
+    interactions = Path("styles/auth.py").read_text()
+    assert "button[data-costerly-original-label]" in interactions
+    assert "button.dataset.costerlyOriginalLabel || 'Create Company Account'" not in interactions
+    assert ".auth-recovery-sent" in interactions
 
 
 def test_forgot_password_requires_email_without_leaving_sign_in(monkeypatch):
@@ -373,6 +404,7 @@ def test_recovery_bootstrap_bypasses_fast_resume_and_marks_recovery(monkeypatch)
     assert company_auth.sync_browser_auth_session(recovery_requested=True) is True
     assert st.session_state.auth_access_token == "recovery-access"
     assert st.session_state.auth_recovery_mode is True
+    assert st.session_state.auth_recovery_email == ""
     assert st.session_state._fast_resume_outcome == "recovery_session"
 
 

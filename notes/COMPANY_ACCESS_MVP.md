@@ -37,6 +37,7 @@
 | --- | --- | --- | --- |
 | P0 | Completed | 3.8.4 one-time team invitations and member access removal | Accepted in production on 22.09 |
 | P0 | Active | 3.8.2 password recovery | Verify Supabase recovery mail transport and redirect contract |
+| P1 | Pending | 3.8.5 Railway GitHub autodeploy reliability | Diagnose skipped or approval-waiting GitHub pushes after password recovery acceptance |
 | P0 | Pending | Current-project two-company verification | Dedicated cross-company acceptance pass |
 | P1 | Pending | Confirm Email and production SMTP | Before production recovery email delivery or verified accounts |
 | P1 | Completed | Tab-scoped login persistence | Accepted v3.0.51 checkpoint |

@@ -53,6 +53,16 @@
   does not invalidate the accepted invitation behavior. Verification: 244 tests
   passed.
 
+- 3.8.5 Railway GitHub autodeploy reliability: pending, P1. GitHub `main`
+  accepted commits `b9f27d4` and `785d828`, and Cloudflare Pages deployed the
+  same source automatically, but Railway did not create a deployment until
+  `Deploy latest commit` was triggered manually. Verify the service Source is
+  connected to `kzhivin-lgtm/costerly-app` on `main`, Autodeploy is enabled,
+  Wait for CI is disabled while no GitHub Actions workflow exists, Watch Paths
+  are empty, and Deployments has no skipped or approval-waiting pushes. Then
+  prove the repair with one harmless GitHub commit that produces a Railway
+  deployment without manual intervention.
+
 - 3.6.2 Hard-refresh Sign in reveal stability: preserve the accepted in-button
   spinner and one-run Sign in while preventing partial Upload DOM from appearing
   after Command-Shift-R. Production trace

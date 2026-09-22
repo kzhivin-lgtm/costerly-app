@@ -271,6 +271,9 @@ def sync_browser_auth_session(
             st.session_state.auth_expires_at = expires_at
             if is_recovery:
                 st.session_state.auth_recovery_mode = True
+                st.session_state.auth_recovery_email = _token_email_claim(
+                    access_token
+                )
                 st.session_state._fast_resume_outcome = "recovery_session"
             else:
                 resume_blob = seal_resume_session(
@@ -518,6 +521,20 @@ def _verified_token_identity(access_token: str) -> tuple[str, str]:
     if not isinstance(user_id, str) or not user_id:
         raise ValueError("Verified access token has no subject.")
     return user_id, email if isinstance(email, str) else ""
+
+
+def _token_email_claim(access_token: str) -> str:
+    """Read the recovery email for display only, never for authorization."""
+    try:
+        parts = access_token.split(".")
+        if len(parts) != 3:
+            return ""
+        payload = parts[1] + "=" * (-len(parts[1]) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))
+        email = claims.get("email") if isinstance(claims, dict) else None
+        return email if isinstance(email, str) else ""
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return ""
 
 
 def _company_access_via_rls(access_token: str) -> CompanyAccess:
@@ -855,13 +872,6 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
         st.text_input("Password", type="password", key="login_password")
         if recovery_request_error:
             render_auth_field_error("email", str(recovery_request_error))
-        if recovery_request_complete:
-            st.markdown(
-                '<div class="auth-recovery-notice" role="status">'
-                "If an account exists for this email, we’ve sent a password reset link."
-                "</div>",
-                unsafe_allow_html=True,
-            )
         if recovery_complete:
             st.markdown(
                 '<div class="auth-recovery-notice" role="status">'
@@ -872,14 +882,22 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
         if login_error:
             st.error(login_error)
         st.form_submit_button(
+            "Link sent" if recovery_request_complete else "Forgot password?",
+            disabled=recovery_request_complete,
+            on_click=_submit_password_recovery_request,
+        )
+        if recovery_request_complete:
+            st.markdown(
+                '<span class="auth-recovery-sent" role="status">'
+                "If an account exists for this email, a reset link has been sent."
+                "</span>",
+                unsafe_allow_html=True,
+            )
+        st.form_submit_button(
             "Sign in",
             type="primary",
             use_container_width=True,
             on_click=_submit_login,
-        )
-        st.form_submit_button(
-            "Forgot password?",
-            on_click=_submit_password_recovery_request,
         )
     install_auth_form_interactions()
 
@@ -901,6 +919,12 @@ def render_password_reset() -> None:
     raw_error = st.session_state.get("password_reset_error") or {}
     errors = raw_error if isinstance(raw_error, dict) else {"service": str(raw_error)}
     with st.form("password_recovery_update"):
+        st.text_input(
+            "Email",
+            value=str(st.session_state.get("auth_recovery_email") or ""),
+            key="recovery_email",
+            disabled=True,
+        )
         password = st.text_input(
             "New password",
             type="password",
@@ -919,7 +943,7 @@ def render_password_reset() -> None:
             "At least 8 characters, one uppercase letter, one lowercase letter, and one number."
         )
         submit = st.form_submit_button(
-            "Update password",
+            "Reset password",
             type="primary",
             use_container_width=True,
         )

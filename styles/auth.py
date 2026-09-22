@@ -83,7 +83,7 @@ def install_auth_form_interactions() -> None:
             if (label) label.textContent = text;
           }
 
-          function endCompanyCreation(form) {
+          function endAuthOperation(form) {
             if (!form?.classList.contains('costerly-auth-loading')) return;
             form.classList.remove('costerly-auth-loading');
             form.removeAttribute('aria-busy');
@@ -91,10 +91,18 @@ def install_auth_form_interactions() -> None:
               input.readOnly = false;
               input.removeAttribute('aria-disabled');
             });
-            const button = form.querySelector('div[data-testid="stFormSubmitButton"] button');
+            const button = form.querySelector(
+              'div[data-testid="stFormSubmitButton"] button[data-costerly-original-label]'
+            );
             if (button) {
               button.disabled = false;
-              setLoadingLabel(button, button.dataset.costerlyOriginalLabel || 'Create Company Account');
+              const sent = Boolean(form.querySelector('.auth-recovery-sent'));
+              setLoadingLabel(
+                button,
+                sent ? 'Link sent' : (button.dataset.costerlyOriginalLabel || button.textContent.trim())
+              );
+              if (sent) button.disabled = true;
+              delete button.dataset.costerlyOriginalLabel;
             }
             form.querySelector('.costerly-auth-loading-message')?.remove();
           }
@@ -116,7 +124,7 @@ def install_auth_form_interactions() -> None:
               'Sign in',
               'Create account',
               'Forgot password?',
-              'Update password'
+              'Reset password'
             ].includes(originalLabel)) {
               const oldShell = doc.getElementById('costerly-auth-sign-in-shell');
               if (oldShell) oldShell.remove();
@@ -216,7 +224,7 @@ def install_auth_form_interactions() -> None:
           function bindPasswordUpdate() {
             const button = Array.from(
               doc.querySelectorAll('div[data-testid="stFormSubmitButton"] button')
-            ).find((node) => node.textContent.trim() === 'Update password');
+            ).find((node) => node.textContent.trim() === 'Reset password');
             if (!button || button.dataset.costerlyLoadingBound === '1') return;
             button.dataset.costerlyLoadingBound = '1';
             button.addEventListener('click', () => {
@@ -225,14 +233,14 @@ def install_auth_form_interactions() -> None:
               );
               invalid.forEach((field) => setInvalid(field, true));
               if (invalid.length > 0) return;
-              window.setTimeout(() => beginAuthOperation(button, 'Updating password...'), 0);
+              window.setTimeout(() => beginAuthOperation(button, 'Resetting password...'), 0);
             });
           }
 
           function refresh() {
             doc.querySelectorAll('div[data-testid="stForm"].costerly-auth-loading').forEach((form) => {
-              if (form.querySelector('.auth-field-error-marker, [data-testid="stAlert"]')) {
-                endCompanyCreation(form);
+              if (form.querySelector('.auth-field-error-marker, .auth-recovery-sent, [data-testid="stAlert"]')) {
+                endAuthOperation(form);
               }
             });
             doc.querySelectorAll('.auth-field-error-marker').forEach((marker) => {
@@ -539,6 +547,10 @@ def apply_auth_css() -> None:
             text-align: center;
         }
 
+        .stApp:has(.auth-screen-active) .auth-recovery-sent {
+            display: none !important;
+        }
+
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"],
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] > div,
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button {
@@ -578,6 +590,8 @@ def apply_auth_css() -> None:
             color: #6F3CB4 !important;
             font-size: 14px !important;
             font-weight: 600 !important;
+            justify-content: flex-start !important;
+            padding-left: 16px !important;
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"] p {
@@ -670,6 +684,31 @@ def apply_auth_css() -> None:
             border-top-color: #FFFFFF;
             border-radius: 50%;
             animation: costerly-auth-spin 700ms linear infinite;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"][data-costerly-original-label],
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"][data-costerly-original-label]:hover {
+            min-height: 30px !important;
+            background: transparent !important;
+            border: 0 !important;
+            color: #6F3CB4 !important;
+            box-shadow: none !important;
+            justify-content: flex-start !important;
+            padding-left: 16px !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"][data-costerly-original-label] p {
+            color: #6F3CB4 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"][data-costerly-original-label] p::before {
+            width: 14px;
+            height: 14px;
+            flex-basis: 14px;
+            border-color: rgba(111, 60, 180, 0.28);
+            border-top-color: #6F3CB4;
         }
 
         @keyframes costerly-auth-spin {
