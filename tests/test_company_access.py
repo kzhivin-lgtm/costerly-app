@@ -1954,6 +1954,7 @@ def test_password_recovery_route_forwards_only_fragment_session_to_app():
     ).read_text()
     assert 'appUrl.searchParams.set("auth_flow", "recovery")' in wrapper
     assert "appUrl.hash = window.location.hash" in wrapper
+    assert 'recoveryFragment.get("type") === "recovery"' in wrapper
     assert "costerly:recovery-fragment-consumed" in wrapper
     assert "costerly:recovery-complete" in wrapper
     assert "/recover  /index.html  200" in redirects

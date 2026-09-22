@@ -96,7 +96,10 @@
         });
         const selectedBackend = backendByHostname[window.location.hostname];
         if (selectedBackend) frame.dataset.src = selectedBackend;
-        const recoveryPath = /^\/recover\/?$/.test(window.location.pathname);
+        const recoveryFragment = new URLSearchParams(window.location.hash.slice(1));
+        const recoveryPath =
+          /^\/recover\/?$/.test(window.location.pathname) ||
+          recoveryFragment.get("type") === "recovery";
         const pathInvite = window.location.pathname.match(/^\/(?:start|join)\/([A-Za-z0-9_-]{43})\/?$/);
         const inviteToken = pathInvite
           ? pathInvite[1]
