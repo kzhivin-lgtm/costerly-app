@@ -6,6 +6,7 @@ import streamlit.components.v1 as components
 
 _QUIET_FIELD_ERRORS = {
     "Enter an email address like name@company.com.",
+    "Enter your email to reset your password.",
     "Enter your company name.",
     "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number.",
     "Passwords do not match.",
@@ -99,7 +100,7 @@ def install_auth_form_interactions() -> None:
               const sent = Boolean(form.querySelector('.auth-recovery-sent'));
               setLoadingLabel(
                 button,
-                sent ? 'Link sent' : (button.dataset.costerlyOriginalLabel || button.textContent.trim())
+                sent ? 'Reset password link sent' : (button.dataset.costerlyOriginalLabel || button.textContent.trim())
               );
               if (sent) button.disabled = true;
               delete button.dataset.costerlyOriginalLabel;
@@ -551,6 +552,31 @@ def apply_auth_css() -> None:
             display: none !important;
         }
 
+        .stApp:has(.auth-screen-active) .auth-recovery-row-marker {
+            display: none !important;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-recovery-inline-error {
+            display: block;
+            color: #B43E49;
+            font-family: var(--font-sans);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.35;
+            white-space: nowrap;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) {
+            align-items: center !important;
+            column-gap: 12px !important;
+            margin-top: -8px !important;
+            margin-bottom: 7px !important;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) [data-testid="stColumn"] {
+            min-width: 0 !important;
+        }
+
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"],
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] > div,
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button {
@@ -583,7 +609,8 @@ def apply_auth_css() -> None:
 
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"] {
             min-height: 30px !important;
-            margin-top: 8px !important;
+            width: auto !important;
+            margin-top: 0 !important;
             background: transparent !important;
             border: 0 !important;
             box-shadow: none !important;
@@ -591,7 +618,12 @@ def apply_auth_css() -> None:
             font-size: 14px !important;
             font-weight: 600 !important;
             justify-content: flex-start !important;
-            padding-left: 16px !important;
+            padding: 0 !important;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) div[data-testid="stFormSubmitButton"],
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) div[data-testid="stFormSubmitButton"] > div {
+            width: auto !important;
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"] p {

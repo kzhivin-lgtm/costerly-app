@@ -87,18 +87,32 @@
 
         function readRecoverySession() {
           try {
+            const recoveryStorageKey = `${storageKey}:recovery`;
             const params = new URLSearchParams(window.parent.location.hash.slice(1));
-            if (params.get("type") !== "recovery") return null;
-            const accessToken = params.get("access_token") || "";
-            const refreshToken = params.get("refresh_token") || "";
-            if (!accessToken || !refreshToken) return null;
-            const explicitExpiry = Number(params.get("expires_at") || 0);
-            const expiresIn = Number(params.get("expires_in") || 0);
-            return {
-              access_token: accessToken,
-              refresh_token: refreshToken,
-              expires_at: explicitExpiry || Math.floor(Date.now() / 1000) + expiresIn,
-            };
+            if (params.get("type") === "recovery") {
+              const accessToken = params.get("access_token") || "";
+              const refreshToken = params.get("refresh_token") || "";
+              if (accessToken && refreshToken) {
+                const explicitExpiry = Number(params.get("expires_at") || 0);
+                const expiresIn = Number(params.get("expires_in") || 0);
+                const recoverySession = {
+                  access_token: accessToken,
+                  refresh_token: refreshToken,
+                  expires_at: explicitExpiry || Math.floor(Date.now() / 1000) + expiresIn,
+                };
+                window.sessionStorage.setItem(
+                  recoveryStorageKey,
+                  JSON.stringify(recoverySession),
+                );
+                return recoverySession;
+              }
+            }
+            const cached = window.sessionStorage.getItem(recoveryStorageKey);
+            if (!cached) return null;
+            const recoverySession = JSON.parse(cached);
+            return recoverySession && typeof recoverySession === "object"
+              ? recoverySession
+              : null;
           } catch (_) {
             return null;
           }
@@ -152,6 +166,7 @@
               storeResumeCookie(args.resumeBlob);
             } else if (args.action === "clear") {
               window.sessionStorage.removeItem(storageKey);
+              window.sessionStorage.removeItem(`${storageKey}:recovery`);
               clearResumeCookie();
             }
           } catch (_) {

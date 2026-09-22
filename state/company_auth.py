@@ -881,16 +881,36 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             )
         if login_error:
             st.error(login_error)
-        st.form_submit_button(
-            "Link sent" if recovery_request_complete else "Forgot password?",
-            disabled=recovery_request_complete,
-            on_click=_submit_password_recovery_request,
+        recovery_action, recovery_feedback = st.columns(
+            [0.48, 0.52],
+            gap="small",
+            vertical_alignment="center",
         )
+        with recovery_action:
+            st.form_submit_button(
+                (
+                    "Reset password link sent"
+                    if recovery_request_complete
+                    else "Forgot password?"
+                ),
+                disabled=recovery_request_complete,
+                on_click=_submit_password_recovery_request,
+            )
+        with recovery_feedback:
+            st.markdown(
+                '<span class="auth-recovery-row-marker"></span>'
+                + (
+                    '<span class="auth-recovery-inline-error" role="alert">'
+                    "Enter your email to reset your password."
+                    "</span>"
+                    if recovery_request_error
+                    else ""
+                ),
+                unsafe_allow_html=True,
+            )
         if recovery_request_complete:
             st.markdown(
-                '<span class="auth-recovery-sent" role="status">'
-                "If an account exists for this email, a reset link has been sent."
-                "</span>",
+                '<span class="auth-recovery-sent" role="status"></span>',
                 unsafe_allow_html=True,
             )
         st.form_submit_button(

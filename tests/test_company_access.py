@@ -304,9 +304,8 @@ def test_forgot_password_uses_neutral_response_and_existing_auth_layout(monkeypa
     next(button for button in app.button if button.label == "Forgot password?").click().run()
     assert requested == ["owner@example.com"]
     markup = "".join(item.value for item in app.markdown)
-    assert "If an account exists for this email, a reset link has been sent." in markup
     assert 'class="auth-recovery-sent"' in markup
-    assert any(button.label == "Link sent" for button in app.button)
+    assert any(button.label == "Reset password link sent" for button in app.button)
     assert any("Sign in" in item.value for item in app.markdown)
     assert not app.exception
 
@@ -347,6 +346,10 @@ def test_forgot_password_requires_email_without_leaving_sign_in(monkeypatch):
     assert 'data-auth-field="email"' in "".join(
         item.value for item in app.markdown
     )
+    assert 'class="auth-recovery-inline-error"' in "".join(
+        item.value for item in app.markdown
+    )
+    assert [error.value for error in app.error] == []
     assert not app.exception
 
 
@@ -1990,9 +1993,12 @@ def test_password_recovery_route_forwards_only_fragment_session_to_app():
     assert "costerly:recovery-fragment-consumed" in wrapper
     assert "costerly:recovery-complete" in wrapper
     assert "/recover  /index.html  200" in redirects
-    assert 'params.get("type") !== "recovery"' in component
+    assert 'params.get("type") === "recovery"' in component
     assert 'params.get("access_token")' in component
     assert 'params.get("refresh_token")' in component
+    assert 'window.sessionStorage.setItem(\n                  recoveryStorageKey' in component
+    assert 'window.sessionStorage.getItem(recoveryStorageKey)' in component
+    assert 'window.sessionStorage.removeItem(`${storageKey}:recovery`)' in component
     assert "window.sessionStorage.removeItem(storageKey)" in component
 
 
