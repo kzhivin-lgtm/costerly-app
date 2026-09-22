@@ -289,6 +289,11 @@ its runtime variables. GitHub remains the deployment source. The prior
 Streamlit Cloud deployment is retained temporarily as the rollback backend
 until the Cloudflare plus Railway transition sequence is accepted.
 
+The owner accepted this topology in production on 2026-09-22. Streamlit Cloud
+is no longer the active iframe backend, but remains available temporarily for a
+direct wrapper rollback. The browser-facing application URL remains
+`https://app.costerly.ai`; Railway service URLs are infrastructure-only.
+
 Pilot Fast Resume v1
 For the early-bird Streamlit release, an optional 30-minute Fernet-sealed
 resume blob may be stored as a `Secure`, `SameSite=None`, `Partitioned`,

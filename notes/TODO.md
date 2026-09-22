@@ -1,8 +1,8 @@
 # TODO
 
-- 3.8.1 Railway hosting migration: active production verification. Preserve
+- 3.8.1 Railway hosting migration: accepted production checkpoint. Preserve
   production checkpoint `bbb8297` and retain the Streamlit Cloud deployment as
-  rollback while validating the existing Cloudflare wrapper against Railway at
+  rollback while the existing Cloudflare wrapper runs against Railway at
   `app.costerly.ai`. The
   wrapper selects the Railway backend only for the staging hostname and uses
   the selected backend origin for all transition handshakes. Acceptance
@@ -12,7 +12,15 @@
   Direct Railway testing is not visual acceptance because it bypasses the
   Cloudflare transition wrapper. The owner explicitly approved switching the
   production wrapper backend to Railway after confirming the direct Railway
-  runtime was materially faster. Candidate verification: 238 tests passed.
+  runtime was materially faster. The owner completed repeated Sign in, Profile,
+  New Estimate, return, and Sign out cycles and accepted the result as fast and
+  production-ready. Trace `a6152e2d-517a-4faa-a125-311c46faa3ef` measured the
+  initial Auth reveal at 4.011 seconds; accepted warm styled reveals were mostly
+  0.677-1.356 seconds with one Python run. Known acceptance gap: one first
+  Profile cycle after a repeated Sign in hit the five-second mask timeout and
+  reached ready at 10.869 seconds, and the owner observed one negligible broken
+  frame. Retain both as follow-up evidence rather than claiming zero visual
+  defects. Verification: 238 tests passed. Checkpoint commit: `4b8b24a`.
   Protected production checkpoint: `bbb8297`.
 
 - 3.8.2 Password recovery: pending after 3.8.1. Add a user-visible Forgot

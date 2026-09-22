@@ -266,6 +266,17 @@ URL does not include the Cloudflare loading and transition contract. For every
 acceptance cycle record hostname, trace_id, wrapper and server build versions,
 click-to-styled visibility, app-ready, Python run count, and any fail-open.
 
+Production Railway acceptance trace on 2026-09-22:
+`a6152e2d-517a-4faa-a125-311c46faa3ef`. The first login screen reached
+app-ready in 4,010.7ms. Accepted repeated transitions used one Python run each:
+Sign in ready 1,031.0-1,412.4ms; Profile to Upload styled 693.7-729.6ms;
+Upload to Profile styled 677.0-815.3ms on normal cycles; Sign out styled
+1,125.9-1,356.4ms. One Upload to Profile outlier emitted
+`browser.internal_transition_timeout`, styled at 6,575.1ms, and reached ready
+at 10,868.5ms. Preserve this outlier and the owner's report of one short broken
+frame as follow-up evidence. Do not reinterpret the accepted migration as proof
+that every transition is visually defect-free.
+
 Verification query:
 
 ```sql
