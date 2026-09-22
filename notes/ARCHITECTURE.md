@@ -278,16 +278,16 @@ credentials, email addresses, file names, uploaded content, prompts, or RFQ
 content. `notes/OBSERVABILITY.md` is the authoritative event and deployment
 contract.
 
-Railway Staging Topology v1
-`app.costerly.ai` remains the production Cloudflare Pages wrapper and continues
-to embed Streamlit Cloud until Railway staging is explicitly accepted. The same
-wrapper served at `staging.costerly.ai` embeds
-`https://costerly-app-staging.up.railway.app/?embed=true`. The Railway-generated
+Railway Hosting Topology v1
+`app.costerly.ai` remains the production Cloudflare Pages wrapper and embeds
+`https://costerly-app-staging.up.railway.app/?embed=true`. The same wrapper
+served at `staging.costerly.ai` selects that Railway backend explicitly. The Railway-generated
 hostname is an infrastructure endpoint, not a user-facing product address.
 Cloudflare owns the loading and transition mask, route synchronization, branded
 origin, and browser telemetry endpoint. Railway owns the Streamlit process and
-its runtime variables. GitHub remains the deployment source. A production
-backend switch is a separate consequential change after staging acceptance.
+its runtime variables. GitHub remains the deployment source. The prior
+Streamlit Cloud deployment is retained temporarily as the rollback backend
+until the Cloudflare plus Railway transition sequence is accepted.
 
 Pilot Fast Resume v1
 For the early-bird Streamlit release, an optional 30-minute Fernet-sealed
