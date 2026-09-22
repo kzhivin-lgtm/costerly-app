@@ -178,6 +178,8 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     routes = (ROOT / "cloudflare/_routes.json").read_text()
 
     assert 'data-src="https://costerly-app.streamlit.app/?embed=true"' in wrapper
+    assert '"staging.costerly.ai": "https://costerly-app-staging.up.railway.app/?embed=true"' in wrapper
+    assert "const appOrigin = appUrl.origin" in wrapper
     assert 'appUrl.searchParams.set("obs_trace", traceId)' in wrapper
     assert 'const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id"]' in wrapper
     assert "appUrl.searchParams.set(key, value)" in wrapper
@@ -186,7 +188,7 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "syncOuterRoute(event.data.route || {}, screen)" in wrapper
     assert "navigator.sendBeacon" in wrapper
     assert 'event.data.traceId === traceId' in wrapper
-    assert 'event.origin === "https://costerly-app.streamlit.app"' in wrapper
+    assert "event.origin === appOrigin" in wrapper
     assert "visibility: hidden" not in wrapper
     assert "readyRunIds" in wrapper
     assert 'event.data.type === "costerly:transition-click"' in wrapper
@@ -213,6 +215,9 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'status: failedSignIn ? "error" : "ok"' in wrapper
     assert 'event.data.type === "costerly:startup-phase"' in wrapper
     assert "startupPhases.has(event.data.phase)" in wrapper
+    assert '"https://app.costerly.ai"' in function
+    assert '"https://staging.costerly.ai"' in function
+    assert 'allowedOrigins.has(request.headers.get("origin"))' in function
     assert "...(event.data.metrics || {})" in wrapper
     assert "event.data.buildVersion" in wrapper
     assert "event.data.metrics && event.data.metrics.server_build_version" in wrapper

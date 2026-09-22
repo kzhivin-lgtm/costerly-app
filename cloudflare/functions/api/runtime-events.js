@@ -67,8 +67,14 @@ function normalizeEvent(raw) {
 export async function onRequest(context) {
   const { request, env } = context;
   if (request.method !== "POST") return response(405, "method not allowed");
-  const allowedOrigin = env.COSTERLY_ALLOWED_ORIGIN || "https://app.costerly.ai";
-  if (request.headers.get("origin") !== allowedOrigin) {
+  const allowedOrigins = new Set([
+    "https://app.costerly.ai",
+    "https://staging.costerly.ai",
+  ]);
+  if (env.COSTERLY_ALLOWED_ORIGIN) {
+    allowedOrigins.add(env.COSTERLY_ALLOWED_ORIGIN);
+  }
+  if (!allowedOrigins.has(request.headers.get("origin"))) {
     return response(403, "origin not allowed");
   }
   const length = Number(request.headers.get("content-length") || 0);

@@ -91,12 +91,18 @@
         const timeline = [];
         const mask = document.getElementById("app-loading-mask");
         const frame = document.getElementById("costerly-app-frame");
+        const backendByHostname = Object.freeze({
+          "staging.costerly.ai": "https://costerly-app-staging.up.railway.app/?embed=true",
+        });
+        const selectedBackend = backendByHostname[window.location.hostname];
+        if (selectedBackend) frame.dataset.src = selectedBackend;
         const pathInvite = window.location.pathname.match(/^\/(?:start|join)\/([A-Za-z0-9_-]{43})\/?$/);
         const inviteToken = pathInvite
           ? pathInvite[1]
           : new URLSearchParams(window.location.search).get("invite");
         const startupProbe = new URLSearchParams(window.location.search).get("startup_probe");
         const appUrl = new URL(frame.dataset.src);
+        const appOrigin = appUrl.origin;
         const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id"];
         const outerParams = new URLSearchParams(window.location.search);
         appUrl.searchParams.set("obs_trace", traceId);
@@ -293,7 +299,7 @@
 
         window.addEventListener("message", (event) => {
           if (
-            event.origin === "https://costerly-app.streamlit.app" &&
+            event.origin === appOrigin &&
             event.data &&
             event.data.type === "costerly:transition-click" &&
             typeof event.data.transition === "string"
@@ -317,7 +323,7 @@
             return;
           }
           if (
-            event.origin === "https://costerly-app.streamlit.app" &&
+            event.origin === appOrigin &&
             event.data &&
             event.data.type === "costerly:transition-styled" &&
             typeof event.data.transitionId === "string"
@@ -340,7 +346,7 @@
             return;
           }
           if (
-            event.origin === "https://costerly-app.streamlit.app" &&
+            event.origin === appOrigin &&
             event.data &&
             event.data.type === "costerly:transition-visible" &&
             typeof event.data.transitionId === "string"
@@ -361,7 +367,7 @@
             return;
           }
           if (
-            event.origin === "https://costerly-app.streamlit.app" &&
+            event.origin === appOrigin &&
             event.data &&
             event.data.type === "costerly:startup-phase" &&
             event.data.traceId === traceId &&
@@ -373,7 +379,7 @@
             return;
           }
           if (
-            event.origin === "https://costerly-app.streamlit.app" &&
+            event.origin === appOrigin &&
             event.data &&
             event.data.type === "costerly:app-ready" &&
             event.data.traceId === traceId

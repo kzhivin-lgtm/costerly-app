@@ -1,5 +1,21 @@
 # TODO
 
+- 3.8.1 Railway staging migration: active. Preserve production checkpoint
+  `bbb8297` and keep `app.costerly.ai` on Streamlit Cloud while validating the
+  existing Cloudflare wrapper against Railway at `staging.costerly.ai`. The
+  wrapper selects the Railway backend only for the staging hostname and uses
+  the selected backend origin for all transition handshakes. Acceptance
+  requires clean hard refresh, Sign in, Upload to Profile, Profile to New
+  Estimate, Profile to Upload, and Sign out cycles without gray, white,
+  unstyled, or mixed-screen frames, plus complete correlated runtime telemetry.
+  Direct Railway testing is not visual acceptance because it bypasses the
+  Cloudflare transition wrapper. Candidate verification: 238 tests passed.
+  Protected production checkpoint: `bbb8297`.
+
+- 3.8.2 Password recovery: pending after 3.8.1. Add a user-visible Forgot
+  password flow using the existing Supabase Auth account and the final branded
+  application origin. Do not mix this auth feature into the hosting migration.
+
 - 3.6.2 Hard-refresh Sign in reveal stability: preserve the accepted in-button
   spinner and one-run Sign in while preventing partial Upload DOM from appearing
   after Command-Shift-R. Production trace
