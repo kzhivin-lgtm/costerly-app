@@ -238,6 +238,15 @@ def _render_login_test():
     company_auth.render_login_or_signup(None)
 
 
+def _render_join_registration_test():
+    from state import company_auth
+    from use_cases.invite_links import new_invite_token
+
+    company_auth.render_login_or_signup(
+        company_auth.InvitationContext("join", new_invite_token())
+    )
+
+
 def test_sign_in_submit_uses_native_pre_render_callback(monkeypatch):
     calls = []
     monkeypatch.setattr(
@@ -271,6 +280,28 @@ def test_sign_in_callback_returns_failure_to_login_form(monkeypatch):
         "Could not sign in. Check your email and password."
     ]
     assert not app.exception
+
+
+def test_join_registration_reuses_sign_in_layout_and_loading_contract():
+    app = AppTest.from_function(_render_join_registration_test).run()
+    markup = "".join(item.value for item in app.markdown)
+    source = Path("state/company_auth.py").read_text()
+    interactions = Path("styles/auth.py").read_text()
+
+    assert "Join your company" in markup
+    assert "Create your own login to work with your team." not in markup
+    assert [field.label for field in app.text_input] == [
+        "Email", "Password", "Confirm password",
+    ]
+    assert any(button.label == "Create account" for button in app.button)
+    join_source = source.split('invitation.kind == "join"', 1)[1].split(
+        "return", 1
+    )[0]
+    assert "use_container_width=True" in join_source
+    assert "bindMemberCreation" in interactions
+    assert "Creating account..." in interactions
+    assert "originalLabel === 'Sign in' || originalLabel === 'Create account'" in interactions
+    assert ".auth-brand-join-your-company" in interactions
 
 
 def test_browser_policy_migration_removes_anonymous_cost_access():
@@ -756,6 +787,9 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         assert 'class="company-profile-users company-profile-invite"' in users_markup
         assert "Invitation Link · Valid for 24 Hours" in users_markup
         assert "https://example.com/join/token" in users_markup
+        assert "company-profile-invite-link" not in users_markup
+        assert "data-company-invite-copy" in users_markup
+        assert 'data-invite-url="https://example.com/join/token"' in users_markup
 
 
 def test_owner_can_confirm_member_access_removal_from_users_tab(monkeypatch):
@@ -1414,6 +1448,14 @@ def test_company_metrics_bridge_does_not_navigate_parent_page():
     assert "location.href" not in source
 
 
+def test_company_action_bridge_copies_invitation_without_opening_it():
+    source = Path("ui/company_labor_bridge_component/index.html").read_text()
+    assert "data-company-invite-copy" in source
+    assert "parentWindow.navigator.clipboard.writeText(value)" in source
+    assert 'actionElement.textContent = "Copied"' in source
+    assert "window.open" not in source
+
+
 def test_only_company_metrics_save_bridge_is_fragment_scoped():
     source = Path("screens/company_profile.py").read_text()
     assert "@st.fragment\ndef _render_metrics_save" in source
@@ -2024,7 +2066,7 @@ def test_company_creation_acknowledges_valid_submit_immediately():
 def test_sign_in_keeps_the_existing_auth_screen_until_the_target_is_ready():
     interactions = (Path(__file__).parents[1] / "styles/auth.py").read_text()
     ready_signal = (Path(__file__).parents[1] / "ui/js_guards.py").read_text()
-    assert "if (originalLabel === 'Sign in')" in interactions
+    assert "if (originalLabel === 'Sign in'" in interactions
     assert "costerly-auth-sign-in-shell" in interactions
     assert "app.cloneNode(true)" in interactions
     assert "pointerEvents: 'none'" in interactions

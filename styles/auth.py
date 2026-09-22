@@ -112,7 +112,7 @@ def install_auth_form_interactions() -> None:
             });
             button.disabled = true;
             setLoadingLabel(button, loadingLabel);
-            if (originalLabel === 'Sign in') {
+            if (originalLabel === 'Sign in' || originalLabel === 'Create account') {
               const oldShell = doc.getElementById('costerly-auth-sign-in-shell');
               if (oldShell) oldShell.remove();
               const app = doc.querySelector('.stApp');
@@ -176,6 +176,22 @@ def install_auth_form_interactions() -> None:
             });
           }
 
+          function bindMemberCreation() {
+            const button = Array.from(
+              doc.querySelectorAll('div[data-testid="stFormSubmitButton"] button')
+            ).find((node) => node.textContent.trim() === 'Create account');
+            if (!button || button.dataset.costerlyLoadingBound === '1') return;
+            button.dataset.costerlyLoadingBound = '1';
+            button.addEventListener('click', () => {
+              const invalid = ['email', 'password', 'confirm'].filter(
+                (field) => !fieldIsValid(field)
+              );
+              invalid.forEach((field) => setInvalid(field, true));
+              if (invalid.length > 0) return;
+              window.setTimeout(() => beginAuthOperation(button, 'Creating account...'), 0);
+            });
+          }
+
           function refresh() {
             doc.querySelectorAll('div[data-testid="stForm"].costerly-auth-loading').forEach((form) => {
               if (form.querySelector('.auth-field-error-marker, [data-testid="stAlert"]')) {
@@ -213,6 +229,7 @@ def install_auth_form_interactions() -> None:
             });
             bindCompanyCreation();
             bindSignIn();
+            bindMemberCreation();
           }
 
           refresh();
@@ -305,11 +322,13 @@ def apply_auth_css() -> None:
             line-height: 1.5;
         }
 
-        .auth-brand-sign-in {
+        .auth-brand-sign-in,
+        .auth-brand-join-your-company {
             margin-bottom: 24px;
         }
 
-        .auth-brand-sign-in h1 {
+        .auth-brand-sign-in h1,
+        .auth-brand-join-your-company h1 {
             color: var(--color-purple, var(--primitive-purple-900));
             font-family: var(--font-hero);
             font-size: 46px;
@@ -593,8 +612,10 @@ def apply_auth_css() -> None:
             }
             .auth-brand h1 { font-size: clamp(27px, 8vw, 34px); }
             .auth-brand { margin-top: -17px; }
-            .auth-brand-sign-in { margin-bottom: 24px; }
-            .auth-brand-sign-in h1 {
+            .auth-brand-sign-in,
+            .auth-brand-join-your-company { margin-bottom: 24px; }
+            .auth-brand-sign-in h1,
+            .auth-brand-join-your-company h1 {
                 font-size: clamp(30px, 9vw, 40px);
                 line-height: 1.12;
             }

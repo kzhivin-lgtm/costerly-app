@@ -947,18 +947,43 @@ def apply_company_profile_css() -> None:
             margin-top: 12px;
         }
 
-        .company-profile-invite-link {
-            display: block;
-            overflow-wrap: anywhere;
-            color: var(--color-text) !important;
-            font-family: var(--font-mono) !important;
-            text-decoration: none !important;
+        .company-profile-invite-value {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
         }
 
-        .company-profile-invite-link:hover,
-        .company-profile-invite-link:focus-visible {
-            color: var(--color-accent) !important;
-            text-decoration: underline !important;
+        .company-profile-invite-text {
+            display: block;
+            min-width: 0;
+            flex: 1 1 auto;
+            overflow-wrap: anywhere;
+            color: var(--color-text);
+            font-family: var(--font-mono) !important;
+        }
+
+        .stApp:has(.company-profile-active) .company-invite-copy {
+            width: 88px;
+            min-width: 88px;
+            min-height: 36px;
+            padding: 0 14px;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 8px !important;
+            background: #FFFFFF;
+            color: var(--color-text-strong);
+            font-family: var(--font-sans);
+            font-size: 14px !important;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .stApp:has(.company-profile-active) .company-invite-copy:hover,
+        .stApp:has(.company-profile-active) .company-invite-copy:focus-visible {
+            border-color: var(--color-accent);
+            background: #F8F3FC;
+            color: var(--color-accent);
+            outline: none;
         }
 
         .company-labor-list {

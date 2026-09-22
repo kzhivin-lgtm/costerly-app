@@ -22,12 +22,41 @@
             const actionElement = event.target && event.target.closest
               ? event.target.closest(
                   "[data-company-labor-edit], [data-company-labor-delete], " +
-                  "[data-company-user-delete]"
+                  "[data-company-user-delete], [data-company-invite-copy]"
                 )
               : null;
             if (!actionElement) return;
             event.preventDefault();
             event.stopPropagation();
+            if (actionElement.hasAttribute("data-company-invite-copy")) {
+              const value = actionElement.dataset.inviteUrl || "";
+              const originalLabel = actionElement.textContent;
+              const showCopied = () => {
+                actionElement.textContent = "Copied";
+                window.setTimeout(() => {
+                  actionElement.textContent = originalLabel;
+                }, 1600);
+              };
+              const fallbackCopy = () => {
+                const textarea = parentDoc.createElement("textarea");
+                textarea.value = value;
+                textarea.style.position = "fixed";
+                textarea.style.opacity = "0";
+                parentDoc.body.appendChild(textarea);
+                textarea.select();
+                parentDoc.execCommand("copy");
+                textarea.remove();
+                showCopied();
+              };
+              if (parentWindow.navigator.clipboard?.writeText) {
+                parentWindow.navigator.clipboard.writeText(value)
+                  .then(showCopied)
+                  .catch(fallbackCopy);
+              } else {
+                fallbackCopy();
+              }
+              return;
+            }
             send("streamlit:setComponentValue", {
               value: JSON.stringify({
                 action: actionElement.hasAttribute("data-company-user-delete")

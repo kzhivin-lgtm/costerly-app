@@ -40,6 +40,11 @@
   124 Company Access tests and 242 full-suite tests passed. Production acceptance
   requires application deployment, one successful registration, rejection
   of the consumed link, member removal, and fresh access denial for that member.
+  Production revision after the first invitation check: the owner-facing raw
+  token is plain text with a dedicated Copy action, never a navigable link. The
+  Join registration screen reuses the accepted Sign in heading, full-width
+  submit geometry, validation, loading spinner, and retained-screen transition
+  behavior, without the redundant explanatory subtitle.
   Password recovery remains pending until this access lifecycle is accepted.
 
 - 3.6.2 Hard-refresh Sign in reveal stability: preserve the accepted in-button

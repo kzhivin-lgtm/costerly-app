@@ -1558,9 +1558,12 @@ def _render_users(access: CompanyAccess) -> None:
         st.markdown(
             '<div class="company-profile-users company-profile-invite">'
             '<table><thead><tr><th>Invitation Link · Valid for 24 Hours</th></tr></thead>'
-            '<tbody><tr><td><a class="company-profile-invite-link" '
-            f'href="{safe_url}" target="_blank" rel="noopener noreferrer">'
-            f"{safe_url}</a></td></tr></tbody></table></div>",
+            '<tbody><tr><td><div class="company-profile-invite-value">'
+            f'<span class="company-profile-invite-text">{escape(generated_url)}</span>'
+            '<button type="button" class="company-invite-copy" '
+            f'data-company-invite-copy data-invite-url="{safe_url}" '
+            'aria-label="Copy invitation link">Copy</button>'
+            '</div></td></tr></tbody></table></div>',
             unsafe_allow_html=True,
         )
 

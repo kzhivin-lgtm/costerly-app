@@ -678,13 +678,17 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
         return
 
     if invitation is not None and invitation.kind == "join":
-        _render_auth_heading("Join your company", "Create your own login to work with your team.")
+        _render_auth_heading("Join your company")
         with st.form("company_join_registration"):
             email = st.text_input("Email", key="signup_email", placeholder="you@company.com")
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm password", type="password", key="signup_password_confirm")
             st.caption("At least 8 characters, one uppercase letter, one lowercase letter, and one number.")
-            submit = st.form_submit_button("Create account", type="primary")
+            submit = st.form_submit_button(
+                "Create account",
+                type="primary",
+                use_container_width=True,
+            )
         install_auth_form_interactions()
         if submit:
             try:

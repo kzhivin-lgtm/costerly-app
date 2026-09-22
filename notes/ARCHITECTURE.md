@@ -89,7 +89,10 @@ Supabase schema.
 The Users tab does not retain or reveal a permanent team URL. An owner action
 creates a fresh opaque bearer invitation, stores only its SHA-256 hash in
 `company_member_invites`, and shows the raw link in the existing
-`company-profile-users` table-card primitive. The link is not email-bound,
+`company-profile-users` table-card primitive. The owner surface deliberately
+renders the URL as non-navigable text with a browser-native Copy action, so the
+owner can forward it without opening it under the current authenticated session.
+The link is not email-bound,
 expires after 24 hours, and is consumed in the same database transaction that
 creates the first member relationship. Row locking prevents concurrent reuse.
 The owner may remove a member after explicit confirmation. That operation
@@ -97,6 +100,9 @@ deletes only the `company_members` relationship; it never deletes the Auth user,
 and the owner relationship is protected in both application and database code.
 The legacy `company_join_links` table is retained only as a rollback surface.
 Non-owners cannot create invitations, see generated links, or remove members.
+The public Join registration is an auth-screen variant, not a separate design
+system: it shares the Sign in heading treatment, form width, full-width primary
+action, field validation, immediate spinner, and retained-screen transition.
 The Company Profile header removes top-level zero-height CSS and screen-marker
 wrappers from layout flow so Streamlit's vertical gap cannot accumulate above
 visible content. The page and heading-to-tabs gaps are both 34px. Header actions
