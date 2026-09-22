@@ -282,6 +282,127 @@ def test_sign_in_callback_returns_failure_to_login_form(monkeypatch):
     assert not app.exception
 
 
+def test_forgot_password_uses_neutral_response_and_existing_auth_layout(monkeypatch):
+    requested = []
+    monkeypatch.setattr(
+        company_auth,
+        "request_password_recovery",
+        lambda email: requested.append(email),
+    )
+    app = AppTest.from_function(_render_login_test).run()
+    assert [field.label for field in app.text_input] == ["Email", "Password"]
+    app.text_input(key="login_email").set_value("owner@example.com")
+    next(button for button in app.button if button.label == "Forgot password?").click().run()
+    assert requested == ["owner@example.com"]
+    markup = "".join(item.value for item in app.markdown)
+    assert "If an account exists for this email, we’ve sent a password reset link." in markup
+    assert 'class="auth-recovery-notice"' in markup
+    assert any("Sign in" in item.value for item in app.markdown)
+    assert not app.exception
+
+
+def test_forgot_password_requires_email_without_leaving_sign_in(monkeypatch):
+    monkeypatch.setattr(
+        company_auth,
+        "request_password_recovery",
+        lambda _email: (_ for _ in ()).throw(
+            AssertionError("Invalid email must not call the provider")
+        ),
+    )
+    app = AppTest.from_function(_render_login_test).run()
+    next(button for button in app.button if button.label == "Forgot password?").click().run()
+    assert [field.label for field in app.text_input] == ["Email", "Password"]
+    assert any("Sign in" in item.value for item in app.markdown)
+    assert 'data-auth-field="email"' in "".join(
+        item.value for item in app.markdown
+    )
+    assert not app.exception
+
+
+def test_recovery_request_uses_exact_public_callback(monkeypatch):
+    calls = []
+
+    class Auth:
+        def reset_password_for_email(self, email, options):
+            calls.append((email, options))
+
+    class Client:
+        auth = Auth()
+
+    monkeypatch.setattr(company_auth, "_auth_client", lambda: Client())
+    monkeypatch.setattr(
+        company_auth,
+        "get_optional_secret",
+        lambda name, default=None: "https://app.costerly.ai/"
+        if name == "COSTERLY_PUBLIC_URL"
+        else default,
+    )
+    company_auth.st.session_state.clear()
+    company_auth.request_password_recovery(" owner@example.com ")
+    assert calls == [(
+        "owner@example.com",
+        {"redirect_to": "https://app.costerly.ai/recover"},
+    )]
+    assert company_auth.st.session_state._runtime_completed_action["status"] == "ok"
+
+
+def test_recovery_bootstrap_bypasses_fast_resume_and_marks_recovery(monkeypatch):
+    st = company_auth.st
+    st.session_state.clear()
+    monkeypatch.setattr(
+        company_auth,
+        "restore_resume_session",
+        lambda _cookies: (_ for _ in ()).throw(
+            AssertionError("Recovery must not restore the previous signed-in user")
+        ),
+    )
+    monkeypatch.setattr(
+        company_auth,
+        "browser_session_exchange",
+        lambda **kwargs: {
+            "status": "ready",
+            "requestId": kwargs["request_id"],
+            "session": {
+                "access_token": "recovery-access",
+                "refresh_token": "recovery-refresh",
+                "expires_at": 123,
+            },
+            "recovery": True,
+        },
+    )
+    assert company_auth.sync_browser_auth_session(recovery_requested=True) is True
+    assert st.session_state.auth_access_token == "recovery-access"
+    assert st.session_state.auth_recovery_mode is True
+    assert st.session_state._fast_resume_outcome == "recovery_session"
+
+
+def test_recovered_password_uses_verified_session_and_registration_policy(monkeypatch):
+    calls = []
+
+    class Auth:
+        def set_session(self, access_token, refresh_token):
+            calls.append(("session", access_token, refresh_token))
+
+        def update_user(self, values):
+            calls.append(("update", values))
+
+    class Client:
+        auth = Auth()
+
+    monkeypatch.setattr(company_auth, "_auth_client", lambda: Client())
+    company_auth.st.session_state.clear()
+    company_auth.st.session_state.auth_recovery_mode = True
+    company_auth.st.session_state.auth_access_token = "access"
+    company_auth.st.session_state.auth_refresh_token = "refresh"
+    with pytest.raises(ValueError, match="uppercase"):
+        company_auth.update_recovered_password("weakpass", "weakpass")
+    company_auth.update_recovered_password("Strong123", "Strong123")
+    assert calls == [
+        ("session", "access", "refresh"),
+        ("update", {"password": "Strong123"}),
+    ]
+
+
 def test_join_registration_reuses_sign_in_layout_and_loading_contract():
     app = AppTest.from_function(_render_join_registration_test).run()
     markup = "".join(item.value for item in app.markdown)
@@ -300,7 +421,8 @@ def test_join_registration_reuses_sign_in_layout_and_loading_contract():
     assert "use_container_width=True" in join_source
     assert "bindMemberCreation" in interactions
     assert "Creating account..." in interactions
-    assert "originalLabel === 'Sign in' || originalLabel === 'Create account'" in interactions
+    assert "'Sign in'," in interactions
+    assert "'Create account'," in interactions
     assert ".auth-brand-join-your-company" in interactions
 
 
@@ -1824,6 +1946,23 @@ def test_company_join_url_has_only_random_token():
     assert "/join/*   /index.html  200" in redirects
 
 
+def test_password_recovery_route_forwards_only_fragment_session_to_app():
+    wrapper = (Path(__file__).parents[1] / "cloudflare/index.html").read_text()
+    redirects = (Path(__file__).parents[1] / "cloudflare/_redirects").read_text()
+    component = (
+        Path(__file__).parents[1] / "ui/browser_session_component/index.html"
+    ).read_text()
+    assert 'appUrl.searchParams.set("auth_flow", "recovery")' in wrapper
+    assert "appUrl.hash = window.location.hash" in wrapper
+    assert "costerly:recovery-fragment-consumed" in wrapper
+    assert "costerly:recovery-complete" in wrapper
+    assert "/recover  /index.html  200" in redirects
+    assert 'params.get("type") !== "recovery"' in component
+    assert 'params.get("access_token")' in component
+    assert 'params.get("refresh_token")' in component
+    assert "window.sessionStorage.removeItem(storageKey)" in component
+
+
 def test_shared_invites_use_public_https_application_only():
     assert public_app_url() == DEFAULT_PUBLIC_APP_URL
     assert public_app_url("https://app.costerly.ai/") == "https://app.costerly.ai/"
@@ -2069,7 +2208,8 @@ def test_company_creation_acknowledges_valid_submit_immediately():
 def test_sign_in_keeps_the_existing_auth_screen_until_the_target_is_ready():
     interactions = (Path(__file__).parents[1] / "styles/auth.py").read_text()
     ready_signal = (Path(__file__).parents[1] / "ui/js_guards.py").read_text()
-    assert "if (originalLabel === 'Sign in'" in interactions
+    assert "'Sign in'," in interactions
+    assert "].includes(originalLabel)" in interactions
     assert "costerly-auth-sign-in-shell" in interactions
     assert "app.cloneNode(true)" in interactions
     assert "pointerEvents: 'none'" in interactions

@@ -33,7 +33,7 @@ def install_auth_form_interactions() -> None:
           const labels = {
             company: ["Your company name", "Company name"],
             email: ["Email"],
-            password: ["Password"],
+            password: ["Password", "New password"],
             confirm: ["Confirm Password", "Confirm password"]
           };
 
@@ -112,7 +112,12 @@ def install_auth_form_interactions() -> None:
             });
             button.disabled = true;
             setLoadingLabel(button, loadingLabel);
-            if (originalLabel === 'Sign in' || originalLabel === 'Create account') {
+            if ([
+              'Sign in',
+              'Create account',
+              'Forgot password?',
+              'Update password'
+            ].includes(originalLabel)) {
               const oldShell = doc.getElementById('costerly-auth-sign-in-shell');
               if (oldShell) oldShell.remove();
               const app = doc.querySelector('.stApp');
@@ -192,6 +197,38 @@ def install_auth_form_interactions() -> None:
             });
           }
 
+          function bindPasswordRecoveryRequest() {
+            const button = Array.from(
+              doc.querySelectorAll('div[data-testid="stFormSubmitButton"] button')
+            ).find((node) => node.textContent.trim() === 'Forgot password?');
+            if (!button || button.dataset.costerlyLoadingBound === '1') return;
+            button.classList.add('costerly-forgot-password-button');
+            button.dataset.costerlyLoadingBound = '1';
+            button.addEventListener('click', () => {
+              if (!fieldIsValid('email')) {
+                setInvalid('email', true);
+                return;
+              }
+              window.setTimeout(() => beginAuthOperation(button, 'Sending reset link...'), 0);
+            });
+          }
+
+          function bindPasswordUpdate() {
+            const button = Array.from(
+              doc.querySelectorAll('div[data-testid="stFormSubmitButton"] button')
+            ).find((node) => node.textContent.trim() === 'Update password');
+            if (!button || button.dataset.costerlyLoadingBound === '1') return;
+            button.dataset.costerlyLoadingBound = '1';
+            button.addEventListener('click', () => {
+              const invalid = ['password', 'confirm'].filter(
+                (field) => !fieldIsValid(field)
+              );
+              invalid.forEach((field) => setInvalid(field, true));
+              if (invalid.length > 0) return;
+              window.setTimeout(() => beginAuthOperation(button, 'Updating password...'), 0);
+            });
+          }
+
           function refresh() {
             doc.querySelectorAll('div[data-testid="stForm"].costerly-auth-loading').forEach((form) => {
               if (form.querySelector('.auth-field-error-marker, [data-testid="stAlert"]')) {
@@ -230,6 +267,8 @@ def install_auth_form_interactions() -> None:
             bindCompanyCreation();
             bindSignIn();
             bindMemberCreation();
+            bindPasswordRecoveryRequest();
+            bindPasswordUpdate();
           }
 
           refresh();
@@ -323,12 +362,16 @@ def apply_auth_css() -> None:
         }
 
         .auth-brand-sign-in,
-        .auth-brand-join-your-company {
+        .auth-brand-join-your-company,
+        .auth-brand-reset-password,
+        .auth-brand-create-new-password {
             margin-bottom: 24px;
         }
 
         .auth-brand-sign-in h1,
-        .auth-brand-join-your-company h1 {
+        .auth-brand-join-your-company h1,
+        .auth-brand-reset-password h1,
+        .auth-brand-create-new-password h1 {
             color: var(--color-purple, var(--primitive-purple-900));
             font-family: var(--font-hero);
             font-size: 46px;
@@ -487,6 +530,15 @@ def apply_auth_css() -> None:
             line-height: 1.45 !important;
         }
 
+        .stApp:has(.auth-screen-active) .auth-recovery-notice {
+            color: #51475B;
+            font-family: var(--font-sans);
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.5;
+            text-align: center;
+        }
+
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"],
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] > div,
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button {
@@ -515,6 +567,31 @@ def apply_auth_css() -> None:
             font-weight: 700 !important;
             line-height: 1.2 !important;
             letter-spacing: -0.01em !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"] {
+            min-height: 30px !important;
+            margin-top: 8px !important;
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            color: #6F3CB4 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"] p {
+            color: #6F3CB4 !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+        }
+
+        .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button[kind="secondaryFormSubmit"]:hover {
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            color: #5E2EA5 !important;
+            transform: none !important;
         }
 
         .stApp:has(.auth-screen-active) [data-testid="stAlert"] {
@@ -560,8 +637,8 @@ def apply_auth_css() -> None:
             transition: opacity 160ms ease !important;
         }
 
-        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button,
-        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button:hover {
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button[data-costerly-original-label],
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button[data-costerly-original-label]:hover {
             position: relative !important;
             background: #7441B9 !important;
             border-color: #7441B9 !important;
@@ -575,7 +652,7 @@ def apply_auth_css() -> None:
             gap: 10px !important;
         }
 
-        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button p {
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button[data-costerly-original-label] p {
             width: auto !important;
             flex: 0 0 auto !important;
             display: inline-flex !important;
@@ -584,7 +661,7 @@ def apply_auth_css() -> None:
             gap: 10px !important;
         }
 
-        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button p::before {
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"].costerly-auth-loading div[data-testid="stFormSubmitButton"] button[data-costerly-original-label] p::before {
             content: "";
             width: 17px;
             height: 17px;
@@ -613,9 +690,13 @@ def apply_auth_css() -> None:
             .auth-brand h1 { font-size: clamp(27px, 8vw, 34px); }
             .auth-brand { margin-top: -17px; }
             .auth-brand-sign-in,
-            .auth-brand-join-your-company { margin-bottom: 24px; }
+            .auth-brand-join-your-company,
+            .auth-brand-reset-password,
+            .auth-brand-create-new-password { margin-bottom: 24px; }
             .auth-brand-sign-in h1,
-            .auth-brand-join-your-company h1 {
+            .auth-brand-join-your-company h1,
+            .auth-brand-reset-password h1,
+            .auth-brand-create-new-password h1 {
                 font-size: clamp(30px, 9vw, 40px);
                 line-height: 1.12;
             }

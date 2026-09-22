@@ -23,6 +23,7 @@ from state.company_auth import (
     render_company_account,
     render_company_setup,
     render_login_or_signup,
+    render_password_reset,
     sync_browser_auth_session,
 )
 from db.company_access import assert_estimate_owned, assert_run_owned
@@ -182,6 +183,7 @@ def main() -> None:
     access = None
     if auth_enabled:
         startup_probe = str(st.query_params.get("startup_probe") or "")
+        recovery_requested = str(st.query_params.get("auth_flow") or "") == "recovery"
         if startup_probe == "anonymous":
             trace.annotate(
                 auth_outcome="anonymous_probe",
@@ -200,6 +202,7 @@ def main() -> None:
                 run_id=trace.run_id,
                 run_sequence=st.session_state._runtime_run_sequence,
                 server_elapsed_before_component_ms=trace.summary()["server_elapsed_ms"],
+                recovery_requested=recovery_requested,
             )
         trace.event(
             "server.auth.browser_session_sync_result",
@@ -239,6 +242,12 @@ def main() -> None:
             return
         with trace.span("server.app_header_render"):
             render_app_header()
+        if st.session_state.get("auth_recovery_mode"):
+            trace.set_screen("password_recovery")
+            with trace.span("server.password_recovery_render"):
+                render_password_reset()
+            _signal_ready(trace, "password_recovery")
+            return
         if access is None:
             trace.set_screen("login")
             with trace.span("server.login_render"):

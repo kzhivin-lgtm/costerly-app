@@ -7,7 +7,7 @@ import json
 import re
 import secrets
 import time
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 import streamlit as st
 from supabase import create_client
@@ -32,7 +32,11 @@ from use_cases.invite_links import (
 )
 from use_cases.email_addresses import is_valid_email_address
 from ui.app_header import render_account_header_controls
-from ui.browser_session import browser_session_exchange, write_fast_resume_cookie
+from ui.browser_session import (
+    browser_session_exchange,
+    clear_recovery_browser_route,
+    write_fast_resume_cookie,
+)
 from state.session_resume import restore_resume_session, seal_resume_session
 
 
@@ -117,6 +121,18 @@ def registration_validation_errors(
     return errors
 
 
+def password_validation_errors(password: str, password_confirm: str) -> dict[str, str]:
+    """Apply the registration password policy without requiring an email."""
+    errors: dict[str, str] = {}
+    if len(password) < 8 or not re.search(r"[a-z]", password) or not re.search(r"[A-Z]", password) or not re.search(r"[0-9]", password):
+        errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number."
+    if not password_confirm:
+        errors["confirm"] = "Confirm your password."
+    elif password != password_confirm:
+        errors["confirm"] = "Passwords do not match."
+    return errors
+
+
 def company_auth_enabled() -> bool:
     """Opt-in until the DB migration and browser policy switch deploy together."""
     return str(get_optional_secret("COMPANY_AUTH_ENABLED", "false")).lower() in {
@@ -168,6 +184,7 @@ def sync_browser_auth_session(
     run_id: str | None = None,
     run_sequence: int | None = None,
     server_elapsed_before_component_ms: float | None = None,
+    recovery_requested: bool = False,
 ) -> bool:
     """Restore or persist the tab-scoped Supabase session.
 
@@ -184,6 +201,7 @@ def sync_browser_auth_session(
         not isinstance(pending, dict)
         and not st.session_state.get("_browser_auth_initialized")
         and not has_memory_session
+        and not recovery_requested
     ):
         outcome, restored = restore_resume_session(st.context.cookies)
         st.session_state._fast_resume_outcome = outcome
@@ -204,7 +222,7 @@ def sync_browser_auth_session(
         resume_blob = (
             str(pending.get("resume_blob")) if pending.get("resume_blob") else None
         )
-    elif st.session_state.get("_browser_auth_initialized"):
+    elif st.session_state.get("_browser_auth_initialized") and not recovery_requested:
         st.session_state._browser_auth_sync_outcome = "already_initialized"
         return True
     else:
@@ -224,6 +242,7 @@ def sync_browser_auth_session(
         run_id=run_id,
         run_sequence=run_sequence,
         server_elapsed_before_component_ms=server_elapsed_before_component_ms,
+        recovery_requested=recovery_requested,
     )
     if action in {"store", "clear"}:
         st.session_state.pop("_browser_auth_pending", None)
@@ -241,6 +260,7 @@ def sync_browser_auth_session(
         st.session_state.pop("_browser_auth_pending", None)
 
     stored = result.get("session")
+    is_recovery = bool(result.get("recovery"))
     if not has_memory_session and isinstance(stored, dict):
         access_token = stored.get("access_token")
         refresh_token = stored.get("refresh_token")
@@ -249,14 +269,21 @@ def sync_browser_auth_session(
             st.session_state.auth_refresh_token = refresh_token
             expires_at = int(stored.get("expires_at") or 0)
             st.session_state.auth_expires_at = expires_at
-            resume_blob = seal_resume_session(
-                access_token=access_token,
-                refresh_token=refresh_token,
-                expires_at=expires_at,
-            )
-            if resume_blob:
-                write_fast_resume_cookie(resume_blob)
-                st.session_state._fast_resume_outcome = "promoted_from_browser"
+            if is_recovery:
+                st.session_state.auth_recovery_mode = True
+                st.session_state._fast_resume_outcome = "recovery_session"
+            else:
+                resume_blob = seal_resume_session(
+                    access_token=access_token,
+                    refresh_token=refresh_token,
+                    expires_at=expires_at,
+                )
+                if resume_blob:
+                    write_fast_resume_cookie(resume_blob)
+                    st.session_state._fast_resume_outcome = "promoted_from_browser"
+    if recovery_requested and not is_recovery:
+        st.session_state.auth_recovery_error = True
+        st.session_state.auth_recovery_mode = True
     st.session_state._browser_auth_initialized = True
     st.session_state._browser_auth_sync_outcome = (
         "browser_session_restored"
@@ -264,6 +291,111 @@ def sync_browser_auth_session(
         else "browser_session_empty"
     )
     return True
+
+
+def password_recovery_url() -> str:
+    """Return the exact public recovery route allowed by Supabase Auth."""
+    base = public_app_url(
+        get_optional_secret("COSTERLY_PUBLIC_URL") or DEFAULT_PUBLIC_APP_URL
+    )
+    parts = urlsplit(base)
+    return urlunsplit((parts.scheme, parts.netloc, "/recover", "", ""))
+
+
+def request_password_recovery(email: str) -> None:
+    """Ask Supabase to send a neutral, expiring recovery link."""
+    if not is_valid_email_address(email):
+        raise ValueError("Enter an email address like name@company.com.")
+    started_at = time.perf_counter()
+    status = "ok"
+    try:
+        _auth_client().auth.reset_password_for_email(
+            email.strip(),
+            {"redirect_to": password_recovery_url()},
+        )
+    except Exception:
+        status = "error"
+        raise
+    finally:
+        st.session_state._runtime_completed_action = {
+            "action": "auth_password_recovery_requested",
+            "status": status,
+            "duration_ms": (time.perf_counter() - started_at) * 1000,
+        }
+
+
+def update_recovered_password(password: str, password_confirm: str) -> None:
+    """Update the password only through the verified Supabase recovery session."""
+    errors = password_validation_errors(password, password_confirm)
+    if errors:
+        raise ValueError(next(iter(errors.values())))
+    if not st.session_state.get("auth_recovery_mode"):
+        raise PermissionError("Open a valid password recovery link first.")
+    access_token = str(st.session_state.get("auth_access_token") or "")
+    refresh_token = str(st.session_state.get("auth_refresh_token") or "")
+    if not access_token or not refresh_token:
+        raise PermissionError("This password recovery link is no longer valid.")
+    started_at = time.perf_counter()
+    status = "ok"
+    try:
+        client = _auth_client()
+        client.auth.set_session(access_token, refresh_token)
+        client.auth.update_user({"password": password})
+    except Exception:
+        status = "error"
+        raise
+    finally:
+        st.session_state._runtime_completed_action = {
+            "action": "auth_password_updated",
+            "status": status,
+            "duration_ms": (time.perf_counter() - started_at) * 1000,
+        }
+
+
+def _submit_password_recovery_request() -> None:
+    """Send recovery from Sign in without introducing another auth screen."""
+    email = str(st.session_state.get("login_email") or "")
+    st.session_state.pop("password_recovery_request_error", None)
+    st.session_state.pop("password_recovery_request_complete", None)
+    if not is_valid_email_address(email):
+        st.session_state.password_recovery_request_error = (
+            "Enter your email to reset your password."
+        )
+        return
+    try:
+        request_password_recovery(email)
+    except Exception:
+        # Keep the response neutral. Neither account existence nor delivery
+        # provider state should be exposed from the Sign in screen.
+        pass
+    st.session_state.password_recovery_request_complete = True
+
+
+def _clear_password_recovery(*, updated: bool) -> None:
+    """Clear the short-lived recovery session and return to normal Sign in."""
+    completed_action = st.session_state.get("_runtime_completed_action")
+    clear_auth_session()
+    if completed_action:
+        st.session_state._runtime_completed_action = completed_action
+    st.session_state._browser_auth_pending = {
+        "action": "clear",
+        "request_id": secrets.token_urlsafe(12),
+        "session": None,
+    }
+    st.session_state.auth_view = "sign_in"
+    st.session_state.clear_recovery_browser_route = True
+    if updated:
+        st.session_state.password_recovery_complete = True
+    if "auth_flow" in st.query_params:
+        del st.query_params["auth_flow"]
+
+
+def _finish_password_recovery() -> None:
+    _clear_password_recovery(updated=True)
+
+
+def _abandon_password_recovery() -> None:
+    _clear_password_recovery(updated=False)
 
 
 def clear_auth_session() -> None:
@@ -364,6 +496,8 @@ def _submit_login() -> None:
     email = str(st.session_state.get("login_email") or "")
     password = str(st.session_state.get("login_password") or "")
     st.session_state.pop("company_login_error", None)
+    st.session_state.pop("password_recovery_request_error", None)
+    st.session_state.pop("password_recovery_request_complete", None)
     try:
         sign_in(email, password)
     except Exception:
@@ -709,9 +843,32 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
 
     _render_auth_heading("Sign in")
     login_error = st.session_state.get("company_login_error")
+    recovery_request_error = st.session_state.get("password_recovery_request_error")
+    recovery_request_complete = st.session_state.get(
+        "password_recovery_request_complete", False
+    )
+    recovery_complete = st.session_state.pop("password_recovery_complete", False)
+    if st.session_state.pop("clear_recovery_browser_route", False):
+        clear_recovery_browser_route()
     with st.form("company_login"):
         st.text_input("Email", key="login_email", placeholder="you@company.com")
         st.text_input("Password", type="password", key="login_password")
+        if recovery_request_error:
+            render_auth_field_error("email", str(recovery_request_error))
+        if recovery_request_complete:
+            st.markdown(
+                '<div class="auth-recovery-notice" role="status">'
+                "If an account exists for this email, we’ve sent a password reset link."
+                "</div>",
+                unsafe_allow_html=True,
+            )
+        if recovery_complete:
+            st.markdown(
+                '<div class="auth-recovery-notice" role="status">'
+                "Your password has been updated. Sign in with your new password."
+                "</div>",
+                unsafe_allow_html=True,
+            )
         if login_error:
             st.error(login_error)
         st.form_submit_button(
@@ -720,7 +877,73 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             use_container_width=True,
             on_click=_submit_login,
         )
+        st.form_submit_button(
+            "Forgot password?",
+            on_click=_submit_password_recovery_request,
+        )
     install_auth_form_interactions()
+
+
+def render_password_reset() -> None:
+    """Render the authenticated password update step for a recovery link."""
+    install_auth_form_interactions()
+    _render_auth_heading("Reset password")
+    if st.session_state.get("auth_recovery_error"):
+        st.error("This password recovery link is invalid or has expired.")
+        st.button(
+            "Return to sign in",
+            key="invalid_recovery_return",
+            use_container_width=True,
+            on_click=_abandon_password_recovery,
+        )
+        return
+
+    raw_error = st.session_state.get("password_reset_error") or {}
+    errors = raw_error if isinstance(raw_error, dict) else {"service": str(raw_error)}
+    with st.form("password_recovery_update"):
+        password = st.text_input(
+            "New password",
+            type="password",
+            key="recovery_password",
+        )
+        confirm = st.text_input(
+            "Confirm password",
+            type="password",
+            key="recovery_password_confirm",
+        )
+        if "password" in errors:
+            render_auth_field_error("password", errors["password"])
+        if "confirm" in errors:
+            render_auth_field_error("confirm", errors["confirm"])
+        st.caption(
+            "At least 8 characters, one uppercase letter, one lowercase letter, and one number."
+        )
+        submit = st.form_submit_button(
+            "Update password",
+            type="primary",
+            use_container_width=True,
+        )
+        if "service" in errors:
+            st.error(errors["service"])
+    install_auth_form_interactions()
+    if submit:
+        st.session_state.pop("password_reset_error", None)
+        validation_errors = password_validation_errors(password, confirm)
+        if validation_errors:
+            st.session_state.password_reset_error = validation_errors
+            st.rerun()
+        try:
+            update_recovered_password(password, confirm)
+        except PermissionError as exc:
+            st.session_state.password_reset_error = {"service": str(exc)}
+            st.rerun()
+        except Exception:
+            st.session_state.password_reset_error = {
+                "service": "We couldn't update your password. Request a new recovery link and try again."
+            }
+            st.rerun()
+        _finish_password_recovery()
+        st.rerun()
 
 
 def render_company_setup(

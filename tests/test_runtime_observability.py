@@ -302,13 +302,18 @@ def test_auth_component_reports_safe_iframe_startup_phases():
         "function postReady()", 1
     )[0]
     assert "preventDefault" not in observer_source
-    assert "access_token" not in component
-    assert "refresh_token" not in component
+    telemetry_source = component.split("function startupPhase", 1)[1].split(
+        "function storeResumeCookie", 1
+    )[0]
+    assert "access_token" not in telemetry_source
+    assert "refresh_token" not in telemetry_source
 
     assert "route: __ROUTE__" in ready_signal
     assert '.replace("__ROUTE__", route_json)' in ready_signal
 
     wrapper = (ROOT / "cloudflare/index.html").read_text()
+    assert 'searchParams.set("access_token"' not in wrapper
+    assert 'searchParams.set("refresh_token"' not in wrapper
     assert 'event.data.type === "costerly:transition-styled"' in wrapper
     assert 'mark("browser.transition_styled"' in wrapper
     assert 'revealInternalTransition("target_styled")' in wrapper

@@ -85,9 +85,40 @@
           }
         }
 
+        function readRecoverySession() {
+          try {
+            const params = new URLSearchParams(window.parent.location.hash.slice(1));
+            if (params.get("type") !== "recovery") return null;
+            const accessToken = params.get("access_token") || "";
+            const refreshToken = params.get("refresh_token") || "";
+            if (!accessToken || !refreshToken) return null;
+            const explicitExpiry = Number(params.get("expires_at") || 0);
+            const expiresIn = Number(params.get("expires_in") || 0);
+            return {
+              access_token: accessToken,
+              refresh_token: refreshToken,
+              expires_at: explicitExpiry || Math.floor(Date.now() / 1000) + expiresIn,
+            };
+          } catch (_) {
+            return null;
+          }
+        }
+
         function reply(args) {
           const readStartedAt = iframePerformanceNow();
-          const session = readSession();
+          const recoverySession = args.recoveryRequested ? readRecoverySession() : null;
+          const session = recoverySession || (args.recoveryRequested ? null : readSession());
+          if (recoverySession) {
+            try {
+              window.sessionStorage.removeItem(storageKey);
+              window.parent.history.replaceState(
+                window.parent.history.state,
+                "",
+                `${window.parent.location.pathname}${window.parent.location.search}`,
+              );
+              window.top.postMessage({type: "costerly:recovery-fragment-consumed"}, "*");
+            } catch (_) {}
+          }
           startupPhase(args, "auth_storage_read", {
             storage_present: Boolean(session),
             storage_read_ms: Math.max(
@@ -99,6 +130,7 @@
             status: "ready",
             requestId: args.requestId || "",
             session,
+            recovery: Boolean(recoverySession),
           });
           if (value === lastValue) return;
           lastValue = value;

@@ -96,6 +96,7 @@
         });
         const selectedBackend = backendByHostname[window.location.hostname];
         if (selectedBackend) frame.dataset.src = selectedBackend;
+        const recoveryPath = /^\/recover\/?$/.test(window.location.pathname);
         const pathInvite = window.location.pathname.match(/^\/(?:start|join)\/([A-Za-z0-9_-]{43})\/?$/);
         const inviteToken = pathInvite
           ? pathInvite[1]
@@ -112,6 +113,10 @@
         });
         if (inviteToken && /^[A-Za-z0-9_-]{43}$/.test(inviteToken)) {
           appUrl.searchParams.set("invite", inviteToken);
+        }
+        if (recoveryPath) {
+          appUrl.searchParams.set("auth_flow", "recovery");
+          appUrl.hash = window.location.hash;
         }
         if (startupProbe === "anonymous") {
           appUrl.searchParams.set("startup_probe", "anonymous");
@@ -298,6 +303,26 @@
         }
 
         window.addEventListener("message", (event) => {
+          if (
+            event.origin === appOrigin &&
+            event.data &&
+            event.data.type === "costerly:recovery-fragment-consumed"
+          ) {
+            window.history.replaceState(
+              window.history.state,
+              "",
+              `${window.location.pathname}${window.location.search}`,
+            );
+            return;
+          }
+          if (
+            event.origin === appOrigin &&
+            event.data &&
+            event.data.type === "costerly:recovery-complete"
+          ) {
+            window.history.replaceState(window.history.state, "", "/");
+            return;
+          }
           if (
             event.origin === appOrigin &&
             event.data &&

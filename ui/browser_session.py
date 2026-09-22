@@ -37,6 +37,20 @@ def write_fast_resume_cookie(resume_blob: str) -> None:
         )
 
 
+def clear_recovery_browser_route() -> None:
+    """Ask the public wrapper to remove the completed recovery route."""
+    with st.sidebar:
+        components.html(
+            """
+            <script>
+            window.top.postMessage({type: "costerly:recovery-complete"}, "*");
+            </script>
+            """,
+            height=0,
+            width=0,
+        )
+
+
 def browser_session_exchange(
     *,
     action: str,
@@ -47,6 +61,7 @@ def browser_session_exchange(
     run_id: str | None = None,
     run_sequence: int | None = None,
     server_elapsed_before_component_ms: float | None = None,
+    recovery_requested: bool = False,
 ) -> dict[str, object] | None:
     """Exchange auth tokens through a zero-height component outside main layout.
 
@@ -64,6 +79,7 @@ def browser_session_exchange(
             runId=run_id or "",
             runSequence=int(run_sequence or 0),
             serverElapsedBeforeComponentMs=server_elapsed_before_component_ms,
+            recoveryRequested=bool(recovery_requested),
             key="costerly_browser_session",
             default=None,
         )
