@@ -86,11 +86,17 @@ Retired position codes remain readable and are never rewritten by presentation
 changes.
 The `2026_09_19_company_employees.sql` migration has been applied to the live
 Supabase schema.
-The Users tab renders the owner-only team invitation URL with the same
-`company-profile-users` table-card primitive as the member list. It is a real
-link, not a code block, and uses a 12px section gap so the two related tables
-read as one compact group. Non-owners do not receive or render the invitation
-URL.
+The Users tab does not retain or reveal a permanent team URL. An owner action
+creates a fresh opaque bearer invitation, stores only its SHA-256 hash in
+`company_member_invites`, and shows the raw link in the existing
+`company-profile-users` table-card primitive. The link is not email-bound,
+expires after 24 hours, and is consumed in the same database transaction that
+creates the first member relationship. Row locking prevents concurrent reuse.
+The owner may remove a member after explicit confirmation. That operation
+deletes only the `company_members` relationship; it never deletes the Auth user,
+and the owner relationship is protected in both application and database code.
+The legacy `company_join_links` table is retained only as a rollback surface.
+Non-owners cannot create invitations, see generated links, or remove members.
 The Company Profile header removes top-level zero-height CSS and screen-marker
 wrappers from layout flow so Streamlit's vertical gap cannot accumulate above
 visible content. The page and heading-to-tabs gaps are both 34px. Header actions

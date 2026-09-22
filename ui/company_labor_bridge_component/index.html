@@ -21,7 +21,8 @@
           function handleAction(event) {
             const actionElement = event.target && event.target.closest
               ? event.target.closest(
-                  "[data-company-labor-edit], [data-company-labor-delete]"
+                  "[data-company-labor-edit], [data-company-labor-delete], " +
+                  "[data-company-user-delete]"
                 )
               : null;
             if (!actionElement) return;
@@ -29,10 +30,13 @@
             event.stopPropagation();
             send("streamlit:setComponentValue", {
               value: JSON.stringify({
-                action: actionElement.hasAttribute("data-company-labor-delete")
-                  ? "delete"
-                  : "edit",
+                action: actionElement.hasAttribute("data-company-user-delete")
+                  ? "user_delete"
+                  : actionElement.hasAttribute("data-company-labor-delete")
+                    ? "delete"
+                    : "edit",
                 employeeId: actionElement.dataset.employeeId || "",
+                memberId: actionElement.dataset.memberId || "",
                 nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
               }),
             });

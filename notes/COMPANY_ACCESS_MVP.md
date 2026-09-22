@@ -3,19 +3,18 @@
 ## Accepted scope
 
 - One company may have multiple users. A user belongs to one company.
-- The company creator is its single owner. Every user joining with the reusable
-  link is a member. Both can create/use RFQs and estimates. Only the owner may
+- The company creator is its single owner. Every user joining with a one-time
+  team invitation is a member. Both can create/use RFQs and estimates. Only the owner may
   change company-wide metrics and price-list settings when those screens land.
 - The pilot operator generates exactly one one-use company-creation link per
   counterparty, manually. Links have no expiry and are not email-bound. Both
   owner and employee links always use `https://app.costerly.ai/`; local
   shared links are rejected.
-- One-use owner links use `/start/<token>`. Reusable employee links use
+- One-use owner links use `/start/<token>`. One-use employee links use
   `/join/<token>`. No company ID or email appears in either URL.
-- The operator command generates two secrets at once. It returns only the
-  one-use owner-registration URL. The future reusable staff token is stored
-  server-side with that invitation, attached to the company atomically when
-  the owner registers, and shown in Company Profile only to the owner.
+- The owner generates a fresh employee invitation in Company Profile. Its raw
+  bearer token is shown only after generation, is not email-bound, expires in
+  24 hours, and is consumed atomically by the first successful registration.
 - Opening a valid token on localhost may display the form for UI development,
   but submission is rejected before any Auth user, company, or membership is
   written. Both real registration paths must run through the public app.
@@ -36,8 +35,8 @@
 
 | Priority | Status | Task | Trigger |
 | --- | --- | --- | --- |
-| P0 | Active | Access code and SQL migration | Complete local checks |
-| P0 | Pending | Current-project SQL/Auth activation and two-company verification | Local checks and public URL |
+| P0 | Active | 3.8.4 one-time team invitations and member access removal | Deploy and complete production acceptance |
+| P0 | Pending | Current-project SQL/Auth activation and two-company verification | 3.8.4 production acceptance and public URL |
 | P1 | Pending | Confirm Email and production SMTP | Before email recovery or verified accounts |
 | P1 | Completed | Tab-scoped login persistence | Accepted v3.0.51 checkpoint |
 | P1 | Completed | Company Profile first screen, contacts, and bank details | Accepted v3.0.49 checkpoint |
@@ -69,9 +68,11 @@
   later login routes to Upload.
 - A trusted command creates exactly one manual one-use company link. Only its
   SHA-256 hash is stored. Creation and consumption happen in one SQL transaction.
-- Each company gets a permanent random join token automatically at creation.
-  It is kept in a server-only table so members can copy it later. Joining is
-  not tied to email and does not consume the link.
+- The owner confirmed the additive migration was applied on 22.09. It introduces server-only, one-time team
+  invitations and atomic consumption. The application stores only the token
+  hash, rejects used or expired links, and lets the owner remove a member's
+  company relationship without deleting the Auth account. Production rollout
+  is pending application deployment and production acceptance.
 - The Cloudflare iframe wrapper forwards only the opaque invitation token to
   Streamlit; there is no company ID or email in the public URL.
 - An app-level ownership gate on deep links and selected RFQ/estimate IDs.
@@ -105,8 +106,9 @@
    It defaults to false so the last accepted benchmark path is unchanged.
 4. Generate one company-creation link with
    `tools/create_company_creation_link.py`. Verify registration, company
-   creation, automatic join link, two or more employees using the same link,
-   login, logout, direct deep links, and two-company data isolation.
+   creation, a newly generated one-time employee link, rejection after its first
+   successful use, member access removal, login, logout, direct deep links, and
+   two-company data isolation.
 5. Confirm anonymous REST requests can no longer read pricing overrides or
    object-estimate progress, and can no longer write pricing overrides.
 
@@ -115,9 +117,11 @@
 - Login persistence is tab-scoped. It survives refresh but intentionally does
   not survive closing the tab or opening the app in a different tab.
 - Production login UI and invitation ergonomics need an end-to-end browser
-  review. A leaked company join link stays valid until rotation is added.
+  review. A leaked unused team invitation remains usable until its 24-hour
+  expiry; explicit invitation revocation is intentionally outside this MVP.
 - Membership revocation while a background Estimation job is already running
-  does not cancel that job. There is no membership-management UI in this MVP.
+  does not cancel that job. The MVP removal UI revokes future company access but
+  does not terminate a browser request already executing.
 - The creator's Auth account cannot be deleted while its membership exists.
   An owner-transfer/recovery flow is needed before account deletion or
   self-service role management is introduced.

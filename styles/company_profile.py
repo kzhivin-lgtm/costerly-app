@@ -915,6 +915,34 @@ def apply_company_profile_css() -> None:
             border-bottom: 0;
         }
 
+        .company-profile-users .company-user-action-cell {
+            width: 44px;
+            padding-left: 8px;
+            padding-right: 8px;
+            text-align: center;
+        }
+
+        .company-user-delete {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            color: var(--color-text-muted);
+            font-family: var(--font-sans) !important;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .company-user-delete:hover,
+        .company-user-delete:focus-visible {
+            background: #F7ECEE;
+            color: #B4233B;
+            outline: none;
+        }
+
         .company-profile-invite {
             margin-top: 12px;
         }

@@ -390,7 +390,11 @@ def load_company_members(access: CompanyAccess) -> list[dict]:
             email = str(response.user.email or "Email unavailable")
         except Exception:
             email = fresh.email if user_id == fresh.user_id else "Email unavailable"
-        members.append({"Email": email, "Role": "Owner" if row["role"] == "owner" else "Member"})
+        members.append({
+            "User ID": user_id,
+            "Email": email,
+            "Role": "Owner" if row["role"] == "owner" else "Member",
+        })
     return sorted(members, key=lambda item: (item["Role"] != "Owner", item["Email"].lower()))
 
 
@@ -1400,39 +1404,165 @@ def _render_metrics(access: CompanyAccess) -> None:
 
 
 def _render_users(access: CompanyAccess) -> None:
-    from state.company_auth import company_join_url
+    from state.company_auth import create_company_join_url, remove_company_member
 
     try:
         members = load_company_members(access)
+        removable_members = {
+            str(member.get("User ID") or ""): member
+            for member in members
+            if member.get("Role") != "Owner" and member.get("User ID")
+        }
         rows = "".join(
-            f"<tr><td>{escape(member['Email'])}</td><td>{escape(member['Role'])}</td></tr>"
+            "<tr>"
+            f"<td>{escape(str(member['Email']))}</td>"
+            f"<td>{escape(str(member['Role']))}</td>"
+            + (
+                '<td class="company-user-action-cell">'
+                + (
+                    '<button type="button" class="company-user-delete" '
+                    'data-company-user-delete '
+                    f'data-member-id="{escape(str(member.get("User ID") or ""))}" '
+                    'aria-label="Remove user access" title="Remove user access">×</button>'
+                    if member.get("Role") != "Owner"
+                    else ""
+                )
+                + "</td>"
+                if access.role == "owner"
+                else ""
+            )
+            + "</tr>"
             for member in members
         )
+        action_header = "<th aria-label=\"Action\"></th>" if access.role == "owner" else ""
         markup = (
             '<div class="company-profile-users"><table>'
-            '<thead><tr><th>Email</th><th>Role</th></tr></thead>'
+            f'<thead><tr><th>Email</th><th>Role</th>{action_header}</tr></thead>'
             f"<tbody>{rows}</tbody></table></div>"
         )
     except Exception:
         st.error("Company users are unavailable right now.")
         return
 
-    if access.role == "owner":
-        try:
-            join_url = escape(company_join_url(access), quote=True)
-            markup += (
-                '<div class="company-profile-users company-profile-invite">'
-                '<table><thead><tr><th>Team Invitation Link</th></tr></thead>'
-                '<tbody><tr><td><a class="company-profile-invite-link" '
-                f'href="{join_url}" target="_blank" rel="noopener noreferrer">'
-                f"{join_url}</a></td></tr></tbody></table></div>"
-            )
-        except Exception:
-            st.markdown(markup, unsafe_allow_html=True)
-            st.error("The team invitation link is unavailable right now.")
-            return
-
     st.markdown(markup, unsafe_allow_html=True)
+
+    if access.role != "owner":
+        return
+
+    raw_user_request = None
+    with st.container(key="company_users_bridge_host"):
+        raw_user_request = company_labor_bridge(key="company_users_bridge")
+    if raw_user_request:
+        try:
+            request = json.loads(raw_user_request)
+        except (TypeError, json.JSONDecodeError):
+            request = None
+        if isinstance(request, dict):
+            nonce = _clean(request.get("nonce"))
+            member_id = _clean(request.get("memberId"))
+            if (
+                request.get("action") == "user_delete"
+                and nonce
+                and nonce != st.session_state.get("_company_user_action_nonce")
+                and member_id in removable_members
+            ):
+                st.session_state._company_user_action_nonce = nonce
+                st.session_state._company_user_remove_id = member_id
+
+    member_id = _clean(st.session_state.get("_company_user_remove_id"))
+    removing = removable_members.get(member_id)
+    if removing:
+        def cancel_remove() -> None:
+            st.session_state._company_user_remove_id = ""
+
+        def confirm_remove() -> None:
+            started_at = time.perf_counter()
+            try:
+                remove_company_member(access, member_id)
+                st.session_state._company_user_remove_id = ""
+                st.session_state._company_user_removed = True
+                st.session_state.company_profile_tab = "Users"
+                st.session_state._runtime_completed_action = {
+                    "action": "company_member_access_removed",
+                    "status": "ok",
+                    "duration_ms": (time.perf_counter() - started_at) * 1000,
+                }
+            except (PermissionError, ValueError) as exc:
+                st.session_state._company_user_remove_error = str(exc)
+            except Exception:
+                logger.exception("Company member removal failed")
+                st.session_state._company_user_remove_error = (
+                    "The user's access was not removed. Try again in a moment."
+                )
+
+        with st.container(key="company_user_remove_confirmation", border=True):
+            st.warning(f"Remove access for {removing['Email']}?")
+            remove_error = st.session_state.pop("_company_user_remove_error", None)
+            if remove_error:
+                st.error(remove_error)
+            confirm_column, cancel_column = st.columns([3, 1])
+            with confirm_column:
+                st.button(
+                    "Remove Access",
+                    key="company_user_remove_confirm",
+                    type="primary",
+                    use_container_width=True,
+                    on_click=confirm_remove,
+                )
+            with cancel_column:
+                st.button(
+                    "Cancel",
+                    key="company_user_remove_cancel",
+                    use_container_width=True,
+                    on_click=cancel_remove,
+                )
+        return
+
+    if st.session_state.pop("_company_user_removed", False):
+        st.success("User access removed")
+
+    def generate_invitation() -> None:
+        started_at = time.perf_counter()
+        try:
+            st.session_state._company_generated_invite_url = (
+                create_company_join_url(access)
+            )
+            st.session_state.company_profile_tab = "Users"
+            st.session_state.pop("_company_invite_error", None)
+            st.session_state._runtime_completed_action = {
+                "action": "company_member_invite_created",
+                "status": "ok",
+                "duration_ms": (time.perf_counter() - started_at) * 1000,
+            }
+        except Exception:
+            logger.exception("Company member invitation creation failed")
+            st.session_state._company_invite_error = (
+                "The invitation link could not be created. Try again in a moment."
+            )
+
+    st.button(
+        "Generate Invitation Link",
+        key="company_generate_invitation",
+        type="primary",
+        use_container_width=True,
+        on_click=generate_invitation,
+    )
+
+    invite_error = st.session_state.pop("_company_invite_error", None)
+    if invite_error:
+        st.error(invite_error)
+
+    generated_url = str(st.session_state.get("_company_generated_invite_url") or "")
+    if generated_url:
+        safe_url = escape(generated_url, quote=True)
+        st.markdown(
+            '<div class="company-profile-users company-profile-invite">'
+            '<table><thead><tr><th>Invitation Link · Valid for 24 Hours</th></tr></thead>'
+            '<tbody><tr><td><a class="company-profile-invite-link" '
+            f'href="{safe_url}" target="_blank" rel="noopener noreferrer">'
+            f"{safe_url}</a></td></tr></tbody></table></div>",
+            unsafe_allow_html=True,
+        )
 
 
 def _labor_position_label(position_code: object) -> str:

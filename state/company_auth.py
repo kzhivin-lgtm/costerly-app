@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 import json
 import re
 import secrets
@@ -481,14 +482,23 @@ def invitation_from_url() -> InvitationContext | None:
     ).data or []
     if creation and creation[0].get("used_at") is None:
         return InvitationContext("create", token)
-    company = (
-        _server_client().table("company_join_links")
-        .select("company_id")
-        .eq("join_token", token)
+    member_invites = (
+        _server_client().table("company_member_invites")
+        .select("expires_at,used_at")
+        .eq("token_hash", token_hash)
         .limit(1)
         .execute()
     ).data or []
-    return InvitationContext("join", token) if company else None
+    if not member_invites or member_invites[0].get("used_at") is not None:
+        return None
+    expires_at = str(member_invites[0].get("expires_at") or "")
+    try:
+        expires = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if expires <= datetime.now(timezone.utc):
+        return None
+    return InvitationContext("join", token)
 
 
 def create_company_for_user(
@@ -536,32 +546,56 @@ def join_company_for_user(access: CompanyAccess, invite_token: str) -> str:
         raise PermissionError("Company access changed. Please sign in again.")
     if not valid_invite_token(invite_token):
         raise ValueError("Invalid company link.")
-    result = _server_client().rpc("join_company_by_link", {
-        "p_join_token": invite_token,
+    result = _server_client().rpc("join_company_by_one_time_invite", {
+        "p_token_hash": invite_token_hash(invite_token),
         "p_user_id": fresh.user_id,
     }).execute()
     return str(result.data)
 
 
-def company_join_url(access: CompanyAccess) -> str:
+def create_company_join_url(access: CompanyAccess) -> str:
+    """Create one bearer invitation that expires in 24 hours."""
     if access.company_id is None or access.role != "owner":
-        raise PermissionError("Only the company owner can view the join link.")
+        raise PermissionError("Only the company owner can create an invitation.")
     fresh = current_company_access()
     if fresh is None or fresh.user_id != access.user_id or fresh.company_id != access.company_id or fresh.role != "owner":
         raise PermissionError("Company access changed. Please sign in again.")
-    rows = (
-        _server_client().table("company_join_links")
-        .select("join_token")
-        .eq("company_id", fresh.company_id)
-        .limit(1)
-        .execute()
-    ).data or []
-    if not rows:
-        raise RuntimeError("The company join link is missing.")
+    token = new_invite_token()
+    now = datetime.now(timezone.utc)
+    _server_client().table("company_member_invites").insert({
+        "token_hash": invite_token_hash(token),
+        "company_id": fresh.company_id,
+        "created_by": fresh.user_id,
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(hours=24)).isoformat(),
+    }).execute()
     base_url = public_app_url(
         get_optional_secret("COSTERLY_PUBLIC_URL") or DEFAULT_PUBLIC_APP_URL
     )
-    return invite_url(base_url, str(rows[0]["join_token"]), "join")
+    return invite_url(base_url, token, "join")
+
+
+def remove_company_member(access: CompanyAccess, member_user_id: str) -> None:
+    if access.company_id is None or access.role != "owner":
+        raise PermissionError("Only the company owner can remove access.")
+    fresh = current_company_access()
+    if (
+        fresh is None
+        or fresh.user_id != access.user_id
+        or fresh.company_id != access.company_id
+        or fresh.role != "owner"
+    ):
+        raise PermissionError("Company access changed. Please sign in again.")
+    target = str(member_user_id or "").strip()
+    if not target:
+        raise ValueError("Company member is required.")
+    if target == fresh.user_id:
+        raise PermissionError("The company owner cannot be removed.")
+    _server_client().rpc("remove_company_member_access", {
+        "p_company_id": fresh.company_id,
+        "p_owner_id": fresh.user_id,
+        "p_member_id": target,
+    }).execute()
 
 
 def render_login_or_signup(invitation: InvitationContext | None) -> None:

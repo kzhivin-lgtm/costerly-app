@@ -27,6 +27,21 @@
   password flow using the existing Supabase Auth account and the final branded
   application origin. Do not mix this auth feature into the hosting migration.
 
+- 3.8.4 One-time team invitations and access removal: active, locally verified,
+  production deployment and acceptance pending. The owner confirmed the
+  additive Supabase migration was applied on 22.09. Replace the permanent employee invitation with a
+  freshly generated bearer link for each registration. Each link is not tied to
+  an email, expires after 24 hours, and is consumed atomically by the first
+  successful membership creation. The Users tab lets only the owner generate a
+  link and remove a member after confirmation; the owner cannot remove themself.
+  Removal deletes only the `company_members` relationship, not the Supabase Auth
+  user. The legacy `company_join_links` table remains untouched as a rollback
+  surface but is no longer read by the new application path. Local verification:
+  124 Company Access tests and 242 full-suite tests passed. Production acceptance
+  requires application deployment, one successful registration, rejection
+  of the consumed link, member removal, and fresh access denial for that member.
+  Password recovery remains pending until this access lifecycle is accepted.
+
 - 3.6.2 Hard-refresh Sign in reveal stability: preserve the accepted in-button
   spinner and one-run Sign in while preventing partial Upload DOM from appearing
   after Command-Shift-R. Production trace

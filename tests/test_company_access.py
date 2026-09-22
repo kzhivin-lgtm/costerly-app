@@ -419,7 +419,7 @@ def test_profile_contacts_save_only_for_owner(monkeypatch):
 def test_member_cannot_get_company_join_link():
     member = company_auth.CompanyAccess("user-2", "member@example.com", "company-a", "member", "token")
     with pytest.raises(PermissionError):
-        company_auth.company_join_url(member)
+        company_auth.create_company_join_url(member)
 
 
 def test_company_account_traces_lazy_profile_import_and_render(monkeypatch):
@@ -456,13 +456,105 @@ def test_company_account_traces_lazy_profile_import_and_render(monkeypatch):
 
 def test_owner_join_link_uses_public_application_not_localhost(monkeypatch):
     owner = company_auth.CompanyAccess("user-1", "owner@example.com", "002", "owner", "token")
-    join_token = new_invite_token()
+    inserted = []
+
+    class InsertQuery:
+        def insert(self, values):
+            inserted.append(values)
+            return self
+
+        def execute(self):
+            return type("Response", (), {"data": inserted})()
+
+    class InsertClient:
+        def table(self, name):
+            assert name == "company_member_invites"
+            return InsertQuery()
+
     monkeypatch.setattr(company_auth, "current_company_access", lambda: owner)
-    monkeypatch.setattr(company_auth, "_server_client", lambda: _Client([{"join_token": join_token}]))
+    monkeypatch.setattr(company_auth, "_server_client", lambda: InsertClient())
     monkeypatch.setattr(company_auth, "get_optional_secret", lambda *_args: None)
-    url = company_auth.company_join_url(owner)
+    url = company_auth.create_company_join_url(owner)
     assert url.startswith(f"{DEFAULT_PUBLIC_APP_URL}join/")
     assert "localhost" not in url and "127.0.0.1" not in url
+    raw_token = urlsplit(url).path.rsplit("/", 1)[-1]
+    assert inserted[0]["token_hash"] == invite_token_hash(raw_token)
+    assert inserted[0]["company_id"] == "002"
+    assert inserted[0]["created_by"] == "user-1"
+
+
+def test_one_time_member_invite_migration_is_atomic_and_expires():
+    sql = (
+        Path(__file__).parents[1]
+        / "db/sql/2026_09_22_one_time_company_member_invites.sql"
+    ).read_text().lower()
+    assert "create table if not exists public.company_member_invites" in sql
+    assert "expires_at timestamptz not null" in sql
+    assert "expires_at <= created_at + interval '24 hours'" in sql
+    assert "join_company_by_one_time_invite" in sql
+    assert "i.used_at is null" in sql
+    assert "i.expires_at > now()" in sql
+    assert "for update" in sql
+    assert "set used_at = now(), used_by = p_user_id" in sql
+    assert "remove_company_member_access" in sql
+    assert "the company owner cannot be removed" in sql
+
+
+def test_join_company_consumes_hashed_one_time_invite(monkeypatch):
+    ownerless = company_auth.CompanyAccess(
+        "user-2", "member@example.com", None, None, "token"
+    )
+    token = new_invite_token()
+    calls = []
+
+    class RpcQuery:
+        def execute(self):
+            return type("Response", (), {"data": "company-a"})()
+
+    class RpcClient:
+        def rpc(self, name, values):
+            calls.append((name, values))
+            return RpcQuery()
+
+    monkeypatch.setattr(company_auth, "require_public_invitation_request", lambda: None)
+    monkeypatch.setattr(company_auth, "current_company_access", lambda: ownerless)
+    monkeypatch.setattr(company_auth, "_server_client", lambda: RpcClient())
+
+    assert company_auth.join_company_for_user(ownerless, token) == "company-a"
+    assert calls == [(
+        "join_company_by_one_time_invite",
+        {"p_token_hash": invite_token_hash(token), "p_user_id": "user-2"},
+    )]
+
+
+def test_owner_can_remove_member_but_not_self(monkeypatch):
+    owner = company_auth.CompanyAccess(
+        "user-1", "owner@example.com", "company-a", "owner", "token"
+    )
+    calls = []
+
+    class RpcQuery:
+        def execute(self):
+            return type("Response", (), {"data": "user-2"})()
+
+    class RpcClient:
+        def rpc(self, name, values):
+            calls.append((name, values))
+            return RpcQuery()
+
+    monkeypatch.setattr(company_auth, "current_company_access", lambda: owner)
+    monkeypatch.setattr(company_auth, "_server_client", lambda: RpcClient())
+    company_auth.remove_company_member(owner, "user-2")
+    assert calls == [(
+        "remove_company_member_access",
+        {
+            "p_company_id": "company-a",
+            "p_owner_id": "user-1",
+            "p_member_id": "user-2",
+        },
+    )]
+    with pytest.raises(PermissionError, match="owner cannot be removed"):
+        company_auth.remove_company_member(owner, "user-1")
 
 
 def _render_profile_test():
@@ -555,7 +647,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         load_metrics,
     )
     monkeypatch.setattr(company_profile, "load_company_employees", load_employees)
-    monkeypatch.setattr(company_auth, "company_join_url", lambda _access: "https://example.com/join/token")
+    monkeypatch.setattr(company_auth, "create_company_join_url", lambda _access: "https://example.com/join/token")
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = role
     app.run()
@@ -649,11 +741,65 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     assert not app.subheader
     assert not app.code
     users_markup = "".join(item.value for item in app.markdown)
-    assert ('class="company-profile-users company-profile-invite"' in users_markup) is (
+    assert any(button.label == "Generate Invitation Link" for button in app.button) is (
         role == "owner"
     )
-    assert ("Team Invitation Link" in users_markup) is (role == "owner")
-    assert ("https://example.com/join/token" in users_markup) is (role == "owner")
+    assert "Team Invitation Link" not in users_markup
+    assert "https://example.com/join/token" not in users_markup
+    if role == "owner":
+        next(
+            button for button in app.button
+            if button.label == "Generate Invitation Link"
+        ).click()
+        app.run()
+        users_markup = "".join(item.value for item in app.markdown)
+        assert 'class="company-profile-users company-profile-invite"' in users_markup
+        assert "Invitation Link · Valid for 24 Hours" in users_markup
+        assert "https://example.com/join/token" in users_markup
+
+
+def test_owner_can_confirm_member_access_removal_from_users_tab(monkeypatch):
+    removed = []
+    monkeypatch.setattr(
+        company_profile,
+        "load_company_members",
+        lambda _access: [
+            {
+                "User ID": "user-1",
+                "Email": "owner@example.com",
+                "Role": "Owner",
+            },
+            {
+                "User ID": "user-2",
+                "Email": "member@example.com",
+                "Role": "Member",
+            },
+        ],
+    )
+    monkeypatch.setattr(
+        company_auth,
+        "remove_company_member",
+        lambda _access, member_id: removed.append(member_id),
+    )
+
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Users"
+    app.session_state["_company_user_remove_id"] = "user-2"
+    app.run()
+
+    markup = "".join(item.value for item in app.markdown)
+    assert markup.count("data-company-user-delete") == 1
+    assert 'data-member-id="user-2"' in markup
+    assert "Remove access for member@example.com?" in " ".join(
+        item.value for item in app.warning
+    )
+    next(button for button in app.button if button.label == "Remove Access").click()
+    app.run()
+
+    assert removed == ["user-2"]
+    assert app.session_state["company_profile_tab"] == "Users"
+    assert "User access removed" in " ".join(item.value for item in app.success)
 
 
 def test_company_metrics_reuses_object_detail_table_contract():
@@ -1308,7 +1454,7 @@ def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
         "load_company_metrics",
         lambda _access: ({"vat_percent": 18}, {}),
     )
-    monkeypatch.setattr(company_auth, "company_join_url", lambda _access: "https://example.com/join/token")
+    monkeypatch.setattr(company_auth, "create_company_join_url", lambda _access: "https://example.com/join/token")
 
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = "owner"
