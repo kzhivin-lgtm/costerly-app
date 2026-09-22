@@ -681,6 +681,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     monkeypatch.setattr(company_auth, "create_company_join_url", lambda _access: "https://example.com/join/token")
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = role
+    app.session_state["screen"] = "account"
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
@@ -783,6 +784,8 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
             if button.label == "Generate Invitation Link"
         ).click()
         app.run()
+        assert app.session_state["screen"] == "account"
+        assert app.session_state["company_profile_tab"] == "Users"
         users_markup = "".join(item.value for item in app.markdown)
         assert 'class="company-profile-users company-profile-invite"' in users_markup
         assert "Invitation Link · Valid for 24 Hours" in users_markup

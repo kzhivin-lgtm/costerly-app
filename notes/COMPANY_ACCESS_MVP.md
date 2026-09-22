@@ -35,9 +35,10 @@
 
 | Priority | Status | Task | Trigger |
 | --- | --- | --- | --- |
-| P0 | Active | 3.8.4 one-time team invitations and member access removal | Deploy and complete production acceptance |
-| P0 | Pending | Current-project SQL/Auth activation and two-company verification | 3.8.4 production acceptance and public URL |
-| P1 | Pending | Confirm Email and production SMTP | Before email recovery or verified accounts |
+| P0 | Completed | 3.8.4 one-time team invitations and member access removal | Accepted in production on 22.09 |
+| P0 | Active | 3.8.2 password recovery | Verify Supabase recovery mail transport and redirect contract |
+| P0 | Pending | Current-project two-company verification | Dedicated cross-company acceptance pass |
+| P1 | Pending | Confirm Email and production SMTP | Before production recovery email delivery or verified accounts |
 | P1 | Completed | Tab-scoped login persistence | Accepted v3.0.51 checkpoint |
 | P1 | Completed | Company Profile first screen, contacts, and bank details | Accepted v3.0.49 checkpoint |
 | P1 | Pending | Pricing metrics and requisites/logo onboarding | Profile first screen accepted |
@@ -71,8 +72,8 @@
 - The owner confirmed the additive migration was applied on 22.09. It introduces server-only, one-time team
   invitations and atomic consumption. The application stores only the token
   hash, rejects used or expired links, and lets the owner remove a member's
-  company relationship without deleting the Auth account. Production rollout
-  is pending application deployment and production acceptance.
+  company relationship without deleting the Auth account. The production
+  rollout and owner acceptance were completed on 22.09.
 - The Cloudflare iframe wrapper forwards only the opaque invitation token to
   Streamlit; there is no company ID or email in the public URL.
 - An app-level ownership gate on deep links and selected RFQ/estimate IDs.
