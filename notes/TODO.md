@@ -58,7 +58,8 @@
   does not invalidate the accepted invitation behavior. Verification: 244 tests
   passed.
 
-- 3.8.5 Railway GitHub autodeploy reliability: pending, P1. GitHub `main`
+- 3.8.5 Railway GitHub autodeploy reliability and build timing: active, P1.
+  GitHub `main`
   accepted commits `b9f27d4` and `785d828`, and Cloudflare Pages deployed the
   same source automatically, but Railway did not create a deployment until
   `Deploy latest commit` was triggered manually. Verify the service Source is
@@ -66,7 +67,15 @@
   Wait for CI is disabled while no GitHub Actions workflow exists, Watch Paths
   are empty, and Deployments has no skipped or approval-waiting pushes. Then
   prove the repair with one harmless GitHub commit that produces a Railway
-  deployment without manual intervention.
+  deployment without manual intervention. The baseline deployment exposed
+  approximately 112 seconds of build work, including 51 seconds for pip, while
+  Railway displayed more than four minutes end to end. The current experiment
+  replaces `requirements.txt` with the standard `pyproject.toml` plus `uv.lock`
+  path recognized by Railpack 0.39.0 and Streamlit Community Cloud. Local cold
+  dependency preparation completed in 7.49 seconds and installation in 0.197
+  seconds. Acceptance requires an automatic deployment from the GitHub push,
+  Railway logs proving uv rather than pip, Active status, and separate observed
+  GitHub-to-build and build-to-Active timings.
 
 - 3.6.2 Hard-refresh Sign in reveal stability: preserve the accepted in-button
   spinner and one-run Sign in while preventing partial Upload DOM from appearing

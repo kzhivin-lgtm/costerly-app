@@ -1,9 +1,0 @@
-streamlit==1.64.0
-pandas
-openpyxl
-supabase
-anthropic==0.111.0
-httpx
-PyMuPDF
-Pillow==12.2.0
-cryptography>=49,<50
