@@ -301,6 +301,14 @@ its runtime variables. GitHub remains the deployment source. The prior
 Streamlit Cloud deployment is retained temporarily as the rollback backend
 until the Cloudflare plus Railway transition sequence is accepted.
 
+Python production dependencies use `pyproject.toml` plus the committed
+`uv.lock` as the single source of truth, with Python pinned by
+`.python-version`. Railpack 0.39.0 detects this layout and runs uv for both
+dependency and project synchronization. `requirements.txt` must not be added
+alongside the lock file because this Railpack version gives it precedence and
+falls back to pip. Streamlit Community Cloud also recognizes `uv.lock`, so the
+rollback deployment remains supported without a second dependency manifest.
+
 The owner accepted this topology in production on 2026-09-22. Streamlit Cloud
 is no longer the active iframe backend, but remains available temporarily for a
 direct wrapper rollback. The browser-facing application URL remains

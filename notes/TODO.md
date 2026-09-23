@@ -58,7 +58,7 @@
   does not invalidate the accepted invitation behavior. Verification: 244 tests
   passed.
 
-- 3.8.5 Railway GitHub autodeploy reliability and build timing: active, P1.
+- 3.8.5 Railway GitHub autodeploy reliability and build timing: completed, P1.
   GitHub `main`
   accepted commits `b9f27d4` and `785d828`, and Cloudflare Pages deployed the
   same source automatically, but Railway did not create a deployment until
@@ -73,9 +73,15 @@
   replaces `requirements.txt` with the standard `pyproject.toml` plus `uv.lock`
   path recognized by Railpack 0.39.0 and Streamlit Community Cloud. Local cold
   dependency preparation completed in 7.49 seconds and installation in 0.197
-  seconds. Acceptance requires an automatic deployment from the GitHub push,
-  Railway logs proving uv rather than pip, Active status, and separate observed
-  GitHub-to-build and build-to-Active timings.
+  seconds. Commit `bf0581d` proved the repair: Railway created deployment
+  `4dec029a-5989-419c-8be8-751f1e41c954` automatically 16 seconds after the
+  push timing mark, selected uv on Railpack 0.39.0, passed its healthcheck, and
+  reported success after 193 seconds. Explicit build steps fell from about 113
+  seconds to about 72 seconds, a reduction of roughly 41 seconds or 36 percent.
+  Approximately 114 seconds before server start remain outside the itemized
+  build steps and belong to Railway scheduling and deployment orchestration,
+  not dependency installation. Verification: 263 tests passed and both the
+  direct Railway health endpoint and `app.costerly.ai` returned HTTP 200.
 
 - 3.6.2 Hard-refresh Sign in reveal stability: preserve the accepted in-button
   spinner and one-run Sign in while preventing partial Upload DOM from appearing
