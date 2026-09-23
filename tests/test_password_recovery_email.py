@@ -16,7 +16,9 @@ def test_password_recovery_email_uses_public_brand_asset_and_direct_auth_link():
     assert "{{ .ConfirmationURL }}" in template
     assert "<svg" not in template
     assert "data:image" not in template
-    assert "We received your request." in template
+    assert "We received your request. Click the button below to create a new password" in template
+    assert "Create a new password for your Costerly AI account." not in template
+    assert "If you didn’t request this, you can safely ignore this email." not in template
     assert ">Reset your password</a>" in template
 
 

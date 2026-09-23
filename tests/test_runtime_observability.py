@@ -139,6 +139,38 @@ def test_completed_action_is_emitted_once_without_sensitive_values(monkeypatch):
     assert trace.summary()["completed_action_status"] == "ok"
 
 
+def test_completed_action_emits_only_safe_provider_error_classification(monkeypatch):
+    captured = []
+    monkeypatch.setattr(runtime, "_enqueue", captured.append)
+    state = {
+        "_runtime_completed_action": {
+            "action": "auth_password_updated",
+            "status": "error",
+            "duration_ms": 15,
+            "error_type": "AuthApiError",
+            "error_code": "weak_password",
+            "password": "must-not-leak",
+            "access_token": "must-not-leak",
+        }
+    }
+    trace = runtime.RuntimeTrace(
+        trace_id="10000000-0000-4000-8000-000000000001",
+        session_id="10000000-0000-4000-8000-000000000002",
+        run_id="10000000-0000-4000-8000-000000000003",
+        screen="password_reset",
+        started_at=time.perf_counter(),
+    )
+
+    runtime.emit_completed_action(state, trace)
+
+    assert captured[0]["metadata"] == {
+        "action": "auth_password_updated",
+        "error_type": "AuthApiError",
+        "error_code": "weak_password",
+    }
+    assert "must-not-leak" not in str(captured[0])
+
+
 def test_runtime_persistence_retries_transient_failure(monkeypatch):
     attempts = []
 

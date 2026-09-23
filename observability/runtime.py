@@ -279,10 +279,15 @@ def emit_completed_action(session_state: Any, trace: RuntimeTrace) -> None:
         return
     action = str(completed.get("action") or "unknown")
     status = str(completed.get("status") or "unknown")
+    metadata = {"action": action}
+    for key in ("error_type", "error_code"):
+        value = completed.get(key)
+        if value:
+            metadata[key] = str(value)[:120]
     trace.annotate(completed_action=action, completed_action_status=status)
     trace.event(
         "server.action_completed",
         status=status,
         duration_ms=float(completed.get("duration_ms") or 0),
-        metadata={"action": action},
+        metadata=metadata,
     )

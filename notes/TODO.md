@@ -29,7 +29,12 @@
   system, keep account-existence responses neutral, use a single-use expiring
   recovery link, and enforce the registration password policy on reset. Verify
   the actual Supabase recovery-mail transport and redirect contract before
-  implementing the production send path.
+  implementing the production send path. The recovery email and browser-session
+  handoff now reach the Reset password form. Production password submission
+  still requires verification after adding safe Supabase error type/code
+  telemetry and actionable provider-error feedback. Do not mark this task
+  complete until a production password change returns to Sign in and the new
+  password authenticates successfully.
 
 - 3.8.4 One-time team invitations and access removal: completed and accepted in
   production. The owner confirmed the additive Supabase migration was applied
@@ -318,7 +323,11 @@
 - Improve catalog matching: save matched material/labor rows and mark weak matches as `needs_review`.
 - Run estimation for all detected objects, not only the first object.
 - Design Objects Estimation status refresh without Streamlit stale-DOM fragments.
-- UI copy: remove trailing periods from standalone UI text when no next sentence follows.
+- UI copy: enforce the product rule that the final sentence in a user-facing
+  text block has no trailing period. Preserve internal periods and meaningful
+  question marks, exclamation marks, and other punctuation. Password recovery
+  and shared Auth validation copy now follow this rule; the remaining product
+  copy still needs an audit.
 - Upload: continue first app/file-load optimization; warm refresh now uses the grey screen/app-ready path, but cold start after reboot can still show one Streamlit skeleton.
 - Upload performance follow-up: lazy-load screens and cleanup are done; revisit `.streamlit/config.toml`, cold-start behavior, and optional post-deploy/reboot prewarm.
 - Processing: review processing-screen text wording and keep its current position as the layout benchmark.

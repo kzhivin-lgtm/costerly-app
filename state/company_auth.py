@@ -11,7 +11,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import streamlit as st
 from supabase import create_client
-from supabase_auth.errors import AuthApiError
+from supabase_auth.errors import AuthApiError, AuthError
 from postgrest.exceptions import APIError
 
 from config import get_optional_secret
@@ -109,15 +109,15 @@ def registration_validation_errors(
     """Return every invalid registration field so one submit marks them all."""
     errors: dict[str, str] = {}
     if company_name is not None and not company_name.strip():
-        errors["company"] = "Enter your company name."
+        errors["company"] = "Enter your company name"
     if not is_valid_email_address(email):
-        errors["email"] = "Enter an email address like name@company.com."
+        errors["email"] = "Enter an email address like name@company.com"
     if len(password) < 8 or not re.search(r"[a-z]", password) or not re.search(r"[A-Z]", password) or not re.search(r"[0-9]", password):
-        errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number."
+        errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number"
     if not password_confirm:
-        errors["confirm"] = "Confirm your password."
+        errors["confirm"] = "Confirm your password"
     elif password != password_confirm:
-        errors["confirm"] = "Passwords do not match."
+        errors["confirm"] = "Passwords do not match"
     return errors
 
 
@@ -125,11 +125,11 @@ def password_validation_errors(password: str, password_confirm: str) -> dict[str
     """Apply the registration password policy without requiring an email."""
     errors: dict[str, str] = {}
     if len(password) < 8 or not re.search(r"[a-z]", password) or not re.search(r"[A-Z]", password) or not re.search(r"[0-9]", password):
-        errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number."
+        errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number"
     if not password_confirm:
-        errors["confirm"] = "Confirm your password."
+        errors["confirm"] = "Confirm your password"
     elif password != password_confirm:
-        errors["confirm"] = "Passwords do not match."
+        errors["confirm"] = "Passwords do not match"
     return errors
 
 
@@ -308,7 +308,7 @@ def password_recovery_url() -> str:
 def request_password_recovery(email: str) -> None:
     """Ask Supabase to send a neutral, expiring recovery link."""
     if not is_valid_email_address(email):
-        raise ValueError("Enter an email address like name@company.com.")
+        raise ValueError("Enter an email address like name@company.com")
     started_at = time.perf_counter()
     status = "ok"
     try:
@@ -333,19 +333,23 @@ def update_recovered_password(password: str, password_confirm: str) -> None:
     if errors:
         raise ValueError(next(iter(errors.values())))
     if not st.session_state.get("auth_recovery_mode"):
-        raise PermissionError("Open a valid password recovery link first.")
+        raise PermissionError("Open a valid password recovery link first")
     access_token = str(st.session_state.get("auth_access_token") or "")
     refresh_token = str(st.session_state.get("auth_refresh_token") or "")
     if not access_token or not refresh_token:
-        raise PermissionError("This password recovery link is no longer valid.")
+        raise PermissionError("This password recovery link is no longer valid")
     started_at = time.perf_counter()
     status = "ok"
+    error_type = ""
+    error_code = ""
     try:
         client = _auth_client()
         client.auth.set_session(access_token, refresh_token)
         client.auth.update_user({"password": password})
-    except Exception:
+    except Exception as exc:
         status = "error"
+        error_type = type(exc).__name__
+        error_code = str(getattr(exc, "code", "") or "unknown")
         raise
     finally:
         st.session_state._runtime_completed_action = {
@@ -353,6 +357,25 @@ def update_recovered_password(password: str, password_confirm: str) -> None:
             "status": status,
             "duration_ms": (time.perf_counter() - started_at) * 1000,
         }
+        if error_type:
+            st.session_state._runtime_completed_action.update({
+                "error_type": error_type,
+                "error_code": error_code,
+            })
+
+
+def _password_update_error_message(exc: AuthError) -> str:
+    """Return actionable recovery copy without exposing provider details."""
+    code = str(getattr(exc, "code", "") or "")
+    if code == "weak_password":
+        return "Use a stronger password that meets every requirement shown above"
+    if code == "same_password":
+        return "Choose a password different from your current password"
+    if code in {"reauthentication_needed", "reauthentication_not_valid"}:
+        return "Request a new password reset link and try again"
+    if code in {"invalid_jwt", "session_not_found", "otp_expired"}:
+        return "This password recovery link is no longer valid. Request a new one"
+    return "We couldn't update your password. Request a new recovery link and try again"
 
 
 def _submit_password_recovery_request() -> None:
@@ -362,7 +385,7 @@ def _submit_password_recovery_request() -> None:
     st.session_state.pop("password_recovery_request_complete", None)
     if not is_valid_email_address(email):
         st.session_state.password_recovery_request_error = (
-            "Enter your email to reset your password."
+            "Enter your email to reset your password"
         )
         return
     try:
@@ -772,7 +795,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 render_auth_field_error("password", creation_errors["password"])
             if "confirm" in creation_errors:
                 render_auth_field_error("confirm", creation_errors["confirm"])
-            st.caption("Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.")
+            st.caption("Use at least 8 characters with an uppercase letter, a lowercase letter, and a number")
             submit = st.form_submit_button("Create Company Account", type="primary", use_container_width=True)
             if "service" in creation_errors:
                 st.error(creation_errors["service"])
@@ -834,7 +857,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             email = st.text_input("Email", key="signup_email", placeholder="you@company.com")
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm password", type="password", key="signup_password_confirm")
-            st.caption("At least 8 characters, one uppercase letter, one lowercase letter, and one number.")
+            st.caption("At least 8 characters, one uppercase letter, one lowercase letter, and one number")
             submit = st.form_submit_button(
                 "Create account",
                 type="primary",
@@ -875,15 +898,15 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
         if recovery_complete:
             st.markdown(
                 '<div class="auth-recovery-notice" role="status">'
-                "Your password has been updated. Sign in with your new password."
+                "Your password has been updated. Sign in with your new password"
                 "</div>",
                 unsafe_allow_html=True,
             )
         if login_error:
             st.error(login_error)
         recovery_action, recovery_feedback = st.columns(
-            [0.48, 0.52],
-            gap="small",
+            [0.25, 0.75],
+            gap=None,
             vertical_alignment="center",
         )
         with recovery_action:
@@ -901,7 +924,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 '<span class="auth-recovery-row-marker"></span>'
                 + (
                     '<span class="auth-recovery-inline-error" role="alert">'
-                    "Enter your email to reset your password."
+                    "Enter your email to reset your password"
                     "</span>"
                     if recovery_request_error
                     else ""
@@ -927,7 +950,7 @@ def render_password_reset() -> None:
     install_auth_form_interactions()
     _render_auth_heading("Reset password")
     if st.session_state.get("auth_recovery_error"):
-        st.error("This password recovery link is invalid or has expired.")
+        st.error("This password recovery link is invalid or has expired")
         st.button(
             "Return to sign in",
             key="invalid_recovery_return",
@@ -960,7 +983,7 @@ def render_password_reset() -> None:
         if "confirm" in errors:
             render_auth_field_error("confirm", errors["confirm"])
         st.caption(
-            "At least 8 characters, one uppercase letter, one lowercase letter, and one number."
+            "At least 8 characters, one uppercase letter, one lowercase letter, and one number"
         )
         submit = st.form_submit_button(
             "Reset password",
@@ -981,9 +1004,14 @@ def render_password_reset() -> None:
         except PermissionError as exc:
             st.session_state.password_reset_error = {"service": str(exc)}
             st.rerun()
+        except AuthError as exc:
+            st.session_state.password_reset_error = {
+                "service": _password_update_error_message(exc)
+            }
+            st.rerun()
         except Exception:
             st.session_state.password_reset_error = {
-                "service": "We couldn't update your password. Request a new recovery link and try again."
+                "service": "We couldn't update your password. Request a new recovery link and try again"
             }
             st.rerun()
         _finish_password_recovery()

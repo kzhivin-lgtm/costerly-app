@@ -5,12 +5,12 @@ import streamlit.components.v1 as components
 
 
 _QUIET_FIELD_ERRORS = {
-    "Enter an email address like name@company.com.",
-    "Enter your email to reset your password.",
-    "Enter your company name.",
-    "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number.",
-    "Passwords do not match.",
-    "Confirm your password.",
+    "Enter an email address like name@company.com",
+    "Enter your email to reset your password",
+    "Enter your company name",
+    "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number",
+    "Passwords do not match",
+    "Confirm your password",
 }
 
 
@@ -568,7 +568,7 @@ def apply_auth_css() -> None:
 
         .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) {
             align-items: center !important;
-            column-gap: 12px !important;
+            column-gap: 6px !important;
             margin-top: -8px !important;
             margin-bottom: 7px !important;
         }

@@ -352,6 +352,13 @@ def test_forgot_password_requires_email_without_leaving_sign_in(monkeypatch):
     assert [error.value for error in app.error] == []
     assert not app.exception
 
+    source = Path("state/company_auth.py").read_text()
+    styles = Path("styles/auth.py").read_text()
+    assert "[0.25, 0.75]" in source
+    assert 'gap=None' in source
+    assert "column-gap: 6px !important" in styles
+    assert "Enter your email to reset your password." not in source
+
 
 def test_recovery_request_uses_exact_public_callback(monkeypatch):
     calls = []
@@ -436,6 +443,55 @@ def test_recovered_password_uses_verified_session_and_registration_policy(monkey
         ("session", "access", "refresh"),
         ("update", {"password": "Strong123"}),
     ]
+
+
+def test_recovered_password_records_safe_provider_error_details(monkeypatch):
+    class Auth:
+        def set_session(self, _access_token, _refresh_token):
+            return None
+
+        def update_user(self, _values):
+            raise company_auth.AuthApiError(
+                "private provider message",
+                422,
+                "weak_password",
+            )
+
+    class Client:
+        auth = Auth()
+
+    monkeypatch.setattr(company_auth, "_auth_client", lambda: Client())
+    company_auth.st.session_state.clear()
+    company_auth.st.session_state.auth_recovery_mode = True
+    company_auth.st.session_state.auth_access_token = "access"
+    company_auth.st.session_state.auth_refresh_token = "refresh"
+
+    with pytest.raises(company_auth.AuthApiError):
+        company_auth.update_recovered_password("Strong123", "Strong123")
+
+    completed = company_auth.st.session_state._runtime_completed_action
+    assert completed["status"] == "error"
+    assert completed["error_type"] == "AuthApiError"
+    assert completed["error_code"] == "weak_password"
+    assert "private provider message" not in str(completed)
+    assert "access" not in str(completed)
+    assert "refresh" not in str(completed)
+    assert "Strong123" not in str(completed)
+
+
+@pytest.mark.parametrize(
+    ("code", "expected"),
+    [
+        ("weak_password", "Use a stronger password that meets every requirement shown above"),
+        ("same_password", "Choose a password different from your current password"),
+        ("invalid_jwt", "This password recovery link is no longer valid. Request a new one"),
+        ("unexpected", "We couldn't update your password. Request a new recovery link and try again"),
+    ],
+)
+def test_password_update_error_message_is_safe_and_actionable(code, expected):
+    exc = company_auth.AuthApiError("private provider detail", 400, code)
+    assert company_auth._password_update_error_message(exc) == expected
+    assert not expected.endswith(".")
 
 
 def test_join_registration_reuses_sign_in_layout_and_loading_contract():
