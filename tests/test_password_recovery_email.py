@@ -22,12 +22,17 @@ def test_password_recovery_email_uses_public_brand_asset_and_direct_auth_link():
     assert ">Reset your password</a>" in template
     assert '<meta name="color-scheme" content="light only">' in template
     assert '<meta name="supported-color-schemes" content="light only">' in template
-    assert 'body class="email-page" bgcolor="#f1efef"' in template
+    assert 'body class="body email-page" bgcolor="#ffffff"' in template
     assert 'class="email-card"' in template
     assert 'bgcolor="#ffffff"' in template
     assert "background-image:linear-gradient(#ffffff,#ffffff)" in template
+    assert "border:0;border-radius:0" in template
+    assert "#f1efef" not in template
     assert "@media (prefers-color-scheme: dark)" in template
     assert "[data-ogsc] .email-card" in template
+    assert "u + .body .gmail-blend-exclusion-black" in template
+    assert "u + .body .gmail-blend-difference-black" in template
+    assert '<span class="gmail-blend-exclusion-black"><span class="gmail-blend-difference-black">We received your request.' in template
 
 
 def test_password_recovery_subject_is_unique_without_exposing_the_otp():

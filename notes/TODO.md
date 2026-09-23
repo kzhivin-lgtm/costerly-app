@@ -51,7 +51,13 @@
   Coasterly AI palette in dark-mode mail clients, using email-compatible color
   declarations rather than relying on client theme defaults. The hosted
   Supabase template is external state and both changes must be verified
-  independently after applying the repository values.
+  independently after applying the repository values. The 24.09 Gmail iOS
+  screenshot verified that the light background and logo survive dark mode,
+  but Gmail still inverted the main paragraph to white. The repository
+  template now applies the Gmail blend-mode text guard and removes the nested
+  gray page, bordered card, and rounded card treatment in favor of one flat
+  white message surface. Production verification remains pending after the
+  updated HTML is copied into Supabase and a new recovery message is generated.
 
 - 3.8.4 One-time team invitations and access removal: completed and accepted in
   production. The owner confirmed the additive Supabase migration was applied
