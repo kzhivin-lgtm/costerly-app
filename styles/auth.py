@@ -577,6 +577,16 @@ def apply_auth_css() -> None:
             min-width: 0 !important;
         }
 
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) > [data-testid="stColumn"]:first-child {
+            flex: 0 0 auto !important;
+            width: auto !important;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) > [data-testid="stColumn"]:last-child {
+            flex: 1 1 auto !important;
+            width: auto !important;
+        }
+
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"],
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] > div,
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button {

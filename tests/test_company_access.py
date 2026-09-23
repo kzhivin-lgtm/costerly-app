@@ -357,6 +357,8 @@ def test_forgot_password_requires_email_without_leaving_sign_in(monkeypatch):
     assert "[0.25, 0.75]" in source
     assert 'gap=None' in source
     assert "column-gap: 6px !important" in styles
+    assert "flex: 0 0 auto !important" in styles
+    assert "flex: 1 1 auto !important" in styles
     assert "Enter your email to reset your password." not in source
 
 
