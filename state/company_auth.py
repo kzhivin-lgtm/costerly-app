@@ -907,15 +907,11 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 unsafe_allow_html=True,
             )
         with recovery_action:
-            st.form_submit_button(
-                (
-                    "Reset link sent"
-                    if recovery_request_complete
-                    else "Forgot password?"
-                ),
-                disabled=recovery_request_complete,
-                on_click=_submit_password_recovery_request,
-            )
+            if not recovery_request_complete:
+                st.form_submit_button(
+                    "Forgot password?",
+                    on_click=_submit_password_recovery_request,
+                )
         st.text_input(
             "Password",
             type="password",

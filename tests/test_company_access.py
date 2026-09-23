@@ -306,7 +306,8 @@ def test_forgot_password_uses_neutral_response_and_existing_auth_layout(monkeypa
     assert requested == ["owner@example.com"]
     markup = "".join(item.value for item in app.markdown)
     assert 'class="auth-recovery-sent"' in markup
-    assert any(button.label == "Reset link sent" for button in app.button)
+    assert not any(button.label == "Forgot password?" for button in app.button)
+    assert not any(button.label == "Reset link sent" for button in app.button)
     assert "If an account exists for this email, we sent a password reset link" in markup
     assert "auth-form-feedback-notice" in markup
     assert "auth-form-feedback-notice auth-form-feedback-dismissible" not in markup
@@ -367,7 +368,9 @@ def test_auth_loading_restores_only_the_trigger_button():
     assert ".auth-recovery-sent, .auth-form-feedback" in interactions
     assert "costerlyDismissedFeedbackId" in interactions
     assert "container.style.removeProperty('display')" in interactions
-    assert "setLoadingLabel(recoveryButton, 'Forgot password?')" in interactions
+    assert "button.dataset.costerlyOriginalLabel === 'Forgot password?'" in interactions
+    assert "Reset link sent" not in interactions
+    assert "auth-form-feedback-notice').forEach" not in interactions
 
 
 def test_forgot_password_requires_email_without_leaving_sign_in(monkeypatch):

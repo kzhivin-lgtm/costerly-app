@@ -108,13 +108,17 @@ def install_auth_form_interactions() -> None:
               'div[data-testid="stFormSubmitButton"] button[data-costerly-original-label]'
             );
             if (button) {
-              button.disabled = false;
               const sent = Boolean(form.querySelector('.auth-recovery-sent'));
-              setLoadingLabel(
-                button,
-                sent ? 'Reset link sent' : (button.dataset.costerlyOriginalLabel || button.textContent.trim())
-              );
-              if (sent) button.disabled = true;
+              if (sent && button.dataset.costerlyOriginalLabel === 'Forgot password?') {
+                const container = button.closest('div[data-testid="stFormSubmitButton"]');
+                (container || button).style.display = 'none';
+              } else {
+                button.disabled = false;
+                setLoadingLabel(
+                  button,
+                  button.dataset.costerlyOriginalLabel || button.textContent.trim()
+                );
+              }
               delete button.dataset.costerlyOriginalLabel;
             }
             form.querySelector('.costerly-auth-loading-message')?.remove();
@@ -162,7 +166,7 @@ def install_auth_form_interactions() -> None:
             }
           }
 
-          function dismissOperationError(input, emailChanged = false) {
+          function dismissOperationError(input) {
             const form = input.closest('div[data-testid="stForm"]');
             form?.querySelectorAll('[data-testid="stAlert"]').forEach((alert) => {
               const container = alert.closest('[data-testid="stElementContainer"]');
@@ -175,22 +179,6 @@ def install_auth_form_interactions() -> None:
               }
               (container || feedback).style.display = 'none';
             });
-            if (emailChanged && input.getAttribute('aria-label') === 'Email') {
-              form?.querySelectorAll('.auth-form-feedback-notice').forEach((feedback) => {
-                const container = feedback.closest('[data-testid="stElementContainer"]');
-                if (container) {
-                  container.dataset.costerlyDismissedFeedbackId = feedback.dataset.authFeedbackId || '';
-                }
-                (container || feedback).style.display = 'none';
-              });
-              const recoveryButton = Array.from(
-                form?.querySelectorAll('div[data-testid="stFormSubmitButton"] button') || []
-              ).find((node) => ['Forgot password?', 'Reset link sent'].includes(node.textContent.trim()));
-              if (recoveryButton?.textContent.trim() === 'Reset link sent') {
-                setLoadingLabel(recoveryButton, 'Forgot password?');
-                recoveryButton.disabled = false;
-              }
-            }
           }
 
           function bindCompanyCreation() {
@@ -298,7 +286,7 @@ def install_auth_form_interactions() -> None:
               target.input.dataset.costerlyAuthBound = '1';
               target.input.addEventListener('focus', () => dismissOperationError(target.input));
               target.input.addEventListener('input', () => {
-                dismissOperationError(target.input, field === 'email');
+                dismissOperationError(target.input);
                 if (target.shell.classList.contains('costerly-auth-invalid')) {
                   setInvalid(field, !fieldIsValid(field));
                 }

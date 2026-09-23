@@ -27,9 +27,7 @@ def test_password_recovery_subject_is_unique_without_exposing_the_otp():
         ROOT / "notes/email_templates/password_recovery.subject.txt"
     ).read_text(encoding="utf-8").strip()
 
-    assert subject == (
-        'Reset your Coasterly AI password [{{ printf "%.8s" .TokenHash }}]'
-    )
+    assert subject == "Reset your Coasterly AI password [{{ .TokenHash }}]"
     assert "{{ .Token }}" not in subject
 
 
