@@ -20,6 +20,14 @@ def test_password_recovery_email_uses_public_brand_asset_and_direct_auth_link():
     assert "Create a new password for your Coasterly AI account." not in template
     assert "If you didn’t request this, you can safely ignore this email." not in template
     assert ">Reset your password</a>" in template
+    assert '<meta name="color-scheme" content="light only">' in template
+    assert '<meta name="supported-color-schemes" content="light only">' in template
+    assert 'body class="email-page" bgcolor="#f1efef"' in template
+    assert 'class="email-card"' in template
+    assert 'bgcolor="#ffffff"' in template
+    assert "background-image:linear-gradient(#ffffff,#ffffff)" in template
+    assert "@media (prefers-color-scheme: dark)" in template
+    assert "[data-ogsc] .email-card" in template
 
 
 def test_password_recovery_subject_is_unique_without_exposing_the_otp():

@@ -47,8 +47,11 @@
   template
   `Reset your Coasterly AI password [{{ .TokenHash }}]` so every
   request has a distinct subject and mail clients do not thread separate
-  recovery attempts together. The hosted Supabase template is external state
-  and must be verified independently after applying this value.
+  recovery attempts together. The HTML template must remain in its light
+  Coasterly AI palette in dark-mode mail clients, using email-compatible color
+  declarations rather than relying on client theme defaults. The hosted
+  Supabase template is external state and both changes must be verified
+  independently after applying the repository values.
 
 - 3.8.4 One-time team invitations and access removal: completed and accepted in
   production. The owner confirmed the additive Supabase migration was applied
