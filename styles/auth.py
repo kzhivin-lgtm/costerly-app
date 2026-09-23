@@ -14,12 +14,24 @@ _QUIET_FIELD_ERRORS = {
 }
 
 
-def render_auth_field_error(field: str, message: str) -> None:
-    """Mark a field invalid; only non-obvious recovery guidance gets text."""
+def render_auth_field_error(
+    field: str,
+    message: str,
+    *,
+    show_message: bool = False,
+) -> None:
+    """Mark a field invalid and optionally show its actionable message."""
     st.markdown(
         f'<span class="auth-field-error-marker" data-auth-field="{field}"></span>',
         unsafe_allow_html=True,
     )
+    if show_message:
+        st.markdown(
+            '<div class="auth-form-feedback auth-form-feedback-error '
+            f'auth-form-feedback-dismissible" role="alert">{message}</div>',
+            unsafe_allow_html=True,
+        )
+        return
     if message not in _QUIET_FIELD_ERRORS:
         st.error(message)
 
@@ -150,17 +162,21 @@ def install_auth_form_interactions() -> None:
             }
           }
 
-          function dismissOperationError(input) {
+          function dismissOperationError(input, emailChanged = false) {
             const form = input.closest('div[data-testid="stForm"]');
             form?.querySelectorAll('[data-testid="stAlert"]').forEach((alert) => {
               const container = alert.closest('[data-testid="stElementContainer"]');
               (container || alert).style.display = 'none';
             });
-            form?.querySelectorAll('.auth-form-feedback').forEach((feedback) => {
+            form?.querySelectorAll('.auth-form-feedback-dismissible').forEach((feedback) => {
               const container = feedback.closest('[data-testid="stElementContainer"]');
               (container || feedback).style.display = 'none';
             });
-            if (input.getAttribute('aria-label') === 'Email') {
+            if (emailChanged && input.getAttribute('aria-label') === 'Email') {
+              form?.querySelectorAll('.auth-form-feedback-notice').forEach((feedback) => {
+                const container = feedback.closest('[data-testid="stElementContainer"]');
+                (container || feedback).style.display = 'none';
+              });
               const recoveryButton = Array.from(
                 form?.querySelectorAll('div[data-testid="stFormSubmitButton"] button') || []
               ).find((node) => ['Forgot password?', 'Reset link sent'].includes(node.textContent.trim()));
@@ -253,7 +269,7 @@ def install_auth_form_interactions() -> None:
 
           function refresh() {
             doc.querySelectorAll('div[data-testid="stForm"].costerly-auth-loading').forEach((form) => {
-              if (form.querySelector('.auth-field-error-marker, .auth-recovery-sent, [data-testid="stAlert"]')) {
+              if (form.querySelector('.auth-field-error-marker, .auth-recovery-sent, .auth-form-feedback, [data-testid="stAlert"]')) {
                 endAuthOperation(form);
               }
             });
@@ -268,7 +284,7 @@ def install_auth_form_interactions() -> None:
               target.input.dataset.costerlyAuthBound = '1';
               target.input.addEventListener('focus', () => dismissOperationError(target.input));
               target.input.addEventListener('input', () => {
-                dismissOperationError(target.input);
+                dismissOperationError(target.input, field === 'email');
                 if (target.shell.classList.contains('costerly-auth-invalid')) {
                   setInvalid(field, !fieldIsValid(field));
                 }

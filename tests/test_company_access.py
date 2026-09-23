@@ -308,6 +308,8 @@ def test_forgot_password_uses_neutral_response_and_existing_auth_layout(monkeypa
     assert 'class="auth-recovery-sent"' in markup
     assert any(button.label == "Reset link sent" for button in app.button)
     assert "If an account exists for this email, we sent a password reset link" in markup
+    assert "auth-form-feedback-notice" in markup
+    assert "auth-form-feedback-notice auth-form-feedback-dismissible" not in markup
     assert any("Sign in" in item.value for item in app.markdown)
     assert not app.exception
 
@@ -326,12 +328,28 @@ def test_reset_password_reuses_auth_form_and_displays_recovery_email():
     assert not app.exception
 
 
+def test_reset_password_mismatch_shows_text_feedback():
+    app = AppTest.from_function(_render_password_reset_test)
+    app.session_state.auth_recovery_mode = True
+    app.session_state.auth_recovery_email = "owner@example.com"
+    app.run()
+    app.text_input(key="recovery_password").set_value("Strong123")
+    app.text_input(key="recovery_password_confirm").set_value("Different123")
+    next(button for button in app.button if button.label == "Reset password").click().run()
+
+    markup = "".join(item.value for item in app.markdown)
+    assert "Passwords do not match" in markup
+    assert "auth-form-feedback-dismissible" in markup
+    assert not app.exception
+
+
 def test_auth_loading_restores_only_the_trigger_button():
     interactions = Path("styles/auth.py").read_text()
     assert "button[data-costerly-original-label]" in interactions
     assert "button.dataset.costerlyOriginalLabel || 'Create Company Account'" not in interactions
     assert ".auth-recovery-sent" in interactions
-    assert "form?.querySelectorAll('.auth-form-feedback')" in interactions
+    assert "form?.querySelectorAll('.auth-form-feedback-dismissible')" in interactions
+    assert ".auth-recovery-sent, .auth-form-feedback" in interactions
     assert "setLoadingLabel(recoveryButton, 'Forgot password?')" in interactions
 
 
@@ -350,7 +368,7 @@ def test_forgot_password_requires_email_without_leaving_sign_in(monkeypatch):
     assert 'data-auth-field="email"' in "".join(
         item.value for item in app.markdown
     )
-    assert 'class="auth-form-feedback auth-form-feedback-error"' in "".join(
+    assert 'class="auth-form-feedback auth-form-feedback-error auth-form-feedback-dismissible"' in "".join(
         item.value for item in app.markdown
     )
     assert [error.value for error in app.error] == []
@@ -359,7 +377,7 @@ def test_forgot_password_requires_email_without_leaving_sign_in(monkeypatch):
     source = Path("state/company_auth.py").read_text()
     styles = Path("styles/auth.py").read_text()
     assert "[0.7, 0.3]" in source
-    assert 'gap=None' in source
+    assert "gap=None" in source
     assert "column-gap: 12px !important" in styles
     assert ".auth-password-row-marker" in styles
     assert ".auth-form-feedback" in styles

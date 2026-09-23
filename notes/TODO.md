@@ -36,7 +36,12 @@
   active scope is production visual acceptance of the Sign in feedback layout:
   Password and Forgot password share one label row, feedback appears only when
   needed below the input, moves the primary button by one compact line, and
-  disappears immediately when the user resumes editing.
+  disappears immediately when the user resumes editing. Production recovery
+  mail must also use the repository subject template
+  `Reset your Coasterly AI password [{{ printf "%.8s" .TokenHash }}]` so every
+  request has a distinct subject and mail clients do not thread separate
+  recovery attempts together. The hosted Supabase template is external state
+  and must be verified independently after applying this value.
 
 - 3.8.4 One-time team invitations and access removal: completed and accepted in
   production. The owner confirmed the additive Supabase migration was applied

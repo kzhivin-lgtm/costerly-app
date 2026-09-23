@@ -940,8 +940,13 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             )
             feedback_kind = "success"
         if feedback_message:
+            feedback_classes = (
+                f"auth-form-feedback auth-form-feedback-{feedback_kind}"
+            )
+            if feedback_kind == "error":
+                feedback_classes += " auth-form-feedback-dismissible"
             st.markdown(
-                f'<div class="auth-form-feedback auth-form-feedback-{feedback_kind}" '
+                f'<div class="{feedback_classes}" '
                 f'role="{"alert" if feedback_kind == "error" else "status"}">'
                 f"{feedback_message}</div>",
                 unsafe_allow_html=True,
@@ -994,9 +999,17 @@ def render_password_reset() -> None:
             key="recovery_password_confirm",
         )
         if "password" in errors:
-            render_auth_field_error("password", errors["password"])
+            render_auth_field_error(
+                "password",
+                errors["password"],
+                show_message=True,
+            )
         if "confirm" in errors:
-            render_auth_field_error("confirm", errors["confirm"])
+            render_auth_field_error(
+                "confirm",
+                errors["confirm"],
+                show_message=True,
+            )
         st.caption(
             "At least 8 characters, one uppercase letter, one lowercase letter, and one number"
         )
