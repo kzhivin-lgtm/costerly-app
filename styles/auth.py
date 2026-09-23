@@ -170,11 +170,17 @@ def install_auth_form_interactions() -> None:
             });
             form?.querySelectorAll('.auth-form-feedback-dismissible').forEach((feedback) => {
               const container = feedback.closest('[data-testid="stElementContainer"]');
+              if (container) {
+                container.dataset.costerlyDismissedFeedbackId = feedback.dataset.authFeedbackId || '';
+              }
               (container || feedback).style.display = 'none';
             });
             if (emailChanged && input.getAttribute('aria-label') === 'Email') {
               form?.querySelectorAll('.auth-form-feedback-notice').forEach((feedback) => {
                 const container = feedback.closest('[data-testid="stElementContainer"]');
+                if (container) {
+                  container.dataset.costerlyDismissedFeedbackId = feedback.dataset.authFeedbackId || '';
+                }
                 (container || feedback).style.display = 'none';
               });
               const recoveryButton = Array.from(
@@ -268,6 +274,14 @@ def install_auth_form_interactions() -> None:
           }
 
           function refresh() {
+            doc.querySelectorAll('.auth-form-feedback').forEach((feedback) => {
+              const container = feedback.closest('[data-testid="stElementContainer"]');
+              if (!container) return;
+              const feedbackId = feedback.dataset.authFeedbackId || '';
+              if (container.dataset.costerlyDismissedFeedbackId !== feedbackId) {
+                container.style.removeProperty('display');
+              }
+            });
             doc.querySelectorAll('div[data-testid="stForm"].costerly-auth-loading').forEach((form) => {
               if (form.querySelector('.auth-field-error-marker, .auth-recovery-sent, .auth-form-feedback, [data-testid="stAlert"]')) {
                 endAuthOperation(form);

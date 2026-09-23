@@ -381,6 +381,7 @@ def _password_update_error_message(exc: AuthError) -> str:
 def _submit_password_recovery_request() -> None:
     """Send recovery from Sign in without introducing another auth screen."""
     email = str(st.session_state.get("login_email") or "")
+    st.session_state.auth_feedback_id = secrets.token_urlsafe(8)
     st.session_state.pop("company_login_error", None)
     st.session_state.pop("password_recovery_request_error", None)
     st.session_state.pop("password_recovery_request_complete", None)
@@ -413,6 +414,7 @@ def _clear_password_recovery(*, updated: bool) -> None:
     st.session_state.clear_recovery_browser_route = True
     if updated:
         st.session_state.password_recovery_complete = True
+        st.session_state.auth_feedback_id = secrets.token_urlsafe(8)
     if "auth_flow" in st.query_params:
         del st.query_params["auth_flow"]
 
@@ -522,6 +524,7 @@ def _submit_login() -> None:
     """Authenticate before Streamlit renders the post-submit script run."""
     email = str(st.session_state.get("login_email") or "")
     password = str(st.session_state.get("login_password") or "")
+    st.session_state.auth_feedback_id = secrets.token_urlsafe(8)
     st.session_state.pop("company_login_error", None)
     st.session_state.pop("password_recovery_request_error", None)
     st.session_state.pop("password_recovery_request_complete", None)
@@ -529,7 +532,7 @@ def _submit_login() -> None:
         sign_in(email, password)
     except Exception:
         st.session_state.company_login_error = (
-            "Could not sign in. Check your email and password"
+            "Check your email and password"
         )
 
 
@@ -927,7 +930,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             feedback_message = "Enter your email to reset your password"
             feedback_kind = "error"
         elif login_error:
-            feedback_message = "Could not sign in. Check your email and password"
+            feedback_message = "Check your email and password"
             feedback_kind = "error"
         elif recovery_request_complete:
             feedback_message = (
@@ -940,6 +943,9 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             )
             feedback_kind = "success"
         if feedback_message:
+            feedback_id = str(
+                st.session_state.get("auth_feedback_id") or "auth-feedback"
+            )
             feedback_classes = (
                 f"auth-form-feedback auth-form-feedback-{feedback_kind}"
             )
@@ -947,6 +953,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 feedback_classes += " auth-form-feedback-dismissible"
             st.markdown(
                 f'<div class="{feedback_classes}" '
+                f'data-auth-feedback-id="{feedback_id}" '
                 f'role="{"alert" if feedback_kind == "error" else "status"}">'
                 f"{feedback_message}</div>",
                 unsafe_allow_html=True,

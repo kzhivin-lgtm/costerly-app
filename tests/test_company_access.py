@@ -283,7 +283,7 @@ def test_sign_in_callback_returns_failure_to_login_form(monkeypatch):
     next(button for button in app.button if button.label == "Sign in").click().run()
 
     assert [error.value for error in app.error] == []
-    assert "Could not sign in. Check your email and password" in "".join(
+    assert "Check your email and password" in "".join(
         item.value for item in app.markdown
     )
     assert not app.exception
@@ -311,6 +311,21 @@ def test_forgot_password_uses_neutral_response_and_existing_auth_layout(monkeypa
     assert "auth-form-feedback-notice" in markup
     assert "auth-form-feedback-notice auth-form-feedback-dismissible" not in markup
     assert any("Sign in" in item.value for item in app.markdown)
+    assert not app.exception
+
+
+def test_sign_in_with_empty_fields_shows_shared_credentials_message(monkeypatch):
+    monkeypatch.setattr(
+        company_auth,
+        "sign_in",
+        lambda *_args: (_ for _ in ()).throw(ValueError("missing credentials")),
+    )
+    app = AppTest.from_function(_render_login_test).run()
+    next(button for button in app.button if button.label == "Sign in").click().run()
+
+    markup = "".join(item.value for item in app.markdown)
+    assert "Check your email and password" in markup
+    assert "data-auth-feedback-id=" in markup
     assert not app.exception
 
 
@@ -350,6 +365,8 @@ def test_auth_loading_restores_only_the_trigger_button():
     assert ".auth-recovery-sent" in interactions
     assert "form?.querySelectorAll('.auth-form-feedback-dismissible')" in interactions
     assert ".auth-recovery-sent, .auth-form-feedback" in interactions
+    assert "costerlyDismissedFeedbackId" in interactions
+    assert "container.style.removeProperty('display')" in interactions
     assert "setLoadingLabel(recoveryButton, 'Forgot password?')" in interactions
 
 
