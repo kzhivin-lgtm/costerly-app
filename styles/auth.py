@@ -100,7 +100,7 @@ def install_auth_form_interactions() -> None:
               const sent = Boolean(form.querySelector('.auth-recovery-sent'));
               setLoadingLabel(
                 button,
-                sent ? 'Reset password link sent' : (button.dataset.costerlyOriginalLabel || button.textContent.trim())
+                sent ? 'Reset link sent' : (button.dataset.costerlyOriginalLabel || button.textContent.trim())
               );
               if (sent) button.disabled = true;
               delete button.dataset.costerlyOriginalLabel;
@@ -156,6 +156,19 @@ def install_auth_form_interactions() -> None:
               const container = alert.closest('[data-testid="stElementContainer"]');
               (container || alert).style.display = 'none';
             });
+            form?.querySelectorAll('.auth-form-feedback').forEach((feedback) => {
+              const container = feedback.closest('[data-testid="stElementContainer"]');
+              (container || feedback).style.display = 'none';
+            });
+            if (input.getAttribute('aria-label') === 'Email') {
+              const recoveryButton = Array.from(
+                form?.querySelectorAll('div[data-testid="stFormSubmitButton"] button') || []
+              ).find((node) => ['Forgot password?', 'Reset link sent'].includes(node.textContent.trim()));
+              if (recoveryButton?.textContent.trim() === 'Reset link sent') {
+                setLoadingLabel(recoveryButton, 'Forgot password?');
+                recoveryButton.disabled = false;
+              }
+            }
           }
 
           function bindCompanyCreation() {
@@ -539,52 +552,60 @@ def apply_auth_css() -> None:
             line-height: 1.45 !important;
         }
 
-        .stApp:has(.auth-screen-active) .auth-recovery-notice {
-            color: #51475B;
+        .stApp:has(.auth-screen-active) .auth-password-row-marker {
+            display: block;
+            color: #2A1F2C;
             font-family: var(--font-sans);
             font-size: 14px;
-            font-weight: 600;
-            line-height: 1.5;
-            text-align: center;
+            font-weight: 700;
+            line-height: 1.35;
         }
 
         .stApp:has(.auth-screen-active) .auth-recovery-sent {
             display: none !important;
         }
 
-        .stApp:has(.auth-screen-active) .auth-recovery-row-marker {
-            display: none !important;
-        }
-
-        .stApp:has(.auth-screen-active) .auth-recovery-inline-error {
-            display: block;
-            color: #B43E49;
-            font-family: var(--font-sans);
-            font-size: 13px;
-            font-weight: 600;
-            line-height: 1.35;
-            white-space: nowrap;
-        }
-
-        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) {
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-password-row-marker) {
             align-items: center !important;
-            column-gap: 6px !important;
-            margin-top: -8px !important;
-            margin-bottom: 7px !important;
+            column-gap: 12px !important;
+            margin-top: 2px !important;
+            margin-bottom: -9px !important;
         }
 
-        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) [data-testid="stColumn"] {
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-password-row-marker) [data-testid="stColumn"] {
             min-width: 0 !important;
         }
 
-        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) > [data-testid="stColumn"]:first-child {
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-password-row-marker) > [data-testid="stColumn"]:first-child {
+            flex: 1 1 auto !important;
+            width: auto !important;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-password-row-marker) > [data-testid="stColumn"]:last-child {
             flex: 0 0 auto !important;
             width: auto !important;
         }
 
-        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) > [data-testid="stColumn"]:last-child {
-            flex: 1 1 auto !important;
-            width: auto !important;
+        .stApp:has(.auth-screen-active) .auth-form-feedback {
+            margin-top: -3px;
+            margin-bottom: 1px;
+            display: block;
+            font-family: var(--font-sans);
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-form-feedback-error {
+            color: #B43E49;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-form-feedback-notice {
+            color: #51475B;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-form-feedback-success {
+            color: #2F7D5A;
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"],
@@ -631,8 +652,8 @@ def apply_auth_css() -> None:
             padding: 0 !important;
         }
 
-        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) div[data-testid="stFormSubmitButton"],
-        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-recovery-row-marker) div[data-testid="stFormSubmitButton"] > div {
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-password-row-marker) div[data-testid="stFormSubmitButton"],
+        .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-password-row-marker) div[data-testid="stFormSubmitButton"] > div {
             width: auto !important;
         }
 

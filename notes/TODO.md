@@ -31,10 +31,12 @@
   the actual Supabase recovery-mail transport and redirect contract before
   implementing the production send path. The recovery email and browser-session
   handoff now reach the Reset password form. Production password submission
-  still requires verification after adding safe Supabase error type/code
-  telemetry and actionable provider-error feedback. Do not mark this task
-  complete until a production password change returns to Sign in and the new
-  password authenticates successfully.
+  was verified by the owner on 23.09: the form changed the password, returned
+  to Sign in, and the new password authenticated successfully. The remaining
+  active scope is production visual acceptance of the Sign in feedback layout:
+  Password and Forgot password share one label row, feedback appears only when
+  needed below the input, moves the primary button by one compact line, and
+  disappears immediately when the user resumes editing.
 
 - 3.8.4 One-time team invitations and access removal: completed and accepted in
   production. The owner confirmed the additive Supabase migration was applied

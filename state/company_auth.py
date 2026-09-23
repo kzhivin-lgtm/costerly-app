@@ -381,6 +381,7 @@ def _password_update_error_message(exc: AuthError) -> str:
 def _submit_password_recovery_request() -> None:
     """Send recovery from Sign in without introducing another auth screen."""
     email = str(st.session_state.get("login_email") or "")
+    st.session_state.pop("company_login_error", None)
     st.session_state.pop("password_recovery_request_error", None)
     st.session_state.pop("password_recovery_request_complete", None)
     if not is_valid_email_address(email):
@@ -528,7 +529,7 @@ def _submit_login() -> None:
         sign_in(email, password)
     except Exception:
         st.session_state.company_login_error = (
-            "Could not sign in. Check your email and password."
+            "Could not sign in. Check your email and password"
         )
 
 
@@ -892,43 +893,57 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
         clear_recovery_browser_route()
     with st.form("company_login"):
         st.text_input("Email", key="login_email", placeholder="you@company.com")
-        st.text_input("Password", type="password", key="login_password")
-        if recovery_request_error:
-            render_auth_field_error("email", str(recovery_request_error))
-        if recovery_complete:
-            st.markdown(
-                '<div class="auth-recovery-notice" role="status">'
-                "Your password has been updated. Sign in with your new password"
-                "</div>",
-                unsafe_allow_html=True,
-            )
-        if login_error:
-            st.error(login_error)
-        recovery_action, recovery_feedback = st.columns(
-            [0.25, 0.75],
+        password_label, recovery_action = st.columns(
+            [0.7, 0.3],
             gap=None,
             vertical_alignment="center",
         )
+        with password_label:
+            st.markdown(
+                '<span class="auth-password-row-marker">Password</span>',
+                unsafe_allow_html=True,
+            )
         with recovery_action:
             st.form_submit_button(
                 (
-                    "Reset password link sent"
+                    "Reset link sent"
                     if recovery_request_complete
                     else "Forgot password?"
                 ),
                 disabled=recovery_request_complete,
                 on_click=_submit_password_recovery_request,
             )
-        with recovery_feedback:
+        st.text_input(
+            "Password",
+            type="password",
+            key="login_password",
+            label_visibility="collapsed",
+        )
+        if recovery_request_error:
+            render_auth_field_error("email", str(recovery_request_error))
+        feedback_message = ""
+        feedback_kind = ""
+        if recovery_request_error:
+            feedback_message = "Enter your email to reset your password"
+            feedback_kind = "error"
+        elif login_error:
+            feedback_message = "Could not sign in. Check your email and password"
+            feedback_kind = "error"
+        elif recovery_request_complete:
+            feedback_message = (
+                "If an account exists for this email, we sent a password reset link"
+            )
+            feedback_kind = "notice"
+        elif recovery_complete:
+            feedback_message = (
+                "Your password has been updated. Sign in with your new password"
+            )
+            feedback_kind = "success"
+        if feedback_message:
             st.markdown(
-                '<span class="auth-recovery-row-marker"></span>'
-                + (
-                    '<span class="auth-recovery-inline-error" role="alert">'
-                    "Enter your email to reset your password"
-                    "</span>"
-                    if recovery_request_error
-                    else ""
-                ),
+                f'<div class="auth-form-feedback auth-form-feedback-{feedback_kind}" '
+                f'role="{"alert" if feedback_kind == "error" else "status"}">'
+                f"{feedback_message}</div>",
                 unsafe_allow_html=True,
             )
         if recovery_request_complete:
