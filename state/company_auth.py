@@ -126,6 +126,7 @@ def password_validation_errors(password: str, password_confirm: str) -> dict[str
     errors: dict[str, str] = {}
     if len(password) < 8 or not re.search(r"[a-z]", password) or not re.search(r"[A-Z]", password) or not re.search(r"[0-9]", password):
         errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number"
+        return errors
     if not password_confirm:
         errors["confirm"] = "Confirm your password"
     elif password != password_confirm:
@@ -383,6 +384,7 @@ def _submit_password_recovery_request() -> None:
     email = str(st.session_state.get("login_email") or "")
     st.session_state.auth_feedback_id = secrets.token_urlsafe(8)
     st.session_state.pop("company_login_error", None)
+    st.session_state.pop("company_login_invalid_fields", None)
     st.session_state.pop("password_recovery_request_error", None)
     st.session_state.pop("password_recovery_request_complete", None)
     if not is_valid_email_address(email):
@@ -526,14 +528,23 @@ def _submit_login() -> None:
     password = str(st.session_state.get("login_password") or "")
     st.session_state.auth_feedback_id = secrets.token_urlsafe(8)
     st.session_state.pop("company_login_error", None)
+    st.session_state.pop("company_login_invalid_fields", None)
     st.session_state.pop("password_recovery_request_error", None)
     st.session_state.pop("password_recovery_request_complete", None)
+    invalid_fields: list[str] = []
+    if not is_valid_email_address(email):
+        invalid_fields.append("email")
+    if not password:
+        invalid_fields.append("password")
+    if invalid_fields:
+        st.session_state.company_login_invalid_fields = invalid_fields
+        st.session_state.company_login_error = "Check your email and password"
+        return
     try:
         sign_in(email, password)
     except Exception:
-        st.session_state.company_login_error = (
-            "Check your email and password"
-        )
+        st.session_state.company_login_invalid_fields = ["email", "password"]
+        st.session_state.company_login_error = "Check your email and password"
 
 
 def _verified_token_identity(access_token: str) -> tuple[str, str]:
@@ -887,6 +898,9 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
 
     _render_auth_heading("Sign in")
     login_error = st.session_state.get("company_login_error")
+    login_invalid_fields = set(
+        st.session_state.get("company_login_invalid_fields") or []
+    )
     recovery_request_error = st.session_state.get("password_recovery_request_error")
     recovery_request_complete = st.session_state.get(
         "password_recovery_request_complete", False
@@ -918,6 +932,16 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             key="login_password",
             label_visibility="collapsed",
         )
+        if "email" in login_invalid_fields:
+            render_auth_field_error(
+                "email",
+                "Enter an email address like name@company.com",
+            )
+        if "password" in login_invalid_fields:
+            render_auth_field_error(
+                "password",
+                "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number",
+            )
         if recovery_request_error:
             render_auth_field_error("email", str(recovery_request_error))
         feedback_message = ""
@@ -1013,9 +1037,10 @@ def render_password_reset() -> None:
                 errors["confirm"],
                 show_message=True,
             )
-        st.caption(
-            "At least 8 characters, one uppercase letter, one lowercase letter, and one number"
-        )
+        if not ({"password", "confirm"} & errors.keys()):
+            st.caption(
+                "At least 8 characters, one uppercase letter, one lowercase letter, and one number"
+            )
         submit = st.form_submit_button(
             "Reset password",
             type="primary",

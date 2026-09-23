@@ -50,8 +50,8 @@ def install_auth_form_interactions() -> None:
             confirm: ["Confirm Password", "Confirm password"]
           };
 
-          function fieldShell(field) {
-            const input = Array.from(doc.querySelectorAll('input')).find(
+          function fieldShell(field, scope = doc) {
+            const input = Array.from(scope.querySelectorAll('input')).find(
               (node) => labels[field]?.includes(node.getAttribute('aria-label'))
             );
             return input ? {input, shell: input.closest('[data-testid="stTextInput"]')} : null;
@@ -70,22 +70,34 @@ def install_auth_form_interactions() -> None:
             return suffix.length >= 2 && !/^\d+$/.test(suffix);
           }
 
-          function setInvalid(field, invalid) {
-            const target = fieldShell(field)?.shell;
+          function setInvalid(field, invalid, scope = doc) {
+            const target = fieldShell(field, scope)?.shell;
             if (target) target.classList.toggle('costerly-auth-invalid', invalid);
           }
 
-          function fieldIsValid(field) {
-            const target = fieldShell(field);
+          function formHasAction(form, label) {
+            return Array.from(
+              form?.querySelectorAll('div[data-testid="stFormSubmitButton"] button') || []
+            ).some((button) => (
+              button.textContent.trim() === label ||
+              button.dataset.costerlyOriginalLabel === label
+            ));
+          }
+
+          function fieldIsValid(field, scope = doc) {
+            const target = fieldShell(field, scope);
             if (!target) return true;
             const value = target.input.value;
             if (field === 'company') return value.trim().length > 0;
             if (field === 'email') return validEmail(value);
             if (field === 'password') {
+              if (formHasAction(target.input.closest('div[data-testid="stForm"]'), 'Sign in')) {
+                return value.length > 0;
+              }
               return value.length >= 8 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /[0-9]/.test(value);
             }
             if (field === 'confirm') {
-              const password = fieldShell('password')?.input.value || '';
+              const password = fieldShell('password', scope)?.input.value || '';
               return value.length > 0 && value === password;
             }
             return true;
@@ -188,9 +200,10 @@ def install_auth_form_interactions() -> None:
             if (!button || button.dataset.costerlyLoadingBound === '1') return;
             button.dataset.costerlyLoadingBound = '1';
             button.addEventListener('click', () => {
+              const form = button.closest('div[data-testid="stForm"]');
               const fields = ['company', 'email', 'password', 'confirm'];
-              const invalid = fields.filter((field) => !fieldIsValid(field));
-              invalid.forEach((field) => setInvalid(field, true));
+              const invalid = fields.filter((field) => !fieldIsValid(field, form));
+              invalid.forEach((field) => setInvalid(field, true, form));
               if (invalid.length > 0) return;
               window.setTimeout(() => beginAuthOperation(button, 'Checking your details...'), 0);
             });
@@ -203,11 +216,13 @@ def install_auth_form_interactions() -> None:
             if (!button || button.dataset.costerlyLoadingBound === '1') return;
             button.dataset.costerlyLoadingBound = '1';
             button.addEventListener('click', () => {
+              const form = button.closest('div[data-testid="stForm"]');
               const invalid = ['email', 'password'].filter((field) => {
-                if (field === 'password') return !(fieldShell('password')?.input.value || '');
-                return !fieldIsValid(field);
+                return !fieldIsValid(field, form);
               });
-              invalid.forEach((field) => setInvalid(field, true));
+              ['email', 'password'].forEach(
+                (field) => setInvalid(field, invalid.includes(field), form)
+              );
               if (invalid.length > 0) return;
               window.setTimeout(() => beginAuthOperation(button, 'Signing in...'), 0);
             });
@@ -220,10 +235,11 @@ def install_auth_form_interactions() -> None:
             if (!button || button.dataset.costerlyLoadingBound === '1') return;
             button.dataset.costerlyLoadingBound = '1';
             button.addEventListener('click', () => {
+              const form = button.closest('div[data-testid="stForm"]');
               const invalid = ['email', 'password', 'confirm'].filter(
-                (field) => !fieldIsValid(field)
+                (field) => !fieldIsValid(field, form)
               );
-              invalid.forEach((field) => setInvalid(field, true));
+              invalid.forEach((field) => setInvalid(field, true, form));
               if (invalid.length > 0) return;
               window.setTimeout(() => beginAuthOperation(button, 'Creating account...'), 0);
             });
@@ -237,8 +253,9 @@ def install_auth_form_interactions() -> None:
             button.classList.add('costerly-forgot-password-button');
             button.dataset.costerlyLoadingBound = '1';
             button.addEventListener('click', () => {
-              if (!fieldIsValid('email')) {
-                setInvalid('email', true);
+              const form = button.closest('div[data-testid="stForm"]');
+              if (!fieldIsValid('email', form)) {
+                setInvalid('email', true, form);
                 return;
               }
               window.setTimeout(() => beginAuthOperation(button, 'Sending reset link...'), 0);
@@ -252,11 +269,18 @@ def install_auth_form_interactions() -> None:
             if (!button || button.dataset.costerlyLoadingBound === '1') return;
             button.dataset.costerlyLoadingBound = '1';
             button.addEventListener('click', () => {
-              const invalid = ['password', 'confirm'].filter(
-                (field) => !fieldIsValid(field)
-              );
-              invalid.forEach((field) => setInvalid(field, true));
-              if (invalid.length > 0) return;
+              const form = button.closest('div[data-testid="stForm"]');
+              if (!fieldIsValid('password', form)) {
+                setInvalid('password', true, form);
+                setInvalid('confirm', false, form);
+                return;
+              }
+              setInvalid('password', false, form);
+              if (!fieldIsValid('confirm', form)) {
+                setInvalid('confirm', true, form);
+                return;
+              }
+              setInvalid('confirm', false, form);
               window.setTimeout(() => beginAuthOperation(button, 'Resetting password...'), 0);
             });
           }
@@ -275,10 +299,17 @@ def install_auth_form_interactions() -> None:
                 endAuthOperation(form);
               }
             });
-            doc.querySelectorAll('.auth-field-error-marker').forEach((marker) => {
-              if (marker.dataset.costerlyApplied === '1') return;
-              marker.dataset.costerlyApplied = '1';
-              setInvalid(marker.dataset.authField, true);
+            doc.querySelectorAll('div[data-testid="stForm"]').forEach((form) => {
+              const invalidFields = new Set(
+                Array.from(form.querySelectorAll('.auth-field-error-marker')).map(
+                  (marker) => marker.dataset.authField
+                )
+              );
+              Object.keys(labels).forEach((field) => {
+                if (fieldShell(field, form)) {
+                  setInvalid(field, invalidFields.has(field), form);
+                }
+              });
             });
             Object.keys(labels).forEach((field) => {
               const target = fieldShell(field);
@@ -286,14 +317,15 @@ def install_auth_form_interactions() -> None:
               target.input.dataset.costerlyAuthBound = '1';
               target.input.addEventListener('focus', () => dismissOperationError(target.input));
               target.input.addEventListener('input', () => {
+                const form = target.input.closest('div[data-testid="stForm"]');
                 dismissOperationError(target.input);
                 if (target.shell.classList.contains('costerly-auth-invalid')) {
-                  setInvalid(field, !fieldIsValid(field));
+                  setInvalid(field, !fieldIsValid(field, form), form);
                 }
                 if (field === 'password') {
-                  const confirm = fieldShell('confirm');
+                  const confirm = fieldShell('confirm', form);
                   if (confirm?.shell.classList.contains('costerly-auth-invalid')) {
-                    setInvalid('confirm', !fieldIsValid('confirm'));
+                    setInvalid('confirm', !fieldIsValid('confirm', form), form);
                   }
                 }
               });
@@ -313,7 +345,12 @@ def install_auth_form_interactions() -> None:
 
           refresh();
           const observer = new MutationObserver(refresh);
-          observer.observe(doc.body, {childList: true, subtree: true});
+          observer.observe(doc.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['data-auth-feedback-id']
+          });
           window.addEventListener('beforeunload', () => observer.disconnect(), {once: true});
         })();
         </script>

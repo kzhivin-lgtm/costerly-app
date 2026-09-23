@@ -37,7 +37,14 @@
   Password and Forgot password share one label row, feedback appears only when
   needed below the input, moves the primary button by one compact line, and
   disappears immediately when the user resumes editing. Production recovery
-  mail must also use the repository subject template
+  acceptance must cover partial Sign in input, syntactically invalid email,
+  wrong credentials, recovery immediately after a failed Sign in, and reset
+  validation in strict order: password policy first, password match second.
+  Server-rendered field markers must replace stale client validation state, and
+  every new feedback response must become visible even when Streamlit reuses
+  the previous DOM container. Production verification of this sequence remains
+  pending. The production recovery mail must also use the repository subject
+  template
   `Reset your Coasterly AI password [{{ .TokenHash }}]` so every
   request has a distinct subject and mail clients do not thread separate
   recovery attempts together. The hosted Supabase template is external state

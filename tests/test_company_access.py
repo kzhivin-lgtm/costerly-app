@@ -327,6 +327,52 @@ def test_sign_in_with_empty_fields_shows_shared_credentials_message(monkeypatch)
     markup = "".join(item.value for item in app.markdown)
     assert "Check your email and password" in markup
     assert "data-auth-feedback-id=" in markup
+    assert 'data-auth-field="email"' in markup
+    assert 'data-auth-field="password"' in markup
+    assert not app.exception
+
+
+def test_sign_in_with_password_only_marks_only_the_missing_email(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        company_auth,
+        "sign_in",
+        lambda *_args: calls.append("called"),
+    )
+    app = AppTest.from_function(_render_login_test).run()
+    app.text_input(key="login_password").set_value("anything")
+    next(button for button in app.button if button.label == "Sign in").click().run()
+
+    markup = "".join(item.value for item in app.markdown)
+    assert calls == []
+    assert "Check your email and password" in markup
+    assert 'data-auth-field="email"' in markup
+    assert 'data-auth-field="password"' not in markup
+    assert not app.exception
+
+
+def test_successful_recovery_request_clears_stale_login_field_errors(monkeypatch):
+    requested = []
+    monkeypatch.setattr(
+        company_auth,
+        "sign_in",
+        lambda *_args: (_ for _ in ()).throw(ValueError("wrong credentials")),
+    )
+    monkeypatch.setattr(
+        company_auth,
+        "request_password_recovery",
+        lambda email: requested.append(email),
+    )
+    app = AppTest.from_function(_render_login_test).run()
+    app.text_input(key="login_email").set_value("owner@example.com")
+    app.text_input(key="login_password").set_value("anything")
+    next(button for button in app.button if button.label == "Sign in").click().run()
+    next(button for button in app.button if button.label == "Forgot password?").click().run()
+
+    markup = "".join(item.value for item in app.markdown)
+    assert requested == ["owner@example.com"]
+    assert '<span class="auth-field-error-marker"' not in markup
+    assert "If an account exists for this email, we sent a password reset link" in markup
     assert not app.exception
 
 
@@ -356,6 +402,22 @@ def test_reset_password_mismatch_shows_text_feedback():
     markup = "".join(item.value for item in app.markdown)
     assert "Passwords do not match" in markup
     assert "auth-form-feedback-dismissible" in markup
+    assert not app.exception
+
+
+def test_reset_password_reports_policy_before_mismatch_and_hides_policy_caption():
+    app = AppTest.from_function(_render_password_reset_test)
+    app.session_state.auth_recovery_mode = True
+    app.session_state.auth_recovery_email = "owner@example.com"
+    app.run()
+    app.text_input(key="recovery_password").set_value("lowercase")
+    app.text_input(key="recovery_password_confirm").set_value("different")
+    next(button for button in app.button if button.label == "Reset password").click().run()
+
+    markup = "".join(item.value for item in app.markdown)
+    assert "Password needs at least 8 characters" in markup
+    assert "Passwords do not match" not in markup
+    assert not app.caption
     assert not app.exception
 
 
@@ -2318,7 +2380,8 @@ def test_auth_ui_contract_hides_framework_hints_and_reserves_red_for_validation(
     assert '[data-testid="InputInstructions"]' in css
     assert "costerly-auth-invalid:not(:focus-within)" in css
     assert '[data-testid="stElementContainer"]:has(.auth-field-error-marker)' in css
-    assert "marker.dataset.costerlyApplied" in css
+    assert "invalidFields.has(field)" in css
+    assert "attributeFilter: ['data-auth-feedback-id']" in css
     assert "Focus is never an error and must never be red" in normalized_guidelines
     assert "clears immediately when the current value becomes valid" in normalized_guidelines
     assert "One submit validates every field" in normalized_guidelines
@@ -2337,7 +2400,7 @@ def test_company_creation_acknowledges_valid_submit_immediately():
     assert "Checking your details..." in interactions
     assert "Creating your company..." in interactions
     assert "Setting up your company. This may take a few seconds." not in interactions
-    assert "const invalid = fields.filter((field) => !fieldIsValid(field))" in interactions
+    assert "const invalid = fields.filter((field) => !fieldIsValid(field, form))" in interactions
     assert "if (invalid.length > 0) return" in interactions
     assert "costerly-auth-loading" in interactions
     assert "Disable duplicate submission" in normalized_guidelines
