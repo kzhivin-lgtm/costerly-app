@@ -113,7 +113,7 @@ def registration_validation_errors(
     if not is_valid_email_address(email):
         errors["email"] = "Enter an email address like name@company.com"
     if len(password) < 8 or not re.search(r"[a-z]", password) or not re.search(r"[A-Z]", password) or not re.search(r"[0-9]", password):
-        errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number"
+        errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter and a number"
     if not password_confirm:
         errors["confirm"] = "Confirm your password"
     elif password != password_confirm:
@@ -125,7 +125,7 @@ def password_validation_errors(password: str, password_confirm: str) -> dict[str
     """Apply the registration password policy without requiring an email."""
     errors: dict[str, str] = {}
     if len(password) < 8 or not re.search(r"[a-z]", password) or not re.search(r"[A-Z]", password) or not re.search(r"[0-9]", password):
-        errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number"
+        errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter and a number"
         return errors
     if not password_confirm:
         errors["confirm"] = "Confirm your password"
@@ -814,7 +814,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 render_auth_field_error("password", creation_errors["password"])
             if "confirm" in creation_errors:
                 render_auth_field_error("confirm", creation_errors["confirm"])
-            st.caption("Use at least 8 characters with an uppercase letter, a lowercase letter, and a number")
+            st.caption("Use at least 8 characters with an uppercase letter, a lowercase letter and a number")
             submit = st.form_submit_button("Create Company Account", type="primary", use_container_width=True)
             if "service" in creation_errors:
                 st.error(creation_errors["service"])
@@ -876,7 +876,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             email = st.text_input("Email", key="signup_email", placeholder="you@company.com")
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm password", type="password", key="signup_password_confirm")
-            st.caption("At least 8 characters, one uppercase letter, one lowercase letter, and one number")
+            st.caption("At least 8 characters, one uppercase letter, one lowercase letter and one number")
             submit = st.form_submit_button(
                 "Create account",
                 type="primary",
@@ -944,7 +944,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
         if "password" in login_invalid_fields:
             render_auth_field_error(
                 "password",
-                "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number",
+                "Password needs at least 8 characters, an uppercase letter, a lowercase letter and a number",
             )
         if recovery_request_error:
             render_auth_field_error("email", str(recovery_request_error))
@@ -1043,7 +1043,7 @@ def render_password_reset() -> None:
             )
         if not ({"password", "confirm"} & errors.keys()):
             st.caption(
-                "At least 8 characters, one uppercase letter, one lowercase letter, and one number"
+                "At least 8 characters, one uppercase letter, one lowercase letter and one number"
             )
         submit = st.form_submit_button(
             "Reset password",

@@ -8,7 +8,7 @@ _QUIET_FIELD_ERRORS = {
     "Enter an email address like name@company.com",
     "Enter your email to reset your password",
     "Enter your company name",
-    "Password needs at least 8 characters, an uppercase letter, a lowercase letter, and a number",
+    "Password needs at least 8 characters, an uppercase letter, a lowercase letter and a number",
     "Passwords do not match",
     "Confirm your password",
 }
