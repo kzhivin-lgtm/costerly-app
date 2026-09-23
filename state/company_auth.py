@@ -542,6 +542,10 @@ def _submit_login() -> None:
         return
     try:
         sign_in(email, password)
+        access = current_company_access()
+        if access is None or access.company_id is None:
+            sign_out()
+            raise PermissionError("Company access is required")
     except Exception:
         st.session_state.company_login_invalid_fields = ["email", "password"]
         st.session_state.company_login_error = "Check your email and password"

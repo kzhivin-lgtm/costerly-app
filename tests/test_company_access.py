@@ -5,6 +5,7 @@ from contextlib import contextmanager
 import json
 from pathlib import Path
 import time
+from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -260,6 +261,11 @@ def test_sign_in_submit_uses_native_pre_render_callback(monkeypatch):
         "sign_in",
         lambda email, password: calls.append((email, password)),
     )
+    monkeypatch.setattr(
+        company_auth,
+        "current_company_access",
+        lambda: SimpleNamespace(company_id="company-1"),
+    )
 
     app = AppTest.from_function(_render_login_test).run()
     app.text_input(key="login_email").set_value("owner@example.com")
@@ -267,6 +273,29 @@ def test_sign_in_submit_uses_native_pre_render_callback(monkeypatch):
     next(button for button in app.button if button.label == "Sign in").click().run()
 
     assert calls == [("owner@example.com", "Password123")]
+    assert not app.exception
+
+
+def test_sign_in_rejects_valid_credentials_without_company_access(monkeypatch):
+    signed_out = []
+    monkeypatch.setattr(company_auth, "sign_in", lambda *_args: None)
+    monkeypatch.setattr(
+        company_auth,
+        "current_company_access",
+        lambda: SimpleNamespace(company_id=None),
+    )
+    monkeypatch.setattr(company_auth, "sign_out", lambda: signed_out.append(True))
+
+    app = AppTest.from_function(_render_login_test).run()
+    app.text_input(key="login_email").set_value("removed@example.com")
+    app.text_input(key="login_password").set_value("Correct123")
+    next(button for button in app.button if button.label == "Sign in").click().run()
+
+    markup = "".join(item.value for item in app.markdown)
+    assert signed_out == [True]
+    assert "Check your email and password" in markup
+    assert 'data-auth-field="email"' in markup
+    assert 'data-auth-field="password"' in markup
     assert not app.exception
 
 
