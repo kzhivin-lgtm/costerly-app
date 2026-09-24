@@ -70,16 +70,22 @@ source of truth for this implementation.
 - Entering the same normalized subcontractor name reuses the existing
   `company_suppliers` identity. Replacing a regular subcontractor deactivates the
   previous route without deleting its history.
-- The capability catalog is one full-width table, not a vertical stack of
-  cards. The first column is the machine or capability name and the second is
-  `Available in-house?` with `Not answered`, `Yes`, and `No`.
-- Woodworking, Metalworking, and Painting & Finishing use the same full-width
-  group-bar treatment as Overhead Expenses groups. Machine names use the same
-  row position as Rent or Electricity in that table.
+- The capability catalog uses three full-width grouped tables, not a vertical
+  stack of machine cards. Each table header contains its group name in the first
+  column and `Available in-house?` in the second. Machine names use the same row
+  position as Rent or Electricity in Overhead Expenses.
+- The three group tables have a deliberate vertical gap. Their compact status
+  controls use pale yellow for Not answered, pale green for Yes, and pale red
+  for No.
 - Unanswered rows stay compact. Selecting `Yes` or `No` inserts that machine's
   detail panel immediately below its row and spans the full table width.
 - Every detail panel uses three equal columns for capability, costing, or
   subcontractor fields. It does not introduce another narrow nested card.
+- Detail descriptions are omitted. For CNC, row one contains the three
+  technical dimensions, row two contains `Materials` and `Costing method`, and
+  row three contains the two boolean options. Selected material tags use the
+  product purple-neutral palette; red remains reserved for negative status and
+  validation/error feedback.
 
 ## Catalog groups
 

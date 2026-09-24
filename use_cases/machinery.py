@@ -79,7 +79,7 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("work_area_x_mm", "Working area, length", "mm", input_unit="m", required=True),
         _number("work_area_y_mm", "Working area, width", "mm", input_unit="m", required=True),
         _number("max_thickness_mm", "Maximum workpiece thickness", "mm"),
-        _multi("materials", "Materials normally processed", WOOD_MATERIALS, required=True),
+        _multi("materials", "Materials", WOOD_MATERIALS, required=True),
         _boolean("two_sided_processing", "Two-sided processing is supported"),
     )),
     MachineSpec("wood_panel_saw", "woodworking", "Panel cutting saw", "Straight panel sizing and cutting", (

@@ -272,45 +272,62 @@ def _machinery_number_storage_value(field, entered_value: object) -> object:
     return value
 
 
-def _render_machine_capability_fields(spec, saved: dict, key_prefix: str) -> dict:
+def _render_machine_capability_widget(field, saved: dict, key_prefix: str) -> object:
+    display_unit = field.input_unit or field.unit
+    unit_label = f" ({display_unit})" if display_unit else ""
+    label = f"{field.label}{unit_label}{' *' if field.required else ''}"
+    widget_key = f"{key_prefix}_{field.key}"
+    default = _machinery_field_default(saved, field.key)
+    if field.kind == "number":
+        entered = st.text_input(
+            label,
+            value=_machinery_number_text(field, default),
+            placeholder="e.g. 2.8" if display_unit == "m" else "",
+            key=widget_key,
+        )
+        return _machinery_number_storage_value(field, entered)
+    if field.kind == "multiselect":
+        return st.multiselect(
+            label,
+            list(field.options),
+            default=[item for item in (default or []) if item in field.options],
+            key=widget_key,
+        )
+    if field.kind == "boolean":
+        return st.checkbox(label, value=bool(default), key=widget_key)
+    return st.text_input(
+        label,
+        value=str(default or ""),
+        key=widget_key,
+    )
+
+
+def _render_machine_capability_fields(
+    spec,
+    saved: dict,
+    key_prefix: str,
+    *,
+    fields=None,
+) -> dict:
     values: dict[str, object] = {}
-    fields = list(spec.fields)
+    fields = list(fields if fields is not None else spec.fields)
     for start in range(0, len(fields), 3):
         columns = st.columns(3)
         for column, field in zip(columns, fields[start : start + 3]):
-            display_unit = field.input_unit or field.unit
-            unit_label = f" ({display_unit})" if display_unit else ""
-            label = f"{field.label}{unit_label}{' *' if field.required else ''}"
-            widget_key = f"{key_prefix}_{field.key}"
-            default = _machinery_field_default(saved, field.key)
             with column:
-                if field.kind == "number":
-                    entered = st.text_input(
-                        label,
-                        value=_machinery_number_text(field, default),
-                        placeholder="e.g. 2.8" if display_unit == "m" else "",
-                        key=widget_key,
-                    )
-                    values[field.key] = _machinery_number_storage_value(field, entered)
-                elif field.kind == "multiselect":
-                    values[field.key] = st.multiselect(
-                        label,
-                        list(field.options),
-                        default=[item for item in (default or []) if item in field.options],
-                        key=widget_key,
-                    )
-                elif field.kind == "boolean":
-                    values[field.key] = st.checkbox(label, value=bool(default), key=widget_key)
-                else:
-                    values[field.key] = st.text_input(
-                        label,
-                        value=str(default or ""),
-                        key=widget_key,
-                    )
+                values[field.key] = _render_machine_capability_widget(
+                    field, saved, key_prefix
+                )
     return values
 
 
-def _render_machinery_pricing(saved: dict, key_prefix: str, *, supplier: bool = False) -> tuple[str, dict]:
+def _render_machinery_pricing(
+    saved: dict,
+    key_prefix: str,
+    *,
+    supplier: bool = False,
+    method_column=None,
+) -> tuple[str, dict]:
     saved_method = str(saved.get("pricing_method") or "unknown")
     saved_kind = str((saved.get("pricing") or {}).get("rate_kind") or "")
     options = SUPPLIER_PRICING_OPTIONS if supplier else IN_HOUSE_PRICING_OPTIONS
@@ -321,8 +338,9 @@ def _render_machinery_pricing(saved: dict, key_prefix: str, *, supplier: bool = 
         ),
         "quote_only" if supplier else "unknown",
     )
-    pricing_columns = st.columns(3)
-    with pricing_columns[0]:
+    if method_column is None:
+        method_column = st.columns(3)[0]
+    with method_column:
         option_key = st.selectbox(
             "Supplier pricing method" if supplier else "Costing method",
             list(options),
@@ -335,7 +353,8 @@ def _render_machinery_pricing(saved: dict, key_prefix: str, *, supplier: bool = 
     if method in {"hourly", "per_sheet", "per_part", "per_job"}:
         saved_pricing = saved.get("pricing") or {}
         values["rate_kind"] = rate_kind
-        with pricing_columns[1]:
+        rate_columns = st.columns(3)
+        with rate_columns[0]:
             values["rate"] = st.number_input(
                 "Rate *",
                 min_value=0.0,
@@ -343,15 +362,14 @@ def _render_machinery_pricing(saved: dict, key_prefix: str, *, supplier: bool = 
                 step=1.0,
                 key=f"{key_prefix}_rate",
             )
-        with pricing_columns[2]:
+        with rate_columns[1]:
             values["currency"] = st.text_input(
                 "Currency *",
                 value=str(saved_pricing.get("currency") or "ILS"),
                 max_chars=3,
                 key=f"{key_prefix}_currency",
             )
-        fee_columns = st.columns(3)
-        with fee_columns[0]:
+        with rate_columns[2]:
             values["setup_fee"] = st.number_input(
                 "Setup fee",
                 min_value=0.0,
@@ -359,7 +377,8 @@ def _render_machinery_pricing(saved: dict, key_prefix: str, *, supplier: bool = 
                 step=1.0,
                 key=f"{key_prefix}_setup_fee",
             )
-        with fee_columns[1]:
+        minimum_columns = st.columns(3)
+        with minimum_columns[0]:
             values["minimum_charge"] = st.number_input(
                 "Minimum charge",
                 min_value=0.0,
@@ -410,17 +429,13 @@ def _render_owner_machinery(
     services: list[dict],
     supplier_names: dict[str, str],
 ) -> None:
-    with st.container(key="company_machinery_table_card", border=True):
-        st.markdown(
-            '<div class="company-machinery-table-head">'
-            '<span>Machine / Capability</span>'
-            '<span>Available in-house?</span>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
-        for industry, title in INDUSTRY_LABELS.items():
+    for industry, title in INDUSTRY_LABELS.items():
+        with st.container(key=f"company_machinery_group_{industry}", border=True):
             st.markdown(
-                f'<div class="company-machinery-group">{escape(title)}</div>',
+                '<div class="company-machinery-table-head">'
+                f'<span>{escape(title)}</span>'
+                '<span>Available in-house?</span>'
+                '</div>',
                 unsafe_allow_html=True,
             )
             for spec in (item for item in MACHINE_SPECS if item.industry == industry):
@@ -451,7 +466,6 @@ def _render_owner_machinery(
                     continue
 
                 with st.container(key=f"{row_key}_detail"):
-                    st.caption(spec.description)
                     capabilities: dict[str, object] = {}
                     pricing_method = "unknown"
                     pricing: dict[str, object] = {}
@@ -460,10 +474,58 @@ def _render_owner_machinery(
                     subcontractor_name = ""
                     confirm_change = False
                     if availability == "Yes":
-                        capabilities = _render_machine_capability_fields(spec, saved, row_key)
-                        pricing_method, pricing = _render_machinery_pricing(saved, row_key)
-                        final_columns = st.columns(3)
-                        with final_columns[0]:
+                        technical_fields = [
+                            field for field in spec.fields
+                            if field.kind not in {"multiselect", "boolean"}
+                        ]
+                        selector_fields = [
+                            field for field in spec.fields
+                            if field.kind == "multiselect"
+                        ]
+                        boolean_fields = [
+                            field for field in spec.fields
+                            if field.kind == "boolean"
+                        ]
+                        capabilities.update(
+                            _render_machine_capability_fields(
+                                spec,
+                                saved,
+                                row_key,
+                                fields=technical_fields,
+                            )
+                        )
+                        second_row = st.columns(3)
+                        for index, field in enumerate(selector_fields[:2]):
+                            with second_row[index]:
+                                capabilities[field.key] = (
+                                    _render_machine_capability_widget(
+                                        field, saved, row_key
+                                    )
+                                )
+                        pricing_method, pricing = _render_machinery_pricing(
+                            saved,
+                            row_key,
+                            method_column=second_row[min(len(selector_fields), 2)],
+                        )
+                        if len(selector_fields) > 2:
+                            capabilities.update(
+                                _render_machine_capability_fields(
+                                    spec,
+                                    saved,
+                                    row_key,
+                                    fields=selector_fields[2:],
+                                )
+                            )
+                        checkbox_row = st.columns(3)
+                        for index, field in enumerate(boolean_fields[:2]):
+                            with checkbox_row[index]:
+                                capabilities[field.key] = (
+                                    _render_machine_capability_widget(
+                                        field, saved, row_key
+                                    )
+                                )
+                        external_column = min(len(boolean_fields), 2)
+                        with checkbox_row[external_column]:
                             accepts_external = st.checkbox(
                                 "We accept work from external customers",
                                 value=bool(saved.get("accepts_external_work")),

@@ -1197,7 +1197,7 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
 
     next(field for field in app.text_input if field.label == "Working area, length (m) *").set_value("2,5")
     next(field for field in app.text_input if field.label == "Working area, width (m) *").set_value("1.3")
-    next(field for field in app.multiselect if field.label == "Materials normally processed *").set_value(["MDF"])
+    next(field for field in app.multiselect if field.label == "Materials *").set_value(["MDF"])
     next(button for button in app.button if button.label == "Save").click()
     app.run()
 
@@ -1261,14 +1261,18 @@ def test_machinery_uses_grouped_full_width_table_contract():
     source = (Path(__file__).parents[1] / "screens/company_profile.py").read_text()
     css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
 
-    assert 'key="company_machinery_table_card"' in source
-    assert '<span>Machine / Capability</span>' in source
+    assert 'key=f"company_machinery_group_{industry}"' in source
+    assert 'f\'<span>{escape(title)}</span>\'' in source
     assert '<span>Available in-house?</span>' in source
     assert 'st.segmented_control(' in source
     assert '["Not answered", "Yes", "No"]' in source
     assert 'key=f"{row_key}_detail"' in source
+    assert "st.caption(spec.description)" not in source
     assert "company-machinery-table-head" in css
-    assert "company-machinery-group" in css
+    assert "#FFF8D9" in css
+    assert "#EAF7ED" in css
+    assert "#FAECEE" in css
+    assert 'span[data-baseweb="tag"]' in css
     assert 'grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr);' in css
 
 
