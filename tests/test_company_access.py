@@ -1281,8 +1281,28 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert "margin-bottom: 16px;" in css
     assert "box-sizing: border-box;" in css
     assert "margin: 0 auto;" in css
+    assert "transform: translateY(8px);" in css
+    assert "justify-content: center;" in css
+    assert "gap: 18px !important;" in css
+    assert 'kind="segmented_controlActive"' in css
+    assert "#E8F3FF" in css
+    assert "#5B9BD5" in css
     assert 'span[data-baseweb="tag"]' in css
     assert 'grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr);' in css
+
+
+def test_machinery_costing_method_labels_are_short_and_preserve_rate_semantics():
+    labels = [item[0] for item in company_profile.IN_HOUSE_PRICING_OPTIONS.values()]
+
+    assert labels == [
+        "Not provided",
+        "Per machine hour",
+        "Per sheet",
+        "Per part",
+        "Per job",
+        "Quote each job",
+    ]
+    assert all("Customer" not in label and "Internal" not in label for label in labels)
 
 
 def test_owner_can_confirm_member_access_removal_from_users_tab(monkeypatch):

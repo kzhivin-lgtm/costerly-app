@@ -218,19 +218,18 @@ def _brand_mark() -> str:
 
 IN_HOUSE_PRICING_OPTIONS = {
     "unknown": ("Not provided", "unknown", None),
-    "internal_hourly": ("Internal cost per machine hour", "hourly", "internal_cost"),
-    "customer_hourly": ("Customer rate per machine hour", "hourly", "customer_price"),
-    "customer_sheet": ("Customer rate per sheet", "per_sheet", "customer_price"),
-    "customer_part": ("Customer rate per part", "per_part", "customer_price"),
-    "customer_job": ("Customer rate per job", "per_job", "customer_price"),
+    "hourly": ("Per machine hour", "hourly", None),
+    "sheet": ("Per sheet", "per_sheet", None),
+    "part": ("Per part", "per_part", None),
+    "job": ("Per job", "per_job", None),
     "quote_only": ("Quote each job", "quote_only", None),
 }
 SUPPLIER_PRICING_OPTIONS = {
-    "quote_only": ("Supplier quotes each job", "quote_only", None),
-    "supplier_hourly": ("Supplier charges per machine hour", "hourly", "supplier_quote"),
-    "supplier_sheet": ("Supplier charges per sheet", "per_sheet", "supplier_quote"),
-    "supplier_part": ("Supplier charges per part", "per_part", "supplier_quote"),
-    "supplier_job": ("Supplier charges per job", "per_job", "supplier_quote"),
+    "quote_only": ("Quote each job", "quote_only", None),
+    "hourly": ("Per machine hour", "hourly", "supplier_quote"),
+    "sheet": ("Per sheet", "per_sheet", "supplier_quote"),
+    "part": ("Per part", "per_part", "supplier_quote"),
+    "job": ("Per job", "per_job", "supplier_quote"),
     "unknown": ("Not provided", "unknown", None),
 }
 MACHINERY_PRICING_LABELS = {
@@ -334,7 +333,8 @@ def _render_machinery_pricing(
     selected_key = next(
         (
             key for key, (_label, method, rate_kind) in options.items()
-            if method == saved_method and (rate_kind or "") == saved_kind
+            if method == saved_method
+            and (rate_kind is None or rate_kind == saved_kind)
         ),
         "quote_only" if supplier else "unknown",
     )
@@ -352,7 +352,15 @@ def _render_machinery_pricing(
     values: dict[str, object] = {}
     if method in {"hourly", "per_sheet", "per_part", "per_job"}:
         saved_pricing = saved.get("pricing") or {}
-        values["rate_kind"] = rate_kind
+        preserved_in_house_kind = (
+            saved_kind
+            if saved_method == method
+            and saved_kind in {"internal_cost", "customer_price"}
+            else "internal_cost"
+        )
+        values["rate_kind"] = (
+            rate_kind if supplier else preserved_in_house_kind
+        )
         rate_columns = st.columns(3)
         with rate_columns[0]:
             values["rate"] = st.number_input(

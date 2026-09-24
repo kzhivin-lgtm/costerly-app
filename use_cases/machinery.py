@@ -277,9 +277,9 @@ def _validate_pricing(method: str, values: Mapping[str, object]) -> tuple[str, d
     try:
         rate = float(values.get("rate") or 0)
     except (TypeError, ValueError) as exc:
-        raise MachineryError("Enter a valid customer rate.") from exc
+        raise MachineryError("Enter a valid rate.") from exc
     if rate <= 0:
-        raise MachineryError("Enter a customer rate greater than zero.")
+        raise MachineryError("Enter a rate greater than zero.")
     currency = _clean_text(values.get("currency")).upper()
     if len(currency) != 3:
         raise MachineryError("Enter a three-letter currency code.")
