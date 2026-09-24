@@ -1312,12 +1312,44 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     assert "Metal" in markup
     assert "Coating" in markup
     assert markup.count("No active prices") == 3
-    assert any(button.label == "Process price source" for button in app.button)
+    assert any(button.label == "Extract prices" for button in app.button)
     assert any(field.label == "Category (optional)" for field in app.selectbox)
     assert any(field.label == "Paste supplier page URL" for field in app.text_input)
     assert len(app.expander) == 1
     assert app.expander[0].proto.label == "Source library · 2"
     assert app.expander[0].proto.expanded is False
+
+
+def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypatch):
+    calls = []
+    monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+    monkeypatch.setattr(
+        company_profile,
+        "process_price_source",
+        lambda access, **kwargs: calls.append((access.company_id, kwargs)),
+    )
+
+    app = AppTest.from_function(_render_price_lists_test).run()
+    next(field for field in app.text_input if field.label == "Paste supplier page URL").set_value(
+        "https://supplier.example/prices"
+    )
+    next(button for button in app.button if button.label == "Extract prices").click()
+    app.run()
+
+    assert not app.exception
+    assert calls == [
+        (
+            "company-a",
+            {
+                "category": "",
+                "uploaded_file": None,
+                "source_url": "https://supplier.example/prices",
+                "trace": None,
+            },
+        )
+    ]
+    assert any(notice.value == "Price source processed" for notice in app.success)
 
 
 def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):

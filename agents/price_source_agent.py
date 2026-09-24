@@ -17,6 +17,7 @@ from agents.anthropic_adapter import (
 from agents.prompt_loader import load_price_source_agent_prompt
 from agents.schemas.price_source_schema import (
     PRICE_SOURCE_RESULT_JSON_SCHEMA,
+    normalize_price_source_confidence_scale,
     reconcile_price_source_arithmetic,
     validate_price_source_result,
 )
@@ -92,7 +93,9 @@ def run_price_source_agent(
         raise RuntimeError("Price source processing returned invalid JSON.") from exc
     if requested_category:
         result["category"] = requested_category
-    validated = validate_price_source_result(reconcile_price_source_arithmetic(result))
+    validated = validate_price_source_result(
+        reconcile_price_source_arithmetic(normalize_price_source_confidence_scale(result))
+    )
     validated["_agent_usage"] = build_agent_usage_event(
         agent_name="price_source",
         operation="company_price_source_extract",

@@ -87,6 +87,7 @@ conversion_basis. If any required value is missing, use status unresolved.
 ## Confidence
 
 Confidence measures whether the row can safely become an active company price.
+Return confidence as percentage points from 0 to 100, never as a 0-to-1 fraction.
 High confidence requires a clear material identity, positive unit price, explicit
 unit, supported conversion, and consistent arithmetic. OCR uncertainty, missing
 units, conflicting totals, discounts without a clear basis, and unclear packaging

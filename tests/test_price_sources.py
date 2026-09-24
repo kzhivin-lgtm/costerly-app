@@ -9,6 +9,7 @@ from PIL import Image
 
 from agents.schemas.price_source_schema import (
     PriceSourceSchemaError,
+    normalize_price_source_confidence_scale,
     reconcile_price_source_arithmetic,
     validate_price_source_result,
 )
@@ -99,6 +100,23 @@ def _result(*, status: str = "ready", confidence: float = 96) -> dict:
 def test_price_source_schema_accepts_evidenced_unit_conversion():
     result = _result()
     assert validate_price_source_result(result) is result
+
+
+def test_fractional_confidence_scale_is_normalized_before_activation():
+    result = _result(confidence=0.95)
+
+    normalized = normalize_price_source_confidence_scale(result)
+
+    assert normalized["rows"][0]["confidence"] == 95
+    assert validate_price_source_result(normalized) is normalized
+
+
+def test_mixed_confidence_scales_are_rejected():
+    result = _result(confidence=0.95)
+    result["rows"].append({**result["rows"][0], "source_row_number": 2, "confidence": 92})
+
+    with pytest.raises(PriceSourceSchemaError, match="mixed scales"):
+        normalize_price_source_confidence_scale(result)
 
 
 def test_price_source_schema_requires_a_supported_inferred_category():

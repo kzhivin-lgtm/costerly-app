@@ -92,7 +92,12 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                     "normalized_price": {"type": "number"},
                     "conversion_basis": {"type": "string"},
                     "status": {"type": "string", "enum": sorted(ROW_STATUSES)},
-                    "confidence": {"type": "number", "minimum": 0, "maximum": 100},
+                    "confidence": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "Confidence percentage from 0 to 100, never a 0-to-1 fraction",
+                    },
                     "reason_codes": {"type": "array", "items": {"type": "string"}},
                     "evidence_reference": {"type": "string"},
                 },
@@ -104,6 +109,29 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
 
 class PriceSourceSchemaError(ValueError):
     pass
+
+
+def normalize_price_source_confidence_scale(result: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a consistently fractional model response to percentage points."""
+    rows = result.get("rows") or []
+    values = [
+        row.get("confidence")
+        for row in rows
+        if isinstance(row, dict) and isinstance(row.get("confidence"), (int, float))
+    ]
+    positive = [float(value) for value in values if float(value) > 0]
+    if not positive:
+        return result
+    has_fractional_scale = any(value < 1 for value in positive)
+    has_percentage_scale = any(value > 1 for value in positive)
+    if has_fractional_scale and has_percentage_scale:
+        raise PriceSourceSchemaError("row confidence uses mixed scales")
+    if not has_percentage_scale:
+        for row in rows:
+            confidence = row.get("confidence") if isinstance(row, dict) else None
+            if isinstance(confidence, (int, float)):
+                row["confidence"] = float(confidence) * 100
+    return result
 
 
 def reconcile_price_source_arithmetic(result: dict[str, Any]) -> dict[str, Any]:

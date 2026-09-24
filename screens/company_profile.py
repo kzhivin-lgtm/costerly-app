@@ -1900,6 +1900,7 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
 
 
 def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
+    processing = bool(st.session_state.get("_price_source_processing"))
     with st.container(key="price_source_add_card"):
         st.markdown(
             '<div class="company-logo-table-heading">Add price source</div>',
@@ -1914,6 +1915,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     type=["pdf", "xlsx", "csv", "jpg", "jpeg", "png"],
                     accept_multiple_files=True,
                     key=f"price_source_upload_{uploader_version}",
+                    disabled=processing,
                     help=(
                         "Upload one PDF or spreadsheet, or select several JPEG/PNG photos "
                         "that belong to the same document."
@@ -1924,6 +1926,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     "Paste supplier page URL",
                     placeholder="https://supplier.example/prices",
                     key=f"price_source_url_{uploader_version}",
+                    disabled=processing,
                 )
                 category = st.selectbox(
                     "Category (optional)",
@@ -1931,34 +1934,60 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     index=None,
                     placeholder="Detect automatically",
                     key="price_source_category",
+                    disabled=processing,
                 )
-                if st.button(
-                    "Process price source",
+                if processing:
+                    st.markdown(
+                        '<span class="price-source-processing-marker"></span>',
+                        unsafe_allow_html=True,
+                    )
+                process_clicked = st.button(
+                    "Extracting prices" if processing else "Extract prices",
                     key="process_price_source",
                     type="primary",
                     use_container_width=True,
-                ):
-                    try:
-                        uploaded_file = combine_price_source_files(uploaded_files or [])
-                        with st.spinner("Reading and organizing this price source..."):
-                            process_price_source(
-                                access,
-                                category=str(category or ""),
-                                uploaded_file=uploaded_file,
-                                source_url=source_url,
-                                trace=trace,
-                            )
-                    except PriceSourceError as exc:
-                        st.error(str(exc))
-                    except PermissionError:
-                        st.error("Only the company owner can add price sources.")
-                    except Exception:
-                        logger.exception("Price source processing failed")
-                        st.error("The price source could not be processed. Try again in a moment.")
-                    else:
-                        st.session_state._price_source_uploader_version = uploader_version + 1
-                        st.session_state._price_source_notice = "Price source processed"
-                        st.rerun()
+                    disabled=processing,
+                )
+                if process_clicked:
+                    st.session_state._price_source_pending = {
+                        "uploaded_files": list(uploaded_files or []),
+                        "category": str(category or ""),
+                        "source_url": source_url,
+                    }
+                    st.session_state._price_source_processing = True
+                    st.session_state.pop("_price_source_error", None)
+                    st.session_state.pop("_price_source_notice", None)
+                    st.rerun()
+
+    if not processing:
+        return
+
+    pending = st.session_state.get("_price_source_pending") or {}
+    try:
+        uploaded_file = combine_price_source_files(pending.get("uploaded_files") or [])
+        process_price_source(
+            access,
+            category=str(pending.get("category") or ""),
+            uploaded_file=uploaded_file,
+            source_url=str(pending.get("source_url") or ""),
+            trace=trace,
+        )
+    except PriceSourceError as exc:
+        st.session_state._price_source_error = str(exc)
+    except PermissionError:
+        st.session_state._price_source_error = "Only the company owner can add price sources."
+    except Exception:
+        logger.exception("Price source processing failed")
+        st.session_state._price_source_error = (
+            "The price source could not be processed. Try again in a moment."
+        )
+    else:
+        st.session_state._price_source_uploader_version = uploader_version + 1
+        st.session_state._price_source_notice = "Price source processed"
+    finally:
+        st.session_state._price_source_processing = False
+        st.session_state.pop("_price_source_pending", None)
+    st.rerun()
 
 
 def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
@@ -1985,6 +2014,9 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     notice = st.session_state.pop("_price_source_notice", None)
     if notice:
         st.success(notice)
+    error = st.session_state.pop("_price_source_error", None)
+    if error:
+        st.error(error)
 
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):
@@ -2014,7 +2046,8 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                             with status_col:
                                 st.write(str(source.get("status") or "").title())
                             with items_col:
-                                st.write(int(summary.get("total") or 0))
+                                ready_count = int(summary.get("ready") or 0)
+                                st.write(f"{ready_count} {'price' if ready_count == 1 else 'prices'}")
                             with action_col:
                                 if st.button(
                                     "View",

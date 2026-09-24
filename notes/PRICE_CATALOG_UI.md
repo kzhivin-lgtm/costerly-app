@@ -10,9 +10,10 @@ active supplier offer for one normalized material, not an uploaded document and
 not a supplier summary. Source documents remain private provenance and are kept
 in a source library.
 
-User-facing departments are `Wood`, `Metal`, and `Finishing`. Their stable codes
+User-facing departments are `Wood`, `Metal`, and `Coating`. Their stable codes
 are `wood`, `metal`, and `finishing`. `Finishing` is intentionally broader than
-paint because it also covers coatings and surface treatments.
+paint because it also covers coatings and surface treatments, while the compact
+UI label remains `Coating`.
 
 ## Catalog contract
 
@@ -39,13 +40,14 @@ paint because it also covers coatings and surface treatments.
 | No sources or prices | Show a compact empty state and `Add price source` |
 | One supported file or public URL | Process it and retain the original source |
 | Several photos form one document | Treat the photos as one ordered source, not independent invoices |
-| Source is processing | Keep it visible in the source library with `Processing` state |
+| Source is processing | Show the spinner inside `Extract prices`; keep status copy below the upload card |
 | New ready material | Add an active catalog row |
 | Same material and same supplier | Replace the active price and preserve the prior offer in history |
 | Same material and different supplier | Add a separate supplier row |
 | Duplicate source bytes | Do not silently create duplicate catalog rows |
 | Match is uncertain | Keep it in `Needs review`; do not activate its price |
 | Processing fails or times out | Preserve an actionable failed source with retry support |
+| Agent returns fractional confidence | Normalize one consistent 0-to-1 response to percentage points before the 85-point activation threshold |
 | Long source name or URL | Truncate visually and expose the complete value accessibly |
 | Many prices | Allow search and department, type, and supplier filtering |
 | Mobile | Preserve readable cards/rows without clipped values or page overflow |

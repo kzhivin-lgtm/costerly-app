@@ -760,6 +760,14 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stColumn"]:nth-child(2)
+        > [data-testid="stVerticalBlock"] {
+            min-height: 248px;
+            justify-content: space-between;
+            transform: translateY(-4px);
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"] > label {
             display: none !important;
         }
@@ -767,7 +775,7 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"] section {
             position: relative;
-            min-height: 236px;
+            min-height: 248px;
             padding: 0 !important;
             overflow: hidden;
             border: 1px dashed #BFAFD0 !important;
@@ -843,7 +851,43 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stColumn"]:nth-child(2)
         [data-testid="stButton"] {
-            margin-top: auto;
+            margin-top: 0;
+        }
+
+        .price-source-processing-marker {
+            display: none;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stElementContainer"]:has(.price-source-processing-marker) {
+            display: none !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_card:has(.price-source-processing-marker)
+        [data-testid="stButton"] button[kind="primary"] {
+            opacity: 1 !important;
+            background: var(--color-accent) !important;
+            color: #FFFFFF !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_card:has(.price-source-processing-marker)
+        [data-testid="stButton"] button[kind="primary"] p::before {
+            content: "";
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+            vertical-align: -2px;
+            border: 2px solid rgba(255, 255, 255, 0.42);
+            border-top-color: #FFFFFF;
+            border-radius: 50%;
+            animation: price-source-button-spin 700ms linear infinite;
+        }
+
+        @keyframes price-source-button-spin {
+            to { transform: rotate(360deg); }
         }
 
         .stApp:has(.company-profile-active) .st-key-price_source_list_card {
@@ -1005,6 +1049,33 @@ def apply_company_profile_css() -> None:
             list-style-position: inside;
         }
 
+        .price-catalog-department > summary::-webkit-details-marker,
+        .price-catalog-type > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .price-catalog-department > summary::after,
+        .price-catalog-type > summary::after {
+            content: "⌄";
+            flex: 0 0 auto;
+            margin-left: 4px;
+            color: var(--color-text-muted);
+            font-family: var(--font-sans);
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .price-catalog-department[open] > summary::after,
+        .price-catalog-type[open] > summary::after {
+            content: "⌃";
+        }
+
+        .price-catalog-department > summary span:first-child,
+        .price-catalog-type > summary span:first-child {
+            margin-right: auto;
+        }
+
         .price-catalog-department > summary {
             background: #F7F3FA;
             color: var(--color-text-strong);
@@ -1102,18 +1173,18 @@ def apply_company_profile_css() -> None:
         }
 
         .price-catalog-main {
-            border-radius: 18px 18px 0 0;
+            border-radius: 18px;
         }
 
         .stApp:has(.company-profile-active) .st-key-price_source_library_section {
-            margin-top: -1px;
+            margin-top: 18px;
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_library_section [data-testid="stExpander"] {
             overflow: hidden;
             border: 1px solid var(--color-border-soft) !important;
-            border-radius: 0 0 18px 18px !important;
+            border-radius: 18px !important;
             background: var(--color-surface) !important;
             box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
         }
@@ -1919,7 +1990,7 @@ def apply_company_profile_css() -> None:
 
             .stApp:has(.company-profile-active)
             .st-key-price_source_add_body [data-testid="stFileUploader"] section {
-                min-height: 190px;
+                min-height: 202px;
             }
 
             .price-catalog-card {
