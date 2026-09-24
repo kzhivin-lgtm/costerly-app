@@ -1274,6 +1274,15 @@ def test_price_catalog_formats_ils_without_mislabeling_foreign_currency():
     assert "₪" not in usd
 
 
+def test_price_source_categories_use_clear_user_facing_labels():
+    assert company_profile._price_source_category_label("Hardware") == "Hardware / fittings"
+    assert (
+        company_profile._price_source_category_label("Abrasives and Sanding")
+        == "Abrasives / sanding"
+    )
+    assert company_profile._price_source_category_label("Metal") == "Metal"
+
+
 def test_price_catalog_renders_material_first_grouped_table():
     app = AppTest.from_function(_render_price_catalog_test).run()
     markup = "\n".join(item.value for item in app.markdown)

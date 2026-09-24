@@ -50,6 +50,7 @@ PRICE_CATALOG_DEPARTMENTS = {
     "Glass": "Wood",
     "Metal": "Metal",
     "Finishes and Coatings": "Finishing",
+    "Abrasives and Sanding": "Finishing",
     "Other": "Wood",
 }
 PRICE_CATALOG_DEPARTMENT_ORDER = {"Wood": 0, "Metal": 1, "Finishing": 2}

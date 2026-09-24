@@ -12,6 +12,7 @@ PRICE_SOURCE_CATEGORIES = (
     "Hardware",
     "Edgebanding",
     "Finishes and Coatings",
+    "Abrasives and Sanding",
     "Adhesives and Consumables",
     "Metal",
     "Glass",

@@ -1661,6 +1661,13 @@ def _price_catalog_url_label(value: str) -> str:
     return label or value
 
 
+def _price_source_category_label(value: str) -> str:
+    return {
+        "Hardware": "Hardware / fittings",
+        "Abrasives and Sanding": "Abrasives / sanding",
+    }.get(value, value)
+
+
 def _render_price_catalog(catalog: list[dict]) -> None:
     search = ""
     department = "All departments"
@@ -1697,6 +1704,7 @@ def _render_price_catalog(catalog: list[dict]) -> None:
             material_type = st.selectbox(
                 "Material type",
                 type_options,
+                format_func=_price_source_category_label,
                 key="price_catalog_material_type",
             )
         supplier_options = ["All suppliers"] + sorted(
@@ -1917,6 +1925,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     "Category (optional)",
                     PRICE_SOURCE_CATEGORIES,
                     index=None,
+                    format_func=_price_source_category_label,
                     placeholder="Detect automatically",
                     key="price_source_category",
                     disabled=processing,

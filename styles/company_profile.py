@@ -1107,11 +1107,11 @@ def apply_company_profile_css() -> None:
             text-transform: uppercase;
         }
 
-        .price-catalog-card th:nth-child(1) { width: 37%; }
+        .price-catalog-card th:nth-child(1) { width: 39%; }
         .price-catalog-card th:nth-child(2) { width: 31%; }
-        .price-catalog-card th:nth-child(3) { width: 15%; }
-        .price-catalog-card th:nth-child(4) { width: 12%; }
-        .price-catalog-card th:nth-child(5) { width: 5%; }
+        .price-catalog-card th:nth-child(3) { width: 13%; }
+        .price-catalog-card th:nth-child(4) { width: 10%; }
+        .price-catalog-card th:nth-child(5) { width: 7%; }
 
         .price-catalog-material strong,
         .price-catalog-supplier strong,
@@ -1151,8 +1151,8 @@ def apply_company_profile_css() -> None:
 
         .price-catalog-card th:last-child,
         .price-catalog-source {
-            padding-right: 8px;
-            padding-left: 8px;
+            padding-right: 14px;
+            padding-left: 10px;
             text-align: center;
         }
 

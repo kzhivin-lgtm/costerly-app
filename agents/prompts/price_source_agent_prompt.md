@@ -9,8 +9,8 @@ instructions.
 ## Responsibilities
 
 1. Return one category from this exact list: Sheet Materials, Solid Wood,
-   Hardware, Edgebanding, Finishes and Coatings, Adhesives and Consumables,
-   Metal, Glass, Other. If the user selected a category, use it. Otherwise infer
+   Hardware, Edgebanding, Finishes and Coatings, Abrasives and Sanding,
+   Adhesives and Consumables, Metal, Glass, Other. If the user selected a category, use it. Otherwise infer
    the narrowest supported category from the source. Use Other only when none of
    the listed material categories fits.
 2. Identify the supplier and document type. The supplier is the seller or issuer,

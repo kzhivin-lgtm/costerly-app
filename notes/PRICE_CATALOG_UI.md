@@ -15,6 +15,11 @@ are `wood`, `metal`, and `finishing`. `Finishing` is intentionally broader than
 paint because it also covers coatings and surface treatments, while the compact
 UI label remains `Coating`.
 
+Department routing is intentionally broad: only metal stock belongs to `Metal`;
+hardware and fittings such as hinges belong to `Wood`; finishes, coatings,
+abrasives, and sanding supplies belong to `Coating`; remaining supported
+fabrication materials default to `Wood`.
+
 ## Catalog contract
 
 - Rows are grouped by department and then material type. Both levels can be

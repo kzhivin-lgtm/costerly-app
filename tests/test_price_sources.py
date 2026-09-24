@@ -153,8 +153,11 @@ def test_price_source_output_budget_supports_large_supplier_pages():
 
 def test_price_catalog_uses_three_stable_user_facing_departments():
     assert PRICE_CATALOG_DEPARTMENTS["Sheet Materials"] == "Wood"
+    assert PRICE_CATALOG_DEPARTMENTS["Hardware"] == "Wood"
+    assert PRICE_CATALOG_DEPARTMENTS["Other"] == "Wood"
     assert PRICE_CATALOG_DEPARTMENTS["Metal"] == "Metal"
     assert PRICE_CATALOG_DEPARTMENTS["Finishes and Coatings"] == "Finishing"
+    assert PRICE_CATALOG_DEPARTMENTS["Abrasives and Sanding"] == "Finishing"
 
 
 def test_several_ordered_photos_become_one_pdf_source():
