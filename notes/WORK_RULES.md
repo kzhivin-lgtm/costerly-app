@@ -19,6 +19,31 @@ Avoid:
 
 Short version: source first, symptom second.
 
+## UI Scenario Contract Rule
+
+Before changing the layout or interaction behavior of any screen, write the
+complete user-visible scenario matrix and agree it with the product owner. This
+is a required design input, not a test document created after implementation.
+
+The matrix must cover:
+- initial, empty, partially completed, valid, and invalid input combinations;
+- local validation, field highlighting, message placement, dismissal, and
+  recovery after editing;
+- press, loading, success, expected rejection, provider failure, timeout, and
+  retry states for every action;
+- Enter, keyboard focus, visibility controls, double click, refresh, back, and
+  narrow/mobile behavior when applicable;
+- navigation after success and failure, including the state shown on the next
+  screen;
+- protected behavior that the revision must not change.
+
+After approval, give every meaningful row either an automated regression test
+or an explicit production acceptance step. If a new scenario appears during
+testing, update and re-agree the matrix before stacking another patch. A passing
+test suite does not replace the production pass through the agreed matrix.
+
+Short version: enumerate, agree, implement, test, and accept the same matrix.
+
 ## Real Interaction Rule
 
 No product element may be decorative if it implies interaction or database state changes.

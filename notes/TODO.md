@@ -58,6 +58,11 @@
   gray page, bordered card, and rounded card treatment in favor of one flat
   white message surface. Production verification remains pending after the
   updated HTML is copied into Supabase and a new recovery message is generated.
+  Continue from `notes/AUTH_PASSWORD_RECOVERY_HANDOFF.md`. The owner established
+  a mandatory scenario-first UI rule on 24.09: every interface revision begins
+  with a complete agreed behavior matrix, and implementation, automated tests,
+  and production acceptance must follow that same matrix. Do not resume 3.8.2
+  through isolated visual patches.
 
 - 3.8.4 One-time team invitations and access removal: completed and accepted in
   production. The owner confirmed the additive Supabase migration was applied

@@ -3,6 +3,29 @@
 These rules apply to every Costerly screen and workflow. A missing interaction
 state is a product defect, not optional polish.
 
+## Mandatory scenario-first workflow
+
+Do not begin an interface layout or interaction revision from the happy path
+alone. Before implementation, create one compact table with every reachable
+input combination, action, local validation result, asynchronous result,
+message, field state, loading state, and destination. Review that table with
+the product owner and treat the accepted version as the screen contract.
+
+Implementation and acceptance use the same contract:
+
+1. Map all controls and state transitions, including empty and partial forms.
+2. Define exact field borders, message copy, dismissal rules, button state, and
+   navigation for every row.
+3. Add regression coverage for deterministic rows.
+4. Deploy the candidate and execute the full matrix in the real production
+   session, including mobile or mail-client checks when those surfaces matter.
+5. Record exceptions and unresolved rows. Do not call the screen complete from
+   a successful happy path or from screenshots of only one state.
+
+This scenario-first tester mode is mandatory for Sign in, registration,
+invitations, password recovery, forms, uploads, and every future interactive
+screen.
+
 ## Product-wide interaction contract
 
 - Every user action has four possible states: press, progress, completion, and
@@ -118,13 +141,15 @@ state is a product defect, not optional polish.
 
 Before accepting a screen, verify:
 
-1. Every clickable control responds on press, not only on hover.
-2. Every network or agent action shows immediate and truthful progress.
-3. Success, failure, retry, disabled, empty, and loading states all recover
+1. The approved scenario matrix exists and every row has a test or production
+   acceptance result.
+2. Every clickable control responds on press, not only on hover.
+3. Every network or agent action shows immediate and truthful progress.
+4. Success, failure, retry, disabled, empty, and loading states all recover
    cleanly without layout jumps or lost data.
-4. The primary action and current location are obvious without explanatory copy.
-5. The screen works with keyboard, touch, narrow width, and reduced motion.
-6. Repeated clicks and retries cannot duplicate persistent work.
+5. The primary action and current location are obvious without explanatory copy.
+6. The screen works with keyboard, touch, narrow width, and reduced motion.
+7. Repeated clicks and retries cannot duplicate persistent work.
 
 ## Design references
 

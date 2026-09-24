@@ -36,7 +36,7 @@
 | Priority | Status | Task | Trigger |
 | --- | --- | --- | --- |
 | P0 | Completed | 3.8.4 one-time team invitations and member access removal | Accepted in production on 22.09 |
-| P0 | Active | 3.8.2 password recovery | Verify Supabase recovery mail transport and redirect contract |
+| P0 | Active | 3.8.2 password recovery | Apply the final Supabase template, then execute the agreed Sign in and Reset Password production matrices |
 | P1 | Completed | 3.8.5 Railway GitHub autodeploy reliability and build timing | Automatic deployment and uv build verified at `bf0581d`; Railway completed in 193 seconds |
 | P0 | Pending | Current-project two-company verification | Dedicated cross-company acceptance pass |
 | P1 | Pending | Confirm Email and production SMTP | Before production recovery email delivery or verified accounts |

@@ -163,6 +163,19 @@ screen-specific computed-style contract and lets the wrapper reveal the complete
 target immediately, without waiting for a newly mounted Streamlit component to
 relay the later general `app-ready` event. The general event remains the final
 server-run and telemetry boundary.
+
+Interface scenario contract boundary
+Every interactive screen is specified through an owner-approved scenario
+matrix before layout or behavior changes begin. The matrix is the shared
+contract between product behavior, field validation, browser interaction code,
+server outcomes, automated regression tests, and production acceptance. It
+must include empty and partial forms, local and server validation, progress,
+success, error, retry, duplicate submission, keyboard behavior, navigation,
+mobile behavior, and protected surrounding flows. New behavior discovered
+during testing changes the matrix first; it must not be patched as an isolated
+visual exception. A screen becomes a checkpoint only after the implemented
+matrix and the real production surface agree.
+
 Responsive Policy
 Every screen should be designed for desktop and mobile from the start.
 For each screen, define:

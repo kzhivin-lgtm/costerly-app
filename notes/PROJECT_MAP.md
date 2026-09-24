@@ -40,4 +40,7 @@ This file explains where code belongs so the project stays understandable.
 
 - `notes/` stores architecture notes, migration decisions, and project memory.
 - `notes/WORK_RULES.md` stores working rules for debugging and project changes.
+- `notes/AUTH_PASSWORD_RECOVERY_HANDOFF.md` stores the current 3.8.2 Auth and
+  password-recovery continuation contract, external Supabase steps, and
+  production acceptance backlog.
 - Keep notes short and update them when structure changes.
