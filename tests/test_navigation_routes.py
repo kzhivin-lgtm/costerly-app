@@ -18,6 +18,18 @@ def test_profile_route_preserves_selected_tab():
     }
 
 
+def test_profile_route_preserves_machinery_tab_in_app_and_wrapper():
+    st.session_state.clear()
+    st.session_state.company_profile_tab = "Machinery"
+
+    assert app._browser_route("account") == {
+        "screen": "account",
+        "profile_tab": "machinery",
+    }
+    wrapper = (Path(__file__).parents[1] / "cloudflare" / "index.html").read_text()
+    assert '"machinery"' in wrapper
+
+
 def test_profile_route_uses_bank_details_slug_and_accepts_legacy_slug():
     st.session_state.clear()
     st.session_state.company_profile_tab = "Bank Details"

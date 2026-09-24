@@ -58,6 +58,7 @@ st.set_page_config(
 _PROFILE_TAB_ROUTES = {
     "overhead-expenses": "Overhead Expenses",
     "labor-costs": "Labor Costs",
+    "machinery": "Machinery",
     "contacts": "Contacts",
     "bank-details": "Bank Details",
     "company-details": "Bank Details",

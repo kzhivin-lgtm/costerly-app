@@ -108,7 +108,7 @@ never presented as a real supplier quotation.
   behavior without reading or rewriting the prototype `company_machines` rows.
 - In-house cost rates and supplier charges retain distinct rate provenance.
 - The deterministic production snapshot is implemented locally.
-- 281 repository tests pass, including the new Machinery domain and empty-state
+- 282 repository tests pass, including the new Machinery domain and empty-state
   UI scenarios.
 - The owner applied the live Supabase migration on 24.09. A service-role read
   verified five new tables, 26 active catalog rows split into 8 woodworking,
@@ -124,3 +124,7 @@ never presented as a real supplier quotation.
   explicit owner decision or a separately agreed sanitized payload.
 - Production owner/member, persistence, error, refresh, keyboard, and mobile
   acceptance remain pending and must follow the matrix above.
+- The first deployment audit found that the new tab slug was missing from both
+  application and Cloudflare route allowlists. The same 3.9.1 branch now maps
+  `machinery` in both places and protects refresh/back persistence with a
+  regression test.
