@@ -16,7 +16,7 @@ from db.company_access import assert_company_owner, assert_estimate_owned, asser
 from state import company_auth
 from screens import company_profile
 from ui import company_metrics_view
-from use_cases import pricing
+from use_cases import machinery, pricing
 from use_cases.invite_links import (
     DEFAULT_PUBLIC_APP_URL,
     create_one_company_link,
@@ -1000,7 +1000,7 @@ def test_upload_to_profile_navigation_runs_before_render_without_explicit_rerun(
 
 
 @pytest.mark.parametrize("role", ["owner", "member"])
-def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role):
+def test_company_profile_has_seven_tabs_and_owner_only_controls(monkeypatch, role):
     calls = {"profile": 0, "members": 0, "metrics": 0, "employees": 0}
 
     def load_profile(_access):
@@ -1034,7 +1034,7 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "Overhead Expenses", "Labor Costs", "Price Lists", "Contacts", "Bank Details", "Users",
+        "Overhead Expenses", "Labor Costs", "Machinery", "Price Lists", "Contacts", "Bank Details", "Users",
     ]
     assert any(button.label == "Projects" and button.disabled for button in app.button)
     assert any(button.label == "New Estimate" for button in app.button)
@@ -1142,6 +1142,70 @@ def test_company_profile_has_six_tabs_and_owner_only_controls(monkeypatch, role)
         assert "company-profile-invite-link" not in users_markup
         assert "data-company-invite-copy" in users_markup
         assert 'data-invite-url="https://example.com/join/token"' in users_markup
+
+
+@pytest.mark.parametrize("role", ["owner", "member"])
+def test_machinery_tab_empty_state_is_role_safe(monkeypatch, role):
+    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = role
+    app.session_state["screen"] = "account"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    assert not app.exception
+    if role == "owner":
+        assert len(app.get("expander")) == len(company_profile.MACHINE_SPECS)
+        assert len([item for item in app.radio if item.label == "Available in-house?"]) == len(
+            company_profile.MACHINE_SPECS
+        )
+        assert all(button.disabled for button in app.button if button.label == "Save")
+    else:
+        assert "Machinery has not been configured yet" in " ".join(
+            item.value for item in app.info
+        )
+        assert not any(button.label == "Save" for button in app.button)
+
+
+def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch):
+    saved = []
+    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+
+    def save_machine(_access, **values):
+        values["capabilities"] = machinery._validate_capabilities(
+            values["machine_code"], values["capabilities"]
+        )
+        saved.append(values)
+        return values
+
+    monkeypatch.setattr(company_profile, "save_company_machinery", save_machine)
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["screen"] = "account"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    app.radio[0].set_value("Yes")
+    app.run()
+    next(button for button in app.button if button.label == "Save").click()
+    app.run()
+    assert not saved
+    assert "Complete the required fields" in " ".join(item.value for item in app.error)
+
+    next(field for field in app.number_input if field.label == "Working area, length *").set_value(2500)
+    next(field for field in app.number_input if field.label == "Working area, width *").set_value(1300)
+    next(field for field in app.multiselect if field.label == "Materials normally processed *").set_value(["MDF"])
+    next(button for button in app.button if button.label == "Save").click()
+    app.run()
+
+    assert saved[0]["machine_code"] == "wood_cnc_router"
+    assert saved[0]["availability_status"] == "in_house"
+    assert saved[0]["capabilities"]["work_area_x_mm"] == 2500
+    assert saved[0]["capabilities"]["materials"] == ["MDF"]
 
 
 def test_owner_can_confirm_member_access_removal_from_users_tab(monkeypatch):

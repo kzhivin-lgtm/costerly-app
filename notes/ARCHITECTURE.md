@@ -21,9 +21,9 @@ The app should not follow Streamlit native dark mode yet.
 Company Profile UI and persistence contract
 Company Profile owns its local page heading and navigation actions. The shared
 full Costerly logo and global Profile action are not rendered on that screen.
-The page uses six peer tabs: Overhead Expenses, Labor Costs, Price Lists,
-Contacts, Bank Details, and Users. Overhead Expenses is first. Contacts and Bank
-Details submit independently.
+The page uses seven peer tabs: Overhead Expenses, Labor Costs, Machinery, Price
+Lists, Contacts, Bank Details, and Users. Overhead Expenses is first. Contacts
+and Bank Details submit independently.
 Their save handlers send partial company updates, so a field hidden from the UI
 is not converted to null. In particular, the retained VAT file number and
 country values remain unchanged until a deliberate data-migration decision.
@@ -86,6 +86,23 @@ Retired position codes remain readable and are never rewritten by presentation
 changes.
 The `2026_09_19_company_employees.sql` migration has been applied to the live
 Supabase schema.
+Machinery is an additive production-capability boundary. The global
+`machinery_catalog` defines a compact furniture-production vocabulary. Company
+answers live in `company_machinery`; regular subcontractor capabilities reuse
+`company_suppliers` through `company_supplier_services`; price evidence and
+regional fallbacks have separate versioned tables. The prototype
+`company_machines` table remains untouched and is not a source of truth for the
+new UI. Owners edit one idempotent company/machine identity, members receive a
+read-only view, and changing an in-house capability to unavailable requires
+confirmation. Removing a regular subcontractor deactivates the routing choice
+without deleting its history. `use_cases/machinery.py` validates the catalog,
+capabilities, pricing semantics, ownership, and constructs a bounded production
+snapshot. That private snapshot is not passed to an external model without an
+explicit data-transfer decision. Deterministic application code remains the
+owner of feasibility checks and price arithmetic.
+The `2026_09_24_machinery_foundation.sql` migration was applied to the live
+Supabase schema on 24.09. The seeded catalog contains 26 active capabilities;
+company-specific Machinery tables begin empty. Anonymous access is revoked.
 The Users tab does not retain or reveal a permanent team URL. An owner action
 creates a fresh opaque bearer invitation, stores only its SHA-256 hash in
 `company_member_invites`, and shows the raw link in the existing

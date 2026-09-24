@@ -1,5 +1,21 @@
 # TODO
 
+- 3.9.1 Machinery and production routing foundation: active, P1. Add a compact
+  furniture-production catalog across woodworking, metalworking, and finishing,
+  with wood CNC and metal laser cutting as separate first-class capabilities.
+  Company owners record explicit in-house availability, minimum technical
+  limits, costing basis, and regular subcontractor services through the existing
+  supplier directory. The additive Supabase migration was applied on 24.09:
+  all five new tables are available, the catalog contains 26 active rows, new
+  company tables are empty, anonymous catalog access is denied, and all 124
+  prototype `company_machines` rows remain untouched. The owner/member Profile
+  UI, deterministic production-context snapshot, and automated scenario
+  coverage are implemented locally. The real owner/member production pass,
+  mobile/keyboard pass, commit, deployment, and acceptance remain pending. The production
+  context is not sent to Anthropic until the owner explicitly approves transfer
+  of private machinery, supplier, and pricing data or approves a sanitized
+  payload contract. Continue from `notes/MACHINERY_FOUNDATION.md`.
+
 - 3.8.1 Railway hosting migration: accepted production checkpoint. Preserve
   production checkpoint `bbb8297` and retain the Streamlit Cloud deployment as
   rollback while the existing Cloudflare wrapper runs against Railway at
@@ -23,7 +39,12 @@
   defects. Verification: 238 tests passed. Checkpoint commit: `4b8b24a`.
   Protected production checkpoint: `bbb8297`.
 
-- 3.8.2 Password recovery: active after accepted 3.8.4. Add a user-visible
+- 3.8.2 Password recovery: closed by owner on 24.09 without further production
+  acceptance work. The working flow and email changes remain preserved at
+  checkpoint `f1de50e`; do not treat the former Gmail and full-matrix follow-up
+  as active unless the owner explicitly reopens it. The historical contract and
+  unresolved verification record remain in `notes/AUTH_PASSWORD_RECOVERY_HANDOFF.md`.
+  The completed implementation added a user-visible
   Forgot password flow using the existing Supabase Auth account and the final
   branded application origin. Reuse the accepted Sign in visual and transition
   system, keep account-existence responses neutral, use a single-use expiring

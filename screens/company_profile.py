@@ -39,6 +39,18 @@ from use_cases.price_sources import (
     load_price_source_rows,
     process_price_source,
 )
+from use_cases.machinery import (
+    INDUSTRY_LABELS,
+    MACHINE_SPECS,
+    MachineryError,
+    create_or_get_supplier,
+    deactivate_supplier_services,
+    list_company_machinery,
+    list_company_suppliers,
+    list_supplier_services,
+    save_company_machinery,
+    save_supplier_service,
+)
 
 if TYPE_CHECKING:
     from state.company_auth import CompanyAccess
@@ -202,6 +214,304 @@ def _brand_mark() -> str:
         return Path("assets/brand/costelry_mark_indigo.svg").read_text()
     except OSError:
         return ""
+
+
+IN_HOUSE_PRICING_OPTIONS = {
+    "unknown": ("Not provided", "unknown", None),
+    "internal_hourly": ("Internal cost per machine hour", "hourly", "internal_cost"),
+    "customer_hourly": ("Customer rate per machine hour", "hourly", "customer_price"),
+    "customer_sheet": ("Customer rate per sheet", "per_sheet", "customer_price"),
+    "customer_part": ("Customer rate per part", "per_part", "customer_price"),
+    "customer_job": ("Customer rate per job", "per_job", "customer_price"),
+    "quote_only": ("Quote each job", "quote_only", None),
+}
+SUPPLIER_PRICING_OPTIONS = {
+    "quote_only": ("Supplier quotes each job", "quote_only", None),
+    "supplier_hourly": ("Supplier charges per machine hour", "hourly", "supplier_quote"),
+    "supplier_sheet": ("Supplier charges per sheet", "per_sheet", "supplier_quote"),
+    "supplier_part": ("Supplier charges per part", "per_part", "supplier_quote"),
+    "supplier_job": ("Supplier charges per job", "per_job", "supplier_quote"),
+    "unknown": ("Not provided", "unknown", None),
+}
+MACHINERY_PRICING_LABELS = {
+    "unknown": "Not provided",
+    "hourly": "Per machine hour",
+    "per_sheet": "Per sheet",
+    "per_part": "Per part",
+    "per_job": "Per job",
+    "quote_only": "Quote each job",
+}
+
+
+def _machinery_field_default(saved: dict, key: str, fallback):
+    return (saved.get("capabilities") or {}).get(key, fallback)
+
+
+def _render_machine_capability_fields(spec, saved: dict, key_prefix: str) -> dict:
+    values: dict[str, object] = {}
+    for field in spec.fields:
+        label = f"{field.label}{' *' if field.required else ''}"
+        widget_key = f"{key_prefix}_{field.key}"
+        default = _machinery_field_default(saved, field.key, None)
+        if field.kind == "number":
+            values[field.key] = st.number_input(
+                label,
+                min_value=0.0,
+                value=float(default or 0),
+                step=1.0,
+                key=widget_key,
+                help=field.unit,
+            )
+        elif field.kind == "multiselect":
+            values[field.key] = st.multiselect(
+                label,
+                list(field.options),
+                default=[item for item in (default or []) if item in field.options],
+                key=widget_key,
+            )
+        elif field.kind == "boolean":
+            values[field.key] = st.checkbox(label, value=bool(default), key=widget_key)
+        else:
+            values[field.key] = st.text_input(
+                label,
+                value=str(default or ""),
+                key=widget_key,
+            )
+    return values
+
+
+def _render_machinery_pricing(saved: dict, key_prefix: str, *, supplier: bool = False) -> tuple[str, dict]:
+    saved_method = str(saved.get("pricing_method") or "unknown")
+    saved_kind = str((saved.get("pricing") or {}).get("rate_kind") or "")
+    options = SUPPLIER_PRICING_OPTIONS if supplier else IN_HOUSE_PRICING_OPTIONS
+    selected_key = next(
+        (
+            key for key, (_label, method, rate_kind) in options.items()
+            if method == saved_method and (rate_kind or "") == saved_kind
+        ),
+        "quote_only" if supplier else "unknown",
+    )
+    option_key = st.selectbox(
+        "Supplier pricing method" if supplier else "Costing method",
+        list(options),
+        index=list(options).index(selected_key),
+        format_func=lambda value: options[value][0],
+        key=f"{key_prefix}_pricing_method",
+    )
+    _label, method, rate_kind = options[option_key]
+    values: dict[str, object] = {}
+    if method in {"hourly", "per_sheet", "per_part", "per_job"}:
+        saved_pricing = saved.get("pricing") or {}
+        values["rate_kind"] = rate_kind
+        rate_col, currency_col = st.columns([2, 1])
+        with rate_col:
+            values["rate"] = st.number_input(
+                "Rate *",
+                min_value=0.0,
+                value=float(saved_pricing.get("rate") or 0),
+                step=1.0,
+                key=f"{key_prefix}_rate",
+            )
+        with currency_col:
+            values["currency"] = st.text_input(
+                "Currency *",
+                value=str(saved_pricing.get("currency") or "ILS"),
+                max_chars=3,
+                key=f"{key_prefix}_currency",
+            )
+        setup_col, minimum_col = st.columns(2)
+        with setup_col:
+            values["setup_fee"] = st.number_input(
+                "Setup fee",
+                min_value=0.0,
+                value=float(saved_pricing.get("setup_fee") or 0),
+                step=1.0,
+                key=f"{key_prefix}_setup_fee",
+            )
+        with minimum_col:
+            values["minimum_charge"] = st.number_input(
+                "Minimum charge",
+                min_value=0.0,
+                value=float(saved_pricing.get("minimum_charge") or 0),
+                step=1.0,
+                key=f"{key_prefix}_minimum_charge",
+            )
+    return method, values
+
+
+def _render_member_machinery(machine_rows: dict[str, dict], service_rows: list[dict], supplier_names: dict[str, str]) -> None:
+    configured = [spec for spec in MACHINE_SPECS if spec.code in machine_rows]
+    if not configured:
+        st.info("Machinery has not been configured yet")
+        return
+    for industry, title in INDUSTRY_LABELS.items():
+        group = [spec for spec in configured if spec.industry == industry]
+        if not group:
+            continue
+        st.subheader(title)
+        for spec in group:
+            row = machine_rows[spec.code]
+            status = "In-house" if row.get("availability_status") == "in_house" else "Not in-house"
+            with st.expander(f"{spec.display_name} · {status}"):
+                capabilities = row.get("capabilities") or {}
+                for field in spec.fields:
+                    value = capabilities.get(field.key)
+                    if value not in (None, "", []):
+                        suffix = f" {field.unit}" if field.unit else ""
+                        st.markdown(f"**{field.label}:** {value}{suffix}")
+                pricing_method = str(row.get("pricing_method") or "unknown")
+                if pricing_method != "unknown":
+                    st.markdown(f"**Pricing:** {MACHINERY_PRICING_LABELS.get(pricing_method, pricing_method)}")
+                matching = [service for service in service_rows if service.get("machine_code") == spec.code]
+                for service in matching:
+                    supplier_name = supplier_names.get(str(service.get("supplier_id")), "Supplier")
+                    st.markdown(f"**Regular subcontractor:** {supplier_name}")
+
+
+@st.fragment
+def _render_machinery(access: CompanyAccess) -> None:
+    st.markdown("### Machinery")
+    st.caption("Tell us what is available in-house. Add a regular subcontractor only when you use one")
+    try:
+        rows = list_company_machinery(access)
+        suppliers = list_company_suppliers(access)
+        services = list_supplier_services(access)
+    except Exception:
+        st.error("Machinery settings are unavailable right now. Try again after the database update")
+        return
+    machine_rows = {str(row.get("machine_code")): row for row in rows}
+    supplier_names = {str(row.get("supplier_id")): str(row.get("supplier_name") or "Supplier") for row in suppliers}
+    if access.role != "owner":
+        _render_member_machinery(machine_rows, services, supplier_names)
+        return
+
+    for industry, title in INDUSTRY_LABELS.items():
+        st.subheader(title)
+        for spec in (item for item in MACHINE_SPECS if item.industry == industry):
+            saved = machine_rows.get(spec.code, {})
+            saved_status = str(saved.get("availability_status") or "")
+            status_label = {
+                "in_house": "In-house",
+                "not_in_house": "Not in-house",
+            }.get(saved_status, "Not answered")
+            with st.expander(f"{spec.display_name} · {status_label}"):
+                st.caption(spec.description)
+                form_key = f"machinery_{spec.code}"
+                with st.container(key=f"{form_key}_card"):
+                    options = ["Not answered", "Yes", "No"]
+                    initial = {"in_house": 1, "not_in_house": 2}.get(saved_status, 0)
+                    availability = st.radio(
+                        "Available in-house?",
+                        options,
+                        index=initial,
+                        horizontal=True,
+                        key=f"{form_key}_availability",
+                    )
+                    capabilities: dict[str, object] = {}
+                    pricing_method = "unknown"
+                    pricing: dict[str, object] = {}
+                    accepts_external = False
+                    supplier_choice = "No regular subcontractor"
+                    selected_supplier_id = ""
+                    new_supplier_name = ""
+                    supplier_pricing_method = "quote_only"
+                    supplier_pricing: dict[str, object] = {}
+                    lead_time = 0.0
+                    confirm_change = False
+                    if availability == "Yes":
+                        capabilities = _render_machine_capability_fields(spec, saved, form_key)
+                        pricing_method, pricing = _render_machinery_pricing(saved, form_key)
+                        accepts_external = st.checkbox(
+                            "We also accept this work from external customers",
+                            value=bool(saved.get("accepts_external_work")),
+                            key=f"{form_key}_external",
+                        )
+                    elif availability == "No":
+                        if saved_status == "in_house":
+                            confirm_change = st.checkbox(
+                                "Confirm that this is no longer available in-house",
+                                key=f"{form_key}_confirm_change",
+                            )
+                        matching_services = [service for service in services if service.get("machine_code") == spec.code]
+                        supplier_choice = st.radio(
+                            "Do you use a regular subcontractor?",
+                            ["No regular subcontractor", "Existing supplier", "New supplier"],
+                            index=1 if matching_services else 0,
+                            key=f"{form_key}_supplier_choice",
+                        )
+                        if supplier_choice == "Existing supplier":
+                            if suppliers:
+                                current_supplier = str(matching_services[0].get("supplier_id")) if matching_services else ""
+                                supplier_ids = [str(item.get("supplier_id")) for item in suppliers]
+                                selected_supplier_id = st.selectbox(
+                                    "Supplier *",
+                                    supplier_ids,
+                                    index=supplier_ids.index(current_supplier) if current_supplier in supplier_ids else 0,
+                                    format_func=lambda value: supplier_names.get(value, "Supplier"),
+                                    key=f"{form_key}_supplier",
+                                )
+                            else:
+                                st.info("No suppliers exist yet. Choose New supplier")
+                        elif supplier_choice == "New supplier":
+                            new_supplier_name = st.text_input(
+                                "Supplier name *",
+                                key=f"{form_key}_new_supplier",
+                            )
+                        if supplier_choice != "No regular subcontractor":
+                            supplier_pricing_method, supplier_pricing = _render_machinery_pricing(
+                                matching_services[0] if matching_services else {"pricing_method": "quote_only"},
+                                f"{form_key}_supplier",
+                                supplier=True,
+                            )
+                            lead_time = st.number_input(
+                                "Typical lead time, days",
+                                min_value=0.0,
+                                value=float((matching_services[0].get("typical_lead_time_days") if matching_services else 0) or 0),
+                                step=1.0,
+                                key=f"{form_key}_lead_time",
+                            )
+                    submitted = st.button(
+                        "Save",
+                        key=f"{form_key}_save",
+                        disabled=availability == "Not answered",
+                        use_container_width=True,
+                    )
+                if submitted:
+                    try:
+                        if saved_status == "in_house" and availability == "No" and not confirm_change:
+                            raise MachineryError("Confirm that this capability is no longer available in-house")
+                        status = "in_house" if availability == "Yes" else "not_in_house"
+                        if status == "not_in_house" and supplier_choice == "Existing supplier" and not selected_supplier_id:
+                            raise MachineryError("Choose an existing supplier or create a new one")
+                        if status == "not_in_house" and supplier_choice == "New supplier":
+                            supplier = create_or_get_supplier(access, new_supplier_name)
+                            selected_supplier_id = str(supplier["supplier_id"])
+                        save_company_machinery(
+                            access,
+                            machine_code=spec.code,
+                            availability_status=status,
+                            capabilities=capabilities,
+                            pricing_method=pricing_method,
+                            pricing=pricing,
+                            accepts_external_work=accepts_external,
+                        )
+                        if status == "not_in_house" and selected_supplier_id:
+                            save_supplier_service(
+                                access,
+                                supplier_id=selected_supplier_id,
+                                machine_code=spec.code,
+                                pricing_method=supplier_pricing_method,
+                                pricing=supplier_pricing,
+                                typical_lead_time_days=lead_time,
+                            )
+                        elif status == "not_in_house":
+                            deactivate_supplier_services(access, machine_code=spec.code)
+                        st.success("Saved")
+                        st.rerun(scope="fragment")
+                    except (MachineryError, PermissionError) as exc:
+                        st.error(str(exc))
+                    except Exception:
+                        st.error("Machinery settings could not be saved. Check the values and try again")
 
 
 def load_company_profile(access: CompanyAccess) -> dict:
@@ -2305,10 +2615,11 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
                 )
     finish_phase("server.company_profile_header", "p_header_ms")
 
-    expenses_tab, labor_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
+    expenses_tab, labor_tab, machinery_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
         [
             "Overhead Expenses",
             "Labor Costs",
+            "Machinery",
             "Price Lists",
             "Contacts",
             "Bank Details",
@@ -2333,6 +2644,13 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
             else:
                 with trace.span("server.labor_costs_render"):
                     _render_labor_costs(access, trace=trace)
+    elif machinery_tab.open:
+        with machinery_tab:
+            if trace is None:
+                _render_machinery(access)
+            else:
+                with trace.span("server.machinery_render"):
+                    _render_machinery(access)
     elif contacts_tab.open or company_tab.open:
         try:
             if trace is None:
