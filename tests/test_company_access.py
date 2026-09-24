@@ -1209,7 +1209,7 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
         field for field in app.text_input
         if field.label == "Machine rate / hour (ILS)"
     )
-    machine_rate.set_value("120")
+    machine_rate.set_value("1200")
     next(button for button in app.button if button.label == "Save").click()
     app.run()
 
@@ -1219,8 +1219,13 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     assert saved[0]["capabilities"]["solid_wood"] is True
     assert saved[0]["capabilities"]["horizontal_drilling"] is True
     assert saved[0]["pricing_method"] == "hourly"
-    assert saved[0]["pricing"]["rate"] == "120"
+    assert saved[0]["pricing"]["rate"] == "1200"
     assert saved[0]["pricing"]["currency"] == "ILS"
+
+
+def test_grouped_number_input_formats_whole_and_decimal_thousands():
+    assert company_profile._labor_form_number(1200, grouped=True) == "1\u202f200"
+    assert company_profile._labor_form_number(1200.5, grouped=True) == "1\u202f200.5"
 
 
 def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):
@@ -1576,6 +1581,7 @@ def test_availability_only_machine_asks_no_detail_questions(monkeypatch):
 def test_machinery_uses_grouped_full_width_table_contract():
     source = (Path(__file__).parents[1] / "screens/company_profile.py").read_text()
     css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
+    base_css = (Path(__file__).parents[1] / "styles/base.py").read_text()
 
     assert 'key=f"company_machinery_group_{industry}"' in source
     assert 'f\'<span>{escape(title)}</span>\'' in source
@@ -1596,9 +1602,10 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert ":has(.machinery-selected-no)" in css
     assert "#C5E9CF" in css
     assert "#F3C4CD" in css
-    assert 'label[data-baseweb="checkbox"]:has(input[aria-checked="true"])' in css
-    assert "background-color: #4F8FCB !important;" in css
-    assert "fill%3D%27white%27" in css
+    assert 'label[data-baseweb="checkbox"]:has(input:checked)' in base_css
+    assert 'label[data-baseweb="checkbox"]:has(input[aria-checked="true"])' in base_css
+    assert "background-color: #4F8FCB !important;" in base_css
+    assert "fill%3D%27white%27" in base_css
     assert "gap: 8px !important;" in css
     assert "margin-bottom: 16px;" in css
     assert "box-sizing: border-box;" in css

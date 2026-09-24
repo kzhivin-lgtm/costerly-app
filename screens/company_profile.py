@@ -416,13 +416,26 @@ def _render_cnc_machine_rate(
     saved_pricing = saved.get("pricing") or {}
     currency = str(saved_pricing.get("currency") or "ILS").upper()
     saved_rate = saved_pricing.get("rate") if saved_method == "hourly" else ""
+    widget_key = f"{key_prefix}_machine_rate"
     with method_column:
         entered_rate = st.text_input(
             f"Machine rate / hour ({currency})",
-            value=(f"{float(saved_rate):g}" if saved_rate not in (None, "") else ""),
-            key=f"{key_prefix}_machine_rate",
+            value=(
+                _labor_form_number(saved_rate, decimals=2, grouped=True)
+                if saved_rate not in (None, "")
+                else ""
+            ),
+            key=widget_key,
+            on_change=_format_grouped_number_input,
+            args=(widget_key,),
         )
-    normalized_rate = str(entered_rate or "").strip().replace(" ", "").replace(",", ".")
+    normalized_rate = (
+        str(entered_rate or "")
+        .strip()
+        .replace("\u202f", "")
+        .replace(" ", "")
+        .replace(",", "")
+    )
     if not normalized_rate:
         return "unknown", {}
     pricing: dict[str, object] = {
@@ -2458,7 +2471,19 @@ def _labor_form_number(
     if number == int(number):
         integer = f"{int(number):,}" if grouped else str(int(number))
         return integer.replace(",", "\u202f")
-    return f"{number:.{decimals}f}".rstrip("0").rstrip(".")
+    template = f"{{:,.{decimals}f}}" if grouped else f"{{:.{decimals}f}}"
+    return template.format(number).rstrip("0").rstrip(".").replace(",", "\u202f")
+
+
+def _format_grouped_number_input(widget_key: str, decimals: int = 2) -> None:
+    value = st.session_state.get(widget_key)
+    if str(value or "").strip() == "":
+        return
+    st.session_state[widget_key] = _labor_form_number(
+        _metric_amount(value),
+        decimals=decimals,
+        grouped=True,
+    )
 
 
 def _clear_labor_pay_values(key_prefix: str) -> None:

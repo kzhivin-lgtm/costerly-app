@@ -119,8 +119,8 @@ source of truth for this implementation.
   the Save action. Multi-value fields use selectable pills rather than the
   BaseWeb multiselect. Selected pills use the product blue palette, never the
   validation red palette.
-- Checked checkboxes use the product blue palette with a white checkmark. Red
-  is not used for checkbox selection.
+- Checked checkboxes use the application-wide product blue palette with a
+  white checkmark. Red is not used for checkbox selection.
 - The `Available in-house?` heading starts on the same vertical line as the
   first availability button.
 - `Costing method` exposes only `Not provided`, `Per machine hour`, `Per sheet`,
@@ -128,7 +128,8 @@ source of truth for this implementation.
   customer-price provenance remains stored but is not repeated in the labels.
 - CNC has no costing-method selector. One optional `Machine rate / hour` field
   stays in the third column. Blank means not provided; a value is stored as the
-  internal hourly machine rate. Customer-facing per-sheet, per-part, and
+  internal hourly machine rate. It uses the shared numeric input convention,
+  including grouped thousands. Customer-facing per-sheet, per-part, and
   whole-job prices remain derived outputs rather than stored cost bases.
 - Sheet laser does not ask for a generic costing method. Its minimum profile
   asks working length, working width, laser power, copper / brass, and bevel
