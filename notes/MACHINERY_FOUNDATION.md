@@ -40,12 +40,12 @@ source of truth for this implementation.
 | CNC machine rate is provided | Store it as the internal hourly machine rate; derive customer-facing per-part or whole-job prices from machining time plus material, programming, setup, tooling, and labor |
 | CNC router handles standard sheet goods | Assume MDF, particleboard / LDSP, plywood, and melamine-faced board; do not ask the owner to confirm them |
 | CNC router requires machining on both faces | Treat the second face as another setup; do not ask a vague two-sided-processing question |
-| Sheet laser is in-house | Ask working length, working width, laser power, copper / brass, and bevel cutting; show both exceptional capabilities in the first detail column |
+| Sheet laser is in-house | Ask working length, working width, laser power, copper / brass, and bevel cutting; show copper / brass in the first detail column and bevel cutting in the second |
 | Sheet laser handles common metals | Assume mild steel, stainless steel, and aluminum; do not ask the owner to confirm them |
 | Sheet laser requires costing | Do not ask for a generic costing method in Machinery; derive the job from material, thickness, geometry, piercings, setup, gas, and the applicable laser cost profile or benchmark |
 | Owner chooses No for an outsourceable operation | Hide in-house details and show one `Regular subcontractor` selector with no contractor, an existing contractor, or add new |
 | Owner chooses No for an internal-support capability | Persist No immediately; hide in-house details, Save, and the detail chevron; do not ask for a subcontractor |
-| Owner saves No without a subcontractor | Save the explicit absence and show `Market pricing`; later routing may use a regional benchmark with lower confidence |
+| Owner saves No without a subcontractor | Save the explicit absence without adding pricing copy to the UI; later routing uses a regional benchmark with lower confidence |
 | Owner saves No with a subcontractor name | Reuse or create the normalized company supplier and attach that service with quote-only pricing |
 | Owner removes a regular subcontractor | Select `No regular subcontractor` and save; deactivate the current route without deleting its history |
 | Required in-house field is missing | Keep the card editable, mark only the missing field, and do not save a partial confirmed capability |
@@ -128,9 +128,13 @@ source of truth for this implementation.
   whole-job prices remain derived outputs rather than stored cost bases.
 - Sheet laser does not ask for a generic costing method. Its minimum profile
   asks working length, working width, laser power, copper / brass, and bevel
-  cutting. The two exceptional capabilities share the first detail column.
+  cutting. Copper / brass uses the first detail column and bevel cutting uses
+  the second.
   Mild steel, stainless steel, and aluminum are treated as baseline materials;
   tube laser remains a separate capability rather than a checkbox.
+- Spray painting and powder coating do not ask for a costing method. When no
+  company-specific rate or supplier price exists, estimation silently falls
+  back to the applicable regional market benchmark.
 - Only questions that materially change feasibility or price are shown.
   Panel cutting saw, edge bander, solid wood machining, wide-belt sanding, and
   solid metal machining, sandblasting, and galvanizing are availability-only. CNC retains working size,
@@ -163,7 +167,7 @@ source of truth for this implementation.
 
 ### Painting and finishing
 
-- Wet painting
+- Spray painting
 - Powder coating
 - Sandblasting
 - Galvanizing

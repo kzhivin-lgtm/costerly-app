@@ -104,8 +104,8 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("work_area_x_mm", "Working length", "mm", input_unit="m", required=True),
         _number("work_area_y_mm", "Working width", "mm", input_unit="m", required=True),
         _number("laser_power_kw", "Laser power", "kW"),
-        _boolean("bevel_cutting", "Bevel cutting"),
         _boolean("copper_brass", "Copper / brass"),
+        _boolean("bevel_cutting", "Bevel cutting"),
     )),
     MachineSpec("metal_tube_laser", "metalworking", "Tube / profile cutting", "Profile cutting of tube and section", (
         _number("max_stock_length_mm", "Maximum length", "mm", input_unit="m", required=True),
@@ -130,7 +130,7 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("max_drill_diameter_mm", "Maximum drilling diameter", "mm"),
         _text("thread_range", "Typical tapping range"),
     )),
-    MachineSpec("finish_wet_spray_booth", "finishing", "Wet painting", "Controlled wet coating application", (
+    MachineSpec("finish_wet_spray_booth", "finishing", "Spray painting", "Controlled liquid coating application", (
         _number("max_part_length_mm", "Maximum length", "mm", input_unit="m"),
         _number("max_part_width_mm", "Maximum width", "mm", input_unit="m"),
         _number("max_part_height_mm", "Maximum height", "mm", input_unit="m"),
@@ -190,8 +190,6 @@ SUBCONTRACTOR_MACHINE_CODES = frozenset(
 PROFILE_COSTING_MACHINE_CODES = frozenset(
     {
         "wood_cnc_router",
-        "finish_wet_spray_booth",
-        "finish_powder_booth",
     }
 )
 INDUSTRY_LABELS = {

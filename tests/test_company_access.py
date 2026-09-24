@@ -1297,14 +1297,44 @@ def test_sheet_laser_has_exception_checkboxes_without_costing_method(monkeypatch
     app.run()
 
     assert [field.label for field in app.checkbox] == [
-        "Bevel cutting",
         "Copper / brass",
+        "Bevel cutting",
     ]
     assert "Costing method" not in [field.label for field in app.selectbox]
     assert not any(
         field.label.startswith("Machine rate / hour")
         for field in app.text_input
     )
+
+
+@pytest.mark.parametrize("machine_index", [12, 13])
+def test_painting_capabilities_do_not_ask_for_costing_method(
+    monkeypatch,
+    machine_index,
+):
+    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    app.get("button_group")[machine_index].set_value("Yes")
+    app.run()
+
+    assert "Costing method" not in [field.label for field in app.selectbox]
+
+
+def test_missing_supplier_price_does_not_add_market_pricing_copy():
+    spec = machinery.MACHINE_SPEC_BY_CODE["finish_powder_booth"]
+
+    assert company_profile._machinery_saved_summary(
+        spec,
+        {"availability_status": "not_in_house"},
+        [],
+        {},
+    ) == ""
 
 
 def test_machinery_subcontractor_can_be_selected_or_removed(monkeypatch):

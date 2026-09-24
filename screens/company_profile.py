@@ -489,7 +489,7 @@ def _machinery_saved_summary(
         if matching:
             name = supplier_names.get(str(matching.get("supplier_id")), "Supplier")
             return f"Subcontractor: {name}"
-        return "Market pricing"
+        return ""
     if status != "in_house":
         return ""
 
@@ -744,20 +744,7 @@ def _render_owner_machinery(
                                         fields=selector_fields[2:],
                                     )
                                 )
-                        if (
-                            spec.code == "metal_sheet_laser"
-                            and boolean_fields
-                            and not defer_costing
-                        ):
-                            checkbox_row = st.columns(3)
-                            with checkbox_row[0]:
-                                for field in boolean_fields:
-                                    capabilities[field.key] = (
-                                        _render_machine_capability_widget(
-                                            field, saved, row_key
-                                        )
-                                    )
-                        elif boolean_fields and not defer_costing:
+                        if boolean_fields and not defer_costing:
                             checkbox_row = st.columns(3)
                             for index, field in enumerate(boolean_fields[:3]):
                                 with checkbox_row[index]:
