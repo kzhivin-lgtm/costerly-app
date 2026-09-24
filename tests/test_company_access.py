@@ -1588,18 +1588,17 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert "company-machinery-table-head" in css
     assert "#FFFDF5" in css
     assert "#F7FBF8" in css
-    assert "#FBFAFC" in css
+    assert "#FDF8F9" in css
     assert '"Yes": "yes"' in source
     assert '"No": "no"' in source
     assert "machinery-selected-{availability_class}" in source
     assert ":has(.machinery-selected-yes)" in css
     assert ":has(.machinery-selected-no)" in css
     assert "#C5E9CF" in css
-    assert "#E8E5EA" in css
-    assert 'label[data-baseweb="checkbox"]:has(input[type="checkbox"]:checked)' in css
+    assert "#F3C4CD" in css
+    assert 'label[data-baseweb="checkbox"]:has(input[aria-checked="true"])' in css
     assert "background-color: #4F8FCB !important;" in css
-    assert "#A9384D" not in css
-    assert "#F3C4CD" not in css
+    assert "fill%3D%27white%27" in css
     assert "gap: 8px !important;" in css
     assert "margin-bottom: 16px;" in css
     assert "box-sizing: border-box;" in css

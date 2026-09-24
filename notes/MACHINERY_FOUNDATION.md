@@ -90,8 +90,8 @@ source of truth for this implementation.
   column and `Available in-house?` in the second. Machine names use the same row
   position as Rent or Electricity in Overhead Expenses.
 - The three group tables have a deliberate vertical gap. Their compact status
-  controls use pale yellow for Not answered, pale green for Yes, and neutral
-  gray for No. Red is reserved for errors.
+  controls use pale yellow for Not answered, pale green for Yes, and pale red
+  for No.
 - Unanswered rows stay compact. Selecting `Yes` or `No` inserts that capability's
   detail panel immediately below its row and spans the full table width. Saving
   collapses it. A chevron reopens or closes a saved panel.
@@ -119,8 +119,8 @@ source of truth for this implementation.
   the Save action. Multi-value fields use selectable pills rather than the
   BaseWeb multiselect. Selected pills use the product blue palette, never the
   validation red palette.
-- Checked checkboxes use the same product blue palette. Red is never used for
-  ordinary selection or availability state.
+- Checked checkboxes use the product blue palette with a white checkmark. Red
+  is not used for checkbox selection.
 - The `Available in-house?` heading starts on the same vertical line as the
   first availability button.
 - `Costing method` exposes only `Not provided`, `Per machine hour`, `Per sheet`,

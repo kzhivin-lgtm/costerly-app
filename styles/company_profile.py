@@ -381,9 +381,9 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]
         [data-testid="stButtonGroup"] button:nth-of-type(3) {
-            border-color: #E1DEE4 !important;
-            background: #FBFAFC !important;
-            color: #767079 !important;
+            border-color: #EFDEE1 !important;
+            background: #FDF8F9 !important;
+            color: #8A6D72 !important;
         }
 
         .stApp:has(.company-machinery-active)
@@ -403,25 +403,26 @@ def apply_company_profile_css() -> None:
         [data-testid="stButtonGroup"] button:nth-child(3) {
             position: relative;
             z-index: 1;
-            border-color: #77717A !important;
-            background: #E8E5EA !important;
-            color: #312D34 !important;
+            border-color: #A9384D !important;
+            background: #F3C4CD !important;
+            color: #6F1425 !important;
             font-weight: 700 !important;
-            box-shadow: inset 0 0 0 2px #77717A !important;
+            box-shadow: inset 0 0 0 2px #A9384D !important;
         }
 
-        .stApp:has(.company-profile-active)
+        .stApp:has(.company-machinery-active)
         [data-testid="stCheckbox"]
-        label[data-baseweb="checkbox"]:has(input[type="checkbox"]:checked)
-        > span:first-child {
+        label[data-baseweb="checkbox"]:has(input[aria-checked="true"])
+        > span {
             border-color: #4F8FCB !important;
             background-color: #4F8FCB !important;
+            background-image: url("data:image/svg+xml,%3Csvg%20width%3D%2717%27%20height%3D%2713%27%20viewBox%3D%270%200%2017%2013%27%20fill%3D%27none%27%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%3E%3Cpath%20d%3D%27M6.50002%2012.6L0.400024%206.60002L2.60002%204.40002L6.50002%208.40002L13.9%200.900024L16.1%203.10002L6.50002%2012.6Z%27%20fill%3D%27white%27%2F%3E%3C%2Fsvg%3E") !important;
         }
 
-        .stApp:has(.company-profile-active)
+        .stApp:has(.company-machinery-active)
         [data-testid="stCheckbox"]
-        label[data-baseweb="checkbox"]:has(input[type="checkbox"]:focus-visible)
-        > span:first-child {
+        label[data-baseweb="checkbox"]:has(input:focus-visible)
+        > span {
             outline: 3px solid rgba(79, 143, 203, 0.28) !important;
         }
 
