@@ -70,6 +70,16 @@ source of truth for this implementation.
 - Entering the same normalized subcontractor name reuses the existing
   `company_suppliers` identity. Replacing a regular subcontractor deactivates the
   previous route without deleting its history.
+- The capability catalog is one full-width table, not a vertical stack of
+  cards. The first column is the machine or capability name and the second is
+  `Available in-house?` with `Not answered`, `Yes`, and `No`.
+- Woodworking, Metalworking, and Painting & Finishing use the same full-width
+  group-bar treatment as Overhead Expenses groups. Machine names use the same
+  row position as Rent or Electricity in that table.
+- Unanswered rows stay compact. Selecting `Yes` or `No` inserts that machine's
+  detail panel immediately below its row and spans the full table width.
+- Every detail panel uses three equal columns for capability, costing, or
+  subcontractor fields. It does not introduce another narrow nested card.
 
 ## Catalog groups
 
@@ -126,7 +136,7 @@ never presented as a real supplier quotation.
   behavior without reading or rewriting the prototype `company_machines` rows.
 - In-house cost rates and supplier charges retain distinct rate provenance.
 - The deterministic production snapshot is implemented locally.
-- 283 repository tests pass, including the new Machinery domain and empty-state
+- 284 repository tests pass, including the new Machinery domain and empty-state
   UI scenarios.
 - The owner applied the live Supabase migration on 24.09. A service-role read
   verified five new tables, 26 active catalog rows split into 8 woodworking,

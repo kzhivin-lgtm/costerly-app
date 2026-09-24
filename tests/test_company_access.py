@@ -1157,11 +1157,10 @@ def test_machinery_tab_empty_state_is_role_safe(monkeypatch, role):
 
     assert not app.exception
     if role == "owner":
-        assert len(app.get("expander")) == len(company_profile.MACHINE_SPECS)
-        assert len([item for item in app.radio if item.label == "Available in-house?"]) == len(
-            company_profile.MACHINE_SPECS
-        )
-        assert all(button.disabled for button in app.button if button.label == "Save")
+        groups = app.get("button_group")
+        assert len(groups) == len(company_profile.MACHINE_SPECS)
+        assert all(item.value == "Not answered" for item in groups)
+        assert not any(button.label == "Save" for button in app.button)
     else:
         assert "Machinery has not been configured yet" in " ".join(
             item.value for item in app.info
@@ -1189,7 +1188,7 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     app.session_state["company_profile_tab"] = "Machinery"
     app.run()
 
-    app.radio[0].set_value("Yes")
+    app.get("button_group")[0].set_value("Yes")
     app.run()
     next(button for button in app.button if button.label == "Save").click()
     app.run()
@@ -1238,9 +1237,9 @@ def test_machinery_subcontractor_flow_uses_only_name(monkeypatch):
     app.session_state["company_profile_tab"] = "Machinery"
     app.run()
 
-    app.radio[0].set_value("No")
+    app.get("button_group")[0].set_value("No")
     app.run()
-    next(item for item in app.radio if item.label == "Do you use a regular subcontractor?").set_value("Yes")
+    next(item for item in app.radio if item.label == "Regular subcontractor?").set_value("Yes")
     app.run()
     labels = [field.label for field in app.text_input]
     assert "Subcontractor name *" in labels
@@ -1256,6 +1255,21 @@ def test_machinery_subcontractor_flow_uses_only_name(monkeypatch):
     assert service["supplier_id"] == "supplier-1"
     assert service["pricing_method"] == "quote_only"
     assert "typical_lead_time_days" not in service
+
+
+def test_machinery_uses_grouped_full_width_table_contract():
+    source = (Path(__file__).parents[1] / "screens/company_profile.py").read_text()
+    css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
+
+    assert 'key="company_machinery_table_card"' in source
+    assert '<span>Machine / Capability</span>' in source
+    assert '<span>Available in-house?</span>' in source
+    assert 'st.segmented_control(' in source
+    assert '["Not answered", "Yes", "No"]' in source
+    assert 'key=f"{row_key}_detail"' in source
+    assert "company-machinery-table-head" in css
+    assert "company-machinery-group" in css
+    assert 'grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr);' in css
 
 
 def test_owner_can_confirm_member_access_removal_from_users_tab(monkeypatch):
