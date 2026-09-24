@@ -35,15 +35,16 @@ source of truth for this implementation.
 | Machinery tab opens with no answers | Show the 16 estimation-relevant capabilities in Woodworking, Metalworking, and Painting & Finishing groups; do not create rows merely by viewing |
 | Owner changes an availability-only row | Persist Yes, No, or Not answered immediately; do not open details or show Save |
 | Owner chooses Yes | Reveal only the minimum capability questions for that machine; do not reveal subcontractor questions |
-| CNC router is in-house | Ask working length, working width, maximum thickness, solid wood, horizontal drilling, 5-axis machining, and costing method |
-| Owner chooses CNC costing | Offer only `Not provided` and `Per machine hour`; per-sheet, per-part, and per-job prices are derived commercial outputs, while outsourced CNC uses a job quote |
+| CNC router is in-house | Ask working length, working width, maximum thickness, solid wood, horizontal drilling, 5-axis machining, and an optional machine rate per hour |
+| CNC machine rate is blank | Store costing as not provided; do not ask for a separate costing-method choice |
+| CNC machine rate is provided | Store it as the internal hourly machine rate; derive customer-facing per-part or whole-job prices from machining time plus material, programming, setup, tooling, and labor |
 | CNC router handles standard sheet goods | Assume MDF, particleboard / LDSP, plywood, and melamine-faced board; do not ask the owner to confirm them |
 | CNC router requires machining on both faces | Treat the second face as another setup; do not ask a vague two-sided-processing question |
-| Sheet laser is in-house | Ask working length, working width, laser power, copper / brass, bevel cutting, and costing method |
+| Sheet laser is in-house | Ask working length, working width, laser power, copper / brass, and bevel cutting; show both exceptional capabilities in the first detail column |
 | Sheet laser handles common metals | Assume mild steel, stainless steel, and aluminum; do not ask the owner to confirm them |
-| Sheet laser costing is provided | Offer only `Not provided` and `Per machine hour`; use the RFQ material, thickness, cut length, and piercings to derive the job cost |
+| Sheet laser requires costing | Do not ask for a generic costing method in Machinery; derive the job from material, thickness, geometry, piercings, setup, gas, and the applicable laser cost profile or benchmark |
 | Owner chooses No for an outsourceable operation | Hide in-house details and show one `Regular subcontractor` selector with no contractor, an existing contractor, or add new |
-| Owner chooses No for an internal-support capability | Hide in-house details and do not ask for a subcontractor |
+| Owner chooses No for an internal-support capability | Persist No immediately; hide in-house details, Save, and the detail chevron; do not ask for a subcontractor |
 | Owner saves No without a subcontractor | Save the explicit absence and show `Market pricing`; later routing may use a regional benchmark with lower confidence |
 | Owner saves No with a subcontractor name | Reuse or create the normalized company supplier and attach that service with quote-only pricing |
 | Owner removes a regular subcontractor | Select `No regular subcontractor` and save; deactivate the current route without deleting its history |
@@ -121,13 +122,15 @@ source of truth for this implementation.
 - `Costing method` exposes only `Not provided`, `Per machine hour`, `Per sheet`,
   `Per part`, `Per job`, and `Quote each job`. Existing internal-cost or
   customer-price provenance remains stored but is not repeated in the labels.
-- CNC is narrower: in-house costing offers only `Not provided` and
-  `Per machine hour`. A customer-facing CNC price is still a whole-job quote;
-  per-sheet and per-part prices are outputs rather than stored cost bases.
-- Sheet laser follows the same machine-time costing rule. Its minimum profile
+- CNC has no costing-method selector. One optional `Machine rate / hour` field
+  stays in the third column. Blank means not provided; a value is stored as the
+  internal hourly machine rate. Customer-facing per-sheet, per-part, and
+  whole-job prices remain derived outputs rather than stored cost bases.
+- Sheet laser does not ask for a generic costing method. Its minimum profile
   asks working length, working width, laser power, copper / brass, and bevel
-  cutting. Mild steel, stainless steel, and aluminum are treated as baseline
-  materials; tube laser remains a separate capability rather than a checkbox.
+  cutting. The two exceptional capabilities share the first detail column.
+  Mild steel, stainless steel, and aluminum are treated as baseline materials;
+  tube laser remains a separate capability rather than a checkbox.
 - Only questions that materially change feasibility or price are shown.
   Panel cutting saw, edge bander, solid wood machining, wide-belt sanding, and
   solid metal machining, sandblasting, and galvanizing are availability-only. CNC retains working size,

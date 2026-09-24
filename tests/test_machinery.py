@@ -113,7 +113,11 @@ def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
         "finish_powder_booth",
     }
     assert machinery.SUBCONTRACTOR_MACHINE_CODES == expected_detailed
-    assert machinery.PROFILE_COSTING_MACHINE_CODES == expected_detailed
+    assert machinery.PROFILE_COSTING_MACHINE_CODES == {
+        "wood_cnc_router",
+        "finish_wet_spray_booth",
+        "finish_powder_booth",
+    }
 
 
 def test_machinery_migration_is_additive_and_seeds_the_application_catalog():

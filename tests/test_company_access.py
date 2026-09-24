@@ -1190,10 +1190,12 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
 
     app.get("button_group")[0].set_value("Yes")
     app.run()
-    costing_method = next(
-        field for field in app.selectbox if field.label == "Costing method"
+    assert "Costing method" not in [field.label for field in app.selectbox]
+    machine_rate = next(
+        field for field in app.text_input
+        if field.label == "Machine rate / hour (ILS)"
     )
-    assert costing_method.options == ["Not provided", "Per machine hour"]
+    assert machine_rate.value == ""
     next(button for button in app.button if button.label == "Save").click()
     app.run()
     assert not saved
@@ -1203,6 +1205,11 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     next(field for field in app.text_input if field.label == "Working width (m) *").set_value("1.3")
     next(field for field in app.checkbox if field.label == "Solid wood").check()
     next(field for field in app.checkbox if field.label == "Horizontal drilling").check()
+    machine_rate = next(
+        field for field in app.text_input
+        if field.label == "Machine rate / hour (ILS)"
+    )
+    machine_rate.set_value("120")
     next(button for button in app.button if button.label == "Save").click()
     app.run()
 
@@ -1211,6 +1218,9 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     assert saved[0]["capabilities"]["work_area_x_mm"] == 2500
     assert saved[0]["capabilities"]["solid_wood"] is True
     assert saved[0]["capabilities"]["horizontal_drilling"] is True
+    assert saved[0]["pricing_method"] == "hourly"
+    assert saved[0]["pricing"]["rate"] == "120"
+    assert saved[0]["pricing"]["currency"] == "ILS"
 
 
 def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):
@@ -1272,6 +1282,29 @@ def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):
     assert service["supplier_id"] == "supplier-1"
     assert service["pricing_method"] == "quote_only"
     assert "typical_lead_time_days" not in service
+
+
+def test_sheet_laser_has_exception_checkboxes_without_costing_method(monkeypatch):
+    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    app.get("button_group")[6].set_value("Yes")
+    app.run()
+
+    assert [field.label for field in app.checkbox] == [
+        "Bevel cutting",
+        "Copper / brass",
+    ]
+    assert "Costing method" not in [field.label for field in app.selectbox]
+    assert not any(
+        field.label.startswith("Machine rate / hour")
+        for field in app.text_input
+    )
 
 
 def test_machinery_subcontractor_can_be_selected_or_removed(monkeypatch):
@@ -1416,6 +1449,35 @@ def test_internal_support_capability_does_not_ask_for_subcontractor(monkeypatch)
     assert saved_rows[-1]["availability_status"] == "not_in_house"
 
 
+def test_detailed_internal_capability_saves_no_without_details(monkeypatch):
+    saved_rows = []
+    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    monkeypatch.setattr(
+        company_profile,
+        "save_company_machinery",
+        lambda _access, **values: saved_rows.append(values),
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "deactivate_supplier_services",
+        lambda _access, **_values: None,
+    )
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    app.get("button_group")[3].set_value("No")
+    app.run()
+
+    assert not any(button.label == "Save" for button in app.button)
+    assert not any(button.label in {"⌄", "⌃"} for button in app.button)
+    assert saved_rows[-1]["machine_code"] == "wood_veneer_press"
+    assert saved_rows[-1]["availability_status"] == "not_in_house"
+
+
 def test_availability_only_machine_asks_no_detail_questions(monkeypatch):
     saved_rows = []
     monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
@@ -1501,13 +1563,7 @@ def test_machinery_costing_method_labels_are_short_and_preserve_rate_semantics()
         "Quote each job",
     ]
     assert all("Customer" not in label and "Internal" not in label for label in labels)
-    assert [
-        item[0]
-        for item in company_profile.MACHINE_TIME_PRICING_OPTIONS.values()
-    ] == [
-        "Not provided",
-        "Per machine hour",
-    ]
+    assert not hasattr(company_profile, "MACHINE_TIME_PRICING_OPTIONS")
 
 
 def test_owner_can_confirm_member_access_removal_from_users_tab(monkeypatch):

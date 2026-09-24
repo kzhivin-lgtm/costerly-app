@@ -104,8 +104,8 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("work_area_x_mm", "Working length", "mm", input_unit="m", required=True),
         _number("work_area_y_mm", "Working width", "mm", input_unit="m", required=True),
         _number("laser_power_kw", "Laser power", "kW"),
-        _boolean("copper_brass", "Copper / brass"),
         _boolean("bevel_cutting", "Bevel cutting"),
+        _boolean("copper_brass", "Copper / brass"),
     )),
     MachineSpec("metal_tube_laser", "metalworking", "Tube / profile cutting", "Profile cutting of tube and section", (
         _number("max_stock_length_mm", "Maximum length", "mm", input_unit="m", required=True),
@@ -190,7 +190,6 @@ SUBCONTRACTOR_MACHINE_CODES = frozenset(
 PROFILE_COSTING_MACHINE_CODES = frozenset(
     {
         "wood_cnc_router",
-        "metal_sheet_laser",
         "finish_wet_spray_booth",
         "finish_powder_booth",
     }

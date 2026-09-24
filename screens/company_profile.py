@@ -227,10 +227,6 @@ IN_HOUSE_PRICING_OPTIONS = {
     "job": ("Per job", "per_job", None),
     "quote_only": ("Quote each job", "quote_only", None),
 }
-MACHINE_TIME_PRICING_OPTIONS = {
-    "unknown": ("Not provided", "unknown", None),
-    "hourly": ("Per machine hour", "hourly", None),
-}
 SUPPLIER_PRICING_OPTIONS = {
     "quote_only": ("Quote each job", "quote_only", None),
     "hourly": ("Per machine hour", "hourly", "supplier_quote"),
@@ -410,6 +406,36 @@ def _render_machinery_pricing(
     return method, values
 
 
+def _render_cnc_machine_rate(
+    saved: dict,
+    key_prefix: str,
+    *,
+    method_column,
+) -> tuple[str, dict]:
+    saved_method = str(saved.get("pricing_method") or "unknown")
+    saved_pricing = saved.get("pricing") or {}
+    currency = str(saved_pricing.get("currency") or "ILS").upper()
+    saved_rate = saved_pricing.get("rate") if saved_method == "hourly" else ""
+    with method_column:
+        entered_rate = st.text_input(
+            f"Machine rate / hour ({currency})",
+            value=(f"{float(saved_rate):g}" if saved_rate not in (None, "") else ""),
+            key=f"{key_prefix}_machine_rate",
+        )
+    normalized_rate = str(entered_rate or "").strip().replace(" ", "").replace(",", ".")
+    if not normalized_rate:
+        return "unknown", {}
+    pricing: dict[str, object] = {
+        "rate": normalized_rate,
+        "currency": currency,
+        "rate_kind": str(saved_pricing.get("rate_kind") or "internal_cost"),
+    }
+    for key in ("setup_fee", "minimum_charge"):
+        if saved_pricing.get(key) not in (None, ""):
+            pricing[key] = saved_pricing[key]
+    return "hourly", pricing
+
+
 def _render_member_machinery(machine_rows: dict[str, dict], service_rows: list[dict], supplier_names: dict[str, str]) -> None:
     configured = [spec for spec in PROFILE_MACHINE_SPECS if spec.code in machine_rows]
     if not configured:
@@ -577,7 +603,13 @@ def _render_owner_machinery(
                     with toggle_column:
                         if (
                             not availability_only
-                            and availability != "Not answered"
+                            and (
+                                availability == "Yes"
+                                or (
+                                    availability == "No"
+                                    and spec.code in SUBCONTRACTOR_MACHINE_CODES
+                                )
+                            )
                             and st.button(
                                 "⌃" if st.session_state[detail_open_key] else "⌄",
                                 key=f"{row_key}_toggle",
@@ -588,7 +620,14 @@ def _render_owner_machinery(
                             ]
                 if availability_error_key in st.session_state:
                     st.error(st.session_state.pop(availability_error_key))
-                if availability_only and availability_changed:
+                save_availability_directly = (
+                    availability_only
+                    or (
+                        availability == "No"
+                        and spec.code not in SUBCONTRACTOR_MACHINE_CODES
+                    )
+                )
+                if save_availability_directly and availability_changed:
                     previous_availability = st.session_state[previous_availability_key]
                     try:
                         if availability == "Not answered":
@@ -624,7 +663,13 @@ def _render_owner_machinery(
                         availability != "Not answered"
                     )
                     st.session_state[previous_availability_key] = availability
-                if availability_only:
+                if (
+                    availability_only
+                    or (
+                        availability == "No"
+                        and spec.code not in SUBCONTRACTOR_MACHINE_CODES
+                    )
+                ):
                     continue
                 if (
                     availability == "Not answered"
@@ -699,7 +744,20 @@ def _render_owner_machinery(
                                         fields=selector_fields[2:],
                                     )
                                 )
-                        if boolean_fields and not defer_costing:
+                        if (
+                            spec.code == "metal_sheet_laser"
+                            and boolean_fields
+                            and not defer_costing
+                        ):
+                            checkbox_row = st.columns(3)
+                            with checkbox_row[0]:
+                                for field in boolean_fields:
+                                    capabilities[field.key] = (
+                                        _render_machine_capability_widget(
+                                            field, saved, row_key
+                                        )
+                                    )
+                        elif boolean_fields and not defer_costing:
                             checkbox_row = st.columns(3)
                             for index, field in enumerate(boolean_fields[:3]):
                                 with checkbox_row[index]:
@@ -725,19 +783,18 @@ def _render_owner_machinery(
                                             field, saved, row_key
                                         )
                                     )
-                            pricing_method, pricing = _render_machinery_pricing(
-                                saved,
-                                row_key,
-                                method_column=detail_row[2],
-                                options=(
-                                    MACHINE_TIME_PRICING_OPTIONS
-                                    if spec.code in {
-                                        "wood_cnc_router",
-                                        "metal_sheet_laser",
-                                    }
-                                    else None
-                                ),
-                            )
+                            if spec.code == "wood_cnc_router":
+                                pricing_method, pricing = _render_cnc_machine_rate(
+                                    saved,
+                                    row_key,
+                                    method_column=detail_row[2],
+                                )
+                            else:
+                                pricing_method, pricing = _render_machinery_pricing(
+                                    saved,
+                                    row_key,
+                                    method_column=detail_row[2],
+                                )
                     else:
                         matching_services = [
                             service for service in services
