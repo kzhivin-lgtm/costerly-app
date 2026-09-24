@@ -969,6 +969,16 @@ def _render_price_catalog_test():
     )
 
 
+def _render_price_lists_test():
+    from types import SimpleNamespace
+
+    from screens.company_profile import _render_price_lists
+
+    _render_price_lists(
+        SimpleNamespace(role="owner", company_id="company-a", user_id="user-1")
+    )
+
+
 def _render_upload_header_controls_test():
     import streamlit as st
 
@@ -1275,6 +1285,39 @@ def test_price_catalog_renders_material_first_grouped_table():
     assert "Supplier Ltd" in markup
     assert "₪1\u202f200 / sheet" in markup
     assert "SRC-12345678" in markup
+
+
+def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeypatch):
+    sources = [
+        {
+            "source_id": f"source-{index}",
+            "source_name": f"invoice-{index}.pdf",
+            "category": "Sheet Materials",
+            "status": "partial",
+            "processing_summary": {"total": 4},
+            "company_suppliers": {"supplier_name": "Supplier Ltd"},
+        }
+        for index in (1, 2)
+    ]
+    monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: sources)
+    monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+
+    app = AppTest.from_function(_render_price_lists_test).run()
+    markup = "\n".join(item.value for item in app.markdown)
+
+    assert not app.exception
+    assert "Add price source" in markup
+    assert "No active material prices yet" in markup
+    assert any(button.label == "Process price source" for button in app.button)
+    assert any(field.label == "Category (optional)" for field in app.selectbox)
+    assert any(field.label == "Or paste supplier page URL" for field in app.text_input)
+    library = next(button for button in app.button if button.label == "Source library · 2")
+    assert "invoice-1.pdf" not in markup
+
+    library.click()
+    app.run()
+    markup = "\n".join(item.value for item in app.markdown)
+    assert "invoice-1.pdf" in markup
 
 
 def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):

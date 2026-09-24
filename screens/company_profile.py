@@ -1890,11 +1890,7 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
     )
 
 
-def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
-    if access.role != "owner":
-        st.info("Price sources are available to the company owner.")
-        return
-
+def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
     with st.container(key="price_source_add_card"):
         st.markdown(
             '<div class="company-logo-table-heading">Add price source</div>',
@@ -1902,59 +1898,64 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         )
         with st.container(key="price_source_add_body"):
             uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
-            category = st.selectbox(
-                "Category (optional)",
-                PRICE_SOURCE_CATEGORIES,
-                index=None,
-                placeholder="Detect automatically",
-                key="price_source_category",
-            )
-            uploaded_files = st.file_uploader(
-                "Price source",
-                type=["pdf", "xlsx", "csv", "jpg", "jpeg", "png"],
-                accept_multiple_files=True,
-                key=f"price_source_upload_{uploader_version}",
-                help=(
-                    "Upload one PDF or spreadsheet, or select several JPEG/PNG photos "
-                    "that belong to the same document."
-                ),
-            )
-            st.markdown('<div class="price-source-or">or</div>', unsafe_allow_html=True)
-            source_url = st.text_input(
-                "Supplier page URL",
-                placeholder="https://supplier.example/prices",
-                key=f"price_source_url_{uploader_version}",
-            )
-            notice = st.session_state.pop("_price_source_notice", None)
-            if notice:
-                st.success(notice)
-            if st.button(
-                "Process Price Source",
-                key="process_price_source",
-                type="primary",
-                use_container_width=True,
-            ):
-                try:
-                    uploaded_file = combine_price_source_files(uploaded_files or [])
-                    with st.spinner("Reading and organizing this price source..."):
-                        process_price_source(
-                            access,
-                            category=str(category or ""),
-                            uploaded_file=uploaded_file,
-                            source_url=source_url,
-                            trace=trace,
-                        )
-                except PriceSourceError as exc:
-                    st.error(str(exc))
-                except PermissionError:
-                    st.error("Only the company owner can add price sources.")
-                except Exception:
-                    logger.exception("Price source processing failed")
-                    st.error("The price source could not be processed. Try again in a moment.")
-                else:
-                    st.session_state._price_source_uploader_version = uploader_version + 1
-                    st.session_state._price_source_notice = "Price source processed"
-                    st.rerun()
+            file_column, details_column = st.columns(2, gap="large")
+            with file_column:
+                uploaded_files = st.file_uploader(
+                    "Upload file or photos",
+                    type=["pdf", "xlsx", "csv", "jpg", "jpeg", "png"],
+                    accept_multiple_files=True,
+                    key=f"price_source_upload_{uploader_version}",
+                    help=(
+                        "Upload one PDF or spreadsheet, or select several JPEG/PNG photos "
+                        "that belong to the same document."
+                    ),
+                )
+            with details_column:
+                category = st.selectbox(
+                    "Category (optional)",
+                    PRICE_SOURCE_CATEGORIES,
+                    index=None,
+                    placeholder="Detect automatically",
+                    key="price_source_category",
+                )
+                source_url = st.text_input(
+                    "Or paste supplier page URL",
+                    placeholder="https://supplier.example/prices",
+                    key=f"price_source_url_{uploader_version}",
+                )
+                if st.button(
+                    "Process price source",
+                    key="process_price_source",
+                    type="primary",
+                    use_container_width=True,
+                ):
+                    try:
+                        uploaded_file = combine_price_source_files(uploaded_files or [])
+                        with st.spinner("Reading and organizing this price source..."):
+                            process_price_source(
+                                access,
+                                category=str(category or ""),
+                                uploaded_file=uploaded_file,
+                                source_url=source_url,
+                                trace=trace,
+                            )
+                    except PriceSourceError as exc:
+                        st.error(str(exc))
+                    except PermissionError:
+                        st.error("Only the company owner can add price sources.")
+                    except Exception:
+                        logger.exception("Price source processing failed")
+                        st.error("The price source could not be processed. Try again in a moment.")
+                    else:
+                        st.session_state._price_source_uploader_version = uploader_version + 1
+                        st.session_state._price_source_notice = "Price source processed"
+                        st.rerun()
+
+
+def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
+    if access.role != "owner":
+        st.info("Price sources are available to the company owner.")
+        return
 
     try:
         sources = list_price_sources(access)
@@ -1963,60 +1964,87 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         st.info("Price Sources storage is not configured yet.")
         return
 
-    if not sources:
-        st.info("No source documents yet. Add the first supplier file or link above.")
-    else:
-        with st.container(key="price_source_list_card"):
-            st.markdown(
-                '<div class="company-logo-table-heading">Source library</div>',
-                unsafe_allow_html=True,
-            )
-            for source in sources:
-                summary = source.get("processing_summary") or {}
-                left, category_col, status_col, items_col, action_col = st.columns(
-                    [2.3, 1.45, 0.8, 0.65, 0.65],
-                    vertical_alignment="center",
-                )
-                with left:
-                    st.markdown(
-                        f'**{escape(_price_source_supplier(source))}**  \n'
-                        f'<span class="price-source-file" title="{escape(str(source.get("source_name") or ""), quote=True)}">'
-                        f'{escape(str(source.get("source_name") or ""))}</span>',
-                        unsafe_allow_html=True,
-                    )
-                with category_col:
-                    st.write(source.get("category") or "")
-                with status_col:
-                    st.write(str(source.get("status") or "").title())
-                with items_col:
-                    st.write(int(summary.get("total") or 0))
-                with action_col:
-                    if st.button("View", key=f'view_price_source_{source["source_id"]}'):
-                        st.session_state._selected_price_source_id = source["source_id"]
-
-    selected_id = st.session_state.get("_selected_price_source_id")
-    selected = next((source for source in sources if source["source_id"] == selected_id), None)
-    if selected:
-        with st.container(key="price_source_detail_card"):
-            st.markdown(
-                '<div class="company-logo-table-heading">Source Details</div>',
-                unsafe_allow_html=True,
-            )
-            _render_price_source_details(access, selected)
-
     try:
         catalog = list_price_catalog(access)
     except Exception:
         logger.exception("Price catalog list failed")
         st.info("The material price catalog is unavailable right now.")
         return
+
+    library_open = bool(st.session_state.get("_price_source_library_open"))
+
+    _render_price_source_add(access, trace=trace)
+
+    notice = st.session_state.pop("_price_source_notice", None)
+    if notice:
+        st.success(notice)
+
     with st.container(key="price_catalog_section"):
         if catalog:
             _render_price_catalog(catalog)
         else:
-            st.info(
-                "No active material prices yet. Ready prices will appear here after a source is processed."
+            st.markdown(
+                '<div class="price-catalog-card price-catalog-empty">'
+                '<div class="price-catalog-title"><span>Material prices</span>'
+                '<span>0 active prices</span></div>'
+                '<div class="price-catalog-empty-body">'
+                '<strong>No active material prices yet</strong>'
+                '<span>Add a supplier document or URL. Ready prices will appear here.</span>'
+                '</div></div>',
+                unsafe_allow_html=True,
             )
+
+    with st.container(key="price_source_library_toggle"):
+        if st.button(
+            f'Source library · {len(sources)}',
+            key="price_source_toggle_library",
+            use_container_width=True,
+        ):
+            library_open = not library_open
+            st.session_state._price_source_library_open = library_open
+
+    if library_open:
+        if not sources:
+            st.info("No source documents yet.")
+        else:
+            with st.container(key="price_source_list_card"):
+                st.markdown(
+                    '<div class="company-logo-table-heading">Source library</div>',
+                    unsafe_allow_html=True,
+                )
+                for source in sources:
+                    summary = source.get("processing_summary") or {}
+                    left, category_col, status_col, items_col, action_col = st.columns(
+                        [2.3, 1.45, 0.8, 0.65, 0.65],
+                        vertical_alignment="center",
+                    )
+                    with left:
+                        st.markdown(
+                            f'**{escape(_price_source_supplier(source))}**  \n'
+                            f'<span class="price-source-file" title="{escape(str(source.get("source_name") or ""), quote=True)}">'
+                            f'{escape(str(source.get("source_name") or ""))}</span>',
+                            unsafe_allow_html=True,
+                        )
+                    with category_col:
+                        st.write(source.get("category") or "")
+                    with status_col:
+                        st.write(str(source.get("status") or "").title())
+                    with items_col:
+                        st.write(int(summary.get("total") or 0))
+                    with action_col:
+                        if st.button("View", key=f'view_price_source_{source["source_id"]}'):
+                            st.session_state._selected_price_source_id = source["source_id"]
+
+        selected_id = st.session_state.get("_selected_price_source_id")
+        selected = next((source for source in sources if source["source_id"] == selected_id), None)
+        if selected:
+            with st.container(key="price_source_detail_card"):
+                st.markdown(
+                    '<div class="company-logo-table-heading">Source details</div>',
+                    unsafe_allow_html=True,
+                )
+                _render_price_source_details(access, selected)
+
 
 
 def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:

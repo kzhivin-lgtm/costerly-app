@@ -738,31 +738,37 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) .st-key-price_source_add_body {
-            padding: var(--profile-action-gap) 28px 28px;
+            padding: 20px 24px 24px;
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body[data-testid="stVerticalBlock"],
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body > [data-testid="stVerticalBlock"] {
-            gap: var(--profile-action-gap) !important;
+            gap: 16px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stHorizontalBlock"] {
+            align-items: stretch !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+            gap: 12px !important;
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"] section {
-            min-height: 116px;
+            min-height: 198px;
             border: 1px dashed #BFAFD0 !important;
             border-radius: var(--input-radius) !important;
             background: #FBF9FD !important;
         }
 
-        .price-source-or {
-            margin: -4px 0;
-            color: var(--color-text-muted);
-            font-size: 12px;
-            font-weight: 700;
-            text-align: center;
-            text-transform: uppercase;
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stButton"] button {
+            min-height: 52px !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-price_source_list_card {
@@ -851,6 +857,16 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) .st-key-price_catalog_section {
             margin-top: 18px;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-price_source_library_toggle {
+            margin-top: 18px;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_library_toggle [data-testid="stButton"] button {
+            min-height: 52px !important;
+            border-radius: 14px !important;
         }
 
         .stApp:has(.company-profile-active)
@@ -1005,6 +1021,29 @@ def apply_company_profile_css() -> None:
             color: var(--color-text-muted);
             font-family: var(--font-mono);
             font-size: 12px;
+        }
+
+        .price-catalog-empty-body {
+            display: flex;
+            min-height: 190px;
+            padding: 32px;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 8px;
+            text-align: center;
+        }
+
+        .price-catalog-empty-body strong {
+            color: var(--color-text-strong);
+            font-size: 18px;
+        }
+
+        .price-catalog-empty-body span {
+            max-width: 460px;
+            color: var(--color-text-muted);
+            font-size: 14px;
+            line-height: 1.45;
         }
 
         .stApp:has(.company-profile-active) label,
@@ -1785,6 +1824,11 @@ def apply_company_profile_css() -> None:
                 min-height: 180px;
             }
             .company-profile-readonly-grid { grid-template-columns: 1fr; }
+
+            .stApp:has(.company-profile-active)
+            .st-key-price_source_add_body [data-testid="stFileUploader"] section {
+                min-height: 150px;
+            }
 
             .price-catalog-card {
                 overflow: visible;
