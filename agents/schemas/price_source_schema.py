@@ -134,6 +134,27 @@ def normalize_price_source_confidence_scale(result: dict[str, Any]) -> dict[str,
     return result
 
 
+def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
+    """Keep rows with unresolved package-to-unit conversion out of active pricing."""
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("status") != "ready":
+            continue
+        package_quantity = row.get("raw_package_quantity")
+        conversion_factor = row.get("conversion_factor")
+        if (
+            isinstance(package_quantity, (int, float))
+            and package_quantity > 1
+            and row.get("purchase_unit") == row.get("calculation_unit")
+            and isinstance(conversion_factor, (int, float))
+            and conversion_factor == 1
+        ):
+            row["status"] = "unresolved"
+            row["reason_codes"] = sorted(
+                set((row.get("reason_codes") or []) + ["package_conversion_unresolved"])
+            )
+    return result
+
+
 def reconcile_price_source_arithmetic(result: dict[str, Any]) -> dict[str, Any]:
     """Make price division deterministic while preserving the model's evidence choices."""
     for row in result.get("rows") or []:

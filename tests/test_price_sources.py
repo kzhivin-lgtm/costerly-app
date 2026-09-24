@@ -9,6 +9,7 @@ from PIL import Image
 
 from agents.schemas.price_source_schema import (
     PriceSourceSchemaError,
+    guard_price_source_row_activation,
     normalize_price_source_confidence_scale,
     reconcile_price_source_arithmetic,
     validate_price_source_result,
@@ -117,6 +118,22 @@ def test_mixed_confidence_scales_are_rejected():
 
     with pytest.raises(PriceSourceSchemaError, match="mixed scales"):
         normalize_price_source_confidence_scale(result)
+
+
+def test_ambiguous_package_to_unit_conversion_cannot_activate():
+    result = _result(confidence=95)
+    row = result["rows"][0]
+    row["raw_package_quantity"] = 25
+    row["purchase_unit"] = "ml"
+    row["calculation_unit"] = "ml"
+    row["conversion_factor"] = 1
+    row["normalized_price"] = row["raw_price"]
+
+    guarded = guard_price_source_row_activation(result)
+
+    assert guarded["rows"][0]["status"] == "unresolved"
+    assert "package_conversion_unresolved" in guarded["rows"][0]["reason_codes"]
+    assert validate_price_source_result(guarded) is guarded
 
 
 def test_price_source_schema_requires_a_supported_inferred_category():

@@ -79,6 +79,9 @@ conversion_basis. If any required value is missing, use status unresolved.
   tax total row is excluded, but the presence of that row must not alter item prices.
 - A usable material unit price is always positive. Preserve negative credit or
   refund evidence only as an excluded source row; it can never become a material price.
+- When a listed price covers a stated package quantity, such as 25 ml, the
+  conversion factor must include that quantity. Never report the package price
+  as the price of one ml, g, piece, or other calculation unit.
 - Zero-value commercial rows are unresolved or excluded unless the source clearly
   establishes a separate usable positive material unit price.
 - Use ISO currency codes when identifiable. Use an empty string when unknown.
