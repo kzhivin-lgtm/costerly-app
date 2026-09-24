@@ -32,20 +32,22 @@ source of truth for this implementation.
 
 | State or action | Expected behavior |
 | --- | --- |
-| Machinery tab opens with no answers | Show Woodworking, Metalworking, and Painting & Finishing groups with unanswered Yes/No cards; do not create rows merely by viewing |
+| Machinery tab opens with no answers | Show the 17 estimation-relevant capabilities in Woodworking, Metalworking, and Painting & Finishing groups; do not create rows merely by viewing |
 | Owner chooses Yes | Reveal only the minimum capability questions for that machine; do not reveal subcontractor questions |
-| Owner chooses No | Hide and clear unsaved in-house details; ask whether a regular subcontractor is used |
-| Owner chooses No and no subcontractor | Save the explicit absence; later routing may use a regional benchmark with lower confidence |
-| Owner chooses No and has a subcontractor | Allow selecting an existing company supplier or creating one supplier, then attach the relevant service |
+| Owner chooses No for an outsourceable operation | Hide in-house details and show one optional `Regular subcontractor` name field |
+| Owner chooses No for an internal-support capability | Hide in-house details and do not ask for a subcontractor |
+| Owner saves No without a subcontractor | Save the explicit absence and show `Market pricing`; later routing may use a regional benchmark with lower confidence |
+| Owner saves No with a subcontractor name | Reuse or create the normalized company supplier and attach that service with quote-only pricing |
 | Required in-house field is missing | Keep the card editable, mark only the missing field, and do not save a partial confirmed capability |
 | Optional value is unknown | Save the capability without inventing a value; show it as not provided |
 | Owner selects a pricing method | Ask only the fields needed by that method, such as hourly rate, per-sheet rate, per-part rate, or quote-only |
 | Owner selects quote-only | Do not require a structured rate; permit later quote evidence and history |
-| Owner saves a valid card | Persist one company machinery profile, show a compact saved state, and retain the current tab and scroll context |
+| Owner saves a valid card | Persist one company machinery profile, collapse its detail panel, show a one-line summary and retain the current tab and scroll context |
 | Save is running | Disable that card's controls and save action; duplicate clicks cannot create duplicate rows |
 | Save succeeds | Show a short success status without moving other cards or changing tabs |
 | Save fails | Preserve every entered value, unlock the card, and show a neutral retryable error |
 | Owner edits a saved card | Update the same row; do not create a second active record for the machine code |
+| Owner uses the row chevron | Open or close the saved detail panel without changing persisted values |
 | Owner changes Yes to No | Require confirmation when a saved in-house profile or pricing data would be deactivated; preserve historical data for estimate audit |
 | Member opens Machinery | Show saved capabilities read-only; do not show save, supplier creation, or destructive controls |
 | Database migration is not applied | Show one bounded unavailable message; the rest of Company Profile remains usable |
@@ -55,8 +57,7 @@ source of truth for this implementation.
 
 ### Accepted compact-layout revision
 
-- The tab does not repeat a `Machinery` heading. Its introductory sentence is
-  the single large heading.
+- The tab does not repeat a `Machinery` heading or introductory sentence.
 - Technical inputs are arranged in rows of three when space permits and collapse
   naturally on narrow screens.
 - Long dimensions such as working length and width are entered as decimal meters;
@@ -64,9 +65,10 @@ source of truth for this implementation.
   database values remain millimeters.
 - Numeric capability inputs are plain text fields with explicit units, not
   number steppers. Both decimal point and decimal comma are accepted.
-- A non-in-house capability asks only whether a regular subcontractor is used.
-  `Yes` reveals one free-text subcontractor name. There is no Existing/New split,
-  supplier dropdown, supplier pricing method, or typical lead-time question.
+- A non-in-house outsourceable operation shows one optional free-text
+  `Regular subcontractor` field. There is no additional Yes/No question,
+  Existing/New split, supplier dropdown, supplier pricing method, or lead-time
+  question. Internal-support capabilities do not ask for a subcontractor.
 - Entering the same normalized subcontractor name reuses the existing
   `company_suppliers` identity. Replacing a regular subcontractor deactivates the
   previous route without deleting its history.
@@ -77,8 +79,9 @@ source of truth for this implementation.
 - The three group tables have a deliberate vertical gap. Their compact status
   controls use pale yellow for Not answered, pale green for Yes, and pale red
   for No.
-- Unanswered rows stay compact. Selecting `Yes` or `No` inserts that machine's
-  detail panel immediately below its row and spans the full table width.
+- Unanswered rows stay compact. Selecting `Yes` or `No` inserts that capability's
+  detail panel immediately below its row and spans the full table width. Saving
+  collapses it. A chevron reopens or closes a saved panel.
 - Every detail panel uses three equal columns for capability, costing, or
   subcontractor fields. It does not introduce another narrow nested card.
 - Detail descriptions are omitted. For CNC, row one contains the three
@@ -99,9 +102,9 @@ source of truth for this implementation.
   server-rendered state marker rather than an unstable Streamlit DOM attribute.
   Machine names and availability controls share the same vertical center line.
 - Expanded machine details use an 18 px vertical gap between field rows and
-  the Save action. Selected material tags and the focused material selector use
-  the product blue palette, never the validation red palette. The multiselect
-  has the same 52 px control height as text inputs and select boxes.
+  the Save action. Multi-value fields use selectable pills rather than the
+  BaseWeb multiselect. Selected pills use the product blue palette, never the
+  validation red palette.
 - The `Available in-house?` heading starts on the same vertical line as the
   first availability button.
 - `Costing method` exposes only `Not provided`, `Per machine hour`, `Per sheet`,
@@ -115,35 +118,29 @@ source of truth for this implementation.
 - CNC router
 - Panel cutting saw
 - Edge bander
-- Boring machine
 - Veneer or laminating press
-- Solid wood preparation line
+- Solid wood machining
 - Wide-belt sander or calibrator
-- Case clamp or assembly press
 
 ### Metalworking
 
 - Sheet laser cutter
-- Tube laser cutter
+- Tube / profile cutting
 - Press brake
-- Sheet shear or guillotine
 - Punching or hydraulic press
-- Tube or profile saw
 - Tube or profile bender
 - Plate or section rolling machine
 - Welding capability
-- Deburring or grinding machine
-- Drill or tapping station
 
 ### Painting and finishing
 
-- Wet-paint spray booth
-- Drying or curing chamber
-- Powder-coating booth
-- Powder-curing oven
-- Sandblasting booth
-- Washing or degreasing line
+- Wet painting
+- Powder coating
+- Sandblasting
 - Polishing or buffing station
+
+The database catalog keeps all 26 additive seed rows for compatibility and
+historical estimate audit. The profile asks only the 17 capabilities above.
 
 ## Routing price precedence
 
@@ -163,8 +160,8 @@ never presented as a real supplier quotation.
   behavior without reading or rewriting the prototype `company_machines` rows.
 - In-house cost rates and supplier charges retain distinct rate provenance.
 - The deterministic production snapshot is implemented locally.
-- 284 repository tests pass, including the new Machinery domain and empty-state
-  UI scenarios.
+- 287 repository tests pass, including the reduced profile catalog, collapsed
+  saved rows, optional subcontractors, pills, and empty-state UI scenarios.
 - The owner applied the live Supabase migration on 24.09. A service-role read
   verified five new tables, 26 active catalog rows split into 8 woodworking,
   11 metalworking, and 7 finishing capabilities, and zero company machinery,

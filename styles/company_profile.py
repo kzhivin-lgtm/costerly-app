@@ -236,8 +236,11 @@ def apply_company_profile_css() -> None:
 
         .company-machinery-table-head {
             display: grid;
-            grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr);
+            grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr) minmax(36px, 0.13fr);
+            column-gap: 16px;
             min-height: 58px;
+            padding: 0 16px;
+            box-sizing: border-box;
             margin-bottom: 16px;
             align-items: center;
             overflow: hidden;
@@ -253,7 +256,7 @@ def apply_company_profile_css() -> None:
         }
 
         .company-machinery-table-head span {
-            padding: 0 16px;
+            padding: 0;
         }
 
         .company-machinery-table-head span:nth-child(2) {
@@ -261,7 +264,6 @@ def apply_company_profile_css() -> None:
             margin: 0 auto;
             padding: 0;
             box-sizing: border-box;
-            transform: translateX(-6px);
         }
 
         .machinery-availability-state,
@@ -311,6 +313,13 @@ def apply_company_profile_css() -> None:
             line-height: 1.2;
         }
 
+        .company-machinery-summary {
+            margin-top: -4px;
+            color: var(--color-text-muted);
+            font-size: 12px;
+            line-height: 1.25;
+        }
+
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]
         [data-testid="stButtonGroup"] {
@@ -345,6 +354,16 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]
+        [data-testid="stButtonGroup"] button p,
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_row"]
+        [data-testid="stButtonGroup"] button span {
+            font-size: 13px !important;
+            font-weight: inherit !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_row"]
         [data-testid="stButtonGroup"] button:nth-of-type(1) {
             border-color: #F1E8C8 !important;
             background: #FFFDF5 !important;
@@ -372,11 +391,11 @@ def apply_company_profile_css() -> None:
         [data-testid="stButtonGroup"] button:nth-child(2) {
             position: relative;
             z-index: 1;
-            border-color: #4E9B63 !important;
-            background: #CFECD7 !important;
+            border-color: #33814A !important;
+            background: #C5E9CF !important;
             color: #174D27 !important;
             font-weight: 700 !important;
-            box-shadow: 0 0 0 2px #174D27 !important;
+            box-shadow: inset 0 0 0 2px #33814A !important;
         }
 
         .stApp:has(.company-machinery-active)
@@ -384,11 +403,65 @@ def apply_company_profile_css() -> None:
         [data-testid="stButtonGroup"] button:nth-child(3) {
             position: relative;
             z-index: 1;
-            border-color: #B75566 !important;
-            background: #F5D5DB !important;
-            color: #771E2D !important;
+            border-color: #A9384D !important;
+            background: #F3C4CD !important;
+            color: #6F1425 !important;
             font-weight: 700 !important;
-            box-shadow: 0 0 0 2px #771E2D !important;
+            box-shadow: inset 0 0 0 2px #A9384D !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_row"]
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child
+        [data-testid="stButton"] button {
+            width: 36px !important;
+            min-width: 36px !important;
+            height: 36px !important;
+            min-height: 36px !important;
+            padding: 0 !important;
+            border: 1px solid var(--color-border-soft) !important;
+            border-radius: 10px !important;
+            background: #FAF8FC !important;
+            color: var(--color-text-muted) !important;
+            box-shadow: none !important;
+            font-size: 18px !important;
+            line-height: 1 !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [data-testid="stButtonGroup"]:has(button[data-testid^="stBaseButton-pills"]) > div {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        button[data-testid^="stBaseButton-pills"] {
+            min-height: 38px !important;
+            padding: 7px 12px !important;
+            border: 1px solid #D8D0DC !important;
+            border-radius: 10px !important;
+            background: #FFFFFF !important;
+            color: var(--color-text-strong) !important;
+            box-shadow: none !important;
+            font-weight: 500 !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        button[data-testid="stBaseButton-pillsActive"] {
+            border-color: #4F8FCB !important;
+            background: #E5F1FC !important;
+            color: #174E7A !important;
+            font-weight: 700 !important;
+            box-shadow: inset 0 0 0 1px #4F8FCB !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        button[data-testid="stBaseButton-pillsActive"] p,
+        .stApp:has(.company-machinery-active)
+        button[data-testid="stBaseButton-pillsActive"] span {
+            color: #174E7A !important;
+            font-weight: 700 !important;
         }
 
         .stApp:has(.company-machinery-active)

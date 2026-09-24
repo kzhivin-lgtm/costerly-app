@@ -65,11 +65,18 @@ class _Client:
 
 def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
     assert len(machinery.MACHINE_SPECS) == 26
+    assert len(machinery.PROFILE_MACHINE_SPECS) == 17
     codes = set(machinery.MACHINE_SPEC_BY_CODE)
     assert "wood_cnc_router" in codes
     assert "metal_sheet_laser" in codes
     assert "metal_tube_laser" in codes
     assert len(codes) == len(machinery.MACHINE_SPECS)
+    assert "wood_boring_machine" not in machinery.PROFILE_MACHINE_CODES
+    assert "finish_powder_oven" not in machinery.PROFILE_MACHINE_CODES
+    assert machinery.SUBCONTRACTOR_MACHINE_CODES <= set(
+        machinery.PROFILE_MACHINE_CODES
+    )
+    assert "wood_solid_preparation" not in machinery.SUBCONTRACTOR_MACHINE_CODES
 
 
 def test_machinery_migration_is_additive_and_seeds_the_application_catalog():

@@ -102,7 +102,7 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("platen_width_mm", "Press width", "mm", input_unit="m", required=True),
         _boolean("heated", "Heated press"),
     )),
-    MachineSpec("wood_solid_preparation", "woodworking", "Solid wood preparation line", "Planing, thicknessing and dimensioning solid wood", (
+    MachineSpec("wood_solid_preparation", "woodworking", "Solid wood machining", "Planing, thicknessing and dimensioning solid wood", (
         _number("max_width_mm", "Maximum working width", "mm", input_unit="m"),
         _number("max_thickness_mm", "Maximum workpiece thickness", "mm"),
         _multi("processes", "Available operations", ("Jointing", "Thickness planing", "Rip sawing", "Crosscutting", "Moulding"), required=True),
@@ -123,7 +123,7 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _text("material_thickness_limits", "Materials and maximum thicknesses", required=True),
         _number("laser_power_kw", "Laser power", "kW"),
     )),
-    MachineSpec("metal_tube_laser", "metalworking", "Tube laser cutter", "Profile cutting of tube and section", (
+    MachineSpec("metal_tube_laser", "metalworking", "Tube / profile cutting", "Profile cutting of tube and section", (
         _number("max_stock_length_mm", "Maximum stock length", "mm", input_unit="m", required=True),
         _number("max_profile_size_mm", "Maximum profile diameter or side", "mm", required=True),
         _text("material_thickness_limits", "Materials and maximum wall thicknesses", required=True),
@@ -168,7 +168,7 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("max_drill_diameter_mm", "Maximum drilling diameter", "mm"),
         _text("thread_range", "Typical tapping range"),
     )),
-    MachineSpec("finish_wet_spray_booth", "finishing", "Wet-paint spray booth", "Controlled wet coating application", (
+    MachineSpec("finish_wet_spray_booth", "finishing", "Wet painting", "Controlled wet coating application", (
         _number("max_part_length_mm", "Maximum part length", "mm", input_unit="m"),
         _number("max_part_width_mm", "Maximum part width", "mm", input_unit="m"),
         _number("max_part_height_mm", "Maximum part height", "mm", input_unit="m"),
@@ -178,7 +178,7 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("max_part_length_mm", "Maximum part length", "mm", input_unit="m"),
         _number("max_temperature_c", "Maximum temperature", "°C"),
     )),
-    MachineSpec("finish_powder_booth", "finishing", "Powder-coating booth", "Controlled powder application and recovery", (
+    MachineSpec("finish_powder_booth", "finishing", "Powder coating", "Controlled powder application and recovery", (
         _number("max_part_length_mm", "Maximum part length", "mm", input_unit="m"),
         _number("max_part_width_mm", "Maximum part width", "mm", input_unit="m"),
         _number("max_part_height_mm", "Maximum part height", "mm", input_unit="m"),
@@ -189,7 +189,7 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("inside_height_mm", "Internal height", "mm", input_unit="m", required=True),
         _number("max_temperature_c", "Maximum temperature", "°C"),
     )),
-    MachineSpec("finish_sandblast_booth", "finishing", "Sandblasting booth", "Abrasive surface preparation", (
+    MachineSpec("finish_sandblast_booth", "finishing", "Sandblasting", "Abrasive surface preparation", (
         _number("max_part_length_mm", "Maximum part length", "mm", input_unit="m"),
         _number("max_part_width_mm", "Maximum part width", "mm", input_unit="m"),
         _number("max_part_height_mm", "Maximum part height", "mm", input_unit="m"),
@@ -205,6 +205,31 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
 )
 
 MACHINE_SPEC_BY_CODE = {spec.code: spec for spec in MACHINE_SPECS}
+PROFILE_MACHINE_CODES = (
+    "wood_cnc_router",
+    "wood_panel_saw",
+    "wood_edge_bander",
+    "wood_veneer_press",
+    "wood_solid_preparation",
+    "wood_wide_belt_sander",
+    "metal_sheet_laser",
+    "metal_tube_laser",
+    "metal_press_brake",
+    "metal_punch_press",
+    "metal_profile_bender",
+    "metal_rolling_machine",
+    "metal_welding",
+    "finish_wet_spray_booth",
+    "finish_powder_booth",
+    "finish_sandblast_booth",
+    "finish_polishing",
+)
+PROFILE_MACHINE_SPECS = tuple(MACHINE_SPEC_BY_CODE[code] for code in PROFILE_MACHINE_CODES)
+SUBCONTRACTOR_MACHINE_CODES = frozenset(
+    code
+    for code in PROFILE_MACHINE_CODES
+    if code not in {"wood_solid_preparation", "wood_wide_belt_sander"}
+)
 INDUSTRY_LABELS = {
     "woodworking": "Woodworking",
     "metalworking": "Metalworking",

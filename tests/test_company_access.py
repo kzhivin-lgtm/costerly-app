@@ -1158,7 +1158,7 @@ def test_machinery_tab_empty_state_is_role_safe(monkeypatch, role):
     assert not app.exception
     if role == "owner":
         groups = app.get("button_group")
-        assert len(groups) == len(company_profile.MACHINE_SPECS)
+        assert len(groups) == len(company_profile.PROFILE_MACHINE_SPECS)
         assert all(item.value == "Not answered" for item in groups)
         assert not any(button.label == "Save" for button in app.button)
     else:
@@ -1197,7 +1197,10 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
 
     next(field for field in app.text_input if field.label == "Working area, length (m) *").set_value("2,5")
     next(field for field in app.text_input if field.label == "Working area, width (m) *").set_value("1.3")
-    next(field for field in app.multiselect if field.label == "Materials *").set_value(["MDF"])
+    next(
+        field for field in app.get("button_group")
+        if field.label == "Materials *"
+    ).set_value(["MDF"])
     next(button for button in app.button if button.label == "Save").click()
     app.run()
 
@@ -1239,14 +1242,16 @@ def test_machinery_subcontractor_flow_uses_only_name(monkeypatch):
 
     app.get("button_group")[0].set_value("No")
     app.run()
-    next(item for item in app.radio if item.label == "Regular subcontractor?").set_value("Yes")
-    app.run()
     labels = [field.label for field in app.text_input]
-    assert "Subcontractor name *" in labels
+    assert "Regular subcontractor (optional)" in labels
+    assert "Regular subcontractor?" not in [field.label for field in app.radio]
     assert "Supplier pricing method" not in [field.label for field in app.selectbox]
     assert "Typical lead time, days" not in [field.label for field in app.number_input]
 
-    next(field for field in app.text_input if field.label == "Subcontractor name *").set_value("Cut Co")
+    next(
+        field for field in app.text_input
+        if field.label == "Regular subcontractor (optional)"
+    ).set_value("Cut Co")
     next(button for button in app.button if button.label == "Save").click()
     app.run()
 
@@ -1255,6 +1260,61 @@ def test_machinery_subcontractor_flow_uses_only_name(monkeypatch):
     assert service["supplier_id"] == "supplier-1"
     assert service["pricing_method"] == "quote_only"
     assert "typical_lead_time_days" not in service
+
+
+def test_saved_machinery_row_is_collapsed_with_summary_and_can_reopen(monkeypatch):
+    monkeypatch.setattr(
+        company_profile,
+        "list_company_machinery",
+        lambda _access: [
+            {
+                "machine_code": "wood_cnc_router",
+                "availability_status": "in_house",
+                "capabilities": {
+                    "work_area_x_mm": 2500,
+                    "work_area_y_mm": 1300,
+                    "materials": ["MDF"],
+                },
+                "pricing_method": "unknown",
+                "pricing": {},
+            }
+        ],
+    )
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    assert not any(button.label == "Save" for button in app.button)
+    markup = " ".join(item.value for item in app.markdown)
+    assert "In-house · 2.5 × 1.3 m · MDF" in markup
+
+    next(button for button in app.button if button.label == "⌄").click()
+    app.run()
+    assert any(button.label == "Save" for button in app.button)
+    assert any(
+        group.label == "Materials *" for group in app.get("button_group")
+    )
+
+
+def test_internal_support_capability_does_not_ask_for_subcontractor(monkeypatch):
+    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    app.get("button_group")[4].set_value("No")
+    app.run()
+
+    assert "Regular subcontractor (optional)" not in [
+        field.label for field in app.text_input
+    ]
+    assert any(button.label == "Save" for button in app.button)
 
 
 def test_machinery_uses_grouped_full_width_table_contract():
@@ -1278,8 +1338,8 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert "machinery-selected-{availability_class}" in source
     assert ":has(.machinery-selected-yes)" in css
     assert ":has(.machinery-selected-no)" in css
-    assert "#CFECD7" in css
-    assert "#F5D5DB" in css
+    assert "#C5E9CF" in css
+    assert "#F3C4CD" in css
     assert "gap: 8px !important;" in css
     assert "margin-bottom: 16px;" in css
     assert "box-sizing: border-box;" in css
@@ -1287,13 +1347,13 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert "transform: translateY(8px);" in css
     assert "justify-content: center;" in css
     assert "gap: 18px !important;" in css
-    assert "#E8F3FF" in css
-    assert "#5B9BD5" in css
-    assert "height: 52px !important;" in css
+    assert "#E5F1FC" in css
+    assert "#4F8FCB" in css
     assert "width: min(100%, 304px);" in css
-    assert "transform: translateX(-6px);" in css
-    assert 'span[data-baseweb="tag"]' in css
-    assert 'grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr);' in css
+    assert "st.pills(" in source
+    assert 'button[data-testid="stBaseButton-pillsActive"]' in css
+    assert "Regular subcontractor?" not in source
+    assert 'grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr) minmax(36px, 0.13fr);' in css
 
 
 def test_machinery_costing_method_labels_are_short_and_preserve_rate_semantics():

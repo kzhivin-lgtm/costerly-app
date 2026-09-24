@@ -1,17 +1,19 @@
 # TODO
 
 - 3.9.1 Machinery and production routing foundation: active, P1. Add a compact
-  furniture-production catalog across woodworking, metalworking, and finishing,
+  17-capability profile across woodworking, metalworking, and finishing while
+  retaining the 26-row database catalog for compatibility and history,
   with wood CNC and metal laser cutting as separate first-class capabilities.
   Company owners record explicit in-house availability, minimum technical
-  limits, costing basis, and regular subcontractor services through the existing
-  supplier directory. The additive Supabase migration was applied on 24.09:
+  limits, costing basis, and optional regular subcontractors only for operations
+  that are realistically outsourced. Saved rows collapse to a summary and
+  multi-value capabilities use selectable pills. The additive Supabase migration was applied on 24.09:
   all five new tables are available, the catalog contains 26 active rows, new
   company tables are empty, anonymous catalog access is denied, and all 124
   prototype `company_machines` rows remain untouched. The owner/member Profile
   UI, deterministic production-context snapshot, and automated scenario
-  coverage are implemented locally. The real owner/member production pass,
-  mobile/keyboard pass, commit, deployment, and acceptance remain pending. The production
+  coverage are implemented locally and 287 tests pass. The real owner/member
+  production pass, mobile/keyboard pass, commit, deployment, and acceptance remain pending. The production
   context is not sent to Anthropic until the owner explicitly approves transfer
   of private machinery, supplier, and pricing data or approves a sanitized
   payload contract. Continue from `notes/MACHINERY_FOUNDATION.md`.

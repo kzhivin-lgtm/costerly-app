@@ -23,9 +23,10 @@ This file explains where code belongs so the project stays understandable.
 - `use_cases/` contains product flows such as processing an uploaded RFQ.
 - `use_cases/rfq_processing.py` runs detection, writes the result to Supabase, and loads File Review data.
 - `use_cases/estimation.py` starts object estimation by creating pending estimate records from detected objects.
-- `use_cases/machinery.py` owns the compact machinery catalog contract,
-  company/supplier capability validation, Supabase persistence, and the bounded
-  production-context snapshot used by future routing.
+- `use_cases/machinery.py` owns the 26-code storage catalog, the 17-capability
+  Company Profile subset, outsourceable-operation boundary, company/supplier
+  validation, Supabase persistence, and the bounded production-context snapshot
+  used by future routing.
 - A screen calls a use case. It should not call Claude, Supabase, or file parsing directly.
 
 ## Domain / Data Layer

@@ -41,7 +41,8 @@ from use_cases.price_sources import (
 )
 from use_cases.machinery import (
     INDUSTRY_LABELS,
-    MACHINE_SPECS,
+    PROFILE_MACHINE_SPECS,
+    SUBCONTRACTOR_MACHINE_CODES,
     MachineryError,
     create_or_get_supplier,
     deactivate_supplier_services,
@@ -286,12 +287,15 @@ def _render_machine_capability_widget(field, saved: dict, key_prefix: str) -> ob
         )
         return _machinery_number_storage_value(field, entered)
     if field.kind == "multiselect":
-        return st.multiselect(
+        selected = st.pills(
             label,
             list(field.options),
             default=[item for item in (default or []) if item in field.options],
+            selection_mode="multi",
             key=widget_key,
+            width="stretch",
         )
+        return list(selected or [])
     if field.kind == "boolean":
         return st.checkbox(label, value=bool(default), key=widget_key)
     return st.text_input(
@@ -398,7 +402,7 @@ def _render_machinery_pricing(
 
 
 def _render_member_machinery(machine_rows: dict[str, dict], service_rows: list[dict], supplier_names: dict[str, str]) -> None:
-    configured = [spec for spec in MACHINE_SPECS if spec.code in machine_rows]
+    configured = [spec for spec in PROFILE_MACHINE_SPECS if spec.code in machine_rows]
     if not configured:
         st.info("Machinery has not been configured yet")
         return
@@ -431,6 +435,53 @@ def _render_member_machinery(machine_rows: dict[str, dict], service_rows: list[d
                     st.markdown(f"**Regular subcontractor:** {supplier_name}")
 
 
+def _machinery_saved_summary(
+    spec,
+    saved: dict,
+    services: list[dict],
+    supplier_names: dict[str, str],
+) -> str:
+    status = str(saved.get("availability_status") or "")
+    if status == "not_in_house":
+        matching = next(
+            (
+                service
+                for service in services
+                if service.get("machine_code") == spec.code
+            ),
+            None,
+        )
+        if matching:
+            name = supplier_names.get(str(matching.get("supplier_id")), "Supplier")
+            return f"Subcontractor: {name}"
+        return "Market pricing"
+    if status != "in_house":
+        return ""
+
+    capabilities = saved.get("capabilities") or {}
+    details: list[str] = []
+    dimensions: list[tuple[str, str]] = []
+    multi_added = False
+    for field in spec.fields:
+        value = capabilities.get(field.key)
+        if value in (None, "", []):
+            continue
+        if field.kind == "number" and len(dimensions) < 2:
+            unit = field.input_unit or field.unit or ""
+            dimensions.append((_machinery_number_text(field, value), unit))
+        elif field.kind == "multiselect" and not multi_added:
+            details.append(", ".join(str(item) for item in value[:3]))
+            multi_added = True
+    if len(dimensions) >= 2 and dimensions[0][1] == dimensions[1][1]:
+        details.insert(
+            0,
+            f"{dimensions[0][0]} × {dimensions[1][0]} {dimensions[0][1]}".strip(),
+        )
+    elif dimensions:
+        details.insert(0, f"{dimensions[0][0]} {dimensions[0][1]}".strip())
+    return " · ".join(["In-house", *details[:2]])
+
+
 def _render_owner_machinery(
     access: CompanyAccess,
     machine_rows: dict[str, dict],
@@ -443,10 +494,13 @@ def _render_owner_machinery(
                 '<div class="company-machinery-table-head">'
                 f'<span>{escape(title)}</span>'
                 '<span>Available in-house?</span>'
+                '<span aria-hidden="true"></span>'
                 '</div>',
                 unsafe_allow_html=True,
             )
-            for spec in (item for item in MACHINE_SPECS if item.industry == industry):
+            for spec in (
+                item for item in PROFILE_MACHINE_SPECS if item.industry == industry
+            ):
                 saved = machine_rows.get(spec.code, {})
                 saved_status = str(saved.get("availability_status") or "")
                 initial = {
@@ -454,13 +508,30 @@ def _render_owner_machinery(
                     "not_in_house": "No",
                 }.get(saved_status, "Not answered")
                 row_key = f"machinery_{spec.code}"
+                detail_open_key = f"{row_key}_detail_open"
+                previous_availability_key = f"{row_key}_previous_availability"
+                if detail_open_key not in st.session_state:
+                    st.session_state[detail_open_key] = False
+                if previous_availability_key not in st.session_state:
+                    st.session_state[previous_availability_key] = initial
                 with st.container(key=f"{row_key}_row"):
-                    name_column, answer_column = st.columns([1.45, 1])
+                    name_column, answer_column, toggle_column = st.columns(
+                        [1.45, 1, 0.13], gap="small"
+                    )
                     with name_column:
                         st.markdown(
                             f'<div class="company-machinery-name">{escape(spec.display_name)}</div>',
                             unsafe_allow_html=True,
                         )
+                        summary = _machinery_saved_summary(
+                            spec, saved, services, supplier_names
+                        )
+                        if summary:
+                            st.markdown(
+                                '<div class="company-machinery-summary">'
+                                f'{escape(summary)}</div>',
+                                unsafe_allow_html=True,
+                            )
                     with answer_column:
                         availability = st.segmented_control(
                             f"{spec.display_name}: available in-house?",
@@ -479,7 +550,29 @@ def _render_owner_machinery(
                             f'machinery-selected-{availability_class}"></span>',
                             unsafe_allow_html=True,
                         )
-                if availability == "Not answered":
+                    if (
+                        availability
+                        != st.session_state[previous_availability_key]
+                    ):
+                        st.session_state[detail_open_key] = (
+                            availability != "Not answered"
+                        )
+                        st.session_state[previous_availability_key] = availability
+                    with toggle_column:
+                        if availability != "Not answered" and st.button(
+                            "⌃" if st.session_state[detail_open_key] else "⌄",
+                            key=f"{row_key}_toggle",
+                            help="Close details"
+                            if st.session_state[detail_open_key]
+                            else "Open details",
+                        ):
+                            st.session_state[detail_open_key] = not st.session_state[
+                                detail_open_key
+                            ]
+                if (
+                    availability == "Not answered"
+                    or not st.session_state[detail_open_key]
+                ):
                     continue
 
                 with st.container(key=f"{row_key}_detail"):
@@ -487,7 +580,6 @@ def _render_owner_machinery(
                     pricing_method = "unknown"
                     pricing: dict[str, object] = {}
                     accepts_external = False
-                    uses_subcontractor = False
                     subcontractor_name = ""
                     confirm_change = False
                     if availability == "Yes":
@@ -566,23 +658,12 @@ def _render_owner_machinery(
                                     key=f"{row_key}_confirm_change",
                                 )
                             supplier_column = detail_columns[1]
-                            name_column = detail_columns[2]
                         else:
                             supplier_column = detail_columns[0]
-                            name_column = detail_columns[1]
-                        with supplier_column:
-                            subcontractor_answer = st.radio(
-                                "Regular subcontractor?",
-                                ["No", "Yes"],
-                                index=1 if matching_services else 0,
-                                key=f"{row_key}_supplier_choice",
-                                horizontal=True,
-                            )
-                        uses_subcontractor = subcontractor_answer == "Yes"
-                        if uses_subcontractor:
-                            with name_column:
+                        if spec.code in SUBCONTRACTOR_MACHINE_CODES:
+                            with supplier_column:
                                 subcontractor_name = st.text_input(
-                                    "Subcontractor name *",
+                                    "Regular subcontractor (optional)",
                                     value=current_supplier_name,
                                     key=f"{row_key}_new_supplier",
                                 )
@@ -600,7 +681,7 @@ def _render_owner_machinery(
                         )
                     status = "in_house" if availability == "Yes" else "not_in_house"
                     supplier_id = ""
-                    if status == "not_in_house" and uses_subcontractor:
+                    if status == "not_in_house" and subcontractor_name.strip():
                         supplier = create_or_get_supplier(access, subcontractor_name)
                         supplier_id = str(supplier["supplier_id"])
                     save_company_machinery(
@@ -621,6 +702,8 @@ def _render_owner_machinery(
                             machine_code=spec.code,
                             pricing_method="quote_only",
                         )
+                    st.session_state[detail_open_key] = False
+                    st.session_state[previous_availability_key] = availability
                     st.success("Saved")
                     st.rerun(scope="fragment")
                 except (MachineryError, PermissionError) as exc:
