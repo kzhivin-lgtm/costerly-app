@@ -470,6 +470,15 @@ def _render_owner_machinery(
                             label_visibility="collapsed",
                             width="stretch",
                         )
+                        availability_class = {
+                            "Yes": "yes",
+                            "No": "no",
+                        }.get(availability, "not-answered")
+                        st.markdown(
+                            '<span class="machinery-availability-state '
+                            f'machinery-selected-{availability_class}"></span>',
+                            unsafe_allow_html=True,
+                        )
                 if availability == "Not answered":
                     continue
 

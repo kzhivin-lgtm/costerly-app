@@ -1273,20 +1273,25 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert "#FFFDF5" in css
     assert "#F7FBF8" in css
     assert "#FDF8F9" in css
-    assert "#FFF2BF" in css
-    assert "#DDF2E2" in css
-    assert "#F7DFE3" in css
+    assert '"Yes": "yes"' in source
+    assert '"No": "no"' in source
+    assert "machinery-selected-{availability_class}" in source
+    assert ":has(.machinery-selected-yes)" in css
+    assert ":has(.machinery-selected-no)" in css
+    assert "#CFECD7" in css
+    assert "#F5D5DB" in css
     assert "gap: 8px !important;" in css
-    assert 'button[data-testid="stBaseButton-segmented_controlActive"]' in css
     assert "margin-bottom: 16px;" in css
     assert "box-sizing: border-box;" in css
     assert "margin: 0 auto;" in css
     assert "transform: translateY(8px);" in css
     assert "justify-content: center;" in css
     assert "gap: 18px !important;" in css
-    assert 'kind="segmented_controlActive"' in css
     assert "#E8F3FF" in css
     assert "#5B9BD5" in css
+    assert "height: 52px !important;" in css
+    assert "width: min(100%, 304px);" in css
+    assert "transform: translateX(-6px);" in css
     assert 'span[data-baseweb="tag"]' in css
     assert 'grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr);' in css
 

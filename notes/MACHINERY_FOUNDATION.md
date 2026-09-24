@@ -94,12 +94,16 @@ source of truth for this implementation.
 - Unselected availability options use very pale semantic tints. The selected
   option uses a stronger tint, stronger border, and bold text, so selection is
   distinguishable without relying on color alone.
-- The selected availability option also has a two-pixel outer indicator that
-  does not change button dimensions. Machine names and availability controls
-  share the same vertical center line.
+- A selected `Yes` or `No` has a two-pixel outer indicator that does not change
+  button dimensions. `Not answered` remains pale. The indicator is driven by a
+  server-rendered state marker rather than an unstable Streamlit DOM attribute.
+  Machine names and availability controls share the same vertical center line.
 - Expanded machine details use an 18 px vertical gap between field rows and
   the Save action. Selected material tags and the focused material selector use
-  the product blue palette, never the validation red palette.
+  the product blue palette, never the validation red palette. The multiselect
+  has the same 52 px control height as text inputs and select boxes.
+- The `Available in-house?` heading starts on the same vertical line as the
+  first availability button.
 - `Costing method` exposes only `Not provided`, `Per machine hour`, `Per sheet`,
   `Per part`, `Per job`, and `Quote each job`. Existing internal-cost or
   customer-price provenance remains stored but is not repeated in the labels.

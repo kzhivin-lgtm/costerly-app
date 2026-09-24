@@ -256,6 +256,20 @@ def apply_company_profile_css() -> None:
             padding: 0 16px;
         }
 
+        .company-machinery-table-head span:nth-child(2) {
+            width: min(100%, 304px);
+            margin: 0 auto;
+            padding: 0;
+            box-sizing: border-box;
+            transform: translateX(-6px);
+        }
+
+        .machinery-availability-state,
+        .stApp:has(.company-machinery-active)
+        [data-testid="stElementContainer"]:has(.machinery-availability-state) {
+            display: none !important;
+        }
+
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"] {
             min-height: 70px;
@@ -354,139 +368,27 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_row"]
-        [data-testid="stButtonGroup"] button:nth-of-type(1)[data-testid="stBaseButton-segmented_controlActive"] {
-            border-color: #D8BD52 !important;
-            background: #FFF2BF !important;
-            color: #5C4A00 !important;
-            font-weight: 700 !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_row"]
-        [data-testid="stButtonGroup"] button:nth-of-type(2)[data-testid="stBaseButton-segmented_controlActive"] {
-            border-color: #79B98A !important;
-            background: #DDF2E2 !important;
-            color: #1F5B31 !important;
-            font-weight: 700 !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_row"]
-        [data-testid="stButtonGroup"] button:nth-of-type(3)[data-testid="stBaseButton-segmented_controlActive"] {
-            border-color: #CA8792 !important;
-            background: #F7DFE3 !important;
-            color: #7D2635 !important;
-            font-weight: 700 !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_row"]
-        [data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"] {
-            border-width: 1px !important;
-            font-weight: 700 !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_row"]
-        [data-testid="stButtonGroup"] button:is(
-            [data-testid="stBaseButton-segmented_controlActive"],
-            [kind="segmented_controlActive"]
-        ) {
+        [class*="st-key-machinery_"][class*="_row"]:has(.machinery-selected-yes)
+        [data-testid="stButtonGroup"] button:nth-child(2) {
             position: relative;
             z-index: 1;
-            font-weight: 700 !important;
-            box-shadow: 0 0 0 2px currentColor !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_row"]
-        [data-testid="stButtonGroup"] button:nth-child(1):is(
-            [data-testid="stBaseButton-segmented_controlActive"],
-            [kind="segmented_controlActive"]
-        ) {
-            border-color: #C8A62E !important;
-            background: #FFECA1 !important;
-            color: #594600 !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_row"]
-        [data-testid="stButtonGroup"] button:nth-child(2):is(
-            [data-testid="stBaseButton-segmented_controlActive"],
-            [kind="segmented_controlActive"]
-        ) {
             border-color: #4E9B63 !important;
             background: #CFECD7 !important;
             color: #174D27 !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 0 2px #174D27 !important;
         }
 
         .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_row"]
-        [data-testid="stButtonGroup"] button:nth-child(3):is(
-            [data-testid="stBaseButton-segmented_controlActive"],
-            [kind="segmented_controlActive"]
-        ) {
+        [class*="st-key-machinery_"][class*="_row"]:has(.machinery-selected-no)
+        [data-testid="stButtonGroup"] button:nth-child(3) {
+            position: relative;
+            z-index: 1;
             border-color: #B75566 !important;
             background: #F5D5DB !important;
             color: #771E2D !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_detail"]
-        [data-testid="stMultiSelect"] div[data-baseweb="select"] > div {
-            min-height: 52px !important;
-            border: 1px solid #CEC5D1 !important;
-            border-radius: var(--input-radius) !important;
-            background: var(--input-bg) !important;
-            box-shadow: none !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_detail"]
-        [data-testid="stMultiSelect"]:focus-within div[data-baseweb="select"] > div {
-            border-color: #5B9BD5 !important;
-            box-shadow: 0 0 0 3px rgba(91, 155, 213, 0.18) !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_detail"]
-        [data-testid="stMultiSelect"]:has(span[data-baseweb="tag"])
-        div[data-baseweb="select"] > div {
-            border-color: #79AEE8 !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_detail"]
-        [data-testid="stMultiSelect"] span[data-baseweb="tag"] {
-            border: 1px solid #79AEE8 !important;
-            background: #E8F3FF !important;
-            color: #194E7A !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_detail"]
-        [data-testid="stMultiSelect"] span[data-baseweb="tag"] svg {
-            fill: #2F76B7 !important;
-            color: #2F76B7 !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_detail"]
-        [data-testid="stMultiSelect"] span[data-baseweb="tag"] span,
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_detail"]
-        [data-testid="stMultiSelect"] span[data-baseweb="tag"] path {
-            color: #194E7A !important;
-            fill: #2F76B7 !important;
-        }
-
-        .stApp:has(.company-machinery-active)
-        [class*="st-key-machinery_"][class*="_detail"]
-        [data-testid="stMultiSelect"] [role="button"][aria-label*="close by backspace"] {
-            border-color: #79AEE8 !important;
-            background: #E8F3FF !important;
-            color: #194E7A !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 0 2px #771E2D !important;
         }
 
         .stApp:has(.company-machinery-active)
@@ -895,6 +797,56 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active) [data-testid="stSelectbox"]:focus-within div[data-baseweb="select"] > div {
             border-color: var(--input-focus-border) !important;
             box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stMultiSelect"] div[data-baseweb="select"] > div {
+            display: flex !important;
+            align-items: center !important;
+            height: 52px !important;
+            min-height: 52px !important;
+            max-height: 52px !important;
+            border: 1px solid #CEC5D1 !important;
+            border-radius: var(--input-radius) !important;
+            background: var(--input-bg) !important;
+            box-shadow: none !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stMultiSelect"] div[data-baseweb="select"] > div > div {
+            min-height: 50px !important;
+            align-items: center !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stMultiSelect"]:focus-within div[data-baseweb="select"] > div {
+            border-color: #5B9BD5 !important;
+            box-shadow: 0 0 0 3px rgba(91, 155, 213, 0.18) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stMultiSelect"]:has(span[data-baseweb="tag"])
+        div[data-baseweb="select"] > div {
+            border-color: #79AEE8 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stMultiSelect"] span[data-baseweb="tag"],
+        .stApp:has(.company-profile-active)
+        [data-testid="stMultiSelect"] [role="button"][aria-label*="close by backspace"] {
+            border: 1px solid #79AEE8 !important;
+            background: #E8F3FF !important;
+            color: #194E7A !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stMultiSelect"] span[data-baseweb="tag"] span,
+        .stApp:has(.company-profile-active)
+        [data-testid="stMultiSelect"] span[data-baseweb="tag"] svg,
+        .stApp:has(.company-profile-active)
+        [data-testid="stMultiSelect"] span[data-baseweb="tag"] path {
+            color: #194E7A !important;
+            fill: #2F76B7 !important;
         }
 
         /* Streamlit 1.64 replaced the BaseWeb Select with React Aria ComboBox. */
