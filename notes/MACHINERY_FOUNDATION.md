@@ -86,6 +86,14 @@ source of truth for this implementation.
   row three contains the two boolean options. Selected material tags use the
   product purple-neutral palette; red remains reserved for negative status and
   validation/error feedback.
+- Machinery has no introductory heading below the Profile tabs. Its first
+  group starts at the same vertical offset as the Overhead Expenses content.
+- Machine rows form one continuous bordered table inside each group. The
+  availability control stays centered in a fixed-width column and its three
+  options have an 8 px gap.
+- Unselected availability options use very pale semantic tints. The selected
+  option uses a stronger tint, stronger border, and bold text, so selection is
+  distinguishable without relying on color alone.
 
 ## Catalog groups
 

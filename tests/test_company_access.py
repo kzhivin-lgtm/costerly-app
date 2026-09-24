@@ -1268,10 +1268,19 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert '["Not answered", "Yes", "No"]' in source
     assert 'key=f"{row_key}_detail"' in source
     assert "st.caption(spec.description)" not in source
+    assert "Tell us what is available in-house" not in source
     assert "company-machinery-table-head" in css
-    assert "#FFF8D9" in css
-    assert "#EAF7ED" in css
-    assert "#FAECEE" in css
+    assert "#FFFDF5" in css
+    assert "#F7FBF8" in css
+    assert "#FDF8F9" in css
+    assert "#FFF2BF" in css
+    assert "#DDF2E2" in css
+    assert "#F7DFE3" in css
+    assert "gap: 8px !important;" in css
+    assert 'button[data-testid="stBaseButton-segmented_controlActive"]' in css
+    assert "margin-bottom: 16px;" in css
+    assert "box-sizing: border-box;" in css
+    assert "margin: 0 auto;" in css
     assert 'span[data-baseweb="tag"]' in css
     assert 'grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr);' in css
 

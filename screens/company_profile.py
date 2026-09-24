@@ -617,9 +617,6 @@ def _render_owner_machinery(
 @st.fragment
 def _render_machinery(access: CompanyAccess) -> None:
     st.markdown('<div class="company-machinery-active"></div>', unsafe_allow_html=True)
-    st.markdown(
-        "## Tell us what is available in-house and add a regular subcontractor only when you use one"
-    )
     try:
         rows = list_company_machinery(access)
         suppliers = list_company_suppliers(access)

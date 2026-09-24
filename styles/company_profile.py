@@ -223,12 +223,23 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-machinery-active)
-        [class*="st-key-company_machinery_group_"] {
-            margin-bottom: 24px;
+        [data-testid="stElementContainer"]:has(.company-machinery-active) {
+            display: none;
         }
 
         .stApp:has(.company-machinery-active)
-        [class*="st-key-company_machinery_group_"] > [data-testid="stVerticalBlock"] {
+        [class*="st-key-company_machinery_group_"] {
+            margin-bottom: 24px;
+            position: relative;
+            gap: 0 !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-company_machinery_group_"] > [data-testid="stVerticalBlock"],
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-company_machinery_group_"] > div > [data-testid="stVerticalBlock"],
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-company_machinery_group_"] > div > div > [data-testid="stVerticalBlock"] {
             gap: 0 !important;
         }
 
@@ -236,6 +247,7 @@ def apply_company_profile_css() -> None:
             display: grid;
             grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr);
             min-height: 58px;
+            margin-bottom: 16px;
             align-items: center;
             overflow: hidden;
             border: 1px solid var(--color-border-soft);
@@ -259,6 +271,7 @@ def apply_company_profile_css() -> None:
             padding: 8px 16px;
             border: 1px solid var(--color-border-soft);
             border-top: 0;
+            border-radius: 0;
             background: var(--color-surface);
         }
 
@@ -275,6 +288,13 @@ def apply_company_profile_css() -> None:
             align-items: center;
         }
 
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_row"]
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]:last-child
+        > [data-testid="stVerticalBlock"] {
+            align-items: center;
+        }
+
         .company-machinery-name {
             color: var(--color-text-strong);
             font-size: 16px;
@@ -284,14 +304,17 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]
         [data-testid="stButtonGroup"] {
-            width: min(100%, 300px);
-            margin-left: auto;
+            width: min(100%, 304px);
+            margin: 0 auto;
         }
 
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]
         [data-testid="stButtonGroup"] > div {
             width: 100%;
+            display: grid !important;
+            grid-template-columns: 1.35fr 1fr 1fr;
+            gap: 8px !important;
         }
 
         .stApp:has(.company-machinery-active)
@@ -299,39 +322,71 @@ def apply_company_profile_css() -> None:
         [data-testid="stButtonGroup"] button {
             min-height: 36px;
             padding: 0 10px;
-            flex: 1 1 0;
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+            border-width: 1px !important;
+            border-radius: 10px !important;
             font-size: 13px;
+            font-weight: 400 !important;
             box-shadow: none !important;
         }
 
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]
         [data-testid="stButtonGroup"] button:nth-of-type(1) {
-            border-color: #E8D89A !important;
-            background: #FFF8D9 !important;
-            color: #695B22 !important;
+            border-color: #F1E8C8 !important;
+            background: #FFFDF5 !important;
+            color: #847A59 !important;
         }
 
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]
         [data-testid="stButtonGroup"] button:nth-of-type(2) {
-            border-color: #BBDCC4 !important;
-            background: #EAF7ED !important;
-            color: #285E36 !important;
+            border-color: #DCEBDF !important;
+            background: #F7FBF8 !important;
+            color: #66806D !important;
         }
 
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]
         [data-testid="stButtonGroup"] button:nth-of-type(3) {
-            border-color: #E6C4C9 !important;
-            background: #FAECEE !important;
-            color: #81414B !important;
+            border-color: #EFDEE1 !important;
+            background: #FDF8F9 !important;
+            color: #8A6D72 !important;
         }
 
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]
-        [data-testid="stButtonGroup"] button[aria-pressed="true"] {
-            border-width: 2px !important;
+        [data-testid="stButtonGroup"] button:nth-of-type(1)[data-testid="stBaseButton-segmented_controlActive"] {
+            border-color: #D8BD52 !important;
+            background: #FFF2BF !important;
+            color: #5C4A00 !important;
+            font-weight: 700 !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_row"]
+        [data-testid="stButtonGroup"] button:nth-of-type(2)[data-testid="stBaseButton-segmented_controlActive"] {
+            border-color: #79B98A !important;
+            background: #DDF2E2 !important;
+            color: #1F5B31 !important;
+            font-weight: 700 !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_row"]
+        [data-testid="stButtonGroup"] button:nth-of-type(3)[data-testid="stBaseButton-segmented_controlActive"] {
+            border-color: #CA8792 !important;
+            background: #F7DFE3 !important;
+            color: #7D2635 !important;
+            font-weight: 700 !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_row"]
+        [data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"] {
+            border-width: 1px !important;
             font-weight: 700 !important;
         }
 
