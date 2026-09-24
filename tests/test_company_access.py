@@ -946,6 +946,29 @@ def _render_profile_test():
     render_company_profile(CompanyAccess("user-1", "owner@example.com", "company-a", role, "token"))
 
 
+def _render_price_catalog_test():
+    from screens.company_profile import _render_price_catalog
+
+    _render_price_catalog(
+        [
+            {
+                "source_id": "12345678-aaaa-bbbb-cccc-123456789012",
+                "department": "Wood",
+                "material_type": "Sheet Materials",
+                "canonical_name": "Birch plywood 10 mm",
+                "original_name": "10 mm plywood birch",
+                "supplier_name": "Supplier Ltd",
+                "source_name": "invoice-22.pdf",
+                "source_url": "https://supplier.example/products/very-long-path",
+                "normalized_price": 1200,
+                "normalized_unit": "sheet",
+                "currency": "ILS",
+                "updated_at": "2026-09-24T10:30:00Z",
+            }
+        ]
+    )
+
+
 def _render_upload_header_controls_test():
     import streamlit as st
 
@@ -1226,6 +1249,32 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
 def test_grouped_number_input_formats_whole_and_decimal_thousands():
     assert company_profile._labor_form_number(1200, grouped=True) == "1\u202f200"
     assert company_profile._labor_form_number(1200.5, grouped=True) == "1\u202f200.5"
+
+
+def test_price_catalog_formats_ils_without_mislabeling_foreign_currency():
+    ils = company_profile._price_catalog_value(
+        {"currency": "ILS", "normalized_price": 1200, "normalized_unit": "m2"}
+    )
+    usd = company_profile._price_catalog_value(
+        {"currency": "USD", "normalized_price": 1200.5, "normalized_unit": "sheet"}
+    )
+
+    assert ils == "₪1\u202f200 / m2"
+    assert usd == "USD 1\u202f200.5 / sheet"
+    assert "₪" not in usd
+
+
+def test_price_catalog_renders_material_first_grouped_table():
+    app = AppTest.from_function(_render_price_catalog_test).run()
+    markup = "\n".join(item.value for item in app.markdown)
+
+    assert not app.exception
+    assert 'class="price-catalog-department"' in markup
+    assert "Birch plywood 10 mm" in markup
+    assert "10 mm plywood birch" in markup
+    assert "Supplier Ltd" in markup
+    assert "₪1\u202f200 / sheet" in markup
+    assert "SRC-12345678" in markup
 
 
 def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):

@@ -266,7 +266,10 @@ Deterministic engine code owns catalog matching, prices, rates, overhead allocat
 
 Company Price Sources contract (3.7.1)
 
-Price Lists accepts exactly one file or one public URL per operation. The owner
+Price Lists accepts one logical document or one public URL per operation. One
+logical document may be one file or an ordered set of JPEG/PNG photographs,
+which deterministic preprocessing combines into one private PDF source before
+agent extraction. The owner
 may choose the material category or leave it for automatic classification;
 supplier identity, document type, date,
 currency, VAT basis, product rows, units, package quantities, and conversions are
@@ -295,6 +298,16 @@ materials begin private. Repeated private evidence may later propose a country
 catalog identity, but company prices, discounts, and purchasing terms remain
 private. Existing scraped materials remain an unverified benchmark until a later
 resolver task explicitly changes pricing precedence.
+
+Price Catalog UI contract (3.10.1)
+
+The primary Price Lists presentation reads active `company_material_offers`
+joined to normalized `company_material_items`, supplier, source-row, and source
+provenance. It groups offers by the user-facing `Wood`, `Metal`, and `Finishing`
+departments and then by the existing material category. Source documents remain
+in a separate private library. A catalog row never replaces or discards source
+evidence. Foreign-currency offers retain their actual currency until a verified
+ILS conversion exists; presentation code must not relabel them as shekels.
 
 Estimation Agent Runtime v1
 `estimate_one_object()` is the application-layer entrypoint for one object.

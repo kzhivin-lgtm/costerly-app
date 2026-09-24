@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
-
+from types import SimpleNamespace
 import pandas as pd
 import pytest
+from PIL import Image
 
 from agents.schemas.price_source_schema import (
     PriceSourceSchemaError,
@@ -14,13 +15,50 @@ from agents.schemas.price_source_schema import (
 from agents.price_source_agent import PRICE_SOURCE_MAX_OUTPUT_TOKENS
 from use_cases.price_sources import (
     PriceSourceError,
+    PRICE_CATALOG_DEPARTMENTS,
     _VisibleTextParser,
     _validate_category,
     _validate_public_url,
     apply_legacy_price_benchmark,
+    combine_price_source_files,
     extract_spreadsheet_text,
     fetch_public_page,
+    list_price_catalog,
 )
+
+
+class _UploadedPhoto:
+    def __init__(self, name: str, data: bytes):
+        self.name = name
+        self._data = data
+
+    def getvalue(self) -> bytes:
+        return self._data
+
+
+class _CatalogQuery:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def select(self, *_args):
+        return self
+
+    def eq(self, *_args):
+        return self
+
+    def neq(self, *_args):
+        return self
+
+    def execute(self):
+        return SimpleNamespace(data=self.rows)
+
+
+class _CatalogClient:
+    def __init__(self, tables):
+        self.tables = tables
+
+    def table(self, name):
+        return _CatalogQuery(self.tables[name])
 
 
 def _result(*, status: str = "ready", confidence: float = 96) -> dict:
@@ -76,6 +114,92 @@ def test_category_can_be_left_for_automatic_detection():
 
 def test_price_source_output_budget_supports_large_supplier_pages():
     assert PRICE_SOURCE_MAX_OUTPUT_TOKENS >= 32_768
+
+
+def test_price_catalog_uses_three_stable_user_facing_departments():
+    assert PRICE_CATALOG_DEPARTMENTS["Sheet Materials"] == "Wood"
+    assert PRICE_CATALOG_DEPARTMENTS["Metal"] == "Metal"
+    assert PRICE_CATALOG_DEPARTMENTS["Finishes and Coatings"] == "Finishing"
+
+
+def test_several_ordered_photos_become_one_pdf_source():
+    photos = []
+    for index, color in enumerate(((255, 255, 255), (220, 220, 220)), start=1):
+        output = BytesIO()
+        Image.new("RGB", (16, 16), color).save(output, format="PNG")
+        photos.append(_UploadedPhoto(f"page-{index}.png", output.getvalue()))
+
+    combined = combine_price_source_files(photos)
+
+    assert combined.name == "photo-document-2-pages.pdf"
+    assert combined.getvalue().startswith(b"%PDF")
+
+
+def test_multiple_upload_rejects_mixed_document_types():
+    with pytest.raises(PriceSourceError, match="one PDF or spreadsheet"):
+        combine_price_source_files(
+            [
+                _UploadedPhoto("invoice.pdf", b"%PDF"),
+                _UploadedPhoto("page.png", b"png"),
+            ]
+        )
+
+
+def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
+    tables = {
+        "company_material_offers": [
+            {
+                "offer_id": "offer-1",
+                "company_material_id": "material-1",
+                "supplier_id": "supplier-1",
+                "source_id": "source-1",
+                "source_row_id": "row-1",
+                "normalized_price": 90,
+                "normalized_unit": "m2",
+                "currency": "ILS",
+                "valid_from": "2026-09-24",
+            }
+        ],
+        "company_material_items": [
+            {
+                "company_material_id": "material-1",
+                "category": "Sheet Materials",
+                "canonical_name": "Birch plywood 10 mm",
+                "preferred_unit": "m2",
+            }
+        ],
+        "company_suppliers": [
+            {"supplier_id": "supplier-1", "supplier_name": "Supplier Ltd"}
+        ],
+        "company_price_source_rows": [
+            {"row_id": "row-1", "raw_description": "Plywood birch 10mm"}
+        ],
+        "company_price_sources": [
+            {
+                "source_id": "source-1",
+                "source_name": "invoice.pdf",
+                "source_kind": "file",
+                "source_url": None,
+                "processed_at": "2026-09-24T10:00:00Z",
+            }
+        ],
+    }
+    monkeypatch.setattr(
+        "use_cases.price_sources.get_supabase_client",
+        lambda: _CatalogClient(tables),
+    )
+    monkeypatch.setattr(
+        "use_cases.price_sources.assert_company_owner",
+        lambda *_args: None,
+    )
+
+    rows = list_price_catalog(SimpleNamespace(company_id="company-1", user_id="user-1"))
+
+    assert rows[0]["department"] == "Wood"
+    assert rows[0]["canonical_name"] == "Birch plywood 10 mm"
+    assert rows[0]["original_name"] == "Plywood birch 10mm"
+    assert rows[0]["supplier_name"] == "Supplier Ltd"
+    assert rows[0]["updated_at"] == "2026-09-24"
 
 
 def test_ready_price_requires_currency_and_positive_normalized_price():

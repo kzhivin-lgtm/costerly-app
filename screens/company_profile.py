@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 import time
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 import streamlit as st
 
@@ -34,6 +35,8 @@ from use_cases.company_logo import (
 from use_cases.price_sources import (
     PRICE_SOURCE_CATEGORIES,
     PriceSourceError,
+    combine_price_source_files,
+    list_price_catalog,
     list_price_sources,
     load_price_source_bytes,
     load_price_source_rows,
@@ -1615,6 +1618,190 @@ def _price_source_supplier(source: dict) -> str:
     return "Unknown supplier"
 
 
+def _price_catalog_number(value: object) -> str:
+    try:
+        number = float(value or 0)
+    except (TypeError, ValueError):
+        return "0"
+    if number == int(number):
+        text = f"{int(number):,}"
+    else:
+        text = f"{number:,.2f}".rstrip("0").rstrip(".")
+    return text.replace(",", "\u202f")
+
+
+def _price_catalog_value(row: dict) -> str:
+    currency = str(row.get("currency") or "").upper()
+    prefix = "₪" if currency == "ILS" else f"{currency} " if currency else ""
+    unit = str(row.get("normalized_unit") or row.get("calculation_unit") or "")
+    suffix = f" / {escape(unit)}" if unit else ""
+    return f"{prefix}{_price_catalog_number(row.get('normalized_price'))}{suffix}"
+
+
+def _price_catalog_date(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "—"
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).strftime("%d.%m.%Y")
+    except ValueError:
+        return escape(text[:10])
+
+
+def _price_catalog_source_ref(source_id: object) -> str:
+    compact = "".join(character for character in str(source_id or "") if character.isalnum())
+    return f"SRC-{compact[:8].upper()}" if compact else "SRC"
+
+
+def _price_catalog_count(count: int) -> str:
+    return f"{count} {'price' if count == 1 else 'prices'}"
+
+
+def _price_catalog_url_label(value: str) -> str:
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return value
+    label = f"{parsed.netloc}{parsed.path}".rstrip("/")
+    return label or value
+
+
+def _render_price_catalog(catalog: list[dict]) -> None:
+    search_column, department_column, type_column, supplier_column = st.columns(4)
+    with search_column:
+        search = st.text_input(
+            "Search",
+            placeholder="Material or supplier",
+            key="price_catalog_search",
+        ).strip().casefold()
+    department_options = ["All departments"] + [
+        item for item in ("Wood", "Metal", "Finishing")
+        if any(row.get("department") == item for row in catalog)
+    ]
+    with department_column:
+        department = st.selectbox(
+            "Department",
+            department_options,
+            key="price_catalog_department",
+        )
+    type_options = ["All material types"] + sorted(
+        {
+            str(row.get("material_type") or "Other")
+            for row in catalog
+            if department == "All departments" or row.get("department") == department
+        },
+        key=str.casefold,
+    )
+    with type_column:
+        material_type = st.selectbox(
+            "Material type",
+            type_options,
+            key="price_catalog_material_type",
+        )
+    supplier_options = ["All suppliers"] + sorted(
+        {str(row.get("supplier_name") or "Unknown supplier") for row in catalog},
+        key=str.casefold,
+    )
+    with supplier_column:
+        supplier = st.selectbox(
+            "Supplier",
+            supplier_options,
+            key="price_catalog_supplier",
+        )
+
+    visible = [
+        row for row in catalog
+        if (department == "All departments" or row.get("department") == department)
+        and (material_type == "All material types" or row.get("material_type") == material_type)
+        and (supplier == "All suppliers" or row.get("supplier_name") == supplier)
+        and (
+            not search
+            or search in str(row.get("canonical_name") or "").casefold()
+            or search in str(row.get("original_name") or "").casefold()
+            or search in str(row.get("supplier_name") or "").casefold()
+        )
+    ]
+    if not visible:
+        st.info("No material prices match these filters.")
+        return
+
+    departments: dict[str, dict[str, list[dict]]] = {}
+    for row in visible:
+        departments.setdefault(str(row["department"]), {}).setdefault(
+            str(row["material_type"]), []
+        ).append(row)
+
+    department_markup: list[str] = []
+    for department_name in ("Wood", "Metal", "Finishing"):
+        material_types = departments.get(department_name)
+        if not material_types:
+            continue
+        department_count = sum(len(rows) for rows in material_types.values())
+        type_markup: list[str] = []
+        for material_type, rows in material_types.items():
+            table_rows: list[str] = []
+            for row in rows:
+                canonical_name = str(row.get("canonical_name") or "Material")
+                original_name = str(row.get("original_name") or "")
+                supplier_name = str(row.get("supplier_name") or "Unknown supplier")
+                source_url = str(row.get("source_url") or "")
+                source_name = str(row.get("source_name") or "")
+                supplier_link = (
+                    '<a class="price-catalog-link" href="'
+                    f'{escape(source_url, quote=True)}" target="_blank" rel="noopener noreferrer" '
+                    f'title="{escape(source_url, quote=True)}">'
+                    f'{escape(_price_catalog_url_label(source_url))}</a>'
+                    if source_url else ""
+                )
+                source_reference = _price_catalog_source_ref(row.get("source_id"))
+                source_cell = (
+                    f'<a href="{escape(source_url, quote=True)}" target="_blank" '
+                    'rel="noopener noreferrer" '
+                    f'title="{escape(source_name or source_url, quote=True)}">'
+                    f'{escape(source_reference)}</a>'
+                    if source_url
+                    else f'<span title="{escape(source_name, quote=True)}">{escape(source_reference)}</span>'
+                )
+                table_rows.append(
+                    "<tr>"
+                    '<td class="price-catalog-material">'
+                    f'<strong title="{escape(canonical_name, quote=True)}">{escape(canonical_name)}</strong>'
+                    + (
+                        f'<span title="{escape(original_name, quote=True)}">{escape(original_name)}</span>'
+                        if original_name and original_name.casefold() != canonical_name.casefold()
+                        else ""
+                    )
+                    + "</td>"
+                    '<td class="price-catalog-supplier">'
+                    f'<strong>{escape(supplier_name)}</strong>{supplier_link}</td>'
+                    f'<td class="price-catalog-price"><strong>{_price_catalog_value(row)}</strong></td>'
+                    f'<td class="price-catalog-date">{_price_catalog_date(row.get("updated_at"))}</td>'
+                    f'<td class="price-catalog-source">{source_cell}</td>'
+                    "</tr>"
+                )
+            type_markup.append(
+                '<details class="price-catalog-type" open>'
+                f'<summary><span>{escape(material_type)}</span><span>{_price_catalog_count(len(rows))}</span></summary>'
+                '<div class="price-catalog-table-wrap"><table>'
+                '<thead><tr><th>Material</th><th>Supplier</th><th>Price</th>'
+                '<th>Updated</th><th>Source</th></tr></thead>'
+                f'<tbody>{"".join(table_rows)}</tbody></table></div></details>'
+            )
+        department_markup.append(
+            '<details class="price-catalog-department" open>'
+            f'<summary><span>{escape(department_name)}</span><span>{_price_catalog_count(department_count)}</span></summary>'
+            f'{"".join(type_markup)}</details>'
+        )
+
+    st.markdown(
+        '<div class="price-catalog-card">'
+        '<div class="price-catalog-title"><span>Material prices</span>'
+        f'<span>{len(visible)} active {"price" if len(visible) == 1 else "prices"}</span></div>'
+        f'{"".join(department_markup)}</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
     rows = load_price_source_rows(access, str(source["source_id"]))
     summary = source.get("processing_summary") or {}
@@ -1710,7 +1897,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
 
     with st.container(key="price_source_add_card"):
         st.markdown(
-            '<div class="company-logo-table-heading">Add Price Source</div>',
+            '<div class="company-logo-table-heading">Add price source</div>',
             unsafe_allow_html=True,
         )
         with st.container(key="price_source_add_body"):
@@ -1722,12 +1909,15 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                 placeholder="Detect automatically",
                 key="price_source_category",
             )
-            uploaded_file = st.file_uploader(
+            uploaded_files = st.file_uploader(
                 "Price source",
                 type=["pdf", "xlsx", "csv", "jpg", "jpeg", "png"],
-                accept_multiple_files=False,
+                accept_multiple_files=True,
                 key=f"price_source_upload_{uploader_version}",
-                help="Upload one PDF, spreadsheet, scan, or photo at a time.",
+                help=(
+                    "Upload one PDF or spreadsheet, or select several JPEG/PNG photos "
+                    "that belong to the same document."
+                ),
             )
             st.markdown('<div class="price-source-or">or</div>', unsafe_allow_html=True)
             source_url = st.text_input(
@@ -1745,6 +1935,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                 use_container_width=True,
             ):
                 try:
+                    uploaded_file = combine_price_source_files(uploaded_files or [])
                     with st.spinner("Reading and organizing this price source..."):
                         process_price_source(
                             access,
@@ -1773,35 +1964,35 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         return
 
     if not sources:
-        st.info("No price sources yet. Add the first supplier file or link above.")
-        return
-
-    with st.container(key="price_source_list_card"):
-        st.markdown(
-            '<div class="company-logo-table-heading">Price Sources</div>',
-            unsafe_allow_html=True,
-        )
-        for source in sources:
-            summary = source.get("processing_summary") or {}
-            left, category_col, status_col, items_col, action_col = st.columns(
-                [2.3, 1.45, 0.8, 0.65, 0.65],
-                vertical_alignment="center",
+        st.info("No source documents yet. Add the first supplier file or link above.")
+    else:
+        with st.container(key="price_source_list_card"):
+            st.markdown(
+                '<div class="company-logo-table-heading">Source library</div>',
+                unsafe_allow_html=True,
             )
-            with left:
-                st.markdown(
-                    f'**{escape(_price_source_supplier(source))}**  \n'
-                    f'<span class="price-source-file">{escape(str(source.get("source_name") or ""))}</span>',
-                    unsafe_allow_html=True,
+            for source in sources:
+                summary = source.get("processing_summary") or {}
+                left, category_col, status_col, items_col, action_col = st.columns(
+                    [2.3, 1.45, 0.8, 0.65, 0.65],
+                    vertical_alignment="center",
                 )
-            with category_col:
-                st.write(source.get("category") or "")
-            with status_col:
-                st.write(str(source.get("status") or "").title())
-            with items_col:
-                st.write(int(summary.get("total") or 0))
-            with action_col:
-                if st.button("View", key=f'view_price_source_{source["source_id"]}'):
-                    st.session_state._selected_price_source_id = source["source_id"]
+                with left:
+                    st.markdown(
+                        f'**{escape(_price_source_supplier(source))}**  \n'
+                        f'<span class="price-source-file" title="{escape(str(source.get("source_name") or ""), quote=True)}">'
+                        f'{escape(str(source.get("source_name") or ""))}</span>',
+                        unsafe_allow_html=True,
+                    )
+                with category_col:
+                    st.write(source.get("category") or "")
+                with status_col:
+                    st.write(str(source.get("status") or "").title())
+                with items_col:
+                    st.write(int(summary.get("total") or 0))
+                with action_col:
+                    if st.button("View", key=f'view_price_source_{source["source_id"]}'):
+                        st.session_state._selected_price_source_id = source["source_id"]
 
     selected_id = st.session_state.get("_selected_price_source_id")
     selected = next((source for source in sources if source["source_id"] == selected_id), None)
@@ -1812,6 +2003,20 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                 unsafe_allow_html=True,
             )
             _render_price_source_details(access, selected)
+
+    try:
+        catalog = list_price_catalog(access)
+    except Exception:
+        logger.exception("Price catalog list failed")
+        st.info("The material price catalog is unavailable right now.")
+        return
+    with st.container(key="price_catalog_section"):
+        if catalog:
+            _render_price_catalog(catalog)
+        else:
+            st.info(
+                "No active material prices yet. Ready prices will appear here after a source is processed."
+            )
 
 
 def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:

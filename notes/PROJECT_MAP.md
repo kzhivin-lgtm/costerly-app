@@ -51,4 +51,6 @@ This file explains where code belongs so the project stays understandable.
   Auth and password-recovery contract.
 - `notes/MACHINERY_FOUNDATION.md` stores the 3.9.1 scenario matrix, catalog
   boundary, routing priority, and verification state.
+- `notes/PRICE_CATALOG_UI.md` stores the 3.10.1 material-first Price Lists UI,
+  source-library boundary, and scenario matrix.
 - Keep notes short and update them when structure changes.

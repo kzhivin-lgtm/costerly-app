@@ -264,6 +264,7 @@ def apply_company_profile_css() -> None:
             margin: 0 auto;
             padding: 0;
             box-sizing: border-box;
+            transform: translateX(8px);
         }
 
         .machinery-availability-state,
@@ -724,12 +725,16 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active) .st-key-price_source_add_card,
         .stApp:has(.company-profile-active) .st-key-price_source_list_card,
         .stApp:has(.company-profile-active) .st-key-price_source_detail_card {
-            margin-top: 12px;
+            margin-top: 18px;
             overflow: hidden;
             border: 1px solid var(--color-border-soft);
-            border-radius: 12px;
+            border-radius: 18px;
             background: var(--color-surface);
             box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+        }
+
+        .stApp:has(.company-profile-active) .st-key-price_source_add_card {
+            margin-top: 0;
         }
 
         .stApp:has(.company-profile-active) .st-key-price_source_add_body {
@@ -842,6 +847,164 @@ def apply_company_profile_css() -> None:
 
         .price-source-table td {
             font-size: 13px;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-price_catalog_section {
+            margin-top: 18px;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_catalog_section > [data-testid="stVerticalBlock"] {
+            gap: 18px !important;
+        }
+
+        .price-catalog-card {
+            overflow: hidden;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 18px;
+            background: var(--color-surface);
+            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+        }
+
+        .price-catalog-title,
+        .price-catalog-department > summary,
+        .price-catalog-type > summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+        }
+
+        .price-catalog-title {
+            min-height: 62px;
+            padding: 0 22px;
+            background: #FAF8FC;
+            color: var(--color-text-strong);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .price-catalog-title span:last-child,
+        .price-catalog-department > summary span:last-child,
+        .price-catalog-type > summary span:last-child {
+            color: var(--color-text-muted);
+            font-family: var(--font-sans);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
+        .price-catalog-department,
+        .price-catalog-type {
+            border-top: 1px solid var(--color-border-soft);
+        }
+
+        .price-catalog-department > summary,
+        .price-catalog-type > summary {
+            min-height: 54px;
+            padding: 0 22px;
+            cursor: pointer;
+            list-style-position: inside;
+        }
+
+        .price-catalog-department > summary {
+            background: #F7F3FA;
+            color: var(--color-text-strong);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.035em;
+            text-transform: uppercase;
+        }
+
+        .price-catalog-type > summary {
+            padding-left: 38px;
+            background: #FCFBFD;
+            color: var(--color-text-strong);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .price-catalog-table-wrap {
+            overflow-x: auto;
+        }
+
+        .price-catalog-card table {
+            width: 100%;
+            min-width: 780px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .price-catalog-card th,
+        .price-catalog-card td {
+            padding: 13px 16px;
+            border-top: 1px solid var(--color-border-soft);
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .price-catalog-card th {
+            background: #FFFFFF;
+            color: var(--color-text-muted);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .price-catalog-card th:nth-child(1) { width: 31%; }
+        .price-catalog-card th:nth-child(2) { width: 25%; }
+        .price-catalog-card th:nth-child(3) { width: 19%; }
+        .price-catalog-card th:nth-child(4) { width: 14%; }
+        .price-catalog-card th:nth-child(5) { width: 11%; }
+
+        .price-catalog-material strong,
+        .price-catalog-supplier strong,
+        .price-catalog-material span,
+        .price-catalog-link {
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .price-catalog-material strong,
+        .price-catalog-supplier strong,
+        .price-catalog-price strong {
+            color: var(--color-text-strong);
+            font-size: 14px;
+        }
+
+        .price-catalog-material span,
+        .price-catalog-link {
+            margin-top: 3px;
+            color: var(--color-text-muted);
+            font-size: 12px;
+        }
+
+        .price-catalog-link:hover,
+        .price-catalog-source a:hover {
+            color: var(--color-accent);
+        }
+
+        .price-catalog-price,
+        .price-catalog-date,
+        .price-catalog-source {
+            white-space: nowrap;
+        }
+
+        .price-catalog-source a,
+        .price-catalog-source span {
+            color: var(--color-text-muted);
+            font-family: var(--font-mono);
+            font-size: 12px;
         }
 
         .stApp:has(.company-profile-active) label,
@@ -1246,7 +1409,7 @@ def apply_company_profile_css() -> None:
             width: 100%;
             overflow: hidden;
             border: 1px solid var(--color-border-soft);
-            border-radius: 12px;
+            border-radius: 18px;
             background: var(--color-surface);
         }
 
@@ -1494,6 +1657,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card {
             margin-top: 0;
+            border-radius: 18px !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card
@@ -1621,6 +1785,38 @@ def apply_company_profile_css() -> None:
                 min-height: 180px;
             }
             .company-profile-readonly-grid { grid-template-columns: 1fr; }
+
+            .price-catalog-card {
+                overflow: visible;
+                border-radius: 18px;
+            }
+
+            .price-catalog-table-wrap {
+                overflow: visible;
+            }
+
+            .price-catalog-card table,
+            .price-catalog-card thead,
+            .price-catalog-card tbody,
+            .price-catalog-card tr,
+            .price-catalog-card td {
+                display: block;
+                width: 100%;
+                min-width: 0;
+            }
+
+            .price-catalog-card thead { display: none; }
+
+            .price-catalog-card tr {
+                padding: 14px 16px;
+                border-top: 1px solid var(--color-border-soft);
+            }
+
+            .price-catalog-card td {
+                padding: 4px 0;
+                border: 0;
+                white-space: normal;
+            }
         }
         </style>
         """,

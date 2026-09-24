@@ -17,6 +17,7 @@ from uuid import uuid4
 
 import httpx
 import pandas as pd
+from PIL import Image, UnidentifiedImageError
 
 from agents.price_source_agent import run_price_source_agent
 from agents.schemas.price_source_schema import PRICE_SOURCE_CATEGORIES
@@ -40,12 +41,68 @@ CONTENT_TYPES = {
     ".png": "image/png",
 }
 
+PRICE_CATALOG_DEPARTMENTS = {
+    "Sheet Materials": "Wood",
+    "Solid Wood": "Wood",
+    "Hardware": "Wood",
+    "Edgebanding": "Wood",
+    "Adhesives and Consumables": "Wood",
+    "Glass": "Wood",
+    "Metal": "Metal",
+    "Finishes and Coatings": "Finishing",
+    "Other": "Wood",
+}
+PRICE_CATALOG_DEPARTMENT_ORDER = {"Wood": 0, "Metal": 1, "Finishing": 2}
+
 
 class PriceSourceError(ValueError):
     pass
 
 
+@dataclass(frozen=True)
+class CombinedPriceSource:
+    name: str
+    data: bytes
+
+    def getvalue(self) -> bytes:
+        return self.data
+
+
 logger = logging.getLogger(__name__)
+
+
+def combine_price_source_files(files: list) -> object | None:
+    """Keep one upload as-is or combine ordered JPEG/PNG pages into one PDF."""
+    selected = [item for item in files if item is not None]
+    if not selected:
+        return None
+    if len(selected) == 1:
+        return selected[0]
+    suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
+    if any(suffix not in {".jpg", ".jpeg", ".png"} for suffix in suffixes):
+        raise PriceSourceError(
+            "Select one PDF or spreadsheet, or select several JPEG/PNG photos from the same document."
+        )
+    if sum(len(item.getvalue()) for item in selected) > MAX_SOURCE_BYTES:
+        raise PriceSourceError("The combined price source must be 50 MB or smaller.")
+    pages: list[Image.Image] = []
+    try:
+        for item in selected:
+            with Image.open(BytesIO(item.getvalue())) as image:
+                page = image.convert("RGB")
+                page.load()
+                pages.append(page)
+        output = BytesIO()
+        pages[0].save(output, format="PDF", save_all=True, append_images=pages[1:])
+    except (UnidentifiedImageError, OSError) as exc:
+        raise PriceSourceError("One of the selected photos could not be read.") from exc
+    finally:
+        for page in pages:
+            page.close()
+    return CombinedPriceSource(
+        name=f"photo-document-{len(selected)}-pages.pdf",
+        data=output.getvalue(),
+    )
 
 
 def _emit_duration(trace, name: str, started_at: float, **metadata: object) -> None:
@@ -252,6 +309,99 @@ def list_price_sources(access) -> list[dict]:
     ).data or []
 
 
+def list_price_catalog(access) -> list[dict]:
+    """Return active normalized supplier offers enriched for catalog display."""
+    client = get_supabase_client()
+    company_id = str(access.company_id)
+    assert_company_owner(client, str(access.user_id), company_id)
+    offers = (
+        client.table("company_material_offers")
+        .select(
+            "offer_id,company_material_id,supplier_id,source_id,source_row_id,"
+            "source_price,source_unit,purchase_unit,calculation_unit,conversion_factor,"
+            "normalized_price,normalized_unit,currency,vat_included,valid_from,"
+            "confidence,created_at"
+        )
+        .eq("company_id", company_id)
+        .eq("status", "active")
+        .execute()
+    ).data or []
+    if not offers:
+        return []
+
+    materials = (
+        client.table("company_material_items")
+        .select("company_material_id,category,canonical_name,preferred_unit")
+        .eq("company_id", company_id)
+        .neq("status", "archived")
+        .execute()
+    ).data or []
+    suppliers = (
+        client.table("company_suppliers")
+        .select("supplier_id,supplier_name")
+        .eq("company_id", company_id)
+        .eq("active", True)
+        .execute()
+    ).data or []
+    source_rows = (
+        client.table("company_price_source_rows")
+        .select("row_id,raw_description")
+        .eq("company_id", company_id)
+        .execute()
+    ).data or []
+    sources = (
+        client.table("company_price_sources")
+        .select("source_id,source_name,source_kind,source_url,processed_at,created_at")
+        .eq("company_id", company_id)
+        .execute()
+    ).data or []
+
+    material_by_id = {
+        str(row["company_material_id"]): row for row in materials
+    }
+    supplier_by_id = {str(row["supplier_id"]): row for row in suppliers}
+    source_row_by_id = {str(row["row_id"]): row for row in source_rows}
+    source_by_id = {str(row["source_id"]): row for row in sources}
+    catalog: list[dict] = []
+    for offer in offers:
+        material = material_by_id.get(str(offer.get("company_material_id")))
+        if not material:
+            continue
+        supplier = supplier_by_id.get(str(offer.get("supplier_id")), {})
+        source_row = source_row_by_id.get(str(offer.get("source_row_id")), {})
+        source = source_by_id.get(str(offer.get("source_id")), {})
+        category = str(material.get("category") or "Other")
+        department = PRICE_CATALOG_DEPARTMENTS.get(category, "Wood")
+        catalog.append(
+            {
+                **offer,
+                "department": department,
+                "material_type": category,
+                "canonical_name": str(material.get("canonical_name") or "Material"),
+                "original_name": str(source_row.get("raw_description") or ""),
+                "supplier_name": str(supplier.get("supplier_name") or "Unknown supplier"),
+                "source_name": str(source.get("source_name") or ""),
+                "source_kind": str(source.get("source_kind") or ""),
+                "source_url": str(source.get("source_url") or ""),
+                "updated_at": (
+                    offer.get("valid_from")
+                    or source.get("processed_at")
+                    or offer.get("created_at")
+                    or source.get("created_at")
+                ),
+            }
+        )
+    return sorted(
+        catalog,
+        key=lambda row: (
+            PRICE_CATALOG_DEPARTMENT_ORDER.get(str(row["department"]), 99),
+            str(row["material_type"]).casefold(),
+            str(row["canonical_name"]).casefold(),
+            str(row["supplier_name"]).casefold(),
+        ),
+    )
+
+
 def load_price_source_bytes(access, reference: str | None) -> bytes | None:
     prefix = f"storage://{PRICE_SOURCE_BUCKET}/"
     if not reference or not reference.startswith(prefix):
@@ -335,6 +485,19 @@ def process_price_source(
         source_kind = "url"
         suffix = ".html"
         mime_type = "text/html"
+
+    source_digest = sha256(source_bytes).hexdigest()
+    duplicate = (
+        client.table("company_price_sources")
+        .select("source_id")
+        .eq("company_id", company_id)
+        .eq("source_sha256", source_digest)
+        .neq("status", "archived")
+        .limit(1)
+        .execute()
+    ).data or []
+    if duplicate:
+        raise PriceSourceError("This price source has already been added.")
 
     agent_started = time.perf_counter()
     result = run_price_source_agent(
@@ -438,7 +601,7 @@ def process_price_source(
                 "source_url": resolved_url,
                 "storage_path": f"storage://{PRICE_SOURCE_BUCKET}/{object_path}",
                 "mime_type": mime_type,
-                "source_sha256": sha256(source_bytes).hexdigest(),
+                "source_sha256": source_digest,
                 "document_type": result["document_type"],
                 "document_date": _date_or_none(result["document_date"]),
                 "currency": result["currency"] or None,
