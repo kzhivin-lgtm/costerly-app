@@ -653,6 +653,9 @@ def _render_owner_machinery(
                             )
                         )
                         shows_costing = spec.code in PROFILE_COSTING_MACHINE_CODES
+                        defer_costing = bool(
+                            shows_costing and boolean_fields and not selector_fields
+                        )
                         if len(selector_fields) == 1 and shows_costing:
                             selector_column, method_column = st.columns([2, 1])
                             with selector_column:
@@ -663,7 +666,7 @@ def _render_owner_machinery(
                             pricing_method, pricing = _render_machinery_pricing(
                                 saved, row_key, method_column=method_column
                             )
-                        elif selector_fields or shows_costing:
+                        elif selector_fields or (shows_costing and not defer_costing):
                             second_row = st.columns(3)
                             for index, field in enumerate(selector_fields[:2]):
                                 with second_row[index]:
@@ -691,13 +694,20 @@ def _render_owner_machinery(
                                 )
                         if boolean_fields:
                             checkbox_row = st.columns(3)
-                            for index, field in enumerate(boolean_fields[:2]):
+                            for index, field in enumerate(boolean_fields[:3]):
                                 with checkbox_row[index]:
                                     capabilities[field.key] = (
                                         _render_machine_capability_widget(
                                             field, saved, row_key
                                         )
                                     )
+                        if defer_costing:
+                            pricing_row = st.columns(3)
+                            pricing_method, pricing = _render_machinery_pricing(
+                                saved,
+                                row_key,
+                                method_column=pricing_row[2],
+                            )
                     else:
                         matching_services = [
                             service for service in services

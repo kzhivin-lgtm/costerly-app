@@ -35,6 +35,9 @@ source of truth for this implementation.
 | Machinery tab opens with no answers | Show the 16 estimation-relevant capabilities in Woodworking, Metalworking, and Painting & Finishing groups; do not create rows merely by viewing |
 | Owner changes an availability-only row | Persist Yes, No, or Not answered immediately; do not open details or show Save |
 | Owner chooses Yes | Reveal only the minimum capability questions for that machine; do not reveal subcontractor questions |
+| CNC router is in-house | Ask working length, working width, maximum thickness, solid wood, horizontal drilling, 5-axis machining, and costing method |
+| CNC router handles standard sheet goods | Assume MDF, particleboard / LDSP, plywood, and melamine-faced board; do not ask the owner to confirm them |
+| CNC router requires machining on both faces | Treat the second face as another setup; do not ask a vague two-sided-processing question |
 | Owner chooses No for an outsourceable operation | Hide in-house details and show one `Regular subcontractor` selector with no contractor, an existing contractor, or add new |
 | Owner chooses No for an internal-support capability | Hide in-house details and do not ask for a subcontractor |
 | Owner saves No without a subcontractor | Save the explicit absence and show `Market pricing`; later routing may use a regional benchmark with lower confidence |
@@ -87,12 +90,11 @@ source of truth for this implementation.
   collapses it. A chevron reopens or closes a saved panel.
 - Every detail panel uses three equal columns for capability, costing, or
   subcontractor fields. It does not introduce another narrow nested card.
-- Detail descriptions are omitted. For CNC, row one contains the three
-  technical dimensions, row two gives `Materials` two-thirds of the width and
-  `Costing method` the last third, and row three contains the two boolean
-  options. Selected material pills use the
-  product purple-neutral palette; red remains reserved for negative status and
-  validation/error feedback.
+- Detail descriptions are omitted. For CNC, row one contains working length,
+  working width, and maximum thickness. Row two contains solid wood, horizontal
+  drilling, and 5-axis machining. `Costing method` remains in the third column
+  below maximum thickness. MDF, particleboard / LDSP, plywood, and
+  melamine-faced board are system defaults rather than user questions.
 - Machinery has no introductory heading below the Profile tabs. Its first
   group starts at the same vertical offset as the Overhead Expenses content.
 - Machine rows form one continuous bordered table inside each group. The
@@ -117,7 +119,7 @@ source of truth for this implementation.
 - Only questions that materially change feasibility or price are shown.
   Panel cutting saw, edge bander, solid wood machining, wide-belt sanding, and
   solid metal machining are availability-only. CNC retains working size,
-  maximum thickness, materials, two-sided processing, and costing. Sheet laser
+  maximum thickness, three exceptional capabilities, and costing. Sheet laser
   cutting and size-dependent finishing retain their feasibility or maximum-size
   fields. Sheet metal bending, metal press, profile bending, rolling, and
   welding are availability-only. Polishing is manual-tool work and is not shown

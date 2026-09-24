@@ -1197,17 +1197,16 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
 
     next(field for field in app.text_input if field.label == "Working length (m) *").set_value("2,5")
     next(field for field in app.text_input if field.label == "Working width (m) *").set_value("1.3")
-    next(
-        field for field in app.get("button_group")
-        if field.label == "Materials *"
-    ).set_value(["MDF"])
+    next(field for field in app.checkbox if field.label == "Solid wood").check()
+    next(field for field in app.checkbox if field.label == "Horizontal drilling").check()
     next(button for button in app.button if button.label == "Save").click()
     app.run()
 
     assert saved[0]["machine_code"] == "wood_cnc_router"
     assert saved[0]["availability_status"] == "in_house"
     assert saved[0]["capabilities"]["work_area_x_mm"] == 2500
-    assert saved[0]["capabilities"]["materials"] == ["MDF"]
+    assert saved[0]["capabilities"]["solid_wood"] is True
+    assert saved[0]["capabilities"]["horizontal_drilling"] is True
 
 
 def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):
@@ -1353,7 +1352,7 @@ def test_saved_machinery_row_is_collapsed_with_summary_and_can_reopen(monkeypatc
                 "capabilities": {
                     "work_area_x_mm": 2500,
                     "work_area_y_mm": 1300,
-                    "materials": ["MDF"],
+                    "solid_wood": True,
                 },
                 "pricing_method": "unknown",
                 "pricing": {},
@@ -1369,14 +1368,17 @@ def test_saved_machinery_row_is_collapsed_with_summary_and_can_reopen(monkeypatc
 
     assert not any(button.label == "Save" for button in app.button)
     markup = " ".join(item.value for item in app.markdown)
-    assert "In-house · 2.5 × 1.3 m · MDF" in markup
+    assert "In-house · 2.5 × 1.3 m" in markup
 
     next(button for button in app.button if button.label == "⌄").click()
     app.run()
     assert any(button.label == "Save" for button in app.button)
-    assert any(
-        group.label == "Materials *" for group in app.get("button_group")
-    )
+    checkbox_labels = [field.label for field in app.checkbox]
+    assert checkbox_labels == [
+        "Solid wood",
+        "Horizontal drilling",
+        "5-axis machining",
+    ]
 
 
 def test_internal_support_capability_does_not_ask_for_subcontractor(monkeypatch):

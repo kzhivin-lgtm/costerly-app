@@ -70,7 +70,6 @@ def _boolean(key: str, label: str) -> CapabilityField:
     return CapabilityField(key, label, "boolean")
 
 
-WOOD_MATERIALS = ("MDF", "Particleboard / LDSP", "Plywood", "Solid wood", "Compact laminate", "Plastic")
 METAL_MATERIALS = ("Mild steel", "Stainless steel", "Aluminum", "Brass", "Copper")
 
 
@@ -79,8 +78,9 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("work_area_x_mm", "Working length", "mm", input_unit="m", required=True),
         _number("work_area_y_mm", "Working width", "mm", input_unit="m", required=True),
         _number("max_thickness_mm", "Maximum thickness", "mm"),
-        _multi("materials", "Materials", WOOD_MATERIALS, required=True),
-        _boolean("two_sided_processing", "Two-sided processing"),
+        _boolean("solid_wood", "Solid wood"),
+        _boolean("horizontal_drilling", "Horizontal drilling"),
+        _boolean("five_axis_machining", "5-axis machining"),
     )),
     MachineSpec("wood_panel_saw", "woodworking", "Panel cutting saw", "Straight panel sizing and cutting", ()),
     MachineSpec("wood_edge_bander", "woodworking", "Edge bander", "Application and finishing of panel edge material", ()),
@@ -568,6 +568,12 @@ def build_company_production_context(company_id: str, *, client=None) -> dict:
         "routing_rules": {
             "manual_fallback_requires_explicit_confirmation": True,
             "panel_material_manual_fallback_allowed": False,
+            "wood_cnc_default_sheet_materials": [
+                "MDF",
+                "Particleboard / LDSP",
+                "Plywood",
+                "Melamine-faced board",
+            ],
             "powder_coating_requires": ["finish_powder_booth", "finish_powder_oven"],
         },
     }

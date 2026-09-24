@@ -119,7 +119,7 @@ def test_machinery_migration_is_additive_and_seeds_the_application_catalog():
     assert "alter table public.company_machines" not in sql
 
 
-def test_cnc_requires_work_area_and_materials():
+def test_cnc_requires_work_area_and_keeps_only_exceptional_capabilities():
     with pytest.raises(machinery.MachineryError, match="Working width"):
         machinery._validate_capabilities("wood_cnc_router", {"work_area_x_mm": 2500})
 
@@ -128,16 +128,20 @@ def test_cnc_requires_work_area_and_materials():
         {
             "work_area_x_mm": 2500,
             "work_area_y_mm": 1300,
-            "materials": ["MDF", "Unsupported"],
+            "materials": ["MDF"],
             "two_sided_processing": True,
+            "solid_wood": True,
+            "horizontal_drilling": True,
+            "five_axis_machining": False,
             "ignored": "value",
         },
     )
     assert values == {
         "work_area_x_mm": 2500.0,
         "work_area_y_mm": 1300.0,
-        "materials": ["MDF"],
-        "two_sided_processing": True,
+        "solid_wood": True,
+        "horizontal_drilling": True,
+        "five_axis_machining": False,
     }
 
 
@@ -260,6 +264,12 @@ def test_production_context_preserves_price_precedence(monkeypatch):
     assert context["price_precedence"][0] == "active_supplier_offer"
     assert context["price_precedence"][-1] == "needs_review"
     assert context["routing_rules"]["panel_material_manual_fallback_allowed"] is False
+    assert context["routing_rules"]["wood_cnc_default_sheet_materials"] == [
+        "MDF",
+        "Particleboard / LDSP",
+        "Plywood",
+        "Melamine-faced board",
+    ]
 
 
 def test_removing_regular_subcontractor_deactivates_history(monkeypatch):
