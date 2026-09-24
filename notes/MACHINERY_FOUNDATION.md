@@ -53,6 +53,24 @@ source of truth for this implementation.
 | Narrow/mobile viewport | Cards remain one-column, labels do not clip, and controls retain touch-sized targets |
 | Keyboard navigation | Yes/No, fields, supplier selection, and save follow logical focus order and work without pointer input |
 
+### Accepted compact-layout revision
+
+- The tab does not repeat a `Machinery` heading. Its introductory sentence is
+  the single large heading.
+- Technical inputs are arranged in rows of three when space permits and collapse
+  naturally on narrow screens.
+- Long dimensions such as working length and width are entered as decimal meters;
+  thicknesses, tool diameters, and profile sizes remain millimeters. Canonical
+  database values remain millimeters.
+- Numeric capability inputs are plain text fields with explicit units, not
+  number steppers. Both decimal point and decimal comma are accepted.
+- A non-in-house capability asks only whether a regular subcontractor is used.
+  `Yes` reveals one free-text subcontractor name. There is no Existing/New split,
+  supplier dropdown, supplier pricing method, or typical lead-time question.
+- Entering the same normalized subcontractor name reuses the existing
+  `company_suppliers` identity. Replacing a regular subcontractor deactivates the
+  previous route without deleting its history.
+
 ## Catalog groups
 
 ### Woodworking
@@ -108,7 +126,7 @@ never presented as a real supplier quotation.
   behavior without reading or rewriting the prototype `company_machines` rows.
 - In-house cost rates and supplier charges retain distinct rate provenance.
 - The deterministic production snapshot is implemented locally.
-- 282 repository tests pass, including the new Machinery domain and empty-state
+- 283 repository tests pass, including the new Machinery domain and empty-state
   UI scenarios.
 - The owner applied the live Supabase migration on 24.09. A service-role read
   verified five new tables, 26 active catalog rows split into 8 woodworking,

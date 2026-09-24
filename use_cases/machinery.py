@@ -33,6 +33,7 @@ class CapabilityField:
     label: str
     kind: str = "number"
     unit: str | None = None
+    input_unit: str | None = None
     required: bool = False
     options: tuple[str, ...] = ()
 
@@ -46,16 +47,23 @@ class MachineSpec:
     fields: tuple[CapabilityField, ...]
 
 
-def _number(key: str, label: str, unit: str, *, required: bool = False) -> CapabilityField:
-    return CapabilityField(key, label, "number", unit, required)
+def _number(
+    key: str,
+    label: str,
+    unit: str,
+    *,
+    input_unit: str | None = None,
+    required: bool = False,
+) -> CapabilityField:
+    return CapabilityField(key, label, "number", unit, input_unit, required)
 
 
 def _multi(key: str, label: str, options: Sequence[str], *, required: bool = False) -> CapabilityField:
-    return CapabilityField(key, label, "multiselect", None, required, tuple(options))
+    return CapabilityField(key, label, "multiselect", None, None, required, tuple(options))
 
 
 def _text(key: str, label: str, *, required: bool = False) -> CapabilityField:
-    return CapabilityField(key, label, "text", None, required)
+    return CapabilityField(key, label, "text", None, None, required)
 
 
 def _boolean(key: str, label: str) -> CapabilityField:
@@ -68,14 +76,14 @@ METAL_MATERIALS = ("Mild steel", "Stainless steel", "Aluminum", "Brass", "Copper
 
 MACHINE_SPECS: tuple[MachineSpec, ...] = (
     MachineSpec("wood_cnc_router", "woodworking", "CNC router", "Routing, drilling and profiling sheet goods or solid wood", (
-        _number("work_area_x_mm", "Working area, length", "mm", required=True),
-        _number("work_area_y_mm", "Working area, width", "mm", required=True),
+        _number("work_area_x_mm", "Working area, length", "mm", input_unit="m", required=True),
+        _number("work_area_y_mm", "Working area, width", "mm", input_unit="m", required=True),
         _number("max_thickness_mm", "Maximum workpiece thickness", "mm"),
         _multi("materials", "Materials normally processed", WOOD_MATERIALS, required=True),
         _boolean("two_sided_processing", "Two-sided processing is supported"),
     )),
     MachineSpec("wood_panel_saw", "woodworking", "Panel cutting saw", "Straight panel sizing and cutting", (
-        _number("max_cut_length_mm", "Maximum cut length", "mm", required=True),
+        _number("max_cut_length_mm", "Maximum cut length", "mm", input_unit="m", required=True),
         _number("max_thickness_mm", "Maximum stack or panel thickness", "mm"),
         _multi("materials", "Panel materials", WOOD_MATERIALS[:3], required=True),
     )),
@@ -85,54 +93,54 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _multi("edge_materials", "Edge materials", ("Melamine", "PVC", "ABS", "Veneer", "Solid wood")),
     )),
     MachineSpec("wood_boring_machine", "woodworking", "Boring machine", "Repeatable construction and hardware drilling", (
-        _number("max_panel_length_mm", "Maximum panel length", "mm"),
-        _number("max_panel_width_mm", "Maximum panel width", "mm"),
+        _number("max_panel_length_mm", "Maximum panel length", "mm", input_unit="m"),
+        _number("max_panel_width_mm", "Maximum panel width", "mm", input_unit="m"),
         _boolean("cnc_controlled", "CNC-controlled drilling"),
     )),
     MachineSpec("wood_veneer_press", "woodworking", "Veneer or laminating press", "Flat pressing of veneer or laminate", (
-        _number("platen_length_mm", "Press length", "mm", required=True),
-        _number("platen_width_mm", "Press width", "mm", required=True),
+        _number("platen_length_mm", "Press length", "mm", input_unit="m", required=True),
+        _number("platen_width_mm", "Press width", "mm", input_unit="m", required=True),
         _boolean("heated", "Heated press"),
     )),
     MachineSpec("wood_solid_preparation", "woodworking", "Solid wood preparation line", "Planing, thicknessing and dimensioning solid wood", (
-        _number("max_width_mm", "Maximum working width", "mm"),
+        _number("max_width_mm", "Maximum working width", "mm", input_unit="m"),
         _number("max_thickness_mm", "Maximum workpiece thickness", "mm"),
         _multi("processes", "Available operations", ("Jointing", "Thickness planing", "Rip sawing", "Crosscutting", "Moulding"), required=True),
     )),
     MachineSpec("wood_wide_belt_sander", "woodworking", "Wide-belt sander or calibrator", "Calibrating and sanding panels or solid wood", (
-        _number("max_width_mm", "Maximum working width", "mm", required=True),
+        _number("max_width_mm", "Maximum working width", "mm", input_unit="m", required=True),
         _number("min_thickness_mm", "Minimum workpiece thickness", "mm"),
         _multi("materials", "Materials", WOOD_MATERIALS[:4]),
     )),
     MachineSpec("wood_case_clamp", "woodworking", "Case clamp or assembly press", "Squaring and pressing assembled cases", (
-        _number("max_length_mm", "Maximum case width", "mm"),
-        _number("max_height_mm", "Maximum case height", "mm"),
-        _number("max_depth_mm", "Maximum case depth", "mm"),
+        _number("max_length_mm", "Maximum case width", "mm", input_unit="m"),
+        _number("max_height_mm", "Maximum case height", "mm", input_unit="m"),
+        _number("max_depth_mm", "Maximum case depth", "mm", input_unit="m"),
     )),
     MachineSpec("metal_sheet_laser", "metalworking", "Sheet laser cutter", "Profile cutting of sheet metal", (
-        _number("work_area_x_mm", "Working area, length", "mm", required=True),
-        _number("work_area_y_mm", "Working area, width", "mm", required=True),
+        _number("work_area_x_mm", "Working area, length", "mm", input_unit="m", required=True),
+        _number("work_area_y_mm", "Working area, width", "mm", input_unit="m", required=True),
         _text("material_thickness_limits", "Materials and maximum thicknesses", required=True),
         _number("laser_power_kw", "Laser power", "kW"),
     )),
     MachineSpec("metal_tube_laser", "metalworking", "Tube laser cutter", "Profile cutting of tube and section", (
-        _number("max_stock_length_mm", "Maximum stock length", "mm", required=True),
+        _number("max_stock_length_mm", "Maximum stock length", "mm", input_unit="m", required=True),
         _number("max_profile_size_mm", "Maximum profile diameter or side", "mm", required=True),
         _text("material_thickness_limits", "Materials and maximum wall thicknesses", required=True),
     )),
     MachineSpec("metal_press_brake", "metalworking", "Press brake", "Controlled bending of sheet metal", (
-        _number("max_bend_length_mm", "Maximum bend length", "mm", required=True),
+        _number("max_bend_length_mm", "Maximum bend length", "mm", input_unit="m", required=True),
         _number("tonnage_t", "Press force", "t", required=True),
         _text("material_thickness_limits", "Typical material and thickness limits"),
     )),
     MachineSpec("metal_sheet_shear", "metalworking", "Sheet shear or guillotine", "Straight cutting of sheet metal", (
-        _number("max_cut_length_mm", "Maximum cut length", "mm", required=True),
+        _number("max_cut_length_mm", "Maximum cut length", "mm", input_unit="m", required=True),
         _text("material_thickness_limits", "Material and thickness limits"),
     )),
     MachineSpec("metal_punch_press", "metalworking", "Punching or hydraulic press", "Punching, stamping and press operations", (
         _number("tonnage_t", "Press force", "t", required=True),
-        _number("bed_length_mm", "Working bed length", "mm"),
-        _number("bed_width_mm", "Working bed width", "mm"),
+        _number("bed_length_mm", "Working bed length", "mm", input_unit="m"),
+        _number("bed_width_mm", "Working bed width", "mm", input_unit="m"),
         _text("processes", "Typical press operations"),
     )),
     MachineSpec("metal_profile_saw", "metalworking", "Tube or profile saw", "Length and mitre cutting of profiles", (
@@ -145,7 +153,7 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _text("profile_limits", "Typical profiles and wall-thickness limits"),
     )),
     MachineSpec("metal_rolling_machine", "metalworking", "Plate or section rolling machine", "Rolling plate and sections to a radius", (
-        _number("max_working_width_mm", "Maximum working width", "mm"),
+        _number("max_working_width_mm", "Maximum working width", "mm", input_unit="m"),
         _text("material_thickness_limits", "Material and thickness limits"),
     )),
     MachineSpec("metal_welding", "metalworking", "Welding capability", "MIG, MAG, TIG or other welding processes", (
@@ -153,7 +161,7 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _multi("materials", "Materials", METAL_MATERIALS, required=True),
     )),
     MachineSpec("metal_deburring", "metalworking", "Deburring or grinding machine", "Edge cleanup, deburring and grinding", (
-        _number("max_width_mm", "Maximum working width", "mm"),
+        _number("max_width_mm", "Maximum working width", "mm", input_unit="m"),
         _multi("processes", "Processes", ("Deburring", "Edge rounding", "Grinding", "Brushing")),
     )),
     MachineSpec("metal_drill_tap", "metalworking", "Drill or tapping station", "Hole drilling, countersinking and tapping", (
@@ -161,33 +169,33 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _text("thread_range", "Typical tapping range"),
     )),
     MachineSpec("finish_wet_spray_booth", "finishing", "Wet-paint spray booth", "Controlled wet coating application", (
-        _number("max_part_length_mm", "Maximum part length", "mm"),
-        _number("max_part_width_mm", "Maximum part width", "mm"),
-        _number("max_part_height_mm", "Maximum part height", "mm"),
+        _number("max_part_length_mm", "Maximum part length", "mm", input_unit="m"),
+        _number("max_part_width_mm", "Maximum part width", "mm", input_unit="m"),
+        _number("max_part_height_mm", "Maximum part height", "mm", input_unit="m"),
         _multi("coating_families", "Coating families", ("Paint", "Lacquer", "Varnish", "Stain", "Oil")),
     )),
     MachineSpec("finish_drying_chamber", "finishing", "Drying or curing chamber", "Controlled drying or curing of wet finishes", (
-        _number("max_part_length_mm", "Maximum part length", "mm"),
+        _number("max_part_length_mm", "Maximum part length", "mm", input_unit="m"),
         _number("max_temperature_c", "Maximum temperature", "°C"),
     )),
     MachineSpec("finish_powder_booth", "finishing", "Powder-coating booth", "Controlled powder application and recovery", (
-        _number("max_part_length_mm", "Maximum part length", "mm"),
-        _number("max_part_width_mm", "Maximum part width", "mm"),
-        _number("max_part_height_mm", "Maximum part height", "mm"),
+        _number("max_part_length_mm", "Maximum part length", "mm", input_unit="m"),
+        _number("max_part_width_mm", "Maximum part width", "mm", input_unit="m"),
+        _number("max_part_height_mm", "Maximum part height", "mm", input_unit="m"),
     )),
     MachineSpec("finish_powder_oven", "finishing", "Powder-curing oven", "Thermal curing of powder coating", (
-        _number("inside_length_mm", "Internal length", "mm", required=True),
-        _number("inside_width_mm", "Internal width", "mm", required=True),
-        _number("inside_height_mm", "Internal height", "mm", required=True),
+        _number("inside_length_mm", "Internal length", "mm", input_unit="m", required=True),
+        _number("inside_width_mm", "Internal width", "mm", input_unit="m", required=True),
+        _number("inside_height_mm", "Internal height", "mm", input_unit="m", required=True),
         _number("max_temperature_c", "Maximum temperature", "°C"),
     )),
     MachineSpec("finish_sandblast_booth", "finishing", "Sandblasting booth", "Abrasive surface preparation", (
-        _number("max_part_length_mm", "Maximum part length", "mm"),
-        _number("max_part_width_mm", "Maximum part width", "mm"),
-        _number("max_part_height_mm", "Maximum part height", "mm"),
+        _number("max_part_length_mm", "Maximum part length", "mm", input_unit="m"),
+        _number("max_part_width_mm", "Maximum part width", "mm", input_unit="m"),
+        _number("max_part_height_mm", "Maximum part height", "mm", input_unit="m"),
     )),
     MachineSpec("finish_wash_line", "finishing", "Washing or degreasing line", "Cleaning and pretreatment before coating", (
-        _number("max_part_length_mm", "Maximum part length", "mm"),
+        _number("max_part_length_mm", "Maximum part length", "mm", input_unit="m"),
         _multi("processes", "Processes", ("Degreasing", "Rinsing", "Phosphating", "Conversion coating")),
     )),
     MachineSpec("finish_polishing", "finishing", "Polishing or buffing station", "Mechanical polishing and buffing", (

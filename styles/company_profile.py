@@ -217,6 +217,32 @@ def apply_company_profile_css() -> None:
             box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
         }
 
+        .company-machinery-active {
+            display: none;
+        }
+
+        .stApp:has(.company-machinery-active) [data-testid="stExpander"] {
+            overflow: hidden;
+            border: 1px solid var(--color-border-soft) !important;
+            border-radius: 18px !important;
+            background: var(--color-surface) !important;
+            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+        }
+
+        .stApp:has(.company-machinery-active) [data-testid="stExpander"] details > summary {
+            min-height: 58px;
+            padding: 0 22px;
+        }
+
+        .stApp:has(.company-machinery-active) [data-testid="stExpander"] details > div {
+            padding: 0 22px 22px;
+        }
+
+        .stApp:has(.company-machinery-active) [class*="st-key-machinery_"][class*="_card"]
+        > [data-testid="stVerticalBlock"] {
+            gap: 18px !important;
+        }
+
         .stApp:has(.company-profile-active) .st-key-company_logo_card {
             margin-top: 12px;
             overflow: hidden;

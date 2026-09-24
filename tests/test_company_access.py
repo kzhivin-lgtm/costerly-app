@@ -1196,8 +1196,8 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     assert not saved
     assert "Complete the required fields" in " ".join(item.value for item in app.error)
 
-    next(field for field in app.number_input if field.label == "Working area, length *").set_value(2500)
-    next(field for field in app.number_input if field.label == "Working area, width *").set_value(1300)
+    next(field for field in app.text_input if field.label == "Working area, length (m) *").set_value("2,5")
+    next(field for field in app.text_input if field.label == "Working area, width (m) *").set_value("1.3")
     next(field for field in app.multiselect if field.label == "Materials normally processed *").set_value(["MDF"])
     next(button for button in app.button if button.label == "Save").click()
     app.run()
@@ -1206,6 +1206,56 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     assert saved[0]["availability_status"] == "in_house"
     assert saved[0]["capabilities"]["work_area_x_mm"] == 2500
     assert saved[0]["capabilities"]["materials"] == ["MDF"]
+
+
+def test_machinery_subcontractor_flow_uses_only_name(monkeypatch):
+    writes = []
+    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    monkeypatch.setattr(
+        company_profile,
+        "create_or_get_supplier",
+        lambda _access, name: writes.append(("supplier", name)) or {"supplier_id": "supplier-1"},
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "save_company_machinery",
+        lambda _access, **values: writes.append(("machine", values)),
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "deactivate_supplier_services",
+        lambda _access, **values: writes.append(("deactivate", values)),
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "save_supplier_service",
+        lambda _access, **values: writes.append(("service", values)),
+    )
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    app.radio[0].set_value("No")
+    app.run()
+    next(item for item in app.radio if item.label == "Do you use a regular subcontractor?").set_value("Yes")
+    app.run()
+    labels = [field.label for field in app.text_input]
+    assert "Subcontractor name *" in labels
+    assert "Supplier pricing method" not in [field.label for field in app.selectbox]
+    assert "Typical lead time, days" not in [field.label for field in app.number_input]
+
+    next(field for field in app.text_input if field.label == "Subcontractor name *").set_value("Cut Co")
+    next(button for button in app.button if button.label == "Save").click()
+    app.run()
+
+    assert ("supplier", "Cut Co") in writes
+    service = next(value for kind, value in writes if kind == "service")
+    assert service["supplier_id"] == "supplier-1"
+    assert service["pricing_method"] == "quote_only"
+    assert "typical_lead_time_days" not in service
 
 
 def test_owner_can_confirm_member_access_removal_from_users_tab(monkeypatch):
