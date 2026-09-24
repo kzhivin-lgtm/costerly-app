@@ -1284,7 +1284,12 @@ def test_price_catalog_renders_material_first_grouped_table():
     assert "10 mm plywood birch" in markup
     assert "Supplier Ltd" in markup
     assert "₪1\u202f200 / sheet" in markup
-    assert "SRC-12345678" in markup
+    assert 'class="price-catalog-type"' not in markup
+    assert "Sheet Materials</span>" not in markup
+    assert 'class="price-catalog-source-button"' in markup
+    assert 'href="#source-library"' in markup
+    assert 'data-source-id="12345678-aaaa-bbbb-cccc-123456789012"' in markup
+    assert "SRC-12345678" not in markup
 
 
 def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeypatch):

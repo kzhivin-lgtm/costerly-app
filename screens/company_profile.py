@@ -1648,11 +1648,6 @@ def _price_catalog_date(value: object) -> str:
         return escape(text[:10])
 
 
-def _price_catalog_source_ref(source_id: object) -> str:
-    compact = "".join(character for character in str(source_id or "") if character.isalnum())
-    return f"SRC-{compact[:8].upper()}" if compact else "SRC"
-
-
 def _price_catalog_count(count: int) -> str:
     return f"{count} {'price' if count == 1 else 'prices'}"
 
@@ -1731,74 +1726,64 @@ def _render_price_catalog(catalog: list[dict]) -> None:
         st.info("No material prices match these filters.")
         return
 
-    departments: dict[str, dict[str, list[dict]]] = {}
+    departments: dict[str, list[dict]] = {}
     for row in visible:
-        departments.setdefault(str(row["department"]), {}).setdefault(
-            str(row["material_type"]), []
-        ).append(row)
+        departments.setdefault(str(row["department"]), []).append(row)
 
     department_markup: list[str] = []
     department_labels = {"Wood": "Wood", "Metal": "Metal", "Finishing": "Coating"}
     for department_name in ("Wood", "Metal", "Finishing"):
-        material_types = departments.get(department_name)
-        department_count = sum(len(rows) for rows in (material_types or {}).values())
-        type_markup: list[str] = []
-        for material_type, rows in (material_types or {}).items():
-            table_rows: list[str] = []
-            for row in rows:
-                canonical_name = str(row.get("canonical_name") or "Material")
-                original_name = str(row.get("original_name") or "")
-                supplier_name = str(row.get("supplier_name") or "Unknown supplier")
-                source_url = str(row.get("source_url") or "")
-                source_name = str(row.get("source_name") or "")
-                supplier_link = (
-                    '<a class="price-catalog-link" href="'
-                    f'{escape(source_url, quote=True)}" target="_blank" rel="noopener noreferrer" '
-                    f'title="{escape(source_url, quote=True)}">'
-                    f'{escape(_price_catalog_url_label(source_url))}</a>'
-                    if source_url else ""
-                )
-                source_reference = _price_catalog_source_ref(row.get("source_id"))
-                source_cell = (
-                    f'<a href="{escape(source_url, quote=True)}" target="_blank" '
-                    'rel="noopener noreferrer" '
-                    f'title="{escape(source_name or source_url, quote=True)}">'
-                    f'{escape(source_reference)}</a>'
-                    if source_url
-                    else f'<span title="{escape(source_name, quote=True)}">{escape(source_reference)}</span>'
-                )
-                table_rows.append(
-                    "<tr>"
-                    '<td class="price-catalog-material">'
-                    f'<strong title="{escape(canonical_name, quote=True)}">{escape(canonical_name)}</strong>'
-                    + (
-                        f'<span title="{escape(original_name, quote=True)}">{escape(original_name)}</span>'
-                        if original_name and original_name.casefold() != canonical_name.casefold()
-                        else ""
-                    )
-                    + "</td>"
-                    '<td class="price-catalog-supplier">'
-                    f'<strong>{escape(supplier_name)}</strong>{supplier_link}</td>'
-                    f'<td class="price-catalog-price"><strong>{_price_catalog_value(row)}</strong></td>'
-                    f'<td class="price-catalog-date">{_price_catalog_date(row.get("updated_at"))}</td>'
-                    f'<td class="price-catalog-source">{source_cell}</td>'
-                    "</tr>"
-                )
-            type_markup.append(
-                '<details class="price-catalog-type" open>'
-                f'<summary><span>{escape(material_type)}</span><span>{_price_catalog_count(len(rows))}</span></summary>'
-                '<div class="price-catalog-table-wrap"><table>'
-                '<thead><tr><th>Material</th><th>Supplier</th><th>Price</th>'
-                '<th>Updated</th><th>Source</th></tr></thead>'
-                f'<tbody>{"".join(table_rows)}</tbody></table></div></details>'
+        rows = departments.get(department_name) or []
+        table_rows: list[str] = []
+        for row in rows:
+            canonical_name = str(row.get("canonical_name") or "Material")
+            original_name = str(row.get("original_name") or "")
+            supplier_name = str(row.get("supplier_name") or "Unknown supplier")
+            source_url = str(row.get("source_url") or "")
+            source_name = str(row.get("source_name") or "")
+            source_id = str(row.get("source_id") or "")
+            supplier_link = (
+                '<a class="price-catalog-link" href="'
+                f'{escape(source_url, quote=True)}" target="_blank" rel="noopener noreferrer" '
+                f'title="{escape(source_url, quote=True)}">'
+                f'{escape(_price_catalog_url_label(source_url))}</a>'
+                if source_url else ""
             )
-        department_body = "".join(type_markup) or (
-            '<div class="price-catalog-department-empty">No active prices</div>'
+            source_cell = (
+                '<a class="price-catalog-source-button" href="#source-library" '
+                f'data-source-id="{escape(source_id, quote=True)}" '
+                f'title="{escape(source_name or "View source in library", quote=True)}" '
+                'aria-label="View source in library"><span aria-hidden="true"></span></a>'
+            )
+            table_rows.append(
+                "<tr>"
+                '<td class="price-catalog-material">'
+                f'<strong title="{escape(canonical_name, quote=True)}">{escape(canonical_name)}</strong>'
+                + (
+                    f'<span title="{escape(original_name, quote=True)}">{escape(original_name)}</span>'
+                    if original_name and original_name.casefold() != canonical_name.casefold()
+                    else ""
+                )
+                + "</td>"
+                '<td class="price-catalog-supplier">'
+                f'<strong>{escape(supplier_name)}</strong>{supplier_link}</td>'
+                f'<td class="price-catalog-price"><strong>{_price_catalog_value(row)}</strong></td>'
+                f'<td class="price-catalog-date">{_price_catalog_date(row.get("updated_at"))}</td>'
+                f'<td class="price-catalog-source">{source_cell}</td>'
+                "</tr>"
+            )
+        department_body = (
+            '<div class="price-catalog-table-wrap"><table>'
+            '<thead><tr><th>Material</th><th>Supplier</th><th>Price</th>'
+            '<th>Updated</th><th aria-label="Source"></th></tr></thead>'
+            f'<tbody>{"".join(table_rows)}</tbody></table></div>'
+            if table_rows
+            else '<div class="price-catalog-department-empty">No active prices</div>'
         )
         department_markup.append(
             '<details class="price-catalog-department" open>'
             f'<summary><span>{escape(department_labels[department_name])}</span>'
-            f'<span>{_price_catalog_count(department_count)}</span></summary>'
+            f'<span>{_price_catalog_count(len(rows))}</span></summary>'
             f'{department_body}</details>'
         )
 
@@ -2023,6 +2008,10 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
             _render_price_catalog(catalog)
 
         with st.container(key="price_source_library_section"):
+            st.markdown(
+                '<span id="source-library" class="price-source-library-anchor"></span>',
+                unsafe_allow_html=True,
+            )
             with st.expander(f'Source library · {len(sources)}', expanded=False):
                 if not sources:
                     st.info("No source documents yet.")

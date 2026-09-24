@@ -997,8 +997,7 @@ def apply_company_profile_css() -> None:
         }
 
         .price-catalog-title,
-        .price-catalog-department > summary,
-        .price-catalog-type > summary {
+        .price-catalog-department > summary {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -1018,8 +1017,7 @@ def apply_company_profile_css() -> None:
         }
 
         .price-catalog-title span:last-child,
-        .price-catalog-department > summary span:last-child,
-        .price-catalog-type > summary span:last-child {
+        .price-catalog-department > summary span:last-child {
             color: var(--color-text-muted);
             font-family: var(--font-sans);
             font-size: 12px;
@@ -1028,8 +1026,7 @@ def apply_company_profile_css() -> None:
             text-transform: none;
         }
 
-        .price-catalog-department,
-        .price-catalog-type {
+        .price-catalog-department {
             border-top: 1px solid var(--color-border-soft);
         }
 
@@ -1041,21 +1038,18 @@ def apply_company_profile_css() -> None:
             font-size: 13px;
         }
 
-        .price-catalog-department > summary,
-        .price-catalog-type > summary {
+        .price-catalog-department > summary {
             min-height: 54px;
             padding: 0 22px;
             cursor: pointer;
             list-style-position: inside;
         }
 
-        .price-catalog-department > summary::-webkit-details-marker,
-        .price-catalog-type > summary::-webkit-details-marker {
+        .price-catalog-department > summary::-webkit-details-marker {
             display: none;
         }
 
-        .price-catalog-department > summary::after,
-        .price-catalog-type > summary::after {
+        .price-catalog-department > summary::after {
             content: "⌄";
             flex: 0 0 auto;
             margin-left: 4px;
@@ -1066,13 +1060,11 @@ def apply_company_profile_css() -> None:
             line-height: 1;
         }
 
-        .price-catalog-department[open] > summary::after,
-        .price-catalog-type[open] > summary::after {
+        .price-catalog-department[open] > summary::after {
             content: "⌃";
         }
 
-        .price-catalog-department > summary span:first-child,
-        .price-catalog-type > summary span:first-child {
+        .price-catalog-department > summary span:first-child {
             margin-right: auto;
         }
 
@@ -1084,14 +1076,6 @@ def apply_company_profile_css() -> None:
             font-weight: 700;
             letter-spacing: 0.035em;
             text-transform: uppercase;
-        }
-
-        .price-catalog-type > summary {
-            padding-left: 38px;
-            background: #FCFBFD;
-            color: var(--color-text-strong);
-            font-size: 14px;
-            font-weight: 700;
         }
 
         .price-catalog-table-wrap {
@@ -1123,11 +1107,11 @@ def apply_company_profile_css() -> None:
             text-transform: uppercase;
         }
 
-        .price-catalog-card th:nth-child(1) { width: 31%; }
-        .price-catalog-card th:nth-child(2) { width: 25%; }
-        .price-catalog-card th:nth-child(3) { width: 19%; }
-        .price-catalog-card th:nth-child(4) { width: 14%; }
-        .price-catalog-card th:nth-child(5) { width: 11%; }
+        .price-catalog-card th:nth-child(1) { width: 37%; }
+        .price-catalog-card th:nth-child(2) { width: 31%; }
+        .price-catalog-card th:nth-child(3) { width: 15%; }
+        .price-catalog-card th:nth-child(4) { width: 12%; }
+        .price-catalog-card th:nth-child(5) { width: 5%; }
 
         .price-catalog-material strong,
         .price-catalog-supplier strong,
@@ -1165,11 +1149,55 @@ def apply_company_profile_css() -> None:
             white-space: nowrap;
         }
 
-        .price-catalog-source a,
-        .price-catalog-source span {
-            color: var(--color-text-muted);
-            font-family: var(--font-mono);
-            font-size: 12px;
+        .price-catalog-card th:last-child,
+        .price-catalog-source {
+            padding-right: 8px;
+            padding-left: 8px;
+            text-align: center;
+        }
+
+        .price-catalog-source-button {
+            display: inline-flex;
+            width: 30px;
+            height: 30px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 9px;
+            background: #FAF8FC;
+        }
+
+        .price-catalog-source-button span {
+            display: block;
+            width: 16px;
+            height: 16px;
+            background: var(--color-text-muted);
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M9 15h6M9 11h2'/%3E%3C/svg%3E") center / contain no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6'/%3E%3Cpath d='M9 15h6M9 11h2'/%3E%3C/svg%3E") center / contain no-repeat;
+        }
+
+        .price-catalog-source-button:hover {
+            border-color: var(--color-accent);
+            background: #F5EFFC;
+        }
+
+        .price-catalog-source-button:hover span {
+            background: var(--color-accent);
+        }
+
+        .price-source-library-anchor {
+            display: block;
+            position: relative;
+            top: -16px;
+            height: 0;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stElementContainer"]:has(.price-source-library-anchor) {
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
 
         .price-catalog-main {
