@@ -103,7 +103,9 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
     MachineSpec("metal_sheet_laser", "metalworking", "Sheet laser cutter", "Profile cutting of sheet metal", (
         _number("work_area_x_mm", "Working length", "mm", input_unit="m", required=True),
         _number("work_area_y_mm", "Working width", "mm", input_unit="m", required=True),
-        _text("material_thickness_limits", "Materials and thickness limits", required=True),
+        _number("laser_power_kw", "Laser power", "kW"),
+        _boolean("copper_brass", "Copper / brass"),
+        _boolean("bevel_cutting", "Bevel cutting"),
     )),
     MachineSpec("metal_tube_laser", "metalworking", "Tube / profile cutting", "Profile cutting of tube and section", (
         _number("max_stock_length_mm", "Maximum length", "mm", input_unit="m", required=True),

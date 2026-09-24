@@ -36,8 +36,12 @@ source of truth for this implementation.
 | Owner changes an availability-only row | Persist Yes, No, or Not answered immediately; do not open details or show Save |
 | Owner chooses Yes | Reveal only the minimum capability questions for that machine; do not reveal subcontractor questions |
 | CNC router is in-house | Ask working length, working width, maximum thickness, solid wood, horizontal drilling, 5-axis machining, and costing method |
+| Owner chooses CNC costing | Offer only `Not provided` and `Per machine hour`; per-sheet, per-part, and per-job prices are derived commercial outputs, while outsourced CNC uses a job quote |
 | CNC router handles standard sheet goods | Assume MDF, particleboard / LDSP, plywood, and melamine-faced board; do not ask the owner to confirm them |
 | CNC router requires machining on both faces | Treat the second face as another setup; do not ask a vague two-sided-processing question |
+| Sheet laser is in-house | Ask working length, working width, laser power, copper / brass, bevel cutting, and costing method |
+| Sheet laser handles common metals | Assume mild steel, stainless steel, and aluminum; do not ask the owner to confirm them |
+| Sheet laser costing is provided | Offer only `Not provided` and `Per machine hour`; use the RFQ material, thickness, cut length, and piercings to derive the job cost |
 | Owner chooses No for an outsourceable operation | Hide in-house details and show one `Regular subcontractor` selector with no contractor, an existing contractor, or add new |
 | Owner chooses No for an internal-support capability | Hide in-house details and do not ask for a subcontractor |
 | Owner saves No without a subcontractor | Save the explicit absence and show `Market pricing`; later routing may use a regional benchmark with lower confidence |
@@ -92,8 +96,9 @@ source of truth for this implementation.
   subcontractor fields. It does not introduce another narrow nested card.
 - Detail descriptions are omitted. For CNC, row one contains working length,
   working width, and maximum thickness. Row two contains solid wood, horizontal
-  drilling, and 5-axis machining. `Costing method` remains in the third column
-  below maximum thickness. MDF, particleboard / LDSP, plywood, and
+  drilling, and 5-axis machining. Solid wood and horizontal drilling share the
+  first column, 5-axis machining uses the second, and `Costing method` remains
+  fixed in the third column below maximum thickness. MDF, particleboard / LDSP, plywood, and
   melamine-faced board are system defaults rather than user questions.
 - Machinery has no introductory heading below the Profile tabs. Its first
   group starts at the same vertical offset as the Overhead Expenses content.
@@ -116,6 +121,13 @@ source of truth for this implementation.
 - `Costing method` exposes only `Not provided`, `Per machine hour`, `Per sheet`,
   `Per part`, `Per job`, and `Quote each job`. Existing internal-cost or
   customer-price provenance remains stored but is not repeated in the labels.
+- CNC is narrower: in-house costing offers only `Not provided` and
+  `Per machine hour`. A customer-facing CNC price is still a whole-job quote;
+  per-sheet and per-part prices are outputs rather than stored cost bases.
+- Sheet laser follows the same machine-time costing rule. Its minimum profile
+  asks working length, working width, laser power, copper / brass, and bevel
+  cutting. Mild steel, stainless steel, and aluminum are treated as baseline
+  materials; tube laser remains a separate capability rather than a checkbox.
 - Only questions that materially change feasibility or price are shown.
   Panel cutting saw, edge bander, solid wood machining, wide-belt sanding, and
   solid metal machining, sandblasting, and galvanizing are availability-only. CNC retains working size,
@@ -174,7 +186,7 @@ never presented as a real supplier quotation.
   behavior without reading or rewriting the prototype `company_machines` rows.
 - In-house cost rates and supplier charges retain distinct rate provenance.
 - The deterministic production snapshot is implemented locally.
-- 290 repository tests pass, including the reduced profile catalog,
+- 291 repository tests pass, including the reduced profile catalog,
   availability-only machines, collapsed saved rows, removable subcontractors,
   pills, and empty-state UI scenarios.
 - The owner applied the live Supabase migration on 24.09. A service-role read

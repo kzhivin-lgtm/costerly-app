@@ -227,6 +227,10 @@ IN_HOUSE_PRICING_OPTIONS = {
     "job": ("Per job", "per_job", None),
     "quote_only": ("Quote each job", "quote_only", None),
 }
+MACHINE_TIME_PRICING_OPTIONS = {
+    "unknown": ("Not provided", "unknown", None),
+    "hourly": ("Per machine hour", "hourly", None),
+}
 SUPPLIER_PRICING_OPTIONS = {
     "quote_only": ("Quote each job", "quote_only", None),
     "hourly": ("Per machine hour", "hourly", "supplier_quote"),
@@ -332,10 +336,13 @@ def _render_machinery_pricing(
     *,
     supplier: bool = False,
     method_column=None,
+    options=None,
 ) -> tuple[str, dict]:
     saved_method = str(saved.get("pricing_method") or "unknown")
     saved_kind = str((saved.get("pricing") or {}).get("rate_kind") or "")
-    options = SUPPLIER_PRICING_OPTIONS if supplier else IN_HOUSE_PRICING_OPTIONS
+    options = options or (
+        SUPPLIER_PRICING_OPTIONS if supplier else IN_HOUSE_PRICING_OPTIONS
+    )
     selected_key = next(
         (
             key for key, (_label, method, rate_kind) in options.items()
@@ -692,7 +699,7 @@ def _render_owner_machinery(
                                         fields=selector_fields[2:],
                                     )
                                 )
-                        if boolean_fields:
+                        if boolean_fields and not defer_costing:
                             checkbox_row = st.columns(3)
                             for index, field in enumerate(boolean_fields[:3]):
                                 with checkbox_row[index]:
@@ -702,11 +709,34 @@ def _render_owner_machinery(
                                         )
                                     )
                         if defer_costing:
-                            pricing_row = st.columns(3)
+                            detail_row = st.columns(3)
+                            first_column_count = 2 if len(boolean_fields) >= 3 else 1
+                            with detail_row[0]:
+                                for field in boolean_fields[:first_column_count]:
+                                    capabilities[field.key] = (
+                                        _render_machine_capability_widget(
+                                            field, saved, row_key
+                                        )
+                                    )
+                            with detail_row[1]:
+                                for field in boolean_fields[first_column_count:]:
+                                    capabilities[field.key] = (
+                                        _render_machine_capability_widget(
+                                            field, saved, row_key
+                                        )
+                                    )
                             pricing_method, pricing = _render_machinery_pricing(
                                 saved,
                                 row_key,
-                                method_column=pricing_row[2],
+                                method_column=detail_row[2],
+                                options=(
+                                    MACHINE_TIME_PRICING_OPTIONS
+                                    if spec.code in {
+                                        "wood_cnc_router",
+                                        "metal_sheet_laser",
+                                    }
+                                    else None
+                                ),
                             )
                     else:
                         matching_services = [

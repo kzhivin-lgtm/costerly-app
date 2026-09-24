@@ -1190,6 +1190,10 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
 
     app.get("button_group")[0].set_value("Yes")
     app.run()
+    costing_method = next(
+        field for field in app.selectbox if field.label == "Costing method"
+    )
+    assert costing_method.options == ["Not provided", "Per machine hour"]
     next(button for button in app.button if button.label == "Save").click()
     app.run()
     assert not saved
@@ -1497,6 +1501,13 @@ def test_machinery_costing_method_labels_are_short_and_preserve_rate_semantics()
         "Quote each job",
     ]
     assert all("Customer" not in label and "Internal" not in label for label in labels)
+    assert [
+        item[0]
+        for item in company_profile.MACHINE_TIME_PRICING_OPTIONS.values()
+    ] == [
+        "Not provided",
+        "Per machine hour",
+    ]
 
 
 def test_owner_can_confirm_member_access_removal_from_users_tab(monkeypatch):

@@ -12,7 +12,7 @@
   company tables are empty, anonymous catalog access is denied, and all 124
   prototype `company_machines` rows remain untouched. The owner/member Profile
   UI, deterministic production-context snapshot, and automated scenario
-  coverage are implemented locally and 290 tests pass. The real owner/member
+  coverage are implemented locally and 291 tests pass. The real owner/member
   production pass, mobile/keyboard pass, commit, deployment, and acceptance remain pending. The production
   context is not sent to Anthropic until the owner explicitly approves transfer
   of private machinery, supplier, and pricing data or approves a sanitized

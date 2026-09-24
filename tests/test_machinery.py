@@ -154,6 +154,28 @@ def test_cnc_requires_work_area_and_keeps_only_exceptional_capabilities():
     }
 
 
+def test_sheet_laser_keeps_power_and_only_exceptional_capabilities():
+    values = machinery._validate_capabilities(
+        "metal_sheet_laser",
+        {
+            "work_area_x_mm": 3000,
+            "work_area_y_mm": 1500,
+            "laser_power_kw": 6,
+            "copper_brass": True,
+            "bevel_cutting": False,
+            "material_thickness_limits": "legacy value",
+        },
+    )
+
+    assert values == {
+        "work_area_x_mm": 3000.0,
+        "work_area_y_mm": 1500.0,
+        "laser_power_kw": 6.0,
+        "copper_brass": True,
+        "bevel_cutting": False,
+    }
+
+
 def test_structured_pricing_requires_positive_rate_and_currency():
     with pytest.raises(machinery.MachineryError, match="greater than zero"):
         machinery._validate_pricing("hourly", {"rate": 0, "currency": "ILS"})
