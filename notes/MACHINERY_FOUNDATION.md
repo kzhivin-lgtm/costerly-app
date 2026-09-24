@@ -32,7 +32,8 @@ source of truth for this implementation.
 
 | State or action | Expected behavior |
 | --- | --- |
-| Machinery tab opens with no answers | Show the 17 estimation-relevant capabilities in Woodworking, Metalworking, and Painting & Finishing groups; do not create rows merely by viewing |
+| Machinery tab opens with no answers | Show the 16 estimation-relevant capabilities in Woodworking, Metalworking, and Painting & Finishing groups; do not create rows merely by viewing |
+| Owner changes an availability-only row | Persist Yes, No, or Not answered immediately; do not open details or show Save |
 | Owner chooses Yes | Reveal only the minimum capability questions for that machine; do not reveal subcontractor questions |
 | Owner chooses No for an outsourceable operation | Hide in-house details and show one `Regular subcontractor` selector with no contractor, an existing contractor, or add new |
 | Owner chooses No for an internal-support capability | Hide in-house details and do not ask for a subcontractor |
@@ -115,10 +116,13 @@ source of truth for this implementation.
   customer-price provenance remains stored but is not repeated in the labels.
 - Only questions that materially change feasibility or price are shown.
   Panel cutting saw, edge bander, solid wood machining, wide-belt sanding, and
-  polishing are availability-only. CNC retains working size, maximum thickness,
-  materials, two-sided processing, and costing. Laser cutting, forming presses,
-  welding, and size-dependent finishing retain their material feasibility or
-  maximum-size fields. Labels use the shortest unambiguous wording.
+  solid metal machining are availability-only. CNC retains working size,
+  maximum thickness, materials, two-sided processing, and costing. Sheet laser
+  cutting and size-dependent finishing retain their feasibility or maximum-size
+  fields. Sheet metal bending, metal press, profile bending, rolling, and
+  welding are availability-only. Polishing is manual-tool work and is not shown
+  as Machinery. Labels use the shortest unambiguous wording.
+- `Accept external work` is not an estimation input and is not asked anywhere.
 
 ## Catalog groups
 
@@ -134,22 +138,21 @@ source of truth for this implementation.
 ### Metalworking
 
 - Sheet laser cutter
-- Tube / profile cutting
-- Press brake
-- Punching or hydraulic press
-- Tube or profile bender
-- Plate or section rolling machine
-- Welding capability
+- Solid metal machining
+- Sheet metal bending
+- Metal press
+- Tube / profile bending
+- Metal rolling
+- Welding
 
 ### Painting and finishing
 
 - Wet painting
 - Powder coating
 - Sandblasting
-- Polishing or buffing station
 
 The database catalog keeps all 26 additive seed rows for compatibility and
-historical estimate audit. The profile asks only the 17 capabilities above.
+historical estimate audit. The profile asks only the 16 capabilities above.
 
 ## Routing price precedence
 
@@ -169,7 +172,7 @@ never presented as a real supplier quotation.
   behavior without reading or rewriting the prototype `company_machines` rows.
 - In-house cost rates and supplier charges retain distinct rate provenance.
 - The deterministic production snapshot is implemented locally.
-- 289 repository tests pass, including the reduced profile catalog,
+- 290 repository tests pass, including the reduced profile catalog,
   availability-only machines, collapsed saved rows, removable subcontractors,
   pills, and empty-state UI scenarios.
 - The owner applied the live Supabase migration on 24.09. A service-role read

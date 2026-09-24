@@ -1380,9 +1380,20 @@ def test_saved_machinery_row_is_collapsed_with_summary_and_can_reopen(monkeypatc
 
 
 def test_internal_support_capability_does_not_ask_for_subcontractor(monkeypatch):
+    saved_rows = []
     monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    monkeypatch.setattr(
+        company_profile,
+        "save_company_machinery",
+        lambda _access, **values: saved_rows.append(values),
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "deactivate_supplier_services",
+        lambda _access, **_values: None,
+    )
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = "owner"
     app.session_state["company_profile_tab"] = "Machinery"
@@ -1394,13 +1405,26 @@ def test_internal_support_capability_does_not_ask_for_subcontractor(monkeypatch)
     assert "Regular subcontractor (optional)" not in [
         field.label for field in app.text_input
     ]
-    assert any(button.label == "Save" for button in app.button)
+    assert not any(button.label == "Save" for button in app.button)
+    assert saved_rows[-1]["machine_code"] == "wood_solid_preparation"
+    assert saved_rows[-1]["availability_status"] == "not_in_house"
 
 
 def test_availability_only_machine_asks_no_detail_questions(monkeypatch):
+    saved_rows = []
     monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    monkeypatch.setattr(
+        company_profile,
+        "save_company_machinery",
+        lambda _access, **values: saved_rows.append(values),
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "deactivate_supplier_services",
+        lambda _access, **_values: None,
+    )
     app = AppTest.from_function(_render_profile_test)
     app.session_state["test_profile_role"] = "owner"
     app.session_state["company_profile_tab"] = "Machinery"
@@ -1409,10 +1433,12 @@ def test_availability_only_machine_asks_no_detail_questions(monkeypatch):
     app.get("button_group")[1].set_value("Yes")
     app.run()
 
-    assert any(button.label == "Save" for button in app.button)
+    assert not any(button.label == "Save" for button in app.button)
     assert not app.text_input
     assert not app.selectbox
     assert not app.checkbox
+    assert saved_rows[-1]["machine_code"] == "wood_panel_saw"
+    assert saved_rows[-1]["availability_status"] == "in_house"
 
 
 def test_machinery_uses_grouped_full_width_table_contract():
@@ -1451,6 +1477,7 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert "st.pills(" in source
     assert 'button[data-testid="stBaseButton-pillsActive"]' in css
     assert "Regular subcontractor?" not in source
+    assert "Accept external work" not in source
     assert 'st.columns([2, 1])' in source
     assert 'help="Close details"' not in source
     assert 'grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr) minmax(36px, 0.13fr);' in css

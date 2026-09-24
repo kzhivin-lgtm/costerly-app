@@ -1,7 +1,7 @@
 # TODO
 
 - 3.9.1 Machinery and production routing foundation: active, P1. Add a compact
-  17-capability profile across woodworking, metalworking, and finishing while
+  16-capability profile across woodworking, metalworking, and finishing while
   retaining the 26-row database catalog for compatibility and history,
   with wood CNC and metal laser cutting as separate first-class capabilities.
   Company owners record explicit in-house availability, minimum technical
@@ -12,7 +12,7 @@
   company tables are empty, anonymous catalog access is denied, and all 124
   prototype `company_machines` rows remain untouched. The owner/member Profile
   UI, deterministic production-context snapshot, and automated scenario
-  coverage are implemented locally and 289 tests pass. The real owner/member
+  coverage are implemented locally and 290 tests pass. The real owner/member
   production pass, mobile/keyboard pass, commit, deployment, and acceptance remain pending. The production
   context is not sent to Anthropic until the owner explicitly approves transfer
   of private machinery, supplier, and pricing data or approves a sanitized

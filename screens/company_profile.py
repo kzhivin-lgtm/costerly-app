@@ -46,6 +46,7 @@ from use_cases.machinery import (
     SUBCONTRACTOR_MACHINE_CODES,
     MachineryError,
     create_or_get_supplier,
+    deactivate_company_machinery,
     deactivate_supplier_services,
     list_company_machinery,
     list_company_suppliers,
@@ -511,10 +512,22 @@ def _render_owner_machinery(
                 row_key = f"machinery_{spec.code}"
                 detail_open_key = f"{row_key}_detail_open"
                 previous_availability_key = f"{row_key}_previous_availability"
+                availability_widget_key = f"{row_key}_availability"
+                availability_reset_key = f"{row_key}_availability_reset"
+                availability_error_key = f"{row_key}_availability_error"
+                availability_only = (
+                    not spec.fields
+                    and spec.code not in PROFILE_COSTING_MACHINE_CODES
+                    and spec.code not in SUBCONTRACTOR_MACHINE_CODES
+                )
                 if detail_open_key not in st.session_state:
                     st.session_state[detail_open_key] = False
                 if previous_availability_key not in st.session_state:
                     st.session_state[previous_availability_key] = initial
+                if availability_reset_key in st.session_state:
+                    st.session_state[availability_widget_key] = st.session_state.pop(
+                        availability_reset_key
+                    )
                 with st.container(key=f"{row_key}_row"):
                     name_column, answer_column, toggle_column = st.columns(
                         [1.45, 1, 0.13], gap="small"
@@ -538,7 +551,7 @@ def _render_owner_machinery(
                             f"{spec.display_name}: available in-house?",
                             ["Not answered", "Yes", "No"],
                             default=initial,
-                            key=f"{row_key}_availability",
+                            key=availability_widget_key,
                             label_visibility="collapsed",
                             width="stretch",
                         )
@@ -551,22 +564,61 @@ def _render_owner_machinery(
                             f'machinery-selected-{availability_class}"></span>',
                             unsafe_allow_html=True,
                         )
-                    if (
-                        availability
-                        != st.session_state[previous_availability_key]
-                    ):
-                        st.session_state[detail_open_key] = (
-                            availability != "Not answered"
-                        )
-                        st.session_state[previous_availability_key] = availability
+                    availability_changed = (
+                        availability != st.session_state[previous_availability_key]
+                    )
                     with toggle_column:
-                        if availability != "Not answered" and st.button(
-                            "⌃" if st.session_state[detail_open_key] else "⌄",
-                            key=f"{row_key}_toggle",
+                        if (
+                            not availability_only
+                            and availability != "Not answered"
+                            and st.button(
+                                "⌃" if st.session_state[detail_open_key] else "⌄",
+                                key=f"{row_key}_toggle",
+                            )
                         ):
                             st.session_state[detail_open_key] = not st.session_state[
                                 detail_open_key
                             ]
+                if availability_error_key in st.session_state:
+                    st.error(st.session_state.pop(availability_error_key))
+                if availability_only and availability_changed:
+                    previous_availability = st.session_state[previous_availability_key]
+                    try:
+                        if availability == "Not answered":
+                            deactivate_company_machinery(
+                                access,
+                                machine_code=spec.code,
+                            )
+                        else:
+                            save_company_machinery(
+                                access,
+                                machine_code=spec.code,
+                                availability_status=(
+                                    "in_house" if availability == "Yes"
+                                    else "not_in_house"
+                                ),
+                                accepts_external_work=False,
+                            )
+                        deactivate_supplier_services(access, machine_code=spec.code)
+                        st.session_state[previous_availability_key] = availability
+                        st.rerun()
+                    except (MachineryError, PermissionError) as exc:
+                        st.session_state[availability_reset_key] = previous_availability
+                        st.session_state[availability_error_key] = str(exc)
+                        st.rerun()
+                    except Exception:
+                        st.session_state[availability_reset_key] = previous_availability
+                        st.session_state[availability_error_key] = (
+                            "Machinery settings could not be saved. Try again"
+                        )
+                        st.rerun()
+                if availability_changed:
+                    st.session_state[detail_open_key] = (
+                        availability != "Not answered"
+                    )
+                    st.session_state[previous_availability_key] = availability
+                if availability_only:
+                    continue
                 if (
                     availability == "Not answered"
                     or not st.session_state[detail_open_key]
@@ -577,7 +629,6 @@ def _render_owner_machinery(
                     capabilities: dict[str, object] = {}
                     pricing_method = "unknown"
                     pricing: dict[str, object] = {}
-                    accepts_external = False
                     subcontractor_name = ""
                     confirm_change = False
                     if availability == "Yes":
@@ -638,7 +689,7 @@ def _render_owner_machinery(
                                         fields=selector_fields[2:],
                                     )
                                 )
-                        if boolean_fields or shows_costing:
+                        if boolean_fields:
                             checkbox_row = st.columns(3)
                             for index, field in enumerate(boolean_fields[:2]):
                                 with checkbox_row[index]:
@@ -647,13 +698,6 @@ def _render_owner_machinery(
                                             field, saved, row_key
                                         )
                                     )
-                            external_column = min(len(boolean_fields), 2)
-                            with checkbox_row[external_column]:
-                                accepts_external = st.checkbox(
-                                    "Accept external work",
-                                    value=bool(saved.get("accepts_external_work")),
-                                    key=f"{row_key}_external",
-                                )
                     else:
                         matching_services = [
                             service for service in services
@@ -743,7 +787,7 @@ def _render_owner_machinery(
                         capabilities=capabilities,
                         pricing_method=pricing_method,
                         pricing=pricing,
-                        accepts_external_work=accepts_external,
+                        accepts_external_work=False,
                     )
                     deactivate_supplier_services(access, machine_code=spec.code)
                     if status == "not_in_house" and supplier_id:

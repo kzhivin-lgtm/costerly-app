@@ -110,37 +110,16 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("max_profile_size_mm", "Maximum profile size", "mm", required=True),
         _text("material_thickness_limits", "Materials and wall thicknesses", required=True),
     )),
-    MachineSpec("metal_press_brake", "metalworking", "Press brake", "Controlled bending of sheet metal", (
-        _number("max_bend_length_mm", "Maximum bend length", "mm", input_unit="m", required=True),
-        _number("tonnage_t", "Press force", "t", required=True),
-        _text("material_thickness_limits", "Materials and thickness limits"),
-    )),
+    MachineSpec("metal_press_brake", "metalworking", "Sheet metal bending", "Controlled bending of sheet metal", ()),
     MachineSpec("metal_sheet_shear", "metalworking", "Sheet shear or guillotine", "Straight cutting of sheet metal", (
         _number("max_cut_length_mm", "Maximum cut length", "mm", input_unit="m", required=True),
         _text("material_thickness_limits", "Material and thickness limits"),
     )),
-    MachineSpec("metal_punch_press", "metalworking", "Punching or hydraulic press", "Punching, stamping and press operations", (
-        _number("tonnage_t", "Press force", "t", required=True),
-        _number("bed_length_mm", "Bed length", "mm", input_unit="m"),
-        _number("bed_width_mm", "Bed width", "mm", input_unit="m"),
-    )),
-    MachineSpec("metal_profile_saw", "metalworking", "Tube or profile saw", "Length and mitre cutting of profiles", (
-        _number("max_profile_size_mm", "Maximum profile diameter or side", "mm"),
-        _boolean("mitre_cutting", "Mitre cutting is supported"),
-        _multi("materials", "Materials", METAL_MATERIALS),
-    )),
-    MachineSpec("metal_profile_bender", "metalworking", "Tube or profile bender", "Controlled bending of tube and profiles", (
-        _number("max_profile_size_mm", "Maximum profile size", "mm"),
-        _text("profile_limits", "Profile and thickness limits"),
-    )),
-    MachineSpec("metal_rolling_machine", "metalworking", "Plate or section rolling machine", "Rolling plate and sections to a radius", (
-        _number("max_working_width_mm", "Maximum width", "mm", input_unit="m"),
-        _text("material_thickness_limits", "Materials and thickness limits"),
-    )),
-    MachineSpec("metal_welding", "metalworking", "Welding capability", "MIG, MAG, TIG or other welding processes", (
-        _multi("processes", "Welding processes", ("MIG / MAG", "TIG", "MMA / stick", "Spot welding", "Robotic welding"), required=True),
-        _multi("materials", "Materials", METAL_MATERIALS, required=True),
-    )),
+    MachineSpec("metal_punch_press", "metalworking", "Metal press", "Punching, stamping and press operations", ()),
+    MachineSpec("metal_profile_saw", "metalworking", "Solid metal machining", "Cutting and machining solid metal, tube and profiles", ()),
+    MachineSpec("metal_profile_bender", "metalworking", "Tube / profile bending", "Controlled bending of tube and profiles", ()),
+    MachineSpec("metal_rolling_machine", "metalworking", "Metal rolling", "Rolling plate and sections to a radius", ()),
+    MachineSpec("metal_welding", "metalworking", "Welding", "MIG, MAG, TIG or other welding processes", ()),
     MachineSpec("metal_deburring", "metalworking", "Deburring or grinding machine", "Edge cleanup, deburring and grinding", (
         _number("max_width_mm", "Maximum working width", "mm", input_unit="m"),
         _multi("processes", "Processes", ("Deburring", "Edge rounding", "Grinding", "Brushing")),
@@ -190,7 +169,7 @@ PROFILE_MACHINE_CODES = (
     "wood_solid_preparation",
     "wood_wide_belt_sander",
     "metal_sheet_laser",
-    "metal_tube_laser",
+    "metal_profile_saw",
     "metal_press_brake",
     "metal_punch_press",
     "metal_profile_bender",
@@ -199,24 +178,21 @@ PROFILE_MACHINE_CODES = (
     "finish_wet_spray_booth",
     "finish_powder_booth",
     "finish_sandblast_booth",
-    "finish_polishing",
 )
 PROFILE_MACHINE_SPECS = tuple(MACHINE_SPEC_BY_CODE[code] for code in PROFILE_MACHINE_CODES)
 SUBCONTRACTOR_MACHINE_CODES = frozenset(
-    code
-    for code in PROFILE_MACHINE_CODES
-    if code not in {"wood_solid_preparation", "wood_wide_belt_sander"}
+    {
+        "wood_cnc_router",
+        "metal_sheet_laser",
+        "finish_wet_spray_booth",
+        "finish_powder_booth",
+        "finish_sandblast_booth",
+    }
 )
 PROFILE_COSTING_MACHINE_CODES = frozenset(
     {
         "wood_cnc_router",
         "metal_sheet_laser",
-        "metal_tube_laser",
-        "metal_press_brake",
-        "metal_punch_press",
-        "metal_profile_bender",
-        "metal_rolling_machine",
-        "metal_welding",
         "finish_wet_spray_booth",
         "finish_powder_booth",
         "finish_sandblast_booth",
@@ -399,6 +375,25 @@ def save_company_machinery(
     if not rows:
         raise MachineryError("Machinery settings could not be saved.")
     return rows[0]
+
+
+def deactivate_company_machinery(
+    access: CompanyAccess,
+    *,
+    machine_code: str,
+) -> None:
+    company_id = _require_company(access)
+    if machine_code not in MACHINE_SPEC_BY_CODE:
+        raise MachineryError("Unknown machinery catalog item.")
+    client = get_supabase_client()
+    assert_company_owner(client, access.user_id, company_id)
+    (
+        client.table("company_machinery")
+        .update({"active": False, "updated_at": _now()})
+        .eq("company_id", company_id)
+        .eq("machine_code", machine_code)
+        .execute()
+    )
 
 
 def create_or_get_supplier(access: CompanyAccess, supplier_name: str) -> dict:

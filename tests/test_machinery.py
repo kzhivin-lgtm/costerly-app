@@ -65,7 +65,7 @@ class _Client:
 
 def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
     assert len(machinery.MACHINE_SPECS) == 26
-    assert len(machinery.PROFILE_MACHINE_SPECS) == 17
+    assert len(machinery.PROFILE_MACHINE_SPECS) == 16
     codes = set(machinery.MACHINE_SPEC_BY_CODE)
     assert "wood_cnc_router" in codes
     assert "metal_sheet_laser" in codes
@@ -73,6 +73,9 @@ def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
     assert len(codes) == len(machinery.MACHINE_SPECS)
     assert "wood_boring_machine" not in machinery.PROFILE_MACHINE_CODES
     assert "finish_powder_oven" not in machinery.PROFILE_MACHINE_CODES
+    assert "metal_tube_laser" not in machinery.PROFILE_MACHINE_CODES
+    assert "metal_profile_saw" in machinery.PROFILE_MACHINE_CODES
+    assert "finish_polishing" not in machinery.PROFILE_MACHINE_CODES
     assert machinery.SUBCONTRACTOR_MACHINE_CODES <= set(
         machinery.PROFILE_MACHINE_CODES
     )
@@ -82,13 +85,27 @@ def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
         "wood_edge_bander",
         "wood_solid_preparation",
         "wood_wide_belt_sander",
-        "finish_polishing",
+        "metal_profile_saw",
+        "metal_press_brake",
+        "metal_punch_press",
+        "metal_profile_bender",
+        "metal_rolling_machine",
+        "metal_welding",
     }
     assert all(
         machinery.MACHINE_SPEC_BY_CODE[code].fields == ()
         for code in availability_only
     )
     assert availability_only.isdisjoint(machinery.PROFILE_COSTING_MACHINE_CODES)
+    expected_detailed = {
+        "wood_cnc_router",
+        "metal_sheet_laser",
+        "finish_wet_spray_booth",
+        "finish_powder_booth",
+        "finish_sandblast_booth",
+    }
+    assert machinery.SUBCONTRACTOR_MACHINE_CODES == expected_detailed
+    assert machinery.PROFILE_COSTING_MACHINE_CODES == expected_detailed
 
 
 def test_machinery_migration_is_additive_and_seeds_the_application_catalog():
@@ -180,7 +197,7 @@ def test_saving_not_in_house_clears_machine_details(monkeypatch):
     assert payload["source"] == "owner_confirmed"
 
 
-def test_saving_in_house_uses_one_company_machine_identity(monkeypatch):
+def test_saving_availability_only_machine_uses_one_identity(monkeypatch):
     client = _Client()
     monkeypatch.setattr(machinery, "get_supabase_client", lambda: client)
     monkeypatch.setattr(machinery, "assert_company_owner", lambda *_args: None)
@@ -197,7 +214,22 @@ def test_saving_in_house_uses_one_company_machine_identity(monkeypatch):
     assert table == "company_machinery"
     assert payload["company_id"] == "company-a"
     assert payload["machine_code"] == "metal_press_brake"
-    assert payload["capabilities"]["tonnage_t"] == 100.0
+    assert payload["capabilities"] == {}
+
+
+def test_not_answered_deactivates_company_machine(monkeypatch):
+    client = _Client()
+    monkeypatch.setattr(machinery, "get_supabase_client", lambda: client)
+    monkeypatch.setattr(machinery, "assert_company_owner", lambda *_args: None)
+
+    machinery.deactivate_company_machinery(
+        ACCESS,
+        machine_code="metal_press_brake",
+    )
+
+    assert len(client.writes) == 1
+    assert client.writes[0][0] == "company_machinery"
+    assert client.writes[0][1]["active"] is False
 
 
 def test_production_context_preserves_price_precedence(monkeypatch):
