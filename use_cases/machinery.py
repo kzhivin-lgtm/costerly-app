@@ -92,6 +92,7 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
     MachineSpec("wood_veneer_press", "woodworking", "Veneer or laminating press", "Flat pressing of veneer or laminate", (
         _number("platen_length_mm", "Press length", "mm", input_unit="m", required=True),
         _number("platen_width_mm", "Press width", "mm", input_unit="m", required=True),
+        _number("press_force_t", "Pressing force", "t", required=True),
     )),
     MachineSpec("wood_solid_preparation", "woodworking", "Solid wood machining", "Planing, thicknessing and dimensioning solid wood", ()),
     MachineSpec("wood_wide_belt_sander", "woodworking", "Wide-belt sander or calibrator", "Calibrating and sanding panels or solid wood", ()),
@@ -117,7 +118,11 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("max_cut_length_mm", "Maximum cut length", "mm", input_unit="m", required=True),
         _text("material_thickness_limits", "Material and thickness limits"),
     )),
-    MachineSpec("metal_punch_press", "metalworking", "Metal press", "Punching, stamping and press operations", ()),
+    MachineSpec("metal_punch_press", "metalworking", "Metal press", "Punching, stamping and press operations", (
+        _number("table_length_mm", "Table length", "mm", input_unit="m", required=True),
+        _number("table_width_mm", "Table width", "mm", input_unit="m", required=True),
+        _number("press_force_t", "Pressing force", "t", required=True),
+    )),
     MachineSpec("metal_profile_saw", "metalworking", "Solid metal machining", "Cutting and machining solid metal, tube and profiles", ()),
     MachineSpec("metal_profile_bender", "metalworking", "Tube / profile bending", "Controlled bending of tube and profiles", ()),
     MachineSpec("metal_rolling_machine", "metalworking", "Metal rolling", "Rolling plate and sections to a radius", ()),

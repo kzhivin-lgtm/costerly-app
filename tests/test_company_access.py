@@ -1508,6 +1508,40 @@ def test_detailed_internal_capability_saves_no_without_details(monkeypatch):
     assert saved_rows[-1]["availability_status"] == "not_in_house"
 
 
+@pytest.mark.parametrize(
+    ("machine_index", "expected_labels"),
+    [
+        (
+            3,
+            ["Press length (m) *", "Press width (m) *", "Pressing force (t) *"],
+        ),
+        (
+            8,
+            ["Table length (m) *", "Table width (m) *", "Pressing force (t) *"],
+        ),
+    ],
+)
+def test_press_yes_asks_only_area_and_force(
+    monkeypatch,
+    machine_index,
+    expected_labels,
+):
+    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    app.get("button_group")[machine_index].set_value("Yes")
+    app.run()
+
+    assert [field.label for field in app.text_input] == expected_labels
+    assert not app.selectbox
+    assert not app.checkbox
+
+
 def test_availability_only_machine_asks_no_detail_questions(monkeypatch):
     saved_rows = []
     monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])

@@ -95,7 +95,6 @@ def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
         "wood_wide_belt_sander",
         "metal_profile_saw",
         "metal_press_brake",
-        "metal_punch_press",
         "metal_profile_bender",
         "metal_rolling_machine",
         "finish_sandblast_booth",
@@ -152,6 +151,47 @@ def test_cnc_requires_work_area_and_keeps_only_exceptional_capabilities():
         "horizontal_drilling": True,
         "five_axis_machining": False,
     }
+
+
+@pytest.mark.parametrize(
+    ("machine_code", "values", "expected"),
+    [
+        (
+            "wood_veneer_press",
+            {
+                "platen_length_mm": 3000,
+                "platen_width_mm": 1300,
+                "press_force_t": 70,
+            },
+            {
+                "platen_length_mm": 3000.0,
+                "platen_width_mm": 1300.0,
+                "press_force_t": 70.0,
+            },
+        ),
+        (
+            "metal_punch_press",
+            {
+                "table_length_mm": 1200,
+                "table_width_mm": 700,
+                "press_force_t": 200,
+            },
+            {
+                "table_length_mm": 1200.0,
+                "table_width_mm": 700.0,
+                "press_force_t": 200.0,
+            },
+        ),
+    ],
+)
+def test_press_profiles_require_area_and_force(machine_code, values, expected):
+    assert machinery._validate_capabilities(machine_code, values) == expected
+
+    for missing_key in values:
+        incomplete = dict(values)
+        incomplete.pop(missing_key)
+        with pytest.raises(machinery.MachineryError, match="Complete the required fields"):
+            machinery._validate_capabilities(machine_code, incomplete)
 
 
 def test_sheet_laser_keeps_power_and_only_exceptional_capabilities():

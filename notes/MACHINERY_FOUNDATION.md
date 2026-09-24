@@ -40,9 +40,11 @@ source of truth for this implementation.
 | CNC machine rate is provided | Store it as the internal hourly machine rate; derive customer-facing per-part or whole-job prices from machining time plus material, programming, setup, tooling, and labor |
 | CNC router handles standard sheet goods | Assume MDF, particleboard / LDSP, plywood, and melamine-faced board; do not ask the owner to confirm them |
 | CNC router requires machining on both faces | Treat the second face as another setup; do not ask a vague two-sided-processing question |
+| Veneer or laminating press is in-house | Require press length, press width, and pressing force in tonnes |
 | Sheet laser is in-house | Ask working length, working width, laser power, copper / brass, and bevel cutting; show copper / brass in the first detail column and bevel cutting in the second |
 | Sheet laser handles common metals | Assume mild steel, stainless steel, and aluminum; do not ask the owner to confirm them |
 | Sheet laser requires costing | Do not ask for a generic costing method in Machinery; derive the job from material, thickness, geometry, piercings, setup, gas, and the applicable laser cost profile or benchmark |
+| Metal press is in-house | Require table length, table width, and pressing force in tonnes |
 | Owner chooses No for an outsourceable operation | Hide in-house details and show one `Regular subcontractor` selector with no contractor, an existing contractor, or add new |
 | Owner chooses No for an internal-support capability | Persist No immediately; hide in-house details, Save, and the detail chevron; do not ask for a subcontractor |
 | Owner saves No without a subcontractor | Save the explicit absence without adding pricing copy to the UI; later routing uses a regional benchmark with lower confidence |
@@ -139,10 +141,10 @@ source of truth for this implementation.
   Panel cutting saw, edge bander, solid wood machining, wide-belt sanding, and
   solid metal machining, sandblasting, and galvanizing are availability-only. CNC retains working size,
   maximum thickness, three exceptional capabilities, and costing. Sheet laser
-  cutting and size-dependent finishing retain their feasibility or maximum-size
-  fields. Sheet metal bending, metal press, profile bending, rolling, and
-  welding are availability-only. Polishing is manual-tool work and is not shown
-  as Machinery. Labels use the shortest unambiguous wording.
+  cutting, both presses, and size-dependent finishing retain their feasibility
+  or maximum-size fields. Sheet metal bending, profile bending, and rolling are
+  availability-only. Welding and polishing are not shown as Machinery. Labels
+  use the shortest unambiguous wording.
 - `Accept external work` is not an estimation input and is not asked anywhere.
 
 ## Catalog groups
