@@ -381,9 +381,9 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]
         [data-testid="stButtonGroup"] button:nth-of-type(3) {
-            border-color: #EFDEE1 !important;
-            background: #FDF8F9 !important;
-            color: #8A6D72 !important;
+            border-color: #E1DEE4 !important;
+            background: #FBFAFC !important;
+            color: #767079 !important;
         }
 
         .stApp:has(.company-machinery-active)
@@ -403,11 +403,26 @@ def apply_company_profile_css() -> None:
         [data-testid="stButtonGroup"] button:nth-child(3) {
             position: relative;
             z-index: 1;
-            border-color: #A9384D !important;
-            background: #F3C4CD !important;
-            color: #6F1425 !important;
+            border-color: #77717A !important;
+            background: #E8E5EA !important;
+            color: #312D34 !important;
             font-weight: 700 !important;
-            box-shadow: inset 0 0 0 2px #A9384D !important;
+            box-shadow: inset 0 0 0 2px #77717A !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stCheckbox"]
+        label[data-baseweb="checkbox"]:has(input[type="checkbox"]:checked)
+        > span:first-child {
+            border-color: #4F8FCB !important;
+            background-color: #4F8FCB !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stCheckbox"]
+        label[data-baseweb="checkbox"]:has(input[type="checkbox"]:focus-visible)
+        > span:first-child {
+            outline: 3px solid rgba(79, 143, 203, 0.28) !important;
         }
 
         .stApp:has(.company-machinery-active)
