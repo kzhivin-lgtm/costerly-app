@@ -1307,17 +1307,17 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
 
     assert not app.exception
     assert "Add price source" in markup
-    assert "No active material prices yet" in markup
+    assert "Material prices" in markup
+    assert "Wood" in markup
+    assert "Metal" in markup
+    assert "Coating" in markup
+    assert markup.count("No active prices") == 3
     assert any(button.label == "Process price source" for button in app.button)
     assert any(field.label == "Category (optional)" for field in app.selectbox)
-    assert any(field.label == "Or paste supplier page URL" for field in app.text_input)
-    library = next(button for button in app.button if button.label == "Source library · 2")
-    assert "invoice-1.pdf" not in markup
-
-    library.click()
-    app.run()
-    markup = "\n".join(item.value for item in app.markdown)
-    assert "invoice-1.pdf" in markup
+    assert any(field.label == "Paste supplier page URL" for field in app.text_input)
+    assert len(app.expander) == 1
+    assert app.expander[0].proto.label == "Source library · 2"
+    assert app.expander[0].proto.expanded is False
 
 
 def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):

@@ -1667,47 +1667,53 @@ def _price_catalog_url_label(value: str) -> str:
 
 
 def _render_price_catalog(catalog: list[dict]) -> None:
-    search_column, department_column, type_column, supplier_column = st.columns(4)
-    with search_column:
-        search = st.text_input(
-            "Search",
-            placeholder="Material or supplier",
-            key="price_catalog_search",
-        ).strip().casefold()
-    department_options = ["All departments"] + [
-        item for item in ("Wood", "Metal", "Finishing")
-        if any(row.get("department") == item for row in catalog)
-    ]
-    with department_column:
-        department = st.selectbox(
-            "Department",
-            department_options,
-            key="price_catalog_department",
+    search = ""
+    department = "All departments"
+    material_type = "All material types"
+    supplier = "All suppliers"
+    if catalog:
+        search_column, department_column, type_column, supplier_column = st.columns(4)
+        with search_column:
+            search = st.text_input(
+                "Search",
+                placeholder="Material or supplier",
+                key="price_catalog_search",
+            ).strip().casefold()
+        department_options = ["All departments"] + [
+            item for item in ("Wood", "Metal", "Finishing")
+            if any(row.get("department") == item for row in catalog)
+        ]
+        with department_column:
+            department = st.selectbox(
+                "Department",
+                department_options,
+                format_func=lambda item: "Coating" if item == "Finishing" else item,
+                key="price_catalog_department",
+            )
+        type_options = ["All material types"] + sorted(
+            {
+                str(row.get("material_type") or "Other")
+                for row in catalog
+                if department == "All departments" or row.get("department") == department
+            },
+            key=str.casefold,
         )
-    type_options = ["All material types"] + sorted(
-        {
-            str(row.get("material_type") or "Other")
-            for row in catalog
-            if department == "All departments" or row.get("department") == department
-        },
-        key=str.casefold,
-    )
-    with type_column:
-        material_type = st.selectbox(
-            "Material type",
-            type_options,
-            key="price_catalog_material_type",
+        with type_column:
+            material_type = st.selectbox(
+                "Material type",
+                type_options,
+                key="price_catalog_material_type",
+            )
+        supplier_options = ["All suppliers"] + sorted(
+            {str(row.get("supplier_name") or "Unknown supplier") for row in catalog},
+            key=str.casefold,
         )
-    supplier_options = ["All suppliers"] + sorted(
-        {str(row.get("supplier_name") or "Unknown supplier") for row in catalog},
-        key=str.casefold,
-    )
-    with supplier_column:
-        supplier = st.selectbox(
-            "Supplier",
-            supplier_options,
-            key="price_catalog_supplier",
-        )
+        with supplier_column:
+            supplier = st.selectbox(
+                "Supplier",
+                supplier_options,
+                key="price_catalog_supplier",
+            )
 
     visible = [
         row for row in catalog
@@ -1721,7 +1727,7 @@ def _render_price_catalog(catalog: list[dict]) -> None:
             or search in str(row.get("supplier_name") or "").casefold()
         )
     ]
-    if not visible:
+    if catalog and not visible:
         st.info("No material prices match these filters.")
         return
 
@@ -1732,13 +1738,12 @@ def _render_price_catalog(catalog: list[dict]) -> None:
         ).append(row)
 
     department_markup: list[str] = []
+    department_labels = {"Wood": "Wood", "Metal": "Metal", "Finishing": "Coating"}
     for department_name in ("Wood", "Metal", "Finishing"):
         material_types = departments.get(department_name)
-        if not material_types:
-            continue
-        department_count = sum(len(rows) for rows in material_types.values())
+        department_count = sum(len(rows) for rows in (material_types or {}).values())
         type_markup: list[str] = []
-        for material_type, rows in material_types.items():
+        for material_type, rows in (material_types or {}).items():
             table_rows: list[str] = []
             for row in rows:
                 canonical_name = str(row.get("canonical_name") or "Material")
@@ -1787,14 +1792,18 @@ def _render_price_catalog(catalog: list[dict]) -> None:
                 '<th>Updated</th><th>Source</th></tr></thead>'
                 f'<tbody>{"".join(table_rows)}</tbody></table></div></details>'
             )
+        department_body = "".join(type_markup) or (
+            '<div class="price-catalog-department-empty">No active prices</div>'
+        )
         department_markup.append(
             '<details class="price-catalog-department" open>'
-            f'<summary><span>{escape(department_name)}</span><span>{_price_catalog_count(department_count)}</span></summary>'
-            f'{"".join(type_markup)}</details>'
+            f'<summary><span>{escape(department_labels[department_name])}</span>'
+            f'<span>{_price_catalog_count(department_count)}</span></summary>'
+            f'{department_body}</details>'
         )
 
     st.markdown(
-        '<div class="price-catalog-card">'
+        '<div class="price-catalog-card price-catalog-main">'
         '<div class="price-catalog-title"><span>Material prices</span>'
         f'<span>{len(visible)} active {"price" if len(visible) == 1 else "prices"}</span></div>'
         f'{"".join(department_markup)}</div>',
@@ -1911,17 +1920,17 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     ),
                 )
             with details_column:
+                source_url = st.text_input(
+                    "Paste supplier page URL",
+                    placeholder="https://supplier.example/prices",
+                    key=f"price_source_url_{uploader_version}",
+                )
                 category = st.selectbox(
                     "Category (optional)",
                     PRICE_SOURCE_CATEGORIES,
                     index=None,
                     placeholder="Detect automatically",
                     key="price_source_category",
-                )
-                source_url = st.text_input(
-                    "Or paste supplier page URL",
-                    placeholder="https://supplier.example/prices",
-                    key=f"price_source_url_{uploader_version}",
                 )
                 if st.button(
                     "Process price source",
@@ -1971,79 +1980,60 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         st.info("The material price catalog is unavailable right now.")
         return
 
-    library_open = bool(st.session_state.get("_price_source_library_open"))
-
     _render_price_source_add(access, trace=trace)
 
     notice = st.session_state.pop("_price_source_notice", None)
     if notice:
         st.success(notice)
 
-    with st.container(key="price_catalog_section"):
-        if catalog:
+    with st.container(key="price_catalog_shell"):
+        with st.container(key="price_catalog_section"):
             _render_price_catalog(catalog)
-        else:
-            st.markdown(
-                '<div class="price-catalog-card price-catalog-empty">'
-                '<div class="price-catalog-title"><span>Material prices</span>'
-                '<span>0 active prices</span></div>'
-                '<div class="price-catalog-empty-body">'
-                '<strong>No active material prices yet</strong>'
-                '<span>Add a supplier document or URL. Ready prices will appear here.</span>'
-                '</div></div>',
-                unsafe_allow_html=True,
-            )
 
-    with st.container(key="price_source_library_toggle"):
-        if st.button(
-            f'Source library · {len(sources)}',
-            key="price_source_toggle_library",
-            use_container_width=True,
-        ):
-            library_open = not library_open
-            st.session_state._price_source_library_open = library_open
+        with st.container(key="price_source_library_section"):
+            with st.expander(f'Source library · {len(sources)}', expanded=False):
+                if not sources:
+                    st.info("No source documents yet.")
+                else:
+                    with st.container(key="price_source_list_card"):
+                        for source in sources:
+                            summary = source.get("processing_summary") or {}
+                            left, category_col, status_col, items_col, action_col = st.columns(
+                                [2.3, 1.45, 0.8, 0.65, 0.65],
+                                vertical_alignment="center",
+                            )
+                            with left:
+                                st.markdown(
+                                    f'**{escape(_price_source_supplier(source))}**  \n'
+                                    f'<span class="price-source-file" title="{escape(str(source.get("source_name") or ""), quote=True)}">'
+                                    f'{escape(str(source.get("source_name") or ""))}</span>',
+                                    unsafe_allow_html=True,
+                                )
+                            with category_col:
+                                st.write(source.get("category") or "")
+                            with status_col:
+                                st.write(str(source.get("status") or "").title())
+                            with items_col:
+                                st.write(int(summary.get("total") or 0))
+                            with action_col:
+                                if st.button(
+                                    "View",
+                                    key=f'view_price_source_{source["source_id"]}',
+                                ):
+                                    st.session_state._selected_price_source_id = source["source_id"]
 
-    if library_open:
-        if not sources:
-            st.info("No source documents yet.")
-        else:
-            with st.container(key="price_source_list_card"):
-                st.markdown(
-                    '<div class="company-logo-table-heading">Source library</div>',
-                    unsafe_allow_html=True,
+                selected_id = st.session_state.get("_selected_price_source_id")
+                selected = next(
+                    (source for source in sources if source["source_id"] == selected_id),
+                    None,
                 )
-                for source in sources:
-                    summary = source.get("processing_summary") or {}
-                    left, category_col, status_col, items_col, action_col = st.columns(
-                        [2.3, 1.45, 0.8, 0.65, 0.65],
-                        vertical_alignment="center",
-                    )
-                    with left:
+                if selected:
+                    with st.container(key="price_source_detail_card"):
                         st.markdown(
-                            f'**{escape(_price_source_supplier(source))}**  \n'
-                            f'<span class="price-source-file" title="{escape(str(source.get("source_name") or ""), quote=True)}">'
-                            f'{escape(str(source.get("source_name") or ""))}</span>',
+                            '<div class="company-logo-table-heading">Source details</div>',
                             unsafe_allow_html=True,
                         )
-                    with category_col:
-                        st.write(source.get("category") or "")
-                    with status_col:
-                        st.write(str(source.get("status") or "").title())
-                    with items_col:
-                        st.write(int(summary.get("total") or 0))
-                    with action_col:
-                        if st.button("View", key=f'view_price_source_{source["source_id"]}'):
-                            st.session_state._selected_price_source_id = source["source_id"]
-
-        selected_id = st.session_state.get("_selected_price_source_id")
-        selected = next((source for source in sources if source["source_id"] == selected_id), None)
-        if selected:
-            with st.container(key="price_source_detail_card"):
-                st.markdown(
-                    '<div class="company-logo-table-heading">Source details</div>',
-                    unsafe_allow_html=True,
-                )
-                _render_price_source_details(access, selected)
+                        _render_price_source_details(access, selected)
 
 
 
