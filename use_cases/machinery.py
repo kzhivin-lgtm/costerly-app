@@ -148,16 +148,13 @@ MACHINE_SPECS: tuple[MachineSpec, ...] = (
         _number("inside_height_mm", "Internal height", "mm", input_unit="m", required=True),
         _number("max_temperature_c", "Maximum temperature", "°C"),
     )),
-    MachineSpec("finish_sandblast_booth", "finishing", "Sandblasting", "Abrasive surface preparation", (
-        _number("max_part_length_mm", "Maximum length", "mm", input_unit="m"),
-        _number("max_part_width_mm", "Maximum width", "mm", input_unit="m"),
-        _number("max_part_height_mm", "Maximum height", "mm", input_unit="m"),
-    )),
+    MachineSpec("finish_sandblast_booth", "finishing", "Sandblasting", "Abrasive surface preparation", ()),
     MachineSpec("finish_wash_line", "finishing", "Washing or degreasing line", "Cleaning and pretreatment before coating", (
         _number("max_part_length_mm", "Maximum part length", "mm", input_unit="m"),
         _multi("processes", "Processes", ("Degreasing", "Rinsing", "Phosphating", "Conversion coating")),
     )),
     MachineSpec("finish_polishing", "finishing", "Polishing or buffing station", "Mechanical polishing and buffing", ()),
+    MachineSpec("finish_galvanizing", "finishing", "Galvanizing", "Zinc coating for corrosion protection", ()),
 )
 
 MACHINE_SPEC_BY_CODE = {spec.code: spec for spec in MACHINE_SPECS}
@@ -169,15 +166,15 @@ PROFILE_MACHINE_CODES = (
     "wood_solid_preparation",
     "wood_wide_belt_sander",
     "metal_sheet_laser",
-    "metal_profile_saw",
     "metal_press_brake",
     "metal_punch_press",
     "metal_profile_bender",
     "metal_rolling_machine",
-    "metal_welding",
+    "metal_profile_saw",
     "finish_wet_spray_booth",
     "finish_powder_booth",
     "finish_sandblast_booth",
+    "finish_galvanizing",
 )
 PROFILE_MACHINE_SPECS = tuple(MACHINE_SPEC_BY_CODE[code] for code in PROFILE_MACHINE_CODES)
 SUBCONTRACTOR_MACHINE_CODES = frozenset(
@@ -186,7 +183,6 @@ SUBCONTRACTOR_MACHINE_CODES = frozenset(
         "metal_sheet_laser",
         "finish_wet_spray_booth",
         "finish_powder_booth",
-        "finish_sandblast_booth",
     }
 )
 PROFILE_COSTING_MACHINE_CODES = frozenset(
@@ -195,7 +191,6 @@ PROFILE_COSTING_MACHINE_CODES = frozenset(
         "metal_sheet_laser",
         "finish_wet_spray_booth",
         "finish_powder_booth",
-        "finish_sandblast_booth",
     }
 )
 INDUSTRY_LABELS = {

@@ -118,7 +118,7 @@ source of truth for this implementation.
   customer-price provenance remains stored but is not repeated in the labels.
 - Only questions that materially change feasibility or price are shown.
   Panel cutting saw, edge bander, solid wood machining, wide-belt sanding, and
-  solid metal machining are availability-only. CNC retains working size,
+  solid metal machining, sandblasting, and galvanizing are availability-only. CNC retains working size,
   maximum thickness, three exceptional capabilities, and costing. Sheet laser
   cutting and size-dependent finishing retain their feasibility or maximum-size
   fields. Sheet metal bending, metal press, profile bending, rolling, and
@@ -140,20 +140,20 @@ source of truth for this implementation.
 ### Metalworking
 
 - Sheet laser cutter
-- Solid metal machining
 - Sheet metal bending
 - Metal press
 - Tube / profile bending
 - Metal rolling
-- Welding
+- Solid metal machining
 
 ### Painting and finishing
 
 - Wet painting
 - Powder coating
 - Sandblasting
+- Galvanizing
 
-The database catalog keeps all 26 additive seed rows for compatibility and
+The database catalog keeps all 27 additive seed rows for compatibility and
 historical estimate audit. The profile asks only the 16 capabilities above.
 
 ## Routing price precedence

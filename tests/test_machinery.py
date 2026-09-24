@@ -64,7 +64,7 @@ class _Client:
 
 
 def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
-    assert len(machinery.MACHINE_SPECS) == 26
+    assert len(machinery.MACHINE_SPECS) == 27
     assert len(machinery.PROFILE_MACHINE_SPECS) == 16
     codes = set(machinery.MACHINE_SPEC_BY_CODE)
     assert "wood_cnc_router" in codes
@@ -76,6 +76,14 @@ def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
     assert "metal_tube_laser" not in machinery.PROFILE_MACHINE_CODES
     assert "metal_profile_saw" in machinery.PROFILE_MACHINE_CODES
     assert "finish_polishing" not in machinery.PROFILE_MACHINE_CODES
+    assert "metal_welding" not in machinery.PROFILE_MACHINE_CODES
+    assert machinery.PROFILE_MACHINE_CODES[-5:] == (
+        "metal_profile_saw",
+        "finish_wet_spray_booth",
+        "finish_powder_booth",
+        "finish_sandblast_booth",
+        "finish_galvanizing",
+    )
     assert machinery.SUBCONTRACTOR_MACHINE_CODES <= set(
         machinery.PROFILE_MACHINE_CODES
     )
@@ -90,7 +98,8 @@ def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
         "metal_punch_press",
         "metal_profile_bender",
         "metal_rolling_machine",
-        "metal_welding",
+        "finish_sandblast_booth",
+        "finish_galvanizing",
     }
     assert all(
         machinery.MACHINE_SPEC_BY_CODE[code].fields == ()
@@ -102,16 +111,16 @@ def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
         "metal_sheet_laser",
         "finish_wet_spray_booth",
         "finish_powder_booth",
-        "finish_sandblast_booth",
     }
     assert machinery.SUBCONTRACTOR_MACHINE_CODES == expected_detailed
     assert machinery.PROFILE_COSTING_MACHINE_CODES == expected_detailed
 
 
 def test_machinery_migration_is_additive_and_seeds_the_application_catalog():
-    sql = (
-        Path(__file__).parents[1] / "db/sql/2026_09_24_machinery_foundation.sql"
-    ).read_text().lower()
+    sql = "\n".join(
+        path.read_text().lower()
+        for path in sorted((Path(__file__).parents[1] / "db/sql").glob("*machinery*.sql"))
+    )
     for operation in ("drop table", "delete from", "truncate table", "on delete cascade"):
         assert operation not in sql
     for code in machinery.MACHINE_SPEC_BY_CODE:

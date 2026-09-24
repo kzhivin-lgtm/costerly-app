@@ -2,7 +2,7 @@
 
 - 3.9.1 Machinery and production routing foundation: active, P1. Add a compact
   16-capability profile across woodworking, metalworking, and finishing while
-  retaining the 26-row database catalog for compatibility and history,
+  retaining the 27-row database catalog for compatibility and history,
   with wood CNC and metal laser cutting as separate first-class capabilities.
   Company owners record explicit in-house availability, minimum technical
   limits, costing basis, and optional regular subcontractors only for operations
