@@ -34,10 +34,11 @@ source of truth for this implementation.
 | --- | --- |
 | Machinery tab opens with no answers | Show the 17 estimation-relevant capabilities in Woodworking, Metalworking, and Painting & Finishing groups; do not create rows merely by viewing |
 | Owner chooses Yes | Reveal only the minimum capability questions for that machine; do not reveal subcontractor questions |
-| Owner chooses No for an outsourceable operation | Hide in-house details and show one optional `Regular subcontractor` name field |
+| Owner chooses No for an outsourceable operation | Hide in-house details and show one `Regular subcontractor` selector with no contractor, an existing contractor, or add new |
 | Owner chooses No for an internal-support capability | Hide in-house details and do not ask for a subcontractor |
 | Owner saves No without a subcontractor | Save the explicit absence and show `Market pricing`; later routing may use a regional benchmark with lower confidence |
 | Owner saves No with a subcontractor name | Reuse or create the normalized company supplier and attach that service with quote-only pricing |
+| Owner removes a regular subcontractor | Select `No regular subcontractor` and save; deactivate the current route without deleting its history |
 | Required in-house field is missing | Keep the card editable, mark only the missing field, and do not save a partial confirmed capability |
 | Optional value is unknown | Save the capability without inventing a value; show it as not provided |
 | Owner selects a pricing method | Ask only the fields needed by that method, such as hourly rate, per-sheet rate, per-part rate, or quote-only |
@@ -65,10 +66,11 @@ source of truth for this implementation.
   database values remain millimeters.
 - Numeric capability inputs are plain text fields with explicit units, not
   number steppers. Both decimal point and decimal comma are accepted.
-- A non-in-house outsourceable operation shows one optional free-text
-  `Regular subcontractor` field. There is no additional Yes/No question,
-  Existing/New split, supplier dropdown, supplier pricing method, or lead-time
-  question. Internal-support capabilities do not ask for a subcontractor.
+- A non-in-house outsourceable operation shows one compact `Regular
+  subcontractor` selector. It can clear the route, reuse an existing company
+  supplier, or reveal one name field for a new supplier. There is no additional
+  Yes/No question, pricing method, or lead-time question. Internal-support
+  capabilities do not ask for a subcontractor.
 - Entering the same normalized subcontractor name reuses the existing
   `company_suppliers` identity. Replacing a regular subcontractor deactivates the
   previous route without deleting its history.
@@ -85,8 +87,9 @@ source of truth for this implementation.
 - Every detail panel uses three equal columns for capability, costing, or
   subcontractor fields. It does not introduce another narrow nested card.
 - Detail descriptions are omitted. For CNC, row one contains the three
-  technical dimensions, row two contains `Materials` and `Costing method`, and
-  row three contains the two boolean options. Selected material tags use the
+  technical dimensions, row two gives `Materials` two-thirds of the width and
+  `Costing method` the last third, and row three contains the two boolean
+  options. Selected material pills use the
   product purple-neutral palette; red remains reserved for negative status and
   validation/error feedback.
 - Machinery has no introductory heading below the Profile tabs. Its first
@@ -110,6 +113,12 @@ source of truth for this implementation.
 - `Costing method` exposes only `Not provided`, `Per machine hour`, `Per sheet`,
   `Per part`, `Per job`, and `Quote each job`. Existing internal-cost or
   customer-price provenance remains stored but is not repeated in the labels.
+- Only questions that materially change feasibility or price are shown.
+  Panel cutting saw, edge bander, solid wood machining, wide-belt sanding, and
+  polishing are availability-only. CNC retains working size, maximum thickness,
+  materials, two-sided processing, and costing. Laser cutting, forming presses,
+  welding, and size-dependent finishing retain their material feasibility or
+  maximum-size fields. Labels use the shortest unambiguous wording.
 
 ## Catalog groups
 
@@ -160,8 +169,9 @@ never presented as a real supplier quotation.
   behavior without reading or rewriting the prototype `company_machines` rows.
 - In-house cost rates and supplier charges retain distinct rate provenance.
 - The deterministic production snapshot is implemented locally.
-- 287 repository tests pass, including the reduced profile catalog, collapsed
-  saved rows, optional subcontractors, pills, and empty-state UI scenarios.
+- 289 repository tests pass, including the reduced profile catalog,
+  availability-only machines, collapsed saved rows, removable subcontractors,
+  pills, and empty-state UI scenarios.
 - The owner applied the live Supabase migration on 24.09. A service-role read
   verified five new tables, 26 active catalog rows split into 8 woodworking,
   11 metalworking, and 7 finishing capabilities, and zero company machinery,

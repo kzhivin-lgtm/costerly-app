@@ -41,6 +41,7 @@ from use_cases.price_sources import (
 )
 from use_cases.machinery import (
     INDUSTRY_LABELS,
+    PROFILE_COSTING_MACHINE_CODES,
     PROFILE_MACHINE_SPECS,
     SUBCONTRACTOR_MACHINE_CODES,
     MachineryError,
@@ -562,9 +563,6 @@ def _render_owner_machinery(
                         if availability != "Not answered" and st.button(
                             "⌃" if st.session_state[detail_open_key] else "⌄",
                             key=f"{row_key}_toggle",
-                            help="Close details"
-                            if st.session_state[detail_open_key]
-                            else "Open details",
                         ):
                             st.session_state[detail_open_key] = not st.session_state[
                                 detail_open_key
@@ -603,43 +601,59 @@ def _render_owner_machinery(
                                 fields=technical_fields,
                             )
                         )
-                        second_row = st.columns(3)
-                        for index, field in enumerate(selector_fields[:2]):
-                            with second_row[index]:
-                                capabilities[field.key] = (
-                                    _render_machine_capability_widget(
-                                        field, saved, row_key
-                                    )
+                        shows_costing = spec.code in PROFILE_COSTING_MACHINE_CODES
+                        if len(selector_fields) == 1 and shows_costing:
+                            selector_column, method_column = st.columns([2, 1])
+                            with selector_column:
+                                field = selector_fields[0]
+                                capabilities[field.key] = _render_machine_capability_widget(
+                                    field, saved, row_key
                                 )
-                        pricing_method, pricing = _render_machinery_pricing(
-                            saved,
-                            row_key,
-                            method_column=second_row[min(len(selector_fields), 2)],
-                        )
-                        if len(selector_fields) > 2:
-                            capabilities.update(
-                                _render_machine_capability_fields(
-                                    spec,
+                            pricing_method, pricing = _render_machinery_pricing(
+                                saved, row_key, method_column=method_column
+                            )
+                        elif selector_fields or shows_costing:
+                            second_row = st.columns(3)
+                            for index, field in enumerate(selector_fields[:2]):
+                                with second_row[index]:
+                                    capabilities[field.key] = (
+                                        _render_machine_capability_widget(
+                                            field, saved, row_key
+                                        )
+                                    )
+                            if shows_costing:
+                                pricing_method, pricing = _render_machinery_pricing(
                                     saved,
                                     row_key,
-                                    fields=selector_fields[2:],
+                                    method_column=second_row[
+                                        min(len(selector_fields), 2)
+                                    ],
                                 )
-                            )
-                        checkbox_row = st.columns(3)
-                        for index, field in enumerate(boolean_fields[:2]):
-                            with checkbox_row[index]:
-                                capabilities[field.key] = (
-                                    _render_machine_capability_widget(
-                                        field, saved, row_key
+                            if len(selector_fields) > 2:
+                                capabilities.update(
+                                    _render_machine_capability_fields(
+                                        spec,
+                                        saved,
+                                        row_key,
+                                        fields=selector_fields[2:],
                                     )
                                 )
-                        external_column = min(len(boolean_fields), 2)
-                        with checkbox_row[external_column]:
-                            accepts_external = st.checkbox(
-                                "We accept work from external customers",
-                                value=bool(saved.get("accepts_external_work")),
-                                key=f"{row_key}_external",
-                            )
+                        if boolean_fields or shows_costing:
+                            checkbox_row = st.columns(3)
+                            for index, field in enumerate(boolean_fields[:2]):
+                                with checkbox_row[index]:
+                                    capabilities[field.key] = (
+                                        _render_machine_capability_widget(
+                                            field, saved, row_key
+                                        )
+                                    )
+                            external_column = min(len(boolean_fields), 2)
+                            with checkbox_row[external_column]:
+                                accepts_external = st.checkbox(
+                                    "Accept external work",
+                                    value=bool(saved.get("accepts_external_work")),
+                                    key=f"{row_key}_external",
+                                )
                     else:
                         matching_services = [
                             service for service in services
@@ -662,11 +676,49 @@ def _render_owner_machinery(
                             supplier_column = detail_columns[0]
                         if spec.code in SUBCONTRACTOR_MACHINE_CODES:
                             with supplier_column:
-                                subcontractor_name = st.text_input(
-                                    "Regular subcontractor (optional)",
-                                    value=current_supplier_name,
-                                    key=f"{row_key}_new_supplier",
+                                no_supplier = "__no_supplier__"
+                                add_supplier = "__add_supplier__"
+                                existing_names = sorted(
+                                    {
+                                        name.strip()
+                                        for name in supplier_names.values()
+                                        if name.strip()
+                                    },
+                                    key=str.casefold,
                                 )
+                                if (
+                                    current_supplier_name
+                                    and current_supplier_name not in existing_names
+                                ):
+                                    existing_names.append(current_supplier_name)
+                                supplier_options = [
+                                    no_supplier,
+                                    *existing_names,
+                                    add_supplier,
+                                ]
+                                selected_supplier = (
+                                    current_supplier_name
+                                    if current_supplier_name
+                                    else no_supplier
+                                )
+                                supplier_choice = st.selectbox(
+                                    "Regular subcontractor",
+                                    supplier_options,
+                                    index=supplier_options.index(selected_supplier),
+                                    format_func=lambda value: {
+                                        no_supplier: "No regular subcontractor",
+                                        add_supplier: "Add new subcontractor...",
+                                    }.get(value, value),
+                                    key=f"{row_key}_supplier_choice",
+                                )
+                            if supplier_choice == add_supplier:
+                                with detail_columns[2]:
+                                    subcontractor_name = st.text_input(
+                                        "New subcontractor name",
+                                        key=f"{row_key}_new_supplier",
+                                    )
+                            elif supplier_choice != no_supplier:
+                                subcontractor_name = supplier_choice
                     submitted = st.button(
                         "Save",
                         key=f"{row_key}_save",
@@ -693,8 +745,7 @@ def _render_owner_machinery(
                         pricing=pricing,
                         accepts_external_work=accepts_external,
                     )
-                    if status == "not_in_house":
-                        deactivate_supplier_services(access, machine_code=spec.code)
+                    deactivate_supplier_services(access, machine_code=spec.code)
                     if status == "not_in_house" and supplier_id:
                         save_supplier_service(
                             access,

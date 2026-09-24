@@ -1195,8 +1195,8 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     assert not saved
     assert "Complete the required fields" in " ".join(item.value for item in app.error)
 
-    next(field for field in app.text_input if field.label == "Working area, length (m) *").set_value("2,5")
-    next(field for field in app.text_input if field.label == "Working area, width (m) *").set_value("1.3")
+    next(field for field in app.text_input if field.label == "Working length (m) *").set_value("2,5")
+    next(field for field in app.text_input if field.label == "Working width (m) *").set_value("1.3")
     next(
         field for field in app.get("button_group")
         if field.label == "Materials *"
@@ -1210,7 +1210,7 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     assert saved[0]["capabilities"]["materials"] == ["MDF"]
 
 
-def test_machinery_subcontractor_flow_uses_only_name(monkeypatch):
+def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):
     writes = []
     monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
@@ -1242,15 +1242,24 @@ def test_machinery_subcontractor_flow_uses_only_name(monkeypatch):
 
     app.get("button_group")[0].set_value("No")
     app.run()
+    supplier_select = next(
+        field for field in app.selectbox if field.label == "Regular subcontractor"
+    )
+    assert supplier_select.options == [
+        "No regular subcontractor",
+        "Add new subcontractor...",
+    ]
+    supplier_select.set_value("Add new subcontractor...")
+    app.run()
     labels = [field.label for field in app.text_input]
-    assert "Regular subcontractor (optional)" in labels
+    assert "New subcontractor name" in labels
     assert "Regular subcontractor?" not in [field.label for field in app.radio]
     assert "Supplier pricing method" not in [field.label for field in app.selectbox]
     assert "Typical lead time, days" not in [field.label for field in app.number_input]
 
     next(
         field for field in app.text_input
-        if field.label == "Regular subcontractor (optional)"
+        if field.label == "New subcontractor name"
     ).set_value("Cut Co")
     next(button for button in app.button if button.label == "Save").click()
     app.run()
@@ -1260,6 +1269,77 @@ def test_machinery_subcontractor_flow_uses_only_name(monkeypatch):
     assert service["supplier_id"] == "supplier-1"
     assert service["pricing_method"] == "quote_only"
     assert "typical_lead_time_days" not in service
+
+
+def test_machinery_subcontractor_can_be_selected_or_removed(monkeypatch):
+    writes = []
+    monkeypatch.setattr(
+        company_profile,
+        "list_company_machinery",
+        lambda _access: [
+            {
+                "machine_code": "wood_cnc_router",
+                "availability_status": "not_in_house",
+                "capabilities": {},
+                "pricing_method": "unknown",
+                "pricing": {},
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "list_company_suppliers",
+        lambda _access: [
+            {"supplier_id": "supplier-1", "supplier_name": "Cut Co"},
+            {"supplier_id": "supplier-2", "supplier_name": "Laser Co"},
+        ],
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "list_supplier_services",
+        lambda _access: [
+            {"supplier_id": "supplier-1", "machine_code": "wood_cnc_router"}
+        ],
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "save_company_machinery",
+        lambda _access, **values: writes.append(("machine", values)),
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "deactivate_supplier_services",
+        lambda _access, **values: writes.append(("deactivate", values)),
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "save_supplier_service",
+        lambda _access, **values: writes.append(("service", values)),
+    )
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    next(button for button in app.button if button.label == "⌄").click()
+    app.run()
+    supplier_select = next(
+        field for field in app.selectbox if field.label == "Regular subcontractor"
+    )
+    assert supplier_select.value == "Cut Co"
+    assert supplier_select.options == [
+        "No regular subcontractor",
+        "Cut Co",
+        "Laser Co",
+        "Add new subcontractor...",
+    ]
+
+    supplier_select.set_value("No regular subcontractor")
+    next(button for button in app.button if button.label == "Save").click()
+    app.run()
+
+    assert any(kind == "deactivate" for kind, _value in writes)
+    assert not any(kind == "service" for kind, _value in writes)
 
 
 def test_saved_machinery_row_is_collapsed_with_summary_and_can_reopen(monkeypatch):
@@ -1317,6 +1397,24 @@ def test_internal_support_capability_does_not_ask_for_subcontractor(monkeypatch)
     assert any(button.label == "Save" for button in app.button)
 
 
+def test_availability_only_machine_asks_no_detail_questions(monkeypatch):
+    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: [])
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    app.get("button_group")[1].set_value("Yes")
+    app.run()
+
+    assert any(button.label == "Save" for button in app.button)
+    assert not app.text_input
+    assert not app.selectbox
+    assert not app.checkbox
+
+
 def test_machinery_uses_grouped_full_width_table_contract():
     source = (Path(__file__).parents[1] / "screens/company_profile.py").read_text()
     css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
@@ -1353,6 +1451,8 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert "st.pills(" in source
     assert 'button[data-testid="stBaseButton-pillsActive"]' in css
     assert "Regular subcontractor?" not in source
+    assert 'st.columns([2, 1])' in source
+    assert 'help="Close details"' not in source
     assert 'grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr) minmax(36px, 0.13fr);' in css
 
 

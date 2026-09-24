@@ -426,6 +426,7 @@ def apply_company_profile_css() -> None:
             box-shadow: none !important;
             font-size: 18px !important;
             line-height: 1 !important;
+            transform: translateY(8px) !important;
         }
 
         .stApp:has(.company-machinery-active)
@@ -462,6 +463,39 @@ def apply_company_profile_css() -> None:
         button[data-testid="stBaseButton-pillsActive"] span {
             color: #174E7A !important;
             font-weight: 700 !important;
+        }
+
+        /* Streamlit 1.64 uses React Aria state attributes for pills. */
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_detail"]
+        [data-testid="stButtonGroup"] button {
+            min-height: 38px !important;
+            padding: 7px 12px !important;
+            border: 1px solid #D8D0DC !important;
+            border-radius: 10px !important;
+            background: #FFFFFF !important;
+            color: var(--color-text-strong) !important;
+            box-shadow: none !important;
+            font-weight: 500 !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_detail"]
+        [data-testid="stButtonGroup"] button[kind="primary"],
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_detail"]
+        [data-testid="stButtonGroup"] button[aria-pressed="true"],
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_detail"]
+        [data-testid="stButtonGroup"] button[data-selected="true"],
+        .stApp:has(.company-machinery-active)
+        [class*="st-key-machinery_"][class*="_detail"]
+        [data-testid="stButtonGroup"] button[data-testid*="pills"][data-testid*="active" i] {
+            border-color: #4F8FCB !important;
+            background: #E5F1FC !important;
+            color: #174E7A !important;
+            font-weight: 700 !important;
+            box-shadow: inset 0 0 0 1px #4F8FCB !important;
         }
 
         .stApp:has(.company-machinery-active)

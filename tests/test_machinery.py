@@ -77,6 +77,18 @@ def test_catalog_is_compact_and_keeps_cnc_and_laser_separate():
         machinery.PROFILE_MACHINE_CODES
     )
     assert "wood_solid_preparation" not in machinery.SUBCONTRACTOR_MACHINE_CODES
+    availability_only = {
+        "wood_panel_saw",
+        "wood_edge_bander",
+        "wood_solid_preparation",
+        "wood_wide_belt_sander",
+        "finish_polishing",
+    }
+    assert all(
+        machinery.MACHINE_SPEC_BY_CODE[code].fields == ()
+        for code in availability_only
+    )
+    assert availability_only.isdisjoint(machinery.PROFILE_COSTING_MACHINE_CODES)
 
 
 def test_machinery_migration_is_additive_and_seeds_the_application_catalog():
@@ -91,7 +103,7 @@ def test_machinery_migration_is_additive_and_seeds_the_application_catalog():
 
 
 def test_cnc_requires_work_area_and_materials():
-    with pytest.raises(machinery.MachineryError, match="Working area"):
+    with pytest.raises(machinery.MachineryError, match="Working width"):
         machinery._validate_capabilities("wood_cnc_router", {"work_area_x_mm": 2500})
 
     values = machinery._validate_capabilities(
