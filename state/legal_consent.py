@@ -36,7 +36,11 @@ def terms_disclosure_content() -> tuple[str, str]:
     if not first_paragraph:
         raise RuntimeError("Published Terms opening paragraph is missing")
     preview = re.sub(r"<[^>]+>", "", first_paragraph.group(1))
-    return html.unescape(preview).strip(), body.strip()
+    # Markdown treats the source file's eight-space HTML indentation as a code
+    # block after the first blank line. Collapse only whitespace between tags so
+    # every numbered section stays HTML while paragraph text remains unchanged.
+    body = re.sub(r">\s+<", "><", body.strip())
+    return html.unescape(preview).strip(), body
 
 
 @dataclass(frozen=True)

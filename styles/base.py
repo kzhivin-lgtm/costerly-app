@@ -5,6 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 FONT_DIR = Path("assets/fonts")
 
@@ -158,25 +159,6 @@ def apply_base_css() -> None:
 
             /* Shared review card rhythm */
             --review-card-gap: 20px;
-        }
-
-        /* Checked controls use the shared interaction blue. Red remains
-           available for errors and explicit negative status choices. */
-        .stApp [data-testid="stCheckbox"]
-        label[data-baseweb="checkbox"]:has(input:checked)
-        > span,
-        .stApp [data-testid="stCheckbox"]
-        label[data-baseweb="checkbox"]:has(input[aria-checked="true"])
-        > span {
-            border-color: #4F8FCB !important;
-            background-color: #4F8FCB !important;
-            background-image: url("data:image/svg+xml,%3Csvg%20width%3D%2717%27%20height%3D%2713%27%20viewBox%3D%270%200%2017%2013%27%20fill%3D%27none%27%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%3E%3Cpath%20d%3D%27M6.50002%2012.6L0.400024%206.60002L2.60002%204.40002L6.50002%208.40002L13.9%200.900024L16.1%203.10002L6.50002%2012.6Z%27%20fill%3D%27white%27%2F%3E%3C%2Fsvg%3E") !important;
-        }
-
-        .stApp [data-testid="stCheckbox"]
-        label[data-baseweb="checkbox"]:has(input:focus-visible)
-        > span {
-            outline: 3px solid rgba(79, 143, 203, 0.28) !important;
         }
 
         :root,
@@ -583,10 +565,71 @@ def apply_base_css() -> None:
                 padding-right: var(--space-4) !important;
             }
         }
+
+        /* Global checkbox contract. Keep this final so Streamlit's generated
+           primary-color rule cannot restore its default red checked state. */
+        .stApp [data-testid="stCheckbox"]
+        label[data-baseweb="checkbox"].costerly-checkbox-checked
+        > span:first-child {
+            border-color: #4F8FCB !important;
+            background-color: #4F8FCB !important;
+        }
+
+        .stApp [data-testid="stCheckbox"]
+        label[data-baseweb="checkbox"].costerly-checkbox-focused
+        > span:first-child {
+            outline: 3px solid rgba(79, 143, 203, 0.28) !important;
+        }
         </style>
         """
 
         .replace("__GARET_BOOK_SRC__", garet_book_src)
         .replace("__GARET_HEAVY_SRC__", garet_heavy_src),
         unsafe_allow_html=True,
+    )
+    components.html(
+        r"""
+        <script>
+        (() => {
+          const doc = window.parent.document;
+
+          function sync(label) {
+            const input = label.querySelector('input[type="checkbox"]');
+            if (!input) return;
+            label.classList.toggle('costerly-checkbox-checked', input.checked);
+            label.classList.toggle(
+              'costerly-checkbox-focused',
+              input === doc.activeElement && input.matches(':focus-visible')
+            );
+            if (input.dataset.costerlyGlobalCheckboxBound === '1') return;
+            input.dataset.costerlyGlobalCheckboxBound = '1';
+            input.addEventListener('change', () => sync(label));
+            input.addEventListener('focus', () => sync(label));
+            input.addEventListener('blur', () => sync(label));
+          }
+
+          function refresh() {
+            doc.querySelectorAll(
+              '[data-testid="stCheckbox"] label[data-baseweb="checkbox"]'
+            ).forEach(sync);
+          }
+
+          refresh();
+          const observer = new MutationObserver(refresh);
+          observer.observe(doc.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['checked', 'aria-checked']
+          });
+          window.addEventListener(
+            'beforeunload',
+            () => observer.disconnect(),
+            {once: true}
+          );
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
     )

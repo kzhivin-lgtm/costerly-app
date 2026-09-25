@@ -1782,10 +1782,10 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert ":has(.machinery-selected-no)" in css
     assert "#C5E9CF" in css
     assert "#F3C4CD" in css
-    assert 'label[data-baseweb="checkbox"]:has(input:checked)' in base_css
-    assert 'label[data-baseweb="checkbox"]:has(input[aria-checked="true"])' in base_css
+    assert "costerly-checkbox-checked" in base_css
+    assert "input.checked" in base_css
+    assert "MutationObserver" in base_css
     assert "background-color: #4F8FCB !important;" in base_css
-    assert "fill%3D%27white%27" in base_css
     assert "gap: 8px !important;" in css
     assert "margin-bottom: 16px;" in css
     assert "box-sizing: border-box;" in css

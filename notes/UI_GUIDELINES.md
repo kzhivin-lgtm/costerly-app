@@ -132,6 +132,9 @@ screen.
   system theme until a complete dark theme is designed.
 - Reuse shared input, button, spacing, focus, and error tokens before adding
   screen-specific CSS.
+- Every checked checkbox uses the shared interaction blue. The rule is global,
+  including Auth, Terms, Company Profile and Machinery; red is reserved for an
+  actual validation error or explicit negative status.
 - Company Profile content cards use the accepted 18 px outer radius and the
   same first-card gap below the tab rail. A tab must not introduce its own
   smaller outer radius or extra top offset.

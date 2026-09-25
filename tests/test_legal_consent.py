@@ -126,6 +126,8 @@ def test_new_registration_shows_terms_before_the_only_submit(monkeypatch):
     assert 'class="auth-terms-disclosure"' in rendered
     assert 'class="auth-terms-preview"' in rendered
     assert "These Terms of Service" in rendered
+    assert "<h2>1. Service, customer and user roles</h2>" in rendered
+    assert "&lt;h2&gt;" not in rendered
     assert "Terms govern professional use" not in rendered
     assert "Read the full Terms of Service" not in rendered
     assert "Privacy Policy is available" not in rendered
@@ -294,6 +296,7 @@ def test_terms_heading_uses_the_established_regular_weight_and_disclosure_fades(
 
     assert ".auth-brand-terms-of-service h1" in css
     assert ".auth-brand-updated-terms-of-service h1" in css
+    assert "font-size: 40px;" in css
     assert "font-weight: 400;" in css
     assert ".auth-terms-preview" in css
     assert "-webkit-line-clamp: 3;" in css

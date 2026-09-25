@@ -491,12 +491,23 @@ def apply_auth_css() -> None:
         .auth-brand-sign-in h1,
         .auth-brand-join-your-company h1,
         .auth-brand-reset-password h1,
-        .auth-brand-create-new-password h1,
+        .auth-brand-create-new-password h1 {
+            color: var(--color-purple, var(--primitive-purple-900));
+            font-family: var(--font-hero);
+            font-size: 46px;
+            font-weight: 400;
+            font-synthesis: none;
+            letter-spacing: -0.045em;
+            line-height: 1.18;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: geometricPrecision;
+        }
+
         .auth-brand-terms-of-service h1,
         .auth-brand-updated-terms-of-service h1 {
             color: var(--color-purple, var(--primitive-purple-900));
             font-family: var(--font-hero);
-            font-size: 46px;
+            font-size: 40px;
             font-weight: 400;
             font-synthesis: none;
             letter-spacing: -0.045em;
@@ -1015,10 +1026,13 @@ def apply_auth_css() -> None:
             .auth-brand-sign-in h1,
             .auth-brand-join-your-company h1,
             .auth-brand-reset-password h1,
-            .auth-brand-create-new-password h1,
+            .auth-brand-create-new-password h1 {
+                font-size: clamp(30px, 9vw, 40px);
+                line-height: 1.12;
+            }
             .auth-brand-terms-of-service h1,
             .auth-brand-updated-terms-of-service h1 {
-                font-size: clamp(30px, 9vw, 40px);
+                font-size: clamp(28px, 8vw, 34px);
                 line-height: 1.12;
             }
             .stApp:has(.auth-screen-active) .auth-terms-disclosure summary {
