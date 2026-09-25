@@ -33,7 +33,7 @@ Status: version 1.1 activated, production acceptance incomplete
   company activation, existing-user gate, mobile pass, and branded Supabase
   Confirm Signup template remain acceptance work. This is active playground
   functionality, not a completed production checkpoint.
-- The full deterministic suite passes: 333 tests.
+- The full deterministic suite passes: 335 tests.
 - Material Terms of Service version 1.1 and Privacy Policy version 1.1 are
   active. Terms acceptance version advanced from 1 to 2; Privacy remains
   acceptance version 1 and does not create its own gate. There were no existing
@@ -46,8 +46,10 @@ acceptance. It does not establish legal approval of the document text.
 ## Agreed product decisions
 
 - The contractual document is named `Terms of Service`.
-- Signup shows a short Terms summary that can be expanded and scrolled. Opening
-  or scrolling it is optional. The unchecked agreement control is mandatory.
+- Signup and the post-auth gate show the Terms title plus the real opening
+  paragraph, fading through its third line. Activating that disclosure expands
+  the complete Terms inline without an additional full-document link. Reading
+  or expanding it is optional. The unchecked agreement control is mandatory.
 - Privacy Policy is acknowledged by being clearly provided at signup and is
   always available from the public application footer. It has no checkbox.
 - A valid signup advances to a minimal branded screen containing only
@@ -81,11 +83,10 @@ acceptance. It does not establish legal approval of the document text.
 
 | State or action | Expected behavior |
 | --- | --- |
-| Signup opens | Show the established company or member fields, a collapsed Terms summary, the unchecked agreement control, and links to both documents |
+| Signup opens | Show the established company or member fields, the Terms disclosure with a three-line fading preview, and the unchecked agreement control |
 | Anonymous visitor types an email | Do not reveal whether the address exists, is verified, or accepted a Terms release; do not dynamically hide legal controls |
-| User opens or closes Terms | Preserve every field and checkbox value; opening and scrolling are optional |
-| Privacy Policy link is used | Open the current policy separately and preserve signup state |
-| Terms of Service link is used | Open the exact version represented by the agreement separately and preserve signup state |
+| User opens or closes Terms | Expand the complete current Terms inline and preserve every field and checkbox value; opening and reading are optional |
+| Privacy Policy link is used | Keep it in the permanent wrapper footer, open the current policy separately, and preserve signup state |
 | Terms is unchecked | Do not create an Auth user, acceptance event, company, or membership; mark the agreement control |
 | Multiple fields are invalid | One submit marks every invalid field including the agreement control; no loading state starts |
 | User corrects an invalid value | Clear that field's invalid state without clearing unrelated fields |
@@ -101,7 +102,8 @@ acceptance. It does not establish legal approval of the document text.
 | Confirmation link is expired, malformed, already used, or prefetched | Do not activate access; show an invalid-link state and a safe support route |
 | Confirmation callback is repeated | Return the already completed company access without duplicating membership or legal records |
 | User has accepted the current material Terms release | Enter the application normally |
-| User has no acceptance or only an older material Terms release | Before rendering company data, show the current Terms gate with an unchecked control and document links |
+| User has no acceptance | Before rendering company data, show `Terms of Service` with the shared disclosure and unchecked control |
+| User accepted only an older material Terms release | Before rendering company data, show `Updated Terms of Service` with the shared disclosure and unchecked control |
 | Terms gate is unchecked | Do not append an event or reveal application data |
 | Current Terms is accepted | Append exactly one server event and continue immediately; do not reverify email |
 | Terms acceptance is double-submitted or retried | Remain idempotent and append at most one event for the request |

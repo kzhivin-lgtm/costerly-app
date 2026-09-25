@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
+import html
 import ipaddress
+from pathlib import Path
+import re
 import secrets
 import uuid
 from urllib.parse import urlsplit, urlunsplit
@@ -13,62 +17,26 @@ from use_cases.invite_links import DEFAULT_PUBLIC_APP_URL, invite_token_hash, pu
 
 
 TERMS_CHECKBOX_TEXT = "I have read and agree to the Terms of Service"
-TERMS_SUMMARY = (
-    "These Terms govern professional use of Costerly AI, organization access, "
-    "Customer Content, AI-assisted output, plans and usage limits, confidentiality, "
-    "cancellation, warranties, liability and other service conditions"
-)
-TERMS_INLINE_TEXT = """
-**One agreement, two roles.** An Organization Admin creates the Organization
-Account or receives administrative authority later. A Member is invited by an
-Admin or another authorized user. Admins confirm authority to create the
-account, accept the Terms for the organization, provide accurate information
-and grant access. Members confirm permission to use the account and are
-responsible for their own actions, but do not claim authority to contract for
-the entire organization merely by accepting these Terms.
-
-**Account access.** Admins may invite and remove Members and manage roles and
-permissions. The organization is responsible for the access it grants, its
-authorized users' activity and credential security.
-
-**Customer Content.** The customer confirms it has all rights and permissions
-needed to upload, store and process files, including copyright,
-confidentiality, NDA, trade-secret, personal-data and other third-party rights.
-Costerly AI does not verify the files' origin or contractual chain. It receives
-only the limited license needed to host, copy, analyze, transform, process and
-transmit Customer Content to authorized providers for the service.
-
-**Confidentiality and AI providers.** Customer Content may include confidential
-drawings, RFQs, BOMs, prices and specifications. Costerly AI uses it to provide
-and protect the service, with personnel and necessary providers limited to
-need-to-know access. Customer Content is not used to train Costerly AI's own
-general-purpose models. OpenAI, Anthropic, Google and other AI providers must
-not use it to train or improve their general-purpose models.
-
-**Output.** As between Costerly AI and the customer, output belongs to the
-customer to the extent permitted by law. Costerly AI retains its platform IP.
-AI-assisted output may be incomplete or incorrect and must be reviewed before
-commercial, production, engineering or other use.
-
-**Plans and usage.** Trial, pilot and beta access follows its offer and does not
-automatically become paid. Paid Plans are not unlimited unless expressly
-stated. Operations may consume different tokens or credits based on type, size
-and complexity. Internal usage units are not money and have no cash value.
-
-**Billing.** Cancellation stops the next renewal. Started billing periods,
-consumed usage and unused Included Usage are non-refundable except where law
-requires otherwise.
-
-**Storage.** Subject to law, Customer Content may remain stored indefinitely
-after a project or account is removed. Customers may request verified permanent
-deletion. Limited protected backup copies may remain through normal cycles.
-
-**Availability and responsibility.** The service may change and may sometimes
-be unavailable. It does not promise uninterrupted operation, absolute accuracy
-or a particular processing volume. The full Terms contain the applicable use,
-suspension, warranty, liability, indemnity and change provisions.
-"""
 SUPPORT_EMAIL = "hello@costerly.ai"
+
+
+@lru_cache(maxsize=1)
+def terms_disclosure_content() -> tuple[str, str]:
+    """Return the opening paragraph and complete published Terms article body."""
+    source = Path("cloudflare/terms.html").read_text(encoding="utf-8")
+    article_match = re.search(r"<article>(.*?)</article>", source, flags=re.DOTALL)
+    if not article_match:
+        raise RuntimeError("Published Terms article is missing")
+    body = article_match.group(1)
+    body = re.sub(r"\s*<h1>.*?</h1>", "", body, count=1, flags=re.DOTALL)
+    body = re.sub(
+        r'\s*<p class="meta">.*?</p>', "", body, count=1, flags=re.DOTALL
+    )
+    first_paragraph = re.search(r"<p>(.*?)</p>", body, flags=re.DOTALL)
+    if not first_paragraph:
+        raise RuntimeError("Published Terms opening paragraph is missing")
+    preview = re.sub(r"<[^>]+>", "", first_paragraph.group(1))
+    return html.unescape(preview).strip(), body.strip()
 
 
 @dataclass(frozen=True)
@@ -259,6 +227,17 @@ def terms_acceptance_required(server_client, user_id: str) -> bool:
         .execute()
     ).data or []
     return not bool(rows)
+
+
+def has_terms_acceptance_history(server_client, user_id: str) -> bool:
+    rows = (
+        server_client.table("legal_acceptance_events")
+        .select("event_id")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    ).data or []
+    return bool(rows)
 
 
 def record_current_terms_acceptance(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import html
 import json
 import re
 import secrets
@@ -41,15 +42,14 @@ from state.session_resume import restore_resume_session, seal_resume_session
 from state.legal_consent import (
     SUPPORT_EMAIL,
     TERMS_CHECKBOX_TEXT,
-    TERMS_INLINE_TEXT,
-    TERMS_SUMMARY,
     current_legal_documents,
     email_confirmation_url,
+    has_terms_acceptance_history,
     legal_consent_enabled,
     pending_registration_for_user,
-    public_legal_url,
     record_current_terms_acceptance,
     record_pending_registration,
+    terms_disclosure_content,
 )
 
 
@@ -573,22 +573,23 @@ def begin_verified_sign_up(
 
 
 def _render_registration_terms(documents, *, key: str) -> bool:
-    terms_url = public_legal_url(documents.terms.public_path)
-    privacy_url = public_legal_url(documents.privacy.public_path)
-    st.caption(TERMS_SUMMARY)
-    with st.expander("Terms of Service"):
-        with st.container(height=220, border=False):
-            st.markdown(TERMS_INLINE_TEXT)
-        st.markdown(
-            f'<a href="{terms_url}" target="_blank" rel="noopener">Read the full Terms of Service</a>',
-            unsafe_allow_html=True,
-        )
-    accepted = st.checkbox(TERMS_CHECKBOX_TEXT, key=key)
+    preview, full_terms = terms_disclosure_content()
     st.markdown(
-        f'<div class="auth-legal-links">Privacy Policy is available '
-        f'<a href="{privacy_url}" target="_blank" rel="noopener">here</a></div>',
+        '<div class="auth-terms-disclosure">'
+        '<details>'
+        '<summary>'
+        '<span class="auth-terms-title">'
+        '<span class="auth-terms-chevron" aria-hidden="true"></span>'
+        f'{html.escape(documents.terms.title)}'
+        '</span>'
+        f'<span class="auth-terms-preview">{html.escape(preview)}</span>'
+        '</summary>'
+        f'<div class="auth-terms-full">{full_terms}</div>'
+        '</details>'
+        '</div>',
         unsafe_allow_html=True,
     )
+    accepted = st.checkbox(TERMS_CHECKBOX_TEXT, key=key)
     return bool(accepted)
 
 
@@ -616,8 +617,14 @@ def render_email_confirmation_error() -> None:
 def render_terms_acceptance(access: CompanyAccess) -> None:
     """Block application data until this authenticated user accepts current Terms."""
     install_auth_form_interactions()
-    documents = current_legal_documents(_server_client())
-    _render_auth_heading("Updated Terms of Service")
+    server_client = _server_client()
+    documents = current_legal_documents(server_client)
+    heading = (
+        "Updated Terms of Service"
+        if has_terms_acceptance_history(server_client, access.user_id)
+        else "Terms of Service"
+    )
+    _render_auth_heading(heading)
     error = str(st.session_state.get("terms_acceptance_error") or "")
     with st.form("current_terms_acceptance"):
         accepted = _render_registration_terms(documents, key="current_terms_accepted")

@@ -93,6 +93,20 @@ def _render_member_registration():
     )
 
 
+def _render_terms_gate():
+    from state import company_auth
+
+    company_auth.render_terms_acceptance(
+        company_auth.CompanyAccess(
+            user_id="user-1",
+            email="owner@example.com",
+            company_id="001",
+            role="owner",
+            access_token="token",
+        )
+    )
+
+
 def test_new_registration_shows_terms_before_the_only_submit(monkeypatch):
     monkeypatch.setattr(company_auth, "legal_consent_enabled", lambda: True)
     monkeypatch.setattr(company_auth, "current_legal_documents", lambda _client: _documents())
@@ -107,7 +121,14 @@ def test_new_registration_shows_terms_before_the_only_submit(monkeypatch):
         if checkbox.label == legal_consent.TERMS_CHECKBOX_TEXT
     )
     assert terms.value is False
-    assert any(expander.label == "Terms of Service" for expander in app.expander)
+    assert not app.expander
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert 'class="auth-terms-disclosure"' in rendered
+    assert 'class="auth-terms-preview"' in rendered
+    assert "These Terms of Service" in rendered
+    assert "Terms govern professional use" not in rendered
+    assert "Read the full Terms of Service" not in rendered
+    assert "Privacy Policy is available" not in rendered
 
 
 def test_new_registration_cannot_submit_without_terms(monkeypatch):
@@ -250,6 +271,34 @@ def test_updated_terms_gate_precedes_application_controls():
     )[0]
     assert '"Sign out"' in gate_source
     assert "on_click=sign_out" in gate_source
+
+
+def test_terms_gate_heading_distinguishes_first_acceptance_from_an_update(monkeypatch):
+    monkeypatch.setattr(company_auth, "current_legal_documents", lambda _client: _documents())
+    monkeypatch.setattr(company_auth, "_server_client", lambda: object())
+
+    monkeypatch.setattr(company_auth, "has_terms_acceptance_history", lambda *_args: False)
+    first = AppTest.from_function(_render_terms_gate).run()
+    first_html = "\n".join(item.value for item in first.markdown)
+    assert '<h1>Terms of Service</h1>' in first_html
+    assert '<h1>Updated Terms of Service</h1>' not in first_html
+
+    monkeypatch.setattr(company_auth, "has_terms_acceptance_history", lambda *_args: True)
+    updated = AppTest.from_function(_render_terms_gate).run()
+    updated_html = "\n".join(item.value for item in updated.markdown)
+    assert '<h1>Updated Terms of Service</h1>' in updated_html
+
+
+def test_terms_heading_uses_the_established_regular_weight_and_disclosure_fades():
+    css = (ROOT / "styles/auth.py").read_text()
+
+    assert ".auth-brand-terms-of-service h1" in css
+    assert ".auth-brand-updated-terms-of-service h1" in css
+    assert "font-weight: 400;" in css
+    assert ".auth-terms-preview" in css
+    assert "-webkit-line-clamp: 3;" in css
+    assert "mask-image: linear-gradient" in css
+    assert "details[open] .auth-terms-preview" in css
 
 
 def test_current_legal_documents_identify_the_registered_exempt_dealer():
@@ -420,6 +469,12 @@ def test_returning_user_gate_uses_authenticated_user_and_terms_acceptance_versio
     assert legal_consent.terms_acceptance_required(
         _Client(tables), "authenticated-user"
     ) is True
+    assert legal_consent.has_terms_acceptance_history(
+        _Client(tables), "authenticated-user"
+    ) is True
+    assert legal_consent.has_terms_acceptance_history(
+        _Client(tables), "another-user"
+    ) is False
 
 
 def test_confirmation_email_is_branded_direct_and_not_threaded():

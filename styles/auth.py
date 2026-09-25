@@ -491,7 +491,9 @@ def apply_auth_css() -> None:
         .auth-brand-sign-in h1,
         .auth-brand-join-your-company h1,
         .auth-brand-reset-password h1,
-        .auth-brand-create-new-password h1 {
+        .auth-brand-create-new-password h1,
+        .auth-brand-terms-of-service h1,
+        .auth-brand-updated-terms-of-service h1 {
             color: var(--color-purple, var(--primitive-purple-900));
             font-family: var(--font-hero);
             font-size: 46px;
@@ -663,7 +665,6 @@ def apply_auth_css() -> None:
             display: none !important;
         }
 
-        .stApp:has(.auth-screen-active) .auth-legal-links,
         .stApp:has(.auth-screen-active) .auth-verification-support {
             color: #67616C;
             font-family: var(--font-sans);
@@ -672,7 +673,6 @@ def apply_auth_css() -> None:
             text-align: center;
         }
 
-        .stApp:has(.auth-screen-active) .auth-legal-links a,
         .stApp:has(.auth-screen-active) .auth-verification-support a {
             color: #6F3CB4;
             font-weight: 600;
@@ -683,9 +683,103 @@ def apply_auth_css() -> None:
             box-shadow: 0 0 0 1px rgba(180, 62, 73, 0.10) !important;
         }
 
-        .stApp:has(.auth-screen-active) [data-testid="stExpander"] {
-            border-color: #E7DFE9 !important;
-            background: #FAF8FC !important;
+        .stApp:has(.auth-screen-active) .auth-terms-disclosure {
+            margin: 0 0 16px;
+            color: #2A1F2C;
+            font-family: var(--font-sans);
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-disclosure details {
+            overflow: hidden;
+            background: #FAF8FC;
+            border: 1px solid #D8D0DC;
+            border-radius: 10px;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-disclosure summary {
+            display: block;
+            padding: 16px 18px 17px;
+            cursor: pointer;
+            list-style: none;
+            user-select: none;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-disclosure summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #2A1F2C;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-chevron {
+            width: 8px;
+            height: 8px;
+            flex: 0 0 8px;
+            border-right: 1.8px solid #51475B;
+            border-bottom: 1.8px solid #51475B;
+            transform: rotate(-45deg);
+            transition: transform 150ms ease;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-disclosure details[open] .auth-terms-chevron {
+            transform: rotate(45deg) translate(-2px, -2px);
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-preview {
+            display: -webkit-box;
+            max-height: 4.35em;
+            margin: 11px 0 0 20px;
+            overflow: hidden;
+            color: #67616C;
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.45;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 3;
+            mask-image: linear-gradient(to bottom, #000 42%, rgba(0, 0, 0, 0.72) 68%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, #000 42%, rgba(0, 0, 0, 0.72) 68%, transparent 100%);
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-disclosure details[open] .auth-terms-preview {
+            display: none;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-full {
+            padding: 4px 20px 22px;
+            border-top: 1px solid #E7DFE9;
+            color: #51475B;
+            user-select: text;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-full h2 {
+            margin: 24px 0 8px;
+            color: #2A1F2C;
+            font-family: var(--font-sans);
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-full p,
+        .stApp:has(.auth-screen-active) .auth-terms-full li {
+            margin: 0 0 12px;
+            color: #51475B;
+            font-family: var(--font-sans);
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.55;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-terms-full a {
+            color: #6F3CB4;
+            font-weight: 600;
         }
 
         .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-password-row-marker) {
@@ -921,9 +1015,20 @@ def apply_auth_css() -> None:
             .auth-brand-sign-in h1,
             .auth-brand-join-your-company h1,
             .auth-brand-reset-password h1,
-            .auth-brand-create-new-password h1 {
+            .auth-brand-create-new-password h1,
+            .auth-brand-terms-of-service h1,
+            .auth-brand-updated-terms-of-service h1 {
                 font-size: clamp(30px, 9vw, 40px);
                 line-height: 1.12;
+            }
+            .stApp:has(.auth-screen-active) .auth-terms-disclosure summary {
+                padding: 15px 16px 16px;
+            }
+            .stApp:has(.auth-screen-active) .auth-terms-preview {
+                margin-left: 20px;
+            }
+            .stApp:has(.auth-screen-active) .auth-terms-full {
+                padding: 4px 16px 20px;
             }
             .stApp:has(.auth-screen-active) div[data-testid="stFormSubmitButton"] button {
                 min-height: 58px !important;
