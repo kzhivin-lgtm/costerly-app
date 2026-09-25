@@ -394,6 +394,12 @@ legal-state lookup. Their verified `user_id`, not typed email, is checked
 against the current Terms acceptance version before company data renders.
 Privacy-only releases do not create a gate. Published document rows and legal
 evidence cannot be edited or deleted. The mutable release pointer selects the
-current immutable document. See
+current immutable document. The frozen pre-launch legal-text checkpoint uses
+Terms 1.3 with acceptance version 4 and response SHA-256
+`346cb5ee4be1cac1b0fa4a80deb8c1a89a330e426dae8d931485b79233cc2b0d`,
+plus Privacy 1.2 with unchanged acceptance version 1,
+`requires_reacceptance = false`, and response SHA-256
+`baee97a79a3be012dec6b0e5610aa380abd01e753dd64930ea97ec25bf13d674`.
+See
 `notes/LEGAL_CONSENT_VERIFIED_REGISTRATION.md` for the scenario and rollout
 contract.

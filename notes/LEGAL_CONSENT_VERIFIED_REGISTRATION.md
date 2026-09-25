@@ -1,7 +1,7 @@
 # Legal Consent and Verified Registration
 
 Task: 3.11.1
-Status: version 1.2 activated, production acceptance incomplete
+Status: legal text checkpoint activated at Terms 1.3 and Privacy 1.2; production flow acceptance incomplete
 
 ## Verified progress on 2026-09-25
 
@@ -33,7 +33,7 @@ Status: version 1.2 activated, production acceptance incomplete
   company activation, existing-user gate, mobile pass, and branded Supabase
   Confirm Signup template remain acceptance work. This is active playground
   functionality, not a completed production checkpoint.
-- The full deterministic suite passes: 340 tests.
+- The full deterministic suite passes: 343 tests.
 - Material Terms of Service version 1.1 and Privacy Policy version 1.1 are
   active. Terms acceptance version advanced from 1 to 2; Privacy remains
   acceptance version 1 and does not create its own gate. There were no existing
