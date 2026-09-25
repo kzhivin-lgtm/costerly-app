@@ -3,13 +3,16 @@
 - 3.12.1 Price Source Agent accuracy: active, P1. Improve real supplier-source
   extraction, material-type classification, unit normalization, confidence,
   and ready-versus-unresolved decisions while protecting the accepted 3.10.1
-  Price Catalog UI checkpoint `d18b533`. The approved v2 candidate adds row-level
+  Price Catalog UI checkpoint `d18b533`. The approved v3 candidate adds row-level
   Material Type, document number and totals, VAT evidence, semantic duplicate
   protection, and Source Details timing and TC. Automated verification and a
   representative production evidence pass remain required. Revision 2 now
   separates extracted and active counts in the completion notice, shows time
   and TC immediately, removes manual Price Source reruns, and restores native
-  file-delete hit testing. Production interaction acceptance remains pending. Contract:
+  file-delete hit testing. Revision 3 removes confidence as an activation gate,
+  blocks only price-critical VAT and package-conversion uncertainty, standardizes
+  normalized names, and adds row-level Review, Edit, Remove, and reversible source
+  removal. Production interaction acceptance remains pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price

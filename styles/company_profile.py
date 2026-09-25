@@ -1112,6 +1112,39 @@ def apply_company_profile_css() -> None:
             font-size: 13px;
         }
 
+        .price-source-row-label {
+            color: var(--color-text-muted);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .price-source-review-reason,
+        .price-source-needs-review {
+            color: var(--color-error);
+            font-size: 12px;
+        }
+
+        .price-source-active {
+            color: var(--color-success);
+            font-size: 12px;
+        }
+
+        [class*="st-key-price_source_row_"] {
+            padding: 10px 16px;
+            border-top: 1px solid var(--color-border-soft);
+        }
+
+        [class*="st-key-price_source_row_"] [data-testid="stForm"] {
+            margin-top: 10px;
+            padding: 16px;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 12px;
+            background: #FAF8FC;
+        }
+
         .stApp:has(.company-profile-active) .st-key-price_catalog_shell {
             margin-top: 18px;
         }

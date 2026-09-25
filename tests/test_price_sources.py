@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from copy import deepcopy
 import inspect
 from pathlib import Path
 from types import SimpleNamespace
@@ -33,6 +34,9 @@ from use_cases.price_sources import (
     list_price_catalog,
     price_source_material_types,
     price_source_semantic_fingerprint,
+    remove_price_source,
+    remove_price_source_row,
+    save_price_source_row,
 )
 
 
@@ -68,6 +72,79 @@ class _CatalogClient:
 
     def table(self, name):
         return _CatalogQuery(self.tables[name])
+
+
+class _MutableQuery:
+    def __init__(self, client, table_name):
+        self.client = client
+        self.table_name = table_name
+        self.filters = []
+        self.payload = None
+        self.operation = "select"
+        self.row_limit = None
+
+    def select(self, *_args):
+        return self
+
+    def eq(self, key, value):
+        self.filters.append(("eq", key, value))
+        return self
+
+    def neq(self, key, value):
+        self.filters.append(("neq", key, value))
+        return self
+
+    def limit(self, value):
+        self.row_limit = value
+        return self
+
+    def update(self, payload):
+        self.operation = "update"
+        self.payload = deepcopy(payload)
+        return self
+
+    def insert(self, payload):
+        self.operation = "insert"
+        self.payload = deepcopy(payload)
+        return self
+
+    def _matches(self, row):
+        for operation, key, value in self.filters:
+            if operation == "eq" and row.get(key) != value:
+                return False
+            if operation == "neq" and row.get(key) == value:
+                return False
+        return True
+
+    def execute(self):
+        rows = self.client.tables[self.table_name]
+        if self.operation == "insert":
+            inserted = deepcopy(self.payload)
+            id_fields = {
+                "company_material_items": "company_material_id",
+                "company_material_offers": "offer_id",
+            }
+            id_field = id_fields.get(self.table_name)
+            if id_field and id_field not in inserted:
+                inserted[id_field] = f"generated-{len(rows) + 1}"
+            inserted.setdefault("status", "active" if self.table_name == "company_material_offers" else "private")
+            rows.append(inserted)
+            return SimpleNamespace(data=[deepcopy(inserted)])
+        matches = [row for row in rows if self._matches(row)]
+        if self.row_limit is not None:
+            matches = matches[: self.row_limit]
+        if self.operation == "update":
+            for row in matches:
+                row.update(deepcopy(self.payload))
+        return SimpleNamespace(data=deepcopy(matches))
+
+
+class _MutableClient:
+    def __init__(self, tables):
+        self.tables = tables
+
+    def table(self, name):
+        return _MutableQuery(self, name)
 
 
 def _result(*, status: str = "ready", confidence: float = 96) -> dict:
@@ -148,6 +225,26 @@ def test_ambiguous_package_to_unit_conversion_cannot_activate():
     assert guarded["rows"][0]["status"] == "unresolved"
     assert "package_conversion_unresolved" in guarded["rows"][0]["reason_codes"]
     assert validate_price_source_result(guarded) is guarded
+
+
+def test_unknown_vat_basis_cannot_activate():
+    result = _result(confidence=95)
+    result["rows"][0]["raw_vat_mode"] = "unknown"
+
+    guarded = guard_price_source_row_activation(result)
+
+    assert guarded["rows"][0]["status"] == "unresolved"
+    assert "vat_basis_unknown" in guarded["rows"][0]["reason_codes"]
+
+
+def test_confidence_and_other_material_type_do_not_block_a_usable_price():
+    result = _result(confidence=42)
+    result["rows"][0]["material_type"] = "Other"
+
+    guarded = guard_price_source_row_activation(result)
+
+    assert guarded["rows"][0]["status"] == "ready"
+    assert "material_type_unresolved" not in guarded["rows"][0]["reason_codes"]
 
 
 def test_price_source_schema_requires_a_supported_row_material_type():
@@ -409,6 +506,77 @@ def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
     assert rows[0]["updated_at"] == "2026-09-24"
 
 
+def test_review_activate_remove_row_and_archive_source_are_auditable(monkeypatch):
+    tables = {
+        "company_price_sources": [
+            {
+                "source_id": "source-1",
+                "company_id": "company-1",
+                "supplier_id": "supplier-1",
+                "category": "Other",
+                "currency": None,
+                "document_date": "2026-09-24",
+                "status": "partial",
+                "processing_summary": {"ready": 0, "unresolved": 1, "excluded": 0},
+            }
+        ],
+        "company_price_source_rows": [
+            {
+                "row_id": "row-1",
+                "source_id": "source-1",
+                "company_id": "company-1",
+                "raw_description": "Birch plywood 10mm",
+                "raw_sku": "PLY-10",
+                "confidence": 42,
+                "result_status": "unresolved",
+                "raw_vat_included": None,
+                "reason_codes": ["vat_basis_unknown", "below_auto_activation_threshold"],
+                "evidence": {"material_type": "Other"},
+            }
+        ],
+        "company_material_items": [],
+        "company_material_offers": [],
+    }
+    client = _MutableClient(tables)
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+    access = SimpleNamespace(company_id="company-1", user_id="user-1")
+
+    saved = save_price_source_row(
+        access,
+        "source-1",
+        "row-1",
+        {
+            "normalized_name": "Plywood Birch 10 mm",
+            "material_type": "Wood Sheets",
+            "raw_price": 100,
+            "raw_currency": "ILS",
+            "raw_unit": "sheet",
+            "purchase_unit": "sheet",
+            "calculation_unit": "m2",
+            "conversion_factor": 2.5,
+            "vat_mode": "excluded",
+        },
+    )
+
+    assert saved["result_status"] == "new"
+    assert saved["normalized_price"] == 40
+    assert saved["reason_codes"] == ["reviewed_by_user"]
+    assert tables["company_material_offers"][0]["status"] == "active"
+    assert tables["company_price_sources"][0]["status"] == "ready"
+    assert tables["company_price_sources"][0]["currency"] == "ILS"
+
+    remove_price_source_row(access, "source-1", "row-1")
+
+    assert tables["company_price_source_rows"][0]["result_status"] == "excluded"
+    assert tables["company_material_offers"][0]["status"] == "archived"
+    assert "removed_by_user" in tables["company_price_source_rows"][0]["reason_codes"]
+
+    remove_price_source(access, "source-1")
+
+    assert tables["company_price_sources"][0]["status"] == "archived"
+
+
 def test_ready_price_requires_currency_and_positive_normalized_price():
     missing_currency = _result()
     missing_currency["currency"] = ""
@@ -447,6 +615,14 @@ def test_prompt_preserves_item_vat_basis_and_excludes_document_totals():
     prompt = Path("agents/prompts/price_source_agent_prompt.md").read_text()
     assert "subtotal, VAT or tax total, grand total, and amount due" in prompt
     assert "Never add\n  or remove VAT from a product price" in prompt
+
+
+def test_prompt_requires_consistent_standalone_normalized_names():
+    prompt = Path("agents/prompts/price_source_agent_prompt.md").read_text()
+
+    assert "product family, material or subtype, dimensions or" in prompt
+    assert "same term and\n   capitalization" in prompt
+    assert "when viewed outside the source document" in prompt
 
 
 def test_prompt_accepts_documents_addressed_to_another_company():

@@ -25,8 +25,14 @@ instructions.
 3. Extract product rows, supplier SKUs, effective unit prices, units, package
    quantities, line quantities, line totals, discounts, currency, VAT basis,
    and evidence locations.
-4. Normalize product names conservatively without dropping dimensions, thickness,
-   finish, grade, color, brand, or other identity-bearing specifications.
+4. Normalize every product name into concise, consistent English. Use this order
+   when the evidence exists: product family, material or subtype, dimensions or
+   capacity, grade or thickness, finish or color, brand. Use the same term and
+   capitalization for the same attribute across all rows. Remove seller prose,
+   delivery context, repeated words, and document boilerplate, but never drop a
+   supplier SKU, dimension, thickness, finish, grade, color, brand, or another
+   identity-bearing specification. normalized_name must still identify the item
+   when viewed outside the source document.
 5. Normalize a price only when the conversion is fully supported by the source.
 6. Exclude non-product total rows such as delivery, assembly, labor, payment,
    credit, subtotal, VAT or tax total, grand total, and amount due.
@@ -124,6 +130,10 @@ Return confidence as percentage points from 0 to 100, never as a 0-to-1 fraction
 High confidence requires a clear material identity, positive unit price, explicit
 unit, supported conversion, and consistent arithmetic. OCR uncertainty, missing
 units, conflicting totals, discounts without a clear basis, and unclear packaging
-must reduce confidence. Rows below safe activation quality must be unresolved.
+must reduce confidence. Confidence is diagnostic and does not by itself determine
+row status. Use unresolved only when critical evidence is missing or conflicting,
+including an unknown VAT basis, unsupported unit conversion, or another issue that
+prevents a dependable price from being used. An Other material type lowers
+confidence but does not by itself make an otherwise usable price unresolved.
 
 Return only the structured JSON required by the schema.

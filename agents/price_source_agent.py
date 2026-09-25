@@ -25,7 +25,7 @@ from agents.schemas.price_source_schema import (
 )
 
 
-PRICE_SOURCE_PROMPT_VERSION = "price_source_v2"
+PRICE_SOURCE_PROMPT_VERSION = "price_source_v3"
 PRICE_SOURCE_MAX_OUTPUT_TOKENS = 32_768
 
 

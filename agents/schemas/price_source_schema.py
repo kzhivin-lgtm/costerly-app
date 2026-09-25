@@ -161,10 +161,13 @@ def normalize_price_source_confidence_scale(result: dict[str, Any]) -> dict[str,
 
 
 def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
-    """Keep rows with unresolved package-to-unit conversion out of active pricing."""
+    """Keep rows with missing critical pricing evidence out of active pricing."""
     for row in result.get("rows") or []:
         if not isinstance(row, dict) or row.get("status") != "ready":
             continue
+        blockers: list[str] = []
+        if row.get("raw_vat_mode") == "unknown":
+            blockers.append("vat_basis_unknown")
         package_quantity = row.get("raw_package_quantity")
         conversion_factor = row.get("conversion_factor")
         if (
@@ -174,9 +177,11 @@ def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
             and isinstance(conversion_factor, (int, float))
             and conversion_factor == 1
         ):
+            blockers.append("package_conversion_unresolved")
+        if blockers:
             row["status"] = "unresolved"
             row["reason_codes"] = sorted(
-                set((row.get("reason_codes") or []) + ["package_conversion_unresolved"])
+                set((row.get("reason_codes") or []) + blockers)
             )
     return result
 

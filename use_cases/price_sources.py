@@ -21,6 +21,10 @@ import pandas as pd
 from PIL import Image, UnidentifiedImageError
 
 from agents.price_source_agent import run_price_source_agent
+from agents.schemas.price_source_schema import (
+    CANONICAL_UNIT_CODES,
+    PRICE_SOURCE_CATEGORIES,
+)
 from db.company_access import assert_company_owner
 from db.repositories import insert_agent_usage_event
 from db.supabase_client import get_supabase_client
@@ -28,7 +32,6 @@ from db.supabase_client import get_supabase_client
 
 PRICE_SOURCE_BUCKET = "company-price-sources"
 MAX_SOURCE_BYTES = 50 * 1024 * 1024
-AUTO_ACTIVATION_CONFIDENCE = 85
 LEGACY_EXTREME_RATIO = 3.0
 LEGACY_CONFIDENCE_PENALTY = 15.0
 SUPPORTED_SUFFIXES = {".pdf", ".xlsx", ".csv", ".jpg", ".jpeg", ".png"}
@@ -400,6 +403,7 @@ def list_price_sources(access) -> list[dict]:
             "processing_summary,created_at,processed_at,company_suppliers(supplier_name)"
         )
         .eq("company_id", str(access.company_id))
+        .neq("status", "archived")
         .order("created_at", desc=True)
         .execute()
     ).data or []
@@ -522,6 +526,254 @@ def load_price_source_rows(access, source_id: str) -> list[dict]:
         .order("source_row_number")
         .execute()
     ).data or []
+
+
+def _owned_price_source(client, company_id: str, source_id: str) -> dict:
+    rows = (
+        client.table("company_price_sources")
+        .select("*")
+        .eq("company_id", company_id)
+        .eq("source_id", source_id)
+        .limit(1)
+        .execute()
+    ).data or []
+    if not rows or rows[0].get("status") == "archived":
+        raise PriceSourceError("Price source not found")
+    return rows[0]
+
+
+def _refresh_price_source_summary(client, company_id: str, source_id: str) -> None:
+    source = _owned_price_source(client, company_id, source_id)
+    rows = (
+        client.table("company_price_source_rows")
+        .select("result_status,raw_vat_included,evidence")
+        .eq("company_id", company_id)
+        .eq("source_id", source_id)
+        .execute()
+    ).data or []
+    ready = sum(row.get("result_status") in {"new", "updated"} for row in rows)
+    unresolved = sum(row.get("result_status") == "unresolved" for row in rows)
+    excluded = sum(row.get("result_status") == "excluded" for row in rows)
+    material_types = sorted(
+        {
+            canonical_price_source_category(str((row.get("evidence") or {}).get("material_type") or "Other"))
+            for row in rows
+            if row.get("result_status") != "excluded"
+        },
+        key=str.casefold,
+    )
+    vat_values = {
+        row.get("raw_vat_included")
+        for row in rows
+        if row.get("result_status") != "excluded"
+    }
+    vat_mode = (
+        "included" if vat_values == {True}
+        else "excluded" if vat_values == {False}
+        else "unknown" if vat_values in (set(), {None})
+        else "mixed"
+    )
+    summary = dict(source.get("processing_summary") or {})
+    summary.update(
+        {
+            "ready": ready,
+            "unresolved": unresolved,
+            "excluded": excluded,
+            "total": len(rows),
+            "material_types": material_types,
+        }
+    )
+    category = material_types[0] if len(material_types) == 1 else "Mixed"
+    client.table("company_price_sources").update(
+        {
+            "category": category,
+            "vat_mode": vat_mode,
+            "status": "ready" if unresolved == 0 else "partial",
+            "processing_summary": summary,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    ).eq("company_id", company_id).eq("source_id", source_id).execute()
+
+
+def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> dict:
+    """Validate a reviewed row, activate its offer, and retain its source evidence."""
+    client = get_supabase_client()
+    company_id = str(access.company_id)
+    assert_company_owner(client, str(access.user_id), company_id)
+    source = _owned_price_source(client, company_id, source_id)
+    matches = (
+        client.table("company_price_source_rows")
+        .select("*")
+        .eq("company_id", company_id)
+        .eq("source_id", source_id)
+        .eq("row_id", row_id)
+        .limit(1)
+        .execute()
+    ).data or []
+    if not matches:
+        raise PriceSourceError("Price row not found")
+    row = matches[0]
+
+    normalized_name = str(values.get("normalized_name") or "").strip()
+    material_type = canonical_price_source_category(str(values.get("material_type") or ""))
+    raw_unit = str(values.get("raw_unit") or "").strip()
+    raw_currency = str(values.get("raw_currency") or source.get("currency") or "ILS").strip().upper()
+    purchase_unit = str(values.get("purchase_unit") or "").strip()
+    calculation_unit = str(values.get("calculation_unit") or "").strip()
+    vat_mode = str(values.get("vat_mode") or "unknown")
+    try:
+        raw_price = float(values.get("raw_price") or 0)
+        conversion_factor = float(values.get("conversion_factor") or 0)
+    except (TypeError, ValueError) as exc:
+        raise PriceSourceError("Enter a valid price and conversion quantity") from exc
+    if not normalized_name:
+        raise PriceSourceError("Enter a material name")
+    if material_type not in PRICE_SOURCE_CATEGORIES:
+        raise PriceSourceError("Choose a material type")
+    if raw_price <= 0:
+        raise PriceSourceError("Enter a positive price")
+    if len(raw_currency) != 3:
+        raise PriceSourceError("Enter a three-letter currency code")
+    if not raw_unit:
+        raise PriceSourceError("Enter the source unit")
+    if purchase_unit not in CANONICAL_UNIT_CODES or purchase_unit in {"unknown", "other"}:
+        raise PriceSourceError("Choose the purchase unit")
+    if calculation_unit not in CANONICAL_UNIT_CODES or calculation_unit in {"unknown", "other"}:
+        raise PriceSourceError("Choose the calculation unit")
+    if conversion_factor <= 0:
+        raise PriceSourceError("Enter a positive conversion quantity")
+    if vat_mode not in {"included", "excluded"}:
+        raise PriceSourceError("Choose whether VAT is included")
+
+    normalized_price = raw_price / conversion_factor
+    normalized_key = _normalized_name(normalized_name)
+    existing = (
+        client.table("company_material_items")
+        .select("company_material_id")
+        .eq("company_id", company_id)
+        .eq("category", material_type)
+        .eq("normalized_name", normalized_key)
+        .limit(1)
+        .execute()
+    ).data or []
+    if existing:
+        material_id = existing[0]["company_material_id"]
+        result_status = "updated"
+    else:
+        material = client.table("company_material_items").insert(
+            {
+                "company_id": company_id,
+                "category": material_type,
+                "canonical_name": normalized_name,
+                "normalized_name": normalized_key,
+                "preferred_unit": calculation_unit,
+                "created_from_source_id": source_id,
+            }
+        ).execute().data[0]
+        material_id = material["company_material_id"]
+        result_status = "new"
+
+    client.table("company_material_offers").update({"status": "archived"}).eq(
+        "company_id", company_id
+    ).eq("source_row_id", row_id).neq("status", "archived").execute()
+    evidence = dict(row.get("evidence") or {})
+    evidence["material_type"] = material_type
+    resolved_codes = {
+        "below_auto_activation_threshold",
+        "material_type_unresolved",
+        "package_conversion_unresolved",
+        "vat_basis_unknown",
+    }
+    reason_codes = sorted(
+        (set(row.get("reason_codes") or []) - resolved_codes) | {"reviewed_by_user"}
+    )
+    updated = client.table("company_price_source_rows").update(
+        {
+            "raw_price": raw_price,
+            "raw_currency": raw_currency,
+            "raw_unit": raw_unit,
+            "raw_vat_included": vat_mode == "included",
+            "normalized_name": normalized_name,
+            "normalized_price": normalized_price,
+            "purchase_unit": purchase_unit,
+            "calculation_unit": calculation_unit,
+            "conversion_factor": conversion_factor,
+            "normalized_unit": calculation_unit,
+            "conversion_basis": {"description": "Reviewed by company owner"},
+            "company_material_id": material_id,
+            "result_status": result_status,
+            "reason_codes": reason_codes,
+            "evidence": evidence,
+        }
+    ).eq("company_id", company_id).eq("source_id", source_id).eq("row_id", row_id).execute().data[0]
+    client.table("company_material_offers").insert(
+        {
+            "company_id": company_id,
+            "company_material_id": material_id,
+            "supplier_id": source.get("supplier_id"),
+            "source_id": source_id,
+            "source_row_id": row_id,
+            "supplier_sku": row.get("raw_sku"),
+            "source_price": raw_price,
+            "source_unit": raw_unit,
+            "purchase_unit": purchase_unit,
+            "calculation_unit": calculation_unit,
+            "conversion_factor": conversion_factor,
+            "normalized_price": normalized_price,
+            "normalized_unit": calculation_unit,
+            "currency": raw_currency,
+            "vat_included": vat_mode == "included",
+            "valid_from": source.get("document_date"),
+            "confidence": row.get("confidence") or 0,
+        }
+    ).execute()
+    if not source.get("currency"):
+        client.table("company_price_sources").update({"currency": raw_currency}).eq(
+            "company_id", company_id
+        ).eq("source_id", source_id).execute()
+    _refresh_price_source_summary(client, company_id, source_id)
+    return updated
+
+
+def remove_price_source_row(access, source_id: str, row_id: str) -> None:
+    """Remove one offer from active pricing while retaining its audit record."""
+    client = get_supabase_client()
+    company_id = str(access.company_id)
+    assert_company_owner(client, str(access.user_id), company_id)
+    _owned_price_source(client, company_id, source_id)
+    matches = (
+        client.table("company_price_source_rows")
+        .select("reason_codes")
+        .eq("company_id", company_id)
+        .eq("source_id", source_id)
+        .eq("row_id", row_id)
+        .limit(1)
+        .execute()
+    ).data or []
+    if not matches:
+        raise PriceSourceError("Price row not found")
+    client.table("company_material_offers").update({"status": "archived"}).eq(
+        "company_id", company_id
+    ).eq("source_row_id", row_id).neq("status", "archived").execute()
+    reason_codes = sorted(set((matches[0].get("reason_codes") or []) + ["removed_by_user"]))
+    client.table("company_price_source_rows").update(
+        {"result_status": "excluded", "reason_codes": reason_codes}
+    ).eq("company_id", company_id).eq("source_id", source_id).eq("row_id", row_id).execute()
+    _refresh_price_source_summary(client, company_id, source_id)
+
+
+def remove_price_source(access, source_id: str) -> None:
+    """Archive a source and all offers created from it without destroying evidence."""
+    client = get_supabase_client()
+    company_id = str(access.company_id)
+    assert_company_owner(client, str(access.user_id), company_id)
+    _owned_price_source(client, company_id, source_id)
+    client.table("company_material_offers").update({"status": "archived"}).eq(
+        "company_id", company_id
+    ).eq("source_id", source_id).neq("status", "archived").execute()
+    client.table("company_price_sources").update(
+        {"status": "archived", "updated_at": datetime.now(timezone.utc).isoformat()}
+    ).eq("company_id", company_id).eq("source_id", source_id).execute()
 
 
 def process_price_source(
@@ -687,10 +939,6 @@ def process_price_source(
                 .execute()
             ).data[0]
             supplier_id = supplier_row["supplier_id"]
-        for row in result["rows"]:
-            if row["status"] == "ready" and row["confidence"] < AUTO_ACTIVATION_CONFIDENCE:
-                row["status"] = "unresolved"
-                row["reason_codes"] = sorted(set(row["reason_codes"] + ["below_auto_activation_threshold"]))
         ready_count = sum(row["status"] == "ready" for row in result["rows"])
         unresolved_count = sum(row["status"] == "unresolved" for row in result["rows"])
         excluded_count = sum(row["status"] == "excluded" for row in result["rows"])

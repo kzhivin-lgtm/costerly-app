@@ -1507,7 +1507,7 @@ def test_url_source_details_keep_original_action_in_heading_without_loading_file
     assert "Material Type" in markup
     assert "Excluded" in markup
     assert "$" not in rendered_text
-    assert len(app.columns) == 2
+    assert len(app.columns) >= 2
     assert len(app.get("link_button")) == 1
 
 

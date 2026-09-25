@@ -167,3 +167,36 @@ All 354 automated tests pass. Production acceptance must still confirm that
 adding and deleting files does not dim the complete page, Extract shows one
 stable progress state, and the completion notice matches the persisted source
 summary.
+
+## 3.12.1 revision 3 candidate
+
+Production evidence from `lumber_pricelist_israel.xlsx` rejected the fixed
+85 percent activation threshold. The workbook contained eight usable rows and
+the agent extracted all eight, but confidence values of 75 and 78 alone moved
+every row to unresolved. Confidence is now diagnostic, not a pass/fail gate.
+
+The agreed row-level policy is:
+
+- unknown VAT basis blocks activation because it changes the effective price;
+- an unsupported package-to-unit conversion blocks activation because it can
+  multiply or divide the effective price incorrectly;
+- low confidence, currency uncertainty, and an Other material type remain
+  visible diagnostic signals but do not independently block an otherwise usable
+  row;
+- every normalized name must be concise, standalone, and systematic, using the
+  same attribute order and terminology across rows;
+- unresolved rows enter an individual Review flow rather than a document-level
+  editor;
+- active prices remain editable and every edit archives the previous offer;
+- removing one price or a complete source archives active offers while retaining
+  the original source and row evidence for audit;
+- source and row removal require confirmation and cancellation changes nothing.
+
+The implementation adds row-level Review, Edit, and Remove actions to Source
+Details, reversible source removal in Source Library, and deterministic
+recalculation after owner review. The original source, extracted row, confidence,
+reason codes, prompt version, time, and TC remain retained. All 359 automated
+tests pass. This remains a candidate until the owner accepts the real production
+matrix: complete active row, VAT review, package conversion review, edit, row
+removal, source removal, cancellation, failure recovery, and duplicate-submit
+protection.

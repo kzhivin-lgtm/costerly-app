@@ -15,6 +15,7 @@ import streamlit as st
 
 from db.company_access import assert_company_owner
 from db.supabase_client import get_supabase_client
+from agents.schemas.price_source_schema import CANONICAL_UNIT_CODES, PRICE_SOURCE_CATEGORIES
 from styles.company_profile import apply_company_profile_css
 from styles.object_detail import apply_object_detail_css
 from ui import company_metrics_view
@@ -44,6 +45,9 @@ from use_cases.price_sources import (
     load_price_source_bytes,
     load_price_source_rows,
     process_price_source,
+    remove_price_source,
+    remove_price_source_row,
+    save_price_source_row,
 )
 from use_cases.machinery import (
     INDUSTRY_LABELS,
@@ -1881,6 +1885,143 @@ def _render_price_catalog(catalog: list[dict]) -> None:
     )
 
 
+def _price_source_review_reason(row: dict) -> str:
+    labels = {
+        "vat_basis_unknown": "VAT basis required",
+        "material_type_unresolved": "Material type required",
+        "package_conversion_unresolved": "Package quantity required",
+        "document_total_mismatch": "Document totals do not match",
+        "extreme_legacy_price_difference": "Price differs significantly from the saved price",
+        "below_auto_activation_threshold": "Review required",
+    }
+    for reason in row.get("reason_codes") or []:
+        if reason in labels:
+            return labels[reason]
+    return "Review required"
+
+
+def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: dict) -> None:
+    source_id = str(source["source_id"])
+    row_id = str(row["row_id"])
+    material_type = _price_source_row_material_type(row, source)
+    categories = list(PRICE_SOURCE_CATEGORIES)
+    units = [item for item in sorted(CANONICAL_UNIT_CODES) if item not in {"other", "unknown"}]
+    purchase_unit = str(row.get("purchase_unit") or row.get("raw_unit") or "piece")
+    calculation_unit = str(
+        row.get("calculation_unit") or row.get("normalized_unit") or purchase_unit
+    )
+    vat_mode = (
+        "included" if row.get("raw_vat_included") is True
+        else "excluded" if row.get("raw_vat_included") is False
+        else "unknown"
+    )
+    st.markdown(
+        f'**{escape(str(row.get("raw_description") or "Price item"))}**  \n'
+        f'<span class="price-source-review-reason">'
+        f'{escape(_price_source_review_reason(row) if row.get("result_status") == "unresolved" else "Edit active price")}'
+        '</span>',
+        unsafe_allow_html=True,
+    )
+    with st.form(f"price_source_row_form_{source_id}_{row_id}", border=False):
+        name_col, type_col = st.columns([1.7, 1])
+        with name_col:
+            normalized_name = st.text_input(
+                "Material name",
+                value=str(row.get("normalized_name") or row.get("raw_description") or ""),
+            )
+        with type_col:
+            selected_type = material_type if material_type in categories else categories[0]
+            selected_type = st.selectbox(
+                "Material type",
+                categories,
+                index=categories.index(selected_type),
+            )
+        price_col, currency_col, vat_col = st.columns([1.1, 0.65, 1])
+        with price_col:
+            raw_price = st.number_input(
+                "Source price",
+                min_value=0.0,
+                value=float(row.get("raw_price") or 0),
+                step=0.01,
+            )
+        with currency_col:
+            raw_currency = st.text_input(
+                "Currency",
+                value=str(row.get("raw_currency") or source.get("currency") or "ILS"),
+                max_chars=3,
+            )
+        with vat_col:
+            selected_vat = st.selectbox(
+                "VAT",
+                ("excluded", "included", "unknown"),
+                index=("excluded", "included", "unknown").index(vat_mode),
+                format_func=lambda value: {
+                    "excluded": "Not included",
+                    "included": "Included",
+                    "unknown": "Choose VAT basis",
+                }[value],
+            )
+        source_unit_col, purchase_unit_col, calculation_unit_col, factor_col = st.columns(
+            [1, 1, 1, 1.25]
+        )
+        with source_unit_col:
+            raw_unit = st.text_input("Source unit", value=str(row.get("raw_unit") or ""))
+        with purchase_unit_col:
+            purchase_value = purchase_unit if purchase_unit in units else units[0]
+            selected_purchase_unit = st.selectbox(
+                "Purchase unit",
+                units,
+                index=units.index(purchase_value),
+            )
+        with calculation_unit_col:
+            calculation_value = calculation_unit if calculation_unit in units else units[0]
+            selected_calculation_unit = st.selectbox(
+                "Estimation unit",
+                units,
+                index=units.index(calculation_value),
+            )
+        with factor_col:
+            conversion_factor = st.number_input(
+                "Estimation units per purchase unit",
+                min_value=0.0,
+                value=float(row.get("conversion_factor") or 1),
+                step=0.01,
+            )
+        save_col, cancel_col, _ = st.columns([1, 1, 3])
+        save = save_col.form_submit_button("Save price", type="primary")
+        cancel = cancel_col.form_submit_button("Cancel")
+    if cancel:
+        st.session_state.pop("_editing_price_source_row", None)
+        st.rerun(scope="fragment")
+    if save:
+        try:
+            save_price_source_row(
+                access,
+                source_id,
+                row_id,
+                {
+                    "normalized_name": normalized_name,
+                    "material_type": selected_type,
+                    "raw_price": raw_price,
+                    "raw_currency": raw_currency,
+                    "vat_mode": selected_vat,
+                    "raw_unit": raw_unit,
+                    "purchase_unit": selected_purchase_unit,
+                    "calculation_unit": selected_calculation_unit,
+                    "conversion_factor": conversion_factor,
+                },
+            )
+        except PriceSourceError as exc:
+            st.error(str(exc))
+        except Exception:
+            logger.exception("Price source row save failed")
+            st.error("The price could not be saved. Try again")
+        else:
+            st.session_state.pop("_editing_price_source_row", None)
+            st.session_state._price_source_action_notice = "Price saved"
+            st.rerun(scope="fragment")
+
+
 def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
     rows = load_price_source_rows(access, str(source["source_id"]))
     summary = source.get("processing_summary") or {}
@@ -1956,8 +2097,19 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
     if not rows:
         st.info("No product rows were extracted from this source.")
         return
-    table_rows = []
-    for row in rows:
+    visible_rows = [row for row in rows if row.get("result_status") != "excluded"]
+    visible_rows.sort(key=lambda row: row.get("result_status") != "unresolved")
+    editing = st.session_state.get("_editing_price_source_row")
+    removing = st.session_state.get("_removing_price_source_row")
+    header_columns = st.columns([0.3, 2.5, 1.15, 1, 1, 0.65, 1, 0.75])
+    for column, label in zip(
+        header_columns,
+        ("", "Source Item", "Material Type", "Source Price", "Estimation Price", "VAT", "Status", ""),
+    ):
+        if label:
+            column.markdown(f'<span class="price-source-row-label">{label}</span>', unsafe_allow_html=True)
+    for row in visible_rows:
+        row_id = str(row.get("row_id"))
         source_price = row.get("raw_price")
         normalized_price = row.get("normalized_price")
         source_value = (
@@ -1986,26 +2138,57 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
                 f'<br><small>{escape(purchase_unit)} = '
                 f'{conversion_factor:g} {escape(calculation_unit)}</small>'
             )
-        table_rows.append(
-            "<tr>"
-            f'<td>{escape(str(row.get("raw_description") or ""))}</td>'
-            f'<td>{escape(_price_source_row_material_type(row, source))}</td>'
-            f'<td>{source_value}</td>'
-            f'<td>{normalized_value}</td>'
-            f'<td>{"Included" if row.get("raw_vat_included") is True else "Excluded" if row.get("raw_vat_included") is False else "Unknown"}</td>'
-            f'<td>{escape(str(row.get("result_status") or "").title())}</td>'
-            f'<td>{float(row.get("confidence") or 0):.0f}%</td>'
-            "</tr>"
-        )
-    st.markdown(
-        '<div class="price-source-table"><table><thead><tr>'
-        '<th>Source Item</th><th>Material Type</th><th>Source Price</th>'
-        '<th>Estimation Price</th><th>VAT</th><th>Result</th><th>Confidence</th>'
-        '</tr></thead><tbody>'
-        + "".join(table_rows)
-        + "</tbody></table></div>",
-        unsafe_allow_html=True,
-    )
+        with st.container(key=f"price_source_row_{row_id}"):
+            remove_col, item_col, type_col, source_col, estimate_col, vat_col, status_col, action_col = st.columns(
+                [0.3, 2.5, 1.15, 1, 1, 0.65, 1, 0.75],
+                vertical_alignment="center",
+            )
+            if remove_col.button("×", key=f"remove_price_row_{row_id}", help="Remove price"):
+                st.session_state._removing_price_source_row = (str(source["source_id"]), row_id)
+            item_col.markdown(f'**{escape(str(row.get("raw_description") or "Price item"))}**')
+            type_col.markdown(escape(_price_source_row_material_type(row, source)))
+            source_col.markdown(source_value or "Missing", unsafe_allow_html=True)
+            estimate_col.markdown(normalized_value or "Missing", unsafe_allow_html=True)
+            vat_col.markdown(
+                "Included" if row.get("raw_vat_included") is True
+                else "Excluded" if row.get("raw_vat_included") is False
+                else "Unknown"
+            )
+            if row.get("result_status") == "unresolved":
+                status_col.markdown(
+                    f'<span class="price-source-needs-review">{escape(_price_source_review_reason(row))}</span>',
+                    unsafe_allow_html=True,
+                )
+                action_label = "Review"
+            else:
+                status_col.markdown(
+                    f'<span class="price-source-active">Active · {float(row.get("confidence") or 0):.0f}%</span>',
+                    unsafe_allow_html=True,
+                )
+                action_label = "Edit"
+            if action_col.button(action_label, key=f"edit_price_row_{row_id}"):
+                st.session_state._editing_price_source_row = (str(source["source_id"]), row_id)
+
+            if removing == (str(source["source_id"]), row_id):
+                st.warning("Remove this price from the active catalog?")
+                confirm_col, cancel_col, _ = st.columns([1, 1, 4])
+                if confirm_col.button("Remove", key=f"confirm_remove_price_row_{row_id}", type="primary"):
+                    try:
+                        remove_price_source_row(access, str(source["source_id"]), row_id)
+                    except Exception:
+                        logger.exception("Price source row removal failed")
+                        st.error("The price could not be removed. Try again")
+                    else:
+                        st.session_state.pop("_removing_price_source_row", None)
+                        st.session_state.pop("_editing_price_source_row", None)
+                        st.session_state._price_source_action_notice = "Price removed"
+                        st.rerun(scope="fragment")
+                if cancel_col.button("Cancel", key=f"cancel_remove_price_row_{row_id}"):
+                    st.session_state.pop("_removing_price_source_row", None)
+                    st.rerun(scope="fragment")
+
+            if editing == (str(source["source_id"]), row_id):
+                _render_price_source_row_editor(access, source, row)
 
 
 def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
@@ -2160,6 +2343,9 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     error = st.session_state.pop("_price_source_error", None)
     if error:
         st.error(error)
+    action_notice = st.session_state.pop("_price_source_action_notice", None)
+    if action_notice:
+        st.success(action_notice)
 
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):
@@ -2177,10 +2363,17 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                     with st.container(key="price_source_list_card"):
                         for source in sources:
                             summary = source.get("processing_summary") or {}
-                            left, category_col, status_col, items_col, action_col = st.columns(
-                                [2.3, 1.45, 0.8, 0.65, 0.65],
+                            remove_col, left, category_col, status_col, items_col, action_col = st.columns(
+                                [0.3, 2.3, 1.45, 0.8, 0.65, 0.65],
                                 vertical_alignment="center",
                             )
+                            with remove_col:
+                                if st.button(
+                                    "×",
+                                    key=f'remove_price_source_{source["source_id"]}',
+                                    help="Remove source",
+                                ):
+                                    st.session_state._removing_price_source_id = source["source_id"]
                             with left:
                                 st.markdown(
                                     f'**{escape(_price_source_supplier(source))}**  \n'
@@ -2212,6 +2405,33 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                     key=f'view_price_source_{source["source_id"]}',
                                 ):
                                     st.session_state._selected_price_source_id = source["source_id"]
+                            if st.session_state.get("_removing_price_source_id") == source["source_id"]:
+                                st.warning(
+                                    f'Remove {str(source.get("source_name") or "this source")} and all its active prices?'
+                                )
+                                confirm_col, cancel_col, _ = st.columns([1, 1, 4])
+                                if confirm_col.button(
+                                    "Remove source",
+                                    key=f'confirm_remove_price_source_{source["source_id"]}',
+                                    type="primary",
+                                ):
+                                    try:
+                                        remove_price_source(access, str(source["source_id"]))
+                                    except Exception:
+                                        logger.exception("Price source removal failed")
+                                        st.error("The source could not be removed. Try again")
+                                    else:
+                                        st.session_state.pop("_removing_price_source_id", None)
+                                        if st.session_state.get("_selected_price_source_id") == source["source_id"]:
+                                            st.session_state.pop("_selected_price_source_id", None)
+                                        st.session_state._price_source_action_notice = "Source removed"
+                                        st.rerun(scope="fragment")
+                                if cancel_col.button(
+                                    "Cancel",
+                                    key=f'cancel_remove_price_source_{source["source_id"]}',
+                                ):
+                                    st.session_state.pop("_removing_price_source_id", None)
+                                    st.rerun(scope="fragment")
 
                 selected_id = st.session_state.get("_selected_price_source_id")
                 selected = next(
