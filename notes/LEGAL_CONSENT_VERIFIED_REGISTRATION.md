@@ -1,7 +1,7 @@
 # Legal Consent and Verified Registration
 
 Task: 3.11.1
-Status: version 1.2 prepared, activation and production acceptance pending
+Status: version 1.2 activated, production acceptance incomplete
 
 ## Verified progress on 2026-09-25
 
@@ -38,8 +38,10 @@ Status: version 1.2 prepared, activation and production acceptance pending
   active. Terms acceptance version advanced from 1 to 2; Privacy remains
   acceptance version 1 and does not create its own gate. There were no existing
   acceptance events or pending registrations when version 1.1 was activated.
-- Material Terms of Service version 1.2 is prepared for publication and advances
-  the acceptance version from 2 to 3. It makes the Customer the organization
+- Material Terms of Service version 1.2 is publicly deployed and selected by
+  the Supabase release pointer. Its live response SHA-256 is
+  `aadc32bc8cf8c2b30d8d8d7b4e721ee5864fd39d6c61ca54ddee30e6b00a5ec3`,
+  and it advances the acceptance version from 2 to 3. It makes the Customer the organization
   and contractual subscription holder; defines Admins and Members as Users;
   separates an authorized payer from the Customer; attributes User acts and
   omissions to the Customer; strengthens third-party indemnity, AI-provider
@@ -47,7 +49,8 @@ Status: version 1.2 prepared, activation and production acceptance pending
   as the Operator's trade name; and adds baseline controller, processor,
   subprocessor, security, breach, assistance, transfer, deletion and DPA terms.
   Privacy remains at version 1.1 because this revision does not change the
-  separate Privacy Policy.
+  separate Privacy Policy. There were no acceptance events or pending
+  registrations when version 1.2 was activated.
 
 This file is the scenario-first product contract for Terms of Service,
 Privacy Policy visibility, email verification, and later material Terms
