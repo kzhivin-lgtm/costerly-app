@@ -7,15 +7,15 @@ DOCUMENT_TYPES = {"price_list", "catalog", "quote", "invoice", "order", "other"}
 VAT_MODES = {"included", "excluded", "mixed", "unknown"}
 ROW_STATUSES = {"ready", "unresolved", "excluded"}
 PRICE_SOURCE_CATEGORIES = (
-    "Sheet Materials",
+    "Wood Sheets",
     "Solid Wood",
-    "Hardware",
-    "Edgebanding",
-    "Finishes and Coatings",
-    "Abrasives and Sanding",
-    "Adhesives and Consumables",
-    "Metal",
+    "Wood Supplies",
     "Glass",
+    "Metal Sheets",
+    "Metal Profiles",
+    "Metal Supplies",
+    "Paints & Coatings",
+    "Coating Supplies",
     "Other",
 )
 CANONICAL_UNIT_CODES = {

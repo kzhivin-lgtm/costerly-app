@@ -33,8 +33,10 @@ from use_cases.company_logo import (
     persist_company_logo,
 )
 from use_cases.price_sources import (
-    PRICE_SOURCE_CATEGORIES,
+    PRICE_CATALOG_DEPARTMENTS,
+    PRICE_SOURCE_DEPARTMENTS,
     PriceSourceError,
+    canonical_price_source_category,
     combine_price_source_files,
     list_price_catalog,
     list_price_sources,
@@ -1662,25 +1664,23 @@ def _price_catalog_url_label(value: str) -> str:
 
 
 def _price_source_category_label(value: str) -> str:
-    return {
-        "Hardware": "Hardware / fittings",
-        "Abrasives and Sanding": "Abrasives / sanding",
-    }.get(value, value)
+    return canonical_price_source_category(value)
+
+
+def _price_source_department(category: str) -> str:
+    return PRICE_CATALOG_DEPARTMENTS.get(canonical_price_source_category(category), "Wood")
+
+
+def _price_source_department_label(value: str) -> str:
+    return "Coating" if value == "Finishing" else value
 
 
 def _render_price_catalog(catalog: list[dict]) -> None:
-    search = ""
     department = "All departments"
     material_type = "All material types"
     supplier = "All suppliers"
     if catalog:
-        search_column, department_column, type_column, supplier_column = st.columns(4)
-        with search_column:
-            search = st.text_input(
-                "Search",
-                placeholder="Material or supplier",
-                key="price_catalog_search",
-            ).strip().casefold()
+        department_column, type_column, supplier_column = st.columns(3)
         department_options = ["All departments"] + [
             item for item in ("Wood", "Metal", "Finishing")
             if any(row.get("department") == item for row in catalog)
@@ -1689,7 +1689,7 @@ def _render_price_catalog(catalog: list[dict]) -> None:
             department = st.selectbox(
                 "Department",
                 department_options,
-                format_func=lambda item: "Coating" if item == "Finishing" else item,
+                format_func=_price_source_department_label,
                 key="price_catalog_department",
             )
         type_options = ["All material types"] + sorted(
@@ -1723,12 +1723,6 @@ def _render_price_catalog(catalog: list[dict]) -> None:
         if (department == "All departments" or row.get("department") == department)
         and (material_type == "All material types" or row.get("material_type") == material_type)
         and (supplier == "All suppliers" or row.get("supplier_name") == supplier)
-        and (
-            not search
-            or search in str(row.get("canonical_name") or "").casefold()
-            or search in str(row.get("original_name") or "").casefold()
-            or search in str(row.get("supplier_name") or "").casefold()
-        )
     ]
     if catalog and not visible:
         st.info("No material prices match these filters.")
@@ -1807,39 +1801,55 @@ def _render_price_catalog(catalog: list[dict]) -> None:
 def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
     rows = load_price_source_rows(access, str(source["source_id"]))
     summary = source.get("processing_summary") or {}
-    st.markdown(
-        '<div class="price-source-detail-heading">'
-        f'<div><strong>{escape(_price_source_supplier(source))}</strong>'
-        f'<span>{escape(str(source.get("source_name") or ""))}</span></div>'
-        f'<div><span>{escape(str(source.get("category") or ""))}</span>'
-        f'<span>{escape(str(source.get("document_type") or "Unknown document"))}</span></div>'
-        '</div>',
-        unsafe_allow_html=True,
-    )
+    category = canonical_price_source_category(str(source.get("category") or "Other"))
+    department = _price_source_department(category)
+    original = None
+    if source.get("source_kind") != "url" and source.get("storage_path"):
+        try:
+            original = load_price_source_bytes(access, str(source["storage_path"]))
+        except Exception:
+            logger.exception("Price source original load failed")
+
+    with st.container(key="price_source_detail_top"):
+        detail_column, action_column = st.columns(
+            [4, 1.35],
+            gap="large",
+            vertical_alignment="center",
+        )
+        with detail_column:
+            st.markdown(
+                '<div class="price-source-detail-heading">'
+                f'<strong>{escape(_price_source_supplier(source))}</strong>'
+                f'<span>{escape(str(source.get("source_name") or ""))}</span>'
+                f'<small>{escape(_price_source_department_label(department))}</small>'
+                f'<small>{escape(_price_source_category_label(category))}</small>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        with action_column:
+            if source.get("source_kind") == "url" and source.get("source_url"):
+                st.link_button(
+                    "Open Original Source",
+                    str(source["source_url"]),
+                    use_container_width=True,
+                )
+            elif original:
+                st.download_button(
+                    "Download Original Source",
+                    data=original,
+                    file_name=Path(str(source.get("source_name") or "price-source")).name,
+                    mime=str(source.get("mime_type") or "application/octet-stream"),
+                    key=f'download_price_source_{source["source_id"]}',
+                    use_container_width=True,
+                )
     st.caption(
         f'{int(summary.get("ready") or 0)} prices updated · '
         f'{int(summary.get("unresolved") or 0)} unresolved · '
         f'{int(summary.get("excluded") or 0)} excluded'
     )
-    if source.get("source_kind") == "url" and source.get("source_url"):
-        st.link_button("Open Original Source", str(source["source_url"]))
-    elif source.get("storage_path"):
-        try:
-            original = load_price_source_bytes(access, str(source["storage_path"]))
-        except Exception:
-            logger.exception("Price source original load failed")
-            original = None
-        if original:
-            mime_type = str(source.get("mime_type") or "application/octet-stream")
-            if mime_type in {"image/jpeg", "image/png"}:
-                st.image(original, caption="Original source", use_container_width=True)
-            st.download_button(
-                "Download Original Source",
-                data=original,
-                file_name=Path(str(source.get("source_name") or "price-source")).name,
-                mime=mime_type,
-                key=f'download_price_source_{source["source_id"]}',
-            )
+    mime_type = str(source.get("mime_type") or "application/octet-stream")
+    if original and mime_type in {"image/jpeg", "image/png"}:
+        st.image(original, caption="Original source", use_container_width=True)
     if not rows:
         st.info("No product rows were extracted from this source.")
         return
@@ -1921,13 +1931,13 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     key=f"price_source_url_{uploader_version}",
                     disabled=processing,
                 )
-                category = st.selectbox(
-                    "Category (optional)",
-                    PRICE_SOURCE_CATEGORIES,
+                department = st.selectbox(
+                    "Department (optional)",
+                    PRICE_SOURCE_DEPARTMENTS,
                     index=None,
-                    format_func=_price_source_category_label,
+                    format_func=_price_source_department_label,
                     placeholder="Detect automatically",
-                    key="price_source_category",
+                    key="price_source_department",
                     disabled=processing,
                 )
                 if processing:
@@ -1945,7 +1955,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                 if process_clicked:
                     st.session_state._price_source_pending = {
                         "uploaded_files": list(uploaded_files or []),
-                        "category": str(category or ""),
+                        "department": str(department or ""),
                         "source_url": source_url,
                     }
                     st.session_state._price_source_processing = True
@@ -1961,7 +1971,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
         uploaded_file = combine_price_source_files(pending.get("uploaded_files") or [])
         process_price_source(
             access,
-            category=str(pending.get("category") or ""),
+            department=str(pending.get("department") or ""),
             uploaded_file=uploaded_file,
             source_url=str(pending.get("source_url") or ""),
             trace=trace,
@@ -2040,7 +2050,18 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                     unsafe_allow_html=True,
                                 )
                             with category_col:
-                                st.write(source.get("category") or "")
+                                category = canonical_price_source_category(
+                                    str(source.get("category") or "Other")
+                                )
+                                st.markdown(
+                                    '<span class="price-source-library-department">'
+                                    f'{escape(_price_source_department_label(_price_source_department(category)))}'
+                                    '</span>'
+                                    '<span class="price-source-library-material-type">'
+                                    f'{escape(_price_source_category_label(category))}'
+                                    '</span>',
+                                    unsafe_allow_html=True,
+                                )
                             with status_col:
                                 st.write(str(source.get("status") or "").title())
                             with items_col:

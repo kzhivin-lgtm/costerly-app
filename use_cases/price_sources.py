@@ -20,7 +20,6 @@ import pandas as pd
 from PIL import Image, UnidentifiedImageError
 
 from agents.price_source_agent import run_price_source_agent
-from agents.schemas.price_source_schema import PRICE_SOURCE_CATEGORIES
 from db.company_access import assert_company_owner
 from db.repositories import insert_agent_usage_event
 from db.supabase_client import get_supabase_client
@@ -41,17 +40,27 @@ CONTENT_TYPES = {
     ".png": "image/png",
 }
 
+PRICE_SOURCE_DEPARTMENTS = ("Wood", "Metal", "Finishing")
 PRICE_CATALOG_DEPARTMENTS = {
-    "Sheet Materials": "Wood",
+    "Wood Sheets": "Wood",
     "Solid Wood": "Wood",
-    "Hardware": "Wood",
-    "Edgebanding": "Wood",
-    "Adhesives and Consumables": "Wood",
+    "Wood Supplies": "Wood",
     "Glass": "Wood",
+    "Metal Sheets": "Metal",
+    "Metal Profiles": "Metal",
+    "Metal Supplies": "Metal",
     "Metal": "Metal",
-    "Finishes and Coatings": "Finishing",
-    "Abrasives and Sanding": "Finishing",
+    "Paints & Coatings": "Finishing",
+    "Coating Supplies": "Finishing",
     "Other": "Wood",
+}
+LEGACY_PRICE_SOURCE_CATEGORIES = {
+    "Sheet Materials": "Wood Sheets",
+    "Hardware": "Wood Supplies",
+    "Edgebanding": "Wood Supplies",
+    "Adhesives and Consumables": "Wood Supplies",
+    "Finishes and Coatings": "Paints & Coatings",
+    "Abrasives and Sanding": "Coating Supplies",
 }
 PRICE_CATALOG_DEPARTMENT_ORDER = {"Wood": 0, "Metal": 1, "Finishing": 2}
 
@@ -203,10 +212,15 @@ def apply_legacy_price_benchmark(result: dict, legacy_materials: list[dict]) -> 
     return result
 
 
-def _validate_category(category: str) -> str:
-    normalized = category.strip()
-    if normalized and normalized not in PRICE_SOURCE_CATEGORIES:
-        raise PriceSourceError("Choose a material category.")
+def canonical_price_source_category(category: str) -> str:
+    normalized = category.strip() or "Other"
+    return LEGACY_PRICE_SOURCE_CATEGORIES.get(normalized, normalized)
+
+
+def _validate_department(department: str) -> str:
+    normalized = department.strip()
+    if normalized and normalized not in PRICE_SOURCE_DEPARTMENTS:
+        raise PriceSourceError("Choose a department.")
     return normalized
 
 
@@ -371,7 +385,7 @@ def list_price_catalog(access) -> list[dict]:
         supplier = supplier_by_id.get(str(offer.get("supplier_id")), {})
         source_row = source_row_by_id.get(str(offer.get("source_row_id")), {})
         source = source_by_id.get(str(offer.get("source_id")), {})
-        category = str(material.get("category") or "Other")
+        category = canonical_price_source_category(str(material.get("category") or "Other"))
         department = PRICE_CATALOG_DEPARTMENTS.get(category, "Wood")
         catalog.append(
             {
@@ -432,14 +446,14 @@ def load_price_source_rows(access, source_id: str) -> list[dict]:
 def process_price_source(
     access,
     *,
-    category: str,
+    department: str,
     uploaded_file=None,
     source_url: str = "",
     trace=None,
 ) -> str:
     """Process and persist one source. Ambiguous rows stay non-active."""
     process_started = time.perf_counter()
-    category = _validate_category(category)
+    department = _validate_department(department)
     if (uploaded_file is None) == (not source_url.strip()):
         raise PriceSourceError("Add one file or one supplier URL.")
 
@@ -503,14 +517,17 @@ def process_price_source(
     agent_started = time.perf_counter()
     result = run_price_source_agent(
         company_id=company_id,
-        category=category,
+        department=department,
         source_name=source_name,
         source_bytes=source_bytes if suffix in {".pdf", ".jpg", ".jpeg", ".png"} else None,
         extracted_text=extracted_text,
         import_id=source_id,
         trace=trace,
     )
-    category = category or str(result["category"])
+    category = canonical_price_source_category(str(result["category"]))
+    inferred_department = PRICE_CATALOG_DEPARTMENTS.get(category, "Wood")
+    if department and category != "Other" and inferred_department != department:
+        raise PriceSourceError("The detected material type does not match the selected department.")
     _emit_duration(
         trace,
         "server.price_source_agent",

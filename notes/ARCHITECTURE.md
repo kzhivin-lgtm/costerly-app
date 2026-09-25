@@ -304,7 +304,10 @@ Price Catalog UI contract (3.10.1)
 The primary Price Lists presentation reads active `company_material_offers`
 joined to normalized `company_material_items`, supplier, source-row, and source
 provenance. It groups offers by the user-facing `Wood`, `Metal`, and `Finishing`
-departments and then by the existing material category. Source documents remain
+departments and department-specific material types. Add Source accepts only an
+optional department, while the extraction agent infers the narrowest material
+type. The catalog exposes Department, Material Type, and Supplier filters;
+Search is intentionally omitted from this compact revision. Source documents remain
 in a separate private library. A catalog row never replaces or discards source
 evidence. Foreign-currency offers retain their actual currency until a verified
 ILS conversion exists; presentation code must not relabel them as shekels.

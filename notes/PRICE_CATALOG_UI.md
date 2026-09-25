@@ -15,15 +15,24 @@ are `wood`, `metal`, and `finishing`. `Finishing` is intentionally broader than
 paint because it also covers coatings and surface treatments, while the compact
 UI label remains `Coating`.
 
-Department routing is intentionally broad: only metal stock belongs to `Metal`;
-hardware and fittings such as hinges belong to `Wood`; finishes, coatings,
-abrasives, and sanding supplies belong to `Coating`; remaining supported
-fabrication materials default to `Wood`.
+Material types are intentionally department-specific so identical generic names
+cannot collide:
+
+- Wood: `Wood Sheets`, `Solid Wood`, `Wood Supplies`, `Glass`
+- Metal: `Metal Sheets`, `Metal Profiles`, `Metal Supplies`
+- Coating: `Paints & Coatings`, `Coating Supplies`
+
+`Hardware`, edgebanding, adhesives, abrasives, and other consumables are folded
+into the appropriate department-specific Supplies type. Existing broad stored
+types are canonicalized where the mapping is unambiguous. The legacy broad
+`Metal` type remains visible as `Metal` until its source is reclassified rather
+than being silently mislabeled as sheets, profiles, or supplies.
 
 ## Catalog contract
 
-- Rows are grouped by department and then material type. Both levels can be
-  collapsed.
+- Rows are grouped by department. The visible filters are Department, Material
+  Type, and Supplier. Search is intentionally omitted from the compact first
+  revision.
 - A row shows canonical material name, original source description, supplier,
   truncated supplier/source URL when available, normalized price and unit,
   last price date, and an opaque source reference.
@@ -37,6 +46,12 @@ fabrication materials default to `Wood`.
   enter the active catalog.
 - Source names and URLs are visually truncated without changing their stored
   values.
+- Add Source exposes only an optional Department. The extraction agent infers
+  the narrowest Material Type.
+- Source Library shows Department and Material Type on separate lines.
+- Source Details keeps format, origin, and document type as internal metadata;
+  it shows only the useful material classification and places the original
+  source action in the right side of the heading row.
 
 ## Scenario matrix
 
@@ -54,7 +69,10 @@ fabrication materials default to `Wood`.
 | Processing fails or times out | Preserve an actionable failed source with retry support |
 | Agent returns fractional confidence | Normalize one consistent 0-to-1 response to percentage points before the 85-point activation threshold |
 | Long source name or URL | Truncate visually and expose the complete value accessibly |
-| Many prices | Allow search and department, type, and supplier filtering |
+| Many prices | Allow department, type, and supplier filtering |
+| Department changes | Limit Material Type choices to that department |
+| URL source | Show `Open Original Source` at the right of Source Details |
+| File or photo source | Show `Download Original Source` at the right and preserve image preview |
 | Mobile | Preserve readable cards/rows without clipped values or page overflow |
 
 ## Source formats

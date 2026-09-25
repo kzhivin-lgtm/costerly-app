@@ -3,8 +3,10 @@
 - 3.10.1 Price Catalog UI: active, P1. Replace the source-first Price Lists
   presentation with a continuously enriched catalog of normalized material and
   supplier offers, grouped by Wood, Metal, and Finishing, while retaining an
-  inspectable private source library. Start with the interface and existing
-  persisted offers; agent-prompt revision follows after UI acceptance. Contract:
+  inspectable private source library. The active candidate removes Search,
+  keeps Department, Material Type, and Supplier filters, replaces the broad
+  Category input with an optional Department, and uses department-specific
+  material types. Production scenario acceptance remains pending. Contract:
   `notes/PRICE_CATALOG_UI.md`.
 
 - 3.9.1 Machinery and production routing foundation: active, P1. Add a compact
@@ -422,7 +424,7 @@
 - Add missing-object second-pass detection flow.
 - 3.7.1 Company Price Sources: retained historical agent/import work, with the
   source-first UI superseded by active task 3.10.1. Production candidate adds one-source upload or
-  public-URL ingestion, optional category selection with automatic classification, automatic supplier and
+  public-URL ingestion, optional department selection with automatic material-type classification, automatic supplier and
   document classification, unit-preserving normalization, private versioned
   offers, unresolved-row quarantine, source inspection, and private source
   storage. The owner applied the additive database migration before deployment;

@@ -918,24 +918,38 @@ def apply_company_profile_css() -> None:
 
         .price-source-detail-heading {
             display: flex;
-            justify-content: space-between;
-            gap: 24px;
-            padding: 20px 24px 8px;
-        }
-
-        .price-source-detail-heading > div {
-            display: flex;
             flex-direction: column;
             gap: 4px;
+            padding: 20px 0 8px;
         }
 
-        .price-source-detail-heading > div:last-child {
-            text-align: right;
+        .stApp:has(.company-profile-active) .st-key-price_source_detail_top {
+            padding: 0 24px;
         }
 
-        .price-source-detail-heading span {
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_detail_top [data-testid="stLinkButton"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_detail_top [data-testid="stDownloadButton"] {
+            margin-top: 12px;
+        }
+
+        .price-source-detail-heading span,
+        .price-source-detail-heading small,
+        .price-source-library-material-type {
             color: var(--color-text-muted);
             font-size: 12px;
+        }
+
+        .price-source-library-department,
+        .price-source-library-material-type {
+            display: block;
+            line-height: 1.35;
+        }
+
+        .price-source-library-department {
+            color: var(--color-text);
+            font-weight: 600;
         }
 
         .st-key-price_source_detail_card [data-testid="stCaptionContainer"] {

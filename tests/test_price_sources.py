@@ -19,9 +19,10 @@ from use_cases.price_sources import (
     PriceSourceError,
     PRICE_CATALOG_DEPARTMENTS,
     _VisibleTextParser,
-    _validate_category,
+    _validate_department,
     _validate_public_url,
     apply_legacy_price_benchmark,
+    canonical_price_source_category,
     combine_price_source_files,
     extract_spreadsheet_text,
     fetch_public_page,
@@ -65,7 +66,7 @@ class _CatalogClient:
 
 def _result(*, status: str = "ready", confidence: float = 96) -> dict:
     return {
-        "category": "Sheet Materials",
+        "category": "Wood Sheets",
         "supplier_name": "Supplier Ltd",
         "document_type": "price_list",
         "document_date": "2026-09-20",
@@ -143,8 +144,8 @@ def test_price_source_schema_requires_a_supported_inferred_category():
         validate_price_source_result(result)
 
 
-def test_category_can_be_left_for_automatic_detection():
-    assert _validate_category("") == ""
+def test_department_can_be_left_for_automatic_detection():
+    assert _validate_department("") == ""
 
 
 def test_price_source_output_budget_supports_large_supplier_pages():
@@ -152,12 +153,21 @@ def test_price_source_output_budget_supports_large_supplier_pages():
 
 
 def test_price_catalog_uses_three_stable_user_facing_departments():
-    assert PRICE_CATALOG_DEPARTMENTS["Sheet Materials"] == "Wood"
-    assert PRICE_CATALOG_DEPARTMENTS["Hardware"] == "Wood"
+    assert PRICE_CATALOG_DEPARTMENTS["Wood Sheets"] == "Wood"
+    assert PRICE_CATALOG_DEPARTMENTS["Wood Supplies"] == "Wood"
     assert PRICE_CATALOG_DEPARTMENTS["Other"] == "Wood"
+    assert PRICE_CATALOG_DEPARTMENTS["Metal Sheets"] == "Metal"
+    assert PRICE_CATALOG_DEPARTMENTS["Metal Profiles"] == "Metal"
+    assert PRICE_CATALOG_DEPARTMENTS["Metal Supplies"] == "Metal"
+    assert PRICE_CATALOG_DEPARTMENTS["Paints & Coatings"] == "Finishing"
+    assert PRICE_CATALOG_DEPARTMENTS["Coating Supplies"] == "Finishing"
+
+
+def test_legacy_material_types_are_canonicalized_without_splitting_filters():
+    assert canonical_price_source_category("Sheet Materials") == "Wood Sheets"
+    assert canonical_price_source_category("Hardware") == "Wood Supplies"
+    assert canonical_price_source_category("Metal") == "Metal"
     assert PRICE_CATALOG_DEPARTMENTS["Metal"] == "Metal"
-    assert PRICE_CATALOG_DEPARTMENTS["Finishes and Coatings"] == "Finishing"
-    assert PRICE_CATALOG_DEPARTMENTS["Abrasives and Sanding"] == "Finishing"
 
 
 def test_several_ordered_photos_become_one_pdf_source():
@@ -201,7 +211,7 @@ def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
         "company_material_items": [
             {
                 "company_material_id": "material-1",
-                "category": "Sheet Materials",
+                "category": "Wood Sheets",
                 "canonical_name": "Birch plywood 10 mm",
                 "preferred_unit": "m2",
             }

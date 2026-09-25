@@ -31,7 +31,7 @@ PRICE_SOURCE_MAX_OUTPUT_TOKENS = 32_768
 def run_price_source_agent(
     *,
     company_id: str,
-    category: str,
+    department: str,
     source_name: str,
     source_bytes: bytes | None = None,
     extracted_text: str = "",
@@ -44,16 +44,16 @@ def run_price_source_agent(
         raise ValueError("The price source is empty.")
 
     prompt = load_price_source_agent_prompt()
-    requested_category = category.strip()
-    category_instruction = requested_category or "Detect automatically"
+    requested_department = department.strip()
+    department_instruction = requested_department or "Detect automatically"
     user_text = (
-        f"User-selected category: {category_instruction}\n"
+        f"User-selected department: {department_instruction}\n"
         f"Source name: {source_name}\n\n"
         "Extract this single source according to the system contract. "
         + (
-            "The selected category is authoritative for this upload.\n"
-            if requested_category
-            else "Infer the single best category from the source evidence.\n"
+            "The selected department is authoritative. Infer the narrowest material type inside it.\n"
+            if requested_department
+            else "Infer the single best department and material type from the source evidence.\n"
         )
     )
     if extracted_text.strip():
@@ -92,8 +92,6 @@ def run_price_source_agent(
         result = json.loads(raw_text)
     except json.JSONDecodeError as exc:
         raise RuntimeError("Price source processing returned invalid JSON.") from exc
-    if requested_category:
-        result["category"] = requested_category
     validated = validate_price_source_result(
         reconcile_price_source_arithmetic(
             guard_price_source_row_activation(

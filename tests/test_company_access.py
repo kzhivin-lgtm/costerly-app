@@ -954,7 +954,7 @@ def _render_price_catalog_test():
             {
                 "source_id": "12345678-aaaa-bbbb-cccc-123456789012",
                 "department": "Wood",
-                "material_type": "Sheet Materials",
+                "material_type": "Wood Sheets",
                 "canonical_name": "Birch plywood 10 mm",
                 "original_name": "10 mm plywood birch",
                 "supplier_name": "Supplier Ltd",
@@ -976,6 +976,26 @@ def _render_price_lists_test():
 
     _render_price_lists(
         SimpleNamespace(role="owner", company_id="company-a", user_id="user-1")
+    )
+
+
+def _render_url_price_source_details_test():
+    from types import SimpleNamespace
+
+    from screens.company_profile import _render_price_source_details
+
+    _render_price_source_details(
+        SimpleNamespace(role="owner", company_id="company-a", user_id="user-1"),
+        {
+            "source_id": "source-1",
+            "source_name": "https://supplier.example/prices",
+            "source_kind": "url",
+            "source_url": "https://supplier.example/prices",
+            "storage_path": "storage://company-price-sources/company-a/source-1.html",
+            "category": "Metal Profiles",
+            "processing_summary": {"ready": 1, "unresolved": 0, "excluded": 0},
+            "company_suppliers": {"supplier_name": "Supplier Ltd"},
+        },
     )
 
 
@@ -1275,12 +1295,9 @@ def test_price_catalog_formats_ils_without_mislabeling_foreign_currency():
 
 
 def test_price_source_categories_use_clear_user_facing_labels():
-    assert company_profile._price_source_category_label("Hardware") == "Hardware / fittings"
-    assert (
-        company_profile._price_source_category_label("Abrasives and Sanding")
-        == "Abrasives / sanding"
-    )
-    assert company_profile._price_source_category_label("Metal") == "Metal"
+    assert company_profile._price_source_category_label("Hardware") == "Wood Supplies"
+    assert company_profile._price_source_category_label("Metal Profiles") == "Metal Profiles"
+    assert company_profile._price_source_category_label("Finishes and Coatings") == "Paints & Coatings"
 
 
 def test_price_catalog_renders_material_first_grouped_table():
@@ -1294,7 +1311,7 @@ def test_price_catalog_renders_material_first_grouped_table():
     assert "Supplier Ltd" in markup
     assert "₪1\u202f200 / sheet" in markup
     assert 'class="price-catalog-type"' not in markup
-    assert "Sheet Materials</span>" not in markup
+    assert "Wood Sheets</span>" not in markup
     assert 'class="price-catalog-source-button"' in markup
     assert 'href="#source-library"' in markup
     assert 'data-source-id="12345678-aaaa-bbbb-cccc-123456789012"' in markup
@@ -1306,7 +1323,7 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
         {
             "source_id": f"source-{index}",
             "source_name": f"invoice-{index}.pdf",
-            "category": "Sheet Materials",
+            "category": "Wood Sheets",
             "status": "partial",
             "processing_summary": {"total": 4},
             "company_suppliers": {"supplier_name": "Supplier Ltd"},
@@ -1327,7 +1344,8 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     assert "Coating" in markup
     assert markup.count("No active prices") == 3
     assert any(button.label == "Extract prices" for button in app.button)
-    assert any(field.label == "Category (optional)" for field in app.selectbox)
+    assert any(field.label == "Department (optional)" for field in app.selectbox)
+    assert not any(field.label == "Search" for field in app.text_input)
     assert any(field.label == "Paste supplier page URL" for field in app.text_input)
     assert len(app.expander) == 1
     assert app.expander[0].proto.label == "Source library · 2"
@@ -1356,7 +1374,7 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
         (
             "company-a",
             {
-                "category": "",
+                "department": "",
                 "uploaded_file": None,
                 "source_url": "https://supplier.example/prices",
                 "trace": None,
@@ -1364,6 +1382,24 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
         )
     ]
     assert any(notice.value == "Price source processed" for notice in app.success)
+
+
+def test_url_source_details_keep_original_action_in_heading_without_loading_file(monkeypatch):
+    monkeypatch.setattr(company_profile, "load_price_source_rows", lambda *_args: [])
+    monkeypatch.setattr(
+        company_profile,
+        "load_price_source_bytes",
+        lambda *_args: pytest.fail("URL details must not download stored source bytes"),
+    )
+
+    app = AppTest.from_function(_render_url_price_source_details_test).run()
+    markup = "\n".join(item.value for item in app.markdown)
+
+    assert not app.exception
+    assert "Supplier Ltd" in markup
+    assert "Metal Profiles" in markup
+    assert len(app.columns) == 2
+    assert len(app.get("link_button")) == 1
 
 
 def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):
