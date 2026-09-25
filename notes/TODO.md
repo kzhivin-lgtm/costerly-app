@@ -1,13 +1,11 @@
 # TODO
 
-- 3.10.1 Price Catalog UI: active, P1. Replace the source-first Price Lists
-  presentation with a continuously enriched catalog of normalized material and
-  supplier offers, grouped by Wood, Metal, and Finishing, while retaining an
-  inspectable private source library. The active candidate removes Search,
-  keeps Department, Material Type, and Supplier filters, replaces the broad
-  Category input with an optional Department, and uses department-specific
-  material types. Production scenario acceptance remains pending. Contract:
-  `notes/PRICE_CATALOG_UI.md`.
+- 3.10.2 Price Source Agent accuracy: active, P1. Improve real supplier-source
+  extraction, material-type classification, unit normalization, confidence,
+  and ready-versus-unresolved decisions without changing the accepted 3.10.1
+  Price Catalog UI checkpoint `d18b533`. Establish the complete scenario matrix
+  and representative evidence set before changing the prompt or activation
+  logic. Contract: `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.9.1 Machinery and production routing foundation: active, P1. Add a compact
   16-capability profile across woodworking, metalworking, and finishing while

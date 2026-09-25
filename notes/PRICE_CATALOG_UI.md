@@ -1,7 +1,11 @@
 # Price Catalog UI
 
 Task: 3.10.1
-Status: active
+Status: accepted checkpoint at `d18b533`
+
+The owner accepted the compact presentation on 25.09.2026 and moved further
+work to agent quality task 3.10.2. Preserve this UI while diagnosing extraction,
+classification, normalization, and activation behavior.
 
 ## Product boundary
 
