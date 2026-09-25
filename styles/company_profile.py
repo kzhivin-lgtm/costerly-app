@@ -4,7 +4,7 @@ import streamlit as st
 
 
 def apply_company_profile_css() -> None:
-    """Apply the first production pass of the shared Costerly UI system."""
+    """Apply the first production pass of the shared Costerly AI UI system."""
     st.markdown(
         """
         <style>

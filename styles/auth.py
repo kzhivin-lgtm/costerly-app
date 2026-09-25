@@ -105,7 +105,7 @@ def install_auth_form_interactions() -> None:
 
           function termsControl(scope = doc) {
             return Array.from(scope.querySelectorAll('[data-testid="stCheckbox"]')).find(
-              (node) => node.textContent.includes('I have read and agree to the Terms and Conditions')
+              (node) => node.textContent.includes('I have read and agree to the Terms of Service')
             ) || null;
           }
 
@@ -372,7 +372,7 @@ def install_auth_form_interactions() -> None:
               }
             });
             doc.querySelectorAll('[data-testid="stCheckbox"]').forEach((control) => {
-              if (!control.textContent.includes('I have read and agree to the Terms and Conditions')) return;
+              if (!control.textContent.includes('I have read and agree to the Terms of Service')) return;
               const input = control.querySelector('input');
               if (!input || input.dataset.costerlyTermsBound === '1') return;
               input.dataset.costerlyTermsBound = '1';

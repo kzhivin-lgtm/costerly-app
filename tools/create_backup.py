@@ -40,7 +40,7 @@ def main() -> int:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Create a validated local Costerly backup archive.",
+        description="Create a validated local Costerly AI backup archive.",
     )
     parser.add_argument("version", help="Version label, for example v2.01.35")
     parser.add_argument("slug", help="Short backup slug, for example before_next_task")

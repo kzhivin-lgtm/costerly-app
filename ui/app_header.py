@@ -17,7 +17,7 @@ def render_app_header() -> None:
     """Render the stable brand region shared by auth and product screens."""
     st.markdown(
         '<header class="costerly-app-header">'
-        f'<img src="{_brand_logo_src()}" alt="Costerly" />'
+        f'<img src="{_brand_logo_src()}" alt="Costerly AI" />'
         '</header>',
         unsafe_allow_html=True,
     )

@@ -12,50 +12,56 @@ from config import get_optional_secret
 from use_cases.invite_links import DEFAULT_PUBLIC_APP_URL, invite_token_hash, public_app_url
 
 
-TERMS_CHECKBOX_TEXT = "I have read and agree to the Terms and Conditions"
+TERMS_CHECKBOX_TEXT = "I have read and agree to the Terms of Service"
 TERMS_SUMMARY = (
-    "These Terms govern professional use of Coasterly AI, organization access, "
+    "These Terms govern professional use of Costerly AI, organization access, "
     "Customer Content, AI-assisted output, plans and usage limits, confidentiality, "
     "cancellation, warranties, liability and other service conditions"
 )
 TERMS_INLINE_TEXT = """
-**Professional service.** Coasterly AI is for organizations and professional
-use. A person creating an Organization Account represents that they have
-authority to act for that organization and accept the Terms for it.
+**One agreement, two roles.** An Organization Admin creates the Organization
+Account or receives administrative authority later. A Member is invited by an
+Admin or another authorized user. Admins confirm authority to create the
+account, accept the Terms for the organization, provide accurate information
+and grant access. Members confirm permission to use the account and are
+responsible for their own actions, but do not claim authority to contract for
+the entire organization merely by accepting these Terms.
 
-**Account access.** The organization is responsible for the access it grants,
-its users' activity and the security of its credentials.
+**Account access.** Admins may invite and remove Members and manage roles and
+permissions. The organization is responsible for the access it grants, its
+authorized users' activity and credential security.
 
-**Customer Content.** Customer Content remains owned by the customer or the
-applicable rights holder. The customer confirms it has the rights and
-permissions needed to upload and process it. Coasterly AI may process and send
-Customer Content to authorized service providers only as needed to provide,
-secure and support the service.
+**Customer Content.** The customer confirms it has all rights and permissions
+needed to upload, store and process files, including copyright,
+confidentiality, NDA, trade-secret, personal-data and other third-party rights.
+Costerly AI does not verify the files' origin or contractual chain. It receives
+only the limited license needed to host, copy, analyze, transform, process and
+transmit Customer Content to authorized providers for the service.
 
 **Confidentiality and AI providers.** Customer Content may include confidential
-drawings, RFQs, BOMs, prices and specifications. Coasterly AI uses it to provide
-the service and may use hosting, database, monitoring and AI providers,
-including OpenAI, Anthropic and Google. Customer Content is not used to train
-Coasterly AI's own general-purpose models and must not be used for general
-model training by configured AI providers where their applicable service terms
-provide that protection.
+drawings, RFQs, BOMs, prices and specifications. Costerly AI uses it to provide
+and protect the service, with personnel and necessary providers limited to
+need-to-know access. Customer Content is not used to train Costerly AI's own
+general-purpose models. OpenAI, Anthropic, Google and other AI providers must
+not use it to train or improve their general-purpose models.
 
-**Output.** AI-assisted output may be incomplete or incorrect. The customer
-must review dimensions, quantities, materials, prices and other results before
-use. Coasterly AI does not provide regulated professional advice.
+**Output.** As between Costerly AI and the customer, output belongs to the
+customer to the extent permitted by law. Costerly AI retains its platform IP.
+AI-assisted output may be incomplete or incorrect and must be reviewed before
+commercial, production, engineering or other use.
 
-**Plans and usage.** Pilots, Trial Periods and paid Plans may have different
-features, users, Included Usage, tokens, credits and processing limits. A Plan
-is not unlimited unless its offer expressly says so. Operations may consume
-different usage based on type, size and complexity.
+**Plans and usage.** Trial, pilot and beta access follows its offer and does not
+automatically become paid. Paid Plans are not unlimited unless expressly
+stated. Operations may consume different tokens or credits based on type, size
+and complexity. Internal usage units are not money and have no cash value.
 
 **Billing.** Cancellation stops the next renewal. Started billing periods,
 consumed usage and unused Included Usage are non-refundable except where law
 requires otherwise.
 
-**Storage.** Customer Content may remain stored after a project or account is
-removed. Customers may request permanent deletion, subject to reasonable
-processing time, limited backups and legal obligations.
+**Storage.** Subject to law, Customer Content may remain stored indefinitely
+after a project or account is removed. Customers may request verified permanent
+deletion. Limited protected backup copies may remain through normal cycles.
 
 **Availability and responsibility.** The service may change and may sometimes
 be unavailable. It does not promise uninterrupted operation, absolute accuracy

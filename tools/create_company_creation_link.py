@@ -22,7 +22,7 @@ from use_cases.invite_links import DEFAULT_PUBLIC_APP_URL, public_app_url
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-url", help="Public Costerly URL; never the Supabase URL.")
+    parser.add_argument("--base-url", help="Public Costerly AI URL; never the Supabase URL.")
     parser.add_argument("--label", help="Optional private tracking label for this one link.")
     args = parser.parse_args()
 

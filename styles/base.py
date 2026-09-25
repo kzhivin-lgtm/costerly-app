@@ -16,7 +16,7 @@ def _font_data_uri(file_name: str) -> str:
     return f"data:font/woff2;base64,{encoded}"
 
 def apply_base_css() -> None:
-    """Install global Costerly design tokens and Streamlit base overrides.
+    """Install global Costerly AI design tokens and Streamlit base overrides.
 
     Called once from app.py before routing to a screen. Screen-specific CSS
     belongs in styles/upload.py, styles/post_upload.py, or screen modules.

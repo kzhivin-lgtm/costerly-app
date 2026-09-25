@@ -1,6 +1,6 @@
-# Costerly Architecture
+# Costerly AI Architecture
 
-Costerly Streamlit should stay a thin UI shell.
+Costerly AI Streamlit should stay a thin UI shell.
 
 ```text
 Streamlit UI
@@ -15,12 +15,12 @@ Rule
 Screens receive user actions and render state. They do not own business logic.
 Theme Policy
 The design system has light and dark token blocks.
-For now, both blocks intentionally produce the same light Costerly UI. This lets us add a real dark theme later by changing dark tokens without rewriting screens.
+For now, both blocks intentionally produce the same light Costerly AI UI. This lets us add a real dark theme later by changing dark tokens without rewriting screens.
 The app should not follow Streamlit native dark mode yet.
 
 Company Profile UI and persistence contract
 Company Profile owns its local page heading and navigation actions. The shared
-full Costerly logo and global Profile action are not rendered on that screen.
+full Costerly AI logo and global Profile action are not rendered on that screen.
 The page uses seven peer tabs: Overhead Expenses, Labor Costs, Machinery, Price
 Lists, Contacts, Bank Details, and Users. Overhead Expenses is first. Contacts
 and Bank Details submit independently.

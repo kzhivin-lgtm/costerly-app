@@ -36,7 +36,7 @@ Previous completed Profile feature checkpoint: v3.4.2 Company Logo
 - `--profile-action-gap` is the shared 32px design token for the accepted final
   content-to-action rhythm. Invisible interaction markers and Sidebar bridge
   components do not participate in main-page layout.
-- Logo drag-over uses the Costerly purple focus treatment, not Streamlit's
+- Logo drag-over uses the Costerly AI purple focus treatment, not Streamlit's
   native red state. Logo success feedback renders above the action and visually
   dismisses after five seconds.
 - The user accepted the complete production setup. Automated suite: 204 tests
@@ -136,7 +136,7 @@ Previous completed Profile feature checkpoint: v3.4.2 Company Logo
 - Saved workers appear above the editor and open the same validated edit path
   through a compact pencil before each worker name.
 - Streamlit 1.64 React Aria selectors match the 52px Profile input contract,
-  center their text vertically, and use the Costerly purple focus border and
+  center their text vertically, and use the Costerly AI purple focus border and
   ring. The older BaseWeb selectors remain for runtime compatibility.
 - The user accepted the production pencil alignment and all selector states.
 - The Add Worker card uses the same compact section spacing as the summary and
@@ -166,7 +166,7 @@ Previous completed Profile feature checkpoint: v3.4.2 Company Logo
 
 ## Accepted UI
 
-- The shared full Costerly logo is hidden on Company Profile. The small C mark
+- The shared full Costerly AI logo is hidden on Company Profile. The small C mark
   remains beside `Company profile`.
 - The redundant Profile action is absent. Compact `Continue to upload` and
   standard icon-bearing `Sign out` actions live in the page header.
@@ -257,7 +257,7 @@ UI definition for the Profile screen.
   explicitly not accepted as finished.
 - User verified in production at `1df98c5` that Labor Costs edit pencils align
   before worker names, selector text is vertically centered, and selector focus
-  uses the purple Costerly border and ring.
+  uses the purple Costerly AI border and ring.
 - User verified in production at `dfcf5ef` that the final Add Worker spacing is
   consistent and the disabled `Select position` placeholder is not bold.
 - User accepted the v3.2.2 rendered preview with the invitation link presented

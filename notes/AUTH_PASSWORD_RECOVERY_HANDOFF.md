@@ -39,8 +39,8 @@ adding another patch. This rule is recorded in `notes/WORK_RULES.md`,
 
 ## Product copy and protected presentation
 
-- Use `Coasterly AI` exactly in user-facing product copy.
-- Keep the transactional email sender display name `Coasterly`.
+- Use `Costerly AI` exactly in user-facing product copy.
+- Keep the transactional email sender display name `Costerly AI`.
 - Omit the final period at the end of a user-facing text block. Preserve periods
   between sentences and meaningful question marks or exclamation marks.
 - Do not use the Oxford comma in the password requirement. Current copy:
@@ -134,7 +134,7 @@ Repository subject:
 `notes/email_templates/password_recovery.subject.txt`
 
 Subject value:
-`Reset your Coasterly AI password [{{ .TokenHash }}]`
+`Reset your Costerly AI password [{{ .TokenHash }}]`
 
 The hosted Supabase template is external state. A Git push or Railway deploy
 does not update it. Copy the complete repository HTML into Authentication ->

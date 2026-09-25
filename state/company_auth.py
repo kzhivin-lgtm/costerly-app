@@ -90,7 +90,7 @@ def require_public_invitation_request() -> None:
         request_url = ""
     if _request_uses_localhost(request_url):
         raise PermissionError(
-            "Open this invitation through the public Costerly application. "
+            "Open this invitation through the public Costerly AI application. "
             "Company accounts cannot be created on localhost."
         )
 
@@ -146,7 +146,7 @@ def registration_validation_errors(
     elif password != password_confirm:
         errors["confirm"] = "Passwords do not match"
     if terms_accepted is False:
-        errors["terms"] = "Agree to the Terms and Conditions to continue"
+        errors["terms"] = "Agree to the Terms of Service to continue"
     return errors
 
 
@@ -576,11 +576,11 @@ def _render_registration_terms(documents, *, key: str) -> bool:
     terms_url = public_legal_url(documents.terms.public_path)
     privacy_url = public_legal_url(documents.privacy.public_path)
     st.caption(TERMS_SUMMARY)
-    with st.expander("Terms and Conditions"):
+    with st.expander("Terms of Service"):
         with st.container(height=220, border=False):
             st.markdown(TERMS_INLINE_TEXT)
         st.markdown(
-            f'<a href="{terms_url}" target="_blank" rel="noopener">Read the full Terms and Conditions</a>',
+            f'<a href="{terms_url}" target="_blank" rel="noopener">Read the full Terms of Service</a>',
             unsafe_allow_html=True,
         )
     accepted = st.checkbox(TERMS_CHECKBOX_TEXT, key=key)
@@ -617,7 +617,7 @@ def render_terms_acceptance(access: CompanyAccess) -> None:
     """Block application data until this authenticated user accepts current Terms."""
     install_auth_form_interactions()
     documents = current_legal_documents(_server_client())
-    _render_auth_heading("Updated Terms and Conditions")
+    _render_auth_heading("Updated Terms of Service")
     error = str(st.session_state.get("terms_acceptance_error") or "")
     with st.form("current_terms_acceptance"):
         accepted = _render_registration_terms(documents, key="current_terms_accepted")
@@ -640,7 +640,7 @@ def render_terms_acceptance(access: CompanyAccess) -> None:
     st.session_state.pop("terms_acceptance_error", None)
     if not accepted:
         st.session_state.terms_acceptance_error = (
-            "Agree to the Terms and Conditions to continue"
+            "Agree to the Terms of Service to continue"
         )
         st.rerun()
     try:

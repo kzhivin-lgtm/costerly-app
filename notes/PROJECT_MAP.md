@@ -1,4 +1,4 @@
-# Costerly Project Map
+# Costerly AI Project Map
 
 This file explains where code belongs so the project stays understandable.
 

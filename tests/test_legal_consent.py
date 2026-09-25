@@ -52,7 +52,7 @@ def _documents() -> legal_consent.LegalDocumentSet:
             document_type="terms",
             version="1.0",
             acceptance_version="1",
-            title="Terms and Conditions",
+            title="Terms of Service",
             effective_at="2026-09-25T00:00:00Z",
             content_sha256="a" * 64,
             public_path="/terms",
@@ -107,7 +107,7 @@ def test_new_registration_shows_terms_before_the_only_submit(monkeypatch):
         if checkbox.label == legal_consent.TERMS_CHECKBOX_TEXT
     )
     assert terms.value is False
-    assert any(expander.label == "Terms and Conditions" for expander in app.expander)
+    assert any(expander.label == "Terms of Service" for expander in app.expander)
 
 
 def test_new_registration_cannot_submit_without_terms(monkeypatch):
@@ -130,7 +130,7 @@ def test_new_registration_cannot_submit_without_terms(monkeypatch):
 
     assert not calls
     assert any(
-        "Agree to the Terms and Conditions" in item.value
+        "Agree to the Terms of Service" in item.value
         for item in app.markdown
     )
 
@@ -155,7 +155,7 @@ def test_member_invitation_requires_terms_on_its_only_submit(monkeypatch):
 
     assert calls == []
     assert any(
-        "Agree to the Terms and Conditions" in item.value
+        "Agree to the Terms of Service" in item.value
         for item in app.markdown
     )
 
@@ -217,7 +217,7 @@ def test_terms_validation_is_part_of_the_first_registration_submit():
         "Workshop",
         False,
     )
-    assert errors == {"terms": "Agree to the Terms and Conditions to continue"}
+    assert errors == {"terms": "Agree to the Terms of Service to continue"}
 
 
 def test_confirmation_and_permanent_privacy_routes_are_wired():
@@ -252,7 +252,7 @@ def test_updated_terms_gate_precedes_application_controls():
     assert "on_click=sign_out" in gate_source
 
 
-def test_legal_drafts_identify_the_individual_operator_without_claiming_registration():
+def test_current_legal_documents_identify_the_registered_exempt_dealer():
     terms = (ROOT / "cloudflare/terms.html").read_text()
     privacy = (ROOT / "cloudflare/privacy.html").read_text()
 
@@ -260,18 +260,29 @@ def test_legal_drafts_identify_the_individual_operator_without_claiming_registra
         assert "Kirill Ginzburg" in document
         assert "קיריל גינזבורג" in document
         assert "346904519" in document
+        assert "exempt dealer (osek patur)" in document
         assert "עוסק פטור" not in document
 
 
-def test_version_one_publication_matches_exact_legal_artifact_hashes():
-    terms_path = ROOT / "cloudflare/terms.html"
-    privacy_path = ROOT / "cloudflare/privacy.html"
+def test_version_one_publication_remains_an_immutable_audit_record():
     publication = (
         ROOT / "db/sql/2026_09_25_publish_legal_documents_v1.sql"
     ).read_text()
 
-    assert "Version 1.0, effective September 25, 2026" in terms_path.read_text()
-    assert "Version 1.0, effective September 25, 2026" in privacy_path.read_text()
+    assert "('terms', '1.0'), ('privacy', '1.0')" in publication
+    assert "a4f970a69d10f0988b275b704f36bee297ad2a23c53b59853c85895d7bfc6fa4" in publication
+    assert "437bd95ede5edef786762d9a5ec185935bf518808d517ddcf7d6a46188f7b17d" in publication
+
+
+def test_version_one_one_publication_matches_current_legal_artifact_hashes():
+    terms_path = ROOT / "cloudflare/terms.html"
+    privacy_path = ROOT / "cloudflare/privacy.html"
+    publication = (
+        ROOT / "db/sql/2026_09_25_publish_legal_documents_v1_1.sql"
+    ).read_text()
+
+    assert "Version 1.1, effective September 25, 2026" in terms_path.read_text()
+    assert "Version 1.1, effective September 25, 2026" in privacy_path.read_text()
     def published_bytes(path):
         return (
             path.read_bytes()
@@ -283,7 +294,42 @@ def test_version_one_publication_matches_exact_legal_artifact_hashes():
     # stored hashes match the stable response bytes observed at the public URLs.
     assert hashlib.sha256(published_bytes(terms_path)).hexdigest() in publication
     assert hashlib.sha256(published_bytes(privacy_path)).hexdigest() in publication
-    assert "('terms', '1.0'), ('privacy', '1.0')" in publication
+    assert "('terms', '1.1'), ('privacy', '1.1')" in publication
+
+
+def test_terms_one_one_contains_the_agreed_product_and_risk_contract():
+    terms = (ROOT / "cloudflare/terms.html").read_text()
+    privacy = (ROOT / "cloudflare/privacy.html").read_text()
+
+    required_terms = (
+        "Organization Admin",
+        "A Member does not represent",
+        "invitation links",
+        "The Operator is not required to investigate",
+        "defend, indemnify and hold harmless",
+        "limited, non-exclusive license",
+        "need-to-know basis",
+        "must not use Customer Content to train or improve",
+        "output generated from Customer Content belongs to the Customer",
+        "does not automatically convert into a paid subscription",
+        "automatically renews",
+        "have no independent cash value",
+        "future billing periods after reasonable notice",
+        "may be stored indefinitely",
+        "Material changes require affected users to accept a new version",
+        "future Costerly AI Ltd.",
+        "US$100",
+        "Tel Aviv-Jaffa",
+        "entire agreement",
+        "Failure to enforce a provision is not a waiver",
+        "events beyond reasonable control",
+        "will survive termination",
+    )
+    for clause in required_terms:
+        assert clause in terms
+    assert "where configuration permits" not in terms
+    assert "where their applicable service terms provide" not in terms
+    assert "Coasterly" not in terms + privacy
 
 
 def test_migration_keeps_acceptance_evidence_append_only_and_server_written():
@@ -336,7 +382,7 @@ def test_returning_user_gate_uses_authenticated_user_and_terms_acceptance_versio
                 "document_type": "terms",
                 "version": "1.1",
                 "acceptance_version": "1",
-                "title": "Terms and Conditions",
+                "title": "Terms of Service",
                 "effective_at": "2026-09-25T00:00:00Z",
                 "content_sha256": "a" * 64,
                 "public_path": "/terms",
@@ -382,7 +428,7 @@ def test_confirmation_email_is_branded_direct_and_not_threaded():
         ROOT / "notes/email_templates/confirm_signup.subject.txt"
     ).read_text().strip()
 
-    assert "Coasterly AI" in html
+    assert "Costerly AI" in html
     assert 'href="{{ .ConfirmationURL }}"' in html
     assert ">Verify email</a>" in html
     assert "costerly-ai-logo.png" in html

@@ -1,1 +1,1 @@
-Verify your Coasterly AI email [{{ .TokenHash }}]
+Verify your Costerly AI email [{{ .TokenHash }}]

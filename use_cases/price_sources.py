@@ -247,7 +247,7 @@ def _validate_public_url(url: str) -> str:
 
 def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[str, bytes, str]:
     current = _validate_public_url(url)
-    http = client or httpx.Client(timeout=20, headers={"User-Agent": "CosterlyPriceImporter/1.0"})
+    http = client or httpx.Client(timeout=20, headers={"User-Agent": "CosterlyAIPriceImporter/1.0"})
     owns_client = client is None
     try:
         for _ in range(4):

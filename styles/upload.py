@@ -7,7 +7,7 @@ def apply_upload_css() -> None:
     """Style the first upload screen and the native Streamlit file uploader.
 
     Called only by screens/upload.py. The native file uploader remains the real
-    input; this CSS replaces its visual layer with the Costerly upload block.
+    input; this CSS replaces its visual layer with the Costerly AI upload block.
     Dragover uses ui/js_guards.py to toggle stable class names on Streamlit's
     native dropzone.
     """

@@ -1,17 +1,16 @@
 # Legal Consent and Verified Registration
 
 Task: 3.11.1
-Status: version 1.0 activation in progress
+Status: version 1.1 material revision in progress
 
 ## Verified progress on 2026-09-25
 
 - The additive production migration has been applied. A service-role read
   confirmed all five legal-consent tables exist and contain no document,
   acceptance or pending-registration rows.
-- The operator supplied the Hebrew and English name plus Israeli identity
-  number for the legal drafts. Until an actual business registration exists,
-  the drafts describe an individual operator and do not claim `עוסק פטור` or
-  another registered-business status.
+- The operator supplied the Hebrew and English name and confirmed registration
+  in Israel as an exempt dealer (`osek patur`) under business registration and
+  exempt dealer number 346904519.
 - Company-creation and member-invitation signup both require one unchecked
   Terms control on their only submit. Successful signup advances to email
   verification. Returning authenticated users are gated before application
@@ -31,15 +30,18 @@ Status: version 1.0 activation in progress
   company activation, existing-user gate, mobile pass, and branded Supabase
   Confirm Signup template remain acceptance work. This is active playground
   functionality, not a completed production checkpoint.
-- The full deterministic suite passes: 329 tests.
+- The full deterministic suite passes: 333 tests.
+- Material Terms of Service version 1.1 and Privacy Policy version 1.1 are the
+  current revision branch. Terms acceptance version advances from 1 to 2;
+  Privacy remains acceptance version 1 and does not create its own gate.
 
-This file is the scenario-first product contract for Terms and Conditions,
+This file is the scenario-first product contract for Terms of Service,
 Privacy Policy visibility, email verification, and later material Terms
 acceptance. It does not establish legal approval of the document text.
 
 ## Agreed product decisions
 
-- The contractual document is named `Terms and Conditions`.
+- The contractual document is named `Terms of Service`.
 - Signup shows a short Terms summary that can be expanded and scrolled. Opening
   or scrolling it is optional. The unchecked agreement control is mandatory.
 - Privacy Policy is acknowledged by being clearly provided at signup and is
@@ -79,7 +81,7 @@ acceptance. It does not establish legal approval of the document text.
 | Anonymous visitor types an email | Do not reveal whether the address exists, is verified, or accepted a Terms release; do not dynamically hide legal controls |
 | User opens or closes Terms | Preserve every field and checkbox value; opening and scrolling are optional |
 | Privacy Policy link is used | Open the current policy separately and preserve signup state |
-| Terms and Conditions link is used | Open the exact version represented by the agreement separately and preserve signup state |
+| Terms of Service link is used | Open the exact version represented by the agreement separately and preserve signup state |
 | Terms is unchecked | Do not create an Auth user, acceptance event, company, or membership; mark the agreement control |
 | Multiple fields are invalid | One submit marks every invalid field including the agreement control; no loading state starts |
 | User corrects an invalid value | Clear that field's invalid state without clearing unrelated fields |

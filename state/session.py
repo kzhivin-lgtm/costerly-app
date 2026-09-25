@@ -22,7 +22,7 @@ def get_company_id() -> str:
     if company_auth_enabled():
         company_id = st.session_state.get("auth_company_id")
         if not company_id:
-            raise PermissionError("Sign in to a company before using Costerly.")
+            raise PermissionError("Sign in to a company before using Costerly AI.")
         return str(company_id)
     return get_secret("COMPANY_ID", "001")
 

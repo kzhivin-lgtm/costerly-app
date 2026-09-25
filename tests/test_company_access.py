@@ -2902,7 +2902,7 @@ def test_registration_rejects_explicit_local_browser_origins(monkeypatch, reques
         "context",
         type("Context", (), {"url": request_url})(),
     )
-    with pytest.raises(PermissionError, match="public Costerly application"):
+    with pytest.raises(PermissionError, match="public Costerly AI application"):
         company_auth.require_public_invitation_request()
 
 

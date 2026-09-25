@@ -95,7 +95,7 @@ Date: 2026-09-20
 
 - Sign in completes from one credential submission.
 - Sign out is functionally working, but its interaction feedback still needs polish.
-- The shared Costerly header and accepted Upload/Auth layout are retained.
+- The shared Costerly AI header and accepted Upload/Auth layout are retained.
 - Upload dimensions, spacing, hover, hero typography, background, and logo position remain protected.
 
 ## Root cause of the rejected branch

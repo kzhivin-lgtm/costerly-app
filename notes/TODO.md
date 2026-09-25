@@ -1,7 +1,7 @@
 # TODO
 
 - 3.11.1 Legal consent and verified registration: active, P0. Invitation signup
-  shows the mandatory Terms and Conditions agreement before its single submit,
+  shows the mandatory Terms of Service agreement before its single submit,
   creates an inactive Auth account, records immutable versioned evidence, and
   activates company access only after one-click email verification. Returning
   users never see Terms on Sign in and pass directly into the application when
@@ -13,8 +13,10 @@
   drafts, and deterministic coverage are implemented locally. The production
   migration is applied, Terms and Privacy version 1.0 are publicly deployed,
   and the exact stable response hashes plus release pointers are published in
-  Supabase. Operator identity is recorded without claiming a not-yet-registered
-  business status. The owner authorized activation for the private playground.
+  Supabase. Version 1.1 records the operator as an Israeli exempt dealer under
+  business registration and exempt dealer number 346904519, uses the canonical
+  Costerly AI brand, and advances the material Terms acceptance version to 2.
+  The owner authorized activation for the private playground.
   Production confirms the anonymous company-invitation screen and ordinary
   Sign in behavior; its verification invitation remains unused. Supabase
   Confirm Signup template, production SMTP, a real signup and confirmation
@@ -97,10 +99,10 @@
   the previous DOM container. Production verification of this sequence remains
   pending. The production recovery mail must also use the repository subject
   template
-  `Reset your Coasterly AI password [{{ .TokenHash }}]` so every
+  `Reset your Costerly AI password [{{ .TokenHash }}]` so every
   request has a distinct subject and mail clients do not thread separate
   recovery attempts together. The HTML template must remain in its light
-  Coasterly AI palette in dark-mode mail clients, using email-compatible color
+  Costerly AI palette in dark-mode mail clients, using email-compatible color
   declarations rather than relying on client theme defaults. The hosted
   Supabase template is external state and both changes must be verified
   independently after applying the repository values. The 24.09 Gmail iOS

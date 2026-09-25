@@ -1,4 +1,4 @@
-# Costerly Work Rules
+# Costerly AI Work Rules
 
 These are operating rules for changing the project without repeating avoidable mistakes.
 
@@ -132,7 +132,7 @@ Short version: measure and accept only matching wrapper and server builds.
 
 ## Production-Only Interaction Verification Rule
 
-Costerly UI and interaction acceptance is performed only on production. Do not
+Costerly AI UI and interaction acceptance is performed only on production. Do not
 ask the user to validate a localhost or direct Streamlit URL, because it does not
 exercise the deployed Cloudflare wrapper and is not the accepted test surface.
 

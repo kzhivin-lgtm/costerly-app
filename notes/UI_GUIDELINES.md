@@ -1,6 +1,6 @@
-# Costerly UI guidelines
+# Costerly AI UI guidelines
 
-These rules apply to every Costerly screen and workflow. A missing interaction
+These rules apply to every Costerly AI screen and workflow. A missing interaction
 state is a product defect, not optional polish.
 
 ## Mandatory scenario-first workflow
@@ -128,7 +128,7 @@ screen.
 
 ## Visual consistency
 
-- Use the shared light Costerly palette regardless of the browser or operating
+- Use the shared light Costerly AI palette regardless of the browser or operating
   system theme until a complete dark theme is designed.
 - Reuse shared input, button, spacing, focus, and error tokens before adding
   screen-specific CSS.
@@ -161,6 +161,6 @@ Before accepting a screen, verify:
 - Emil Kowalski's broader design-engineering review principles:
   https://github.com/emilkowalski/skills/tree/main/skills/emil-design-eng
 
-These references inform the rules above. They are not copied wholesale: Costerly
+These references inform the rules above. They are not copied wholesale: Costerly AI
 uses only the parts that improve clarity, responsiveness, accessibility, and
 workflow reliability for its own product.
