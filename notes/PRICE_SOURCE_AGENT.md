@@ -9,8 +9,9 @@ Protected checkpoint: `d18b533` (accepted 3.10.1 Price Catalog UI)
 
 Make the agent reliably turn real supplier websites, files, and photos into
 auditable catalog prices. Improve extraction, material-type classification,
-unit normalization, confidence, and ready-versus-unresolved decisions without
-changing the accepted catalog presentation.
+unit normalization, confidence, and ready-versus-unresolved decisions while
+preserving the accepted catalog structure. Source Details may add the approved
+document metadata, per-row Material Type and VAT, timing, and TC fields.
 
 ## Product hypothesis and source value
 
@@ -29,11 +30,11 @@ price.
 
 ## Identified contract gap
 
-The current schema assigns one top-level category to the entire source. This is
-insufficient for mixed supplier documents, where separate rows may be Wood
+The previous schema assigned one top-level category to the entire source. This
+was insufficient for mixed supplier documents, where separate rows may be Wood
 Sheets, Wood Supplies, Metal Supplies, and Paints & Coatings. Prompt-only edits
-cannot solve this. Before accuracy tuning, decide whether to move Material Type
-to every extracted row while retaining source-level document metadata.
+could not solve this. The approved v2 contract moves Material Type to every
+extracted row while retaining source-level document metadata.
 
 Recommended target separation:
 
@@ -51,10 +52,10 @@ the price available to other companies.
 
 ## Run cost observability
 
-Use `TC` as the compact product label for Token Cost. `TC` is the run's
-calculated USD cost from provider-reported input and output token usage and the
-configured per-model pricing table. Display a currency value such as
-`TC $0.042`, not the word cents and not a raw token count.
+Use `TC` as the compact internal product label for Token Cost. `TC` is the run's
+calculated cost from provider-reported input and output token usage and the
+configured per-model pricing table. Display only the compact value, such as
+`TC 0.042`, without a currency sign, the word cents, or a raw token count.
 
 For Price Source Agent, show the completed run's timing and TC in the source
 result/details. Preserve the stored input tokens, output tokens, model, prompt
@@ -97,7 +98,7 @@ Do not improve ready-row count by weakening evidence or unit requirements.
 | Group | Scenarios |
 | --- | --- |
 | Source format | Static website, protected/dynamic website, PDF, spreadsheet, single photo, multi-photo document |
-| Document type | Price list, catalog, quote, estimate, invoice, order, mixed or irrelevant document |
+| Document type | Price list, catalog, quote, invoice, tax invoice, delivery note, order confirmation, credit note, other |
 | Department | Automatic detection, selected Wood, selected Metal, selected Coating, source contradicts selected department |
 | Material type | Each supported material type, mixed-type source, legacy broad type, unsupported material |
 | Price evidence | Unit price, package price, quantity plus line total, discount, VAT included/excluded, multiple currencies |
@@ -110,4 +111,23 @@ Do not improve ready-row count by weakening evidence or unit requirements.
 Automated tests are necessary but insufficient. Acceptance requires an agreed
 representative production set with row-level review of source evidence,
 classification, normalized price and unit, status, and confidence. The accepted
-The accepted 3.10.1 UI must remain visually unchanged throughout this task.
+3.10.1 layout remains the protected checkpoint, except for the
+explicitly approved Source Details metadata and table additions in this task.
+
+## v2 implementation candidate
+
+- source metadata now includes document number, ISO document date, price
+  context, subtotal, VAT amount, and total;
+- every extracted row now owns its Material Type, discount evidence, and VAT
+  basis;
+- explicit subtotal, VAT, and total mismatches are downgraded
+  deterministically;
+- a selected-department mismatch becomes unresolved instead of aborting the
+  complete document;
+- byte-level duplicate protection is supplemented by a semantic fingerprint
+  for the same numbered document uploaded as another file or photo;
+- Source Details displays the document date as MM/DD/YY, document totals,
+  per-row Material Type and VAT, agent time, and TC without a currency sign.
+
+This candidate is not a product checkpoint until the representative production
+scenario set is reviewed and accepted.

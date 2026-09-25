@@ -3,7 +3,18 @@ from __future__ import annotations
 from typing import Any
 
 
-DOCUMENT_TYPES = {"price_list", "catalog", "quote", "invoice", "order", "other"}
+DOCUMENT_TYPES = {
+    "price_list",
+    "catalog",
+    "quote",
+    "invoice",
+    "tax_invoice",
+    "delivery_note",
+    "order_confirmation",
+    "credit_note",
+    "other",
+}
+PRICE_CONTEXTS = {"public_list", "supplier_quote", "customer_transaction", "unknown"}
 VAT_MODES = {"included", "excluded", "mixed", "unknown"}
 ROW_STATUSES = {"ready", "unresolved", "excluded"}
 PRICE_SOURCE_CATEGORIES = (
@@ -33,21 +44,29 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "category",
         "supplier_name",
         "document_type",
+        "document_number",
         "document_date",
+        "price_context",
         "currency",
         "vat_mode",
+        "document_subtotal",
+        "document_vat_amount",
+        "document_total",
         "rows",
     ],
     "properties": {
-        "category": {"type": "string", "enum": list(PRICE_SOURCE_CATEGORIES)},
         "supplier_name": {"type": "string"},
         "document_type": {"type": "string", "enum": sorted(DOCUMENT_TYPES)},
+        "document_number": {"type": "string"},
         "document_date": {"type": "string"},
+        "price_context": {"type": "string", "enum": sorted(PRICE_CONTEXTS)},
         "currency": {"type": "string"},
         "vat_mode": {"type": "string", "enum": sorted(VAT_MODES)},
+        "document_subtotal": {"type": "number"},
+        "document_vat_amount": {"type": "number"},
+        "document_total": {"type": "number"},
         "rows": {
             "type": "array",
             "items": {
@@ -55,6 +74,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                 "additionalProperties": False,
                 "required": [
                     "source_row_number",
+                    "material_type",
                     "raw_description",
                     "raw_sku",
                     "raw_price",
@@ -63,6 +83,8 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                     "raw_package_quantity",
                     "raw_quantity",
                     "raw_line_total",
+                    "raw_discount_percent",
+                    "raw_discount_amount",
                     "raw_vat_mode",
                     "normalized_name",
                     "purchase_unit",
@@ -77,6 +99,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                 ],
                 "properties": {
                     "source_row_number": {"type": "integer"},
+                    "material_type": {"type": "string", "enum": list(PRICE_SOURCE_CATEGORIES)},
                     "raw_description": {"type": "string"},
                     "raw_sku": {"type": "string"},
                     "raw_price": {"type": "number"},
@@ -85,6 +108,8 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                     "raw_package_quantity": {"type": "number"},
                     "raw_quantity": {"type": "number"},
                     "raw_line_total": {"type": "number"},
+                    "raw_discount_percent": {"type": "number", "minimum": 0},
+                    "raw_discount_amount": {"type": "number", "minimum": 0},
                     "raw_vat_mode": {"type": "string", "enum": sorted(VAT_MODES)},
                     "normalized_name": {"type": "string"},
                     "purchase_unit": {"type": "string", "enum": sorted(CANONICAL_UNIT_CODES)},
@@ -183,6 +208,28 @@ def reconcile_price_source_arithmetic(result: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def guard_price_source_document_totals(result: dict[str, Any]) -> dict[str, Any]:
+    """Downgrade rows when explicit subtotal, VAT, and total do not reconcile."""
+    subtotal = result.get("document_subtotal")
+    vat_amount = result.get("document_vat_amount")
+    total = result.get("document_total")
+    values = (subtotal, vat_amount, total)
+    if not all(isinstance(value, (int, float)) and value > 0 for value in values):
+        return result
+    expected_total = float(subtotal) + float(vat_amount)
+    tolerance = max(0.02, abs(float(total)) * 0.005)
+    if abs(expected_total - float(total)) <= tolerance:
+        return result
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("status") == "excluded":
+            continue
+        row["confidence"] = max(0.0, float(row.get("confidence") or 0) - 20.0)
+        row["reason_codes"] = sorted(
+            set((row.get("reason_codes") or []) + ["document_total_mismatch"])
+        )
+    return result
+
+
 def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(result, dict):
         raise PriceSourceSchemaError("price source result must be an object")
@@ -191,10 +238,13 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         raise PriceSourceSchemaError("price source result fields do not match the contract")
     if result["document_type"] not in DOCUMENT_TYPES:
         raise PriceSourceSchemaError("unsupported document type")
-    if result["category"] not in PRICE_SOURCE_CATEGORIES:
-        raise PriceSourceSchemaError("unsupported material category")
+    if result["price_context"] not in PRICE_CONTEXTS:
+        raise PriceSourceSchemaError("unsupported price context")
     if result["vat_mode"] not in VAT_MODES:
         raise PriceSourceSchemaError("unsupported VAT mode")
+    for key in ("document_subtotal", "document_vat_amount", "document_total"):
+        if not isinstance(result[key], (int, float)) or result[key] < 0:
+            raise PriceSourceSchemaError(f"{key} must be a non-negative number")
     if not isinstance(result["rows"], list):
         raise PriceSourceSchemaError("rows must be a list")
 
@@ -207,8 +257,12 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(number, int) or number < 1 or number in seen_numbers:
             raise PriceSourceSchemaError("source row numbers must be unique positive integers")
         seen_numbers.add(number)
+        if row["material_type"] not in PRICE_SOURCE_CATEGORIES:
+            raise PriceSourceSchemaError("unsupported row material type")
         if row["status"] not in ROW_STATUSES:
             raise PriceSourceSchemaError("unsupported row status")
+        if row["raw_vat_mode"] not in VAT_MODES:
+            raise PriceSourceSchemaError("unsupported row VAT mode")
         if row["purchase_unit"] not in CANONICAL_UNIT_CODES:
             raise PriceSourceSchemaError("unsupported purchase unit")
         if row["calculation_unit"] not in CANONICAL_UNIT_CODES:
@@ -216,7 +270,14 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         confidence = row["confidence"]
         if not isinstance(confidence, (int, float)) or not 0 <= confidence <= 100:
             raise PriceSourceSchemaError("row confidence must be between 0 and 100")
-        for key in ("raw_package_quantity", "raw_quantity", "conversion_factor", "normalized_price"):
+        for key in (
+            "raw_package_quantity",
+            "raw_quantity",
+            "raw_discount_percent",
+            "raw_discount_amount",
+            "conversion_factor",
+            "normalized_price",
+        ):
             if not isinstance(row[key], (int, float)) or row[key] < 0:
                 raise PriceSourceSchemaError(f"{key} must be a non-negative number")
         for key in ("raw_price", "raw_line_total"):

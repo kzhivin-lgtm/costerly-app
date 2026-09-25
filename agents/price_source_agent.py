@@ -17,6 +17,7 @@ from agents.anthropic_adapter import (
 from agents.prompt_loader import load_price_source_agent_prompt
 from agents.schemas.price_source_schema import (
     PRICE_SOURCE_RESULT_JSON_SCHEMA,
+    guard_price_source_document_totals,
     guard_price_source_row_activation,
     normalize_price_source_confidence_scale,
     reconcile_price_source_arithmetic,
@@ -24,7 +25,7 @@ from agents.schemas.price_source_schema import (
 )
 
 
-PRICE_SOURCE_PROMPT_VERSION = "price_source_v1"
+PRICE_SOURCE_PROMPT_VERSION = "price_source_v2"
 PRICE_SOURCE_MAX_OUTPUT_TOKENS = 32_768
 
 
@@ -53,7 +54,7 @@ def run_price_source_agent(
         + (
             "The selected department is authoritative. Infer the narrowest material type inside it.\n"
             if requested_department
-            else "Infer the single best department and material type from the source evidence.\n"
+            else "Infer the best material type for every row from the source evidence.\n"
         )
     )
     if extracted_text.strip():
@@ -93,9 +94,11 @@ def run_price_source_agent(
     except json.JSONDecodeError as exc:
         raise RuntimeError("Price source processing returned invalid JSON.") from exc
     validated = validate_price_source_result(
-        reconcile_price_source_arithmetic(
-            guard_price_source_row_activation(
-                normalize_price_source_confidence_scale(result)
+        guard_price_source_document_totals(
+            reconcile_price_source_arithmetic(
+                guard_price_source_row_activation(
+                    normalize_price_source_confidence_scale(result)
+                )
             )
         )
     )

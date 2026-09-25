@@ -7,6 +7,7 @@ from html.parser import HTMLParser
 from io import BytesIO
 import csv
 import ipaddress
+import json
 import logging
 import re
 import socket
@@ -217,6 +218,82 @@ def canonical_price_source_category(category: str) -> str:
     return LEGACY_PRICE_SOURCE_CATEGORIES.get(normalized, normalized)
 
 
+def price_source_material_types(result: dict) -> list[str]:
+    return sorted(
+        {
+            canonical_price_source_category(str(row.get("material_type") or "Other"))
+            for row in result.get("rows") or []
+            if row.get("status") != "excluded"
+        },
+        key=str.casefold,
+    )
+
+
+def guard_price_source_department(result: dict, department: str) -> dict:
+    """Keep rows outside an explicitly selected department non-active."""
+    if not department:
+        return result
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("status") == "excluded":
+            continue
+        material_type = canonical_price_source_category(
+            str(row.get("material_type") or "Other")
+        )
+        detected_department = PRICE_CATALOG_DEPARTMENTS.get(material_type)
+        if material_type != "Other" and detected_department != department:
+            row["status"] = "unresolved"
+            row["reason_codes"] = sorted(
+                set((row.get("reason_codes") or []) + ["selected_department_mismatch"])
+            )
+    return result
+
+
+def price_source_semantic_fingerprint(result: dict) -> str:
+    """Identify the same commercial document across files, scans, or photos."""
+    document_number = _normalized_name(str(result.get("document_number") or ""))
+    basis: dict[str, object] = {
+        "supplier": _normalized_name(str(result.get("supplier_name") or "")),
+        "document_number": document_number,
+        "document_date": str(result.get("document_date") or ""),
+    }
+    if not document_number:
+        basis.update(
+            {
+                "document_type": str(result.get("document_type") or ""),
+                "currency": str(result.get("currency") or ""),
+                "document_total": float(result.get("document_total") or 0),
+            }
+        )
+        basis["rows"] = [
+            {
+                "description": _normalized_name(str(row.get("raw_description") or "")),
+                "sku": _normalized_name(str(row.get("raw_sku") or "")),
+                "price": float(row.get("raw_price") or 0),
+                "quantity": float(row.get("raw_quantity") or 0),
+                "line_total": float(row.get("raw_line_total") or 0),
+            }
+            for row in result.get("rows") or []
+            if row.get("status") != "excluded"
+        ]
+    encoded = json.dumps(basis, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _semantic_source_exists(client, company_id: str, fingerprint: str) -> bool:
+    sources = (
+        client.table("company_price_sources")
+        .select("source_id,processing_summary")
+        .eq("company_id", company_id)
+        .neq("status", "archived")
+        .execute()
+    ).data or []
+    return any(
+        isinstance(source.get("processing_summary"), dict)
+        and source["processing_summary"].get("semantic_sha256") == fingerprint
+        for source in sources
+    )
+
+
 def _validate_department(department: str) -> str:
     normalized = department.strip()
     if normalized and normalized not in PRICE_SOURCE_DEPARTMENTS:
@@ -317,7 +394,11 @@ def list_price_sources(access) -> list[dict]:
     assert_company_owner(client, str(access.user_id), str(access.company_id))
     return (
         client.table("company_price_sources")
-        .select("source_id,source_name,source_kind,source_url,storage_path,mime_type,category,document_type,status,processing_summary,created_at,processed_at,company_suppliers(supplier_name)")
+        .select(
+            "source_id,source_name,source_kind,source_url,storage_path,mime_type,"
+            "category,document_type,document_date,currency,vat_mode,status,"
+            "processing_summary,created_at,processed_at,company_suppliers(supplier_name)"
+        )
         .eq("company_id", str(access.company_id))
         .order("created_at", desc=True)
         .execute()
@@ -524,10 +605,10 @@ def process_price_source(
         import_id=source_id,
         trace=trace,
     )
-    category = canonical_price_source_category(str(result["category"]))
-    inferred_department = PRICE_CATALOG_DEPARTMENTS.get(category, "Wood")
-    if department and category != "Other" and inferred_department != department:
-        raise PriceSourceError("The detected material type does not match the selected department.")
+    guard_price_source_department(result, department)
+    material_types = price_source_material_types(result)
+    category = material_types[0] if len(material_types) == 1 else "Mixed"
+    semantic_sha256 = price_source_semantic_fingerprint(result)
     _emit_duration(
         trace,
         "server.price_source_agent",
@@ -542,6 +623,10 @@ def process_price_source(
         except Exception:
             logger.exception("Price source agent usage persistence failed")
         _emit_duration(trace, "server.price_source_usage_persist", usage_started)
+    if _semantic_source_exists(client, company_id, semantic_sha256):
+        raise PriceSourceError(
+            "This document has already been added, even if it was uploaded as another file or photo"
+        )
 
     benchmark_started = time.perf_counter()
     legacy_materials = (
@@ -584,7 +669,9 @@ def process_price_source(
                 .limit(1)
                 .execute()
             ).data or []
-            categories = sorted(set((existing_suppliers[0].get("categories") or []) + [category])) if existing_suppliers else [category]
+            categories = sorted(
+                set((existing_suppliers[0].get("categories") or []) + material_types)
+            ) if existing_suppliers else material_types
             supplier_row = (
                 client.table("company_suppliers")
                 .upsert(
@@ -630,6 +717,21 @@ def process_price_source(
                     "unresolved": unresolved_count,
                     "excluded": excluded_count,
                     "total": len(result["rows"]),
+                    "document_number": result["document_number"],
+                    "price_context": result["price_context"],
+                    "document_subtotal": result["document_subtotal"],
+                    "document_vat_amount": result["document_vat_amount"],
+                    "document_total": result["document_total"],
+                    "material_types": material_types,
+                    "semantic_sha256": semantic_sha256,
+                    "agent_duration_seconds": (
+                        usage_event.get("duration_seconds") if usage_event else None
+                    ),
+                    "token_cost": usage_event.get("total_cost_usd") if usage_event else None,
+                    "input_tokens": usage_event.get("input_tokens") if usage_event else None,
+                    "output_tokens": usage_event.get("output_tokens") if usage_event else None,
+                    "model": usage_event.get("model") if usage_event else None,
+                    "prompt_version": usage_event.get("prompt_version") if usage_event else None,
                 },
                 "created_by": str(access.user_id),
                 "processed_at": datetime.now(timezone.utc).isoformat(),
@@ -637,6 +739,7 @@ def process_price_source(
         ).execute()
 
         for row in result["rows"]:
+            row_category = canonical_price_source_category(str(row["material_type"]))
             material_id = None
             result_status = row["status"]
             if result_status == "ready":
@@ -645,7 +748,7 @@ def process_price_source(
                     client.table("company_material_items")
                     .select("company_material_id")
                     .eq("company_id", company_id)
-                    .eq("category", category)
+                    .eq("category", row_category)
                     .eq("normalized_name", normalized)
                     .limit(1)
                     .execute()
@@ -657,7 +760,7 @@ def process_price_source(
                     material = client.table("company_material_items").insert(
                         {
                             "company_id": company_id,
-                            "category": category,
+                            "category": row_category,
                             "canonical_name": row["normalized_name"],
                             "normalized_name": normalized,
                             "preferred_unit": row["calculation_unit"],
@@ -692,7 +795,12 @@ def process_price_source(
                     "result_status": result_status,
                     "confidence": row["confidence"],
                     "reason_codes": row["reason_codes"],
-                    "evidence": {"reference": row["evidence_reference"]},
+                    "evidence": {
+                        "reference": row["evidence_reference"],
+                        "material_type": row_category,
+                        "discount_percent": row["raw_discount_percent"],
+                        "discount_amount": row["raw_discount_amount"],
+                    },
                 }
             ).execute().data[0]
 

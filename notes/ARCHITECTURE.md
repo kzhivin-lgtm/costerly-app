@@ -269,12 +269,14 @@ Company Price Sources contract (3.7.1)
 Price Lists accepts one logical document or one public URL per operation. One
 logical document may be one file or an ordered set of JPEG/PNG photographs,
 which deterministic preprocessing combines into one private PDF source before
-agent extraction. The owner
-may choose the material category or leave it for automatic classification;
-supplier identity, document type, date,
-currency, VAT basis, product rows, units, package quantities, and conversions are
-inferred by the import pipeline. The default path never asks the owner to verify
-rows. A source and every extracted row remain inspectable after processing.
+agent extraction. The owner may choose the department or leave it for automatic
+classification. Supplier identity, document type, document number, document date,
+price context, currency, VAT basis, subtotal, VAT amount, final total, product
+rows, units, package quantities, and conversions are inferred by the import
+pipeline. Each product row owns its Material Type because a single commercial
+document may contain materials from several departments. The default path never
+asks the owner to verify rows. A source and every extracted row remain
+inspectable after processing.
 
 The model has no database access. It returns a validated extraction package.
 Deterministic code enforces supported file types, public-only URL fetching,
@@ -284,6 +286,10 @@ unresolved and never become active offers. Delivery, assembly, labor, credits,
 subtotal rows, VAT or tax total rows, grand totals, and amounts due are excluded
 as non-product rows. Their presence never causes VAT to be added to or removed
 from an extracted item price. Every item retains the VAT basis shown by its source.
+When explicit subtotal, VAT, and total values do not reconcile, deterministic
+code reduces row confidence and records `document_total_mismatch`. A mismatch
+between a user-selected department and an extracted row makes that row
+unresolved instead of aborting or silently reclassifying the complete source.
 For ready rows, deterministic code calculates `normalized_price` from the model's
 evidenced `raw_price` and `conversion_factor`; a conflicting model calculation is
 replaced and recorded with `normalized_price_recalculated`.
@@ -299,6 +305,13 @@ catalog identity, but company prices, discounts, and purchasing terms remain
 private. Existing scraped materials remain an unverified benchmark until a later
 resolver task explicitly changes pricing precedence.
 
+Byte SHA-256 rejects an identical upload before agent processing. A semantic
+document fingerprint also rejects the same numbered supplier document when it
+is uploaded as another file or photograph. Source Details renders stored ISO
+dates as MM/DD/YY and exposes document totals, per-row Material Type and VAT,
+agent duration, and compact TC without a currency sign. Provider-reported token
+usage, configured cost, model, and prompt version remain stored for audit.
+
 Price Catalog UI contract (3.10.1)
 
 The primary Price Lists presentation reads active `company_material_offers`
@@ -312,9 +325,10 @@ in a separate private library. A catalog row never replaces or discards source
 evidence. Foreign-currency offers retain their actual currency until a verified
 ILS conversion exists; presentation code must not relabel them as shekels.
 The owner accepted this presentation at checkpoint `d18b533` on 25.09.2026.
-Subsequent Price Source Agent accuracy work resumes as task 3.12.1 after the
-3.11.1 Legal block and must preserve
-this UI unless a new interface decision is explicitly approved.
+Subsequent Price Source Agent accuracy work resumed as task 3.12.1 after the
+3.11.1 Legal block. The owner explicitly approved the Source Details metadata,
+Material Type, VAT, timing, and TC additions. Other accepted UI geometry remains
+protected unless a new interface decision is explicitly approved.
 
 Estimation Agent Runtime v1
 `estimate_one_object()` is the application-layer entrypoint for one object.

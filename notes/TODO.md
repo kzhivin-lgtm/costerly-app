@@ -2,14 +2,16 @@
 
 - 3.12.1 Price Source Agent accuracy: active, P1. Improve real supplier-source
   extraction, material-type classification, unit normalization, confidence,
-  and ready-versus-unresolved decisions without changing the accepted 3.10.1
-  Price Catalog UI checkpoint `d18b533`. Establish the complete scenario matrix
-  and representative evidence set before changing the prompt or activation
-  logic. Contract: `notes/PRICE_SOURCE_AGENT.md`.
+  and ready-versus-unresolved decisions while protecting the accepted 3.10.1
+  Price Catalog UI checkpoint `d18b533`. The approved v2 candidate adds row-level
+  Material Type, document number and totals, VAT evidence, semantic duplicate
+  protection, and Source Details timing and TC. Automated verification and a
+  representative production evidence pass remain required. Contract:
+  `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price
   Source Agent cost display establishes the shared convention. Show compact
-  `TC $X.XXX` per completed run and total cycle from persisted provider usage
+  `TC X.XXX` per completed run and total cycle from persisted provider usage
   without double counting. Preserve model, prompt version, input/output tokens,
   configured pricing source, and unavailable-cost state. Apply to Detection,
   billable OCR, Naming, Estimation, and future agents.

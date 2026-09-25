@@ -998,8 +998,22 @@ def _render_url_price_source_details_test():
             "source_kind": "url",
             "source_url": "https://supplier.example/prices",
             "storage_path": "storage://company-price-sources/company-a/source-1.html",
-            "category": "Metal Profiles",
-            "processing_summary": {"ready": 1, "unresolved": 0, "excluded": 0},
+            "category": "Mixed",
+            "document_date": "2026-09-25",
+            "currency": "ILS",
+            "processing_summary": {
+                "ready": 1,
+                "unresolved": 0,
+                "excluded": 0,
+                "document_number": "INV-204",
+                "price_context": "customer_transaction",
+                "document_subtotal": 100,
+                "document_vat_amount": 18,
+                "document_total": 118,
+                "material_types": ["Wood Sheets", "Metal Profiles"],
+                "agent_duration_seconds": 12.4,
+                "token_cost": 0.042,
+            },
             "company_suppliers": {"supplier_name": "Supplier Ltd"},
         },
     )
@@ -1306,6 +1320,13 @@ def test_price_source_categories_use_clear_user_facing_labels():
     assert company_profile._price_source_category_label("Finishes and Coatings") == "Paints & Coatings"
 
 
+def test_price_source_metadata_uses_user_date_and_internal_tc_formats():
+    assert company_profile._price_source_document_date("2026-09-25") == "09/25/26"
+    assert company_profile._price_source_tc(0.0421) == "TC 0.042"
+    assert company_profile._price_source_tc(None) == "TC unavailable"
+    assert "$" not in company_profile._price_source_tc(0.0421)
+
+
 def test_price_catalog_renders_material_first_grouped_table():
     app = AppTest.from_function(_render_price_catalog_test).run()
     markup = "\n".join(item.value for item in app.markdown)
@@ -1329,9 +1350,14 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
         {
             "source_id": f"source-{index}",
             "source_name": f"invoice-{index}.pdf",
-            "category": "Wood Sheets",
+            "category": "Mixed" if index == 1 else "Wood Sheets",
             "status": "partial",
-            "processing_summary": {"total": 4},
+            "processing_summary": {
+                "total": 4,
+                "material_types": (
+                    ["Wood Sheets", "Metal Profiles"] if index == 1 else ["Wood Sheets"]
+                ),
+            },
             "company_suppliers": {"supplier_name": "Supplier Ltd"},
         }
         for index in (1, 2)
@@ -1356,6 +1382,8 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     assert len(app.expander) == 1
     assert app.expander[0].proto.label == "Source library · 2"
     assert app.expander[0].proto.expanded is False
+    assert "Multiple departments" in markup
+    assert "Mixed materials" in markup
 
 
 def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypatch):
@@ -1391,7 +1419,26 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
 
 
 def test_url_source_details_keep_original_action_in_heading_without_loading_file(monkeypatch):
-    monkeypatch.setattr(company_profile, "load_price_source_rows", lambda *_args: [])
+    monkeypatch.setattr(
+        company_profile,
+        "load_price_source_rows",
+        lambda *_args: [
+            {
+                "raw_description": "Steel profile",
+                "raw_price": 40,
+                "raw_currency": "ILS",
+                "raw_unit": "m",
+                "normalized_price": 40,
+                "calculation_unit": "m",
+                "purchase_unit": "m",
+                "conversion_factor": 1,
+                "raw_vat_included": False,
+                "result_status": "new",
+                "confidence": 96,
+                "evidence": {"material_type": "Metal Profiles"},
+            }
+        ],
+    )
     monkeypatch.setattr(
         company_profile,
         "load_price_source_bytes",
@@ -1400,10 +1447,19 @@ def test_url_source_details_keep_original_action_in_heading_without_loading_file
 
     app = AppTest.from_function(_render_url_price_source_details_test).run()
     markup = "\n".join(item.value for item in app.markdown)
+    rendered_text = "\n".join([markup, *(item.value for item in app.caption)])
 
     assert not app.exception
     assert "Supplier Ltd" in markup
-    assert "Metal Profiles" in markup
+    assert "Multiple departments" in markup
+    assert "Mixed materials" in markup
+    assert "INV-204" in rendered_text
+    assert "09/25/26" in rendered_text
+    assert "VAT ₪18" in rendered_text
+    assert "TC 0.042" in rendered_text
+    assert "Material Type" in markup
+    assert "Excluded" in markup
+    assert "$" not in rendered_text
     assert len(app.columns) == 2
     assert len(app.get("link_button")) == 1
 

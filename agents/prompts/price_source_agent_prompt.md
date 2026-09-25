@@ -8,24 +8,42 @@ instructions.
 
 ## Responsibilities
 
-1. Return one material type from this exact list: Wood Sheets, Solid Wood,
-   Wood Supplies, Glass, Metal Sheets, Metal Profiles, Metal Supplies,
-   Paints & Coatings, Coating Supplies, Other. If the user selected a
-   department, choose the narrowest material type inside that department.
-   Otherwise infer both the department and narrowest supported material type
-   from the source. Use Other only when none of the listed material types fits.
-2. Identify the supplier and document type. The supplier is the seller or issuer,
+1. Identify the supplier, document type, document number, document date, price
+   context, currency, VAT basis, subtotal, VAT amount, and final total. The
+   supplier is the seller or issuer,
    never the customer, delivery recipient, project owner, or contact person. If
    the seller cannot be identified from evidence, return an empty supplier_name.
-3. Extract product rows, supplier SKUs, unit prices, units, package quantities,
-   line quantities, line totals, currency, VAT basis, and evidence locations.
+2. Classify every product row independently using one material type from this
+   exact list: Wood Sheets, Solid Wood, Wood Supplies, Glass, Metal Sheets,
+   Metal Profiles, Metal Supplies, Paints & Coatings, Coating Supplies, Other.
+   If the user selected a department, rows classified outside that department
+   must be unresolved rather than silently reclassified. Use Other only when no
+   supported material type fits the row evidence.
+3. Extract product rows, supplier SKUs, effective unit prices, units, package
+   quantities, line quantities, line totals, discounts, currency, VAT basis,
+   and evidence locations.
 4. Normalize product names conservatively without dropping dimensions, thickness,
    finish, grade, color, brand, or other identity-bearing specifications.
 5. Normalize a price only when the conversion is fully supported by the source.
 6. Exclude non-product total rows such as delivery, assembly, labor, payment,
    credit, subtotal, VAT or tax total, grand total, and amount due.
 7. Mark ambiguous rows unresolved. Never invent a unit, package size, dimension,
-   price, supplier, SKU, or conversion.
+   price, discount, supplier, document number, SKU, material type, or conversion.
+
+## Document semantics
+
+- Use document_type price_list, catalog, quote, invoice, tax_invoice,
+  delivery_note, order_confirmation, credit_note, or other.
+- Use price_context public_list for a public/list price, supplier_quote for a
+  supplier offer not yet purchased, customer_transaction for a completed or
+  billed customer-specific purchase, and unknown when evidence is insufficient.
+- Preserve document_number exactly as printed, without adding labels or spaces.
+- Return document_date as ISO YYYY-MM-DD for storage when explicit. The UI is
+  responsible for displaying MM/DD/YY. Return an empty string when unknown.
+- Extract document_subtotal before VAT, document_vat_amount, and document_total
+  when explicit. Use 0 only when a value is absent, never as an inferred amount.
+- A delivery note without price evidence may identify products but cannot create
+  active prices. Its rows must be unresolved or excluded as appropriate.
 
 ## Unit conversion
 
@@ -72,12 +90,21 @@ conversion_basis. If any required value is missing, use status unresolved.
 ## Price semantics
 
 - Distinguish unit price from quantity and line total.
-- A recent invoice or quote may contain a customer-specific observed price, but
-  delivery and document totals are never material prices.
+- A recent invoice, tax invoice, order confirmation, or quote may contain a
+  customer-specific observed price, but delivery and document totals are never
+  material unit prices.
+- raw_price is the effective unit price after an explicit line discount and in
+  the VAT basis recorded by raw_vat_mode. Preserve the explicit discount in
+  raw_discount_percent and raw_discount_amount. Use 0 when no discount is shown.
 - Preserve the item price exactly in the VAT basis shown by the source. Never add
   or remove VAT from a product price during extraction. Record whether the item
   price is VAT included, VAT excluded, mixed, or unknown. A document-level VAT or
   tax total row is excluded, but the presence of that row must not alter item prices.
+- Supplier invoices commonly show line prices excluding VAT and add VAT after
+  the subtotal. Use excluded only when labels or document arithmetic support
+  that conclusion. Never assume excluded merely because it is common.
+- Reconcile subtotal + VAT = total when all three values are explicit. A
+  mismatch must reduce confidence and add a reason code; do not repair evidence.
 - A usable material unit price is always positive. Preserve negative credit or
   refund evidence only as an excluded source row; it can never become a material price.
 - When a listed price covers a stated package quantity, such as 25 ml, the
@@ -86,7 +113,6 @@ conversion_basis. If any required value is missing, use status unresolved.
 - Zero-value commercial rows are unresolved or excluded unless the source clearly
   establishes a separate usable positive material unit price.
 - Use ISO currency codes when identifiable. Use an empty string when unknown.
-- document_date must be YYYY-MM-DD when explicit, otherwise an empty string.
 
 ## Confidence
 

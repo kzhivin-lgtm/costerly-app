@@ -1675,6 +1675,88 @@ def _price_source_department_label(value: str) -> str:
     return "Coating" if value == "Finishing" else value
 
 
+def _price_source_material_types(source: dict) -> list[str]:
+    summary = source.get("processing_summary") or {}
+    values = summary.get("material_types") or []
+    material_types = sorted(
+        {
+            canonical_price_source_category(str(value))
+            for value in values
+            if str(value).strip()
+        },
+        key=str.casefold,
+    )
+    if material_types:
+        return material_types
+    category = canonical_price_source_category(str(source.get("category") or "Other"))
+    return [] if category == "Mixed" else [category]
+
+
+def _price_source_classification(source: dict) -> tuple[str, str]:
+    material_types = _price_source_material_types(source)
+    departments = sorted(
+        {
+            PRICE_CATALOG_DEPARTMENTS.get(material_type, "Wood")
+            for material_type in material_types
+        }
+    )
+    department_label = (
+        _price_source_department_label(departments[0])
+        if len(departments) == 1
+        else "Multiple departments"
+    )
+    material_label = material_types[0] if len(material_types) == 1 else "Mixed materials"
+    return department_label, material_label
+
+
+def _price_source_document_date(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        return datetime.strptime(text[:10], "%Y-%m-%d").strftime("%m/%d/%y")
+    except ValueError:
+        return text
+
+
+def _price_source_context_label(value: object) -> str:
+    return {
+        "public_list": "Public list",
+        "supplier_quote": "Supplier quote",
+        "customer_transaction": "Customer transaction",
+        "unknown": "Unknown context",
+    }.get(str(value or ""), str(value or "").replace("_", " ").title())
+
+
+def _price_source_tc(value: object) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "TC unavailable"
+    if number > 0 and number < 0.001:
+        return "TC <0.001"
+    return f"TC {number:.3f}"
+
+
+def _price_source_money(value: object, currency: object) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return ""
+    if number <= 0:
+        return ""
+    code = str(currency or "").upper()
+    prefix = "₪" if code == "ILS" else f"{code} " if code else ""
+    return f"{prefix}{_price_catalog_number(number)}"
+
+
+def _price_source_row_material_type(row: dict, source: dict) -> str:
+    evidence = row.get("evidence")
+    if isinstance(evidence, dict) and evidence.get("material_type"):
+        return canonical_price_source_category(str(evidence["material_type"]))
+    return canonical_price_source_category(str(source.get("category") or "Other"))
+
+
 def _render_price_catalog(catalog: list[dict]) -> None:
     department = "All departments"
     material_type = "All material types"
@@ -1801,8 +1883,7 @@ def _render_price_catalog(catalog: list[dict]) -> None:
 def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
     rows = load_price_source_rows(access, str(source["source_id"]))
     summary = source.get("processing_summary") or {}
-    category = canonical_price_source_category(str(source.get("category") or "Other"))
-    department = _price_source_department(category)
+    department_label, material_label = _price_source_classification(source)
     original = None
     if source.get("source_kind") != "url" and source.get("storage_path"):
         try:
@@ -1821,8 +1902,8 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
                 '<div class="price-source-detail-heading">'
                 f'<strong>{escape(_price_source_supplier(source))}</strong>'
                 f'<span>{escape(str(source.get("source_name") or ""))}</span>'
-                f'<small>{escape(_price_source_department_label(department))}</small>'
-                f'<small>{escape(_price_source_category_label(category))}</small>'
+                f'<small>{escape(department_label)}</small>'
+                f'<small>{escape(material_label)}</small>'
                 '</div>',
                 unsafe_allow_html=True,
             )
@@ -1847,6 +1928,27 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
         f'{int(summary.get("unresolved") or 0)} unresolved · '
         f'{int(summary.get("excluded") or 0)} excluded'
     )
+    metadata = []
+    if summary.get("document_number"):
+        metadata.append(f'Document {summary["document_number"]}')
+    document_date = _price_source_document_date(source.get("document_date"))
+    if document_date:
+        metadata.append(document_date)
+    if summary.get("price_context"):
+        metadata.append(_price_source_context_label(summary.get("price_context")))
+    for label, key in (
+        ("Subtotal", "document_subtotal"),
+        ("VAT", "document_vat_amount"),
+        ("Total", "document_total"),
+    ):
+        formatted = _price_source_money(summary.get(key), source.get("currency"))
+        if formatted:
+            metadata.append(f"{label} {formatted}")
+    duration = summary.get("agent_duration_seconds")
+    if isinstance(duration, (int, float)):
+        metadata.append(f"Agent {duration:.1f}s")
+    metadata.append(_price_source_tc(summary.get("token_cost")))
+    st.caption(" · ".join(metadata))
     mime_type = str(source.get("mime_type") or "application/octet-stream")
     if original and mime_type in {"image/jpeg", "image/png"}:
         st.image(original, caption="Original source", use_container_width=True)
@@ -1886,16 +1988,19 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
         table_rows.append(
             "<tr>"
             f'<td>{escape(str(row.get("raw_description") or ""))}</td>'
+            f'<td>{escape(_price_source_row_material_type(row, source))}</td>'
             f'<td>{source_value}</td>'
             f'<td>{normalized_value}</td>'
+            f'<td>{"Included" if row.get("raw_vat_included") is True else "Excluded" if row.get("raw_vat_included") is False else "Unknown"}</td>'
             f'<td>{escape(str(row.get("result_status") or "").title())}</td>'
             f'<td>{float(row.get("confidence") or 0):.0f}%</td>'
             "</tr>"
         )
     st.markdown(
         '<div class="price-source-table"><table><thead><tr>'
-        '<th>Source Item</th><th>Source Price</th><th>Estimation Price</th>'
-        '<th>Result</th><th>Confidence</th></tr></thead><tbody>'
+        '<th>Source Item</th><th>Material Type</th><th>Source Price</th>'
+        '<th>Estimation Price</th><th>VAT</th><th>Result</th><th>Confidence</th>'
+        '</tr></thead><tbody>'
         + "".join(table_rows)
         + "</tbody></table></div>",
         unsafe_allow_html=True,
@@ -2050,15 +2155,15 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                     unsafe_allow_html=True,
                                 )
                             with category_col:
-                                category = canonical_price_source_category(
-                                    str(source.get("category") or "Other")
+                                department_label, material_label = (
+                                    _price_source_classification(source)
                                 )
                                 st.markdown(
                                     '<span class="price-source-library-department">'
-                                    f'{escape(_price_source_department_label(_price_source_department(category)))}'
+                                    f'{escape(department_label)}'
                                     '</span>'
                                     '<span class="price-source-library-material-type">'
-                                    f'{escape(_price_source_category_label(category))}'
+                                    f'{escape(material_label)}'
                                     '</span>',
                                     unsafe_allow_html=True,
                                 )

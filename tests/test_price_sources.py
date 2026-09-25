@@ -9,6 +9,7 @@ from PIL import Image
 
 from agents.schemas.price_source_schema import (
     PriceSourceSchemaError,
+    guard_price_source_document_totals,
     guard_price_source_row_activation,
     normalize_price_source_confidence_scale,
     reconcile_price_source_arithmetic,
@@ -26,7 +27,10 @@ from use_cases.price_sources import (
     combine_price_source_files,
     extract_spreadsheet_text,
     fetch_public_page,
+    guard_price_source_department,
     list_price_catalog,
+    price_source_material_types,
+    price_source_semantic_fingerprint,
 )
 
 
@@ -66,15 +70,20 @@ class _CatalogClient:
 
 def _result(*, status: str = "ready", confidence: float = 96) -> dict:
     return {
-        "category": "Wood Sheets",
         "supplier_name": "Supplier Ltd",
         "document_type": "price_list",
+        "document_number": "PL-204",
         "document_date": "2026-09-20",
+        "price_context": "public_list",
         "currency": "ILS",
         "vat_mode": "excluded",
+        "document_subtotal": 90,
+        "document_vat_amount": 16.2,
+        "document_total": 106.2,
         "rows": [
             {
                 "source_row_number": 1,
+                "material_type": "Wood Sheets",
                 "raw_description": "Birch plywood 10 mm 2440x1220",
                 "raw_sku": "PLY-10",
                 "raw_price": 90,
@@ -83,6 +92,8 @@ def _result(*, status: str = "ready", confidence: float = 96) -> dict:
                 "raw_package_quantity": 1,
                 "raw_quantity": 1,
                 "raw_line_total": 90,
+                "raw_discount_percent": 0,
+                "raw_discount_amount": 0,
                 "raw_vat_mode": "excluded",
                 "normalized_name": "Birch plywood 10 mm 2440x1220",
                 "purchase_unit": "sheet",
@@ -137,11 +148,62 @@ def test_ambiguous_package_to_unit_conversion_cannot_activate():
     assert validate_price_source_result(guarded) is guarded
 
 
-def test_price_source_schema_requires_a_supported_inferred_category():
+def test_price_source_schema_requires_a_supported_row_material_type():
     result = _result()
-    result["category"] = "Unknown category"
-    with pytest.raises(PriceSourceSchemaError, match="material category"):
+    result["rows"][0]["material_type"] = "Unknown category"
+    with pytest.raises(PriceSourceSchemaError, match="row material type"):
         validate_price_source_result(result)
+
+
+def test_mixed_material_types_are_preserved_per_row():
+    result = _result()
+    result["rows"].append(
+        {
+            **result["rows"][0],
+            "source_row_number": 2,
+            "material_type": "Metal Profiles",
+            "raw_description": "Steel angle 30x30",
+            "normalized_name": "Steel angle 30x30",
+        }
+    )
+
+    assert validate_price_source_result(result) is result
+    assert price_source_material_types(result) == ["Metal Profiles", "Wood Sheets"]
+
+
+def test_selected_department_mismatch_becomes_unresolved():
+    result = _result()
+    result["rows"][0]["material_type"] = "Metal Sheets"
+
+    guarded = guard_price_source_department(result, "Wood")
+
+    assert guarded["rows"][0]["status"] == "unresolved"
+    assert "selected_department_mismatch" in guarded["rows"][0]["reason_codes"]
+
+
+def test_explicit_document_totals_are_reconciled_deterministically():
+    valid = _result()
+    assert guard_price_source_document_totals(valid)["rows"][0]["confidence"] == 96
+
+    mismatch = _result()
+    mismatch["document_total"] = 125
+    guarded = guard_price_source_document_totals(mismatch)
+    assert guarded["rows"][0]["confidence"] == 76
+    assert "document_total_mismatch" in guarded["rows"][0]["reason_codes"]
+
+
+def test_semantic_fingerprint_detects_same_document_across_file_variants():
+    original = _result()
+    rescan = _result()
+    rescan["rows"][0]["evidence_reference"] = "photo 2 row 8"
+    rescan["document_total"] = 106.19
+    assert price_source_semantic_fingerprint(original) == price_source_semantic_fingerprint(rescan)
+
+    different_document = _result()
+    different_document["document_number"] = "PL-205"
+    assert price_source_semantic_fingerprint(original) != price_source_semantic_fingerprint(
+        different_document
+    )
 
 
 def test_department_can_be_left_for_automatic_detection():
