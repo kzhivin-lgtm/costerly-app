@@ -62,14 +62,18 @@ Status: version 1.2 activated, production acceptance incomplete
   Operator and trade-name wording as Terms. Privacy acceptance version remains
   1, `requires_reacceptance` is false, and the release does not trigger Terms
   reacceptance.
-- Terms of Service version 1.3 is prepared as the final pre-launch text pass.
+- Terms of Service version 1.3 is publicly deployed and selected by the
+  Supabase release pointer as the final pre-launch text pass. Its live response
+  SHA-256 is
+  `346cb5ee4be1cac1b0fa4a80deb8c1a89a330e426dae8d931485b79233cc2b0d`.
   It makes each accepting User individually bound by User provisions, removes
   permission to use Customer Content to develop service functionality, and
   standardizes the Operator identifier as `registration no. 346904519`. The
   accepted indemnity, separate-DPA clause, and `Subject to applicable law`
   retention protection remain unchanged. This material release advances the
-  Terms acceptance version from 3 to 4. The deterministic suite passes: 343
-  tests.
+  Terms acceptance version from 3 to 4. There were no acceptance events or
+  pending registrations when it was activated. The deterministic suite passes:
+  343 tests.
 
 This file is the scenario-first product contract for Terms of Service,
 Privacy Policy visibility, email verification, and later material Terms
