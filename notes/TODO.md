@@ -11,9 +11,10 @@
   the production wrapper footer. The additive schema, rollback-controlled
   application path, callback transport, confirmation-email template, legal
   drafts, and deterministic coverage are implemented locally. The production
-  migration is applied, Terms and Privacy version 1.0 are publicly deployed,
-  and the exact stable response hashes plus release pointers are published in
-  Supabase. Version 1.1 records the operator as an Israeli exempt dealer under
+  migration is applied. Terms of Service and Privacy Policy version 1.1 are
+  publicly deployed, and their exact stable response hashes plus release
+  pointers are published in Supabase; version 1.0 remains immutable history.
+  Version 1.1 records the operator as an Israeli exempt dealer under
   business registration and exempt dealer number 346904519, uses the canonical
   Costerly AI brand, and advances the material Terms acceptance version to 2.
   The owner authorized activation for the private playground.

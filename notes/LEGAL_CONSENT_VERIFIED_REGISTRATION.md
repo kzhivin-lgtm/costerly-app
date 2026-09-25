@@ -1,13 +1,12 @@
 # Legal Consent and Verified Registration
 
 Task: 3.11.1
-Status: version 1.1 material revision in progress
+Status: version 1.1 activated, production acceptance incomplete
 
 ## Verified progress on 2026-09-25
 
 - The additive production migration has been applied. A service-role read
-  confirmed all five legal-consent tables exist and contain no document,
-  acceptance or pending-registration rows.
+  confirmed all five legal-consent tables exist.
 - The operator supplied the Hebrew and English name and confirmed registration
   in Israel as an exempt dealer (`osek patur`) under business registration and
   exempt dealer number 346904519.
@@ -18,9 +17,13 @@ Status: version 1.1 material revision in progress
 - The owner authorized the current working copy to be published as playground
   version 1.0 before external user access. Later material text changes will use
   a new immutable document version and acceptance version.
-- Public Terms and Privacy version 1.0 are deployed. Their stable response-byte
-  SHA-256 values are published in Supabase and the two release pointers select
-  version 1.0. Supabase Auth reports `mailer_autoconfirm=false`.
+- Public Terms and Privacy versions 1.0 remain as immutable history. Version
+  1.1 is deployed and selected by both Supabase release pointers. The live
+  response-byte SHA-256 values are
+  `c57cb8acd7fc91a59d05a6c49bf0fc52b9efbf1e614500a092d59039952630c1`
+  for Terms and
+  `96fbec67a23be6b518a60ae42d988a8e86f745de1e2b718f8a32b03131b44801`
+  for Privacy. Supabase Auth reports `mailer_autoconfirm=false`.
 - Production anonymous verification through `https://app.costerly.ai/` confirms
   the company invitation shows one submit, collapsed Terms, an unchecked
   mandatory control, and Privacy links in both the form and wrapper footer.
@@ -31,9 +34,10 @@ Status: version 1.1 material revision in progress
   Confirm Signup template remain acceptance work. This is active playground
   functionality, not a completed production checkpoint.
 - The full deterministic suite passes: 333 tests.
-- Material Terms of Service version 1.1 and Privacy Policy version 1.1 are the
-  current revision branch. Terms acceptance version advances from 1 to 2;
-  Privacy remains acceptance version 1 and does not create its own gate.
+- Material Terms of Service version 1.1 and Privacy Policy version 1.1 are
+  active. Terms acceptance version advanced from 1 to 2; Privacy remains
+  acceptance version 1 and does not create its own gate. There were no existing
+  acceptance events or pending registrations when version 1.1 was activated.
 
 This file is the scenario-first product contract for Terms of Service,
 Privacy Policy visibility, email verification, and later material Terms
