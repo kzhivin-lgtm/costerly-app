@@ -37,8 +37,10 @@
   clause, and the applicable-law retention qualification. Its public response
   hash matches the immutable Supabase row and the Terms release pointer selects
   version 1.3. The legal text sub-scope is frozen for the v1 launch candidate;
-  343 deterministic tests pass. The remaining 3.11.1 work is production flow
-  acceptance, not another legal copy pass.
+  checkpoint commit `ef31dca` is pushed, its validated backup has SHA-256
+  `412765eeead3737b3dad3fb8d682123042be869e9effb5bac4ad816d8b583958`,
+  and 343 deterministic tests pass. The remaining 3.11.1 work is production
+  flow acceptance, not another legal copy pass.
   The owner authorized activation for the private playground.
   Production confirms the anonymous company-invitation screen and ordinary
   Sign in behavior; its verification invitation remains unused. Supabase

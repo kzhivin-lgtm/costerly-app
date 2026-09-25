@@ -74,6 +74,13 @@ Status: legal text checkpoint activated at Terms 1.3 and Privacy 1.2; production
   Terms acceptance version from 3 to 4. There were no acceptance events or
   pending registrations when it was activated. The deterministic suite passes:
   343 tests.
+- The frozen legal-text checkpoint is commit `ef31dca`. A validated local
+  backup is stored at
+  `backups/v3.11.1_legal_text_final_checkpoint/costerly-app_v3.11.1_legal_text_final_checkpoint_2026-09-25.zip`
+  (738,601 bytes, SHA-256
+  `412765eeead3737b3dad3fb8d682123042be869e9effb5bac4ad816d8b583958`).
+  This checkpoint closes the legal-copy sub-scope only; the production signup,
+  email-confirmation and returning-user acceptance matrix remains active.
 
 This file is the scenario-first product contract for Terms of Service,
 Privacy Policy visibility, email verification, and later material Terms
