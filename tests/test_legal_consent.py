@@ -300,6 +300,17 @@ def test_terms_heading_uses_the_established_regular_weight_and_disclosure_fades(
     assert "details[open] .auth-terms-preview" in css
 
 
+def test_terms_gate_uses_the_same_auth_geometry_as_sign_in():
+    css = (ROOT / "styles/auth.py").read_text()
+
+    assert "position: fixed;" in css
+    assert "top: calc(var(--app-header-top) + 16px);" in css
+    shared_heading_slot = css.split(".auth-brand-sign-in,", 1)[1].split("}", 1)[0]
+    assert ".auth-brand-updated-terms-of-service" in shared_heading_slot
+    assert "min-height: 90px;" in shared_heading_slot
+    assert "margin-bottom: 24px;" in shared_heading_slot
+
+
 def test_current_legal_documents_identify_the_registered_exempt_dealer():
     terms = (ROOT / "cloudflare/terms.html").read_text()
     privacy = (ROOT / "cloudflare/privacy.html").read_text()

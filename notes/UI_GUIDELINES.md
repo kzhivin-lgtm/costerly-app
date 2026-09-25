@@ -28,6 +28,11 @@ screen.
 
 ## Product-wide interaction contract
 
+- Auth screens share one geometry template. The logo, heading slot, form start,
+  panel width, and vertical gaps stay fixed while only the heading and panel
+  contents change between Sign in, registration, verification, password, and
+  Terms states.
+
 - Every user action has four possible states: press, progress, completion, and
   error. Implement every state that the action can reach.
 - A control must acknowledge pointer-down immediately. Hover alone is not

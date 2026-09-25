@@ -435,10 +435,10 @@ def apply_auth_css() -> None:
             color: #2A1F2C !important;
         }
 
-        /* Keep the v3.0.43 logo coordinates, but let the shared page scroll it. */
+        /* Every auth state uses the same viewport anchor for the shared logo. */
         .stApp:has(.auth-screen-active) .costerly-app-header {
-            position: absolute;
-            top: calc(var(--app-header-top) - var(--app-content-top) - 16px);
+            position: fixed;
+            top: calc(var(--app-header-top) + 16px);
         }
 
         .stApp:has(.auth-screen-active) .block-container,
@@ -484,7 +484,10 @@ def apply_auth_css() -> None:
         .auth-brand-sign-in,
         .auth-brand-join-your-company,
         .auth-brand-reset-password,
-        .auth-brand-create-new-password {
+        .auth-brand-create-new-password,
+        .auth-brand-terms-of-service,
+        .auth-brand-updated-terms-of-service {
+            min-height: 90px;
             margin-bottom: 24px;
         }
 
@@ -1017,7 +1020,12 @@ def apply_auth_css() -> None:
             .auth-brand-sign-in,
             .auth-brand-join-your-company,
             .auth-brand-reset-password,
-            .auth-brand-create-new-password { margin-bottom: 24px; }
+            .auth-brand-create-new-password,
+            .auth-brand-terms-of-service,
+            .auth-brand-updated-terms-of-service {
+                min-height: 81px;
+                margin-bottom: 24px;
+            }
             .auth-brand-sign-in h1,
             .auth-brand-join-your-company h1,
             .auth-brand-reset-password h1,
