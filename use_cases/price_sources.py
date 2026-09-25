@@ -517,7 +517,11 @@ def list_price_catalog(access) -> list[dict]:
     ).data or []
     source_rows = (
         client.table("company_price_source_rows")
-        .select("row_id,raw_description")
+        .select(
+            "row_id,raw_description,normalized_name,raw_price,raw_currency,raw_unit,"
+            "raw_vat_included,purchase_unit,calculation_unit,conversion_factor,"
+            "normalized_unit,result_status,evidence,reason_codes"
+        )
         .eq("company_id", company_id)
         .execute()
     ).data or []
@@ -551,6 +555,7 @@ def list_price_catalog(access) -> list[dict]:
                 "material_type": category,
                 "canonical_name": str(material.get("canonical_name") or "Material"),
                 "original_name": str(source_row.get("raw_description") or ""),
+                "source_row": source_row,
                 "supplier_name": str(supplier.get("supplier_name") or "Unknown supplier"),
                 "source_name": str(source.get("source_name") or ""),
                 "source_kind": str(source.get("source_kind") or ""),

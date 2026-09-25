@@ -18,8 +18,11 @@
   checks: exact duplicates skip the agent, changed inputs report new, updated,
   unchanged, and unresolved counts, unchanged offers are not rewritten, and
   missing rows are preserved. It also restores the accepted compact catalog
-  geometry after the row-action visual regression. Production interaction
-  acceptance remains pending. Contract:
+  geometry after the row-action visual regression. Revision 6 opens only the
+  original source from Source/View, paginates Needs review for responsive row
+  actions, marks only activation-blocking fields, removes duplicate editor
+  headings and row gaps, and suppresses non-informational hover tooltips.
+  Production interaction acceptance remains pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price

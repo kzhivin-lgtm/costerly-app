@@ -1851,6 +1851,7 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                 canonical_name = str(row.get("canonical_name") or "Material")
                 original_name = str(row.get("original_name") or "")
                 supplier_name = str(row.get("supplier_name") or "Unknown supplier")
+                source = sources_by_id.get(source_id) or {}
                 with st.container(key=f"price_catalog_row_{row_id}"):
                     remove_col, material_col, supplier_col, price_col, date_col, edit_col, source_col = st.columns(
                         [0.24, 2.55, 1.45, 1.1, 0.85, 0.58, 0.72],
@@ -1881,10 +1882,18 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         unsafe_allow_html=True,
                     )
                     if edit_col.button("Edit", key=f"catalog_edit_{row_id}"):
+                        st.session_state.pop("_selected_price_source_id", None)
                         st.session_state._editing_price_source_row = (source_id, row_id)
                         st.session_state._price_source_action_location = "catalog"
-                    if source_col.button("Source", key=f"catalog_source_{row_id}"):
-                        st.session_state._selected_price_source_id = source_id
+                    if source.get("source_kind") == "url" and source.get("source_url"):
+                        source_col.link_button(
+                            "Source",
+                            str(source["source_url"]),
+                            key=f"catalog_source_{row_id}",
+                            use_container_width=True,
+                        )
+                    elif source_col.button("Source", key=f"catalog_source_{row_id}"):
+                        st.session_state._price_source_view_id = source_id
 
                     target = (source_id, row_id)
                     if (
@@ -1896,12 +1905,17 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         st.session_state.get("_editing_price_source_row") == target
                         and st.session_state.get("_price_source_action_location") == "catalog"
                     ):
-                        source = sources_by_id.get(source_id)
                         if source:
-                            source_row = next(
-                                (item for item in load_price_source_rows(access, source_id) if str(item.get("row_id")) == row_id),
-                                None,
-                            )
+                            source_row = row.get("source_row")
+                            if not source_row:
+                                source_row = next(
+                                    (
+                                        item
+                                        for item in load_price_source_rows(access, source_id)
+                                        if str(item.get("row_id")) == row_id
+                                    ),
+                                    None,
+                                )
                             if source_row:
                                 _render_price_source_row_editor(access, source, source_row)
 
@@ -1936,12 +1950,12 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
         else "excluded" if row.get("raw_vat_included") is False
         else "unknown"
     )
-    st.markdown(
-        f'<span class="price-source-editor-title">{escape(str(row.get("raw_description") or "Price item"))}</span>  \n'
-        f'<span class="price-source-review-reason">'
-        f'{escape(_price_source_review_reason(row) if row.get("result_status") == "unresolved" else "Edit active price")}'
-        '</span>',
-        unsafe_allow_html=True,
+    blocking_reasons = set(row.get("reason_codes") or [])
+    vat_label = "VAT :red[*]" if "vat_basis_unknown" in blocking_reasons else "VAT"
+    factor_label = (
+        "Estimation units per purchase unit :red[*]"
+        if "package_conversion_unresolved" in blocking_reasons
+        else "Estimation units per purchase unit"
     )
     with st.form(f"price_source_row_form_{source_id}_{row_id}", border=False):
         name_col, type_col = st.columns([1.7, 1])
@@ -1973,7 +1987,7 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
             )
         with vat_col:
             selected_vat = st.selectbox(
-                "VAT",
+                vat_label,
                 ("excluded", "included", "unknown"),
                 index=("excluded", "included", "unknown").index(vat_mode),
                 format_func=lambda value: {
@@ -2003,7 +2017,7 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
             )
         with factor_col:
             conversion_factor = st.number_input(
-                "Estimation units per purchase unit",
+                factor_label,
                 min_value=0.0,
                 value=float(row.get("conversion_factor") or 1),
                 step=0.01,
@@ -2092,7 +2106,12 @@ def _render_price_source_review_queue(
                     f'<span class="price-source-row-label">{label}</span>',
                     unsafe_allow_html=True,
                 )
-        for row in review_rows:
+        page_size = 12
+        page_count = max(1, (len(review_rows) + page_size - 1) // page_size)
+        page = min(max(int(st.session_state.get("price_review_page", 0)), 0), page_count - 1)
+        st.session_state.price_review_page = page
+        visible_review_rows = review_rows[page * page_size : (page + 1) * page_size]
+        for row in visible_review_rows:
             source = row["source"]
             source_id = str(row["source_id"])
             row_id = str(row["row_id"])
@@ -2130,6 +2149,7 @@ def _render_price_source_review_queue(
                     unsafe_allow_html=True,
                 )
                 if review_col.button("Review", key=f"review_price_{row_id}"):
+                    st.session_state.pop("_selected_price_source_id", None)
                     st.session_state._editing_price_source_row = target
                     st.session_state._price_source_action_location = "review"
 
@@ -2143,6 +2163,19 @@ def _render_price_source_review_queue(
                     and st.session_state.get("_price_source_action_location") == "review"
                 ):
                     _render_price_source_row_editor(access, source, row)
+
+        if page_count > 1:
+            previous_col, page_col, next_col, _ = st.columns([0.7, 0.8, 0.7, 4])
+            if previous_col.button("Previous", disabled=page == 0, key="price_review_previous"):
+                st.session_state.price_review_page = page - 1
+                st.rerun(scope="fragment")
+            page_col.markdown(
+                f'<span class="price-review-page">{page + 1} / {page_count}</span>',
+                unsafe_allow_html=True,
+            )
+            if next_col.button("Next", disabled=page == page_count - 1, key="price_review_next"):
+                st.session_state.price_review_page = page + 1
+                st.rerun(scope="fragment")
 
 
 def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
@@ -2315,6 +2348,32 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
                 and st.session_state.get("_price_source_action_location") == "details"
             ):
                 _render_price_source_row_editor(access, source, row)
+
+
+@st.dialog("Original source", width="large")
+def _render_price_source_original_dialog(access: CompanyAccess, source: dict) -> None:
+    try:
+        original = load_price_source_bytes(access, str(source.get("storage_path") or ""))
+    except Exception:
+        logger.exception("Price source original load failed")
+        original = None
+    if not original:
+        st.error("The original file is unavailable")
+        return
+    mime_type = str(source.get("mime_type") or "application/octet-stream")
+    file_name = Path(str(source.get("source_name") or "price-source")).name
+    if mime_type in {"image/jpeg", "image/png"}:
+        st.image(original, use_container_width=True)
+    elif mime_type == "application/pdf" and hasattr(st, "pdf"):
+        st.pdf(original)
+    else:
+        st.download_button(
+            "Download file",
+            data=original,
+            file_name=file_name,
+            mime=mime_type,
+            use_container_width=True,
+        )
 
 
 def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
@@ -2516,6 +2575,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                 else:
                     with st.container(key="price_source_list_card"):
                         for source in sources:
+                            source_id = str(source["source_id"])
                             summary = source.get("processing_summary") or {}
                             left, category_col, status_col, items_col, action_col = st.columns(
                                 [2.3, 1.45, 0.8, 0.65, 0.65],
@@ -2524,7 +2584,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                             with left:
                                 st.markdown(
                                     f'**{escape(_price_source_supplier(source))}**  \n'
-                                    f'<span class="price-source-file" title="{escape(str(source.get("source_name") or ""), quote=True)}">'
+                                    f'<span class="price-source-file">'
                                     f'{escape(str(source.get("source_name") or ""))}</span>',
                                     unsafe_allow_html=True,
                                 )
@@ -2547,24 +2607,27 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                 ready_count = int(summary.get("ready") or 0)
                                 st.write(f"{ready_count} {'price' if ready_count == 1 else 'prices'}")
                             with action_col:
-                                if st.button(
-                                    "View",
-                                    key=f'view_price_source_{source["source_id"]}',
-                                ):
-                                    st.session_state._selected_price_source_id = source["source_id"]
+                                if source.get("source_kind") == "url" and source.get("source_url"):
+                                    st.link_button(
+                                        "View",
+                                        str(source["source_url"]),
+                                        key=f"view_price_source_{source_id}",
+                                        use_container_width=True,
+                                    )
+                                elif st.button("View", key=f"view_price_source_{source_id}"):
+                                    st.session_state._price_source_view_id = source_id
 
-                selected_id = st.session_state.get("_selected_price_source_id")
-                selected = next(
-                    (source for source in sources if source["source_id"] == selected_id),
-                    None,
-                )
-                if selected:
-                    with st.container(key="price_source_detail_card"):
-                        st.markdown(
-                            '<div class="company-logo-table-heading">Source details</div>',
-                            unsafe_allow_html=True,
-                        )
-                        _render_price_source_details(access, selected)
+        view_source_id = st.session_state.pop("_price_source_view_id", None)
+        view_source = next(
+            (
+                source
+                for source in sources
+                if str(source.get("source_id")) == str(view_source_id)
+            ),
+            None,
+        )
+        if view_source:
+            _render_price_source_original_dialog(access, view_source)
 
 
 

@@ -1390,6 +1390,36 @@ def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():
     assert 'width: 30px !important;' in css
     assert '[class*="st-key-catalog_edit_"]' in css
     assert 'height: 32px !important;' in css
+    assert 'div[role="tooltip"] {' in css
+    assert 'display: none !important;' in css
+    assert 'transform: translateX(-8px);' in css
+
+
+def test_price_review_marks_only_blocking_fields_and_omits_redundant_heading():
+    screen_source = Path("screens/company_profile.py").read_text()
+
+    assert '"VAT :red[*]" if "vat_basis_unknown"' in screen_source
+    assert 'if "package_conversion_unresolved" in blocking_reasons' in screen_source
+    assert 'class="price-source-editor-title"' not in screen_source
+    assert '"Edit active price"' not in screen_source
+
+
+def test_catalog_source_and_library_view_open_only_original():
+    screen_source = Path("screens/company_profile.py").read_text()
+    price_source_use_case = Path("use_cases/price_sources.py").read_text()
+
+    assert '@st.dialog("Original source", width="large")' in screen_source
+    assert 'st.session_state._price_source_view_id = source_id' in screen_source
+    assert '_render_price_source_original_dialog(access, view_source)' in screen_source
+    assert 'source_row = row.get("source_row")' in screen_source
+    assert '"source_row": source_row' in price_source_use_case
+
+
+def test_needs_review_is_paginated_to_keep_actions_responsive():
+    screen_source = Path("screens/company_profile.py").read_text()
+
+    assert "page_size = 12" in screen_source
+    assert "visible_review_rows = review_rows[" in screen_source
 
 
 def test_price_catalog_renders_material_first_grouped_table():
@@ -1490,7 +1520,7 @@ def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch)
 
     assert not app.exception
     assert any(field.label == "Material name" for field in app.text_input)
-    assert any(field.label == "VAT" for field in app.selectbox)
+    assert any(field.label.startswith("VAT") for field in app.selectbox)
 
 
 def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeypatch):

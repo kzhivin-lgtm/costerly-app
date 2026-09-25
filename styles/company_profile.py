@@ -1161,15 +1161,38 @@ def apply_company_profile_css() -> None:
         [class*="st-key-price_source_row_"],
         [class*="st-key-price_catalog_row_"],
         [class*="st-key-price_review_row_"] {
-            padding: 9px 16px;
-            border-top: 1px solid var(--color-border-soft);
-            background: #FBF9FD;
+            padding: 7px 16px;
+            border: 0;
             transition: background-color 120ms ease;
         }
 
-        [class*="st-key-price_catalog_row_"]:hover,
-        [class*="st-key-price_review_row_"]:hover {
+        [class*="st-key-price_source_row_"],
+        [class*="st-key-price_catalog_row_"] {
+            background: #FBF9FD;
+        }
+
+        [class*="st-key-price_review_row_"] {
+            background: #FFFFFF;
+        }
+
+        [class*="st-key-price_source_row_"] > [data-testid="stVerticalBlock"],
+        [class*="st-key-price_catalog_row_"] > [data-testid="stVerticalBlock"],
+        [class*="st-key-price_review_row_"] > [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+        }
+
+        [class*="st-key-price_catalog_row_"] [data-testid="stHorizontalBlock"],
+        [class*="st-key-price_review_row_"] [data-testid="stHorizontalBlock"] {
+            min-height: 52px;
+            align-items: center !important;
+        }
+
+        [class*="st-key-price_catalog_row_"]:hover {
             background: #F8F3FC;
+        }
+
+        [class*="st-key-price_review_row_"]:hover {
+            background: #FCFBFD;
         }
 
         [class*="st-key-price_source_row_"] [data-testid="stForm"],
@@ -1213,6 +1236,7 @@ def apply_company_profile_css() -> None:
             background: transparent !important;
             box-shadow: none !important;
             color: var(--color-text-muted) !important;
+            transform: translateX(-8px);
         }
 
         .stApp:has(.company-profile-active)
@@ -1242,6 +1266,8 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-catalog_source_"] [data-testid="stButton"] button,
         .stApp:has(.company-profile-active)
+        [class*="st-key-catalog_source_"] [data-testid="stLinkButton"] a,
+        .stApp:has(.company-profile-active)
         [class*="st-key-review_price_"] [data-testid="stButton"] button,
         .stApp:has(.company-profile-active)
         [class*="st-key-edit_price_row_"] [data-testid="stButton"] button {
@@ -1261,6 +1287,8 @@ def apply_company_profile_css() -> None:
         [class*="st-key-catalog_edit_"] [data-testid="stButton"] button p,
         .stApp:has(.company-profile-active)
         [class*="st-key-catalog_source_"] [data-testid="stButton"] button p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-catalog_source_"] [data-testid="stLinkButton"] a p,
         .stApp:has(.company-profile-active)
         [class*="st-key-review_price_"] [data-testid="stButton"] button p,
         .stApp:has(.company-profile-active)
@@ -1501,6 +1529,14 @@ def apply_company_profile_css() -> None:
             position: relative;
             top: -16px;
             height: 0;
+        }
+
+        .price-review-page {
+            display: block;
+            padding-top: 8px;
+            color: var(--color-text-muted);
+            font-size: 12px;
+            text-align: center;
         }
 
         .stApp:has(.company-profile-active)
@@ -2222,19 +2258,8 @@ def apply_company_profile_css() -> None:
             min-height: 22px !important;
         }
 
-        div[role="tooltip"] p {
-            margin: 0 0 4px !important;
-            line-height: 1.2 !important;
-        }
-
-        div[role="tooltip"] ul {
-            margin: 2px 0 6px !important;
-            padding-left: 18px !important;
-        }
-
-        div[role="tooltip"] li {
-            margin: 0 !important;
-            line-height: 1.2 !important;
+        div[role="tooltip"] {
+            display: none !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card

@@ -265,3 +265,25 @@ cross without a tooltip. All 366 automated tests pass. Production acceptance
 must cover the exact duplicate, one changed row, one new row, one unresolved
 row, missing-row preservation, rollback on failure, desktop geometry, hover
 state, and narrow-screen wrapping.
+
+## 3.12.1 revision 6 candidate
+
+The catalog interaction pass removes duplicated source inspection and reduces
+the amount of Streamlit UI rebuilt by each row action:
+
+- Source and Source Library View open only the original uploaded file, or the
+  original supplier URL, without rendering a second extracted-row editor;
+- active-row Edit reuses the source row already loaded with the catalog and
+  avoids a second source-row query in the normal path;
+- Needs review renders 12 rows per page instead of rebuilding every unresolved
+  row and its controls after every click;
+- only the field blocking activation receives a red asterisk, with no duplicate
+  row title or review explanation above the form;
+- catalog and review rows remove the extra divider and vertical gap, keep the
+  accepted active-row tint, and use a neutral review-row surface;
+- destructive crosses move left and all non-informational hover tooltips are
+  suppressed on the Company Profile interface.
+
+All 369 automated tests pass. Production acceptance remains required for row
+geometry, Source/View behavior for URL, image, PDF, and spreadsheet sources,
+review pagination, blocking-field markers, and Edit/Review/Save/Cancel latency.
