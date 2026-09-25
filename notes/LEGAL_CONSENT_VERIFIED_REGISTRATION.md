@@ -1,7 +1,12 @@
 # Legal Consent and Verified Registration
 
 Task: 3.11.1
-Status: legal text checkpoint activated at Terms 1.3 and Privacy 1.2; production flow acceptance incomplete
+Status: completed and accepted in production at `3a4d8fa`
+
+Final owner confirmation on 25.09.2026 closes the production signup,
+email-confirmation, returning-user gate, mobile, Terms, and Privacy acceptance
+scope. This supersedes the earlier pending-state notes retained below as task
+history.
 
 ## Verified progress on 2026-09-25
 

@@ -39,7 +39,7 @@
 | P0 | Active | 3.8.2 password recovery | Apply the final Supabase template, then execute the agreed Sign in and Reset Password production matrices |
 | P1 | Completed | 3.8.5 Railway GitHub autodeploy reliability and build timing | Automatic deployment and uv build verified at `bf0581d`; Railway completed in 193 seconds |
 | P0 | Pending | Current-project two-company verification | Dedicated cross-company acceptance pass |
-| P0 | Active | 3.11.1 legal consent and verified registration | Final legal review, additive migration, Supabase email setup, deployment, and production matrix |
+| P0 | Completed | 3.11.1 legal consent and verified registration | Accepted in production at `3a4d8fa` |
 | P1 | Pending | Confirm Email and production SMTP | Before production recovery email delivery or verified accounts |
 | P1 | Completed | Tab-scoped login persistence | Accepted v3.0.51 checkpoint |
 | P1 | Completed | Company Profile first screen, contacts, and bank details | Accepted v3.0.49 checkpoint |

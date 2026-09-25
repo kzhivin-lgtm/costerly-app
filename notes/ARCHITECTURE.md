@@ -312,7 +312,8 @@ in a separate private library. A catalog row never replaces or discards source
 evidence. Foreign-currency offers retain their actual currency until a verified
 ILS conversion exists; presentation code must not relabel them as shekels.
 The owner accepted this presentation at checkpoint `d18b533` on 25.09.2026.
-Subsequent Price Source Agent accuracy work is task 3.10.2 and must preserve
+Subsequent Price Source Agent accuracy work resumes as task 3.12.1 after the
+3.11.1 Legal block and must preserve
 this UI unless a new interface decision is explicitly approved.
 
 Estimation Agent Runtime v1

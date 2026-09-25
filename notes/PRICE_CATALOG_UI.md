@@ -3,8 +3,8 @@
 Task: 3.10.1
 Status: accepted checkpoint at `d18b533`
 
-The owner accepted the compact presentation on 25.09.2026 and moved further
-work to agent quality task 3.10.2. Preserve this UI while diagnosing extraction,
+The owner accepted the compact presentation on 25.09.2026. After the separate
+3.11.1 Legal block, agent-quality work resumes as 3.12.1. Preserve this UI while diagnosing extraction,
 classification, normalization, and activation behavior.
 
 ## Product boundary

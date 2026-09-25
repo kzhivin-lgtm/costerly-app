@@ -1,60 +1,18 @@
 # TODO
 
-- 3.11.1 Legal consent and verified registration: active, P0. Invitation signup
-  shows the mandatory Terms of Service agreement before its single submit,
-  creates an inactive Auth account, records immutable versioned evidence, and
-  activates company access only after one-click email verification. Returning
-  users never see Terms on Sign in and pass directly into the application when
-  their authenticated `user_id` has accepted the current material release;
-  otherwise they receive one blocking post-auth Terms gate. Privacy Policy is
-  independently versioned, never triggers that gate by itself, and remains in
-  the production wrapper footer. The additive schema, rollback-controlled
-  application path, callback transport, confirmation-email template, legal
-  drafts, and deterministic coverage are implemented locally. The production
-  migration is applied. Terms of Service and Privacy Policy version 1.1 are
-  publicly deployed, and their exact stable response hashes plus release
-  pointers are published in Supabase; version 1.0 remains immutable history.
-  Version 1.1 records the operator as an Israeli exempt dealer under
-  business registration and exempt dealer number 346904519, uses the canonical
-  Costerly AI brand, and advances the material Terms acceptance version to 2.
-  Terms version 1.2 is publicly deployed and active as a material release with
-  acceptance version 3. It separates the Customer organization from its Users and payer,
-  clarifies authority and subscription ownership, strengthens third-party and
-  AI-provider protections, identifies Costerly AI as the Operator's trade name,
-  and adds baseline data-processing terms. Its public response hash matches the
-  immutable Supabase row and the Terms release pointer selects version 1.2;
-  Privacy version 1.2 is publicly deployed and active as a separate non-blocking release.
-  It reflects actual first-party session storage and browser/server telemetry,
-  narrows Customer Content use, aligns AI and Operator language, adds the
-  account-data notice and strengthens international-transfer wording. Its
-  public response hash matches its immutable Supabase row, the Privacy release
-  pointer selects version 1.2, and its unchanged acceptance version 1 does not
-  trigger the Terms gate.
-  Terms version 1.3 is publicly deployed and active as the final pre-launch
-  material text pass with acceptance version 4. It binds accepting Users individually,
-  removes Customer Content use for service development, and standardizes the
-  Operator registration wording while preserving Section 15, the separate-DPA
-  clause, and the applicable-law retention qualification. Its public response
-  hash matches the immutable Supabase row and the Terms release pointer selects
-  version 1.3. The legal text sub-scope is frozen for the v1 launch candidate;
-  checkpoint commit `ef31dca` is pushed, its validated backup has SHA-256
-  `412765eeead3737b3dad3fb8d682123042be869e9effb5bac4ad816d8b583958`,
-  and 343 deterministic tests pass. The remaining 3.11.1 work is production
-  flow acceptance, not another legal copy pass.
-  The owner authorized activation for the private playground.
-  Production confirms the anonymous company-invitation screen and ordinary
-  Sign in behavior; its verification invitation remains unused. Supabase
-  Confirm Signup template, production SMTP, a real signup and confirmation
-  click, company activation, repeat-acceptance gate, mobile pass, and full
-  production scenario acceptance remain pending. Contract:
-  `notes/LEGAL_CONSENT_VERIFIED_REGISTRATION.md`.
-
-- 3.10.2 Price Source Agent accuracy: active, P1. Improve real supplier-source
+- 3.12.1 Price Source Agent accuracy: active, P1. Improve real supplier-source
   extraction, material-type classification, unit normalization, confidence,
   and ready-versus-unresolved decisions without changing the accepted 3.10.1
   Price Catalog UI checkpoint `d18b533`. Establish the complete scenario matrix
   and representative evidence set before changing the prompt or activation
   logic. Contract: `notes/PRICE_SOURCE_AGENT.md`.
+
+- 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price
+  Source Agent cost display establishes the shared convention. Show compact
+  `TC $X.XXX` per completed run and total cycle from persisted provider usage
+  without double counting. Preserve model, prompt version, input/output tokens,
+  configured pricing source, and unavailable-cost state. Apply to Detection,
+  billable OCR, Naming, Estimation, and future agents.
 
 - 3.9.1 Machinery and production routing foundation: active, P1. Add a compact
   16-capability profile across woodworking, metalworking, and finishing while
