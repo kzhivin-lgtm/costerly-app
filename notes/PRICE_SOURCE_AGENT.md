@@ -188,15 +188,44 @@ The agreed row-level policy is:
 - unresolved rows enter an individual Review flow rather than a document-level
   editor;
 - active prices remain editable and every edit archives the previous offer;
-- removing one price or a complete source archives active offers while retaining
-  the original source and row evidence for audit;
-- source and row removal require confirmation and cancellation changes nothing.
+- removing one price archives its active offer while retaining the original source
+  and row evidence for audit;
+- row removal requires confirmation and cancellation changes nothing;
+- a complete source cannot be removed through the product interface because
+  deletion belongs to individual catalog positions.
 
 The implementation adds row-level Review, Edit, and Remove actions to Source
-Details, reversible source removal in Source Library, and deterministic
+Details, deterministic
 recalculation after owner review. The original source, extracted row, confidence,
 reason codes, prompt version, time, and TC remain retained. All 359 automated
 tests pass. This remains a candidate until the owner accepts the real production
 matrix: complete active row, VAT review, package conversion review, edit, row
-removal, source removal, cancellation, failure recovery, and duplicate-submit
+removal, cancellation, failure recovery, and duplicate-submit
 protection.
+
+## 3.12.1 revision 4 candidate
+
+Production rejected whole-source removal and exposed a client-only processing
+indicator defect. The second `furniture_hardware_consumables.xlsx` run completed
+successfully in 18.799 seconds with 10 of 10 rows active and TC 0.015, while the
+browser continued to show Extracting prices. The agent and persistence did not
+hang. The JavaScript guard had manually changed and disabled the button, but its
+cleanup removed only the event listener and did not restore the mutated DOM.
+
+Revision 4:
+
+- removes whole-source deletion from Source Library and the application service;
+- places compact Remove and Edit actions on every active main-catalog row;
+- lets Edit change the normalized name, price, VAT, source unit, purchase unit,
+  estimation unit, and conversion factor for one position;
+- renders non-archived unresolved rows in a separate visible Needs review block;
+- gives each unresolved row independent Review and Remove actions;
+- resets the client-mutated Extract button after every completed or failed server
+  cycle while preserving the real in-progress state;
+- retains Source Details for audit and original-source access rather than making
+  it the only place where rows can be managed.
+
+The archived `lumber_pricelist_israel.xlsx` source was identified as the missing
+eight-row unresolved set. Its source and all eight unresolved rows remain intact,
+with zero offers, so it can be safely restored to partial after deployment. All
+363 automated tests pass. Production acceptance remains required.

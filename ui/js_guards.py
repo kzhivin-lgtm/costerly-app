@@ -2709,6 +2709,21 @@ def install_price_source_processing_guard() -> None:
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
+            function resetCompletedState() {
+                parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach((card) => {
+                    if (card.querySelector(".price-source-processing-marker")) return;
+                    card.classList.remove("costerly-price-source-processing");
+                    const button = card.querySelector(".st-key-process_price_source button");
+                    if (!button) return;
+                    button.disabled = false;
+                    button.removeAttribute("aria-disabled");
+                    const label = button.querySelector("p");
+                    if (label && label.textContent === "Extracting prices") {
+                        label.textContent = "Extract prices";
+                    }
+                });
+            }
+
             function handleClick(event) {
                 const button = event.target.closest(
                     ".st-key-process_price_source button"
@@ -2725,6 +2740,7 @@ def install_price_source_processing_guard() -> None:
             }
 
             parentDoc.addEventListener("click", handleClick, true);
+            resetCompletedState();
             parentWindow[CLEANUP_KEY] = () => {
                 parentDoc.removeEventListener("click", handleClick, true);
                 delete parentWindow[CLEANUP_KEY];

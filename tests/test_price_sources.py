@@ -32,9 +32,9 @@ from use_cases.price_sources import (
     fetch_public_page,
     guard_price_source_department,
     list_price_catalog,
+    list_unresolved_price_source_rows,
     price_source_material_types,
     price_source_semantic_fingerprint,
-    remove_price_source,
     remove_price_source_row,
     save_price_source_row,
 )
@@ -60,6 +60,9 @@ class _CatalogQuery:
         return self
 
     def neq(self, *_args):
+        return self
+
+    def order(self, *_args, **_kwargs):
         return self
 
     def execute(self):
@@ -96,6 +99,9 @@ class _MutableQuery:
 
     def limit(self, value):
         self.row_limit = value
+        return self
+
+    def order(self, *_args, **_kwargs):
         return self
 
     def update(self, payload):
@@ -431,6 +437,18 @@ def test_price_source_processing_uses_callback_without_manual_rerun():
     assert "_process_pending_price_source(access, trace=trace)" in lists_source
 
 
+def test_price_source_processing_guard_restores_client_mutations_after_completion():
+    from ui.js_guards import install_price_source_processing_guard
+
+    source = inspect.getsource(install_price_source_processing_guard)
+
+    assert "resetCompletedState" in source
+    assert 'card.classList.remove("costerly-price-source-processing")' in source
+    assert "button.disabled = false" in source
+    assert 'label.textContent = "Extract prices"' in source
+    assert 'card.querySelector(".price-source-processing-marker")' in source
+
+
 def test_price_source_uploader_installs_dragover_guard():
     from screens.company_profile import _render_price_source_add
 
@@ -506,7 +524,50 @@ def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
     assert rows[0]["updated_at"] == "2026-09-24"
 
 
-def test_review_activate_remove_row_and_archive_source_are_auditable(monkeypatch):
+def test_unresolved_queue_excludes_rows_from_archived_sources(monkeypatch):
+    tables = {
+        "company_price_source_rows": [
+            {
+                "row_id": "row-visible",
+                "source_id": "source-visible",
+                "company_id": "company-1",
+                "result_status": "unresolved",
+            },
+            {
+                "row_id": "row-archived",
+                "source_id": "source-archived",
+                "company_id": "company-1",
+                "result_status": "unresolved",
+            },
+        ],
+        "company_price_sources": [
+            {
+                "source_id": "source-visible",
+                "company_id": "company-1",
+                "status": "partial",
+                "source_name": "visible.xlsx",
+            },
+            {
+                "source_id": "source-archived",
+                "company_id": "company-1",
+                "status": "archived",
+                "source_name": "archived.xlsx",
+            },
+        ],
+    }
+    client = _MutableClient(tables)
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+
+    rows = list_unresolved_price_source_rows(
+        SimpleNamespace(company_id="company-1", user_id="user-1")
+    )
+
+    assert [row["row_id"] for row in rows] == ["row-visible"]
+    assert rows[0]["source"]["source_name"] == "visible.xlsx"
+
+
+def test_review_activate_and_remove_row_are_auditable(monkeypatch):
     tables = {
         "company_price_sources": [
             {
@@ -571,11 +632,6 @@ def test_review_activate_remove_row_and_archive_source_are_auditable(monkeypatch
     assert tables["company_price_source_rows"][0]["result_status"] == "excluded"
     assert tables["company_material_offers"][0]["status"] == "archived"
     assert "removed_by_user" in tables["company_price_source_rows"][0]["reason_codes"]
-
-    remove_price_source(access, "source-1")
-
-    assert tables["company_price_sources"][0]["status"] == "archived"
-
 
 def test_ready_price_requires_currency_and_positive_normalized_price():
     missing_currency = _result()

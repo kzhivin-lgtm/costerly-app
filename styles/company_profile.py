@@ -1132,7 +1132,14 @@ def apply_company_profile_css() -> None:
             font-size: 12px;
         }
 
-        [class*="st-key-price_source_row_"] {
+        .price-catalog-original-name {
+            color: var(--color-text-muted);
+            font-size: 12px;
+        }
+
+        [class*="st-key-price_source_row_"],
+        [class*="st-key-price_catalog_row_"],
+        [class*="st-key-price_review_row_"] {
             padding: 10px 16px;
             border-top: 1px solid var(--color-border-soft);
         }
@@ -1143,6 +1150,19 @@ def apply_company_profile_css() -> None:
             border: 1px solid var(--color-border-soft);
             border-radius: 12px;
             background: #FAF8FC;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-price_source_review_queue {
+            overflow: hidden;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 18px;
+            background: #FFFFFF;
+            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_review_queue > [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-price_catalog_shell {

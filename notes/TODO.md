@@ -11,8 +11,10 @@
   and TC immediately, removes manual Price Source reruns, and restores native
   file-delete hit testing. Revision 3 removes confidence as an activation gate,
   blocks only price-critical VAT and package-conversion uncertainty, standardizes
-  normalized names, and adds row-level Review, Edit, Remove, and reversible source
-  removal. Production interaction acceptance remains pending. Contract:
+  normalized names, and adds row-level Review, Edit, and Remove. Revision 4 moves
+  those actions into the main catalog, exposes unresolved rows in a visible Needs
+  review block, removes whole-source deletion, and repairs the client-only stuck
+  Extracting prices state. Production interaction acceptance remains pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price

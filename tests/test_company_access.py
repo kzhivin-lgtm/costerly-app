@@ -953,12 +953,15 @@ def _render_profile_test():
 
 
 def _render_price_catalog_test():
+    from types import SimpleNamespace
     from screens.company_profile import _render_price_catalog
 
     _render_price_catalog(
+        SimpleNamespace(role="owner", company_id="company-a", user_id="user-1"),
         [
             {
                 "source_id": "12345678-aaaa-bbbb-cccc-123456789012",
+                "source_row_id": "row-1",
                 "department": "Wood",
                 "material_type": "Wood Sheets",
                 "canonical_name": "Birch plywood 10 mm",
@@ -971,7 +974,13 @@ def _render_price_catalog_test():
                 "currency": "ILS",
                 "updated_at": "2026-09-24T10:30:00Z",
             }
-        ]
+        ],
+        [
+            {
+                "source_id": "12345678-aaaa-bbbb-cccc-123456789012",
+                "source_name": "invoice-22.pdf",
+            }
+        ],
     )
 
 
@@ -1349,17 +1358,100 @@ def test_price_catalog_renders_material_first_grouped_table():
     markup = "\n".join(item.value for item in app.markdown)
 
     assert not app.exception
-    assert 'class="price-catalog-department"' in markup
+    assert "Wood · 1 price" in [item.proto.label for item in app.expander]
     assert "Birch plywood 10 mm" in markup
     assert "10 mm plywood birch" in markup
     assert "Supplier Ltd" in markup
     assert "₪1\u202f200 / sheet" in markup
     assert 'class="price-catalog-type"' not in markup
     assert "Wood Sheets</span>" not in markup
-    assert 'class="price-catalog-source-button"' in markup
-    assert 'href="#source-library"' in markup
-    assert 'data-source-id="12345678-aaaa-bbbb-cccc-123456789012"' in markup
+    assert any(button.label == "Edit" for button in app.button)
+    assert any(button.label == "Source" for button in app.button)
+    assert any(button.label == "×" for button in app.button)
     assert "SRC-12345678" not in markup
+
+
+def test_price_catalog_edit_opens_row_level_price_and_unit_form(monkeypatch):
+    monkeypatch.setattr(
+        company_profile,
+        "load_price_source_rows",
+        lambda *_args: [
+            {
+                "row_id": "row-1",
+                "raw_description": "10 mm plywood birch",
+                "normalized_name": "Birch plywood 10 mm",
+                "raw_price": 1200,
+                "raw_currency": "ILS",
+                "raw_unit": "sheet",
+                "purchase_unit": "sheet",
+                "calculation_unit": "sheet",
+                "conversion_factor": 1,
+                "raw_vat_included": False,
+                "result_status": "new",
+                "evidence": {"material_type": "Wood Sheets"},
+            }
+        ],
+    )
+    app = AppTest.from_function(_render_price_catalog_test).run()
+    next(button for button in app.button if button.label == "Edit").click()
+    app.run()
+
+    assert not app.exception
+    assert any(field.label == "Source price" for field in app.number_input)
+    assert any(field.label == "Source unit" for field in app.text_input)
+    assert any(field.label == "Estimation unit" for field in app.selectbox)
+
+
+def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch):
+    source = {
+        "source_id": "source-review",
+        "source_name": "lumber.xlsx",
+        "category": "Wood Sheets",
+        "currency": "ILS",
+        "status": "partial",
+        "processing_summary": {"ready": 0, "unresolved": 1, "excluded": 0},
+        "company_suppliers": {"supplier_name": "Supplier Ltd"},
+    }
+    review_row = {
+        "row_id": "row-review",
+        "source_id": "source-review",
+        "raw_description": "Plywood birch 10 mm",
+        "normalized_name": "Birch plywood 10 mm",
+        "raw_price": 120,
+        "raw_currency": "ILS",
+        "raw_unit": "sheet",
+        "purchase_unit": "sheet",
+        "calculation_unit": "m2",
+        "conversion_factor": 2.9768,
+        "raw_vat_included": None,
+        "result_status": "unresolved",
+        "reason_codes": ["vat_basis_unknown"],
+        "evidence": {"material_type": "Wood Sheets"},
+        "source": source,
+    }
+    monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: [source])
+    monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+    monkeypatch.setattr(
+        company_profile,
+        "list_unresolved_price_source_rows",
+        lambda _access: [review_row],
+    )
+
+    app = AppTest.from_function(_render_price_lists_test).run()
+    markup = "\n".join(item.value for item in app.markdown)
+
+    assert not app.exception
+    assert "Needs review" in markup
+    assert "VAT basis required" in markup
+    assert any(button.label == "Review" for button in app.button)
+    assert any(button.label == "×" for button in app.button)
+
+    next(button for button in app.button if button.label == "Review").click()
+    app.run()
+
+    assert not app.exception
+    assert any(field.label == "Material name" for field in app.text_input)
+    assert any(field.label == "VAT" for field in app.selectbox)
 
 
 def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeypatch):
@@ -1381,6 +1473,7 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     ]
     monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: sources)
     monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_unresolved_price_source_rows", lambda _access: [])
 
     app = AppTest.from_function(_render_price_lists_test).run()
     markup = "\n".join(item.value for item in app.markdown)
@@ -1390,17 +1483,17 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     assert "Attach files or provide a link to a pricing page" not in markup
     assert "One PDF, XLSX or CSV" not in markup
     assert "Material prices" in markup
-    assert "Wood" in markup
-    assert "Metal" in markup
-    assert "Coating" in markup
-    assert markup.count("No active prices") == 3
+    expander_labels = [item.proto.label for item in app.expander]
+    assert "Wood · 0 prices" in expander_labels
+    assert "Metal · 0 prices" in expander_labels
+    assert "Coating · 0 prices" in expander_labels
+    assert sum(item.value == "No active prices" for item in app.caption) == 3
     assert any(button.label == "Extract prices" for button in app.button)
     assert not any(field.label == "Department (optional)" for field in app.selectbox)
     assert not any(field.label == "Search" for field in app.text_input)
     assert any(field.label == "Paste supplier page URL" for field in app.text_input)
-    assert len(app.expander) == 1
-    assert app.expander[0].proto.label == "Source library · 2"
-    assert app.expander[0].proto.expanded is False
+    source_library = next(item for item in app.expander if item.proto.label == "Source library · 2")
+    assert source_library.proto.expanded is False
     assert "Multiple departments" in markup
     assert "Mixed materials" in markup
 
@@ -1410,6 +1503,7 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
     sources = []
     monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: sources)
     monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_unresolved_price_source_rows", lambda _access: [])
 
     def process_source(access, **kwargs):
         calls.append((access.company_id, kwargs))

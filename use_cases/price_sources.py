@@ -528,6 +528,40 @@ def load_price_source_rows(access, source_id: str) -> list[dict]:
     ).data or []
 
 
+def list_unresolved_price_source_rows(access) -> list[dict]:
+    """Return reviewable rows from non-archived sources with source context."""
+    client = get_supabase_client()
+    company_id = str(access.company_id)
+    assert_company_owner(client, str(access.user_id), company_id)
+    rows = (
+        client.table("company_price_source_rows")
+        .select("*")
+        .eq("company_id", company_id)
+        .eq("result_status", "unresolved")
+        .order("created_at", desc=True)
+        .execute()
+    ).data or []
+    if not rows:
+        return []
+    sources = (
+        client.table("company_price_sources")
+        .select(
+            "source_id,source_name,source_kind,source_url,storage_path,mime_type,"
+            "category,document_date,currency,status,processing_summary,"
+            "company_suppliers(supplier_name)"
+        )
+        .eq("company_id", company_id)
+        .neq("status", "archived")
+        .execute()
+    ).data or []
+    sources_by_id = {str(source["source_id"]): source for source in sources}
+    return [
+        {**row, "source": sources_by_id[str(row["source_id"])]}
+        for row in rows
+        if str(row.get("source_id")) in sources_by_id
+    ]
+
+
 def _owned_price_source(client, company_id: str, source_id: str) -> dict:
     rows = (
         client.table("company_price_sources")
@@ -760,20 +794,6 @@ def remove_price_source_row(access, source_id: str, row_id: str) -> None:
         {"result_status": "excluded", "reason_codes": reason_codes}
     ).eq("company_id", company_id).eq("source_id", source_id).eq("row_id", row_id).execute()
     _refresh_price_source_summary(client, company_id, source_id)
-
-
-def remove_price_source(access, source_id: str) -> None:
-    """Archive a source and all offers created from it without destroying evidence."""
-    client = get_supabase_client()
-    company_id = str(access.company_id)
-    assert_company_owner(client, str(access.user_id), company_id)
-    _owned_price_source(client, company_id, source_id)
-    client.table("company_material_offers").update({"status": "archived"}).eq(
-        "company_id", company_id
-    ).eq("source_id", source_id).neq("status", "archived").execute()
-    client.table("company_price_sources").update(
-        {"status": "archived", "updated_at": datetime.now(timezone.utc).isoformat()}
-    ).eq("company_id", company_id).eq("source_id", source_id).execute()
 
 
 def process_price_source(
