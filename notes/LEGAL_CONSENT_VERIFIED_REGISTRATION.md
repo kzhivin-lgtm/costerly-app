@@ -22,6 +22,15 @@ Status: version 1.0 activation in progress
 - Public Terms and Privacy version 1.0 are deployed. Their stable response-byte
   SHA-256 values are published in Supabase and the two release pointers select
   version 1.0. Supabase Auth reports `mailer_autoconfirm=false`.
+- Production anonymous verification through `https://app.costerly.ai/` confirms
+  the company invitation shows one submit, collapsed Terms, an unchecked
+  mandatory control, and Privacy links in both the form and wrapper footer.
+  Normal Sign in does not reveal Terms before authentication. The verification
+  invitation remains unused.
+- A mailbox-backed signup, received confirmation message, confirmation click,
+  company activation, existing-user gate, mobile pass, and branded Supabase
+  Confirm Signup template remain acceptance work. This is active playground
+  functionality, not a completed production checkpoint.
 - The full deterministic suite passes: 329 tests.
 
 This file is the scenario-first product contract for Terms and Conditions,

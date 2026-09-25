@@ -15,8 +15,11 @@
   and the exact stable response hashes plus release pointers are published in
   Supabase. Operator identity is recorded without claiming a not-yet-registered
   business status. The owner authorized activation for the private playground.
-  Supabase Confirm Signup template, production SMTP, a real confirmation email,
-  and full production scenario acceptance remain pending. Contract:
+  Production confirms the anonymous company-invitation screen and ordinary
+  Sign in behavior; its verification invitation remains unused. Supabase
+  Confirm Signup template, production SMTP, a real signup and confirmation
+  click, company activation, repeat-acceptance gate, mobile pass, and full
+  production scenario acceptance remain pending. Contract:
   `notes/LEGAL_CONSENT_VERIFIED_REGISTRATION.md`.
 
 - 3.10.2 Price Source Agent accuracy: active, P1. Improve real supplier-source
