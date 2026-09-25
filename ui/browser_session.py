@@ -62,6 +62,7 @@ def browser_session_exchange(
     run_sequence: int | None = None,
     server_elapsed_before_component_ms: float | None = None,
     recovery_requested: bool = False,
+    confirmation_requested: bool = False,
 ) -> dict[str, object] | None:
     """Exchange auth tokens through a zero-height component outside main layout.
 
@@ -80,6 +81,7 @@ def browser_session_exchange(
             runSequence=int(run_sequence or 0),
             serverElapsedBeforeComponentMs=server_elapsed_before_component_ms,
             recoveryRequested=bool(recovery_requested),
+            confirmationRequested=bool(confirmation_requested),
             key="costerly_browser_session",
             default=None,
         )

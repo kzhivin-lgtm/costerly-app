@@ -1,3 +1,6 @@
 /start/*  /index.html  200
 /join/*   /index.html  200
 /recover  /index.html  200
+/confirm  /index.html  200
+/terms    /terms.html  200
+/privacy  /privacy.html  200

@@ -24,7 +24,14 @@ from state.company_auth import (
     render_company_setup,
     render_login_or_signup,
     render_password_reset,
+    render_terms_acceptance,
     sync_browser_auth_session,
+)
+from state.legal_consent import (
+    complete_pending_registration,
+    legal_consent_enabled,
+    pending_registration_for_user,
+    terms_acceptance_required,
 )
 from db.company_access import assert_estimate_owned, assert_run_owned
 from db.supabase_client import get_supabase_client
@@ -164,7 +171,7 @@ def main() -> None:
         requested_trace_id=st.query_params.get("obs_trace"),
         screen=str(st.session_state.get("screen") or "upload"),
         started_at=_SCRIPT_STARTED_AT,
-        build_version="3.6.2",
+        build_version="3.11.1",
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,
@@ -185,6 +192,9 @@ def main() -> None:
     if auth_enabled:
         startup_probe = str(st.query_params.get("startup_probe") or "")
         recovery_requested = str(st.query_params.get("auth_flow") or "") == "recovery"
+        confirmation_requested = (
+            str(st.query_params.get("auth_flow") or "") == "confirmation"
+        )
         if startup_probe == "anonymous":
             trace.annotate(
                 auth_outcome="anonymous_probe",
@@ -204,6 +214,7 @@ def main() -> None:
                 run_sequence=st.session_state._runtime_run_sequence,
                 server_elapsed_before_component_ms=trace.summary()["server_elapsed_ms"],
                 recovery_requested=recovery_requested,
+                confirmation_requested=confirmation_requested,
             )
         trace.event(
             "server.auth.browser_session_sync_result",
@@ -255,6 +266,30 @@ def main() -> None:
                 render_login_or_signup(invitation)
             _signal_ready(trace, "login")
             return
+        if legal_consent_enabled() and access.company_id is None:
+            try:
+                pending_registration = pending_registration_for_user(
+                    get_supabase_client(),
+                    access.user_id,
+                )
+                if pending_registration is not None:
+                    complete_pending_registration(
+                        get_supabase_client(),
+                        access.user_id,
+                    )
+                    st.session_state.pop("pending_verification_email", None)
+                    st.session_state.pop("auth_confirmation_complete", None)
+                    st.session_state.pop("auth_confirmation_error", None)
+                    if "auth_flow" in st.query_params:
+                        del st.query_params["auth_flow"]
+                    st.rerun()
+            except Exception:
+                st.error(
+                    "We couldn't finish setting up your verified account. "
+                    "Contact support if it keeps happening"
+                )
+                _signal_ready(trace, "company_setup_error")
+                return
         if access.company_id is None:
             trace.set_screen("company_setup")
             with trace.span("server.company_setup_render"):
@@ -272,6 +307,22 @@ def main() -> None:
             for route_key in ("screen", "profile_tab"):
                 if route_key in st.query_params:
                     del st.query_params[route_key]
+        if legal_consent_enabled():
+            try:
+                needs_terms = terms_acceptance_required(
+                    get_supabase_client(),
+                    access.user_id,
+                )
+            except Exception:
+                st.error("Legal documents are temporarily unavailable")
+                _signal_ready(trace, "legal_documents_error")
+                return
+            if needs_terms:
+                trace.set_screen("terms_acceptance")
+                with trace.span("server.terms_acceptance_render"):
+                    render_terms_acceptance(access)
+                _signal_ready(trace, "terms_acceptance")
+                return
         with trace.span("server.account_controls_render"):
             render_account_control(access)
     else:

@@ -38,6 +38,19 @@ from ui.browser_session import (
     write_fast_resume_cookie,
 )
 from state.session_resume import restore_resume_session, seal_resume_session
+from state.legal_consent import (
+    SUPPORT_EMAIL,
+    TERMS_CHECKBOX_TEXT,
+    TERMS_INLINE_TEXT,
+    TERMS_SUMMARY,
+    current_legal_documents,
+    email_confirmation_url,
+    legal_consent_enabled,
+    pending_registration_for_user,
+    public_legal_url,
+    record_current_terms_acceptance,
+    record_pending_registration,
+)
 
 
 @dataclass(frozen=True)
@@ -96,15 +109,29 @@ def _render_auth_heading(title: str, subtitle: str | None = None) -> None:
 
 
 def validate_registration(
-    email: str, password: str, password_confirm: str, company_name: str | None = None
+    email: str,
+    password: str,
+    password_confirm: str,
+    company_name: str | None = None,
+    terms_accepted: bool | None = None,
 ) -> None:
-    errors = registration_validation_errors(email, password, password_confirm, company_name)
+    errors = registration_validation_errors(
+        email,
+        password,
+        password_confirm,
+        company_name,
+        terms_accepted,
+    )
     if errors:
         raise ValueError(next(iter(errors.values())))
 
 
 def registration_validation_errors(
-    email: str, password: str, password_confirm: str, company_name: str | None = None
+    email: str,
+    password: str,
+    password_confirm: str,
+    company_name: str | None = None,
+    terms_accepted: bool | None = None,
 ) -> dict[str, str]:
     """Return every invalid registration field so one submit marks them all."""
     errors: dict[str, str] = {}
@@ -118,6 +145,8 @@ def registration_validation_errors(
         errors["confirm"] = "Confirm your password"
     elif password != password_confirm:
         errors["confirm"] = "Passwords do not match"
+    if terms_accepted is False:
+        errors["terms"] = "Agree to the Terms and Conditions to continue"
     return errors
 
 
@@ -186,6 +215,7 @@ def sync_browser_auth_session(
     run_sequence: int | None = None,
     server_elapsed_before_component_ms: float | None = None,
     recovery_requested: bool = False,
+    confirmation_requested: bool = False,
 ) -> bool:
     """Restore or persist the tab-scoped Supabase session.
 
@@ -203,6 +233,7 @@ def sync_browser_auth_session(
         and not st.session_state.get("_browser_auth_initialized")
         and not has_memory_session
         and not recovery_requested
+        and not confirmation_requested
     ):
         outcome, restored = restore_resume_session(st.context.cookies)
         st.session_state._fast_resume_outcome = outcome
@@ -223,7 +254,11 @@ def sync_browser_auth_session(
         resume_blob = (
             str(pending.get("resume_blob")) if pending.get("resume_blob") else None
         )
-    elif st.session_state.get("_browser_auth_initialized") and not recovery_requested:
+    elif (
+        st.session_state.get("_browser_auth_initialized")
+        and not recovery_requested
+        and not confirmation_requested
+    ):
         st.session_state._browser_auth_sync_outcome = "already_initialized"
         return True
     else:
@@ -244,6 +279,7 @@ def sync_browser_auth_session(
         run_sequence=run_sequence,
         server_elapsed_before_component_ms=server_elapsed_before_component_ms,
         recovery_requested=recovery_requested,
+        confirmation_requested=confirmation_requested,
     )
     if action in {"store", "clear"}:
         st.session_state.pop("_browser_auth_pending", None)
@@ -262,6 +298,7 @@ def sync_browser_auth_session(
 
     stored = result.get("session")
     is_recovery = bool(result.get("recovery"))
+    is_confirmation = bool(result.get("confirmation"))
     if not has_memory_session and isinstance(stored, dict):
         access_token = stored.get("access_token")
         refresh_token = stored.get("refresh_token")
@@ -276,6 +313,16 @@ def sync_browser_auth_session(
                     access_token
                 )
                 st.session_state._fast_resume_outcome = "recovery_session"
+            elif is_confirmation:
+                st.session_state.auth_confirmation_complete = True
+                resume_blob = seal_resume_session(
+                    access_token=access_token,
+                    refresh_token=refresh_token,
+                    expires_at=expires_at,
+                )
+                if resume_blob:
+                    write_fast_resume_cookie(resume_blob)
+                    st.session_state._fast_resume_outcome = "confirmation_session"
             else:
                 resume_blob = seal_resume_session(
                     access_token=access_token,
@@ -288,6 +335,8 @@ def sync_browser_auth_session(
     if recovery_requested and not is_recovery:
         st.session_state.auth_recovery_error = True
         st.session_state.auth_recovery_mode = True
+    if confirmation_requested and not is_confirmation:
+        st.session_state.auth_confirmation_error = True
     st.session_state._browser_auth_initialized = True
     st.session_state._browser_auth_sync_outcome = (
         "browser_session_restored"
@@ -479,6 +528,137 @@ def sign_up(email: str, password: str, invitation: InvitationContext) -> None:
     sign_in(email, password)
 
 
+def begin_verified_sign_up(
+    email: str,
+    password: str,
+    invitation: InvitationContext,
+    *,
+    organization_name: str | None = None,
+) -> None:
+    """Create an inactive account and preserve its legal registration context."""
+    require_public_invitation_request()
+    if not valid_invite_token(invitation.token) or invitation_from_url() != invitation:
+        raise PermissionError("A valid invitation link is required.")
+    documents = current_legal_documents(_server_client())
+    response = _auth_client().auth.sign_up({
+        "email": email.strip(),
+        "password": password,
+        "options": {
+            "email_redirect_to": email_confirmation_url(),
+            "data": {"costerly_registration": True},
+        },
+    })
+    user = response.user if response else None
+    if user is None or not getattr(user, "id", None):
+        raise RuntimeError("Supabase did not return the pending user")
+    identities = getattr(user, "identities", None)
+    if identities is not None and len(identities) == 0:
+        # Supabase intentionally returns an obfuscated user for an existing
+        # address. Preserve the same visible outcome without fabricating legal
+        # evidence for an identity that did not authenticate.
+        st.session_state.pending_verification_email = email.strip()
+        return
+    if getattr(response, "session", None) is not None:
+        raise RuntimeError("Email verification is not enabled for new accounts")
+    record_pending_registration(
+        _server_client(),
+        user_id=str(user.id),
+        email=email,
+        invitation_kind=invitation.kind,
+        invitation_token=invitation.token,
+        organization_name=organization_name,
+        documents=documents,
+    )
+    st.session_state.pending_verification_email = email.strip()
+
+
+def _render_registration_terms(documents, *, key: str) -> bool:
+    terms_url = public_legal_url(documents.terms.public_path)
+    privacy_url = public_legal_url(documents.privacy.public_path)
+    st.caption(TERMS_SUMMARY)
+    with st.expander("Terms and Conditions"):
+        with st.container(height=220, border=False):
+            st.markdown(TERMS_INLINE_TEXT)
+        st.markdown(
+            f'<a href="{terms_url}" target="_blank" rel="noopener">Read the full Terms and Conditions</a>',
+            unsafe_allow_html=True,
+        )
+    accepted = st.checkbox(TERMS_CHECKBOX_TEXT, key=key)
+    st.markdown(
+        f'<div class="auth-legal-links">Privacy Policy is available '
+        f'<a href="{privacy_url}" target="_blank" rel="noopener">here</a></div>',
+        unsafe_allow_html=True,
+    )
+    return bool(accepted)
+
+
+def render_email_verification_pending() -> None:
+    install_auth_form_interactions()
+    _render_auth_heading("Check your email to verify your account")
+    st.markdown(
+        f'<div class="auth-verification-support">Didn\'t receive the email? '
+        f'<a href="mailto:{SUPPORT_EMAIL}">Contact support</a></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_email_confirmation_error() -> None:
+    install_auth_form_interactions()
+    _render_auth_heading("This verification link is invalid or has expired")
+    st.markdown(
+        f'<div class="auth-verification-support">'
+        f'<a href="/" target="_top">Return to sign in</a> · '
+        f'<a href="mailto:{SUPPORT_EMAIL}">Contact support</a></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def render_terms_acceptance(access: CompanyAccess) -> None:
+    """Block application data until this authenticated user accepts current Terms."""
+    install_auth_form_interactions()
+    documents = current_legal_documents(_server_client())
+    _render_auth_heading("Updated Terms and Conditions")
+    error = str(st.session_state.get("terms_acceptance_error") or "")
+    with st.form("current_terms_acceptance"):
+        accepted = _render_registration_terms(documents, key="current_terms_accepted")
+        if error:
+            render_auth_field_error("terms", error, show_message=True)
+        submit = st.form_submit_button(
+            "Continue",
+            type="primary",
+            use_container_width=True,
+        )
+    st.button(
+        "Sign out",
+        key="terms_gate_sign_out",
+        use_container_width=True,
+        on_click=sign_out,
+    )
+    install_auth_form_interactions()
+    if not submit:
+        return
+    st.session_state.pop("terms_acceptance_error", None)
+    if not accepted:
+        st.session_state.terms_acceptance_error = (
+            "Agree to the Terms and Conditions to continue"
+        )
+        st.rerun()
+    try:
+        record_current_terms_acceptance(
+            _server_client(),
+            user_id=access.user_id,
+            company_id=str(access.company_id or ""),
+            email=access.email,
+        )
+    except Exception:
+        st.session_state.terms_acceptance_error = (
+            "We couldn't record your agreement. Try again in a moment"
+        )
+        st.rerun()
+    st.session_state.pop("current_terms_accepted", None)
+    st.rerun()
+
+
 def authenticate_invited_creator(email: str, password: str, invitation: InvitationContext) -> None:
     """Finish an interrupted signup without offering a second registration path."""
     try:
@@ -543,9 +723,26 @@ def _submit_login() -> None:
     try:
         sign_in(email, password)
         access = current_company_access()
-        if access is None or access.company_id is None:
+        pending_registration = None
+        if legal_consent_enabled() and access is not None and access.company_id is None:
+            pending_registration = pending_registration_for_user(
+                _server_client(),
+                access.user_id,
+            )
+        if access is None or (
+            access.company_id is None and pending_registration is None
+        ):
             sign_out()
             raise PermissionError("Company access is required")
+    except AuthApiError as exc:
+        if str(getattr(exc, "code", "")) in {
+            "email_not_confirmed",
+            "email_not_verified",
+        }:
+            st.session_state.pending_verification_email = email.strip()
+            return
+        st.session_state.company_login_invalid_fields = ["email", "password"]
+        st.session_state.company_login_error = "Check your email and password"
     except Exception:
         st.session_state.company_login_invalid_fields = ["email", "password"]
         st.session_state.company_login_error = "Check your email and password"
@@ -793,8 +990,21 @@ def remove_company_member(access: CompanyAccess, member_user_id: str) -> None:
 
 def render_login_or_signup(invitation: InvitationContext | None) -> None:
     install_auth_form_interactions()
+    if st.session_state.get("pending_verification_email"):
+        render_email_verification_pending()
+        return
+    if st.session_state.get("auth_confirmation_error"):
+        render_email_confirmation_error()
+        return
     if invitation is not None and invitation.kind == "create":
         _render_auth_heading("Create Your Company Account")
+        legal_documents = None
+        if legal_consent_enabled():
+            try:
+                legal_documents = current_legal_documents(_server_client())
+            except Exception:
+                st.error("Registration is temporarily unavailable. Try again later")
+                st.stop()
         raw_creation_error = st.session_state.get("company_creation_error") or {}
         creation_errors = (
             {raw_creation_error[0]: raw_creation_error[1]}
@@ -815,17 +1025,43 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             if "confirm" in creation_errors:
                 render_auth_field_error("confirm", creation_errors["confirm"])
             st.caption("Use at least 8 characters with an uppercase letter, a lowercase letter and a number")
+            terms_accepted = True
+            if legal_documents is not None:
+                terms_accepted = _render_registration_terms(
+                    legal_documents,
+                    key="company_creation_terms_accepted",
+                )
+                if "terms" in creation_errors:
+                    render_auth_field_error(
+                        "terms",
+                        creation_errors["terms"],
+                        show_message=True,
+                    )
             submit = st.form_submit_button("Create Company Account", type="primary", use_container_width=True)
             if "service" in creation_errors:
                 st.error(creation_errors["service"])
         install_auth_form_interactions()
         if submit:
             st.session_state.pop("company_creation_error", None)
-            validation_errors = registration_validation_errors(email, password, confirm, company_name)
+            validation_errors = registration_validation_errors(
+                email,
+                password,
+                confirm,
+                company_name,
+                terms_accepted if legal_documents is not None else None,
+            )
             if validation_errors:
                 st.session_state.company_creation_error = validation_errors
                 st.rerun()
             try:
+                if legal_documents is not None:
+                    begin_verified_sign_up(
+                        email,
+                        password,
+                        invitation,
+                        organization_name=company_name,
+                    )
+                    st.rerun()
                 authenticate_invited_creator(email, password, invitation)
                 access = current_company_access()
                 if access is None:
@@ -872,20 +1108,67 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
 
     if invitation is not None and invitation.kind == "join":
         _render_auth_heading("Join your company")
+        legal_documents = None
+        if legal_consent_enabled():
+            try:
+                legal_documents = current_legal_documents(_server_client())
+            except Exception:
+                st.error("Registration is temporarily unavailable. Try again later")
+                st.stop()
+        raw_join_error = st.session_state.get("company_join_error") or {}
+        join_errors = (
+            {raw_join_error[0]: raw_join_error[1]}
+            if isinstance(raw_join_error, tuple)
+            else raw_join_error
+        )
         with st.form("company_join_registration"):
             email = st.text_input("Email", key="signup_email", placeholder="you@company.com")
+            if "email" in join_errors:
+                render_auth_field_error("email", join_errors["email"])
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm password", type="password", key="signup_password_confirm")
+            if "password" in join_errors:
+                render_auth_field_error("password", join_errors["password"])
+            if "confirm" in join_errors:
+                render_auth_field_error("confirm", join_errors["confirm"])
             st.caption("At least 8 characters, one uppercase letter, one lowercase letter and one number")
+            terms_accepted = True
+            if legal_documents is not None:
+                terms_accepted = _render_registration_terms(
+                    legal_documents,
+                    key="company_join_terms_accepted",
+                )
+                if "terms" in join_errors:
+                    render_auth_field_error(
+                        "terms",
+                        join_errors["terms"],
+                        show_message=True,
+                    )
             submit = st.form_submit_button(
                 "Create account",
                 type="primary",
                 use_container_width=True,
             )
+            if "service" in join_errors:
+                st.error(join_errors["service"])
         install_auth_form_interactions()
         if submit:
+            st.session_state.pop("company_join_error", None)
+            validation_errors = registration_validation_errors(
+                email,
+                password,
+                confirm,
+                terms_accepted=(
+                    terms_accepted if legal_documents is not None else None
+                ),
+            )
+            if validation_errors:
+                st.session_state.company_join_error = validation_errors
+                st.rerun()
             try:
-                validate_registration(email, password, confirm)
+                if legal_documents is not None:
+                    begin_verified_sign_up(email, password, invitation)
+                    st.rerun()
                 sign_up(email, password, invitation)
                 access = current_company_access()
                 if access is None:
@@ -895,9 +1178,29 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                     del st.query_params["invite"]
                 st.rerun()
             except PermissionError as exc:
-                st.error(str(exc))
+                st.session_state.company_join_error = {"service": str(exc)}
+                st.rerun()
+            except AuthApiError as exc:
+                message = (
+                    "This email is already registered. Sign in using the same company link."
+                    if exc.code in {"email_exists", "user_already_exists"}
+                    else "We couldn't create your login. Check your email and try again."
+                )
+                field = (
+                    "email"
+                    if exc.code in {"email_exists", "user_already_exists"}
+                    else "service"
+                )
+                st.session_state.company_join_error = {field: message}
+                st.rerun()
             except Exception:
-                st.error("We couldn't finish joining this company. If your login was created, sign in using the same link.")
+                st.session_state.company_join_error = {
+                    "service": (
+                        "We couldn't finish joining this company. If your login was "
+                        "created, sign in using the same link."
+                    )
+                }
+                st.rerun()
         return
 
     _render_auth_heading("Sign in")

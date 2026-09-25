@@ -378,3 +378,20 @@ Pricing Runtime v1
 `price_estimated_object()` is the deterministic pricing entrypoint after one object is estimated.
 It reads the object's persisted material/labor lines, matches materials to the `materials` catalog, matches labor roles to the `labor` table, fills `unit_cost`, `rate`, and `cost`, then updates object self-cost totals.
 This layer owns arithmetic. The Estimation Agent remains responsible only for composition, quantities, labor hours, and reasoning.
+
+Legal Consent and Verified Registration v1
+The feature is cross-system and defaults off behind `LEGAL_CONSENT_ENABLED`.
+Invitation signup resolves immutable published Terms and Privacy releases,
+requires the Terms checkbox in the first and only registration form, creates an
+unverified Supabase user, and records a server-side pending registration plus
+append-only acceptance evidence. Email confirmation returns a verified session
+through the existing Cloudflare wrapper and hidden browser-session component.
+Only then does one database transaction consume the saved invitation and
+create the company or membership. Returning users authenticate before any
+legal-state lookup. Their verified `user_id`, not typed email, is checked
+against the current Terms acceptance version before company data renders.
+Privacy-only releases do not create a gate. Published document rows and legal
+evidence cannot be edited or deleted. The mutable release pointer selects the
+current immutable document. See
+`notes/LEGAL_CONSENT_VERIFIED_REGISTRATION.md` for the scenario and rollout
+contract.

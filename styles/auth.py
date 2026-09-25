@@ -103,6 +103,21 @@ def install_auth_form_interactions() -> None:
             return true;
           }
 
+          function termsControl(scope = doc) {
+            return Array.from(scope.querySelectorAll('[data-testid="stCheckbox"]')).find(
+              (node) => node.textContent.includes('I have read and agree to the Terms and Conditions')
+            ) || null;
+          }
+
+          function termsIsValid(scope = doc) {
+            const control = termsControl(scope);
+            return !control || Boolean(control.querySelector('input:checked'));
+          }
+
+          function setTermsInvalid(invalid, scope = doc) {
+            termsControl(scope)?.classList.toggle('costerly-auth-invalid', invalid);
+          }
+
           function setLoadingLabel(button, text) {
             const label = button?.querySelector('p');
             if (label) label.textContent = text;
@@ -204,7 +219,8 @@ def install_auth_form_interactions() -> None:
               const fields = ['company', 'email', 'password', 'confirm'];
               const invalid = fields.filter((field) => !fieldIsValid(field, form));
               invalid.forEach((field) => setInvalid(field, true, form));
-              if (invalid.length > 0) return;
+              setTermsInvalid(!termsIsValid(form), form);
+              if (invalid.length > 0 || !termsIsValid(form)) return;
               window.setTimeout(() => beginAuthOperation(button, 'Checking your details...'), 0);
             });
           }
@@ -240,8 +256,27 @@ def install_auth_form_interactions() -> None:
                 (field) => !fieldIsValid(field, form)
               );
               invalid.forEach((field) => setInvalid(field, true, form));
-              if (invalid.length > 0) return;
+              setTermsInvalid(!termsIsValid(form), form);
+              if (invalid.length > 0 || !termsIsValid(form)) return;
               window.setTimeout(() => beginAuthOperation(button, 'Creating account...'), 0);
+            });
+          }
+
+          function bindTermsAcceptance() {
+            const form = Array.from(doc.querySelectorAll('div[data-testid="stForm"]')).find(
+              (node) => termsControl(node) && Array.from(
+                node.querySelectorAll('div[data-testid="stFormSubmitButton"] button')
+              ).some((button) => button.textContent.trim() === 'Continue')
+            );
+            const button = Array.from(
+              form?.querySelectorAll('div[data-testid="stFormSubmitButton"] button') || []
+            ).find((node) => node.textContent.trim() === 'Continue');
+            if (!button || button.dataset.costerlyLoadingBound === '1') return;
+            button.dataset.costerlyLoadingBound = '1';
+            button.addEventListener('click', () => {
+              setTermsInvalid(!termsIsValid(form), form);
+              if (!termsIsValid(form)) return;
+              window.setTimeout(() => beginAuthOperation(button, 'Continuing...'), 0);
             });
           }
 
@@ -336,11 +371,19 @@ def install_auth_form_interactions() -> None:
                 });
               }
             });
+            doc.querySelectorAll('[data-testid="stCheckbox"]').forEach((control) => {
+              if (!control.textContent.includes('I have read and agree to the Terms and Conditions')) return;
+              const input = control.querySelector('input');
+              if (!input || input.dataset.costerlyTermsBound === '1') return;
+              input.dataset.costerlyTermsBound = '1';
+              input.addEventListener('change', () => setTermsInvalid(!input.checked, control.closest('div[data-testid="stForm"]') || doc));
+            });
             bindCompanyCreation();
             bindSignIn();
             bindMemberCreation();
             bindPasswordRecoveryRequest();
             bindPasswordUpdate();
+            bindTermsAcceptance();
           }
 
           refresh();
@@ -618,6 +661,31 @@ def apply_auth_css() -> None:
 
         .stApp:has(.auth-screen-active) .auth-recovery-sent {
             display: none !important;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-legal-links,
+        .stApp:has(.auth-screen-active) .auth-verification-support {
+            color: #67616C;
+            font-family: var(--font-sans);
+            font-size: 13px;
+            line-height: 1.45;
+            text-align: center;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-legal-links a,
+        .stApp:has(.auth-screen-active) .auth-verification-support a {
+            color: #6F3CB4;
+            font-weight: 600;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stCheckbox"].costerly-auth-invalid label > span:first-child {
+            border-color: #B43E49 !important;
+            box-shadow: 0 0 0 1px rgba(180, 62, 73, 0.10) !important;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stExpander"] {
+            border-color: #E7DFE9 !important;
+            background: #FAF8FC !important;
         }
 
         .stApp:has(.auth-screen-active) [data-testid="stHorizontalBlock"]:has(.auth-password-row-marker) {

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light only">
+    <title>Verify your Coasterly AI email</title>
+    <style>
+      :root { color-scheme: light only; supported-color-schemes: light only; }
+      @media (prefers-color-scheme: dark) {
+        .email-page, .email-page-cell, .email-card, .email-card-cell {
+          background-color: #ffffff !important;
+          background-image: linear-gradient(#ffffff, #ffffff) !important;
+        }
+        .email-copy { color: #2a1f2c !important; -webkit-text-fill-color: #2a1f2c !important; }
+        .email-muted { color: #67616c !important; -webkit-text-fill-color: #67616c !important; }
+        .email-button, .email-button-cell {
+          background-color: #8049c6 !important;
+          background-image: linear-gradient(#8049c6, #8049c6) !important;
+        }
+        .email-button { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+      }
+      [data-ogsc] .email-page, [data-ogsc] .email-page-cell,
+      [data-ogsc] .email-card, [data-ogsc] .email-card-cell { background-color: #ffffff !important; }
+      [data-ogsc] .email-copy { color: #2a1f2c !important; }
+      [data-ogsc] .email-muted { color: #67616c !important; }
+      u + .body .gmail-blend-exclusion-black { background-color: #000000; mix-blend-mode: exclusion; }
+      u + .body .gmail-blend-difference-black { background-color: #000000; color: #ffffff; mix-blend-mode: difference; }
+    </style>
+  </head>
+  <body class="body email-page" bgcolor="#ffffff" style="margin:0;padding:0;background-color:#ffffff;background-image:linear-gradient(#ffffff,#ffffff);color:#2a1f2c;font-family:Arial,Helvetica,sans-serif;color-scheme:light only;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+      Verify your email to finish creating your Coasterly AI account
+    </div>
+    <table class="email-page" role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;background-color:#ffffff;background-image:linear-gradient(#ffffff,#ffffff);">
+      <tr>
+        <td class="email-page-cell" align="center" bgcolor="#ffffff" style="padding:48px 20px;background-color:#ffffff;background-image:linear-gradient(#ffffff,#ffffff);">
+          <table class="email-card" role="presentation" width="560" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:560px;background-color:#ffffff;background-image:linear-gradient(#ffffff,#ffffff);border:0;border-radius:0;">
+            <tr>
+              <td class="email-card-cell" bgcolor="#ffffff" style="padding:38px 38px 36px;background-color:#ffffff;background-image:linear-gradient(#ffffff,#ffffff);">
+                <img src="https://app.costerly.ai/assets/email/costerly-ai-logo.png" width="242" height="46" alt="Coasterly AI" style="display:block;width:242px;max-width:100%;height:auto;border:0;margin:0 0 32px;">
+                <p class="email-copy" style="margin:0 0 28px;font-size:16px;line-height:1.6;color:#2a1f2c;-webkit-text-fill-color:#2a1f2c;">
+                  <span class="gmail-blend-exclusion-black"><span class="gmail-blend-difference-black">Click the button below to verify your email and finish creating your account</span></span>
+                </p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td class="email-button-cell" align="center" bgcolor="#8049c6" style="border-radius:11px;background-color:#8049c6;background-image:linear-gradient(#8049c6,#8049c6);">
+                      <a class="email-button" href="{{ .ConfirmationURL }}" style="display:block;padding:18px 24px;background-color:#8049c6;background-image:linear-gradient(#8049c6,#8049c6);color:#ffffff;-webkit-text-fill-color:#ffffff;text-decoration:none;font-size:18px;font-weight:700;line-height:1.25;border-radius:11px;">Verify email</a>
+                    </td>
+                  </tr>
+                </table>
+                <p class="email-muted" style="margin:28px 0 0;font-size:14px;line-height:1.5;color:#67616c;-webkit-text-fill-color:#67616c;">
+                  If you didn’t create this account, you can safely ignore this email
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

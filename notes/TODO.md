@@ -1,5 +1,23 @@
 # TODO
 
+- 3.11.1 Legal consent and verified registration: active, P0. Invitation signup
+  shows the mandatory Terms and Conditions agreement before its single submit,
+  creates an inactive Auth account, records immutable versioned evidence, and
+  activates company access only after one-click email verification. Returning
+  users never see Terms on Sign in and pass directly into the application when
+  their authenticated `user_id` has accepted the current material release;
+  otherwise they receive one blocking post-auth Terms gate. Privacy Policy is
+  independently versioned, never triggers that gate by itself, and remains in
+  the production wrapper footer. The additive schema, disabled-by-default
+  application path, callback transport, confirmation-email template, legal
+  drafts, and deterministic coverage are implemented locally. The production
+  migration is applied and verified with all five legal tables empty. Operator
+  identity is recorded in the drafts without claiming a not-yet-registered
+  business status. Final legal-content decisions, publication rows and hashes,
+  Supabase Confirm Signup template and redirect configuration, production SMTP,
+  deployment, and full production scenario acceptance remain pending. Contract:
+  `notes/LEGAL_CONSENT_VERIFIED_REGISTRATION.md`.
+
 - 3.10.2 Price Source Agent accuracy: active, P1. Improve real supplier-source
   extraction, material-type classification, unit normalization, confidence,
   and ready-versus-unresolved decisions without changing the accepted 3.10.1
