@@ -292,7 +292,8 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     assert 'button[aria-label="Add files"]' in source
     assert "display: none !important" in source
     assert "section.costerly-upload-dragover" in source
-    assert "border-color: #4A90E2 !important" in source
+    assert "border-color: var(--input-focus-border) !important" in source
+    assert "box-shadow: 0 0 0 3px var(--input-focus-ring) !important" in source
     assert "section small" not in price_source_dropzone_rules
     assert "section button" not in price_source_dropzone_rules
 

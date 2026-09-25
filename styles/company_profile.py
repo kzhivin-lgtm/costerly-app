@@ -936,9 +936,9 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"]
         section.costerly-upload-dragover:hover {
-            border-color: #4A90E2 !important;
-            background: #F2F7FD !important;
-            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.16) !important;
+            border-color: var(--input-focus-border) !important;
+            background: #F7F1FC !important;
+            box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
         }
 
         .stApp:has(.company-profile-active)
