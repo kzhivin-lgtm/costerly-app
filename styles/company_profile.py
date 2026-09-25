@@ -910,18 +910,30 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body [data-testid="stFileChip"] small {
+        .st-key-price_source_add_body [data-testid="stFileChip"]
+        > div:nth-child(2) > div:last-child {
             display: none !important;
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileChipDeleteBtn"] {
+            display: flex !important;
             position: absolute !important;
             top: 3px !important;
             right: 3px !important;
             z-index: 4 !important;
             pointer-events: auto !important;
             cursor: pointer !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_card [data-testid="stElementContainer"][data-stale="true"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_catalog_shell [data-testid="stElementContainer"][data-stale="true"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_library_section [data-testid="stElementContainer"][data-stale="true"] {
+            opacity: 1 !important;
+            transition: none !important;
         }
 
         .stApp:has(.company-profile-active)

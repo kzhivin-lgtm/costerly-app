@@ -296,13 +296,29 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     assert "box-shadow: 0 0 0 3px var(--input-focus-ring) !important" in source
     assert "section small" not in price_source_dropzone_rules
     assert "section button" not in price_source_dropzone_rules
-    assert '[data-testid="stFileChip"] small' in source
+    assert '[data-testid="stFileChip"] small' not in source
     assert "display: none !important" in source
     delete_rule = source.split('[data-testid="stFileChipDeleteBtn"] {', 1)[1].split(
         "}", 1
     )[0]
+    assert "display: flex !important" in delete_rule
     assert "z-index: 4 !important" in delete_rule
     assert "pointer-events: auto !important" in delete_rule
+
+
+def test_price_source_fragment_does_not_dim_stale_content():
+    source = Path("styles/company_profile.py").read_text()
+
+    assert (
+        '.st-key-price_source_add_card [data-testid="stElementContainer"]'
+        '[data-stale="true"]'
+    ) in source
+    assert (
+        '.st-key-price_catalog_shell [data-testid="stElementContainer"]'
+        '[data-stale="true"]'
+    ) in source
+    assert "opacity: 1 !important" in source
+    assert "transition: none !important" in source
 
 
 def test_price_source_processing_uses_callback_without_manual_rerun():
