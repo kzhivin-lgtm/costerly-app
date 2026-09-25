@@ -1370,7 +1370,8 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
 
     assert not app.exception
     assert "Add price source" in markup
-    assert "Attach files or provide a link to a pricing page" in markup
+    assert "Attach files or provide a link to a pricing page" not in markup
+    assert "One PDF, XLSX or CSV" not in markup
     assert "Material prices" in markup
     assert "Wood" in markup
     assert "Metal" in markup

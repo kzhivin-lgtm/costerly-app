@@ -2027,17 +2027,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                         "that belong to the same document"
                     ),
                 )
-                st.caption(
-                    "One PDF, XLSX or CSV, or multiple JPG, JPEG or PNG photos "
-                    "of the same document"
-                )
             with details_column:
-                st.markdown(
-                    '<div class="price-source-add-instruction">'
-                    'Attach files or provide a link to a pricing page'
-                    '</div>',
-                    unsafe_allow_html=True,
-                )
                 source_url = st.text_input(
                     "Paste supplier page URL",
                     placeholder="https://supplier.example/prices",
