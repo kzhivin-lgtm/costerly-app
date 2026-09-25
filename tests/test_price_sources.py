@@ -267,7 +267,7 @@ def test_price_source_uploader_accepts_multiple_files_before_backend_validation(
     assert 'label_visibility="collapsed"' in uploader_call
 
 
-def test_price_source_dropzone_does_not_replace_native_interaction_layer():
+def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     from styles.company_profile import apply_company_profile_css
 
     source = inspect.getsource(apply_company_profile_css)
@@ -278,12 +278,15 @@ def test_price_source_dropzone_does_not_replace_native_interaction_layer():
         1,
     )[0]
 
-    assert "section > div" not in price_source_dropzone_rules
+    assert 'section:not(:has([data-testid="stFileChips"])) > div' in (
+        price_source_dropzone_rules
+    )
+    assert 'section:has([data-testid="stFileChips"]) > div' in (
+        price_source_dropzone_rules
+    )
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in source
     assert "section small" not in price_source_dropzone_rules
     assert "section button" not in price_source_dropzone_rules
-    assert "section::before" not in price_source_dropzone_rules
-    assert "section::after" not in price_source_dropzone_rules
-    assert "pointer-events: none" not in price_source_dropzone_rules
 
 
 def test_multiple_upload_rejects_mixed_document_types():

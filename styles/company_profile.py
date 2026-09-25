@@ -780,6 +780,113 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section:not(:has([data-testid="stFileChips"])) > div {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section:not(:has([data-testid="stFileChips"]))::before {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: calc(50% - 48px);
+            z-index: 2;
+            width: 42px;
+            height: 42px;
+            transform: translateX(-50%);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 18 V82 M18 50 H82' stroke='%238049C6' stroke-width='9' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            pointer-events: none;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section:not(:has([data-testid="stFileChips"]))::after {
+            content: "Upload file or photos\\A PDF, XLSX, CSV or multiple photos";
+            position: absolute;
+            left: 16px;
+            right: 16px;
+            top: calc(50% + 2px);
+            z-index: 2;
+            color: rgba(42, 31, 44, 0.72);
+            font-family: var(--font-mono);
+            font-size: 17px;
+            font-weight: 700;
+            line-height: 1.55;
+            text-align: center;
+            white-space: pre-line;
+            pointer-events: none;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section:has([data-testid="stFileChips"]) {
+            padding: 12px !important;
+            align-items: flex-start !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section:has([data-testid="stFileChips"]) > div {
+            width: 100%;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChips"] {
+            width: 100%;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChips"] > div {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChips"] > div > div,
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChip"] {
+            min-width: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChip"] {
+            height: 54px;
+            padding: 6px 7px !important;
+            border-radius: 10px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChip"] svg {
+            width: 18px !important;
+            height: 18px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChipName"] {
+            min-width: 0;
+            font-size: 11px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body button[aria-label="Add files"] {
+            width: 30px !important;
+            height: 30px !important;
+            min-height: 30px !important;
+            align-self: flex-end;
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"] section:hover,
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"] section:focus-within {
@@ -1978,6 +2085,11 @@ def apply_company_profile_css() -> None:
             .stApp:has(.company-profile-active)
             .st-key-price_source_add_body [data-testid="stFileUploader"] section {
                 min-height: 164px;
+            }
+
+            .stApp:has(.company-profile-active)
+            .st-key-price_source_add_body [data-testid="stFileChips"] > div {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
             .price-catalog-card {
