@@ -1783,6 +1783,8 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert "#C5E9CF" in css
     assert "#F3C4CD" in css
     assert "costerly-checkbox-checked" in base_css
+    assert '[data-testid="stCheckbox"][data-selected="true"]' in base_css
+    assert 'label[data-selected="true"] > div:first-of-type' in base_css
     assert "input.checked" in base_css
     assert "MutationObserver" in base_css
     assert "background-color: #4F8FCB !important;" in base_css

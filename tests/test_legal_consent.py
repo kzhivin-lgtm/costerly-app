@@ -275,20 +275,16 @@ def test_updated_terms_gate_precedes_application_controls():
     assert "on_click=sign_out" in gate_source
 
 
-def test_terms_gate_heading_distinguishes_first_acceptance_from_an_update(monkeypatch):
+def test_terms_gate_uses_the_minimal_updated_terms_heading(monkeypatch):
     monkeypatch.setattr(company_auth, "current_legal_documents", lambda _client: _documents())
     monkeypatch.setattr(company_auth, "_server_client", lambda: object())
 
-    monkeypatch.setattr(company_auth, "has_terms_acceptance_history", lambda *_args: False)
-    first = AppTest.from_function(_render_terms_gate).run()
-    first_html = "\n".join(item.value for item in first.markdown)
-    assert '<h1>Terms of Service</h1>' in first_html
-    assert '<h1>Updated Terms of Service</h1>' not in first_html
-
-    monkeypatch.setattr(company_auth, "has_terms_acceptance_history", lambda *_args: True)
-    updated = AppTest.from_function(_render_terms_gate).run()
-    updated_html = "\n".join(item.value for item in updated.markdown)
-    assert '<h1>Updated Terms of Service</h1>' in updated_html
+    app = AppTest.from_function(_render_terms_gate).run()
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert '<h1>Updated Terms of Service</h1>' in rendered
+    assert "We updated" not in rendered
+    assert "We’ve updated" not in rendered
+    assert '<span class="auth-terms-title">' not in rendered
 
 
 def test_terms_heading_uses_the_established_regular_weight_and_disclosure_fades():

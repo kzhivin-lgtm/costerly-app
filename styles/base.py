@@ -568,6 +568,10 @@ def apply_base_css() -> None:
 
         /* Global checkbox contract. Keep this final so Streamlit's generated
            primary-color rule cannot restore its default red checked state. */
+        .stApp [data-testid="stCheckbox"][data-selected="true"]
+        > label > div:first-of-type,
+        .stApp [data-testid="stCheckbox"]
+        > label[data-selected="true"] > div:first-of-type,
         .stApp [data-testid="stCheckbox"]
         label[data-baseweb="checkbox"].costerly-checkbox-checked
         > span:first-child {

@@ -708,7 +708,10 @@ def apply_auth_css() -> None:
         }
 
         .stApp:has(.auth-screen-active) .auth-terms-disclosure summary {
-            display: block;
+            display: grid;
+            grid-template-columns: 8px minmax(0, 1fr);
+            align-items: start;
+            column-gap: 12px;
             padding: 16px 18px 17px;
             cursor: pointer;
             list-style: none;
@@ -719,19 +722,10 @@ def apply_auth_css() -> None:
             display: none;
         }
 
-        .stApp:has(.auth-screen-active) .auth-terms-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: #2A1F2C;
-            font-size: 15px;
-            font-weight: 600;
-            line-height: 1.35;
-        }
-
         .stApp:has(.auth-screen-active) .auth-terms-chevron {
             width: 8px;
             height: 8px;
+            margin-top: 4px;
             flex: 0 0 8px;
             border-right: 1.8px solid #51475B;
             border-bottom: 1.8px solid #51475B;
@@ -746,7 +740,7 @@ def apply_auth_css() -> None:
         .stApp:has(.auth-screen-active) .auth-terms-preview {
             display: -webkit-box;
             max-height: 4.35em;
-            margin: 11px 0 0 20px;
+            margin: 0;
             overflow: hidden;
             color: #67616C;
             font-size: 14px;
@@ -763,6 +757,7 @@ def apply_auth_css() -> None:
         }
 
         .stApp:has(.auth-screen-active) .auth-terms-full {
+            grid-column: 1 / -1;
             padding: 4px 20px 22px;
             border-top: 1px solid #E7DFE9;
             color: #51475B;

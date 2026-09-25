@@ -44,7 +44,6 @@ from state.legal_consent import (
     TERMS_CHECKBOX_TEXT,
     current_legal_documents,
     email_confirmation_url,
-    has_terms_acceptance_history,
     legal_consent_enabled,
     pending_registration_for_user,
     record_current_terms_acceptance,
@@ -578,10 +577,7 @@ def _render_registration_terms(documents, *, key: str) -> bool:
         '<div class="auth-terms-disclosure">'
         '<details>'
         '<summary>'
-        '<span class="auth-terms-title">'
         '<span class="auth-terms-chevron" aria-hidden="true"></span>'
-        f'{html.escape(documents.terms.title)}'
-        '</span>'
         f'<span class="auth-terms-preview">{html.escape(preview)}</span>'
         '</summary>'
         f'<div class="auth-terms-full">{full_terms}</div>'
@@ -619,12 +615,7 @@ def render_terms_acceptance(access: CompanyAccess) -> None:
     install_auth_form_interactions()
     server_client = _server_client()
     documents = current_legal_documents(server_client)
-    heading = (
-        "Updated Terms of Service"
-        if has_terms_acceptance_history(server_client, access.user_id)
-        else "Terms of Service"
-    )
-    _render_auth_heading(heading)
+    _render_auth_heading("Updated Terms of Service")
     error = str(st.session_state.get("terms_acceptance_error") or "")
     with st.form("current_terms_acceptance"):
         accepted = _render_registration_terms(documents, key="current_terms_accepted")
