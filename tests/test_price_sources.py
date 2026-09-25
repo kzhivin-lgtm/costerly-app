@@ -278,15 +278,31 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
         1,
     )[0]
 
-    assert 'section:not(:has([data-testid="stFileChips"])) > div' in (
+    assert 'section:not(:has([data-testid="stFileChips"])) > *:not(input)' in (
         price_source_dropzone_rules
     )
     assert 'section:has([data-testid="stFileChips"]) > div' in (
         price_source_dropzone_rules
     )
     assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in source
+    assert "grid-auto-rows: 74px" in source
+    assert "height: 156px !important" in source
+    assert "max-height: 156px !important" in source
+    assert "overflow-y: auto !important" in source
+    assert 'button[aria-label="Add files"]' in source
+    assert "display: none !important" in source
+    assert "section.costerly-upload-dragover" in source
+    assert "border-color: #4A90E2 !important" in source
     assert "section small" not in price_source_dropzone_rules
     assert "section button" not in price_source_dropzone_rules
+
+
+def test_price_source_uploader_installs_dragover_guard():
+    from screens.company_profile import _render_price_source_add
+
+    source = inspect.getsource(_render_price_source_add)
+
+    assert "install_upload_dragover_guard()" in source
 
 
 def test_multiple_upload_rejects_mixed_document_types():

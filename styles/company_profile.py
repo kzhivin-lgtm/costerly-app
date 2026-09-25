@@ -781,7 +781,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"]
-        section:not(:has([data-testid="stFileChips"])) > div {
+        section:not(:has([data-testid="stFileChips"])) > *:not(input) {
             opacity: 0 !important;
             visibility: hidden !important;
             pointer-events: none !important;
@@ -793,10 +793,10 @@ def apply_company_profile_css() -> None:
             content: "";
             position: absolute;
             left: 50%;
-            top: calc(50% - 48px);
+            top: calc(50% - 38px);
             z-index: 2;
-            width: 42px;
-            height: 42px;
+            width: 30px;
+            height: 30px;
             transform: translateX(-50%);
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 18 V82 M18 50 H82' stroke='%238049C6' stroke-width='9' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
@@ -812,13 +812,13 @@ def apply_company_profile_css() -> None:
             position: absolute;
             left: 16px;
             right: 16px;
-            top: calc(50% + 2px);
+            top: calc(50% - 1px);
             z-index: 2;
             color: rgba(42, 31, 44, 0.72);
             font-family: var(--font-mono);
-            font-size: 17px;
+            font-size: 14px;
             font-weight: 700;
-            line-height: 1.55;
+            line-height: 1.45;
             text-align: center;
             white-space: pre-line;
             pointer-events: none;
@@ -835,6 +835,9 @@ def apply_company_profile_css() -> None:
         .st-key-price_source_add_body [data-testid="stFileUploader"]
         section:has([data-testid="stFileChips"]) > div {
             width: 100%;
+            height: 156px;
+            min-height: 156px;
+            max-height: 156px;
             display: flex !important;
             flex-direction: column !important;
             gap: 8px !important;
@@ -843,12 +846,18 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileChips"] {
             width: 100%;
+            height: 156px !important;
+            max-height: 156px !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileChips"] > div {
+            width: 100% !important;
             display: grid !important;
             grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-auto-rows: 74px;
             gap: 8px !important;
         }
 
@@ -861,29 +870,55 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileChip"] {
-            height: 54px;
-            padding: 6px 7px !important;
+            position: relative;
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) !important;
+            grid-template-rows: 24px minmax(0, 1fr) !important;
+            place-items: center !important;
+            height: 74px;
+            padding: 7px 18px 6px 7px !important;
             border-radius: 10px !important;
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body [data-testid="stFileChip"] svg {
-            width: 18px !important;
-            height: 18px !important;
+        .st-key-price_source_add_body [data-testid="stFileChip"] > div:first-child {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 24px !important;
+            height: 24px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChip"] > div:first-child svg {
+            width: 22px !important;
+            height: 22px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChip"] > div:nth-child(2) {
+            min-width: 0 !important;
+            width: 100% !important;
+            text-align: center !important;
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileChipName"] {
             min-width: 0;
             font-size: 11px !important;
+            text-align: center !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChipDeleteBtn"] {
+            position: absolute !important;
+            top: 3px !important;
+            right: 3px !important;
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body button[aria-label="Add files"] {
-            width: 30px !important;
-            height: 30px !important;
-            min-height: 30px !important;
-            align-self: flex-end;
+            display: none !important;
         }
 
         .stApp:has(.company-profile-active)
@@ -893,6 +928,17 @@ def apply_company_profile_css() -> None:
             border-color: var(--color-accent) !important;
             background: #F7F1FC !important;
             box-shadow: 0 0 0 3px rgba(128, 73, 198, 0.12) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section.costerly-upload-dragover,
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section.costerly-upload-dragover:hover {
+            border-color: #4A90E2 !important;
+            background: #F2F7FD !important;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.16) !important;
         }
 
         .stApp:has(.company-profile-active)

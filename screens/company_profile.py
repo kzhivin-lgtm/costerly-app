@@ -23,6 +23,7 @@ from ui.company_metrics_bridge import company_metrics_bridge
 from ui.js_guards import (
     install_company_logo_picker_guard,
     install_company_metrics_input_guard,
+    install_upload_dragover_guard,
 )
 from use_cases.email_addresses import is_valid_email_address
 from use_cases.company_logo import (
@@ -2028,6 +2029,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                         "that belong to the same document"
                     ),
                 )
+                install_upload_dragover_guard()
             with details_column:
                 source_url = st.text_input(
                     "Paste supplier page URL",
