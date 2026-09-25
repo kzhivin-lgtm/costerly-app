@@ -232,8 +232,10 @@ def test_confirmation_and_permanent_privacy_routes_are_wired():
     assert 'args.confirmationRequested' in component
     assert 'confirmation: Boolean(confirmationSession)' in component
     assert "/confirm  /index.html  200" in redirects
-    assert "/terms    /terms.html  200" in redirects
-    assert "/privacy  /privacy.html  200" in redirects
+    assert "/terms " not in redirects
+    assert "/privacy " not in redirects
+    assert (ROOT / "cloudflare/terms.html").is_file()
+    assert (ROOT / "cloudflare/privacy.html").is_file()
 
 
 def test_updated_terms_gate_precedes_application_controls():
