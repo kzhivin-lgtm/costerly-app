@@ -23,11 +23,13 @@
   AI-provider protections, identifies Costerly AI as the Operator's trade name,
   and adds baseline data-processing terms. Its public response hash matches the
   immutable Supabase row and the Terms release pointer selects version 1.2;
-  Privacy version 1.2 is prepared locally as a separate non-blocking release.
+  Privacy version 1.2 is publicly deployed and active as a separate non-blocking release.
   It reflects actual first-party session storage and browser/server telemetry,
   narrows Customer Content use, aligns AI and Operator language, adds the
   account-data notice and strengthens international-transfer wording. Its
-  immutable row and release pointer are not yet published to Supabase.
+  public response hash matches its immutable Supabase row, the Privacy release
+  pointer selects version 1.2, and its unchanged acceptance version 1 does not
+  trigger the Terms gate.
   The owner authorized activation for the private playground.
   Production confirms the anonymous company-invitation screen and ordinary
   Sign in behavior; its verification invitation remains unused. Supabase
