@@ -2022,6 +2022,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     accept_multiple_files=True,
                     key=f"price_source_upload_{uploader_version}",
                     disabled=processing,
+                    label_visibility="collapsed",
                     help=(
                         "Upload one PDF or spreadsheet, or select several JPEG/PNG photos "
                         "that belong to the same document"

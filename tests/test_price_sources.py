@@ -264,29 +264,26 @@ def test_price_source_uploader_accepts_multiple_files_before_backend_validation(
     )[0]
     assert "accept_multiple_files=True" in uploader_call
     assert "type=" not in uploader_call
+    assert 'label_visibility="collapsed"' in uploader_call
 
 
-def test_price_source_dropzone_keeps_native_hit_target_interactive():
+def test_price_source_dropzone_does_not_replace_native_interaction_layer():
     from styles.company_profile import apply_company_profile_css
 
     source = inspect.getsource(apply_company_profile_css)
-    interactive_rule = source.split(
-        '[data-testid="stFileUploader"] section > div {', 1
-    )[1].split("}", 1)[0]
-
-    assert "visibility: visible !important" in interactive_rule
-    assert "pointer-events: auto !important" in interactive_rule
-    assert "opacity: 0.001 !important" in interactive_rule
-
     price_source_dropzone_rules = source.split(
-        '.st-key-price_source_add_body [data-testid="stFileUploader"] > label {', 1
+        '.st-key-price_source_add_body [data-testid="stFileUploader"] section {', 1
     )[1].split(
-        '.st-key-price_source_add_body [data-testid="stFileUploader"] section::before',
+        '.st-key-price_source_add_body [data-testid="stFileUploader"] section:hover',
         1,
     )[0]
-    assert '[data-testid="stFileUploader"] section > div,' not in (
-        price_source_dropzone_rules
-    )
+
+    assert "section > div" not in price_source_dropzone_rules
+    assert "section small" not in price_source_dropzone_rules
+    assert "section button" not in price_source_dropzone_rules
+    assert "section::before" not in price_source_dropzone_rules
+    assert "section::after" not in price_source_dropzone_rules
+    assert "pointer-events: none" not in price_source_dropzone_rules
 
 
 def test_multiple_upload_rejects_mixed_document_types():

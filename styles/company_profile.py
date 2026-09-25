@@ -762,85 +762,21 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stColumn"]:nth-child(2)
         > [data-testid="stVerticalBlock"] {
-            min-height: 190px;
+            min-height: 180px;
             justify-content: flex-start;
             gap: 22px !important;
             transform: none;
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body [data-testid="stFileUploader"] > label {
-            display: none !important;
-        }
-
-        .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"] section {
             position: relative;
-            min-height: 190px;
-            padding: 0 !important;
-            overflow: hidden;
+            min-height: 180px;
+            padding: 24px 20px !important;
             border: 1px dashed #BFAFD0 !important;
             border-radius: 18px !important;
             background: #FBF9FD !important;
             cursor: pointer;
-        }
-
-        .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body [data-testid="stFileUploader"] section small,
-        .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body [data-testid="stFileUploader"] section span,
-        .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body [data-testid="stFileUploader"] section p,
-        .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body [data-testid="stFileUploader"] section button {
-            opacity: 0 !important;
-            visibility: hidden !important;
-            pointer-events: none !important;
-        }
-
-        .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body [data-testid="stFileUploader"] section > div {
-            position: absolute !important;
-            inset: 0 !important;
-            z-index: 3 !important;
-            opacity: 0.001 !important;
-            visibility: visible !important;
-            pointer-events: auto !important;
-        }
-
-        .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body [data-testid="stFileUploader"] section::before {
-            content: "";
-            position: absolute;
-            left: 50%;
-            top: calc(50% - 48px);
-            z-index: 2;
-            width: 42px;
-            height: 42px;
-            transform: translateX(-50%);
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 18 V82 M18 50 H82' stroke='%238049C6' stroke-width='9' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: contain;
-            pointer-events: none;
-        }
-
-        .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body [data-testid="stFileUploader"] section::after {
-            content: "Upload file or photos\\A PDF, XLSX, CSV or multiple photos";
-            position: absolute;
-            left: 16px;
-            right: 16px;
-            top: calc(50% + 2px);
-            z-index: 2;
-            color: rgba(42, 31, 44, 0.72);
-            font-family: var(--font-mono);
-            font-size: 17px;
-            font-weight: 700;
-            line-height: 1.55;
-            text-align: center;
-            white-space: pre-line;
-            pointer-events: none;
         }
 
         .stApp:has(.company-profile-active)
@@ -2041,7 +1977,7 @@ def apply_company_profile_css() -> None:
 
             .stApp:has(.company-profile-active)
             .st-key-price_source_add_body [data-testid="stFileUploader"] section {
-                min-height: 180px;
+                min-height: 164px;
             }
 
             .price-catalog-card {
