@@ -380,7 +380,9 @@ It reads the object's persisted material/labor lines, matches materials to the `
 This layer owns arithmetic. The Estimation Agent remains responsible only for composition, quantities, labor hours, and reasoning.
 
 Legal Consent and Verified Registration v1
-The feature is cross-system and defaults off behind `LEGAL_CONSENT_ENABLED`.
+The feature is cross-system and active by default after the private-playground
+version 1.0 rollout. `LEGAL_CONSENT_ENABLED=false` remains the server-side
+rollback switch.
 Invitation signup resolves immutable published Terms and Privacy releases,
 requires the Terms checkbox in the first and only registration form, creates an
 unverified Supabase user, and records a server-side pending registration plus

@@ -84,8 +84,8 @@ class LegalDocumentSet:
 
 
 def legal_consent_enabled() -> bool:
-    """Keep the cross-system rollout off until DB, Auth email, and Pages agree."""
-    return str(get_optional_secret("LEGAL_CONSENT_ENABLED", "false")).lower() in {
+    """Enable the verified legal flow; retain an environment rollback switch."""
+    return str(get_optional_secret("LEGAL_CONSENT_ENABLED", "true")).lower() in {
         "1",
         "true",
         "yes",

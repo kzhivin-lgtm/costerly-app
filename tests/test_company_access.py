@@ -29,6 +29,12 @@ from use_cases.email_addresses import is_valid_email_address
 from use_cases.rfq_processing import assign_server_run_id
 
 
+@pytest.fixture(autouse=True)
+def _keep_company_access_regressions_on_the_rollback_path(monkeypatch):
+    """3.11.1 active-flow scenarios live in test_legal_consent.py."""
+    monkeypatch.setattr(company_auth, "legal_consent_enabled", lambda: False)
+
+
 class _Query:
     def __init__(self, rows):
         self.rows = rows

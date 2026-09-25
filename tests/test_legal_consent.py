@@ -272,8 +272,17 @@ def test_version_one_publication_matches_exact_legal_artifact_hashes():
 
     assert "Version 1.0, effective September 25, 2026" in terms_path.read_text()
     assert "Version 1.0, effective September 25, 2026" in privacy_path.read_text()
-    assert hashlib.sha256(terms_path.read_bytes()).hexdigest() in publication
-    assert hashlib.sha256(privacy_path.read_bytes()).hexdigest() in publication
+    def published_bytes(path):
+        return (
+            path.read_bytes()
+            .replace(b"<!--email_off-->", b"")
+            .replace(b"<!--/email_off-->", b"")
+        )
+
+    # Cloudflare strips only its documented email_off control comments. The
+    # stored hashes match the stable response bytes observed at the public URLs.
+    assert hashlib.sha256(published_bytes(terms_path)).hexdigest() in publication
+    assert hashlib.sha256(published_bytes(privacy_path)).hexdigest() in publication
     assert "('terms', '1.0'), ('privacy', '1.0')" in publication
 
 
@@ -303,8 +312,15 @@ def test_migration_is_additive_and_refuses_a_partial_rerun():
     assert "required company access tables are missing" in sql
 
 
-def test_feature_flag_defaults_off(monkeypatch):
+def test_feature_flag_defaults_on_with_explicit_rollback(monkeypatch):
     monkeypatch.delenv("LEGAL_CONSENT_ENABLED", raising=False)
+    monkeypatch.setattr(
+        legal_consent,
+        "get_optional_secret",
+        lambda _name, default=None: default,
+    )
+    assert legal_consent.legal_consent_enabled() is True
+
     monkeypatch.setattr(legal_consent, "get_optional_secret", lambda *_args: "false")
     assert legal_consent.legal_consent_enabled() is False
 

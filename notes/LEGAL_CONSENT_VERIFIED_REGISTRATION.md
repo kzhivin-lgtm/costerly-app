@@ -1,7 +1,7 @@
 # Legal Consent and Verified Registration
 
 Task: 3.11.1
-Status: version 1.0 rollout in progress
+Status: version 1.0 activation in progress
 
 ## Verified progress on 2026-09-25
 
@@ -19,6 +19,9 @@ Status: version 1.0 rollout in progress
 - The owner authorized the current working copy to be published as playground
   version 1.0 before external user access. Later material text changes will use
   a new immutable document version and acceptance version.
+- Public Terms and Privacy version 1.0 are deployed. Their stable response-byte
+  SHA-256 values are published in Supabase and the two release pointers select
+  version 1.0. Supabase Auth reports `mailer_autoconfirm=false`.
 - The full deterministic suite passes: 329 tests.
 
 This file is the scenario-first product contract for Terms and Conditions,
@@ -54,9 +57,10 @@ acceptance. It does not establish legal approval of the document text.
   Sign out, Auth geometry, and application navigation remain unchanged.
 - Legal records are server-written and append-only. Browser state is not legal
   evidence and cannot create or alter an acceptance record.
-- The feature remains disabled until its additive migration, published legal
-  documents, Confirm Email template, redirect allowlist, and production SMTP
-  are ready together.
+- Activation requires the additive migration, published legal documents and
+  Confirm Email behavior to agree. The private playground may use Supabase's
+  default mail delivery while the branded template and production SMTP remain
+  explicit pre-user-access work.
 
 ## Scenario matrix
 
@@ -121,8 +125,8 @@ and retention/deletion language to receive an explicit legal-content review.
    `confirm_signup.subject.txt` into the Supabase Confirm Signup template.
 7. Keep Confirm Email enabled and allow exactly
    `https://app.costerly.ai/confirm` as the production confirmation redirect.
-8. Deploy Railway and Cloudflare from the same source revision while
-   `LEGAL_CONSENT_ENABLED=false`.
+8. Deploy Railway and Cloudflare from the same source revision while the legal
+   feature is still disabled.
 9. Verify the public Terms, Privacy, logo, footer, callback route, email sender,
    and a newly generated Gmail iOS message.
 10. Set `LEGAL_CONSENT_ENABLED=true`, deploy, then execute the complete matrix

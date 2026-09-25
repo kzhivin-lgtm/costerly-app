@@ -8,14 +8,15 @@
   their authenticated `user_id` has accepted the current material release;
   otherwise they receive one blocking post-auth Terms gate. Privacy Policy is
   independently versioned, never triggers that gate by itself, and remains in
-  the production wrapper footer. The additive schema, disabled-by-default
+  the production wrapper footer. The additive schema, rollback-controlled
   application path, callback transport, confirmation-email template, legal
   drafts, and deterministic coverage are implemented locally. The production
-  migration is applied and verified with all five legal tables empty. Operator
-  identity is recorded in the drafts without claiming a not-yet-registered
-  business status. Final legal-content decisions, publication rows and hashes,
-  Supabase Confirm Signup template and redirect configuration, production SMTP,
-  deployment, and full production scenario acceptance remain pending. Contract:
+  migration is applied, Terms and Privacy version 1.0 are publicly deployed,
+  and the exact stable response hashes plus release pointers are published in
+  Supabase. Operator identity is recorded without claiming a not-yet-registered
+  business status. The owner authorized activation for the private playground.
+  Supabase Confirm Signup template, production SMTP, a real confirmation email,
+  and full production scenario acceptance remain pending. Contract:
   `notes/LEGAL_CONSENT_VERIFIED_REGISTRATION.md`.
 
 - 3.10.2 Price Source Agent accuracy: active, P1. Improve real supplier-source

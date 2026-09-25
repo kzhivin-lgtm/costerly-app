@@ -36,7 +36,7 @@ insert into public.legal_documents (
         '1',
         'Terms and Conditions',
         '2026-09-25T00:00:00Z',
-        '2a55ec765ccd6159bf122eaefad94510d6609810653701c0b8f34421ab42b92f',
+        'a4f970a69d10f0988b275b704f36bee297ad2a23c53b59853c85895d7bfc6fa4',
         '/terms',
         true,
         now()
@@ -47,7 +47,7 @@ insert into public.legal_documents (
         '1',
         'Privacy Policy',
         '2026-09-25T00:00:00Z',
-        '11f67efdce48a2277192165ba4cb6619a913b594e804779ad103892a80d9d7d0',
+        '437bd95ede5edef786762d9a5ec185935bf518808d517ddcf7d6a46188f7b17d',
         '/privacy',
         false,
         now()
