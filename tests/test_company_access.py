@@ -1327,6 +1327,23 @@ def test_price_source_metadata_uses_user_date_and_internal_tc_formats():
     assert "$" not in company_profile._price_source_tc(0.0421)
 
 
+def test_price_source_notice_exposes_all_rows_status_time_and_tc():
+    notice = company_profile._price_source_notice_text(
+        {
+            "processing_summary": {
+                "total": 10,
+                "ready": 8,
+                "unresolved": 2,
+                "excluded": 0,
+                "agent_duration_seconds": 13.836,
+                "token_cost": "0.015169",
+            }
+        }
+    )
+
+    assert notice == "10 rows extracted · 8 active · 2 unresolved · 13.8 s · TC 0.015"
+
+
 def test_price_catalog_renders_material_first_grouped_table():
     app = AppTest.from_function(_render_price_catalog_test).run()
     markup = "\n".join(item.value for item in app.markdown)
@@ -1390,12 +1407,37 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
 
 def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypatch):
     calls = []
-    monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: [])
+    sources = []
+    monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: sources)
     monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+
+    def process_source(access, **kwargs):
+        calls.append((access.company_id, kwargs))
+        sources.append(
+            {
+                "source_id": "source-new",
+                "source_name": "https://supplier.example/prices",
+                "source_kind": "url",
+                "source_url": "https://supplier.example/prices",
+                "category": "Mixed",
+                "status": "partial",
+                "processing_summary": {
+                    "total": 10,
+                    "ready": 8,
+                    "unresolved": 2,
+                    "excluded": 0,
+                    "agent_duration_seconds": 13.836,
+                    "token_cost": "0.015169",
+                },
+                "company_suppliers": None,
+            }
+        )
+        return "source-new"
+
     monkeypatch.setattr(
         company_profile,
         "process_price_source",
-        lambda access, **kwargs: calls.append((access.company_id, kwargs)),
+        process_source,
     )
 
     app = AppTest.from_function(_render_price_lists_test).run()
@@ -1417,7 +1459,10 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
             },
         )
     ]
-    assert any(notice.value == "Price source processed" for notice in app.success)
+    assert any(
+        notice.value == "10 rows extracted · 8 active · 2 unresolved · 13.8 s · TC 0.015"
+        for notice in app.success
+    )
 
 
 def test_url_source_details_keep_original_action_in_heading_without_loading_file(monkeypatch):

@@ -2697,6 +2697,46 @@ def install_upload_dragover_guard() -> None:
     )
 
 
+def install_price_source_processing_guard() -> None:
+    """Show immediate Extract progress while the fragment processes the source."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const CLEANUP_KEY = "__costerlyPriceSourceProcessingGuardCleanup";
+
+            if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
+
+            function handleClick(event) {
+                const button = event.target.closest(
+                    ".st-key-process_price_source button"
+                );
+                if (!button || button.disabled) return;
+                const card = button.closest(".st-key-price_source_add_card");
+                if (!card) return;
+
+                card.classList.add("costerly-price-source-processing");
+                button.disabled = true;
+                button.setAttribute("aria-disabled", "true");
+                const label = button.querySelector("p");
+                if (label) label.textContent = "Extracting prices";
+            }
+
+            parentDoc.addEventListener("click", handleClick, true);
+            parentWindow[CLEANUP_KEY] = () => {
+                parentDoc.removeEventListener("click", handleClick, true);
+                delete parentWindow[CLEANUP_KEY];
+            };
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def install_company_logo_picker_guard() -> None:
     """Let the full-width Change Logo action open the native logo picker."""
     with st.sidebar:

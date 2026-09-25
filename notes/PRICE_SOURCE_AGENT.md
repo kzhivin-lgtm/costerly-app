@@ -138,3 +138,32 @@ explicitly approved Source Details metadata and table additions in this task.
 
 This candidate is not a product checkpoint until the representative production
 scenario set is reviewed and accepted.
+
+## 3.12.1 revision 2 candidate
+
+The workbook `furniture_hardware_consumables.xlsx` established that extraction
+and activation must be reported separately. The agent extracted all 10 product
+rows, while the deterministic 85 percent threshold activated 8 and retained 2
+as unresolved. The main catalog showed only the 8 active prices, which made the
+result look incomplete even though both unresolved rows were persisted.
+
+Revision 2 keeps the activation threshold and unresolved policy unchanged. It:
+
+- reports extracted, active, unresolved, and excluded row counts immediately
+  after the completed run;
+- displays agent duration and compact `TC X.XXX` in the same completion notice;
+- moves Price Lists interactions into an established Streamlit fragment;
+- queues processing in the button callback, shows immediate client-side button
+  progress, and removes both explicit Price Source reruns;
+- restores pointer hit testing for the native per-file delete buttons.
+
+The rejected first implementation used `st.rerun(scope="fragment")` after
+processing. A deterministic AppTest proved that a recovery/full run can reach
+that call outside a fragment rerun and raise a Streamlit API exception. The
+final candidate performs processing and renders the fresh result in the same
+native fragment cycle, with no manual rerun.
+
+All 354 automated tests pass. Production acceptance must still confirm that
+adding and deleting files does not dim the complete page, Extract shows one
+stable progress state, and the completion notice matches the persisted source
+summary.

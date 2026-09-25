@@ -23,6 +23,7 @@ from ui.company_metrics_bridge import company_metrics_bridge
 from ui.js_guards import (
     install_company_logo_picker_guard,
     install_company_metrics_input_guard,
+    install_price_source_processing_guard,
     install_upload_dragover_guard,
 )
 from use_cases.email_addresses import is_valid_email_address
@@ -2007,6 +2008,40 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
     )
 
 
+def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
+    """Capture the selected source before the Price Lists fragment reruns."""
+    st.session_state._price_source_pending = {
+        "uploaded_files": list(st.session_state.get(uploader_key) or []),
+        "department": "",
+        "source_url": str(st.session_state.get(url_key) or ""),
+    }
+    st.session_state._price_source_processing = True
+    st.session_state.pop("_price_source_error", None)
+    st.session_state.pop("_price_source_notice", None)
+
+
+def _price_source_notice_text(source: dict | None) -> str:
+    if not source:
+        return "Price source processed"
+    summary = source.get("processing_summary") or {}
+    total = int(summary.get("total") or 0)
+    ready = int(summary.get("ready") or 0)
+    unresolved = int(summary.get("unresolved") or 0)
+    excluded = int(summary.get("excluded") or 0)
+    parts = [
+        f'{total} {"row" if total == 1 else "rows"} extracted',
+        f"{ready} active",
+        f"{unresolved} unresolved",
+    ]
+    if excluded:
+        parts.append(f"{excluded} excluded")
+    duration = summary.get("agent_duration_seconds")
+    if isinstance(duration, (int, float)):
+        parts.append(f"{duration:.1f} s")
+    parts.append(_price_source_tc(summary.get("token_cost")))
+    return " · ".join(parts)
+
+
 def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
     processing = bool(st.session_state.get("_price_source_processing"))
     with st.container(key="price_source_add_card"):
@@ -2016,12 +2051,14 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
         )
         with st.container(key="price_source_add_body"):
             uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
+            uploader_key = f"price_source_upload_{uploader_version}"
+            url_key = f"price_source_url_{uploader_version}"
             file_column, details_column = st.columns(2, gap="large")
             with file_column:
-                uploaded_files = st.file_uploader(
+                st.file_uploader(
                     "Upload file or photos",
                     accept_multiple_files=True,
-                    key=f"price_source_upload_{uploader_version}",
+                    key=uploader_key,
                     disabled=processing,
                     label_visibility="collapsed",
                     help=(
@@ -2031,10 +2068,10 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                 )
                 install_upload_dragover_guard()
             with details_column:
-                source_url = st.text_input(
+                st.text_input(
                     "Paste supplier page URL",
                     placeholder="https://supplier.example/prices",
-                    key=f"price_source_url_{uploader_version}",
+                    key=url_key,
                     disabled=processing,
                 )
                 if processing:
@@ -2042,31 +2079,26 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                         '<span class="price-source-processing-marker"></span>',
                         unsafe_allow_html=True,
                     )
-                process_clicked = st.button(
+                st.button(
                     "Extracting prices" if processing else "Extract prices",
                     key="process_price_source",
                     type="primary",
                     use_container_width=True,
                     disabled=processing,
+                    on_click=_queue_price_source_processing,
+                    args=(uploader_key, url_key),
                 )
-                if process_clicked:
-                    st.session_state._price_source_pending = {
-                        "uploaded_files": list(uploaded_files or []),
-                        "department": "",
-                        "source_url": source_url,
-                    }
-                    st.session_state._price_source_processing = True
-                    st.session_state.pop("_price_source_error", None)
-                    st.session_state.pop("_price_source_notice", None)
-                    st.rerun()
+                install_price_source_processing_guard()
 
-    if not processing:
+def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
+    if not st.session_state.get("_price_source_processing"):
         return
 
+    uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
     pending = st.session_state.get("_price_source_pending") or {}
     try:
         uploaded_file = combine_price_source_files(pending.get("uploaded_files") or [])
-        process_price_source(
+        source_id = process_price_source(
             access,
             department=str(pending.get("department") or ""),
             uploaded_file=uploaded_file,
@@ -2084,17 +2116,19 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
         )
     else:
         st.session_state._price_source_uploader_version = uploader_version + 1
-        st.session_state._price_source_notice = "Price source processed"
+        st.session_state._price_source_notice = source_id
     finally:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
-    st.rerun()
 
 
+@st.fragment
 def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     if access.role != "owner":
         st.info("Price sources are available to the company owner.")
         return
+
+    _process_pending_price_source(access, trace=trace)
 
     try:
         sources = list_price_sources(access)
@@ -2112,9 +2146,17 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
 
     _render_price_source_add(access, trace=trace)
 
-    notice = st.session_state.pop("_price_source_notice", None)
-    if notice:
-        st.success(notice)
+    notice_source_id = st.session_state.pop("_price_source_notice", None)
+    if notice_source_id:
+        notice_source = next(
+            (
+                source
+                for source in sources
+                if str(source.get("source_id")) == str(notice_source_id)
+            ),
+            None,
+        )
+        st.success(_price_source_notice_text(notice_source))
     error = st.session_state.pop("_price_source_error", None)
     if error:
         st.error(error)

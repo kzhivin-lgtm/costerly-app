@@ -919,6 +919,9 @@ def apply_company_profile_css() -> None:
             position: absolute !important;
             top: 3px !important;
             right: 3px !important;
+            z-index: 4 !important;
+            pointer-events: auto !important;
+            cursor: pointer !important;
         }
 
         .stApp:has(.company-profile-active)
@@ -968,6 +971,9 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_card:has(.price-source-processing-marker)
+        [data-testid="stButton"] button[kind="primary"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_card.costerly-price-source-processing
         [data-testid="stButton"] button[kind="primary"] {
             opacity: 1 !important;
             background: var(--color-accent) !important;
@@ -976,6 +982,9 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_card:has(.price-source-processing-marker)
+        [data-testid="stButton"] button[kind="primary"] p::before,
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_card.costerly-price-source-processing
         [data-testid="stButton"] button[kind="primary"] p::before {
             content: "";
             display: inline-block;

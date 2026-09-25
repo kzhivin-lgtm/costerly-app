@@ -6,7 +6,10 @@
   Price Catalog UI checkpoint `d18b533`. The approved v2 candidate adds row-level
   Material Type, document number and totals, VAT evidence, semantic duplicate
   protection, and Source Details timing and TC. Automated verification and a
-  representative production evidence pass remain required. Contract:
+  representative production evidence pass remain required. Revision 2 now
+  separates extracted and active counts in the completion notice, shows time
+  and TC immediately, removes manual Price Source reruns, and restores native
+  file-delete hit testing. Production interaction acceptance remains pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price

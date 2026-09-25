@@ -259,7 +259,7 @@ def test_price_source_uploader_accepts_multiple_files_before_backend_validation(
     from screens.company_profile import _render_price_source_add
 
     source = inspect.getsource(_render_price_source_add)
-    uploader_call = source.split("uploaded_files = st.file_uploader(", 1)[1].split(
+    uploader_call = source.split("st.file_uploader(", 1)[1].split(
         ")\n", 1
     )[0]
     assert "accept_multiple_files=True" in uploader_call
@@ -298,6 +298,24 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     assert "section button" not in price_source_dropzone_rules
     assert '[data-testid="stFileChip"] small' in source
     assert "display: none !important" in source
+    delete_rule = source.split('[data-testid="stFileChipDeleteBtn"] {', 1)[1].split(
+        "}", 1
+    )[0]
+    assert "z-index: 4 !important" in delete_rule
+    assert "pointer-events: auto !important" in delete_rule
+
+
+def test_price_source_processing_uses_callback_without_manual_rerun():
+    from screens.company_profile import _render_price_lists, _render_price_source_add
+
+    add_source = inspect.getsource(_render_price_source_add)
+    lists_source = inspect.getsource(_render_price_lists)
+
+    assert "on_click=_queue_price_source_processing" in add_source
+    assert "install_price_source_processing_guard()" in add_source
+    assert "st.rerun" not in add_source
+    assert lists_source.startswith("@st.fragment")
+    assert "_process_pending_price_source(access, trace=trace)" in lists_source
 
 
 def test_price_source_uploader_installs_dragover_guard():
