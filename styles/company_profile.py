@@ -767,6 +767,13 @@ def apply_company_profile_css() -> None:
             transform: translateY(-4px);
         }
 
+        .price-source-add-instruction {
+            color: var(--color-text-strong);
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"] > label {
             display: none !important;

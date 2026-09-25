@@ -34,7 +34,6 @@ from use_cases.company_logo import (
 )
 from use_cases.price_sources import (
     PRICE_CATALOG_DEPARTMENTS,
-    PRICE_SOURCE_DEPARTMENTS,
     PriceSourceError,
     canonical_price_source_category,
     combine_price_source_files,
@@ -2033,19 +2032,16 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     "of the same document"
                 )
             with details_column:
+                st.markdown(
+                    '<div class="price-source-add-instruction">'
+                    'Attach files or provide a link to a pricing page'
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
                 source_url = st.text_input(
                     "Paste supplier page URL",
                     placeholder="https://supplier.example/prices",
                     key=f"price_source_url_{uploader_version}",
-                    disabled=processing,
-                )
-                department = st.selectbox(
-                    "Department (optional)",
-                    PRICE_SOURCE_DEPARTMENTS,
-                    index=None,
-                    format_func=_price_source_department_label,
-                    placeholder="Detect automatically",
-                    key="price_source_department",
                     disabled=processing,
                 )
                 if processing:
@@ -2063,7 +2059,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                 if process_clicked:
                     st.session_state._price_source_pending = {
                         "uploaded_files": list(uploaded_files or []),
-                        "department": str(department or ""),
+                        "department": "",
                         "source_url": source_url,
                     }
                     st.session_state._price_source_processing = True

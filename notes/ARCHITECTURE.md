@@ -269,8 +269,9 @@ Company Price Sources contract (3.7.1)
 Price Lists accepts one logical document or one public URL per operation. One
 logical document may be one file or an ordered set of JPEG/PNG photographs,
 which deterministic preprocessing combines into one private PDF source before
-agent extraction. The owner may choose the department or leave it for automatic
-classification. Supplier identity, document type, document number, document date,
+agent extraction. The form does not ask the owner to classify the source because
+one document may contain rows from several departments. Supplier identity,
+document type, document number, document date,
 price context, currency, VAT basis, subtotal, VAT amount, final total, product
 rows, units, package quantities, and conversions are inferred by the import
 pipeline. Each product row owns its Material Type because a single commercial
@@ -322,9 +323,10 @@ Price Catalog UI contract (3.10.1)
 The primary Price Lists presentation reads active `company_material_offers`
 joined to normalized `company_material_items`, supplier, source-row, and source
 provenance. It groups offers by the user-facing `Wood`, `Metal`, and `Finishing`
-departments and department-specific material types. Add Source accepts only an
-optional department, while the extraction agent infers the narrowest material
-type. The catalog exposes Department, Material Type, and Supplier filters;
+departments and department-specific material types. Add Source does not expose a
+source-level category or department selector. The extraction agent infers the
+narrowest Material Type independently for each row. The catalog exposes
+Department, Material Type, and Supplier filters;
 Search is intentionally omitted from this compact revision. Source documents remain
 in a separate private library. A catalog row never replaces or discards source
 evidence. Foreign-currency offers retain their actual currency until a verified

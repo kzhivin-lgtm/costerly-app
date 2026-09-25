@@ -1370,13 +1370,14 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
 
     assert not app.exception
     assert "Add price source" in markup
+    assert "Attach files or provide a link to a pricing page" in markup
     assert "Material prices" in markup
     assert "Wood" in markup
     assert "Metal" in markup
     assert "Coating" in markup
     assert markup.count("No active prices") == 3
     assert any(button.label == "Extract prices" for button in app.button)
-    assert any(field.label == "Department (optional)" for field in app.selectbox)
+    assert not any(field.label == "Department (optional)" for field in app.selectbox)
     assert not any(field.label == "Search" for field in app.text_input)
     assert any(field.label == "Paste supplier page URL" for field in app.text_input)
     assert len(app.expander) == 1

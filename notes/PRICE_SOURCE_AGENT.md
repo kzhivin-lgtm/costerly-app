@@ -133,6 +133,8 @@ explicitly approved Source Details metadata and table additions in this task.
   them in the browser;
 - the named customer or delivery recipient may belong to another company and
   never affects source acceptance or row confidence.
+- the upload form has no source-level Department or Category selector because
+  classification belongs to each extracted row.
 
 This candidate is not a product checkpoint until the representative production
 scenario set is reviewed and accepted.
