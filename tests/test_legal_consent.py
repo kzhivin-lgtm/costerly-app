@@ -418,30 +418,19 @@ def test_version_one_publication_remains_an_immutable_audit_record():
     assert "437bd95ede5edef786762d9a5ec185935bf518808d517ddcf7d6a46188f7b17d" in publication
 
 
-def test_version_one_one_publication_matches_current_legal_artifact_hashes():
-    terms_path = ROOT / "cloudflare/terms.html"
+def test_version_one_one_publication_remains_an_immutable_audit_record():
     privacy_path = ROOT / "cloudflare/privacy.html"
     publication = (
         ROOT / "db/sql/2026_09_25_publish_legal_documents_v1_1.sql"
     ).read_text()
 
-    assert "Version 1.1, effective September 25, 2026" in terms_path.read_text()
     assert "Version 1.1, effective September 25, 2026" in privacy_path.read_text()
-    def published_bytes(path):
-        return (
-            path.read_bytes()
-            .replace(b"<!--email_off-->", b"")
-            .replace(b"<!--/email_off-->", b"")
-        )
-
-    # Cloudflare strips only its documented email_off control comments. The
-    # stored hashes match the stable response bytes observed at the public URLs.
-    assert hashlib.sha256(published_bytes(terms_path)).hexdigest() in publication
-    assert hashlib.sha256(published_bytes(privacy_path)).hexdigest() in publication
+    assert "c57cb8acd7fc91a59d05a6c49bf0fc52b9efbf1e614500a092d59039952630c1" in publication
+    assert "96fbec67a23be6b518a60ae42d988a8e86f745de1e2b718f8a32b03131b44801" in publication
     assert "('terms', '1.1'), ('privacy', '1.1')" in publication
 
 
-def test_terms_one_one_contains_the_agreed_product_and_risk_contract():
+def test_terms_one_two_contains_the_agreed_product_and_risk_contract():
     terms = (ROOT / "cloudflare/terms.html").read_text()
     privacy = (ROOT / "cloudflare/privacy.html").read_text()
 
@@ -453,7 +442,7 @@ def test_terms_one_one_contains_the_agreed_product_and_risk_contract():
         "defend, indemnify and hold harmless",
         "limited, non-exclusive license",
         "need-to-know basis",
-        "must not use Customer Content to train or improve",
+        "not used to train or improve the provider's general-purpose models",
         "output generated from Customer Content belongs to the Customer",
         "does not automatically convert into a paid subscription",
         "automatically renews",
@@ -474,6 +463,44 @@ def test_terms_one_one_contains_the_agreed_product_and_risk_contract():
     assert "where configuration permits" not in terms
     assert "where their applicable service terms provide" not in terms
     assert "Coasterly" not in terms + privacy
+
+
+def test_terms_one_two_closes_customer_user_billing_ai_and_processing_gaps():
+    terms = (ROOT / "cloudflare/terms.html").read_text()
+    publication = (
+        ROOT / "db/sql/2026_09_25_publish_legal_documents_v1_2.sql"
+    ).read_text()
+
+    required_terms = (
+        "Version 1.2, effective September 25, 2026",
+        "The Customer, not an individual user or payer",
+        'Organization Admins and Members are collectively "Users."',
+        "authorized to create the account for the Customer, accept these Terms for the Customer",
+        "A Member does not represent",
+        "all acts and omissions of its Users",
+        "its Users' acts or omissions",
+        "clients, customers, contractors, architects, suppliers, employees, data subjects",
+        "trade name, not a separate legal entity",
+        "only AI-provider services, account types, contractual terms and technical configurations",
+        "A paid subscription belongs to the Customer",
+        "identity of the cardholder or payment-method owner does not change the Customer",
+        "Customer is the controller and the Operator is the processor",
+        "confirmed personal-data breach affecting Customer Content",
+        "cross-border transfers needed to provide the service and permitted by applicable law",
+        "separate Data Processing Agreement may supplement these Terms",
+    )
+    for clause in required_terms:
+        assert clause in terms
+
+    published_bytes = (
+        (ROOT / "cloudflare/terms.html")
+        .read_bytes()
+        .replace(b"<!--email_off-->", b"")
+        .replace(b"<!--/email_off-->", b"")
+    )
+    assert hashlib.sha256(published_bytes).hexdigest() in publication
+    assert "acceptance_version from 2 to 3" in publication
+    assert "where document_type = 'terms' and version = '1.1'" in publication
 
 
 def test_migration_keeps_acceptance_evidence_append_only_and_server_written():

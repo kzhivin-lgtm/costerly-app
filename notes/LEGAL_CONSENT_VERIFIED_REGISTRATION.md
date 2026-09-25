@@ -1,7 +1,7 @@
 # Legal Consent and Verified Registration
 
 Task: 3.11.1
-Status: version 1.1 activated, production acceptance incomplete
+Status: version 1.2 prepared, activation and production acceptance pending
 
 ## Verified progress on 2026-09-25
 
@@ -33,11 +33,21 @@ Status: version 1.1 activated, production acceptance incomplete
   company activation, existing-user gate, mobile pass, and branded Supabase
   Confirm Signup template remain acceptance work. This is active playground
   functionality, not a completed production checkpoint.
-- The full deterministic suite passes: 335 tests.
+- The full deterministic suite passes: 340 tests.
 - Material Terms of Service version 1.1 and Privacy Policy version 1.1 are
   active. Terms acceptance version advanced from 1 to 2; Privacy remains
   acceptance version 1 and does not create its own gate. There were no existing
   acceptance events or pending registrations when version 1.1 was activated.
+- Material Terms of Service version 1.2 is prepared for publication and advances
+  the acceptance version from 2 to 3. It makes the Customer the organization
+  and contractual subscription holder; defines Admins and Members as Users;
+  separates an authorized payer from the Customer; attributes User acts and
+  omissions to the Customer; strengthens third-party indemnity, AI-provider
+  no-training configuration, and billing language; identifies Costerly AI only
+  as the Operator's trade name; and adds baseline controller, processor,
+  subprocessor, security, breach, assistance, transfer, deletion and DPA terms.
+  Privacy remains at version 1.1 because this revision does not change the
+  separate Privacy Policy.
 
 This file is the scenario-first product contract for Terms of Service,
 Privacy Policy visibility, email verification, and later material Terms

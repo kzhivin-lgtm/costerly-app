@@ -17,6 +17,12 @@
   Version 1.1 records the operator as an Israeli exempt dealer under
   business registration and exempt dealer number 346904519, uses the canonical
   Costerly AI brand, and advances the material Terms acceptance version to 2.
+  Terms version 1.2 is prepared locally as a material release with acceptance
+  version 3. It separates the Customer organization from its Users and payer,
+  clarifies authority and subscription ownership, strengthens third-party and
+  AI-provider protections, identifies Costerly AI as the Operator's trade name,
+  and adds baseline data-processing terms. Its immutable row and release
+  pointer have not yet been published to Supabase.
   The owner authorized activation for the private playground.
   Production confirms the anonymous company-invitation screen and ordinary
   Sign in behavior; its verification invitation remains unused. Supabase
