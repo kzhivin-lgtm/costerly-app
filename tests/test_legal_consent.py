@@ -463,14 +463,10 @@ def test_terms_one_two_contains_the_agreed_product_and_risk_contract():
     assert "Coasterly" not in terms + privacy
 
 
-def test_terms_one_two_closes_customer_user_billing_ai_and_processing_gaps():
+def test_current_terms_close_customer_user_billing_ai_and_processing_gaps():
     terms = (ROOT / "cloudflare/terms.html").read_text()
-    publication = (
-        ROOT / "db/sql/2026_09_25_publish_legal_documents_v1_2.sql"
-    ).read_text()
 
     required_terms = (
-        "Version 1.2, effective September 25, 2026",
         "The Customer, not an individual user or payer",
         'Organization Admins and Members are collectively "Users."',
         "authorized to create the account for the Customer, accept these Terms for the Customer",
@@ -490,15 +486,49 @@ def test_terms_one_two_closes_customer_user_billing_ai_and_processing_gaps():
     for clause in required_terms:
         assert clause in terms
 
+
+def test_terms_one_two_publication_remains_an_immutable_audit_record():
+    publication = (
+        ROOT / "db/sql/2026_09_25_publish_legal_documents_v1_2.sql"
+    ).read_text()
+
+    assert "aadc32bc8cf8c2b30d8d8d7b4e721ee5864fd39d6c61ca54ddee30e6b00a5ec3" in publication
+    assert "acceptance_version from 2 to 3" in publication
+    assert "where document_type = 'terms' and version = '1.1'" in publication
+
+
+def test_terms_one_three_finalizes_user_duties_and_customer_content_scope():
+    terms_path = ROOT / "cloudflare/terms.html"
+    terms = terms_path.read_text()
+    publication = (
+        ROOT / "db/sql/2026_09_25_publish_terms_v1_3.sql"
+    ).read_text()
+
+    assert "Version 1.3, effective September 25, 2026" in terms
+    assert (
+        "Each User who accepts these Terms is individually bound by the provisions "
+        "that apply to Users and is responsible for that User's own actions."
+    ) in terms
+    assert "provide, operate, secure and support the service" in terms
+    assert "develop service functionality" not in terms
+    assert "develop the service functionality" not in terms
+    assert "registration no. 346904519" in terms
+    assert "business registration and exempt dealer number" not in terms
+
+    # The final pass deliberately preserves these accepted protections.
+    assert "A separate Data Processing Agreement may supplement these Terms" in terms
+    assert "Subject to applicable law, Customer Content may be stored indefinitely" in terms
+    assert "defend, indemnify and hold harmless" in terms
+    assert "its Users' acts or omissions" in terms
+
     published_bytes = (
-        (ROOT / "cloudflare/terms.html")
-        .read_bytes()
+        terms_path.read_bytes()
         .replace(b"<!--email_off-->", b"")
         .replace(b"<!--/email_off-->", b"")
     )
     assert hashlib.sha256(published_bytes).hexdigest() in publication
-    assert "acceptance_version from 2 to 3" in publication
-    assert "where document_type = 'terms' and version = '1.1'" in publication
+    assert "acceptance_version from 3 to 4" in publication
+    assert "where document_type = 'terms' and version = '1.2'" in publication
 
 
 def test_privacy_one_two_matches_the_reviewed_notice_and_tracking_contract():

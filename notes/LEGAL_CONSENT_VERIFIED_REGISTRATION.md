@@ -61,7 +61,15 @@ Status: version 1.2 activated, production acceptance incomplete
   analytics, strengthens international-transfer language, and uses the same
   Operator and trade-name wording as Terms. Privacy acceptance version remains
   1, `requires_reacceptance` is false, and the release does not trigger Terms
-  reacceptance. The deterministic suite passes: 341 tests.
+  reacceptance.
+- Terms of Service version 1.3 is prepared as the final pre-launch text pass.
+  It makes each accepting User individually bound by User provisions, removes
+  permission to use Customer Content to develop service functionality, and
+  standardizes the Operator identifier as `registration no. 346904519`. The
+  accepted indemnity, separate-DPA clause, and `Subject to applicable law`
+  retention protection remain unchanged. This material release advances the
+  Terms acceptance version from 3 to 4. The deterministic suite passes: 343
+  tests.
 
 This file is the scenario-first product contract for Terms of Service,
 Privacy Policy visibility, email verification, and later material Terms

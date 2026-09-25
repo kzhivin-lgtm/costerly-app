@@ -30,6 +30,12 @@
   public response hash matches its immutable Supabase row, the Privacy release
   pointer selects version 1.2, and its unchanged acceptance version 1 does not
   trigger the Terms gate.
+  Terms version 1.3 is prepared locally as the final pre-launch material text
+  pass with acceptance version 4. It binds accepting Users individually,
+  removes Customer Content use for service development, and standardizes the
+  Operator registration wording while preserving Section 15, the separate-DPA
+  clause, and the applicable-law retention qualification. Its immutable row
+  and release pointer are not yet published to Supabase.
   The owner authorized activation for the private playground.
   Production confirms the anonymous company-invitation screen and ordinary
   Sign in behavior; its verification invitation remains unused. Supabase
