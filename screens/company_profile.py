@@ -2020,14 +2020,17 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
             with file_column:
                 uploaded_files = st.file_uploader(
                     "Upload file or photos",
-                    type=["pdf", "xlsx", "csv", "jpg", "jpeg", "png"],
                     accept_multiple_files=True,
                     key=f"price_source_upload_{uploader_version}",
                     disabled=processing,
                     help=(
                         "Upload one PDF or spreadsheet, or select several JPEG/PNG photos "
-                        "that belong to the same document."
+                        "that belong to the same document"
                     ),
+                )
+                st.caption(
+                    "One PDF, XLSX or CSV, or multiple JPG, JPEG or PNG photos "
+                    "of the same document"
                 )
             with details_column:
                 source_url = st.text_input(

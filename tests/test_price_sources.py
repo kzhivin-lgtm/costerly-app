@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from io import BytesIO
+import inspect
 from pathlib import Path
 from types import SimpleNamespace
+import fitz
 import pandas as pd
 import pytest
 from PIL import Image
@@ -232,17 +234,36 @@ def test_legacy_material_types_are_canonicalized_without_splitting_filters():
     assert PRICE_CATALOG_DEPARTMENTS["Metal"] == "Metal"
 
 
-def test_several_ordered_photos_become_one_pdf_source():
+def test_four_ordered_photos_become_one_pdf_source():
     photos = []
-    for index, color in enumerate(((255, 255, 255), (220, 220, 220)), start=1):
+    colors = (
+        (255, 255, 255),
+        (235, 235, 235),
+        (220, 220, 220),
+        (205, 205, 205),
+    )
+    for index, color in enumerate(colors, start=1):
         output = BytesIO()
         Image.new("RGB", (16, 16), color).save(output, format="PNG")
         photos.append(_UploadedPhoto(f"page-{index}.png", output.getvalue()))
 
     combined = combine_price_source_files(photos)
 
-    assert combined.name == "photo-document-2-pages.pdf"
+    assert combined.name == "photo-document-4-pages.pdf"
     assert combined.getvalue().startswith(b"%PDF")
+    with fitz.open(stream=combined.getvalue(), filetype="pdf") as document:
+        assert document.page_count == 4
+
+
+def test_price_source_uploader_accepts_multiple_files_before_backend_validation():
+    from screens.company_profile import _render_price_source_add
+
+    source = inspect.getsource(_render_price_source_add)
+    uploader_call = source.split("uploaded_files = st.file_uploader(", 1)[1].split(
+        ")\n", 1
+    )[0]
+    assert "accept_multiple_files=True" in uploader_call
+    assert "type=" not in uploader_call
 
 
 def test_multiple_upload_rejects_mixed_document_types():
@@ -350,6 +371,12 @@ def test_prompt_preserves_item_vat_basis_and_excludes_document_totals():
     prompt = Path("agents/prompts/price_source_agent_prompt.md").read_text()
     assert "subtotal, VAT or tax total, grand total, and amount due" in prompt
     assert "Never add\n  or remove VAT from a product price" in prompt
+
+
+def test_prompt_accepts_documents_addressed_to_another_company():
+    prompt = Path("agents/prompts/price_source_agent_prompt.md").read_text()
+    assert "may be a different\n   company from the current user" in prompt
+    assert "must never\n   cause rejection, exclusion, or reduced confidence" in prompt
 
 
 def test_prompt_preserves_raw_unit_and_normalizes_common_square_meter_aliases():

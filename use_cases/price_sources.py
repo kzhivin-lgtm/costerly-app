@@ -92,10 +92,10 @@ def combine_price_source_files(files: list) -> object | None:
     suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
     if any(suffix not in {".jpg", ".jpeg", ".png"} for suffix in suffixes):
         raise PriceSourceError(
-            "Select one PDF or spreadsheet, or select several JPEG/PNG photos from the same document."
+            "Select one PDF or spreadsheet, or several JPEG/PNG photos from the same document"
         )
     if sum(len(item.getvalue()) for item in selected) > MAX_SOURCE_BYTES:
-        raise PriceSourceError("The combined price source must be 50 MB or smaller.")
+        raise PriceSourceError("The combined price source must be 50 MB or smaller")
     pages: list[Image.Image] = []
     try:
         for item in selected:
@@ -106,7 +106,7 @@ def combine_price_source_files(files: list) -> object | None:
         output = BytesIO()
         pages[0].save(output, format="PDF", save_all=True, append_images=pages[1:])
     except (UnidentifiedImageError, OSError) as exc:
-        raise PriceSourceError("One of the selected photos could not be read.") from exc
+        raise PriceSourceError("One of the selected photos could not be read") from exc
     finally:
         for page in pages:
             page.close()
@@ -378,7 +378,7 @@ def extract_spreadsheet_text(file_name: str, data: bytes) -> str:
 def _source_extension(file_name: str) -> str:
     suffix = Path(file_name).suffix.lower()
     if suffix not in SUPPORTED_SUFFIXES:
-        raise PriceSourceError("Upload PDF, XLSX, CSV, JPEG, or PNG.")
+        raise PriceSourceError("Upload PDF, XLSX, CSV, JPEG, or PNG")
     return suffix
 
 
@@ -549,7 +549,7 @@ def process_price_source(
         suffix = _source_extension(source_name)
         source_bytes = uploaded_file.getvalue()
         if not source_bytes or len(source_bytes) > MAX_SOURCE_BYTES:
-            raise PriceSourceError("The price source must be between 1 byte and 50 MB.")
+            raise PriceSourceError("The price source must be between 1 byte and 50 MB")
         source_kind = "file"
         resolved_url = None
         _emit_duration(

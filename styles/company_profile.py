@@ -818,7 +818,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"] section::after {
-            content: "Upload file or photos\\A PDF, XLSX, CSV, PNG";
+            content: "Upload file or photos\\A PDF, XLSX, CSV or multiple photos";
             position: absolute;
             left: 16px;
             right: 16px;

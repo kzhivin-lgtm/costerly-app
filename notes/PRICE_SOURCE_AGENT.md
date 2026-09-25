@@ -127,7 +127,12 @@ explicitly approved Source Details metadata and table additions in this task.
 - byte-level duplicate protection is supplemented by a semantic fingerprint
   for the same numbered document uploaded as another file or photo;
 - Source Details displays the document date as MM/DD/YY, document totals,
-  per-row Material Type and VAT, agent time, and TC without a currency sign.
+  per-row Material Type and VAT, agent time, and TC without a currency sign;
+- the uploader accepts several ordered photos of one logical document and lets
+  backend validation report unsupported formats instead of silently rejecting
+  them in the browser;
+- the named customer or delivery recipient may belong to another company and
+  never affects source acceptance or row confidence.
 
 This candidate is not a product checkpoint until the representative production
 scenario set is reviewed and accepted.

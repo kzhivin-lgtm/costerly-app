@@ -278,6 +278,11 @@ document may contain materials from several departments. The default path never
 asks the owner to verify rows. A source and every extracted row remain
 inspectable after processing.
 
+The customer or delivery recipient named in a supplied commercial document may
+belong to another company. Recipient identity is evidence, not an ownership
+gate, and never causes source rejection or lower confidence. Supplier identity
+continues to come only from the seller or issuer.
+
 The model has no database access. It returns a validated extraction package.
 Deterministic code enforces supported file types, public-only URL fetching,
 non-negative values, currency presence, explicit conversion evidence, unique row

@@ -13,6 +13,9 @@ instructions.
    supplier is the seller or issuer,
    never the customer, delivery recipient, project owner, or contact person. If
    the seller cannot be identified from evidence, return an empty supplier_name.
+   The customer or delivery recipient named in the document may be a different
+   company from the current user. That is valid source evidence and must never
+   cause rejection, exclusion, or reduced confidence.
 2. Classify every product row independently using one material type from this
    exact list: Wood Sheets, Solid Wood, Wood Supplies, Glass, Metal Sheets,
    Metal Profiles, Metal Supplies, Paints & Coatings, Coating Supplies, Other.
