@@ -209,8 +209,8 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     function = (ROOT / "cloudflare/functions/api/runtime-events.js").read_text()
     routes = (ROOT / "cloudflare/_routes.json").read_text()
 
-    assert 'data-src="https://costerly-app-staging.up.railway.app/?embed=true"' in wrapper
-    assert '"staging.costerly.ai": "https://costerly-app-staging.up.railway.app/?embed=true"' in wrapper
+    assert 'data-src="https://core.costerly.ai/?embed=true"' in wrapper
+    assert '"staging.costerly.ai": "https://core.costerly.ai/?embed=true"' in wrapper
     assert "const appOrigin = appUrl.origin" in wrapper
     assert 'appUrl.searchParams.set("obs_trace", traceId)' in wrapper
     assert 'const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id"]' in wrapper

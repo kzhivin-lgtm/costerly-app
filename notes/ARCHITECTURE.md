@@ -363,9 +363,11 @@ contract.
 
 Railway Hosting Topology v1
 `app.costerly.ai` remains the production Cloudflare Pages wrapper and embeds
-`https://costerly-app-staging.up.railway.app/?embed=true`. The same wrapper
-served at `staging.costerly.ai` selects that Railway backend explicitly. The Railway-generated
-hostname is an infrastructure endpoint, not a user-facing product address.
+`https://core.costerly.ai/?embed=true`. The same wrapper served at
+`staging.costerly.ai` selects that backend explicitly. `core.costerly.ai` is a
+same-site technical alias for the Railway service. It keeps Streamlit's
+`SameSite=Lax` XSRF cookie available to iframe upload requests without exposing
+the Railway-generated hostname as a user-facing product address.
 Cloudflare owns the loading and transition mask, route synchronization, branded
 origin, and browser telemetry endpoint. Railway owns the Streamlit process and
 its runtime variables. GitHub remains the deployment source. The prior

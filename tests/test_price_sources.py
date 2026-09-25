@@ -296,6 +296,8 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     assert "box-shadow: 0 0 0 3px var(--input-focus-ring) !important" in source
     assert "section small" not in price_source_dropzone_rules
     assert "section button" not in price_source_dropzone_rules
+    assert '[data-testid="stFileChip"] small' in source
+    assert "display: none !important" in source
 
 
 def test_price_source_uploader_installs_dragover_guard():

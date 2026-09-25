@@ -255,7 +255,7 @@ first-transition client and Streamlit gap remains a production outlier to track.
 ## Railway staging acceptance
 
 The staging wrapper origin is `https://staging.costerly.ai`; its selected app
-origin is `https://costerly-app-staging.up.railway.app`. Browser events from
+origin is `https://core.costerly.ai`. Browser events from
 both the production and staging wrapper origins are accepted by the same Pages
 Function, while iframe messages are accepted only from the backend selected for
 the current hostname.

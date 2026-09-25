@@ -910,6 +910,11 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChip"] small {
+            display: none !important;
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileChipDeleteBtn"] {
             position: absolute !important;
             top: 3px !important;

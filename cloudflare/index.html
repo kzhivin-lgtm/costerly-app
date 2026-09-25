@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>costerly.ai</title>
-    <meta name="costerly-wrapper-version" content="v3.11.1-legal-consent" />
+    <meta name="costerly-wrapper-version" content="v3.12.1-price-source-upload" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -93,7 +93,7 @@
     <div class="app-loading-mask" id="app-loading-mask" aria-hidden="true"></div>
     <iframe
       id="costerly-app-frame"
-      data-src="https://costerly-app-staging.up.railway.app/?embed=true"
+      data-src="https://core.costerly.ai/?embed=true"
       title="costerly.ai"
       allow="clipboard-write; clipboard-read; fullscreen"
     ></iframe>
@@ -102,14 +102,14 @@
     </div>
     <script>
       (() => {
-        const BUILD_VERSION = "3.11.1";
+        const BUILD_VERSION = "3.12.1";
         const startedAt = performance.now();
         const traceId = crypto.randomUUID();
         const timeline = [];
         const mask = document.getElementById("app-loading-mask");
         const frame = document.getElementById("costerly-app-frame");
         const backendByHostname = Object.freeze({
-          "staging.costerly.ai": "https://costerly-app-staging.up.railway.app/?embed=true",
+          "staging.costerly.ai": "https://core.costerly.ai/?embed=true",
         });
         const selectedBackend = backendByHostname[window.location.hostname];
         if (selectedBackend) frame.dataset.src = selectedBackend;
