@@ -1342,6 +1342,9 @@ def test_price_source_notice_exposes_all_rows_status_time_and_tc():
             "processing_summary": {
                 "total": 10,
                 "ready": 8,
+                "new": 2,
+                "updated": 1,
+                "unchanged": 5,
                 "unresolved": 2,
                 "excluded": 0,
                 "agent_duration_seconds": 13.836,
@@ -1350,7 +1353,43 @@ def test_price_source_notice_exposes_all_rows_status_time_and_tc():
         }
     )
 
-    assert notice == "10 rows extracted · 8 active · 2 unresolved · 13.8 s · TC 0.015"
+    assert notice == (
+        "10 rows extracted · 2 new · 1 updated · 5 unchanged · "
+        "2 unresolved · 13.8 s · TC 0.015"
+    )
+
+
+def test_exact_duplicate_notice_reports_cached_unchanged_result_without_agent_cost():
+    notice = company_profile._price_source_notice_text(
+        {
+            "summary": {
+                "total": 10,
+                "ready": 10,
+                "new": 0,
+                "updated": 0,
+                "unchanged": 10,
+                "unresolved": 0,
+                "excluded": 0,
+                "exact_duplicate": True,
+                "agent_duration_seconds": 0.0,
+                "token_cost": 0.0,
+            }
+        }
+    )
+
+    assert notice == "Already processed · 10 unchanged · 0.0 s · TC 0.000"
+
+
+def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():
+    screen_source = Path("screens/company_profile.py").read_text()
+    css = Path("styles/company_profile.py").read_text()
+
+    assert 'key=f"catalog_remove_{row_id}", help=' not in screen_source
+    assert 'key=f"review_remove_{row_id}", help=' not in screen_source
+    assert '[class*="st-key-catalog_remove_"]' in css
+    assert 'width: 30px !important;' in css
+    assert '[class*="st-key-catalog_edit_"]' in css
+    assert 'height: 32px !important;' in css
 
 
 def test_price_catalog_renders_material_first_grouped_table():

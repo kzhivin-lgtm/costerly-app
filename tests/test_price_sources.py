@@ -35,6 +35,7 @@ from use_cases.price_sources import (
     list_unresolved_price_source_rows,
     price_source_material_types,
     price_source_semantic_fingerprint,
+    price_offer_matches_row,
     remove_price_source_row,
     save_price_source_row,
 )
@@ -309,6 +310,28 @@ def test_semantic_fingerprint_detects_same_document_across_file_variants():
     assert price_source_semantic_fingerprint(original) != price_source_semantic_fingerprint(
         different_document
     )
+
+
+def test_price_offer_diff_ignores_representation_but_detects_price_affecting_changes():
+    row = _result()["rows"][0]
+    offer = {
+        "source_price": "90.0000",
+        "source_unit": "sheets",
+        "purchase_unit": "sheet",
+        "calculation_unit": "m2",
+        "conversion_factor": "2.97680000",
+        "normalized_price": f'{row["normalized_price"]:.4f}',
+        "currency": "ils",
+        "vat_included": False,
+    }
+
+    assert price_offer_matches_row(offer, row, default_currency="ILS") is True
+
+    changed_price = {**row, "raw_price": 91, "normalized_price": 91 / 2.9768}
+    assert price_offer_matches_row(offer, changed_price, default_currency="ILS") is False
+
+    changed_vat = {**row, "raw_vat_mode": "included"}
+    assert price_offer_matches_row(offer, changed_vat, default_currency="ILS") is False
 
 
 def test_department_can_be_left_for_automatic_detection():

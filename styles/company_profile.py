@@ -1133,23 +1133,143 @@ def apply_company_profile_css() -> None:
         }
 
         .price-catalog-original-name {
+            display: block;
+            margin-top: 3px;
             color: var(--color-text-muted);
             font-size: 12px;
+            font-weight: 400;
+            line-height: 1.3;
+        }
+
+        .price-catalog-material-name,
+        .price-catalog-cell,
+        .price-source-editor-title {
+            color: var(--color-text-strong);
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.35;
+        }
+
+        .price-catalog-material-name {
+            font-weight: 500;
+        }
+
+        .price-catalog-cell-nowrap {
+            white-space: nowrap;
         }
 
         [class*="st-key-price_source_row_"],
         [class*="st-key-price_catalog_row_"],
         [class*="st-key-price_review_row_"] {
-            padding: 10px 16px;
+            padding: 9px 16px;
             border-top: 1px solid var(--color-border-soft);
+            background: #FBF9FD;
+            transition: background-color 120ms ease;
         }
 
-        [class*="st-key-price_source_row_"] [data-testid="stForm"] {
+        [class*="st-key-price_catalog_row_"]:hover,
+        [class*="st-key-price_review_row_"]:hover {
+            background: #F8F3FC;
+        }
+
+        [class*="st-key-price_source_row_"] [data-testid="stForm"],
+        [class*="st-key-price_catalog_row_"] [data-testid="stForm"],
+        [class*="st-key-price_review_row_"] [data-testid="stForm"] {
             margin-top: 10px;
             padding: 16px;
             border: 1px solid var(--color-border-soft);
             border-radius: 12px;
-            background: #FAF8FC;
+            background: #FFFFFF;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_catalog_section [data-testid="stExpander"] {
+            overflow: hidden;
+            border-color: var(--color-border-soft) !important;
+            border-radius: 14px !important;
+            background: #FBF9FD !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_catalog_section [data-testid="stExpander"] summary {
+            min-height: 46px;
+            background: #F7F3FA;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-catalog_remove_"] [data-testid="stButton"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-review_remove_"] [data-testid="stButton"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-remove_price_row_"] [data-testid="stButton"] button {
+            width: 30px !important;
+            min-width: 30px !important;
+            max-width: 30px !important;
+            height: 30px !important;
+            min-height: 30px !important;
+            padding: 0 !important;
+            border-color: transparent !important;
+            border-radius: 8px !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: var(--color-text-muted) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-catalog_remove_"] [data-testid="stButton"] button p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-review_remove_"] [data-testid="stButton"] button p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-remove_price_row_"] [data-testid="stButton"] button p {
+            font-size: 20px !important;
+            font-weight: 400 !important;
+            line-height: 1 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-catalog_remove_"] [data-testid="stButton"] button:hover,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-review_remove_"] [data-testid="stButton"] button:hover,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-remove_price_row_"] [data-testid="stButton"] button:hover {
+            border-color: rgba(190, 57, 67, 0.22) !important;
+            background: rgba(190, 57, 67, 0.08) !important;
+            color: var(--color-error) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-catalog_edit_"] [data-testid="stButton"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-catalog_source_"] [data-testid="stButton"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-review_price_"] [data-testid="stButton"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-edit_price_row_"] [data-testid="stButton"] button {
+            width: 100% !important;
+            height: 32px !important;
+            min-height: 32px !important;
+            padding: 0 8px !important;
+            border-radius: 8px !important;
+            font-size: 11px !important;
+            font-weight: 500 !important;
+            letter-spacing: 0.01em !important;
+            text-transform: none !important;
+            white-space: nowrap !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-catalog_edit_"] [data-testid="stButton"] button p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-catalog_source_"] [data-testid="stButton"] button p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-review_price_"] [data-testid="stButton"] button p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-edit_price_row_"] [data-testid="stButton"] button p {
+            overflow: visible !important;
+            font-size: inherit !important;
+            font-weight: inherit !important;
+            text-overflow: clip !important;
+            white-space: nowrap !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-price_source_review_queue {

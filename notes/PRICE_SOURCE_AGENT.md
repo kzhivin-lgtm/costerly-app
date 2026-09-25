@@ -229,3 +229,39 @@ The archived `lumber_pricelist_israel.xlsx` source was identified as the missing
 eight-row unresolved set. Its source and all eight unresolved rows remain intact,
 with zero offers, so it can be safely restored to partial after deployment. All
 363 automated tests pass. Production acceptance remains required.
+
+## 3.12.1 revision 5 candidate
+
+Repeated uploads are normal update checks rather than duplicate errors. The
+accepted comparison contract is row-level:
+
+- an exact file digest returns the previously processed result without calling
+  the agent, spending TC, writing another source, or replacing prices;
+- a changed file or alternate scan is extracted and compared with the current
+  active offer for the same company material and supplier;
+- supplier SKU is the preferred stable row identity when present, with the
+  normalized material identity as the fallback;
+- price, currency, VAT basis, source unit, purchase unit, estimation unit,
+  conversion factor, and normalized price determine whether a row changed;
+- unchanged rows retain the current active offer and are counted as
+  `unchanged` without a catalog write;
+- changed rows are counted as `updated`, archive the preceding active offer,
+  and create the new active offer;
+- new identities are counted as `new`;
+- unresolved rows never overwrite an active price;
+- rows missing from a later upload are not removed automatically because an
+  upload or extraction can be incomplete;
+- a failed apply restores any active offers superseded before the failure.
+
+The completion notice reports `new`, `updated`, `unchanged`, `unresolved`,
+time, and TC. Exact duplicates report `Already processed`, the unchanged count,
+zero agent time, and zero TC.
+
+Revision 5 also repairs the visual regression introduced when row actions moved
+from the accepted static catalog table into Streamlit controls. It retains
+row-level Edit, Review, Source, and Remove while restoring the soft purple
+surfaces, normal text weight, compact action buttons, and a square destructive
+cross without a tooltip. All 366 automated tests pass. Production acceptance
+must cover the exact duplicate, one changed row, one new row, one unresolved
+row, missing-row preservation, rollback on failure, desktop geometry, hover
+state, and narrow-screen wrapping.

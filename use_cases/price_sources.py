@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from html.parser import HTMLParser
 from io import BytesIO
@@ -80,6 +81,12 @@ class CombinedPriceSource:
 
     def getvalue(self) -> bytes:
         return self.data
+
+
+@dataclass(frozen=True)
+class PriceSourceProcessResult:
+    source_id: str
+    summary: dict[str, object]
 
 
 logger = logging.getLogger(__name__)
@@ -186,6 +193,48 @@ def _normalized_unit(value: str) -> str:
     return aliases.get(unit, unit)
 
 
+def _decimal_equal(left: object, right: object, places: str) -> bool:
+    try:
+        quantum = Decimal(places)
+        return Decimal(str(left)).quantize(quantum) == Decimal(str(right)).quantize(quantum)
+    except (InvalidOperation, TypeError, ValueError):
+        return False
+
+
+def price_offer_matches_row(
+    offer: dict,
+    row: dict,
+    *,
+    default_currency: str = "",
+) -> bool:
+    """Compare persisted price-affecting values at their database precision."""
+    currency = str(row.get("raw_currency") or default_currency or "").strip().upper()
+    vat_included = (
+        True
+        if row.get("raw_vat_mode") == "included"
+        else False if row.get("raw_vat_mode") == "excluded" else None
+    )
+    return all(
+        (
+            _decimal_equal(offer.get("source_price"), row.get("raw_price"), "0.0001"),
+            _normalized_unit(str(offer.get("source_unit") or ""))
+            == _normalized_unit(str(row.get("raw_unit") or "")),
+            _normalized_unit(str(offer.get("purchase_unit") or ""))
+            == _normalized_unit(str(row.get("purchase_unit") or "")),
+            _normalized_unit(str(offer.get("calculation_unit") or ""))
+            == _normalized_unit(str(row.get("calculation_unit") or "")),
+            _decimal_equal(
+                offer.get("conversion_factor"), row.get("conversion_factor"), "0.00000001"
+            ),
+            _decimal_equal(
+                offer.get("normalized_price"), row.get("normalized_price"), "0.0001"
+            ),
+            str(offer.get("currency") or "").strip().upper() == currency,
+            offer.get("vat_included") is vat_included,
+        )
+    )
+
+
 def apply_legacy_price_benchmark(result: dict, legacy_materials: list[dict]) -> dict:
     """Use exact legacy identity/unit matches only as a negative confidence signal."""
     benchmark: dict[tuple[str, str], float] = {}
@@ -282,19 +331,42 @@ def price_source_semantic_fingerprint(result: dict) -> str:
     return sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def _semantic_source_exists(client, company_id: str, fingerprint: str) -> bool:
+def _find_semantic_source(client, company_id: str, fingerprint: str) -> dict | None:
     sources = (
         client.table("company_price_sources")
-        .select("source_id,processing_summary")
+        .select("source_id,processing_summary,created_at")
         .eq("company_id", company_id)
         .neq("status", "archived")
+        .order("created_at", desc=True)
         .execute()
     ).data or []
-    return any(
-        isinstance(source.get("processing_summary"), dict)
-        and source["processing_summary"].get("semantic_sha256") == fingerprint
-        for source in sources
+    return next(
+        (
+            source
+            for source in sources
+            if isinstance(source.get("processing_summary"), dict)
+            and source["processing_summary"].get("semantic_sha256") == fingerprint
+        ),
+        None,
     )
+
+
+def _unchanged_duplicate_summary(source: dict) -> dict[str, object]:
+    previous = dict(source.get("processing_summary") or {})
+    total = int(previous.get("total") or 0)
+    ready = int(previous.get("ready") or 0)
+    return {
+        "total": total,
+        "ready": ready,
+        "new": 0,
+        "updated": 0,
+        "unchanged": ready,
+        "unresolved": int(previous.get("unresolved") or 0),
+        "excluded": int(previous.get("excluded") or 0),
+        "exact_duplicate": True,
+        "agent_duration_seconds": 0.0,
+        "token_cost": 0.0,
+    }
 
 
 def _validate_department(department: str) -> str:
@@ -586,6 +658,17 @@ def _refresh_price_source_summary(client, company_id: str, source_id: str) -> No
         .execute()
     ).data or []
     ready = sum(row.get("result_status") in {"new", "updated"} for row in rows)
+    new = sum(
+        row.get("result_status") == "new"
+        and (row.get("evidence") or {}).get("comparison_status") != "unchanged"
+        for row in rows
+    )
+    unchanged = sum(
+        row.get("result_status") in {"new", "updated"}
+        and (row.get("evidence") or {}).get("comparison_status") == "unchanged"
+        for row in rows
+    )
+    updated = ready - new - unchanged
     unresolved = sum(row.get("result_status") == "unresolved" for row in rows)
     excluded = sum(row.get("result_status") == "excluded" for row in rows)
     material_types = sorted(
@@ -611,6 +694,9 @@ def _refresh_price_source_summary(client, company_id: str, source_id: str) -> No
     summary.update(
         {
             "ready": ready,
+            "new": new,
+            "updated": updated,
+            "unchanged": unchanged,
             "unresolved": unresolved,
             "excluded": excluded,
             "total": len(rows),
@@ -712,6 +798,7 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
     ).eq("source_row_id", row_id).neq("status", "archived").execute()
     evidence = dict(row.get("evidence") or {})
     evidence["material_type"] = material_type
+    evidence["comparison_status"] = result_status
     resolved_codes = {
         "below_auto_activation_threshold",
         "material_type_unresolved",
@@ -803,7 +890,7 @@ def process_price_source(
     uploaded_file=None,
     source_url: str = "",
     trace=None,
-) -> str:
+) -> PriceSourceProcessResult:
     """Process and persist one source. Ambiguous rows stay non-active."""
     process_started = time.perf_counter()
     department = _validate_department(department)
@@ -857,7 +944,7 @@ def process_price_source(
     source_digest = sha256(source_bytes).hexdigest()
     duplicate = (
         client.table("company_price_sources")
-        .select("source_id")
+        .select("source_id,processing_summary")
         .eq("company_id", company_id)
         .eq("source_sha256", source_digest)
         .neq("status", "archived")
@@ -865,7 +952,10 @@ def process_price_source(
         .execute()
     ).data or []
     if duplicate:
-        raise PriceSourceError("This price source has already been added.")
+        return PriceSourceProcessResult(
+            source_id=str(duplicate[0]["source_id"]),
+            summary=_unchanged_duplicate_summary(duplicate[0]),
+        )
 
     agent_started = time.perf_counter()
     result = run_price_source_agent(
@@ -895,10 +985,7 @@ def process_price_source(
         except Exception:
             logger.exception("Price source agent usage persistence failed")
         _emit_duration(trace, "server.price_source_usage_persist", usage_started)
-    if _semantic_source_exists(client, company_id, semantic_sha256):
-        raise PriceSourceError(
-            "This document has already been added, even if it was uploaded as another file or photo"
-        )
+    previous_revision = _find_semantic_source(client, company_id, semantic_sha256)
 
     benchmark_started = time.perf_counter()
     legacy_materials = (
@@ -928,6 +1015,7 @@ def process_price_source(
         source_bytes=len(source_bytes),
     )
 
+    superseded_offer_ids: list[str] = []
     try:
         database_started = time.perf_counter()
         supplier_name = str(result["supplier_name"]).strip()
@@ -962,7 +1050,37 @@ def process_price_source(
         ready_count = sum(row["status"] == "ready" for row in result["rows"])
         unresolved_count = sum(row["status"] == "unresolved" for row in result["rows"])
         excluded_count = sum(row["status"] == "excluded" for row in result["rows"])
+        new_count = 0
+        updated_count = 0
+        unchanged_count = 0
         status = "ready" if not unresolved_count else "partial"
+        source_summary = {
+            "ready": ready_count,
+            "new": 0,
+            "updated": 0,
+            "unchanged": 0,
+            "unresolved": unresolved_count,
+            "excluded": excluded_count,
+            "total": len(result["rows"]),
+            "document_number": result["document_number"],
+            "price_context": result["price_context"],
+            "document_subtotal": result["document_subtotal"],
+            "document_vat_amount": result["document_vat_amount"],
+            "document_total": result["document_total"],
+            "material_types": material_types,
+            "semantic_sha256": semantic_sha256,
+            "previous_source_id": (
+                str(previous_revision.get("source_id")) if previous_revision else None
+            ),
+            "agent_duration_seconds": (
+                usage_event.get("duration_seconds") if usage_event else None
+            ),
+            "token_cost": usage_event.get("total_cost_usd") if usage_event else None,
+            "input_tokens": usage_event.get("input_tokens") if usage_event else None,
+            "output_tokens": usage_event.get("output_tokens") if usage_event else None,
+            "model": usage_event.get("model") if usage_event else None,
+            "prompt_version": usage_event.get("prompt_version") if usage_event else None,
+        }
         client.table("company_price_sources").insert(
             {
                 "source_id": source_id,
@@ -980,31 +1098,36 @@ def process_price_source(
                 "currency": result["currency"] or None,
                 "vat_mode": result["vat_mode"],
                 "status": status,
-                "processing_summary": {
-                    "ready": ready_count,
-                    "unresolved": unresolved_count,
-                    "excluded": excluded_count,
-                    "total": len(result["rows"]),
-                    "document_number": result["document_number"],
-                    "price_context": result["price_context"],
-                    "document_subtotal": result["document_subtotal"],
-                    "document_vat_amount": result["document_vat_amount"],
-                    "document_total": result["document_total"],
-                    "material_types": material_types,
-                    "semantic_sha256": semantic_sha256,
-                    "agent_duration_seconds": (
-                        usage_event.get("duration_seconds") if usage_event else None
-                    ),
-                    "token_cost": usage_event.get("total_cost_usd") if usage_event else None,
-                    "input_tokens": usage_event.get("input_tokens") if usage_event else None,
-                    "output_tokens": usage_event.get("output_tokens") if usage_event else None,
-                    "model": usage_event.get("model") if usage_event else None,
-                    "prompt_version": usage_event.get("prompt_version") if usage_event else None,
-                },
+                "processing_summary": source_summary,
                 "created_by": str(access.user_id),
                 "processed_at": datetime.now(timezone.utc).isoformat(),
             }
         ).execute()
+
+        active_offers = (
+            client.table("company_material_offers")
+            .select(
+                "offer_id,company_material_id,supplier_id,supplier_sku,source_price,source_unit,"
+                "purchase_unit,calculation_unit,conversion_factor,normalized_price,"
+                "currency,vat_included,status"
+            )
+            .eq("company_id", company_id)
+            .eq("status", "active")
+            .execute()
+        ).data or []
+        offers_by_identity: dict[tuple[str, str], list[dict]] = {}
+        offers_by_sku: dict[tuple[str, str], list[dict]] = {}
+        for offer in active_offers:
+            identity = (
+                str(offer.get("company_material_id") or ""),
+                str(offer.get("supplier_id") or ""),
+            )
+            offers_by_identity.setdefault(identity, []).append(offer)
+            sku = _normalized_name(str(offer.get("supplier_sku") or ""))
+            if sku:
+                offers_by_sku.setdefault((str(offer.get("supplier_id") or ""), sku), []).append(
+                    offer
+                )
 
         for row in result["rows"]:
             row_category = canonical_price_source_category(str(row["material_type"]))
@@ -1012,18 +1135,38 @@ def process_price_source(
             result_status = row["status"]
             if result_status == "ready":
                 normalized = _normalized_name(row["normalized_name"])
+                sku = _normalized_name(str(row.get("raw_sku") or ""))
+                sku_offers = offers_by_sku.get((str(supplier_id or ""), sku), []) if sku else []
                 existing = (
-                    client.table("company_material_items")
-                    .select("company_material_id")
-                    .eq("company_id", company_id)
-                    .eq("category", row_category)
-                    .eq("normalized_name", normalized)
-                    .limit(1)
-                    .execute()
-                ).data or []
+                    [{"company_material_id": sku_offers[0]["company_material_id"]}]
+                    if sku_offers
+                    else (
+                        client.table("company_material_items")
+                        .select("company_material_id")
+                        .eq("company_id", company_id)
+                        .eq("category", row_category)
+                        .eq("normalized_name", normalized)
+                        .limit(1)
+                        .execute()
+                    ).data or []
+                )
                 if existing:
                     material_id = existing[0]["company_material_id"]
-                    result_status = "updated"
+                    identity = (str(material_id), str(supplier_id or ""))
+                    matching_offers = offers_by_identity.get(identity, [])
+                    if matching_offers and any(
+                        price_offer_matches_row(
+                            offer,
+                            row,
+                            default_currency=str(result.get("currency") or ""),
+                        )
+                        for offer in matching_offers
+                    ):
+                        result_status = "unchanged"
+                        unchanged_count += 1
+                    else:
+                        result_status = "updated"
+                        updated_count += 1
                 else:
                     material = client.table("company_material_items").insert(
                         {
@@ -1037,6 +1180,7 @@ def process_price_source(
                     ).execute().data[0]
                     material_id = material["company_material_id"]
                     result_status = "new"
+                    new_count += 1
 
             inserted_row = client.table("company_price_source_rows").insert(
                 {
@@ -1060,7 +1204,7 @@ def process_price_source(
                     "normalized_unit": row["calculation_unit"] or None,
                     "conversion_basis": {"description": row["conversion_basis"]},
                     "company_material_id": material_id,
-                    "result_status": result_status,
+                    "result_status": "updated" if result_status == "unchanged" else result_status,
                     "confidence": row["confidence"],
                     "reason_codes": row["reason_codes"],
                     "evidence": {
@@ -1068,18 +1212,19 @@ def process_price_source(
                         "material_type": row_category,
                         "discount_percent": row["raw_discount_percent"],
                         "discount_amount": row["raw_discount_amount"],
+                        "comparison_status": result_status,
                     },
                 }
             ).execute().data[0]
 
             if material_id and result_status in {"new", "updated"}:
-                if supplier_id:
-                    client.table("company_material_offers").update({"status": "superseded"}).eq(
-                        "company_id", company_id
-                    ).eq("company_material_id", material_id).eq("supplier_id", supplier_id).eq(
-                        "status", "active"
-                    ).execute()
-                client.table("company_material_offers").insert(
+                identity = (str(material_id), str(supplier_id or ""))
+                for previous_offer in offers_by_identity.get(identity, []):
+                    client.table("company_material_offers").update(
+                        {"status": "superseded"}
+                    ).eq("offer_id", previous_offer["offer_id"]).execute()
+                    superseded_offer_ids.append(str(previous_offer["offer_id"]))
+                inserted_offer = client.table("company_material_offers").insert(
                     {
                         "company_id": company_id,
                         "company_material_id": material_id,
@@ -1099,7 +1244,21 @@ def process_price_source(
                         "valid_from": _date_or_none(result["document_date"]),
                         "confidence": row["confidence"],
                     }
-                ).execute()
+                ).execute().data[0]
+                offers_by_identity[identity] = [inserted_offer]
+                if sku:
+                    offers_by_sku[(str(supplier_id or ""), sku)] = [inserted_offer]
+
+        source_summary.update(
+            {
+                "new": new_count,
+                "updated": updated_count,
+                "unchanged": unchanged_count,
+            }
+        )
+        client.table("company_price_sources").update(
+            {"processing_summary": source_summary}
+        ).eq("company_id", company_id).eq("source_id", source_id).execute()
         _emit_duration(
             trace,
             "server.price_source_database_apply",
@@ -1115,11 +1274,15 @@ def process_price_source(
             process_started,
             extracted_rows=len(result["rows"]),
         )
-        return source_id
+        return PriceSourceProcessResult(source_id=source_id, summary=source_summary)
     except Exception:
         cleanup_started = time.perf_counter()
         try:
             client.table("company_material_offers").delete().eq("source_id", source_id).execute()
+            for offer_id in superseded_offer_ids:
+                client.table("company_material_offers").update({"status": "active"}).eq(
+                    "offer_id", offer_id
+                ).execute()
             client.table("company_price_source_rows").delete().eq("source_id", source_id).execute()
             client.table("company_material_items").delete().eq("created_from_source_id", source_id).execute()
             client.table("company_price_sources").delete().eq("source_id", source_id).execute()

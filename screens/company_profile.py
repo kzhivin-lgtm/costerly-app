@@ -1835,7 +1835,7 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
             if not rows:
                 st.caption("No active prices")
                 continue
-            header = st.columns([0.25, 2.5, 1.45, 1.1, 0.8, 0.65, 0.65])
+            header = st.columns([0.24, 2.55, 1.45, 1.1, 0.85, 0.58, 0.72])
             for column, label in zip(
                 header,
                 ("", "Material", "Supplier", "Price", "Updated", "", ""),
@@ -1853,14 +1853,14 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                 supplier_name = str(row.get("supplier_name") or "Unknown supplier")
                 with st.container(key=f"price_catalog_row_{row_id}"):
                     remove_col, material_col, supplier_col, price_col, date_col, edit_col, source_col = st.columns(
-                        [0.25, 2.5, 1.45, 1.1, 0.8, 0.65, 0.65],
+                        [0.24, 2.55, 1.45, 1.1, 0.85, 0.58, 0.72],
                         vertical_alignment="center",
                     )
-                    if remove_col.button("×", key=f"catalog_remove_{row_id}", help="Remove price"):
+                    if remove_col.button("×", key=f"catalog_remove_{row_id}"):
                         st.session_state._removing_price_source_row = (source_id, row_id)
                         st.session_state._price_source_action_location = "catalog"
                     material_col.markdown(
-                        f'**{escape(canonical_name)}**'
+                        f'<span class="price-catalog-material-name">{escape(canonical_name)}</span>'
                         + (
                             f'  \n<span class="price-catalog-original-name">{escape(original_name)}</span>'
                             if original_name and original_name.casefold() != canonical_name.casefold()
@@ -1868,9 +1868,18 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         ),
                         unsafe_allow_html=True,
                     )
-                    supplier_col.markdown(f'**{escape(supplier_name)}**')
-                    price_col.markdown(f'**{_price_catalog_value(row)}**')
-                    date_col.markdown(_price_catalog_date(row.get("updated_at")))
+                    supplier_col.markdown(
+                        f'<span class="price-catalog-cell">{escape(supplier_name)}</span>',
+                        unsafe_allow_html=True,
+                    )
+                    price_col.markdown(
+                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{_price_catalog_value(row)}</span>',
+                        unsafe_allow_html=True,
+                    )
+                    date_col.markdown(
+                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{_price_catalog_date(row.get("updated_at"))}</span>',
+                        unsafe_allow_html=True,
+                    )
                     if edit_col.button("Edit", key=f"catalog_edit_{row_id}"):
                         st.session_state._editing_price_source_row = (source_id, row_id)
                         st.session_state._price_source_action_location = "catalog"
@@ -1928,7 +1937,7 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
         else "unknown"
     )
     st.markdown(
-        f'**{escape(str(row.get("raw_description") or "Price item"))}**  \n'
+        f'<span class="price-source-editor-title">{escape(str(row.get("raw_description") or "Price item"))}</span>  \n'
         f'<span class="price-source-review-reason">'
         f'{escape(_price_source_review_reason(row) if row.get("result_status") == "unresolved" else "Edit active price")}'
         '</span>',
@@ -2073,7 +2082,7 @@ def _render_price_source_review_queue(
             f'<span>{len(review_rows)} {"price" if len(review_rows) == 1 else "prices"}</span></div>',
             unsafe_allow_html=True,
         )
-        header = st.columns([0.25, 2.5, 1.35, 1.05, 1.3, 0.7])
+        header = st.columns([0.24, 2.55, 1.35, 1.05, 1.35, 0.7])
         for column, label in zip(
             header,
             ("", "Source Item", "Supplier", "Source Price", "Reason", ""),
@@ -2090,20 +2099,31 @@ def _render_price_source_review_queue(
             target = (source_id, row_id)
             with st.container(key=f"price_review_row_{row_id}"):
                 remove_col, item_col, supplier_col, price_col, reason_col, review_col = st.columns(
-                    [0.25, 2.5, 1.35, 1.05, 1.3, 0.7],
+                    [0.24, 2.55, 1.35, 1.05, 1.35, 0.7],
                     vertical_alignment="center",
                 )
-                if remove_col.button("×", key=f"review_remove_{row_id}", help="Remove price"):
+                if remove_col.button("×", key=f"review_remove_{row_id}"):
                     st.session_state._removing_price_source_row = target
                     st.session_state._price_source_action_location = "review"
-                item_col.markdown(f'**{escape(str(row.get("raw_description") or "Price item"))}**')
-                supplier_col.markdown(f'**{escape(_price_source_supplier(source))}**')
+                item_col.markdown(
+                    f'<span class="price-catalog-material-name">{escape(str(row.get("raw_description") or "Price item"))}</span>',
+                    unsafe_allow_html=True,
+                )
+                supplier_col.markdown(
+                    f'<span class="price-catalog-cell">{escape(_price_source_supplier(source))}</span>',
+                    unsafe_allow_html=True,
+                )
                 raw_price = row.get("raw_price")
-                price_col.markdown(
-                    f'**{escape(str(row.get("raw_currency") or source.get("currency") or ""))} '
-                    f'{raw_price:g} / {escape(str(row.get("raw_unit") or "?"))}**'
+                price_markup = (
+                    f'<span class="price-catalog-cell price-catalog-cell-nowrap">'
+                    f'{escape(str(row.get("raw_currency") or source.get("currency") or ""))} '
+                    f'{raw_price:g} / {escape(str(row.get("raw_unit") or "?"))}</span>'
                     if isinstance(raw_price, (int, float)) and raw_price > 0
-                    else "Missing"
+                    else '<span class="price-catalog-cell">Missing</span>'
+                )
+                price_col.markdown(
+                    price_markup,
+                    unsafe_allow_html=True,
                 )
                 reason_col.markdown(
                     f'<span class="price-source-needs-review">{escape(_price_source_review_reason(row))}</span>',
@@ -2246,10 +2266,13 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
                 [0.3, 2.5, 1.15, 1, 1, 0.65, 1, 0.75],
                 vertical_alignment="center",
             )
-            if remove_col.button("×", key=f"remove_price_row_{row_id}", help="Remove price"):
+            if remove_col.button("×", key=f"remove_price_row_{row_id}"):
                 st.session_state._removing_price_source_row = (str(source["source_id"]), row_id)
                 st.session_state._price_source_action_location = "details"
-            item_col.markdown(f'**{escape(str(row.get("raw_description") or "Price item"))}**')
+            item_col.markdown(
+                f'<span class="price-catalog-material-name">{escape(str(row.get("raw_description") or "Price item"))}</span>',
+                unsafe_allow_html=True,
+            )
             type_col.markdown(escape(_price_source_row_material_type(row, source)))
             source_col.markdown(source_value or "Missing", unsafe_allow_html=True)
             estimate_col.markdown(normalized_value or "Missing", unsafe_allow_html=True)
@@ -2265,8 +2288,14 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
                 )
                 action_label = "Review"
             else:
+                comparison_status = str((row.get("evidence") or {}).get("comparison_status") or "")
+                status_label = (
+                    "Unchanged"
+                    if comparison_status == "unchanged"
+                    else f'Active · {float(row.get("confidence") or 0):.0f}%'
+                )
                 status_col.markdown(
-                    f'<span class="price-source-active">Active · {float(row.get("confidence") or 0):.0f}%</span>',
+                    f'<span class="price-source-active">{status_label}</span>',
                     unsafe_allow_html=True,
                 )
                 action_label = "Edit"
@@ -2303,16 +2332,33 @@ def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
 def _price_source_notice_text(source: dict | None) -> str:
     if not source:
         return "Price source processed"
-    summary = source.get("processing_summary") or {}
+    summary = source.get("processing_summary") or source.get("summary") or {}
     total = int(summary.get("total") or 0)
+    has_diff_counts = any(key in summary for key in ("new", "updated", "unchanged"))
     ready = int(summary.get("ready") or 0)
+    new = int(summary.get("new") or 0)
+    updated = int(summary.get("updated") or 0)
+    unchanged = int(summary.get("unchanged") or 0)
     unresolved = int(summary.get("unresolved") or 0)
     excluded = int(summary.get("excluded") or 0)
-    parts = [
-        f'{total} {"row" if total == 1 else "rows"} extracted',
-        f"{ready} active",
-        f"{unresolved} unresolved",
-    ]
+    if summary.get("exact_duplicate"):
+        parts = ["Already processed", f"{unchanged} unchanged"]
+        if unresolved:
+            parts.append(f"{unresolved} unresolved")
+    elif has_diff_counts:
+        parts = [
+            f'{total} {"row" if total == 1 else "rows"} extracted',
+            f"{new} new",
+            f"{updated} updated",
+            f"{unchanged} unchanged",
+            f"{unresolved} unresolved",
+        ]
+    else:
+        parts = [
+            f'{total} {"row" if total == 1 else "rows"} extracted',
+            f"{ready} active",
+            f"{unresolved} unresolved",
+        ]
     if excluded:
         parts.append(f"{excluded} excluded")
     duration = summary.get("agent_duration_seconds")
@@ -2378,7 +2424,7 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     pending = st.session_state.get("_price_source_pending") or {}
     try:
         uploaded_file = combine_price_source_files(pending.get("uploaded_files") or [])
-        source_id = process_price_source(
+        result = process_price_source(
             access,
             department=str(pending.get("department") or ""),
             uploaded_file=uploaded_file,
@@ -2396,7 +2442,13 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
         )
     else:
         st.session_state._price_source_uploader_version = uploader_version + 1
-        st.session_state._price_source_notice = source_id
+        if hasattr(result, "source_id") and hasattr(result, "summary"):
+            st.session_state._price_source_notice = {
+                "source_id": result.source_id,
+                "summary": result.summary,
+            }
+        else:
+            st.session_state._price_source_notice = result
     finally:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
@@ -2427,16 +2479,19 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
 
     _render_price_source_add(access, trace=trace)
 
-    notice_source_id = st.session_state.pop("_price_source_notice", None)
-    if notice_source_id:
-        notice_source = next(
-            (
-                source
-                for source in sources
-                if str(source.get("source_id")) == str(notice_source_id)
-            ),
-            None,
-        )
+    notice_result = st.session_state.pop("_price_source_notice", None)
+    if notice_result:
+        if isinstance(notice_result, dict) and notice_result.get("summary") is not None:
+            notice_source = notice_result
+        else:
+            notice_source = next(
+                (
+                    source
+                    for source in sources
+                    if str(source.get("source_id")) == str(notice_result)
+                ),
+                None,
+            )
         st.success(_price_source_notice_text(notice_source))
     error = st.session_state.pop("_price_source_error", None)
     if error:

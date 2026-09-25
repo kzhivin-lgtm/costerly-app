@@ -14,7 +14,12 @@
   normalized names, and adds row-level Review, Edit, and Remove. Revision 4 moves
   those actions into the main catalog, exposes unresolved rows in a visible Needs
   review block, removes whole-source deletion, and repairs the client-only stuck
-  Extracting prices state. Production interaction acceptance remains pending. Contract:
+  Extracting prices state. Revision 5 treats repeat uploads as row-level update
+  checks: exact duplicates skip the agent, changed inputs report new, updated,
+  unchanged, and unresolved counts, unchanged offers are not rewritten, and
+  missing rows are preserved. It also restores the accepted compact catalog
+  geometry after the row-action visual regression. Production interaction
+  acceptance remains pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price
