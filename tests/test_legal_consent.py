@@ -107,6 +107,33 @@ def _render_terms_gate():
     )
 
 
+def _render_missing_invitation_setup():
+    from state import company_auth
+
+    company_auth.render_company_setup(
+        company_auth.CompanyAccess("user-1", "owner@example.com", None, None, "token"),
+        None,
+    )
+
+
+def _render_create_company_setup():
+    from state import company_auth
+
+    company_auth.render_company_setup(
+        company_auth.CompanyAccess("user-1", "owner@example.com", None, None, "token"),
+        company_auth.InvitationContext("create", "A" * 43),
+    )
+
+
+def _render_join_company_setup():
+    from state import company_auth
+
+    company_auth.render_company_setup(
+        company_auth.CompanyAccess("user-1", "owner@example.com", None, None, "token"),
+        company_auth.InvitationContext("join", "A" * 43),
+    )
+
+
 def test_new_registration_shows_terms_before_the_only_submit(monkeypatch):
     monkeypatch.setattr(company_auth, "legal_consent_enabled", lambda: True)
     monkeypatch.setattr(company_auth, "current_legal_documents", lambda _client: _documents())
@@ -228,8 +255,47 @@ def test_verification_screen_is_minimal_and_has_quiet_support_route():
     rendered = "\n".join(item.value for item in app.markdown)
     assert "Check your email to verify your account" in rendered
     assert "Contact support" in rendered
+    assert "auth-message-card" in rendered
     assert not app.text_input
     assert not app.button
+
+
+def test_every_company_setup_state_uses_the_shared_auth_template():
+    missing = AppTest.from_function(_render_missing_invitation_setup).run()
+    create = AppTest.from_function(_render_create_company_setup).run()
+    join = AppTest.from_function(_render_join_company_setup).run()
+
+    missing_markup = "\n".join(item.value for item in missing.markdown)
+    create_markup = "\n".join(item.value for item in create.markdown)
+    join_markup = "\n".join(item.value for item in join.markdown)
+    assert "Invitation required" in missing_markup
+    assert "auth-message-card" in missing_markup
+    assert "Finish creating your company" in create_markup
+    assert "Join your company" in join_markup
+    assert any(button.label == "Continue" for button in create.button)
+    assert any(button.label == "Join company" for button in join.button)
+    assert all(not app.exception for app in (missing, create, join))
+
+
+def test_auth_screen_inventory_uses_one_heading_renderer():
+    source = (ROOT / "state/company_auth.py").read_text()
+    setup_source = source.split("def render_company_setup", 1)[1].split(
+        "def _open_company_account", 1
+    )[0]
+    expected_headings = {
+        "Sign in",
+        "Create Your Company Account",
+        "Join your company",
+        "Check your email to verify your account",
+        "This verification link is invalid or has expired",
+        "Reset password",
+        "Updated Terms of Service",
+        "Finish creating your company",
+        "Invitation required",
+    }
+    for heading in expected_headings:
+        assert f'_render_auth_heading("{heading}")' in source
+    assert "st.title(" not in setup_source
 
 
 def test_terms_validation_is_part_of_the_first_registration_submit():
@@ -305,10 +371,11 @@ def test_terms_gate_uses_the_same_auth_geometry_as_sign_in():
 
     assert "position: fixed;" in css
     assert "top: calc(var(--app-header-top) + 16px);" in css
-    shared_heading_slot = css.split(".auth-brand-sign-in,", 1)[1].split("}", 1)[0]
-    assert ".auth-brand-updated-terms-of-service" in shared_heading_slot
+    shared_heading_slot = css.split(".auth-brand {", 1)[1].split("}", 1)[0]
     assert "min-height: 90px;" in shared_heading_slot
     assert "margin-bottom: 24px;" in shared_heading_slot
+    assert "align-items: center;" in shared_heading_slot
+    assert ".auth-message-card" in css
 
 
 def test_current_legal_documents_identify_the_registered_exempt_dealer():

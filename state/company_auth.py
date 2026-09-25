@@ -593,8 +593,10 @@ def render_email_verification_pending() -> None:
     install_auth_form_interactions()
     _render_auth_heading("Check your email to verify your account")
     st.markdown(
+        '<div class="auth-message-card">'
         f'<div class="auth-verification-support">Didn\'t receive the email? '
-        f'<a href="mailto:{SUPPORT_EMAIL}">Contact support</a></div>',
+        f'<a href="mailto:{SUPPORT_EMAIL}">Contact support</a></div>'
+        '</div>',
         unsafe_allow_html=True,
     )
 
@@ -603,9 +605,11 @@ def render_email_confirmation_error() -> None:
     install_auth_form_interactions()
     _render_auth_heading("This verification link is invalid or has expired")
     st.markdown(
+        '<div class="auth-message-card">'
         f'<div class="auth-verification-support">'
         f'<a href="/" target="_top">Return to sign in</a> · '
-        f'<a href="mailto:{SUPPORT_EMAIL}">Contact support</a></div>',
+        f'<a href="mailto:{SUPPORT_EMAIL}">Contact support</a></div>'
+        '</div>',
         unsafe_allow_html=True,
     )
 
@@ -1382,20 +1386,27 @@ def render_password_reset() -> None:
 def render_company_setup(
     access: CompanyAccess, invitation: InvitationContext | None
 ) -> None:
-    st.markdown(
-        '<div class="company-setup-active" style="display:none"></div>',
-        unsafe_allow_html=True,
-    )
+    install_auth_form_interactions()
     if invitation is None:
-        st.error("A valid invitation link is required to join or create a company.")
+        _render_auth_heading("Invitation required")
+        st.markdown(
+            '<div class="auth-message-card">'
+            'A valid invitation link is required to join or create a company'
+            '</div>',
+            unsafe_allow_html=True,
+        )
     elif invitation.kind == "create":
-        st.title("Finish creating your company")
-        st.caption("Pricing and contact details can be added later.")
-        if st.session_state.get("company_setup_error"):
-            st.error(st.session_state.pop("company_setup_error"))
+        _render_auth_heading("Finish creating your company")
         with st.form("create_company"):
-            name = st.text_input("Company name", value=st.session_state.get("pending_company_name", ""))
-            submit = st.form_submit_button("Continue")
+            st.caption("Pricing and contact details can be added later")
+            setup_error = str(st.session_state.pop("company_setup_error", "") or "")
+            if setup_error:
+                st.error(setup_error)
+            name = st.text_input(
+                "Company name",
+                value=st.session_state.get("pending_company_name", ""),
+            )
+            submit = st.form_submit_button("Continue", use_container_width=True)
         if submit:
             try:
                 create_company_for_user(access, name, invitation.token)
@@ -1404,13 +1415,25 @@ def render_company_setup(
                     del st.query_params["invite"]
                 st.rerun()
             except PermissionError as exc:
-                st.error(str(exc))
+                st.session_state.company_setup_error = str(exc)
+                st.rerun()
             except Exception:
-                st.error("Company setup did not finish. Try again, or contact support if it keeps failing.")
+                st.session_state.company_setup_error = (
+                    "Company setup did not finish. Try again, or contact support if it keeps failing"
+                )
+                st.rerun()
     else:
-        st.title("Join your company")
-        st.caption("Your company is set by this link. No company selection is needed.")
-        join = st.button("Join company", type="primary")
+        _render_auth_heading("Join your company")
+        with st.form("join_company"):
+            st.caption("Your company is set by this link. No company selection is needed")
+            join_error = str(st.session_state.pop("company_join_setup_error", "") or "")
+            if join_error:
+                st.error(join_error)
+            join = st.form_submit_button(
+                "Join company",
+                type="primary",
+                use_container_width=True,
+            )
         if join:
             try:
                 join_company_for_user(access, invitation.token)
@@ -1418,10 +1441,19 @@ def render_company_setup(
                     del st.query_params["invite"]
                 st.rerun()
             except PermissionError as exc:
-                st.error(str(exc))
+                st.session_state.company_join_setup_error = str(exc)
+                st.rerun()
             except Exception:
-                st.error("This company link is no longer valid.")
-    st.button("Sign out", key="setup_sign_out", on_click=sign_out)
+                st.session_state.company_join_setup_error = (
+                    "This company link is no longer valid"
+                )
+                st.rerun()
+    st.button(
+        "Sign out",
+        key="setup_sign_out",
+        use_container_width=True,
+        on_click=sign_out,
+    )
 
 
 def _open_company_account() -> None:

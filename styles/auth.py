@@ -452,19 +452,28 @@ def apply_auth_css() -> None:
         }
 
         .auth-brand {
+            display: flex;
+            min-height: 90px;
             margin-top: -31px;
-            margin-bottom: 10px;
+            margin-bottom: 24px;
+            align-items: center;
+            justify-content: center;
             text-align: center;
         }
 
         .auth-brand h1 {
+            width: 100%;
             margin: 0;
-            color: #2A1F2C;
-            font-family: var(--font-brand);
+            padding: 0;
+            color: var(--color-purple, var(--primitive-purple-900));
+            font-family: var(--font-hero);
             font-size: clamp(30px, 5vw, 35px);
-            font-weight: 700;
-            line-height: 1.1;
+            font-weight: 400;
+            font-synthesis: none;
+            line-height: 1.12;
             letter-spacing: -0.045em;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: geometricPrecision;
         }
 
         .stApp:has(.auth-screen-active) .auth-brand a,
@@ -479,16 +488,6 @@ def apply_auth_css() -> None:
             font-family: var(--font-sans);
             font-size: 16px;
             line-height: 1.5;
-        }
-
-        .auth-brand-sign-in,
-        .auth-brand-join-your-company,
-        .auth-brand-reset-password,
-        .auth-brand-create-new-password,
-        .auth-brand-terms-of-service,
-        .auth-brand-updated-terms-of-service {
-            min-height: 90px;
-            margin-bottom: 24px;
         }
 
         .auth-brand-sign-in h1,
@@ -519,12 +518,21 @@ def apply_auth_css() -> None:
             text-rendering: geometricPrecision;
         }
 
-        .stApp:has(.auth-screen-active) div[data-testid="stForm"] {
+        .stApp:has(.auth-screen-active) div[data-testid="stForm"],
+        .stApp:has(.auth-screen-active) .auth-message-card {
             background: #FFFFFF !important;
             border: 1px solid #E7DFE9 !important;
             border-radius: 20px !important;
             box-shadow: 0 18px 48px rgba(59, 46, 72, 0.08) !important;
             padding: 30px !important;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-message-card {
+            color: #51475B;
+            font-family: var(--font-sans);
+            font-size: 15px;
+            line-height: 1.5;
+            text-align: center;
         }
 
         .stApp:has(.auth-screen-active) div[data-testid="stForm"] label,
@@ -1016,14 +1024,9 @@ def apply_auth_css() -> None:
                 padding: 20px !important;
             }
             .auth-brand h1 { font-size: clamp(27px, 8vw, 34px); }
-            .auth-brand { margin-top: -17px; }
-            .auth-brand-sign-in,
-            .auth-brand-join-your-company,
-            .auth-brand-reset-password,
-            .auth-brand-create-new-password,
-            .auth-brand-terms-of-service,
-            .auth-brand-updated-terms-of-service {
+            .auth-brand {
                 min-height: 81px;
+                margin-top: -17px;
                 margin-bottom: 24px;
             }
             .auth-brand-sign-in h1,
