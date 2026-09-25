@@ -369,13 +369,31 @@ def test_terms_heading_uses_the_established_regular_weight_and_disclosure_fades(
 def test_terms_gate_uses_the_same_auth_geometry_as_sign_in():
     css = (ROOT / "styles/auth.py").read_text()
 
-    assert "position: fixed;" in css
+    assert "position: absolute;" in css
     assert "top: calc(var(--app-header-top) + 16px);" in css
+    assert '[data-testid="stElementContainer"]:has(.costerly-app-header)' in css
     shared_heading_slot = css.split(".auth-brand {", 1)[1].split("}", 1)[0]
     assert "min-height: 90px;" in shared_heading_slot
     assert "margin-bottom: 24px;" in shared_heading_slot
     assert "align-items: center;" in shared_heading_slot
     assert ".auth-message-card" in css
+
+
+def test_terms_gate_rejects_missing_consent_without_a_server_rerun():
+    interactions = (ROOT / "styles/auth.py").read_text()
+    gate_source = (ROOT / "state/company_auth.py").read_text().split(
+        "def render_terms_acceptance", 1
+    )[1].split("def authenticate_invited_creator", 1)[0]
+    message = (
+        "To continue using Costerly AI, please agree to the updated Terms of Service"
+    )
+
+    assert "function setTermsFeedback" in interactions
+    assert "event.preventDefault();" in interactions
+    assert "event.stopImmediatePropagation();" in interactions
+    assert "}, true);" in interactions
+    assert message in interactions
+    assert message in gate_source
 
 
 def test_current_legal_documents_identify_the_registered_exempt_dealer():

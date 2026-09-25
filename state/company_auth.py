@@ -642,7 +642,7 @@ def render_terms_acceptance(access: CompanyAccess) -> None:
     st.session_state.pop("terms_acceptance_error", None)
     if not accepted:
         st.session_state.terms_acceptance_error = (
-            "Agree to the Terms of Service to continue"
+            "To continue using Costerly AI, please agree to the updated Terms of Service"
         )
         st.rerun()
     try:

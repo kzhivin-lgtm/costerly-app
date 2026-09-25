@@ -118,6 +118,24 @@ def install_auth_form_interactions() -> None:
             termsControl(scope)?.classList.toggle('costerly-auth-invalid', invalid);
           }
 
+          function setTermsFeedback(invalid, form, button) {
+            const existing = form?.querySelector('.costerly-terms-feedback');
+            if (!invalid) {
+              existing?.remove();
+              return;
+            }
+            if (existing) return;
+            const feedback = doc.createElement('div');
+            feedback.className = 'costerly-terms-feedback';
+            feedback.setAttribute('role', 'alert');
+            feedback.textContent = formHasAction(form, 'Continue')
+              ? 'To continue using Costerly AI, please agree to the updated Terms of Service'
+              : 'To continue, please agree to the Terms of Service';
+            const submit = button?.closest('div[data-testid="stFormSubmitButton"]');
+            const anchor = submit?.closest('[data-testid="stElementContainer"]') || submit;
+            anchor?.parentElement?.insertBefore(feedback, anchor);
+          }
+
           function setLoadingLabel(button, text) {
             const label = button?.querySelector('p');
             if (label) label.textContent = text;
@@ -214,15 +232,22 @@ def install_auth_form_interactions() -> None:
             ).find((node) => node.textContent.trim() === 'Create Company Account');
             if (!button || button.dataset.costerlyLoadingBound === '1') return;
             button.dataset.costerlyLoadingBound = '1';
-            button.addEventListener('click', () => {
+            button.addEventListener('click', (event) => {
               const form = button.closest('div[data-testid="stForm"]');
               const fields = ['company', 'email', 'password', 'confirm'];
               const invalid = fields.filter((field) => !fieldIsValid(field, form));
               invalid.forEach((field) => setInvalid(field, true, form));
-              setTermsInvalid(!termsIsValid(form), form);
-              if (invalid.length > 0 || !termsIsValid(form)) return;
+              const termsInvalid = !termsIsValid(form);
+              setTermsInvalid(termsInvalid, form);
+              setTermsFeedback(termsInvalid, form, button);
+              if (termsInvalid) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+              }
+              if (invalid.length > 0) return;
               window.setTimeout(() => beginAuthOperation(button, 'Checking your details...'), 0);
-            });
+            }, true);
           }
 
           function bindSignIn() {
@@ -250,16 +275,23 @@ def install_auth_form_interactions() -> None:
             ).find((node) => node.textContent.trim() === 'Create account');
             if (!button || button.dataset.costerlyLoadingBound === '1') return;
             button.dataset.costerlyLoadingBound = '1';
-            button.addEventListener('click', () => {
+            button.addEventListener('click', (event) => {
               const form = button.closest('div[data-testid="stForm"]');
               const invalid = ['email', 'password', 'confirm'].filter(
                 (field) => !fieldIsValid(field, form)
               );
               invalid.forEach((field) => setInvalid(field, true, form));
-              setTermsInvalid(!termsIsValid(form), form);
-              if (invalid.length > 0 || !termsIsValid(form)) return;
+              const termsInvalid = !termsIsValid(form);
+              setTermsInvalid(termsInvalid, form);
+              setTermsFeedback(termsInvalid, form, button);
+              if (termsInvalid) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+              }
+              if (invalid.length > 0) return;
               window.setTimeout(() => beginAuthOperation(button, 'Creating account...'), 0);
-            });
+            }, true);
           }
 
           function bindTermsAcceptance() {
@@ -273,11 +305,17 @@ def install_auth_form_interactions() -> None:
             ).find((node) => node.textContent.trim() === 'Continue');
             if (!button || button.dataset.costerlyLoadingBound === '1') return;
             button.dataset.costerlyLoadingBound = '1';
-            button.addEventListener('click', () => {
-              setTermsInvalid(!termsIsValid(form), form);
-              if (!termsIsValid(form)) return;
+            button.addEventListener('click', (event) => {
+              const invalid = !termsIsValid(form);
+              setTermsInvalid(invalid, form);
+              setTermsFeedback(invalid, form, button);
+              if (invalid) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                return;
+              }
               window.setTimeout(() => beginAuthOperation(button, 'Continuing...'), 0);
-            });
+            }, true);
           }
 
           function bindPasswordRecoveryRequest() {
@@ -376,7 +414,11 @@ def install_auth_form_interactions() -> None:
               const input = control.querySelector('input');
               if (!input || input.dataset.costerlyTermsBound === '1') return;
               input.dataset.costerlyTermsBound = '1';
-              input.addEventListener('change', () => setTermsInvalid(!input.checked, control.closest('div[data-testid="stForm"]') || doc));
+              input.addEventListener('change', () => {
+                const form = control.closest('div[data-testid="stForm"]');
+                setTermsInvalid(!input.checked, form || doc);
+                setTermsFeedback(!input.checked, form, form?.querySelector('div[data-testid="stFormSubmitButton"] button'));
+              });
             });
             bindCompanyCreation();
             bindSignIn();
@@ -435,9 +477,20 @@ def apply_auth_css() -> None:
             color: #2A1F2C !important;
         }
 
-        /* Every auth state uses the same viewport anchor for the shared logo. */
+        /* Anchor the logo to the auth document so it scrolls away with long content. */
+        .stApp:has(.auth-screen-active) [data-testid="stMainBlockContainer"] {
+            position: relative !important;
+        }
+
+        .stApp:has(.auth-screen-active) [data-testid="stElementContainer"]:has(.costerly-app-header) {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+        }
+
         .stApp:has(.auth-screen-active) .costerly-app-header {
-            position: fixed;
+            position: absolute;
             top: calc(var(--app-header-top) + 16px);
         }
 
@@ -820,7 +873,8 @@ def apply_auth_css() -> None:
             width: auto !important;
         }
 
-        .stApp:has(.auth-screen-active) .auth-form-feedback {
+        .stApp:has(.auth-screen-active) .auth-form-feedback,
+        .stApp:has(.auth-screen-active) .costerly-terms-feedback {
             margin-top: -3px;
             margin-bottom: 1px;
             display: block;
@@ -830,7 +884,8 @@ def apply_auth_css() -> None:
             line-height: 1.4;
         }
 
-        .stApp:has(.auth-screen-active) .auth-form-feedback-error {
+        .stApp:has(.auth-screen-active) .auth-form-feedback-error,
+        .stApp:has(.auth-screen-active) .costerly-terms-feedback {
             color: #B43E49;
         }
 
