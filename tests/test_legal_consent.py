@@ -419,12 +419,10 @@ def test_version_one_publication_remains_an_immutable_audit_record():
 
 
 def test_version_one_one_publication_remains_an_immutable_audit_record():
-    privacy_path = ROOT / "cloudflare/privacy.html"
     publication = (
         ROOT / "db/sql/2026_09_25_publish_legal_documents_v1_1.sql"
     ).read_text()
 
-    assert "Version 1.1, effective September 25, 2026" in privacy_path.read_text()
     assert "c57cb8acd7fc91a59d05a6c49bf0fc52b9efbf1e614500a092d59039952630c1" in publication
     assert "96fbec67a23be6b518a60ae42d988a8e86f745de1e2b718f8a32b03131b44801" in publication
     assert "('terms', '1.1'), ('privacy', '1.1')" in publication
@@ -501,6 +499,49 @@ def test_terms_one_two_closes_customer_user_billing_ai_and_processing_gaps():
     assert hashlib.sha256(published_bytes).hexdigest() in publication
     assert "acceptance_version from 2 to 3" in publication
     assert "where document_type = 'terms' and version = '1.1'" in publication
+
+
+def test_privacy_one_two_matches_the_reviewed_notice_and_tracking_contract():
+    privacy_path = ROOT / "cloudflare/privacy.html"
+    privacy = privacy_path.read_text()
+    publication = (
+        ROOT / "db/sql/2026_09_25_publish_privacy_v1_2.sql"
+    ).read_text()
+
+    required_privacy = (
+        "Version 1.2, effective September 25, 2026",
+        "trade name under which the service is operated",
+        "registration no. 346904519",
+        "Costerly AI is not a separate legal entity",
+        "Providing account and contact information is not required by law",
+        "If this information is not provided",
+        "Customer Content is used to provide, operate, support, secure and troubleshoot",
+        "aggregated or de-identified information",
+        "service terms, account types and technical configurations",
+        "short-lived encrypted session-resume cookie",
+        "tab-scoped session storage",
+        "first-party browser and server usage, reliability and performance events",
+        "does not currently use third-party analytics or advertising cookies or SDKs",
+        "transferred from Israel",
+        "safeguards required by applicable law for international transfers",
+    )
+    for clause in required_privacy:
+        assert clause in privacy
+
+    assert "develop service functionality" not in privacy
+    assert "AI provider engaged for the service must not" not in privacy
+    assert "business registration and exempt dealer number" not in privacy
+
+    published_bytes = (
+        privacy_path.read_bytes()
+        .replace(b"<!--email_off-->", b"")
+        .replace(b"<!--/email_off-->", b"")
+    )
+    assert hashlib.sha256(published_bytes).hexdigest() in publication
+    assert "Privacy acceptance_version remains 1" in publication
+    assert "requires_reacceptance" in publication
+    assert "false" in publication
+    assert "where document_type = 'privacy' and version = '1.1'" in publication
 
 
 def test_migration_keeps_acceptance_evidence_append_only_and_server_written():

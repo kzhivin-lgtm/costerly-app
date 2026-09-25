@@ -48,9 +48,17 @@ Status: version 1.2 activated, production acceptance incomplete
   no-training configuration, and billing language; identifies Costerly AI only
   as the Operator's trade name; and adds baseline controller, processor,
   subprocessor, security, breach, assistance, transfer, deletion and DPA terms.
-  Privacy remains at version 1.1 because this revision does not change the
-  separate Privacy Policy. There were no acceptance events or pending
-  registrations when version 1.2 was activated.
+  Privacy remained at version 1.1 when the Terms revision was activated. There
+  were no acceptance events or pending registrations at that time.
+- Privacy Policy version 1.2 is prepared as an independent, non-blocking
+  release. It narrows Customer Content use, aligns the AI-provider commitment
+  with Terms, explains that required account/contact data is voluntary under
+  law but necessary to provide the account, describes the actual first-party
+  resume storage and browser/server telemetry without inventing third-party
+  analytics, strengthens international-transfer language, and uses the same
+  Operator and trade-name wording as Terms. Privacy acceptance version remains
+  1 and does not trigger Terms reacceptance. The deterministic suite passes:
+  341 tests.
 
 This file is the scenario-first product contract for Terms of Service,
 Privacy Policy visibility, email verification, and later material Terms
