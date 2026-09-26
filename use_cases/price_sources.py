@@ -92,6 +92,18 @@ class PriceSourceProcessResult:
 logger = logging.getLogger(__name__)
 
 
+def validate_price_source_upload_selection(files: list) -> None:
+    """Reject multi-file selections that cannot represent one logical document."""
+    selected = [item for item in files if item is not None]
+    if len(selected) <= 1:
+        return
+    suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
+    if any(suffix not in {".jpg", ".jpeg", ".png"} for suffix in suffixes):
+        raise PriceSourceError(
+            "Select one PDF or spreadsheet, or several JPEG/PNG photos from the same document"
+        )
+
+
 def combine_price_source_files(files: list) -> object | None:
     """Keep one upload as-is or combine ordered JPEG/PNG pages into one PDF."""
     selected = [item for item in files if item is not None]
@@ -99,11 +111,7 @@ def combine_price_source_files(files: list) -> object | None:
         return None
     if len(selected) == 1:
         return selected[0]
-    suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
-    if any(suffix not in {".jpg", ".jpeg", ".png"} for suffix in suffixes):
-        raise PriceSourceError(
-            "Select one PDF or spreadsheet, or several JPEG/PNG photos from the same document"
-        )
+    validate_price_source_upload_selection(selected)
     if sum(len(item.getvalue()) for item in selected) > MAX_SOURCE_BYTES:
         raise PriceSourceError("The combined price source must be 50 MB or smaller")
     pages: list[Image.Image] = []

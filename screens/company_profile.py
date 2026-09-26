@@ -49,6 +49,7 @@ from use_cases.price_sources import (
     process_price_source,
     remove_price_source_row,
     save_price_source_row,
+    validate_price_source_upload_selection,
 )
 from use_cases.machinery import (
     INDUSTRY_LABELS,
@@ -2465,10 +2466,23 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
 
 def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
     """Capture the selected source before the Price Lists fragment reruns."""
+    uploaded_files = list(st.session_state.get(uploader_key) or [])
+    source_url = str(st.session_state.get(url_key) or "")
+    try:
+        validate_price_source_upload_selection(uploaded_files)
+        if (not uploaded_files) == (not source_url.strip()):
+            raise PriceSourceError("Add one file or one supplier URL.")
+    except PriceSourceError as exc:
+        st.session_state._price_source_processing = False
+        st.session_state.pop("_price_source_pending", None)
+        st.session_state._price_source_error = str(exc)
+        st.session_state.pop("_price_source_notice", None)
+        return
+
     st.session_state._price_source_pending = {
-        "uploaded_files": list(st.session_state.get(uploader_key) or []),
+        "uploaded_files": uploaded_files,
         "department": "",
-        "source_url": str(st.session_state.get(url_key) or ""),
+        "source_url": source_url,
     }
     st.session_state._price_source_processing = True
     st.session_state.pop("_price_source_error", None)

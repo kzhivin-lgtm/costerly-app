@@ -42,6 +42,7 @@ from use_cases.price_sources import (
     price_offer_matches_row,
     remove_price_source_row,
     save_price_source_row,
+    validate_price_source_upload_selection,
 )
 
 
@@ -633,6 +634,61 @@ def test_multiple_upload_rejects_mixed_document_types():
                 _UploadedPhoto("page.png", b"png"),
             ]
         )
+
+
+def test_multiple_spreadsheets_are_rejected_before_processing_is_queued():
+    with pytest.raises(PriceSourceError, match="one PDF or spreadsheet"):
+        validate_price_source_upload_selection(
+            [
+                _UploadedPhoto("prices-a.xlsx", b"first"),
+                _UploadedPhoto("prices-b.xlsx", b"second"),
+            ]
+        )
+
+
+def test_multiple_photos_are_valid_as_one_document_before_processing_is_queued():
+    validate_price_source_upload_selection(
+        [
+            _UploadedPhoto("page-1.jpg", b"first"),
+            _UploadedPhoto("page-2.png", b"second"),
+        ]
+    )
+
+
+def test_invalid_multiple_spreadsheets_never_enter_processing_state(monkeypatch):
+    from screens import company_profile
+
+    class SessionState(dict):
+        def __getattr__(self, name):
+            return self[name]
+
+        def __setattr__(self, name, value):
+            self[name] = value
+
+    state = SessionState(
+        price_upload=[
+            _UploadedPhoto("prices-a.xlsx", b"first"),
+            _UploadedPhoto("prices-b.xlsx", b"second"),
+        ],
+        price_url="",
+    )
+    monkeypatch.setattr(company_profile.st, "session_state", state)
+
+    company_profile._queue_price_source_processing("price_upload", "price_url")
+
+    assert state["_price_source_processing"] is False
+    assert "_price_source_pending" not in state
+    assert "one PDF or spreadsheet" in state["_price_source_error"]
+
+
+def test_price_source_processing_guard_skips_invalid_multi_document_spinner():
+    from ui.js_guards import install_price_source_processing_guard
+
+    source = inspect.getsource(install_price_source_processing_guard)
+
+    assert "files.length > 1" in source
+    assert "photoPattern" in source
+    assert "return;" in source
 
 
 def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):

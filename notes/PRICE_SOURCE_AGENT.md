@@ -344,3 +344,13 @@ zero TC. The Needs review labels move from 3 px to 9 px vertical offset to match
 the accepted material-table header rhythm. All 377 automated tests pass;
 production acceptance remains required for exact duplicate, one changed row,
 one new row, and the corrected header alignment.
+
+## 3.12.1 revision 9 candidate
+
+Invalid multi-document selections are rejected before the processing state is
+queued. Selecting two spreadsheets, two PDFs, or a mixed non-photo set now
+shows the existing one-document guidance without changing the button to
+Extracting prices. The client-side immediate-progress guard applies the same
+rule, preventing a stale optimistic spinner while the server reruns. Multiple
+JPEG/PNG pages remain valid as one logical document. Independent mixed-source
+batch ingestion is tracked separately as 3.12.3.

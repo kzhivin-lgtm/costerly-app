@@ -2732,6 +2732,15 @@ def install_price_source_processing_guard() -> None:
                 const card = button.closest(".st-key-price_source_add_card");
                 if (!card) return;
 
+                const input = card.querySelector(
+                    "[data-testid='stFileUploader'] input[type='file']"
+                );
+                const files = input ? Array.from(input.files || []) : [];
+                const photoPattern = /\\.(jpe?g|png)$/i;
+                if (files.length > 1 && files.some((file) => !photoPattern.test(file.name))) {
+                    return;
+                }
+
                 card.classList.add("costerly-price-source-processing");
                 button.disabled = true;
                 button.setAttribute("aria-disabled", "true");

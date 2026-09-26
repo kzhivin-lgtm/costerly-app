@@ -41,6 +41,15 @@
   configured pricing source, and unavailable-cost state. Apply to Detection,
   billable OCR, Naming, Estimation, and future agents.
 
+- 3.12.3 Batch Price Source ingestion: pending, P2. Let an owner drop several
+  independent PDF, spreadsheet, and image documents in one action, split them
+  into logical sources, and process them through a bounded sequential queue.
+  Each source needs its own validation, progress, result, retry, duplicate or
+  revision decision, timing, and TC so one bad document cannot block or obscure
+  the others. Preserve the existing rule that several JPEG/PNG pages may form
+  one logical document; grouping mixed photos into documents needs an explicit
+  user or deterministic grouping contract before implementation.
+
 - 3.9.1 Machinery and production routing foundation: active, P1. Add a compact
   16-capability profile across woodworking, metalworking, and finishing while
   retaining the 27-row database catalog for compatibility and history,
