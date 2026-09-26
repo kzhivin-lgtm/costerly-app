@@ -2617,8 +2617,7 @@ def install_upload_dragover_guard() -> None:
     watches for Streamlit rerenders, finds the current dropzone, and toggles our
     own class names instead of relying on Streamlit's dynamic Emotion classes.
     """
-    components.html(
-        """
+    dragover_markup = """
         <script>
         (() => {
             const parentDoc = window.parent.document;
@@ -2691,22 +2690,25 @@ def install_upload_dragover_guard() -> None:
             parentDoc.head.appendChild(script);
         })();
         </script>
-        """,
+        """
+    selection_markup = install_price_source_file_selection_guard(markup_only=True)
+    components.html(
+        dragover_markup + selection_markup,
         height=0,
         width=0,
     )
 
 
-def install_price_source_file_selection_guard() -> None:
+def install_price_source_file_selection_guard(*, markup_only: bool = False) -> str | None:
     """Keep the Price Source picker in one-document MVP mode.
 
     Several photos may form one document. PDF and spreadsheet selections retain
-    only the first selected file, and mixed selections retain only their first
-    file. Filtering happens during the capture phase so Streamlit receives the
-    accepted FileList rather than briefly rendering rejected files.
+    only their first file. In a mixed selection, the first file chooses the
+    route: photo-first keeps all photos, while document-first keeps only that
+    document. Filtering happens during the capture phase so Streamlit receives
+    the accepted FileList rather than briefly rendering rejected files.
     """
-    components.html(
-        r"""
+    markup = r"""
         <script>
         (() => {
             const parentWindow = window.parent;
@@ -2781,10 +2783,15 @@ def install_price_source_file_selection_guard() -> None:
             }
 
             function syncAll() {
+                let hasFiles = false;
                 parentDoc.querySelectorAll(UPLOADER_SELECTOR).forEach((uploader) => {
                     const input = uploader.querySelector("input[type='file']");
+                    const nativeFiles = Array.from(input && input.files || []);
+                    const chips = renderedFiles(uploader);
+                    if (nativeFiles.length || chips.length) hasFiles = true;
                     if (input) syncMode(uploader, input);
                 });
+                if (!hasFiles) parentWindow[WARNING_KEY] = false;
                 syncWarning();
             }
 
@@ -2840,10 +2847,15 @@ def install_price_source_file_selection_guard() -> None:
             };
         })();
         </script>
-        """,
+        """
+    if markup_only:
+        return markup
+    components.html(
+        markup,
         height=0,
         width=0,
     )
+    return None
 
 
 def install_price_source_processing_guard() -> None:

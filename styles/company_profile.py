@@ -978,10 +978,15 @@ def apply_company_profile_css() -> None:
         [data-testid="stFileUploader"].costerly-selection-warning::after {
             content: attr(data-costerly-selection-warning);
             display: block;
-            margin-top: 6px;
-            color: #516784;
-            font-size: 11px;
-            line-height: 1.3;
+            margin-top: 10px;
+            padding: 10px 12px;
+            border: 1px solid #E7CF78;
+            border-radius: 10px;
+            background: #FFF7D6;
+            color: #6F5700;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.35;
             text-align: center;
         }
 

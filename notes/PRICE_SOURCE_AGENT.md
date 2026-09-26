@@ -27,7 +27,9 @@ Revision 13 keeps one logical source per extraction:
 The visual mode is recovered from Streamlit's rendered file chips after the
 native file input is cleared. The rejection notice is a guarded uploader state,
 not an injected child node, so both states survive the widget's internal
-rerender.
+rerender. File filtering shares the existing zero-height drag guard component,
+so the default card keeps its checkpoint geometry. Only the active warning adds
+height, using the shared warning treatment.
 
 Independent mixed-document queues remain outside this task and are tracked as
 3.12.3.

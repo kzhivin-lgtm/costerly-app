@@ -24,7 +24,6 @@ from ui.company_metrics_bridge import company_metrics_bridge
 from ui.js_guards import (
     install_company_logo_picker_guard,
     install_company_metrics_input_guard,
-    install_price_source_file_selection_guard,
     install_price_source_processing_guard,
     install_upload_dragover_guard,
 )
@@ -2573,7 +2572,6 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     ),
                 )
                 install_upload_dragover_guard()
-                install_price_source_file_selection_guard()
             with details_column:
                 st.text_input(
                     "Paste supplier page URL",

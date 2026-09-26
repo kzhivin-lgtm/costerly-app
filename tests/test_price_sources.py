@@ -567,6 +567,8 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     assert "width: 55px !important" in source
     assert '[data-testid="stFileUploader"].costerly-selection-warning::after' in source
     assert "content: attr(data-costerly-selection-warning)" in source
+    assert "background: #FFF7D6" in source
+    assert "font-size: 13px" in source
 
 
 def test_price_source_fragment_does_not_dim_stale_content():
@@ -643,11 +645,15 @@ def test_price_source_add_renders_an_explicit_server_completion_marker():
 
 def test_price_source_uploader_installs_dragover_guard():
     from screens.company_profile import _render_price_source_add
+    from ui.js_guards import install_upload_dragover_guard
 
     source = inspect.getsource(_render_price_source_add)
+    guard_source = inspect.getsource(install_upload_dragover_guard)
 
     assert "install_upload_dragover_guard()" in source
-    assert "install_price_source_file_selection_guard()" in source
+    assert "install_price_source_file_selection_guard" not in source
+    assert "install_price_source_file_selection_guard(markup_only=True)" in guard_source
+    assert guard_source.count("components.html(") == 1
 
 
 def test_mixed_selection_keeps_only_the_first_file():
