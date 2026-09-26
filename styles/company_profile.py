@@ -964,6 +964,33 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-has-pdf-preview
+        [data-testid="stFileChip"] > div:first-child {
+            width: 96px !important;
+            height: 60px !important;
+            overflow: hidden !important;
+            border: 1px solid #E2DDE7;
+            border-radius: 6px;
+            background: #FFFFFF;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-has-pdf-preview
+        [data-testid="stFileChip"] > div:first-child svg {
+            display: none !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body .costerly-pdf-preview {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
         [data-testid="stFileUploader"].costerly-single-document-selection
         [data-testid="stFileChipName"] {
             overflow: visible !important;

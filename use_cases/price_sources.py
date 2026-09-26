@@ -120,6 +120,39 @@ def accepted_price_source_uploads(files: list) -> list:
     return selected[:1]
 
 
+def render_price_source_pdf_preview(
+    file_bytes: bytes,
+    *,
+    max_width: int = 240,
+    max_height: int = 140,
+) -> bytes | None:
+    """Render a small first-page PNG without affecting source acceptance."""
+    if not file_bytes:
+        return None
+    try:
+        import pymupdf
+
+        document = pymupdf.open(stream=file_bytes, filetype="pdf")
+        try:
+            if document.needs_pass or document.page_count < 1:
+                return None
+            page = document[0]
+            width = max(float(page.rect.width), 1.0)
+            height = max(float(page.rect.height), 1.0)
+            scale = max(0.1, min(2.0, max_width / width, max_height / height))
+            pixmap = page.get_pixmap(
+                matrix=pymupdf.Matrix(scale, scale),
+                colorspace=pymupdf.csRGB,
+                alpha=False,
+            )
+            return pixmap.tobytes("png")
+        finally:
+            document.close()
+    except Exception:
+        logger.info("Price source PDF preview unavailable", exc_info=True)
+        return None
+
+
 def combine_price_source_files(files: list) -> object | None:
     """Keep one upload as-is or combine ordered JPEG/PNG pages into one PDF."""
     selected = accepted_price_source_uploads(files)
@@ -356,16 +389,100 @@ def price_source_semantic_fingerprint(result: dict) -> str:
     return sha256(encoded.encode("utf-8")).hexdigest()
 
 
+def price_source_template_fingerprint(file_name: str, data: bytes) -> str | None:
+    """Identify a recurring spreadsheet layout while ignoring row values."""
+    suffix = Path(file_name).suffix.lower()
+    if suffix == ".csv":
+        rows = list(csv.reader(data.decode("utf-8-sig", errors="replace").splitlines()))
+        if not rows:
+            return None
+        basis = {
+            "format": "csv",
+            "columns": len(rows[0]),
+            "headers": [_normalized_name(cell) for cell in rows[0]],
+        }
+    elif suffix == ".xlsx":
+        try:
+            from openpyxl import load_workbook
+
+            workbook = load_workbook(BytesIO(data), read_only=False, data_only=False)
+        except Exception:
+            return None
+        try:
+            sheets: list[dict[str, object]] = []
+            cell_reference = re.compile(r"(?<![A-Z0-9_])(\$?[A-Z]{1,3})\$?\d+")
+            for sheet in workbook.worksheets:
+                row_shapes: list[tuple] = []
+                for row in sheet.iter_rows(
+                    min_row=1,
+                    max_row=min(sheet.max_row, 250),
+                    min_col=1,
+                    max_col=min(sheet.max_column, 80),
+                ):
+                    cells: list[tuple] = []
+                    for cell in row:
+                        value = cell.value
+                        if value is None:
+                            continue
+                        if cell.data_type == "f":
+                            kind = "formula"
+                            anchor = cell_reference.sub(r"\1#", str(value))
+                        elif isinstance(value, bool):
+                            kind = "bool"
+                            anchor = ""
+                        elif isinstance(value, (int, float, Decimal)):
+                            kind = "number"
+                            anchor = ""
+                        elif getattr(cell, "is_date", False):
+                            kind = "date"
+                            anchor = ""
+                        else:
+                            kind = "text"
+                            anchor = (
+                                _normalized_name(str(value))[:80]
+                                if cell.row <= 3 or bool(cell.font and cell.font.bold)
+                                else ""
+                            )
+                        style = (
+                            bool(cell.font and cell.font.bold),
+                            str(cell.number_format or ""),
+                            str(cell.alignment.horizontal or ""),
+                            str(cell.fill.fill_type or ""),
+                        )
+                        cells.append((cell.column, kind, anchor, style))
+                    shape = tuple(cells)
+                    if shape and (not row_shapes or row_shapes[-1] != shape):
+                        row_shapes.append(shape)
+                sheets.append(
+                    {
+                        "title": _normalized_name(sheet.title),
+                        "state": sheet.sheet_state,
+                        "merged": sorted(str(item) for item in sheet.merged_cells.ranges),
+                        "row_shapes": row_shapes,
+                    }
+                )
+            basis = {"format": "xlsx", "sheets": sheets}
+        finally:
+            workbook.close()
+    else:
+        return None
+    encoded = json.dumps(basis, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return sha256(encoded.encode("utf-8")).hexdigest()
+
+
 def price_source_family_identity(
     result: dict,
     *,
     source_name: str,
     source_kind: str,
+    template_sha256: str | None = None,
 ) -> tuple[str, str]:
     """Return a stable internal identity for successive revisions of one source."""
     if source_kind == "url":
         parsed = urlsplit(source_name)
         origin = f"{(parsed.hostname or '').casefold()}{parsed.path.rstrip('/').casefold()}"
+    elif template_sha256:
+        origin = f"template:{template_sha256}"
     else:
         origin = _normalized_name(Path(source_name).name)
     basis: dict[str, str] = {
@@ -373,8 +490,11 @@ def price_source_family_identity(
         "supplier": _normalized_name(str(result.get("supplier_name") or "")),
         "source_kind": source_kind,
         "origin": origin,
-        "document_type": _normalized_name(str(result.get("document_type") or "")),
     }
+    if not template_sha256:
+        basis["document_type"] = _normalized_name(
+            str(result.get("document_type") or "")
+        )
     if origin.startswith("photo document"):
         basis["document_number"] = _normalized_name(
             str(result.get("document_number") or "")
@@ -443,6 +563,7 @@ def _unchanged_duplicate_summary(source: dict) -> dict[str, object]:
     for key in (
         "source_family_sha256",
         "source_family_code",
+        "template_sha256",
         "source_revision",
         "previous_source_id",
     ):
@@ -1040,6 +1161,7 @@ def process_price_source(
         )
         parse_started = time.perf_counter()
         extracted_text = extract_spreadsheet_text(source_name, source_bytes)
+        template_sha256 = price_source_template_fingerprint(source_name, source_bytes)
         _emit_duration(
             trace,
             "server.price_source_spreadsheet_parse",
@@ -1061,6 +1183,7 @@ def process_price_source(
         source_kind = "url"
         suffix = ".html"
         mime_type = "text/html"
+        template_sha256 = None
 
     source_digest = sha256(source_bytes).hexdigest()
     duplicate = (
@@ -1096,6 +1219,7 @@ def process_price_source(
         result,
         source_name=source_name,
         source_kind=source_kind,
+        template_sha256=template_sha256,
     )
     _emit_duration(
         trace,
@@ -1201,6 +1325,7 @@ def process_price_source(
             "document_total": result["document_total"],
             "material_types": material_types,
             "semantic_sha256": semantic_sha256,
+            "template_sha256": template_sha256,
             "source_family_sha256": source_family_sha256,
             "source_family_code": source_family_code,
             "source_revision": source_revision,

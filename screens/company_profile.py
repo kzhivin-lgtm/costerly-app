@@ -49,6 +49,7 @@ from use_cases.price_sources import (
     load_price_source_rows,
     process_price_source,
     remove_price_source_row,
+    render_price_source_pdf_preview,
     save_price_source_row,
     validate_price_source_upload_selection,
 )
@@ -2560,7 +2561,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
             url_key = f"price_source_url_{uploader_version}"
             file_column, details_column = st.columns(2, gap="large")
             with file_column:
-                st.file_uploader(
+                uploaded_files = st.file_uploader(
                     "Upload file or photos",
                     accept_multiple_files=True,
                     key=uploader_key,
@@ -2571,7 +2572,22 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                         "that belong to the same document"
                     ),
                 )
-                install_upload_dragover_guard()
+                preview_data_uri = ""
+                accepted_files = accepted_price_source_uploads(list(uploaded_files or []))
+                if (
+                    len(accepted_files) == 1
+                    and Path(str(accepted_files[0].name)).suffix.lower() == ".pdf"
+                ):
+                    preview = render_price_source_pdf_preview(
+                        accepted_files[0].getvalue()
+                    )
+                    if preview:
+                        preview_data_uri = (
+                            "data:image/png;base64," + base64.b64encode(preview).decode("ascii")
+                        )
+                install_upload_dragover_guard(
+                    pdf_preview_data_uri=preview_data_uri
+                )
             with details_column:
                 st.text_input(
                     "Paste supplier page URL",

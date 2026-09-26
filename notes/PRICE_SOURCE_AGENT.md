@@ -430,3 +430,24 @@ button remained disabled. The server had completed successfully. The add-source
 fragment now emits an explicit completion marker, and the client guard observes
 DOM reconciliation and restores the button as soon as that server marker
 appears, even if an earlier processing marker remains temporarily stale.
+
+## 3.12.1 revision 14, block B1 candidate
+
+The single-PDF uploader card renders a bounded first-page PNG preview with the
+existing PyMuPDF dependency. Preview failure falls back to the established file
+icon and never blocks selection or extraction. XLSX and CSV retain their large
+document card, and JPEG/PNG retain the accepted multi-photo grid.
+
+Recurring XLSX and CSV sources now receive a structural template fingerprint.
+For XLSX it covers sheet names and states, merged ranges, bounded row topology,
+cell kinds, stable style traits, header anchors, and normalized formula shapes.
+Ordinary row text and numeric values are excluded. CSV uses its header and
+column structure. A renamed or price-updated workbook with the same structure
+therefore remains in one source family and increments its auditable revision;
+a structurally different workbook starts another family. Exact byte duplicates
+still short-circuit before the agent. Price resolution remains unchanged.
+
+The next approved block is B2, an isolated internal-offer lane. Source-level VAT
+confirmation follows as block C. Independent mixed-document ingestion remains
+deferred under 3.12.3, and resolver priority is postponed until both supplier
+and internal offer lanes exist and have production evidence.

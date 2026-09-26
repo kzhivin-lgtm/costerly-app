@@ -45,10 +45,13 @@
   photo-first keeps all JPEG/PNG pages, document-first keeps only that first
   document, and a compact note explains the rule when files are rejected.
   Photos retain a four-column, two-row scrollable grid; a single document gets
-  a centered enlarged card with a readable name.
-  Next is block B, structural template identity and
-  an isolated recurring internal-offer lane. Production acceptance remains
-  pending. Contract:
+  a centered enlarged card with a readable name. Revision 14 block B1 adds a
+  first-page PDF preview and structural XLSX/CSV template identity so renamed or
+  value-updated workbooks remain auditable revisions of one source family.
+  Next is block B2, an isolated recurring internal-offer lane, followed by
+  source-level VAT confirmation in block C. Mixed-document queueing remains
+  deferred under 3.12.3, and resolver priority remains deferred until both offer
+  lanes have production evidence. Production acceptance remains pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price

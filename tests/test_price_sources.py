@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import fitz
 import pandas as pd
 import pytest
+from openpyxl import Workbook
 from PIL import Image
 
 from agents.schemas.price_source_schema import (
@@ -40,8 +41,10 @@ from use_cases.price_sources import (
     price_source_material_types,
     price_source_family_identity,
     price_source_semantic_fingerprint,
+    price_source_template_fingerprint,
     price_offer_matches_row,
     remove_price_source_row,
+    render_price_source_pdf_preview,
     save_price_source_row,
     validate_price_source_upload_selection,
 )
@@ -78,6 +81,27 @@ def test_price_source_download_url_is_direct_owned_and_attachment_scoped(monkeyp
             {"download": "invoice.pdf"},
         )
     ]
+
+
+def test_price_source_pdf_preview_renders_only_first_page():
+    document = fitz.open()
+    first = document.new_page(width=400, height=600)
+    first.draw_rect(fitz.Rect(40, 40, 360, 180), fill=(0.5, 0.28, 0.78))
+    document.new_page(width=400, height=600)
+    source = document.tobytes()
+    document.close()
+
+    preview = render_price_source_pdf_preview(source)
+
+    assert preview is not None
+    with Image.open(BytesIO(preview)) as image:
+        assert image.format == "PNG"
+        assert image.width <= 240
+        assert image.height <= 140
+
+
+def test_price_source_pdf_preview_falls_back_for_invalid_pdf():
+    assert render_price_source_pdf_preview(b"not a pdf") is None
 
 
 class _UploadedPhoto:
@@ -350,6 +374,72 @@ def test_semantic_fingerprint_detects_same_document_across_file_variants():
     assert price_source_semantic_fingerprint(original) != price_source_semantic_fingerprint(
         different_document
     )
+
+
+def _template_workbook_bytes(*, price: float, material: str = "Plywood") -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Estimate"
+    sheet.merge_cells("A1:D1")
+    sheet["A1"] = "Workshop material estimate"
+    sheet["A1"].font = sheet["A1"].font.copy(bold=True)
+    for column, heading in enumerate(("Material", "Unit", "Quantity", "Price"), 1):
+        cell = sheet.cell(row=3, column=column, value=heading)
+        cell.font = cell.font.copy(bold=True)
+    sheet.append([material, "sheet", 2, price])
+    sheet["D5"] = "=C4*D4"
+    output = BytesIO()
+    workbook.save(output)
+    workbook.close()
+    return output.getvalue()
+
+
+def test_template_fingerprint_ignores_spreadsheet_values():
+    original = _template_workbook_bytes(price=75, material="Plywood")
+    changed = _template_workbook_bytes(price=82, material="OSB")
+
+    assert price_source_template_fingerprint("estimate.xlsx", original) == (
+        price_source_template_fingerprint("renamed-estimate.xlsx", changed)
+    )
+
+
+def test_template_fingerprint_changes_with_spreadsheet_structure():
+    original = _template_workbook_bytes(price=75)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Different template"
+    sheet.append(["SKU", "Description", "Net", "VAT", "Gross"])
+    output = BytesIO()
+    workbook.save(output)
+    workbook.close()
+
+    assert price_source_template_fingerprint("estimate.xlsx", original) != (
+        price_source_template_fingerprint("estimate.xlsx", output.getvalue())
+    )
+
+
+def test_template_identity_links_renamed_workbook_revisions():
+    result = _result()
+    template = price_source_template_fingerprint(
+        "estimate.xlsx", _template_workbook_bytes(price=75)
+    )
+
+    first = price_source_family_identity(
+        result,
+        source_name="estimate-january.xlsx",
+        source_kind="file",
+        template_sha256=template,
+    )
+    changed_classification = deepcopy(result)
+    changed_classification["document_type"] = "internal_estimate"
+    second = price_source_family_identity(
+        changed_classification,
+        source_name="estimate-february.xlsx",
+        source_kind="file",
+        template_sha256=template,
+    )
+
+    assert first == second
 
 
 def test_source_family_identity_stays_stable_across_changed_file_revisions():
@@ -650,10 +740,13 @@ def test_price_source_uploader_installs_dragover_guard():
     source = inspect.getsource(_render_price_source_add)
     guard_source = inspect.getsource(install_upload_dragover_guard)
 
-    assert "install_upload_dragover_guard()" in source
+    assert "install_upload_dragover_guard(" in source
+    assert "pdf_preview_data_uri=preview_data_uri" in source
     assert "install_price_source_file_selection_guard" not in source
-    assert "install_price_source_file_selection_guard(markup_only=True)" in guard_source
+    assert "install_price_source_file_selection_guard(" in guard_source
+    assert "pdf_preview_data_uri=pdf_preview_data_uri" in guard_source
     assert guard_source.count("components.html(") == 1
+    assert "render_price_source_pdf_preview" in source
 
 
 def test_mixed_selection_keeps_only_the_first_file():
@@ -746,6 +839,8 @@ def test_price_source_file_guard_filters_before_streamlit_receives_selection():
     assert "stFileChipDeleteBtn" in source
     assert "emptyWarningTimer" in source
     assert "}, 5000)" in source
+    assert "PDF_PREVIEW_DATA_URI" in source
+    assert "costerly-pdf-preview" in source
 
 
 def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
