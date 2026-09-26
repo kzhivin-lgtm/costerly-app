@@ -1394,6 +1394,22 @@ def test_exact_duplicate_notice_reports_cached_unchanged_result_without_agent_co
     assert notice == "Already processed · 10 unchanged · 0.0 s · TC 0.000"
 
 
+def test_exact_duplicate_notice_omits_zero_unchanged_count():
+    notice = company_profile._price_source_notice_text(
+        {
+            "summary": {
+                "exact_duplicate": True,
+                "unchanged": 0,
+                "unresolved": 62,
+                "agent_duration_seconds": 0.0,
+                "token_cost": 0.0,
+            }
+        }
+    )
+
+    assert notice == "Already processed · 62 unresolved · 0.0 s · TC 0.000"
+
+
 def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():
     screen_source = Path("screens/company_profile.py").read_text()
     css = Path("styles/company_profile.py").read_text()

@@ -5,6 +5,17 @@ Status: active
 Priority: P1
 Protected checkpoint: `d99a594` (accepted 3.12.1 Price Lists interaction checkpoint)
 
+## Revision 12 interaction correction
+
+[Verified] Revision 11 could hide immediate feedback for a new extraction. The
+optimistic browser state was reset against the completion marker left by the
+previous idle render, before the new server cycle had completed. Revision 12
+assigns a monotonically increasing processing cycle only after input validation,
+renders that cycle on server processing and completion markers, and resets the
+optimistic state only when a newer completed cycle is observed. Exact duplicate
+results also omit a zero unchanged count when every retained row remains in
+Needs review.
+
 ## Objective
 
 Make the agent reliably turn real supplier websites, files, and photos into

@@ -36,7 +36,10 @@
   until their isolated offer lane exists, and deterministically excludes selling
   prices from material costs. Revision 11 adds an explicit server completion
   marker so a completed run cannot leave the optimistic Extracting prices state
-  behind. Next is block B, structural template identity and
+  behind. Revision 12 makes that marker processing-cycle aware, so an old idle
+  marker cannot immediately cancel the next click's progress state, and removes
+  the misleading zero unchanged count from unresolved-only duplicate results.
+  Next is block B, structural template identity and
   an isolated recurring internal-offer lane. Production acceptance remains
   pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.

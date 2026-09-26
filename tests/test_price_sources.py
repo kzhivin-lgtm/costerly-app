@@ -616,8 +616,11 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert 'card.classList.remove("costerly-price-source-processing")' in source
     assert "button.disabled = false" in source
     assert 'label.textContent = "Extract prices"' in source
-    assert 'card.querySelector(".price-source-processing-marker")' in source
+    assert '".price-source-processing-marker"' in source
     assert ".price-source-processing-complete-marker" in source
+    assert "card.dataset.costerlyProcessingCycle" in source
+    assert "completeMarker.dataset.processingCycle" in source
+    assert "completedCycle === startedCycle" in source
     assert "new MutationObserver(resetCompletedState)" in source
     assert "observer.disconnect()" in source
 
@@ -628,6 +631,7 @@ def test_price_source_add_renders_an_explicit_server_completion_marker():
     source = inspect.getsource(_render_price_source_add)
 
     assert "price-source-processing-complete-marker" in source
+    assert 'data-processing-cycle="{processing_cycle}"' in source
 
 
 def test_price_source_uploader_installs_dragover_guard():

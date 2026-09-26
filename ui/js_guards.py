@@ -2711,13 +2711,23 @@ def install_price_source_processing_guard() -> None:
 
             function resetCompletedState() {
                 parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach((card) => {
-                    const isComplete = card.querySelector(
+                    const completeMarker = card.querySelector(
                         ".price-source-processing-complete-marker"
                     );
-                    if (!isComplete && card.querySelector(".price-source-processing-marker")) {
+                    const processingMarker = card.querySelector(
+                        ".price-source-processing-marker"
+                    );
+                    if (card.classList.contains("costerly-price-source-processing")) {
+                        const startedCycle = card.dataset.costerlyProcessingCycle || "";
+                        const completedCycle = completeMarker
+                            ? completeMarker.dataset.processingCycle || ""
+                            : "";
+                        if (!completeMarker || completedCycle === startedCycle) return;
+                    } else if (!completeMarker && processingMarker) {
                         return;
                     }
                     card.classList.remove("costerly-price-source-processing");
+                    delete card.dataset.costerlyProcessingCycle;
                     const button = card.querySelector(".st-key-process_price_source button");
                     if (!button) return;
                     button.disabled = false;
@@ -2746,6 +2756,12 @@ def install_price_source_processing_guard() -> None:
                     return;
                 }
 
+                const completeMarker = card.querySelector(
+                    ".price-source-processing-complete-marker"
+                );
+                card.dataset.costerlyProcessingCycle = completeMarker
+                    ? completeMarker.dataset.processingCycle || ""
+                    : "";
                 card.classList.add("costerly-price-source-processing");
                 button.disabled = true;
                 button.setAttribute("aria-disabled", "true");

@@ -2485,10 +2485,15 @@ def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
         st.session_state.pop("_price_source_notice", None)
         return
 
+    processing_cycle = int(
+        st.session_state.get("_price_source_processing_cycle") or 0
+    ) + 1
+    st.session_state._price_source_processing_cycle = processing_cycle
     st.session_state._price_source_pending = {
         "uploaded_files": uploaded_files,
         "department": "",
         "source_url": source_url,
+        "processing_cycle": processing_cycle,
     }
     st.session_state._price_source_processing = True
     st.session_state.pop("_price_source_error", None)
@@ -2508,7 +2513,9 @@ def _price_source_notice_text(source: dict | None) -> str:
     unresolved = int(summary.get("unresolved") or 0)
     excluded = int(summary.get("excluded") or 0)
     if summary.get("exact_duplicate"):
-        parts = ["Already processed", f"{unchanged} unchanged"]
+        parts = ["Already processed"]
+        if unchanged:
+            parts.append(f"{unchanged} unchanged")
         if unresolved:
             parts.append(f"{unresolved} unresolved")
     elif has_diff_counts:
@@ -2536,6 +2543,9 @@ def _price_source_notice_text(source: dict | None) -> str:
 
 def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
     processing = bool(st.session_state.get("_price_source_processing"))
+    processing_cycle = int(
+        st.session_state.get("_price_source_processing_cycle") or 0
+    )
     with st.container(key="price_source_add_card"):
         st.markdown(
             '<div class="company-logo-table-heading">Add price source</div>',
@@ -2568,12 +2578,14 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                 )
                 if processing:
                     st.markdown(
-                        '<span class="price-source-processing-marker"></span>',
+                        '<span class="price-source-processing-marker" '
+                        f'data-processing-cycle="{processing_cycle}"></span>',
                         unsafe_allow_html=True,
                     )
                 else:
                     st.markdown(
-                        '<span class="price-source-processing-complete-marker"></span>',
+                        '<span class="price-source-processing-complete-marker" '
+                        f'data-processing-cycle="{processing_cycle}"></span>',
                         unsafe_allow_html=True,
                     )
                 st.button(
