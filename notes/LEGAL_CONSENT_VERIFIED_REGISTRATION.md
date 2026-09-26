@@ -1,12 +1,44 @@
 # Legal Consent and Verified Registration
 
 Task: 3.11.1
-Status: completed and accepted in production at `3a4d8fa`
+Status: completed and accepted in production at `3a4d8fa`; post-checkpoint legal revision active at `bc198fb`
 
 Final owner confirmation on 25.09.2026 closes the production signup,
 email-confirmation, returning-user gate, mobile, Terms, and Privacy acceptance
 scope. This supersedes the earlier pending-state notes retained below as task
 history.
+
+## Verified legal revision on 2026-09-26
+
+- Terms 1.4 is publicly deployed and selected by the Supabase release pointer
+  with material acceptance version 5. Its live response SHA-256 is
+  `16092ef0d0373774dfb4023d2ed15bc866170bf56224a5d16cdf7cea10f494f5`.
+- Privacy 1.3 is publicly deployed and selected independently with unchanged
+  acceptance version 1 and `requires_reacceptance = false`. Its live response
+  SHA-256 is
+  `21f380232a37c56c8e0b6f5b735d2be556cb3e0ddf551360fb90c67bfb87b978`.
+- The final Customer Content model has three layers. Authorized personnel may
+  access identifiable Raw Customer Content, as reasonably necessary, only for
+  service operation, support, QA, troubleshooting, security, error analysis,
+  and testing, evaluation and improvement of Costerly AI workflows. Broad
+  market-intelligence rights apply only to validly aggregated or de-identified
+  Derived Data that cannot reasonably identify or reconstruct a Customer,
+  User, third party, counterparty, project, source document, Customer Content,
+  Output, personal data, Customer-specific confidential information or a
+  confidential commercial relationship. Generalized know-how is retained on
+  the same non-disclosure and non-reconstruction boundary.
+- One existing Terms 1.3 acceptance event was present at activation. The
+  server confirms that this user has acceptance history and now requires the
+  current Terms 1.4 acceptance. No pending registration existed.
+- The release preserves Customer ownership of Customer Content and Output,
+  AI-provider no-training commitments, Section 15 indemnity, separate-DPA
+  support, and applicable-law deletion and retention qualifications.
+- This legal revision does not itself create a Derived Data product or
+  processing pipeline. Any later implementation must enforce aggregation and
+  de-identification controls sufficient to prevent reasonable identification
+  or reconstruction; those controls must not rely on the contractual label
+  alone.
+- The full deterministic suite passes: 400 tests.
 
 ## Verified progress on 2026-09-25
 
@@ -38,7 +70,7 @@ history.
   company activation, existing-user gate, mobile pass, and branded Supabase
   Confirm Signup template remain acceptance work. This is active playground
   functionality, not a completed production checkpoint.
-- The full deterministic suite passes: 343 tests.
+- At the prior Terms 1.3 checkpoint, the full deterministic suite passed: 343 tests.
 - Material Terms of Service version 1.1 and Privacy Policy version 1.1 are
   active. Terms acceptance version advanced from 1 to 2; Privacy remains
   acceptance version 1 and does not create its own gate. There were no existing

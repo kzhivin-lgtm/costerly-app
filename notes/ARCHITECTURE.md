@@ -438,12 +438,18 @@ legal-state lookup. Their verified `user_id`, not typed email, is checked
 against the current Terms acceptance version before company data renders.
 Privacy-only releases do not create a gate. Published document rows and legal
 evidence cannot be edited or deleted. The mutable release pointer selects the
-current immutable document. The frozen pre-launch legal-text checkpoint uses
-Terms 1.3 with acceptance version 4 and response SHA-256
-`346cb5ee4be1cac1b0fa4a80deb8c1a89a330e426dae8d931485b79233cc2b0d`,
-plus Privacy 1.2 with unchanged acceptance version 1,
+current immutable document. The current post-checkpoint legal revision uses
+Terms 1.4 with acceptance version 5 and response SHA-256
+`16092ef0d0373774dfb4023d2ed15bc866170bf56224a5d16cdf7cea10f494f5`,
+plus Privacy 1.3 with unchanged acceptance version 1,
 `requires_reacceptance = false`, and response SHA-256
-`baee97a79a3be012dec6b0e5610aa380abd01e753dd64930ea97ec25bf13d674`.
+`21f380232a37c56c8e0b6f5b735d2be556cb3e0ddf551360fb90c67bfb87b978`.
+The legal model separates narrow human access to identifiable Raw Customer
+Content for service and Costerly AI workflow purposes from broad use of
+Derived Data and generalized know-how that cannot reasonably identify or
+reconstruct Customer-specific source material or confidential relationships.
+The documents do not implement a Derived Data pipeline; any future pipeline
+must enforce that boundary technically before its output is used broadly.
 See
 `notes/LEGAL_CONSENT_VERIFIED_REGISTRATION.md` for the scenario and rollout
 contract.
