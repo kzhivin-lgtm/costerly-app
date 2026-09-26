@@ -2711,7 +2711,12 @@ def install_price_source_processing_guard() -> None:
 
             function resetCompletedState() {
                 parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach((card) => {
-                    if (card.querySelector(".price-source-processing-marker")) return;
+                    const isComplete = card.querySelector(
+                        ".price-source-processing-complete-marker"
+                    );
+                    if (!isComplete && card.querySelector(".price-source-processing-marker")) {
+                        return;
+                    }
                     card.classList.remove("costerly-price-source-processing");
                     const button = card.querySelector(".st-key-process_price_source button");
                     if (!button) return;
@@ -2749,9 +2754,12 @@ def install_price_source_processing_guard() -> None:
             }
 
             parentDoc.addEventListener("click", handleClick, true);
+            const observer = new MutationObserver(resetCompletedState);
+            observer.observe(parentDoc.body, {childList: true, subtree: true});
             resetCompletedState();
             parentWindow[CLEANUP_KEY] = () => {
                 parentDoc.removeEventListener("click", handleClick, true);
+                observer.disconnect();
                 delete parentWindow[CLEANUP_KEY];
             };
         })();

@@ -2571,6 +2571,11 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                         '<span class="price-source-processing-marker"></span>',
                         unsafe_allow_html=True,
                     )
+                else:
+                    st.markdown(
+                        '<span class="price-source-processing-complete-marker"></span>',
+                        unsafe_allow_html=True,
+                    )
                 st.button(
                     "Extracting prices" if processing else "Extract prices",
                     key="process_price_source",

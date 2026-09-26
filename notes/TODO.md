@@ -34,7 +34,9 @@
   selections from entering processing. Revision 10 block A adds first-class
   internal-estimate and customer-sale provenance, keeps internal rows reviewable
   until their isolated offer lane exists, and deterministically excludes selling
-  prices from material costs. Next is block B, structural template identity and
+  prices from material costs. Revision 11 adds an explicit server completion
+  marker so a completed run cannot leave the optimistic Extracting prices state
+  behind. Next is block B, structural template identity and
   an isolated recurring internal-offer lane. Production acceptance remains
   pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.

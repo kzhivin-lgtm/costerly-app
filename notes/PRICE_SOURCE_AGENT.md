@@ -381,3 +381,12 @@ Until block 2 introduces an isolated internal-offer identity lane, automatically
 extracted internal costs remain reviewable rather than replacing any active
 supplier-less offer. Customer selling prices are deterministically excluded even
 if the model marks them ready.
+
+## 3.12.1 revision 11 spinner hotfix
+
+A completed 62-row internal estimate exposed a second stale client mutation:
+the persisted success notice appeared while the optimistic Extracting prices
+button remained disabled. The server had completed successfully. The add-source
+fragment now emits an explicit completion marker, and the client guard observes
+DOM reconciliation and restores the button as soon as that server marker
+appears, even if an earlier processing marker remains temporarily stale.
