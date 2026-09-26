@@ -1161,6 +1161,7 @@ def apply_company_profile_css() -> None:
         [class*="st-key-price_source_row_"],
         [class*="st-key-price_catalog_row_"],
         [class*="st-key-price_review_row_"] {
+            margin: 0 !important;
             padding: 7px 16px;
             border: 0;
             transition: background-color 120ms ease;
@@ -1178,6 +1179,13 @@ def apply_company_profile_css() -> None:
         [class*="st-key-price_source_row_"] > [data-testid="stVerticalBlock"],
         [class*="st-key-price_catalog_row_"] > [data-testid="stVerticalBlock"],
         [class*="st-key-price_review_row_"] > [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_catalog_section [data-testid="stExpanderDetails"] > [data-testid="stVerticalBlock"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_review_queue > [data-testid="stVerticalBlock"] {
             gap: 0 !important;
         }
 
@@ -1209,8 +1217,16 @@ def apply_company_profile_css() -> None:
         .st-key-price_catalog_section [data-testid="stExpander"] {
             overflow: hidden;
             border-color: var(--color-border-soft) !important;
-            border-radius: 14px !important;
+            border-radius: 18px !important;
             background: #FBF9FD !important;
+            isolation: isolate;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_catalog_section [data-testid="stExpanderDetails"] {
+            overflow: hidden;
+            padding: 0 !important;
+            border-radius: 0 0 18px 18px !important;
         }
 
         .stApp:has(.company-profile-active)
@@ -1281,6 +1297,46 @@ def apply_company_profile_css() -> None:
             letter-spacing: 0.01em !important;
             text-transform: none !important;
             white-space: nowrap !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_row_form_"] button[kind="secondary"] {
+            border-color: var(--color-border-soft) !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: var(--color-text) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-confirm_remove_price_row_"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_remove_price_row_"] button,
+        .stApp:has(.company-profile-active)
+        .st-key-price_review_previous button,
+        .stApp:has(.company-profile-active)
+        .st-key-price_review_next button {
+            width: 100% !important;
+            height: 32px !important;
+            min-height: 32px !important;
+            padding: 0 10px !important;
+            border-radius: 8px !important;
+            font-size: 11px !important;
+            font-weight: 500 !important;
+            text-transform: none !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_remove_price_row_"] button {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_catalog_row_"] [data-testid="stAlert"],
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_review_row_"] [data-testid="stAlert"] {
+            min-height: 36px;
+            padding: 7px 12px !important;
         }
 
         .stApp:has(.company-profile-active)

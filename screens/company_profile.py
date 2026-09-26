@@ -40,6 +40,7 @@ from use_cases.price_sources import (
     PriceSourceError,
     canonical_price_source_category,
     combine_price_source_files,
+    create_price_source_download_url,
     list_price_catalog,
     list_price_sources,
     list_unresolved_price_source_rows,
@@ -1762,6 +1763,29 @@ def _price_source_row_material_type(row: dict, source: dict) -> str:
     return canonical_price_source_category(str(source.get("category") or "Other"))
 
 
+def _price_source_direct_url(access: CompanyAccess, source: dict) -> str | None:
+    if source.get("source_kind") == "url" and source.get("source_url"):
+        return str(source["source_url"])
+    source_id = str(source.get("source_id") or "")
+    cache = st.session_state.setdefault("_price_source_direct_urls", {})
+    cached = cache.get(source_id)
+    now = time.monotonic()
+    if isinstance(cached, dict) and float(cached.get("expires_at") or 0) > now:
+        return str(cached.get("url") or "") or None
+    try:
+        url = create_price_source_download_url(
+            access,
+            str(source.get("storage_path") or ""),
+            file_name=str(source.get("source_name") or "price-source"),
+        )
+    except Exception:
+        logger.exception("Price source download URL creation failed")
+        return None
+    if url:
+        cache[source_id] = {"url": url, "expires_at": now + 3300}
+    return url
+
+
 def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: list[dict]) -> None:
     department = "All departments"
     material_type = "All material types"
@@ -1885,15 +1909,14 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         st.session_state.pop("_selected_price_source_id", None)
                         st.session_state._editing_price_source_row = (source_id, row_id)
                         st.session_state._price_source_action_location = "catalog"
-                    if source.get("source_kind") == "url" and source.get("source_url"):
+                    source_url = _price_source_direct_url(access, source)
+                    if source_url:
                         source_col.link_button(
                             "Source",
-                            str(source["source_url"]),
+                            source_url,
                             key=f"catalog_source_{row_id}",
                             use_container_width=True,
                         )
-                    elif source_col.button("Source", key=f"catalog_source_{row_id}"):
-                        st.session_state._price_source_view_id = source_id
 
                     target = (source_id, row_id)
                     if (
@@ -2064,8 +2087,11 @@ def _render_price_source_row_remove_confirmation(
     target: tuple[str, str],
 ) -> None:
     source_id, row_id = target
-    st.warning("Remove this price from the active catalog?")
-    confirm_col, cancel_col, _ = st.columns([1, 1, 4])
+    warning_col, confirm_col, cancel_col = st.columns(
+        [4.8, 0.72, 0.72],
+        vertical_alignment="center",
+    )
+    warning_col.warning("Remove this price from the active catalog?")
     if confirm_col.button("Remove", key=f"confirm_remove_price_row_{source_id}_{row_id}", type="primary"):
         try:
             remove_price_source_row(access, source_id, row_id)
@@ -2106,7 +2132,7 @@ def _render_price_source_review_queue(
                     f'<span class="price-source-row-label">{label}</span>',
                     unsafe_allow_html=True,
                 )
-        page_size = 12
+        page_size = 5
         page_count = max(1, (len(review_rows) + page_size - 1) // page_size)
         page = min(max(int(st.session_state.get("price_review_page", 0)), 0), page_count - 1)
         st.session_state.price_review_page = page
@@ -2165,17 +2191,17 @@ def _render_price_source_review_queue(
                     _render_price_source_row_editor(access, source, row)
 
         if page_count > 1:
-            previous_col, page_col, next_col, _ = st.columns([0.7, 0.8, 0.7, 4])
+            previous_col, next_col, _, page_col = st.columns([0.8, 0.7, 4.4, 0.65])
             if previous_col.button("Previous", disabled=page == 0, key="price_review_previous"):
                 st.session_state.price_review_page = page - 1
+                st.rerun(scope="fragment")
+            if next_col.button("Next", disabled=page == page_count - 1, key="price_review_next"):
+                st.session_state.price_review_page = page + 1
                 st.rerun(scope="fragment")
             page_col.markdown(
                 f'<span class="price-review-page">{page + 1} / {page_count}</span>',
                 unsafe_allow_html=True,
             )
-            if next_col.button("Next", disabled=page == page_count - 1, key="price_review_next"):
-                st.session_state.price_review_page = page + 1
-                st.rerun(scope="fragment")
 
 
 def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
@@ -2348,32 +2374,6 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
                 and st.session_state.get("_price_source_action_location") == "details"
             ):
                 _render_price_source_row_editor(access, source, row)
-
-
-@st.dialog("Original source", width="large")
-def _render_price_source_original_dialog(access: CompanyAccess, source: dict) -> None:
-    try:
-        original = load_price_source_bytes(access, str(source.get("storage_path") or ""))
-    except Exception:
-        logger.exception("Price source original load failed")
-        original = None
-    if not original:
-        st.error("The original file is unavailable")
-        return
-    mime_type = str(source.get("mime_type") or "application/octet-stream")
-    file_name = Path(str(source.get("source_name") or "price-source")).name
-    if mime_type in {"image/jpeg", "image/png"}:
-        st.image(original, use_container_width=True)
-    elif mime_type == "application/pdf" and hasattr(st, "pdf"):
-        st.pdf(original)
-    else:
-        st.download_button(
-            "Download file",
-            data=original,
-            file_name=file_name,
-            mime=mime_type,
-            use_container_width=True,
-        )
 
 
 def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
@@ -2607,27 +2607,14 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                 ready_count = int(summary.get("ready") or 0)
                                 st.write(f"{ready_count} {'price' if ready_count == 1 else 'prices'}")
                             with action_col:
-                                if source.get("source_kind") == "url" and source.get("source_url"):
+                                source_url = _price_source_direct_url(access, source)
+                                if source_url:
                                     st.link_button(
                                         "View",
-                                        str(source["source_url"]),
+                                        source_url,
                                         key=f"view_price_source_{source_id}",
                                         use_container_width=True,
                                     )
-                                elif st.button("View", key=f"view_price_source_{source_id}"):
-                                    st.session_state._price_source_view_id = source_id
-
-        view_source_id = st.session_state.pop("_price_source_view_id", None)
-        view_source = next(
-            (
-                source
-                for source in sources
-                if str(source.get("source_id")) == str(view_source_id)
-            ),
-            None,
-        )
-        if view_source:
-            _render_price_source_original_dialog(access, view_source)
 
 
 

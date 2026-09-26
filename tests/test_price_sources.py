@@ -28,6 +28,7 @@ from use_cases.price_sources import (
     apply_legacy_price_benchmark,
     canonical_price_source_category,
     combine_price_source_files,
+    create_price_source_download_url,
     extract_spreadsheet_text,
     fetch_public_page,
     guard_price_source_department,
@@ -39,6 +40,39 @@ from use_cases.price_sources import (
     remove_price_source_row,
     save_price_source_row,
 )
+
+
+def test_price_source_download_url_is_direct_owned_and_attachment_scoped(monkeypatch):
+    calls = []
+
+    class Bucket:
+        def create_signed_url(self, path, expires_in, options):
+            calls.append((path, expires_in, options))
+            return {"signedURL": "https://storage.example/signed-source"}
+
+    class Storage:
+        def from_(self, bucket):
+            assert bucket == "company-price-sources"
+            return Bucket()
+
+    client = SimpleNamespace(storage=Storage())
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+
+    url = create_price_source_download_url(
+        SimpleNamespace(company_id="company-1", user_id="user-1"),
+        "storage://company-price-sources/company-1/source/invoice.pdf",
+        file_name="invoice.pdf",
+    )
+
+    assert url == "https://storage.example/signed-source"
+    assert calls == [
+        (
+            "company-1/source/invoice.pdf",
+            3600,
+            {"download": "invoice.pdf"},
+        )
+    ]
 
 
 class _UploadedPhoto:

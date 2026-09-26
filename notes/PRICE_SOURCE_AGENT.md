@@ -271,11 +271,11 @@ state, and narrow-screen wrapping.
 The catalog interaction pass removes duplicated source inspection and reduces
 the amount of Streamlit UI rebuilt by each row action:
 
-- Source and Source Library View open only the original uploaded file, or the
-  original supplier URL, without rendering a second extracted-row editor;
+- Source and Source Library View are direct links: uploaded files download
+  immediately through a short-lived owned URL, and supplier URLs open directly;
 - active-row Edit reuses the source row already loaded with the catalog and
   avoids a second source-row query in the normal path;
-- Needs review renders 12 rows per page instead of rebuilding every unresolved
+- Needs review renders 5 rows per page instead of rebuilding every unresolved
   row and its controls after every click;
 - only the field blocking activation receives a red asterisk, with no duplicate
   row title or review explanation above the form;
@@ -283,6 +283,11 @@ the amount of Streamlit UI rebuilt by each row action:
   accepted active-row tint, and use a neutral review-row surface;
 - destructive crosses move left and all non-informational hover tooltips are
   suppressed on the Company Profile interface.
+
+The follow-up geometry pass removes the remaining Streamlit block gap between
+rows, restores the rounded Wood, Metal, and Coating containers, places removal
+confirmation and its compact actions on one line, keeps Cancel secondary and
+transparent, and aligns Previous, Next, and the page count on one row.
 
 All 369 automated tests pass. Production acceptance remains required for row
 geometry, Source/View behavior for URL, image, PDF, and spreadsheet sources,

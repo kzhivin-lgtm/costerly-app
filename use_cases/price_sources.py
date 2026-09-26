@@ -592,6 +592,33 @@ def load_price_source_bytes(access, reference: str | None) -> bytes | None:
     return client.storage.from_(PRICE_SOURCE_BUCKET).download(object_path)
 
 
+def create_price_source_download_url(
+    access,
+    reference: str | None,
+    *,
+    file_name: str,
+    expires_in: int = 3600,
+) -> str | None:
+    """Return a short-lived direct-download URL for an owned source file."""
+    prefix = f"storage://{PRICE_SOURCE_BUCKET}/"
+    if not reference or not reference.startswith(prefix):
+        return None
+    object_path = reference.removeprefix(prefix)
+    company_prefix = f"{access.company_id}/"
+    if not object_path.startswith(company_prefix):
+        raise PermissionError("Price source is not available to this company.")
+    client = get_supabase_client()
+    assert_company_owner(client, str(access.user_id), str(access.company_id))
+    response = client.storage.from_(PRICE_SOURCE_BUCKET).create_signed_url(
+        object_path,
+        expires_in,
+        {"download": Path(file_name).name},
+    )
+    if isinstance(response, dict):
+        return response.get("signedURL") or response.get("signed_url")
+    return getattr(response, "signedURL", None) or getattr(response, "signed_url", None)
+
+
 def load_price_source_rows(access, source_id: str) -> list[dict]:
     client = get_supabase_client()
     assert_company_owner(client, str(access.user_id), str(access.company_id))

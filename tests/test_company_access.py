@@ -979,6 +979,8 @@ def _render_price_catalog_test():
             {
                 "source_id": "12345678-aaaa-bbbb-cccc-123456789012",
                 "source_name": "invoice-22.pdf",
+                "source_kind": "url",
+                "source_url": "https://supplier.example/prices",
             }
         ],
     )
@@ -1404,13 +1406,14 @@ def test_price_review_marks_only_blocking_fields_and_omits_redundant_heading():
     assert '"Edit active price"' not in screen_source
 
 
-def test_catalog_source_and_library_view_open_only_original():
+def test_catalog_source_and_library_view_use_direct_source_links():
     screen_source = Path("screens/company_profile.py").read_text()
     price_source_use_case = Path("use_cases/price_sources.py").read_text()
 
-    assert '@st.dialog("Original source", width="large")' in screen_source
-    assert 'st.session_state._price_source_view_id = source_id' in screen_source
-    assert '_render_price_source_original_dialog(access, view_source)' in screen_source
+    assert "source_url = _price_source_direct_url(access, source)" in screen_source
+    assert "create_price_source_download_url" in screen_source
+    assert "create_signed_url(" in price_source_use_case
+    assert "_price_source_view_id" not in screen_source
     assert 'source_row = row.get("source_row")' in screen_source
     assert '"source_row": source_row' in price_source_use_case
 
@@ -1418,7 +1421,7 @@ def test_catalog_source_and_library_view_open_only_original():
 def test_needs_review_is_paginated_to_keep_actions_responsive():
     screen_source = Path("screens/company_profile.py").read_text()
 
-    assert "page_size = 12" in screen_source
+    assert "page_size = 5" in screen_source
     assert "visible_review_rows = review_rows[" in screen_source
 
 
@@ -1435,7 +1438,6 @@ def test_price_catalog_renders_material_first_grouped_table():
     assert 'class="price-catalog-type"' not in markup
     assert "Wood Sheets</span>" not in markup
     assert any(button.label == "Edit" for button in app.button)
-    assert any(button.label == "Source" for button in app.button)
     assert any(button.label == "×" for button in app.button)
     assert "SRC-12345678" not in markup
 
