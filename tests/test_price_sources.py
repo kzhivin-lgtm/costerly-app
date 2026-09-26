@@ -731,6 +731,7 @@ def test_price_source_file_guard_filters_before_streamlit_receives_selection():
     assert "new DataTransfer()" in source
     assert 'parentDoc.addEventListener("change", handleChange, true)' in source
     assert 'parentDoc.addEventListener("drop", handleDrop, true)' in source
+    assert 'parentDoc.addEventListener("click", handleClick, true)' in source
     assert "event.stopImmediatePropagation()" in source
     assert 'new DragEvent("drop"' in source
     assert "__costerlyAcceptedPriceSourceDrop" in source
@@ -741,6 +742,10 @@ def test_price_source_file_guard_filters_before_streamlit_receives_selection():
     assert "nativeFiles.length ? nativeFiles : renderedFiles(uploader)" in source
     assert "costerly-photo-selection" in source
     assert "costerly-single-document-selection" in source
+    assert "transient empty DOM" in source
+    assert "stFileChipDeleteBtn" in source
+    assert "emptyWarningTimer" in source
+    assert "}, 5000)" in source
 
 
 def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):

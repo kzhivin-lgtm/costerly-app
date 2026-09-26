@@ -2721,6 +2721,7 @@ def install_price_source_file_selection_guard(*, markup_only: bool = False) -> s
             const WARNING_CLASS = "costerly-selection-warning";
             const WARNING_COPY =
                 "Upload one PDF, XLSX or CSV at a time · JPG/PNG can be combined";
+            let emptyWarningTimer = null;
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
@@ -2791,8 +2792,31 @@ def install_price_source_file_selection_guard(*, markup_only: bool = False) -> s
                     if (nativeFiles.length || chips.length) hasFiles = true;
                     if (input) syncMode(uploader, input);
                 });
-                if (!hasFiles) parentWindow[WARNING_KEY] = false;
+                // Streamlit briefly removes both the native FileList and chips
+                // while rebuilding the uploader. That transient empty DOM must
+                // not erase the warning before the accepted chip is rendered.
+                window.clearTimeout(emptyWarningTimer);
+                if (!hasFiles && parentWindow[WARNING_KEY]) {
+                    emptyWarningTimer = window.setTimeout(() => {
+                        const stillHasFiles = Array.from(
+                            parentDoc.querySelectorAll(UPLOADER_SELECTOR)
+                        ).some((uploader) => {
+                            const input = uploader.querySelector("input[type='file']");
+                            return Array.from(input && input.files || []).length > 0 ||
+                                renderedFiles(uploader).length > 0;
+                        });
+                        if (!stillHasFiles) setWarning(false);
+                    }, 5000);
+                }
                 syncWarning();
+            }
+
+            function handleClick(event) {
+                const target = event.target;
+                if (!target || !target.closest) return;
+                if (!target.closest('[data-testid="stFileChipDeleteBtn"]')) return;
+                if (!target.closest(UPLOADER_SELECTOR)) return;
+                setWarning(false);
             }
 
             function handleChange(event) {
@@ -2835,6 +2859,7 @@ def install_price_source_file_selection_guard(*, markup_only: bool = False) -> s
 
             parentDoc.addEventListener("change", handleChange, true);
             parentDoc.addEventListener("drop", handleDrop, true);
+            parentDoc.addEventListener("click", handleClick, true);
             const observer = new MutationObserver(syncAll);
             observer.observe(parentDoc.body, {childList: true, subtree: true});
             syncAll();
@@ -2842,6 +2867,8 @@ def install_price_source_file_selection_guard(*, markup_only: bool = False) -> s
             parentWindow[CLEANUP_KEY] = () => {
                 parentDoc.removeEventListener("change", handleChange, true);
                 parentDoc.removeEventListener("drop", handleDrop, true);
+                parentDoc.removeEventListener("click", handleClick, true);
+                window.clearTimeout(emptyWarningTimer);
                 observer.disconnect();
                 delete parentWindow[CLEANUP_KEY];
             };
