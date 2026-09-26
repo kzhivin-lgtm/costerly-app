@@ -3,7 +3,7 @@
 Task: 3.12.1
 Status: active
 Priority: P1
-Protected checkpoint: `d18b533` (accepted 3.10.1 Price Catalog UI)
+Protected checkpoint: `d99a594` (accepted 3.12.1 Price Lists interaction checkpoint)
 
 ## Objective
 
@@ -314,3 +314,10 @@ rerun after the rerun already caused by the button. Revision 7:
 
 All 373 automated tests pass. Production acceptance must measure Previous,
 Next, Edit, Review, Cancel, Save, and Remove in the real authenticated session.
+
+The owner completed that production interaction pass and accepted `d99a594` as
+the rollback checkpoint on 26.09.2026. Previous, Next, Edit, Review, Cancel,
+Save, and Remove are now responsive in the real authenticated interface. The
+current layout is explicitly accepted as a good working version, not as final
+visual polish. Further extraction-agent accuracy work remains inside task
+3.12.1 and must preserve this checkpoint.

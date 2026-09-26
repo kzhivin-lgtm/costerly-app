@@ -337,6 +337,15 @@ Subsequent Price Source Agent accuracy work resumed as task 3.12.1 after the
 Material Type, VAT, timing, and TC additions. Other accepted UI geometry remains
 protected unless a new interface decision is explicitly approved.
 
+The later Price Lists interaction checkpoint `d99a594` was accepted in
+production on 26.09.2026. It preserves the material-first presentation, renders
+Needs review in five-row pages, reuses a company-and-user-scoped read snapshot
+for UI-only interactions, and invalidates that snapshot after processing, Save,
+or Remove. Pagination and row actions use one fragment cycle instead of an
+additional manual rerun. This is the rollback baseline for subsequent Price
+Source Agent work. Its layout is usable and accepted, but not declared final
+visual polish.
+
 Estimation Agent Runtime v1
 `estimate_one_object()` is the application-layer entrypoint for one object.
 It loads the detected object from Supabase, calls the Estimation Agent with the original uploaded file bytes, validates the returned JSON, replaces that object's estimate lines, and records an `agent_usage_events` row with `agent_name = estimation`.

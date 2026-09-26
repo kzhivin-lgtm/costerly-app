@@ -56,4 +56,6 @@ This file explains where code belongs so the project stays understandable.
   contract.
 - `notes/PRICE_CATALOG_UI.md` stores the 3.10.1 material-first Price Lists UI,
   source-library boundary, and scenario matrix.
+- `notes/PRICE_SOURCE_AGENT.md` stores the active 3.12.1 extraction contract and
+  the accepted `d99a594` Price Lists interaction rollback checkpoint.
 - Keep notes short and update them when structure changes.

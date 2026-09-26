@@ -25,7 +25,9 @@
   Revision 7 preserves that geometry, lowers the Needs review labels by 3 px,
   removes duplicate fragment reruns, and reuses a tenant-scoped read snapshot
   for fast UI-only actions while invalidating it after every data mutation.
-  Production interaction acceptance remains pending. Contract:
+  The owner accepted revision 7 in production at `d99a594` as the fast working
+  Price Lists interaction checkpoint. Visual polish is not final, but further
+  agent-accuracy work must preserve this version. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price

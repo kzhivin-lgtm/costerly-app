@@ -7,6 +7,12 @@ The owner accepted the compact presentation on 25.09.2026. After the separate
 3.11.1 Legal block, agent-quality work resumes as 3.12.1. Preserve this UI while diagnosing extraction,
 classification, normalization, and activation behavior.
 
+The later production interaction checkpoint `d99a594`, accepted on 26.09.2026,
+is the current rollback baseline. It preserves this structure and adds the
+accepted Needs review, row-level actions, direct Source behavior, and fast
+single-cycle interactions. Its remaining visual imperfections are explicitly
+non-blocking and are not permission to redesign the accepted layout.
+
 ## Product boundary
 
 Price Lists is a continuously enriched company catalog. Its primary row is an
