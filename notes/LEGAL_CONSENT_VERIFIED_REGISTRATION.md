@@ -1,7 +1,7 @@
 # Legal Consent and Verified Registration
 
 Task: 3.11.1
-Status: completed and accepted in production at `3a4d8fa`; post-checkpoint legal revision active at `bc198fb`
+Status: completed and accepted in production at `3a4d8fa`; post-checkpoint legal revision active at `bc198fb` and recorded at `ed0c5c6`
 
 Final owner confirmation on 25.09.2026 closes the production signup,
 email-confirmation, returning-user gate, mobile, Terms, and Privacy acceptance
@@ -39,6 +39,11 @@ history.
   or reconstruction; those controls must not rely on the contractual label
   alone.
 - The full deterministic suite passes: 400 tests.
+- The final revision is preserved in the published implementation commit
+  `bc198fb` and journal commit `ed0c5c6`. A validated local backup is stored at
+  `backups/v3.11.1_final_customer_content_rights/costerly-app_v3.11.1_final_customer_content_rights_2026-09-26.zip`
+  (784,928 bytes, SHA-256
+  `a74cdfb2f63962c0d4513ff9b1921ef22093e88ff071fbb6b5d9b661b39edfa1`).
 
 ## Verified progress on 2026-09-25
 
