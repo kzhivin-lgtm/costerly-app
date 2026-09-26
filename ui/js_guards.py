@@ -2716,7 +2716,7 @@ def install_price_source_file_selection_guard() -> None:
             const UPLOADER_SELECTOR =
                 ".st-key-price_source_add_body [data-testid='stFileUploader']";
             const PHOTO_PATTERN = /\.(jpe?g|png)$/i;
-            const WARNING_CLASS = "costerly-price-source-selection-note";
+            const WARNING_CLASS = "costerly-selection-warning";
             const WARNING_COPY =
                 "Upload one PDF, XLSX or CSV at a time · JPG/PNG can be combined";
 
@@ -2724,6 +2724,12 @@ def install_price_source_file_selection_guard() -> None:
 
             function isPhoto(file) {
                 return PHOTO_PATTERN.test(String(file && file.name || ""));
+            }
+
+            function renderedFiles(uploader) {
+                return Array.from(
+                    uploader.querySelectorAll('[data-testid="stFileChipName"]')
+                ).map((node) => ({name: String(node.textContent || "").trim()}));
             }
 
             function acceptedFiles(files) {
@@ -2734,27 +2740,17 @@ def install_price_source_file_selection_guard() -> None:
 
             function syncWarning() {
                 const uploaders = Array.from(parentDoc.querySelectorAll(UPLOADER_SELECTOR));
-                parentDoc.querySelectorAll(`.${WARNING_CLASS}`).forEach((note) => {
-                    if (!uploaders.some((uploader) => note.previousElementSibling === uploader)) {
-                        note.remove();
-                    }
-                });
-                if (!parentWindow[WARNING_KEY]) return;
                 uploaders.forEach((uploader) => {
-                    const sibling = uploader.nextElementSibling;
-                    if (sibling && sibling.classList.contains(WARNING_CLASS)) return;
-                    const note = parentDoc.createElement("div");
-                    note.className = WARNING_CLASS;
-                    note.textContent = WARNING_COPY;
-                    uploader.insertAdjacentElement("afterend", note);
+                    uploader.classList.toggle(
+                        WARNING_CLASS,
+                        Boolean(parentWindow[WARNING_KEY])
+                    );
+                    uploader.dataset.costerlySelectionWarning = WARNING_COPY;
                 });
             }
 
             function setWarning(enabled) {
                 parentWindow[WARNING_KEY] = enabled;
-                if (!enabled) {
-                    parentDoc.querySelectorAll(`.${WARNING_CLASS}`).forEach((note) => note.remove());
-                }
                 syncWarning();
             }
 
@@ -2772,7 +2768,8 @@ def install_price_source_file_selection_guard() -> None:
             }
 
             function syncMode(uploader, input) {
-                const files = Array.from(input && input.files || []);
+                const nativeFiles = Array.from(input && input.files || []);
+                const files = nativeFiles.length ? nativeFiles : renderedFiles(uploader);
                 uploader.classList.toggle(
                     "costerly-photo-selection",
                     files.length > 0 && files.every(isPhoto)

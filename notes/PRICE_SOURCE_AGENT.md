@@ -24,6 +24,11 @@ Revision 13 keeps one logical source per extraction:
 - a single PDF or spreadsheet uses a centered, enlarged file card so the
   accepted filename remains legible.
 
+The visual mode is recovered from Streamlit's rendered file chips after the
+native file input is cleared. The rejection notice is a guarded uploader state,
+not an injected child node, so both states survive the widget's internal
+rerender.
+
 Independent mixed-document queues remain outside this task and are tracked as
 3.12.3.
 

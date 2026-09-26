@@ -565,6 +565,8 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     assert "grid-template-columns: minmax(0, 280px) !important" in source
     assert "grid-auto-rows: 132px !important" in source
     assert "width: 55px !important" in source
+    assert '[data-testid="stFileUploader"].costerly-selection-warning::after' in source
+    assert "content: attr(data-costerly-selection-warning)" in source
 
 
 def test_price_source_fragment_does_not_dim_stale_content():
@@ -727,7 +729,10 @@ def test_price_source_file_guard_filters_before_streamlit_receives_selection():
     assert 'new DragEvent("drop"' in source
     assert "__costerlyAcceptedPriceSourceDrop" in source
     assert "Upload one PDF, XLSX or CSV at a time · JPG/PNG can be combined" in source
-    assert "costerly-price-source-selection-note" in source
+    assert "costerly-selection-warning" in source
+    assert "renderedFiles(uploader)" in source
+    assert 'stFileChipName' in source
+    assert "nativeFiles.length ? nativeFiles : renderedFiles(uploader)" in source
     assert "costerly-photo-selection" in source
     assert "costerly-single-document-selection" in source
 

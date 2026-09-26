@@ -974,7 +974,10 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body .costerly-price-source-selection-note {
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-selection-warning::after {
+            content: attr(data-costerly-selection-warning);
+            display: block;
             margin-top: 6px;
             color: #516784;
             font-size: 11px;
