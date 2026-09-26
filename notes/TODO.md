@@ -27,7 +27,11 @@
   for fast UI-only actions while invalidating it after every data mutation.
   The owner accepted revision 7 in production at `d99a594` as the fast working
   Price Lists interaction checkpoint. Visual polish is not final, but further
-  agent-accuracy work must preserve this version. Contract:
+  agent-accuracy work must preserve this version. Revision 8 adds internal
+  source-family and revision metadata for recurring files and URLs while
+  retaining exact-duplicate short-circuiting and row-level new, updated,
+  unchanged, and missing behavior. Its production repeat-upload matrix remains
+  pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price

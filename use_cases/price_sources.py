@@ -331,7 +331,41 @@ def price_source_semantic_fingerprint(result: dict) -> str:
     return sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def _find_semantic_source(client, company_id: str, fingerprint: str) -> dict | None:
+def price_source_family_identity(
+    result: dict,
+    *,
+    source_name: str,
+    source_kind: str,
+) -> tuple[str, str]:
+    """Return a stable internal identity for successive revisions of one source."""
+    if source_kind == "url":
+        parsed = urlsplit(source_name)
+        origin = f"{(parsed.hostname or '').casefold()}{parsed.path.rstrip('/').casefold()}"
+    else:
+        origin = _normalized_name(Path(source_name).name)
+    basis: dict[str, str] = {
+        "supplier": _normalized_name(str(result.get("supplier_name") or "")),
+        "source_kind": source_kind,
+        "origin": origin,
+        "document_type": _normalized_name(str(result.get("document_type") or "")),
+    }
+    if origin.startswith("photo document"):
+        basis["document_number"] = _normalized_name(
+            str(result.get("document_number") or "")
+        )
+        basis["document_date"] = str(result.get("document_date") or "")
+    encoded = json.dumps(basis, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    fingerprint = sha256(encoded.encode("utf-8")).hexdigest()
+    return fingerprint, f"PSF-{fingerprint[:12].upper()}"
+
+
+def _find_previous_source_revision(
+    client,
+    company_id: str,
+    *,
+    family_sha256: str,
+    semantic_sha256: str,
+) -> tuple[dict | None, int]:
     sources = (
         client.table("company_price_sources")
         .select("source_id,processing_summary,created_at")
@@ -340,22 +374,35 @@ def _find_semantic_source(client, company_id: str, fingerprint: str) -> dict | N
         .order("created_at", desc=True)
         .execute()
     ).data or []
-    return next(
+    family_matches = [
+        source
+        for source in sources
+        if isinstance(source.get("processing_summary"), dict)
+        and source["processing_summary"].get("source_family_sha256") == family_sha256
+    ]
+    if family_matches:
+        revision = max(
+            int((source.get("processing_summary") or {}).get("source_revision") or 1)
+            for source in family_matches
+        ) + 1
+        return family_matches[0], revision
+    semantic_match = next(
         (
             source
             for source in sources
             if isinstance(source.get("processing_summary"), dict)
-            and source["processing_summary"].get("semantic_sha256") == fingerprint
+            and source["processing_summary"].get("semantic_sha256") == semantic_sha256
         ),
         None,
     )
+    return semantic_match, 2 if semantic_match else 1
 
 
 def _unchanged_duplicate_summary(source: dict) -> dict[str, object]:
     previous = dict(source.get("processing_summary") or {})
     total = int(previous.get("total") or 0)
     ready = int(previous.get("ready") or 0)
-    return {
+    summary = {
         "total": total,
         "ready": ready,
         "new": 0,
@@ -367,6 +414,15 @@ def _unchanged_duplicate_summary(source: dict) -> dict[str, object]:
         "agent_duration_seconds": 0.0,
         "token_cost": 0.0,
     }
+    for key in (
+        "source_family_sha256",
+        "source_family_code",
+        "source_revision",
+        "previous_source_id",
+    ):
+        if previous.get(key) is not None:
+            summary[key] = previous[key]
+    return summary
 
 
 def _validate_department(department: str) -> str:
@@ -1003,6 +1059,11 @@ def process_price_source(
     material_types = price_source_material_types(result)
     category = material_types[0] if len(material_types) == 1 else "Mixed"
     semantic_sha256 = price_source_semantic_fingerprint(result)
+    source_family_sha256, source_family_code = price_source_family_identity(
+        result,
+        source_name=source_name,
+        source_kind=source_kind,
+    )
     _emit_duration(
         trace,
         "server.price_source_agent",
@@ -1017,7 +1078,12 @@ def process_price_source(
         except Exception:
             logger.exception("Price source agent usage persistence failed")
         _emit_duration(trace, "server.price_source_usage_persist", usage_started)
-    previous_revision = _find_semantic_source(client, company_id, semantic_sha256)
+    previous_revision, source_revision = _find_previous_source_revision(
+        client,
+        company_id,
+        family_sha256=source_family_sha256,
+        semantic_sha256=semantic_sha256,
+    )
 
     benchmark_started = time.perf_counter()
     legacy_materials = (
@@ -1101,6 +1167,9 @@ def process_price_source(
             "document_total": result["document_total"],
             "material_types": material_types,
             "semantic_sha256": semantic_sha256,
+            "source_family_sha256": source_family_sha256,
+            "source_family_code": source_family_code,
+            "source_revision": source_revision,
             "previous_source_id": (
                 str(previous_revision.get("source_id")) if previous_revision else None
             ),

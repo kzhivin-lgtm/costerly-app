@@ -23,6 +23,8 @@ from use_cases.price_sources import (
     PriceSourceError,
     PRICE_CATALOG_DEPARTMENTS,
     _VisibleTextParser,
+    _find_previous_source_revision,
+    _unchanged_duplicate_summary,
     _validate_department,
     _validate_public_url,
     apply_legacy_price_benchmark,
@@ -35,6 +37,7 @@ from use_cases.price_sources import (
     list_price_catalog,
     list_unresolved_price_source_rows,
     price_source_material_types,
+    price_source_family_identity,
     price_source_semantic_fingerprint,
     price_offer_matches_row,
     remove_price_source_row,
@@ -346,6 +349,97 @@ def test_semantic_fingerprint_detects_same_document_across_file_variants():
     )
 
 
+def test_source_family_identity_stays_stable_across_changed_file_revisions():
+    original = _result()
+    changed = _result()
+    changed["rows"][0]["raw_price"] = 95
+    changed["rows"][0]["normalized_price"] = 95 / 2.9768
+
+    original_family = price_source_family_identity(
+        original,
+        source_name="supplier-prices.xlsx",
+        source_kind="file",
+    )
+    changed_family = price_source_family_identity(
+        changed,
+        source_name="supplier-prices.xlsx",
+        source_kind="file",
+    )
+
+    assert original_family == changed_family
+    assert original_family[1].startswith("PSF-")
+
+
+def test_source_family_identity_ignores_url_query_refresh_tokens():
+    result = _result()
+
+    first = price_source_family_identity(
+        result,
+        source_name="https://supplier.example/prices?cache=one",
+        source_kind="url",
+    )
+    second = price_source_family_identity(
+        result,
+        source_name="https://supplier.example/prices?cache=two",
+        source_kind="url",
+    )
+
+    assert first == second
+
+
+def test_source_family_revision_links_to_latest_revision():
+    client = _CatalogClient(
+        {
+            "company_price_sources": [
+                {
+                    "source_id": "source-2",
+                    "processing_summary": {
+                        "source_family_sha256": "family-1",
+                        "source_revision": 2,
+                    },
+                },
+                {
+                    "source_id": "source-1",
+                    "processing_summary": {
+                        "source_family_sha256": "family-1",
+                        "source_revision": 1,
+                    },
+                },
+            ]
+        }
+    )
+
+    previous, revision = _find_previous_source_revision(
+        client,
+        "company-1",
+        family_sha256="family-1",
+        semantic_sha256="semantic-1",
+    )
+
+    assert previous["source_id"] == "source-2"
+    assert revision == 3
+
+
+def test_exact_duplicate_summary_keeps_source_family_metadata():
+    summary = _unchanged_duplicate_summary(
+        {
+            "processing_summary": {
+                "total": 10,
+                "ready": 8,
+                "unresolved": 2,
+                "source_family_sha256": "family-1",
+                "source_family_code": "PSF-123456789ABC",
+                "source_revision": 3,
+                "previous_source_id": "source-2",
+            }
+        }
+    )
+
+    assert summary["unchanged"] == 8
+    assert summary["source_family_code"] == "PSF-123456789ABC"
+    assert summary["source_revision"] == 3
+
+
 def test_price_offer_diff_ignores_representation_but_detects_price_affecting_changes():
     row = _result()["rows"][0]
     offer = {
@@ -494,6 +588,8 @@ def test_price_catalog_geometry_patch_stays_scoped_to_agreed_controls():
     assert "border-radius: 18px 18px 0 0;" in style_source
     assert ".st-key-price_review_pagination" in style_source
     assert "padding: 0 0 var(--space-3) var(--space-4);" in style_source
+    assert ".st-key-price_review_header .price-source-row-label" in style_source
+    assert "transform: translateY(9px);" in style_source
 
 
 def test_price_source_processing_uses_callback_without_manual_rerun():

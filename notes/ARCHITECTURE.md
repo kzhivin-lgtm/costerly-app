@@ -346,6 +346,17 @@ additional manual rerun. This is the rollback baseline for subsequent Price
 Source Agent work. Its layout is usable and accepted, but not declared final
 visual polish.
 
+Recurring Price Source revisions use two identity levels. `source_id` is the
+immutable UUID of one upload. `source_family_code` is a deterministic internal
+code derived from normalized supplier, source kind, stable file name or URL
+path, and document type. `source_revision` increments inside that family and
+`previous_source_id` links retained revisions. Byte-identical uploads stop on
+`source_sha256` before the agent. Changed inputs run extraction, then compare
+rows by supplier SKU or normalized material identity. Only new and changed
+offers are written; unchanged offers remain active and absent rows are retained.
+Family metadata is stored in `processing_summary` and is intentionally hidden
+from the compact user interface.
+
 Estimation Agent Runtime v1
 `estimate_one_object()` is the application-layer entrypoint for one object.
 It loads the detected object from Supabase, calls the Estimation Agent with the original uploaded file bytes, validates the returned JSON, replaces that object's estimate lines, and records an `agent_usage_events` row with `agent_name = estimation`.

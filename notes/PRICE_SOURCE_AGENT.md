@@ -321,3 +321,26 @@ Save, and Remove are now responsive in the real authenticated interface. The
 current layout is explicitly accepted as a good working version, not as final
 visual polish. Further extraction-agent accuracy work remains inside task
 3.12.1 and must preserve this checkpoint.
+
+## 3.12.1 revision 8 candidate
+
+Recurring supplier files are modeled as a stable source family containing
+separate auditable upload revisions. No new table or migration is required:
+
+- `source_id` identifies one upload revision;
+- `source_sha256` rejects a byte-identical upload before the agent runs;
+- internal `source_family_code` identifies the recurring file or URL for the
+  normalized supplier;
+- `source_revision` increments within that family and `previous_source_id`
+  links to its latest retained revision;
+- supplier SKU remains the preferred row identity, with normalized material
+  name plus supplier as fallback;
+- only new or price-affecting changed rows replace offers; unchanged rows retain
+  the existing offer, and missing rows are never removed automatically.
+
+The family metadata stays internal to avoid adding UI noise. Exact duplicates
+retain their family and revision metadata while reporting zero agent time and
+zero TC. The Needs review labels move from 3 px to 9 px vertical offset to match
+the accepted material-table header rhythm. All 377 automated tests pass;
+production acceptance remains required for exact duplicate, one changed row,
+one new row, and the corrected header alignment.
