@@ -184,8 +184,6 @@ def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
             )
             continue
         blockers: list[str] = []
-        if result.get("source_origin") == "company_internal":
-            blockers.append("internal_price_lane_pending")
         if row.get("raw_vat_mode") == "unknown":
             blockers.append("vat_basis_unknown")
         package_quantity = row.get("raw_package_quantity")

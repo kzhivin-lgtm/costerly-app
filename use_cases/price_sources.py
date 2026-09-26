@@ -400,6 +400,32 @@ def price_offer_matches_row(
     )
 
 
+def price_offer_lane_key(
+    *,
+    supplier_id: object,
+    source_summary: dict | None,
+    source_id: object,
+) -> str:
+    """Return the isolated identity lane used to version one material offer."""
+    supplier_key = str(supplier_id or "").strip()
+    if supplier_key:
+        return f"supplier:{supplier_key}"
+
+    summary = source_summary or {}
+    family_key = str(summary.get("source_family_sha256") or "").strip()
+    fallback_key = family_key or str(source_id or "").strip() or "unidentified"
+    if summary.get("source_origin") == "company_internal":
+        return f"internal:{fallback_key}"
+    return f"supplier-unknown:{fallback_key}"
+
+
+def price_source_supplier_name(result: dict) -> str:
+    """Keep company-owned calculations out of the supplier registry."""
+    if result.get("source_origin") == "company_internal":
+        return ""
+    return str(result.get("supplier_name") or "").strip()
+
+
 def apply_legacy_price_benchmark(result: dict, legacy_materials: list[dict]) -> dict:
     """Use exact legacy identity/unit matches only as a negative confidence signal."""
     benchmark: dict[tuple[str, str], float] = {}
@@ -1126,9 +1152,51 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         .limit(1)
         .execute()
     ).data or []
+    source_lane = price_offer_lane_key(
+        supplier_id=source.get("supplier_id"),
+        source_summary=source.get("processing_summary"),
+        source_id=source_id,
+    )
+    active_material_offers = []
     if existing:
         material_id = existing[0]["company_material_id"]
-        result_status = "updated"
+        active_material_offers = (
+            client.table("company_material_offers")
+            .select("offer_id,source_id,source_row_id")
+            .eq("company_id", company_id)
+            .eq("company_material_id", material_id)
+            .eq("status", "active")
+            .execute()
+        ).data or []
+        offer_source_ids = {
+            str(offer.get("source_id") or "") for offer in active_material_offers
+        }
+        offer_sources = (
+            client.table("company_price_sources")
+            .select("source_id,supplier_id,processing_summary")
+            .eq("company_id", company_id)
+            .execute()
+        ).data or []
+        source_by_id = {
+            str(candidate.get("source_id") or ""): candidate
+            for candidate in offer_sources
+            if str(candidate.get("source_id") or "") in offer_source_ids
+        }
+        matching_lane_offers = [
+            offer
+            for offer in active_material_offers
+            if price_offer_lane_key(
+                supplier_id=(source_by_id.get(str(offer.get("source_id") or "")) or {}).get(
+                    "supplier_id"
+                ),
+                source_summary=(
+                    source_by_id.get(str(offer.get("source_id") or "")) or {}
+                ).get("processing_summary"),
+                source_id=offer.get("source_id"),
+            )
+            == source_lane
+        ]
+        result_status = "updated" if matching_lane_offers else "new"
     else:
         material = client.table("company_material_items").insert(
             {
@@ -1143,15 +1211,17 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         material_id = material["company_material_id"]
         result_status = "new"
 
-    client.table("company_material_offers").update({"status": "archived"}).eq(
-        "company_id", company_id
-    ).eq("source_row_id", row_id).neq("status", "archived").execute()
+    for previous_offer in matching_lane_offers if existing else []:
+        client.table("company_material_offers").update({"status": "superseded"}).eq(
+            "offer_id", previous_offer["offer_id"]
+        ).execute()
     evidence = dict(row.get("evidence") or {})
     evidence["material_type"] = material_type
     evidence["comparison_status"] = result_status
     resolved_codes = {
         "below_auto_activation_threshold",
         "material_type_unresolved",
+        "internal_price_lane_pending",
         "package_conversion_unresolved",
         "vat_basis_unknown",
     }
@@ -1381,7 +1451,7 @@ def process_price_source(
     superseded_offer_ids: list[str] = []
     try:
         database_started = time.perf_counter()
-        supplier_name = str(result["supplier_name"]).strip()
+        supplier_name = price_source_supplier_name(result)
         supplier_id = None
         if supplier_name:
             existing_suppliers = (
@@ -1475,7 +1545,7 @@ def process_price_source(
         active_offers = (
             client.table("company_material_offers")
             .select(
-                "offer_id,company_material_id,supplier_id,supplier_sku,source_price,source_unit,"
+                "offer_id,company_material_id,supplier_id,source_id,supplier_sku,source_price,source_unit,"
                 "purchase_unit,calculation_unit,conversion_factor,normalized_price,"
                 "currency,vat_included,status"
             )
@@ -1483,17 +1553,38 @@ def process_price_source(
             .eq("status", "active")
             .execute()
         ).data or []
+        offer_sources = (
+            client.table("company_price_sources")
+            .select("source_id,supplier_id,processing_summary")
+            .eq("company_id", company_id)
+            .execute()
+        ).data or []
+        source_by_id = {
+            str(candidate.get("source_id") or ""): candidate
+            for candidate in offer_sources
+        }
+        current_lane = price_offer_lane_key(
+            supplier_id=supplier_id,
+            source_summary=source_summary,
+            source_id=source_id,
+        )
         offers_by_identity: dict[tuple[str, str], list[dict]] = {}
         offers_by_sku: dict[tuple[str, str], list[dict]] = {}
         for offer in active_offers:
+            offer_source = source_by_id.get(str(offer.get("source_id") or ""), {})
+            offer_lane = price_offer_lane_key(
+                supplier_id=offer_source.get("supplier_id") or offer.get("supplier_id"),
+                source_summary=offer_source.get("processing_summary"),
+                source_id=offer.get("source_id"),
+            )
             identity = (
                 str(offer.get("company_material_id") or ""),
-                str(offer.get("supplier_id") or ""),
+                offer_lane,
             )
             offers_by_identity.setdefault(identity, []).append(offer)
             sku = _normalized_name(str(offer.get("supplier_sku") or ""))
             if sku:
-                offers_by_sku.setdefault((str(offer.get("supplier_id") or ""), sku), []).append(
+                offers_by_sku.setdefault((offer_lane, sku), []).append(
                     offer
                 )
 
@@ -1504,7 +1595,7 @@ def process_price_source(
             if result_status == "ready":
                 normalized = _normalized_name(row["normalized_name"])
                 sku = _normalized_name(str(row.get("raw_sku") or ""))
-                sku_offers = offers_by_sku.get((str(supplier_id or ""), sku), []) if sku else []
+                sku_offers = offers_by_sku.get((current_lane, sku), []) if sku else []
                 existing = (
                     [{"company_material_id": sku_offers[0]["company_material_id"]}]
                     if sku_offers
@@ -1520,7 +1611,7 @@ def process_price_source(
                 )
                 if existing:
                     material_id = existing[0]["company_material_id"]
-                    identity = (str(material_id), str(supplier_id or ""))
+                    identity = (str(material_id), current_lane)
                     matching_offers = offers_by_identity.get(identity, [])
                     if matching_offers and any(
                         price_offer_matches_row(
@@ -1533,8 +1624,11 @@ def process_price_source(
                         result_status = "unchanged"
                         unchanged_count += 1
                     else:
-                        result_status = "updated"
-                        updated_count += 1
+                        result_status = "updated" if matching_offers else "new"
+                        if matching_offers:
+                            updated_count += 1
+                        else:
+                            new_count += 1
                 else:
                     material = client.table("company_material_items").insert(
                         {
@@ -1586,7 +1680,7 @@ def process_price_source(
             ).execute().data[0]
 
             if material_id and result_status in {"new", "updated"}:
-                identity = (str(material_id), str(supplier_id or ""))
+                identity = (str(material_id), current_lane)
                 for previous_offer in offers_by_identity.get(identity, []):
                     client.table("company_material_offers").update(
                         {"status": "superseded"}
@@ -1615,7 +1709,7 @@ def process_price_source(
                 ).execute().data[0]
                 offers_by_identity[identity] = [inserted_offer]
                 if sku:
-                    offers_by_sku[(str(supplier_id or ""), sku)] = [inserted_offer]
+                    offers_by_sku[(current_lane, sku)] = [inserted_offer]
 
         source_summary.update(
             {

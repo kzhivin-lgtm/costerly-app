@@ -3,7 +3,7 @@
 Task: 3.12.1
 Status: active
 Priority: P1
-Protected checkpoint: `a5a7ae9` (accepted 3.12.1 Price Lists interaction checkpoint)
+Protected checkpoint: `1a2d7ca` (accepted 3.12.1 Price Source uploader production checkpoint)
 
 ## Revision 13 MVP upload contract
 
@@ -484,3 +484,29 @@ document is attempted, and the corrected drag indication behaves consistently.
 Commit `1a2d7ca` is the accepted rollback checkpoint for this uploader scope.
 All 398 automated tests passed and Railway reported a successful deployment.
 B2 remains the next approved implementation block.
+
+## 3.12.1 revision 17, block B2 candidate
+
+Internal estimates now activate in the shared Material Prices catalog when VAT
+and package conversion are resolved. They do not create a synthetic supplier or
+use the generic empty-supplier identity. Offer revisions are isolated by lane:
+
+- supplier offers use the real supplier ID;
+- internal estimates use their recurring source-family fingerprint;
+- supplier documents with no identified supplier use their own source-family
+  fingerprint.
+
+One recurring internal workbook can therefore update or supersede only its own
+prior offer for a material. It cannot supersede a supplier offer, an unrelated
+supplier-less source, or another internal workbook family. A first offer in a
+new lane is counted as new even when the canonical material already exists.
+Reviewed unresolved rows follow the same lane rules, and legacy
+`internal_price_lane_pending` reasons are cleared on review. Customer-sale rows
+remain excluded, VAT and package-conversion uncertainty remain activation
+blockers, the shared catalog UI remains unchanged, and Estimation resolver
+priority remains deferred.
+
+Automated verification: 73 Price Source tests and 403 full-suite tests pass.
+Production acceptance is pending for one internal workbook, a changed revision
+of that workbook, and coexistence with an active supplier offer for the same
+material. Block C remains next after B2 production evidence.

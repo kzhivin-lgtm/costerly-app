@@ -43,6 +43,8 @@ from use_cases.price_sources import (
     price_source_semantic_fingerprint,
     price_source_template_fingerprint,
     price_offer_matches_row,
+    price_offer_lane_key,
+    price_source_supplier_name,
     remove_price_source_row,
     render_price_source_pdf_preview,
     render_price_source_preview,
@@ -601,6 +603,58 @@ def test_price_offer_diff_ignores_representation_but_detects_price_affecting_cha
     assert price_offer_matches_row(offer, changed_vat, default_currency="ILS") is False
 
 
+def test_price_offer_lanes_isolate_internal_families_and_supplier_offers():
+    internal_first = price_offer_lane_key(
+        supplier_id=None,
+        source_summary={
+            "source_origin": "company_internal",
+            "source_family_sha256": "internal-family-1",
+        },
+        source_id="internal-source-1",
+    )
+    internal_revision = price_offer_lane_key(
+        supplier_id=None,
+        source_summary={
+            "source_origin": "company_internal",
+            "source_family_sha256": "internal-family-1",
+        },
+        source_id="internal-source-2",
+    )
+    other_internal = price_offer_lane_key(
+        supplier_id=None,
+        source_summary={
+            "source_origin": "company_internal",
+            "source_family_sha256": "internal-family-2",
+        },
+        source_id="internal-source-3",
+    )
+    supplier = price_offer_lane_key(
+        supplier_id="supplier-1",
+        source_summary={"source_family_sha256": "supplier-family"},
+        source_id="supplier-source-1",
+    )
+    unknown_supplier = price_offer_lane_key(
+        supplier_id=None,
+        source_summary={"source_family_sha256": "supplier-family"},
+        source_id="unknown-source-1",
+    )
+
+    assert internal_first == internal_revision == "internal:internal-family-1"
+    assert other_internal == "internal:internal-family-2"
+    assert supplier == "supplier:supplier-1"
+    assert unknown_supplier == "supplier-unknown:supplier-family"
+    assert len({internal_first, other_internal, supplier, unknown_supplier}) == 4
+
+
+def test_internal_source_never_creates_a_supplier_from_model_output():
+    internal = _result()
+    internal["source_origin"] = "company_internal"
+    internal["supplier_name"] = "Workshop owner"
+
+    assert price_source_supplier_name(internal) == ""
+    assert price_source_supplier_name(_result()) == "Supplier Ltd"
+
+
 def test_department_can_be_left_for_automatic_detection():
     assert _validate_department("") == ""
 
@@ -1062,6 +1116,117 @@ def test_review_activate_and_remove_row_are_auditable(monkeypatch):
     assert tables["company_material_offers"][0]["status"] == "archived"
     assert "removed_by_user" in tables["company_price_source_rows"][0]["reason_codes"]
 
+
+def test_reviewed_internal_price_supersedes_only_its_recurring_internal_lane(monkeypatch):
+    tables = {
+        "company_price_sources": [
+            {
+                "source_id": "internal-current",
+                "company_id": "company-1",
+                "supplier_id": None,
+                "currency": "ILS",
+                "document_date": "2026-09-26",
+                "status": "partial",
+                "processing_summary": {
+                    "source_origin": "company_internal",
+                    "source_family_sha256": "workshop-template",
+                },
+            },
+            {
+                "source_id": "internal-previous",
+                "company_id": "company-1",
+                "supplier_id": None,
+                "status": "ready",
+                "processing_summary": {
+                    "source_origin": "company_internal",
+                    "source_family_sha256": "workshop-template",
+                },
+            },
+            {
+                "source_id": "supplier-source",
+                "company_id": "company-1",
+                "supplier_id": "supplier-1",
+                "status": "ready",
+                "processing_summary": {
+                    "source_origin": "supplier",
+                    "source_family_sha256": "supplier-family",
+                },
+            },
+        ],
+        "company_price_source_rows": [
+            {
+                "row_id": "row-current",
+                "source_id": "internal-current",
+                "company_id": "company-1",
+                "raw_description": "Фанера 10 мм",
+                "raw_sku": None,
+                "confidence": 92,
+                "result_status": "unresolved",
+                "raw_vat_included": None,
+                "reason_codes": ["internal_price_lane_pending", "vat_basis_unknown"],
+                "evidence": {"material_type": "Wood Sheets"},
+            }
+        ],
+        "company_material_items": [
+            {
+                "company_material_id": "material-1",
+                "company_id": "company-1",
+                "category": "Wood Sheets",
+                "normalized_name": "birch plywood 10 mm",
+                "canonical_name": "Birch plywood 10 mm",
+                "status": "active",
+            }
+        ],
+        "company_material_offers": [
+            {
+                "offer_id": "supplier-offer",
+                "company_id": "company-1",
+                "company_material_id": "material-1",
+                "supplier_id": "supplier-1",
+                "source_id": "supplier-source",
+                "source_row_id": "supplier-row",
+                "status": "active",
+            },
+            {
+                "offer_id": "internal-old-offer",
+                "company_id": "company-1",
+                "company_material_id": "material-1",
+                "supplier_id": None,
+                "source_id": "internal-previous",
+                "source_row_id": "internal-old-row",
+                "status": "active",
+            },
+        ],
+    }
+    client = _MutableClient(tables)
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+
+    saved = save_price_source_row(
+        SimpleNamespace(company_id="company-1", user_id="user-1"),
+        "internal-current",
+        "row-current",
+        {
+            "normalized_name": "Birch plywood 10 mm",
+            "material_type": "Wood Sheets",
+            "raw_price": 80,
+            "raw_currency": "ILS",
+            "raw_unit": "sheet",
+            "purchase_unit": "sheet",
+            "calculation_unit": "sheet",
+            "conversion_factor": 1,
+            "vat_mode": "excluded",
+        },
+    )
+
+    offers = {offer["offer_id"]: offer for offer in tables["company_material_offers"]}
+    assert saved["result_status"] == "updated"
+    assert offers["supplier-offer"]["status"] == "active"
+    assert offers["internal-old-offer"]["status"] == "superseded"
+    assert offers["generated-3"]["status"] == "active"
+    assert offers["generated-3"]["supplier_id"] is None
+    assert saved["reason_codes"] == ["reviewed_by_user"]
+
 def test_ready_price_requires_currency_and_positive_normalized_price():
     missing_currency = _result()
     missing_currency["currency"] = ""
@@ -1152,8 +1317,8 @@ def test_internal_estimate_is_a_first_class_source_without_a_supplier():
 
     guarded = guard_price_source_row_activation(internal)
 
-    assert guarded["rows"][0]["status"] == "unresolved"
-    assert "internal_price_lane_pending" in guarded["rows"][0]["reason_codes"]
+    assert guarded["rows"][0]["status"] == "ready"
+    assert "internal_price_lane_pending" not in guarded["rows"][0]["reason_codes"]
     assert validate_price_source_result(guarded) is guarded
 
 

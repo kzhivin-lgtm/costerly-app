@@ -59,11 +59,16 @@
   The owner accepted the complete uploader behavior in production at
   `1a2d7ca`; this is the rollback checkpoint for upload selection, previews,
   repeat-result feedback, and occupied-zone drag indication.
-  Next is block B2, an isolated recurring internal-offer lane, followed by
-  source-level VAT confirmation in block C. Mixed-document queueing remains
-  deferred under 3.12.3, and resolver priority remains deferred until both offer
-  lanes have production evidence. Production acceptance remains pending for
-  changed-value family revision behavior and the following extraction blocks.
+  Revision 17 block B2 is now a tested production candidate. Internal estimates
+  activate only when VAT and package conversion are resolved, stay in the shared
+  Material Prices catalog without a fake supplier, and version within their
+  recurring source-family lane. Supplier, unknown-supplier, unrelated internal,
+  and reviewed-row offers remain isolated. The full suite passes with 403 tests.
+  Production acceptance remains pending for one internal workbook, its changed
+  revision, and coexistence with a supplier offer for the same material. After
+  that evidence, source-level VAT confirmation is block C. Mixed-document
+  queueing remains deferred under 3.12.3, and resolver priority remains deferred
+  until both offer lanes have production evidence.
   Contract: `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price
