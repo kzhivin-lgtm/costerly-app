@@ -1372,6 +1372,44 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-price_source_review_queue .price-catalog-title {
+            display: grid;
+            grid-template-columns: 0.24fr 2.55fr 1.35fr 1.05fr 1.35fr 0.7fr;
+            column-gap: var(--space-4);
+            padding: 0 var(--space-4);
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_review_queue .price-catalog-title span:first-child {
+            grid-column: 1 / 6;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_review_queue .price-catalog-title span:last-child {
+            grid-column: 6;
+            justify-self: center;
+            text-align: center;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-price_review_header {
+            min-height: 44px;
+            padding: 0 var(--space-4);
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_review_header[data-testid="stVerticalBlock"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_review_header > [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_review_header [data-testid="stHorizontalBlock"] {
+            min-height: 44px;
+            align-items: center !important;
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_source_review_queue > [data-testid="stVerticalBlock"] {
             gap: 0 !important;
         }

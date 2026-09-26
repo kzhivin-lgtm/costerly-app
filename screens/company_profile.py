@@ -2095,7 +2095,7 @@ def _render_price_source_row_remove_confirmation(
 ) -> None:
     source_id, row_id = target
     warning_col, confirm_col, cancel_col = st.columns(
-        [6, 0.55, 0.5],
+        [5.4, 0.72, 0.62],
         gap="small",
         vertical_alignment="center",
     )
@@ -2130,16 +2130,17 @@ def _render_price_source_review_queue(
             f'<span>{len(review_rows)} {"price" if len(review_rows) == 1 else "prices"}</span></div>',
             unsafe_allow_html=True,
         )
-        header = st.columns([0.24, 2.55, 1.35, 1.05, 1.35, 0.7])
-        for column, label in zip(
-            header,
-            ("", "Source Item", "Supplier", "Source Price", "Reason", ""),
-        ):
-            if label:
-                column.markdown(
-                    f'<span class="price-source-row-label">{label}</span>',
-                    unsafe_allow_html=True,
-                )
+        with st.container(key="price_review_header"):
+            header = st.columns([0.24, 2.55, 1.35, 1.05, 1.35, 0.7])
+            for column, label in zip(
+                header,
+                ("", "Source Item", "Supplier", "Source Price", "Reason", ""),
+            ):
+                if label:
+                    column.markdown(
+                        f'<span class="price-source-row-label">{label}</span>',
+                        unsafe_allow_html=True,
+                    )
         page_size = 5
         page_count = max(1, (len(review_rows) + page_size - 1) // page_size)
         page = min(max(int(st.session_state.get("price_review_page", 0)), 0), page_count - 1)
@@ -2201,8 +2202,8 @@ def _render_price_source_review_queue(
         if page_count > 1:
             with st.container(key="price_review_pagination"):
                 previous_col, next_col, page_col, _ = st.columns(
-                    [0.65, 0.5, 0.45, 8.4],
-                    gap=None,
+                    [0.55, 0.45, 0.4, 5.3],
+                    gap="small",
                 )
                 if previous_col.button("Previous", disabled=page == 0, key="price_review_previous"):
                     st.session_state.price_review_page = page - 1
