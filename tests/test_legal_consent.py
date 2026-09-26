@@ -497,25 +497,43 @@ def test_terms_one_two_publication_remains_an_immutable_audit_record():
     assert "where document_type = 'terms' and version = '1.1'" in publication
 
 
-def test_terms_one_three_finalizes_user_duties_and_customer_content_scope():
-    terms_path = ROOT / "cloudflare/terms.html"
-    terms = terms_path.read_text()
+def test_terms_one_three_publication_remains_an_immutable_audit_record():
     publication = (
         ROOT / "db/sql/2026_09_25_publish_terms_v1_3.sql"
     ).read_text()
 
-    assert "Version 1.3, effective September 25, 2026" in terms
+    assert "346cb5ee4be1cac1b0fa4a80deb8c1a89a330e426dae8d931485b79233cc2b0d" in publication
+    assert "acceptance_version from 3 to 4" in publication
+    assert "where document_type = 'terms' and version = '1.2'" in publication
+
+
+def test_current_terms_define_the_three_layer_customer_content_model():
+    terms_path = ROOT / "cloudflare/terms.html"
+    terms = terms_path.read_text()
+    publication = (
+        ROOT / "db/sql/2026_09_26_publish_terms_v1_4_privacy_v1_3.sql"
+    ).read_text()
+
+    assert "Version 1.4, effective September 26, 2026" in terms
     assert (
         "Each User who accepts these Terms is individually bound by the provisions "
         "that apply to Users and is responsible for that User's own actions."
     ) in terms
-    assert "provide, operate, secure and support the service" in terms
-    assert "develop service functionality" not in terms
-    assert "develop the service functionality" not in terms
+    assert "as reasonably necessary to provide, operate, secure, support and troubleshoot" in terms
+    assert "Authorized Operator personnel may manually access, open, review and analyze" in terms
+    assert "testing, evaluation and improvement of estimation agents" in terms
+    assert "need-to-know restrictions" in terms
+    assert 'use of the service ("Derived Data")' in terms
+    assert "pricing, materials, work categories, estimation practices, market activity" in terms
+    assert "retain, use, reproduce, analyze, license, commercialize" in terms
+    assert "does not identify or reasonably permit identification of the Customer" in terms
+    assert "does not disclose or permit reasonable reconstruction of Customer Content" in terms
+    assert "generalized skills, knowledge, concepts, methods, experience, market understanding" in terms
+    assert "identifiable Customer Content" in terms
     assert "registration no. 346904519" in terms
     assert "business registration and exempt dealer number" not in terms
 
-    # The final pass deliberately preserves these accepted protections.
+    # This material pass preserves the accepted risk protections.
     assert "A separate Data Processing Agreement may supplement these Terms" in terms
     assert "Subject to applicable law, Customer Content may be stored indefinitely" in terms
     assert "defend, indemnify and hold harmless" in terms
@@ -527,25 +545,44 @@ def test_terms_one_three_finalizes_user_duties_and_customer_content_scope():
         .replace(b"<!--/email_off-->", b"")
     )
     assert hashlib.sha256(published_bytes).hexdigest() in publication
-    assert "acceptance_version from 3 to 4" in publication
-    assert "where document_type = 'terms' and version = '1.2'" in publication
+    assert "acceptance_version from 4 to 5" in publication
+    assert "where document_type = 'terms' and version = '1.3'" in publication
 
 
-def test_privacy_one_two_matches_the_reviewed_notice_and_tracking_contract():
-    privacy_path = ROOT / "cloudflare/privacy.html"
-    privacy = privacy_path.read_text()
+def test_privacy_one_two_publication_remains_an_immutable_audit_record():
     publication = (
         ROOT / "db/sql/2026_09_25_publish_privacy_v1_2.sql"
     ).read_text()
 
+    assert "baee97a79a3be012dec6b0e5610aa380abd01e753dd64930ea97ec25bf13d674" in publication
+    assert "Privacy acceptance_version remains 1" in publication
+    assert "where document_type = 'privacy' and version = '1.1'" in publication
+
+
+def test_current_privacy_policy_matches_the_three_layer_customer_content_model():
+    privacy_path = ROOT / "cloudflare/privacy.html"
+    privacy = privacy_path.read_text()
+    publication = (
+        ROOT / "db/sql/2026_09_26_publish_terms_v1_4_privacy_v1_3.sql"
+    ).read_text()
+
     required_privacy = (
-        "Version 1.2, effective September 25, 2026",
+        "Version 1.3, effective September 26, 2026",
         "trade name under which the service is operated",
         "registration no. 346904519",
         "Costerly AI is not a separate legal entity",
         "Providing account and contact information is not required by law",
         "If this information is not provided",
-        "Customer Content is used to provide, operate, support, secure and troubleshoot",
+        "Customer Content may be used to provide, operate, support, secure and troubleshoot",
+        "Authorized Operator personnel may manually access, open, review and analyze",
+        "Identifiable Customer Content is not used as a separate market-intelligence corpus",
+        'use of the service ("Derived Data")',
+        "pricing ranges, materials, work categories, benchmarks, trends",
+        "does not identify or reasonably permit identification of the Customer",
+        "does not disclose or permit reasonable reconstruction of Customer Content",
+        "generalized skills, knowledge, concepts, methods, experience, market understanding",
+        "Operator determines an independent purpose or applicable law assigns a different role",
+        "validly anonymized",
         "aggregated or de-identified information",
         "service terms, account types and technical configurations",
         "short-lived encrypted session-resume cookie",
@@ -558,7 +595,6 @@ def test_privacy_one_two_matches_the_reviewed_notice_and_tracking_contract():
     for clause in required_privacy:
         assert clause in privacy
 
-    assert "develop service functionality" not in privacy
     assert "AI provider engaged for the service must not" not in privacy
     assert "business registration and exempt dealer number" not in privacy
 
@@ -571,7 +607,7 @@ def test_privacy_one_two_matches_the_reviewed_notice_and_tracking_contract():
     assert "Privacy acceptance_version remains 1" in publication
     assert "requires_reacceptance" in publication
     assert "false" in publication
-    assert "where document_type = 'privacy' and version = '1.1'" in publication
+    assert "where document_type = 'privacy' and version = '1.2'" in publication
 
 
 def test_migration_keeps_acceptance_evidence_append_only_and_server_written():
