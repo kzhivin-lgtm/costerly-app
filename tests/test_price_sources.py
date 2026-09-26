@@ -658,6 +658,15 @@ def test_mixed_selection_keeps_only_the_first_file():
     assert combine_price_source_files(selected) is first
 
 
+def test_photo_led_mixed_selection_keeps_all_photo_pages_only():
+    first = _UploadedPhoto("page-1.jpg", b"first")
+    second = _UploadedPhoto("page-2.png", b"second")
+
+    assert accepted_price_source_uploads(
+        [first, _UploadedPhoto("prices.xlsx", b"sheet"), second]
+    ) == [first, second]
+
+
 def test_multiple_spreadsheets_keep_only_the_first_file():
     first = _UploadedPhoto("prices-a.xlsx", b"first")
 
@@ -709,9 +718,16 @@ def test_price_source_file_guard_filters_before_streamlit_receives_selection():
     source = inspect.getsource(install_price_source_file_selection_guard)
 
     assert "files.every(isPhoto)" in source
+    assert "files.filter(isPhoto)" in source
     assert "return files.slice(0, 1)" in source
     assert "new DataTransfer()" in source
     assert 'parentDoc.addEventListener("change", handleChange, true)' in source
+    assert 'parentDoc.addEventListener("drop", handleDrop, true)' in source
+    assert "event.stopImmediatePropagation()" in source
+    assert 'new DragEvent("drop"' in source
+    assert "__costerlyAcceptedPriceSourceDrop" in source
+    assert "Upload one PDF, XLSX or CSV at a time · JPG/PNG can be combined" in source
+    assert "costerly-price-source-selection-note" in source
     assert "costerly-photo-selection" in source
     assert "costerly-single-document-selection" in source
 

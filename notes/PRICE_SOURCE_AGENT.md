@@ -15,7 +15,10 @@ Revision 13 keeps one logical source per extraction:
 
 - one or more JPEG/PNG pages are accepted together as one document;
 - PDF, XLSX, and CSV accept only the first selected file;
-- mixed selections also retain only the first selected file;
+- mixed selections use the first file as the routing type: a photo-led selection
+  keeps all JPEG/PNG pages, while a document-led selection keeps only its first
+  PDF, XLSX, or CSV;
+- when files are rejected, the uploader states the compact selection rule;
 - photo pages use the existing four-column grid, with two visible rows and an
   internal scroll area for additional pages;
 - a single PDF or spreadsheet uses a centered, enlarged file card so the

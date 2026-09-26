@@ -110,8 +110,13 @@ def accepted_price_source_uploads(files: list) -> list:
     if len(selected) <= 1:
         return selected
     suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
-    if all(suffix in {".jpg", ".jpeg", ".png"} for suffix in suffixes):
-        return selected
+    photo_suffixes = {".jpg", ".jpeg", ".png"}
+    if suffixes[0] in photo_suffixes:
+        return [
+            item
+            for item, suffix in zip(selected, suffixes, strict=True)
+            if suffix in photo_suffixes
+        ]
     return selected[:1]
 
 

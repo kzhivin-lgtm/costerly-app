@@ -974,6 +974,15 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body .costerly-price-source-selection-note {
+            margin-top: 6px;
+            color: #516784;
+            font-size: 11px;
+            line-height: 1.3;
+            text-align: center;
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_source_add_card [data-testid="stElementContainer"][data-stale="true"],
         .stApp:has(.company-profile-active)
         .st-key-price_catalog_shell [data-testid="stElementContainer"][data-stale="true"],

@@ -2712,9 +2712,13 @@ def install_price_source_file_selection_guard() -> None:
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
             const CLEANUP_KEY = "__costerlyPriceSourceFileSelectionGuardCleanup";
+            const WARNING_KEY = "__costerlyPriceSourceSelectionWarning";
             const UPLOADER_SELECTOR =
                 ".st-key-price_source_add_body [data-testid='stFileUploader']";
             const PHOTO_PATTERN = /\.(jpe?g|png)$/i;
+            const WARNING_CLASS = "costerly-price-source-selection-note";
+            const WARNING_COPY =
+                "Upload one PDF, XLSX or CSV at a time · JPG/PNG can be combined";
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
@@ -2723,8 +2727,35 @@ def install_price_source_file_selection_guard() -> None:
             }
 
             function acceptedFiles(files) {
-                if (files.length <= 1 || files.every(isPhoto)) return files;
+                if (files.length <= 1) return files;
+                if (isPhoto(files[0])) return files.filter(isPhoto);
                 return files.slice(0, 1);
+            }
+
+            function syncWarning() {
+                const uploaders = Array.from(parentDoc.querySelectorAll(UPLOADER_SELECTOR));
+                parentDoc.querySelectorAll(`.${WARNING_CLASS}`).forEach((note) => {
+                    if (!uploaders.some((uploader) => note.previousElementSibling === uploader)) {
+                        note.remove();
+                    }
+                });
+                if (!parentWindow[WARNING_KEY]) return;
+                uploaders.forEach((uploader) => {
+                    const sibling = uploader.nextElementSibling;
+                    if (sibling && sibling.classList.contains(WARNING_CLASS)) return;
+                    const note = parentDoc.createElement("div");
+                    note.className = WARNING_CLASS;
+                    note.textContent = WARNING_COPY;
+                    uploader.insertAdjacentElement("afterend", note);
+                });
+            }
+
+            function setWarning(enabled) {
+                parentWindow[WARNING_KEY] = enabled;
+                if (!enabled) {
+                    parentDoc.querySelectorAll(`.${WARNING_CLASS}`).forEach((note) => note.remove());
+                }
+                syncWarning();
             }
 
             function replaceFiles(input, files) {
@@ -2732,6 +2763,12 @@ def install_price_source_file_selection_guard() -> None:
                 const transfer = new DataTransfer();
                 files.forEach((file) => transfer.items.add(file));
                 input.files = transfer.files;
+            }
+
+            function transferWith(files) {
+                const transfer = new DataTransfer();
+                files.forEach((file) => transfer.items.add(file));
+                return transfer;
             }
 
             function syncMode(uploader, input) {
@@ -2751,6 +2788,7 @@ def install_price_source_file_selection_guard() -> None:
                     const input = uploader.querySelector("input[type='file']");
                     if (input) syncMode(uploader, input);
                 });
+                syncWarning();
             }
 
             function handleChange(event) {
@@ -2759,17 +2797,47 @@ def install_price_source_file_selection_guard() -> None:
                 const uploader = input.closest(UPLOADER_SELECTOR);
                 if (!uploader) return;
                 const files = Array.from(input.files || []);
-                replaceFiles(input, acceptedFiles(files));
+                const accepted = acceptedFiles(files);
+                setWarning(accepted.length < files.length);
+                replaceFiles(input, accepted);
                 syncMode(uploader, input);
             }
 
+            function handleDrop(event) {
+                if (event.__costerlyAcceptedPriceSourceDrop) return;
+                const target = event.target;
+                if (!target || !target.closest) return;
+                const uploader = target.closest(UPLOADER_SELECTOR);
+                if (!uploader || !event.dataTransfer) return;
+
+                const files = Array.from(event.dataTransfer.files || []);
+                const accepted = acceptedFiles(files);
+                setWarning(accepted.length < files.length);
+                if (accepted.length === files.length) return;
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                const filteredDrop = new DragEvent("drop", {
+                    bubbles: true,
+                    cancelable: true,
+                    dataTransfer: transferWith(accepted),
+                });
+                Object.defineProperty(filteredDrop, "__costerlyAcceptedPriceSourceDrop", {
+                    value: true,
+                });
+                target.dispatchEvent(filteredDrop);
+            }
+
             parentDoc.addEventListener("change", handleChange, true);
+            parentDoc.addEventListener("drop", handleDrop, true);
             const observer = new MutationObserver(syncAll);
             observer.observe(parentDoc.body, {childList: true, subtree: true});
             syncAll();
 
             parentWindow[CLEANUP_KEY] = () => {
                 parentDoc.removeEventListener("change", handleChange, true);
+                parentDoc.removeEventListener("drop", handleDrop, true);
                 observer.disconnect();
                 delete parentWindow[CLEANUP_KEY];
             };

@@ -40,9 +40,12 @@
   marker cannot immediately cancel the next click's progress state, and removes
   the misleading zero unchanged count from unresolved-only duplicate results.
   Revision 13 establishes the MVP uploader contract: multiple JPEG/PNG pages
-  remain one logical document, while PDF, XLSX, CSV, and mixed selections keep
-  only the first selected file. Photos retain a four-column, two-row scrollable
-  grid; a single document gets a centered enlarged card with a readable name.
+  remain one logical document, while PDF, XLSX, and CSV keep only the first
+  selected document. In a mixed selection, the first file selects the route:
+  photo-first keeps all JPEG/PNG pages, document-first keeps only that first
+  document, and a compact note explains the rule when files are rejected.
+  Photos retain a four-column, two-row scrollable grid; a single document gets
+  a centered enlarged card with a readable name.
   Next is block B, structural template identity and
   an isolated recurring internal-offer lane. Production acceptance remains
   pending. Contract:
