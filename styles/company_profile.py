@@ -1084,6 +1084,17 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section.costerly-upload-invalid-dragover,
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section.costerly-upload-invalid-dragover:hover {
+            border-color: #D94B52 !important;
+            background: #FBF9FD !important;
+            box-shadow: 0 0 0 3px rgba(217, 75, 82, 0.12) !important;
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stButton"] button {
             min-height: 52px !important;
         }

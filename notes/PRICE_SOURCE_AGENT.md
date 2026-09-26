@@ -468,3 +468,12 @@ The terminal Extract notice is retained until the next Extract attempt. Exact
 byte duplicates, including renamed duplicates, therefore remain visibly
 reported as already processed with unchanged/unresolved counts, zero agent time,
 and zero TC instead of appearing as a silent no-op after the uploader rerun.
+
+## 3.12.1 revision 16 drag-state hotfix
+
+Dragging a second document over an occupied PDF/XLSX/CSV uploader no longer
+lets Streamlit replace the accepted preview with its generic red drop overlay.
+The accepted chip stays visible and only the established card outline turns
+red. Leaving the drop zone clears that state immediately. Dropping the rejected
+document preserves the first file and shows the existing yellow one-document
+guidance. The multi-photo route remains unchanged.

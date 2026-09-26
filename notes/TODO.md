@@ -52,7 +52,10 @@
   PDF/spreadsheet against the document already rendered in the uploader rather
   than only filtering the latest picker batch, and keeps every completed
   Extract result visible until the next Extract attempt. Sequential JPEG/PNG
-  pages remain supported as one photo document.
+  pages remain supported as one photo document. Revision 16 isolates the
+  invalid-second-document drag state: the accepted chip and preview stay
+  visible, only the existing card border turns red, leaving the zone clears the
+  red state immediately, and the yellow explanation appears only after reject.
   Next is block B2, an isolated recurring internal-offer lane, followed by
   source-level VAT confirmation in block C. Mixed-document queueing remains
   deferred under 3.12.3, and resolver priority remains deferred until both offer

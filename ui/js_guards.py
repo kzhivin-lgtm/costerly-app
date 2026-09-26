@@ -2635,6 +2635,7 @@ def install_upload_dragover_guard(*, file_previews: list[dict[str, str]] | None 
             (() => {
                 const DROPZONE_SELECTOR = 'section[data-testid="stFileUploaderDropzone"]';
                 const DRAG_CLASS = 'costerly-upload-dragover';
+                const INVALID_DRAG_CLASS = 'costerly-upload-invalid-dragover';
                 let clearTimer = null;
 
                 function getDropzones() {
@@ -2652,6 +2653,14 @@ def install_upload_dragover_guard(*, file_previews: list[dict[str, str]] | None 
                 function setDragover(dropzone, on) {
                     getDropzones().forEach((zone) => {
                         zone.classList.toggle(DRAG_CLASS, Boolean(on) && zone === dropzone);
+                        zone.classList.remove(INVALID_DRAG_CLASS);
+                    });
+                }
+
+                function setInvalidDragover(dropzone) {
+                    getDropzones().forEach((zone) => {
+                        zone.classList.remove(DRAG_CLASS);
+                        zone.classList.toggle(INVALID_DRAG_CLASS, zone === dropzone);
                     });
                 }
 
@@ -2672,17 +2681,28 @@ def install_upload_dragover_guard(*, file_previews: list[dict[str, str]] | None 
 
                     event.preventDefault();
                     window.clearTimeout(clearTimer);
+                    const uploader = dropzone.closest('[data-testid="stFileUploader"]');
+                    if (uploader && uploader.classList.contains('costerly-single-document-selection')) {
+                        setInvalidDragover(dropzone);
+                        event.stopImmediatePropagation();
+                        return;
+                    }
                     setDragover(dropzone, true);
                 }
 
                 document.addEventListener('dragenter', forceDragover, true);
                 document.addEventListener('dragover', forceDragover, true);
-                document.addEventListener('dragleave', () => {
+                document.addEventListener('dragleave', (event) => {
                     window.clearTimeout(clearTimer);
-                    clearTimer = window.setTimeout(clearDragover, 140);
+                    if (!event.relatedTarget) {
+                        clearDragover();
+                        return;
+                    }
+                    clearTimer = window.setTimeout(clearDragover, 40);
                 }, true);
                 document.addEventListener('drop', clearDragover, true);
                 document.addEventListener('dragend', clearDragover, true);
+                document.addEventListener('dragexit', clearDragover, true);
                 window.addEventListener('blur', clearDragover, true);
             })();
             `;

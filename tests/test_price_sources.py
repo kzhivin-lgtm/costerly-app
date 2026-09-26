@@ -793,6 +793,10 @@ def test_price_source_uploader_installs_dragover_guard():
     assert "file_previews=file_previews" in guard_source
     assert guard_source.count("components.html(") == 1
     assert "render_price_source_preview" in source
+    assert "costerly-upload-invalid-dragover" in guard_source
+    assert "costerly-single-document-selection" in guard_source
+    assert "event.stopImmediatePropagation()" in guard_source
+    assert "if (!event.relatedTarget)" in guard_source
 
 
 def test_mixed_selection_keeps_only_the_first_file():
