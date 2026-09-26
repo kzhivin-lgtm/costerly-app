@@ -292,3 +292,25 @@ transparent, and aligns Previous, Next, and the page count on one row.
 All 369 automated tests pass. Production acceptance remains required for row
 geometry, Source/View behavior for URL, image, PDF, and spreadsheet sources,
 review pagination, blocking-field markers, and Edit/Review/Save/Cancel latency.
+
+## 3.12.1 revision 7 candidate
+
+The accepted revision 6 geometry is preserved. The Needs review column labels
+move down by 3 pixels without changing the header or row dimensions.
+
+The interaction trace identified two avoidable latency sources. Every Price
+Lists fragment action reloaded the same source, catalog, and review data through
+11 sequential Supabase requests, and Previous/Next then forced a second fragment
+rerun after the rerun already caused by the button. Revision 7:
+
+- reuses a 60-second read snapshot keyed by company and user for UI-only
+  interactions;
+- invalidates that snapshot after source processing, row save, and row removal;
+- moves pagination, Cancel, Save, and Remove state changes into callbacks so each
+  action needs one fragment cycle rather than a follow-up manual rerun;
+- keeps fresh database reads after every successful mutation;
+- adds deterministic coverage proving pagination does not repeat the three
+  loaders and Save receives the current form values.
+
+All 373 automated tests pass. Production acceptance must measure Previous,
+Next, Edit, Review, Cancel, Save, and Remove in the real authenticated session.

@@ -22,6 +22,9 @@
   original source from Source/View, paginates Needs review for responsive row
   actions, marks only activation-blocking fields, removes duplicate editor
   headings and row gaps, and suppresses non-informational hover tooltips.
+  Revision 7 preserves that geometry, lowers the Needs review labels by 3 px,
+  removes duplicate fragment reruns, and reuses a tenant-scoped read snapshot
+  for fast UI-only actions while invalidating it after every data mutation.
   Production interaction acceptance remains pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.
 

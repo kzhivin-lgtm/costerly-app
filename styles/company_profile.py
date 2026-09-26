@@ -1410,6 +1410,12 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-price_review_header .price-source-row-label {
+            display: inline-block;
+            transform: translateY(3px);
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_source_review_queue > [data-testid="stVerticalBlock"] {
             gap: 0 !important;
         }

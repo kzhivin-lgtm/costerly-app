@@ -1786,6 +1786,79 @@ def _price_source_direct_url(access: CompanyAccess, source: dict) -> str | None:
     return url
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def _load_price_lists_snapshot(
+    company_id: str,
+    user_id: str,
+    _access: CompanyAccess,
+) -> tuple[list[dict], list[dict], list[dict]]:
+    """Reuse a tenant-scoped read snapshot across fragment UI interactions."""
+    if company_id != str(_access.company_id) or user_id != str(_access.user_id):
+        raise PermissionError("Price snapshot access does not match the active company")
+    return (
+        list_price_sources(_access),
+        list_price_catalog(_access),
+        list_unresolved_price_source_rows(_access),
+    )
+
+
+def _clear_price_lists_snapshot() -> None:
+    _load_price_lists_snapshot.clear()
+
+
+def _set_price_review_page(page: int) -> None:
+    st.session_state.price_review_page = page
+
+
+def _cancel_price_source_row_edit() -> None:
+    st.session_state.pop("_editing_price_source_row", None)
+    st.session_state.pop("_price_source_action_location", None)
+
+
+def _cancel_price_source_row_removal() -> None:
+    st.session_state.pop("_removing_price_source_row", None)
+    st.session_state.pop("_price_source_action_location", None)
+
+
+def _save_price_source_row_action(
+    access: CompanyAccess,
+    source_id: str,
+    row_id: str,
+    field_keys: dict[str, str],
+) -> None:
+    values = {name: st.session_state.get(key) for name, key in field_keys.items()}
+    try:
+        save_price_source_row(access, source_id, row_id, values)
+    except PriceSourceError as exc:
+        st.session_state._price_source_action_error = str(exc)
+    except Exception:
+        logger.exception("Price source row save failed")
+        st.session_state._price_source_action_error = "The price could not be saved. Try again"
+    else:
+        _clear_price_lists_snapshot()
+        st.session_state.pop("_editing_price_source_row", None)
+        st.session_state.pop("_price_source_action_location", None)
+        st.session_state._price_source_action_notice = "Price saved"
+
+
+def _remove_price_source_row_action(
+    access: CompanyAccess,
+    source_id: str,
+    row_id: str,
+) -> None:
+    try:
+        remove_price_source_row(access, source_id, row_id)
+    except Exception:
+        logger.exception("Price source row removal failed")
+        st.session_state._price_source_action_error = "The price could not be removed. Try again"
+    else:
+        _clear_price_lists_snapshot()
+        st.session_state.pop("_removing_price_source_row", None)
+        st.session_state.pop("_editing_price_source_row", None)
+        st.session_state.pop("_price_source_action_location", None)
+        st.session_state._price_source_action_notice = "Price removed"
+
+
 def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: list[dict]) -> None:
     department = "All departments"
     material_type = "All material types"
@@ -1980,12 +2053,27 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
         if "package_conversion_unresolved" in blocking_reasons
         else "Estimation units per purchase unit"
     )
+    field_keys = {
+        name: f"price_row_{name}_{source_id}_{row_id}"
+        for name in (
+            "normalized_name",
+            "material_type",
+            "raw_price",
+            "raw_currency",
+            "vat_mode",
+            "raw_unit",
+            "purchase_unit",
+            "calculation_unit",
+            "conversion_factor",
+        )
+    }
     with st.form(f"price_source_row_form_{source_id}_{row_id}", border=False):
         name_col, type_col = st.columns([1.7, 1])
         with name_col:
             normalized_name = st.text_input(
                 "Material name",
                 value=str(row.get("normalized_name") or row.get("raw_description") or ""),
+                key=field_keys["normalized_name"],
             )
         with type_col:
             selected_type = material_type if material_type in categories else categories[0]
@@ -1993,6 +2081,7 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
                 "Material type",
                 categories,
                 index=categories.index(selected_type),
+                key=field_keys["material_type"],
             )
         price_col, currency_col, vat_col = st.columns([1.1, 0.65, 1])
         with price_col:
@@ -2001,12 +2090,14 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
                 min_value=0.0,
                 value=float(row.get("raw_price") or 0),
                 step=0.01,
+                key=field_keys["raw_price"],
             )
         with currency_col:
             raw_currency = st.text_input(
                 "Currency",
                 value=str(row.get("raw_currency") or source.get("currency") or "ILS"),
                 max_chars=3,
+                key=field_keys["raw_currency"],
             )
         with vat_col:
             selected_vat = st.selectbox(
@@ -2018,18 +2109,24 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
                     "included": "Included",
                     "unknown": "Choose VAT basis",
                 }[value],
+                key=field_keys["vat_mode"],
             )
         source_unit_col, purchase_unit_col, calculation_unit_col, factor_col = st.columns(
             [1, 1, 1, 1.25]
         )
         with source_unit_col:
-            raw_unit = st.text_input("Source unit", value=str(row.get("raw_unit") or ""))
+            raw_unit = st.text_input(
+                "Source unit",
+                value=str(row.get("raw_unit") or ""),
+                key=field_keys["raw_unit"],
+            )
         with purchase_unit_col:
             purchase_value = purchase_unit if purchase_unit in units else units[0]
             selected_purchase_unit = st.selectbox(
                 "Purchase unit",
                 units,
                 index=units.index(purchase_value),
+                key=field_keys["purchase_unit"],
             )
         with calculation_unit_col:
             calculation_value = calculation_unit if calculation_unit in units else units[0]
@@ -2037,6 +2134,7 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
                 "Estimation unit",
                 units,
                 index=units.index(calculation_value),
+                key=field_keys["calculation_unit"],
             )
         with factor_col:
             conversion_factor = st.number_input(
@@ -2044,49 +2142,21 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
                 min_value=0.0,
                 value=float(row.get("conversion_factor") or 1),
                 step=0.01,
+                key=field_keys["conversion_factor"],
             )
         save_col, cancel_col, _ = st.columns([1, 0.82, 4], gap="small")
-        save = save_col.form_submit_button(
+        save_col.form_submit_button(
             "Save price",
             type="primary",
             key=f"save_price_row_{source_id}_{row_id}",
+            on_click=_save_price_source_row_action,
+            args=(access, source_id, row_id, field_keys),
         )
-        cancel = cancel_col.form_submit_button(
+        cancel_col.form_submit_button(
             "Cancel",
             key=f"cancel_price_row_{source_id}_{row_id}",
+            on_click=_cancel_price_source_row_edit,
         )
-    if cancel:
-        st.session_state.pop("_editing_price_source_row", None)
-        st.session_state.pop("_price_source_action_location", None)
-        st.rerun(scope="fragment")
-    if save:
-        try:
-            save_price_source_row(
-                access,
-                source_id,
-                row_id,
-                {
-                    "normalized_name": normalized_name,
-                    "material_type": selected_type,
-                    "raw_price": raw_price,
-                    "raw_currency": raw_currency,
-                    "vat_mode": selected_vat,
-                    "raw_unit": raw_unit,
-                    "purchase_unit": selected_purchase_unit,
-                    "calculation_unit": selected_calculation_unit,
-                    "conversion_factor": conversion_factor,
-                },
-            )
-        except PriceSourceError as exc:
-            st.error(str(exc))
-        except Exception:
-            logger.exception("Price source row save failed")
-            st.error("The price could not be saved. Try again")
-        else:
-            st.session_state.pop("_editing_price_source_row", None)
-            st.session_state.pop("_price_source_action_location", None)
-            st.session_state._price_source_action_notice = "Price saved"
-            st.rerun(scope="fragment")
 
 
 def _render_price_source_row_remove_confirmation(
@@ -2100,22 +2170,18 @@ def _render_price_source_row_remove_confirmation(
         vertical_alignment="center",
     )
     warning_col.warning("Remove this price from the active catalog?")
-    if confirm_col.button("Remove", key=f"confirm_remove_price_row_{source_id}_{row_id}", type="primary"):
-        try:
-            remove_price_source_row(access, source_id, row_id)
-        except Exception:
-            logger.exception("Price source row removal failed")
-            st.error("The price could not be removed. Try again")
-        else:
-            st.session_state.pop("_removing_price_source_row", None)
-            st.session_state.pop("_editing_price_source_row", None)
-            st.session_state.pop("_price_source_action_location", None)
-            st.session_state._price_source_action_notice = "Price removed"
-            st.rerun(scope="fragment")
-    if cancel_col.button("Cancel", key=f"cancel_remove_price_row_{source_id}_{row_id}"):
-        st.session_state.pop("_removing_price_source_row", None)
-        st.session_state.pop("_price_source_action_location", None)
-        st.rerun(scope="fragment")
+    confirm_col.button(
+        "Remove",
+        key=f"confirm_remove_price_row_{source_id}_{row_id}",
+        type="primary",
+        on_click=_remove_price_source_row_action,
+        args=(access, source_id, row_id),
+    )
+    cancel_col.button(
+        "Cancel",
+        key=f"cancel_remove_price_row_{source_id}_{row_id}",
+        on_click=_cancel_price_source_row_removal,
+    )
 
 
 def _render_price_source_review_queue(
@@ -2205,12 +2271,20 @@ def _render_price_source_review_queue(
                     [0.55, 0.45, 0.4, 5.3],
                     gap="small",
                 )
-                if previous_col.button("Previous", disabled=page == 0, key="price_review_previous"):
-                    st.session_state.price_review_page = page - 1
-                    st.rerun(scope="fragment")
-                if next_col.button("Next", disabled=page == page_count - 1, key="price_review_next"):
-                    st.session_state.price_review_page = page + 1
-                    st.rerun(scope="fragment")
+                previous_col.button(
+                    "Previous",
+                    disabled=page == 0,
+                    key="price_review_previous",
+                    on_click=_set_price_review_page,
+                    args=(page - 1,),
+                )
+                next_col.button(
+                    "Next",
+                    disabled=page == page_count - 1,
+                    key="price_review_next",
+                    on_click=_set_price_review_page,
+                    args=(page + 1,),
+                )
                 page_col.markdown(
                     f'<span class="price-review-page">{page + 1} / {page_count}</span>',
                     unsafe_allow_html=True,
@@ -2513,6 +2587,7 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
             "The price source could not be processed. Try again in a moment."
         )
     else:
+        _clear_price_lists_snapshot()
         st.session_state._price_source_uploader_version = uploader_version + 1
         if hasattr(result, "source_id") and hasattr(result, "summary"):
             st.session_state._price_source_notice = {
@@ -2535,18 +2610,14 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     _process_pending_price_source(access, trace=trace)
 
     try:
-        sources = list_price_sources(access)
+        sources, catalog, review_rows = _load_price_lists_snapshot(
+            str(access.company_id),
+            str(access.user_id),
+            access,
+        )
     except Exception:
         logger.exception("Price source list failed")
         st.info("Price Sources storage is not configured yet.")
-        return
-
-    try:
-        catalog = list_price_catalog(access)
-        review_rows = list_unresolved_price_source_rows(access)
-    except Exception:
-        logger.exception("Price catalog list failed")
-        st.info("The material price catalog is unavailable right now")
         return
 
     _render_price_source_add(access, trace=trace)
@@ -2571,6 +2642,9 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     action_notice = st.session_state.pop("_price_source_action_notice", None)
     if action_notice:
         st.success(action_notice)
+    action_error = st.session_state.pop("_price_source_action_error", None)
+    if action_error:
+        st.error(action_error)
 
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):

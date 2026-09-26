@@ -32,7 +32,10 @@ from use_cases.rfq_processing import assign_server_run_id
 @pytest.fixture(autouse=True)
 def _keep_company_access_regressions_on_the_rollback_path(monkeypatch):
     """3.11.1 active-flow scenarios live in test_legal_consent.py."""
+    company_profile._clear_price_lists_snapshot()
     monkeypatch.setattr(company_auth, "legal_consent_enabled", lambda: False)
+    yield
+    company_profile._clear_price_lists_snapshot()
 
 
 class _Query:
@@ -1523,6 +1526,129 @@ def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch)
     assert not app.exception
     assert any(field.label == "Material name" for field in app.text_input)
     assert any(field.label.startswith("VAT") for field in app.selectbox)
+
+
+def test_price_review_pagination_reuses_the_tenant_snapshot(monkeypatch):
+    calls = {"sources": 0, "catalog": 0, "review": 0}
+    source = {
+        "source_id": "source-review",
+        "source_name": "lumber.xlsx",
+        "category": "Wood Sheets",
+        "currency": "ILS",
+        "status": "partial",
+        "processing_summary": {"ready": 0, "unresolved": 6, "excluded": 0},
+        "company_suppliers": {"supplier_name": "Supplier Ltd"},
+    }
+    review_rows = [
+        {
+            "row_id": f"row-{index}",
+            "source_id": "source-review",
+            "raw_description": f"Review item {index}",
+            "raw_price": float(index),
+            "raw_currency": "ILS",
+            "raw_unit": "piece",
+            "result_status": "unresolved",
+            "reason_codes": ["vat_basis_unknown"],
+            "source": source,
+        }
+        for index in range(1, 7)
+    ]
+
+    def load_sources(_access):
+        calls["sources"] += 1
+        return [source]
+
+    def load_catalog(_access):
+        calls["catalog"] += 1
+        return []
+
+    def load_review(_access):
+        calls["review"] += 1
+        return review_rows
+
+    monkeypatch.setattr(company_profile, "list_price_sources", load_sources)
+    monkeypatch.setattr(company_profile, "list_price_catalog", load_catalog)
+    monkeypatch.setattr(company_profile, "list_unresolved_price_source_rows", load_review)
+
+    app = AppTest.from_function(_render_price_lists_test).run()
+    assert calls == {"sources": 1, "catalog": 1, "review": 1}
+    assert "Review item 1" in "\n".join(item.value for item in app.markdown)
+
+    next(button for button in app.button if button.label == "Next").click()
+    app.run()
+
+    assert not app.exception
+    assert calls == {"sources": 1, "catalog": 1, "review": 1}
+    markup = "\n".join(item.value for item in app.markdown)
+    assert "Review item 6" in markup
+    assert "2 / 2" in markup
+
+
+def test_price_review_save_callback_uses_current_form_values(monkeypatch):
+    saved = []
+    source = {
+        "source_id": "source-review",
+        "source_name": "lumber.xlsx",
+        "category": "Wood Sheets",
+        "currency": "ILS",
+        "status": "partial",
+        "company_suppliers": {"supplier_name": "Supplier Ltd"},
+    }
+    review_row = {
+        "row_id": "row-review",
+        "source_id": "source-review",
+        "raw_description": "Plywood birch 10 mm",
+        "normalized_name": "Birch plywood 10 mm",
+        "raw_price": 120.0,
+        "raw_currency": "ILS",
+        "raw_unit": "sheet",
+        "purchase_unit": "sheet",
+        "calculation_unit": "sheet",
+        "conversion_factor": 1.0,
+        "raw_vat_included": None,
+        "result_status": "unresolved",
+        "reason_codes": ["vat_basis_unknown"],
+        "evidence": {"material_type": "Wood Sheets"},
+        "source": source,
+    }
+    monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: [source])
+    monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+    monkeypatch.setattr(
+        company_profile,
+        "list_unresolved_price_source_rows",
+        lambda _access: [review_row],
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "save_price_source_row",
+        lambda access, source_id, row_id, values: saved.append(
+            (access.company_id, source_id, row_id, values)
+        ),
+    )
+
+    app = AppTest.from_function(_render_price_lists_test).run()
+    next(button for button in app.button if button.label == "Review").click()
+    app.run()
+    next(field for field in app.text_input if field.label == "Material name").set_value(
+        "Birch plywood 12 mm"
+    )
+    next(field for field in app.selectbox if field.label.startswith("VAT")).set_value(
+        "excluded"
+    )
+    next(button for button in app.button if button.label == "Save price").click()
+    app.run()
+
+    assert not app.exception
+    assert len(saved) == 1
+    company_id, source_id, row_id, values = saved[0]
+    assert (company_id, source_id, row_id) == (
+        "company-a",
+        "source-review",
+        "row-review",
+    )
+    assert values["normalized_name"] == "Birch plywood 12 mm"
+    assert values["vat_mode"] == "excluded"
+    assert any(notice.value == "Price saved" for notice in app.success)
 
 
 def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeypatch):
