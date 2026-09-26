@@ -48,6 +48,11 @@
   a centered enlarged card with a readable name. Revision 14 block B1 adds a
   first-page PDF preview and structural XLSX/CSV template identity so renamed or
   value-updated workbooks remain auditable revisions of one source family.
+  Revision 15 extends real previews to XLSX, CSV, JPEG, and PNG, blocks a second
+  PDF/spreadsheet against the document already rendered in the uploader rather
+  than only filtering the latest picker batch, and keeps every completed
+  Extract result visible until the next Extract attempt. Sequential JPEG/PNG
+  pages remain supported as one photo document.
   Next is block B2, an isolated recurring internal-offer lane, followed by
   source-level VAT confirmation in block C. Mixed-document queueing remains
   deferred under 3.12.3, and resolver priority remains deferred until both offer

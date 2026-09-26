@@ -964,7 +964,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
-        [data-testid="stFileUploader"].costerly-has-pdf-preview
+        [data-testid="stFileUploader"].costerly-has-document-preview
         [data-testid="stFileChip"] > div:first-child {
             width: 96px !important;
             height: 60px !important;
@@ -976,17 +976,48 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
-        [data-testid="stFileUploader"].costerly-has-pdf-preview
+        [data-testid="stFileUploader"].costerly-has-document-preview
         [data-testid="stFileChip"] > div:first-child svg {
             display: none !important;
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-price_source_add_body .costerly-pdf-preview {
+        .st-key-price_source_add_body .costerly-file-preview {
             display: block;
             width: 100%;
             height: 100%;
             object-fit: contain;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-has-photo-previews
+        [data-testid="stFileChip"] {
+            grid-template-rows: 38px minmax(0, 1fr) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-has-photo-previews
+        [data-testid="stFileChip"] > div:first-child {
+            width: 50px !important;
+            height: 36px !important;
+            overflow: hidden !important;
+            border-radius: 4px;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-has-photo-previews
+        [data-testid="stFileChip"] > div:first-child svg {
+            display: none !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-has-photo-previews
+        .costerly-file-preview {
+            object-fit: cover;
         }
 
         .stApp:has(.company-profile-active)

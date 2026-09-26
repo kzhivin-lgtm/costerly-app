@@ -19,7 +19,7 @@ from uuid import uuid4
 
 import httpx
 import pandas as pd
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
 from agents.price_source_agent import run_price_source_agent
 from agents.schemas.price_source_schema import (
@@ -151,6 +151,114 @@ def render_price_source_pdf_preview(
     except Exception:
         logger.info("Price source PDF preview unavailable", exc_info=True)
         return None
+
+
+def _price_source_preview_font(size: int) -> ImageFont.ImageFont:
+    for path in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+    ):
+        try:
+            return ImageFont.truetype(path, size=size)
+        except OSError:
+            continue
+    return ImageFont.load_default()
+
+
+def _render_price_source_table_preview(rows: list[list[object]]) -> bytes | None:
+    if not rows:
+        return None
+    width, height = 240, 140
+    visible_rows = rows[:7]
+    column_count = min(max((len(row) for row in visible_rows), default=0), 6)
+    if column_count < 1:
+        return None
+    image = Image.new("RGB", (width, height), "white")
+    draw = ImageDraw.Draw(image)
+    font = _price_source_preview_font(10)
+    row_height = height / len(visible_rows)
+    column_width = width / column_count
+    for row_index, row in enumerate(visible_rows):
+        top = round(row_index * row_height)
+        bottom = round((row_index + 1) * row_height)
+        fill = "#F1EBFA" if row_index == 0 else ("#FFFFFF" if row_index % 2 else "#FAF8FC")
+        draw.rectangle((0, top, width, bottom), fill=fill)
+        for column_index in range(column_count):
+            left = round(column_index * column_width)
+            right = round((column_index + 1) * column_width)
+            draw.rectangle((left, top, right, bottom), outline="#DED8E5", width=1)
+            value = (
+                ""
+                if column_index >= len(row) or row[column_index] is None
+                else str(row[column_index])
+            )
+            value = value.replace("\n", " ").strip()
+            max_chars = max(3, int(column_width / 6.2) - 1)
+            if len(value) > max_chars:
+                value = value[: max_chars - 1] + "…"
+            draw.text((left + 3, top + 3), value, font=font, fill="#302A36")
+    output = BytesIO()
+    image.save(output, format="PNG", optimize=True)
+    image.close()
+    return output.getvalue()
+
+
+def render_price_source_preview(
+    file_name: str,
+    file_bytes: bytes,
+    *,
+    max_width: int = 240,
+    max_height: int = 140,
+) -> bytes | None:
+    """Render a bounded preview for every accepted Price Source format."""
+    suffix = Path(str(file_name)).suffix.lower()
+    if not file_bytes:
+        return None
+    if suffix == ".pdf":
+        return render_price_source_pdf_preview(
+            file_bytes,
+            max_width=max_width,
+            max_height=max_height,
+        )
+    if suffix in {".jpg", ".jpeg", ".png"}:
+        try:
+            with Image.open(BytesIO(file_bytes)) as source:
+                image = ImageOps.exif_transpose(source).convert("RGB")
+                image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                output = BytesIO()
+                image.save(output, format="PNG", optimize=True)
+                image.close()
+                return output.getvalue()
+        except (UnidentifiedImageError, OSError):
+            logger.info("Price source image preview unavailable", exc_info=True)
+            return None
+    if suffix == ".xlsx":
+        try:
+            from openpyxl import load_workbook
+
+            workbook = load_workbook(BytesIO(file_bytes), read_only=True, data_only=True)
+            try:
+                worksheet = next(
+                    (sheet for sheet in workbook.worksheets if sheet.sheet_state == "visible"),
+                    workbook.worksheets[0],
+                )
+                rows = [list(row[:6]) for row in worksheet.iter_rows(max_row=7, values_only=True)]
+            finally:
+                workbook.close()
+            return _render_price_source_table_preview(rows)
+        except Exception:
+            logger.info("Price source spreadsheet preview unavailable", exc_info=True)
+            return None
+    if suffix == ".csv":
+        try:
+            text = file_bytes.decode("utf-8-sig", errors="replace")
+            rows = [row[:6] for _, row in zip(range(7), csv.reader(text.splitlines()))]
+            return _render_price_source_table_preview(rows)
+        except Exception:
+            logger.info("Price source CSV preview unavailable", exc_info=True)
+            return None
+    return None
 
 
 def combine_price_source_files(files: list) -> object | None:

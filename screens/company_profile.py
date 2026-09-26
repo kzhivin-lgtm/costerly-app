@@ -49,7 +49,7 @@ from use_cases.price_sources import (
     load_price_source_rows,
     process_price_source,
     remove_price_source_row,
-    render_price_source_pdf_preview,
+    render_price_source_preview,
     save_price_source_row,
     validate_price_source_upload_selection,
 )
@@ -2572,21 +2572,22 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                         "that belong to the same document"
                     ),
                 )
-                preview_data_uri = ""
                 accepted_files = accepted_price_source_uploads(list(uploaded_files or []))
-                if (
-                    len(accepted_files) == 1
-                    and Path(str(accepted_files[0].name)).suffix.lower() == ".pdf"
-                ):
-                    preview = render_price_source_pdf_preview(
-                        accepted_files[0].getvalue()
+                file_previews = []
+                for accepted_file in accepted_files:
+                    preview = render_price_source_preview(
+                        str(accepted_file.name), accepted_file.getvalue()
                     )
                     if preview:
-                        preview_data_uri = (
-                            "data:image/png;base64," + base64.b64encode(preview).decode("ascii")
+                        file_previews.append(
+                            {
+                                "name": str(accepted_file.name),
+                                "data_uri": "data:image/png;base64,"
+                                + base64.b64encode(preview).decode("ascii"),
+                            }
                         )
                 install_upload_dragover_guard(
-                    pdf_preview_data_uri=preview_data_uri
+                    file_previews=file_previews
                 )
             with details_column:
                 st.text_input(
@@ -2678,7 +2679,10 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
 
     _render_price_source_add(access, trace=trace)
 
-    notice_result = st.session_state.pop("_price_source_notice", None)
+    # Keep the terminal result visible until the next Extract attempt replaces it.
+    # A transient notice can otherwise disappear on the uploader-key rerun and
+    # leave an exact or renamed duplicate looking like a silent no-op.
+    notice_result = st.session_state.get("_price_source_notice")
     if notice_result:
         if isinstance(notice_result, dict) and notice_result.get("summary") is not None:
             notice_source = notice_result

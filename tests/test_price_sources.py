@@ -45,6 +45,7 @@ from use_cases.price_sources import (
     price_offer_matches_row,
     remove_price_source_row,
     render_price_source_pdf_preview,
+    render_price_source_preview,
     save_price_source_row,
     validate_price_source_upload_selection,
 )
@@ -102,6 +103,51 @@ def test_price_source_pdf_preview_renders_only_first_page():
 
 def test_price_source_pdf_preview_falls_back_for_invalid_pdf():
     assert render_price_source_pdf_preview(b"not a pdf") is None
+
+
+def test_price_source_image_preview_renders_a_bounded_png():
+    source = BytesIO()
+    Image.new("RGB", (900, 600), "#7F4BD1").save(source, format="JPEG")
+
+    preview = render_price_source_preview("page.jpg", source.getvalue())
+
+    assert preview is not None
+    with Image.open(BytesIO(preview)) as image:
+        assert image.format == "PNG"
+        assert image.width <= 240
+        assert image.height <= 140
+
+
+def test_price_source_xlsx_preview_renders_a_table_png():
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append(["Material", "Price", "Unit"])
+    sheet.append(["Plywood", 75, "sheet"])
+    source = BytesIO()
+    workbook.save(source)
+    workbook.close()
+
+    preview = render_price_source_preview("prices.xlsx", source.getvalue())
+
+    assert preview is not None
+    with Image.open(BytesIO(preview)) as image:
+        assert image.format == "PNG"
+        assert image.size == (240, 140)
+
+
+def test_price_source_csv_preview_renders_a_table_png():
+    preview = render_price_source_preview(
+        "prices.csv",
+        b"Material,Price,Unit\nPlywood,75,sheet\n",
+    )
+
+    assert preview is not None
+    with Image.open(BytesIO(preview)) as image:
+        assert image.format == "PNG"
+
+
+def test_price_source_preview_falls_back_for_invalid_image():
+    assert render_price_source_preview("page.png", b"not an image") is None
 
 
 class _UploadedPhoto:
@@ -741,12 +787,12 @@ def test_price_source_uploader_installs_dragover_guard():
     guard_source = inspect.getsource(install_upload_dragover_guard)
 
     assert "install_upload_dragover_guard(" in source
-    assert "pdf_preview_data_uri=preview_data_uri" in source
+    assert "file_previews=file_previews" in source
     assert "install_price_source_file_selection_guard" not in source
     assert "install_price_source_file_selection_guard(" in guard_source
-    assert "pdf_preview_data_uri=pdf_preview_data_uri" in guard_source
+    assert "file_previews=file_previews" in guard_source
     assert guard_source.count("components.html(") == 1
-    assert "render_price_source_pdf_preview" in source
+    assert "render_price_source_preview" in source
 
 
 def test_mixed_selection_keeps_only_the_first_file():
@@ -839,8 +885,11 @@ def test_price_source_file_guard_filters_before_streamlit_receives_selection():
     assert "stFileChipDeleteBtn" in source
     assert "emptyWarningTimer" in source
     assert "}, 5000)" in source
-    assert "PDF_PREVIEW_DATA_URI" in source
-    assert "costerly-pdf-preview" in source
+    assert "FILE_PREVIEWS" in source
+    assert "costerly-file-preview" in source
+    assert "acceptedIncomingFiles" in source
+    assert "existing.every(isPhoto)" in source
+    assert "if (files.length && !accepted.length)" in source
 
 
 def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):

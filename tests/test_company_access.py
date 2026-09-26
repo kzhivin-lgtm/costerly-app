@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 from contextlib import contextmanager
+import inspect
 import json
 from pathlib import Path
 import time
@@ -1408,6 +1409,13 @@ def test_exact_duplicate_notice_omits_zero_unchanged_count():
     )
 
     assert notice == "Already processed · 62 unresolved · 0.0 s · TC 0.000"
+
+
+def test_price_source_result_notice_persists_until_the_next_extract_attempt():
+    source = inspect.getsource(company_profile._render_price_lists)
+
+    assert 'st.session_state.get("_price_source_notice")' in source
+    assert 'st.session_state.pop("_price_source_notice", None)' not in source
 
 
 def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():

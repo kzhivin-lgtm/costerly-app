@@ -451,3 +451,20 @@ The next approved block is B2, an isolated internal-offer lane. Source-level VAT
 confirmation follows as block C. Independent mixed-document ingestion remains
 deferred under 3.12.3, and resolver priority is postponed until both supplier
 and internal offer lanes exist and have production evidence.
+
+## 3.12.1 revision 15 uploader reliability candidate
+
+The one-document MVP rule now includes the document already rendered in the
+uploader, not only the files in the latest picker or drop event. Once a PDF,
+XLSX, or CSV is present, another incoming file is rejected before Streamlit can
+create a transient chip or spinner. An existing JPEG/PNG route still accepts
+more JPEG/PNG pages, while rejecting a document type.
+
+Every accepted format now has a bounded local preview. PDF uses its first page,
+XLSX and CSV use a small first-sheet table, and JPEG/PNG use downscaled image
+thumbnails. Preview generation remains optional and cannot block extraction.
+
+The terminal Extract notice is retained until the next Extract attempt. Exact
+byte duplicates, including renamed duplicates, therefore remain visibly
+reported as already processed with unchanged/unresolved counts, zero agent time,
+and zero TC instead of appearing as a silent no-op after the uploader rerun.

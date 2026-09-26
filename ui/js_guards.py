@@ -2610,7 +2610,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
     )
 
 
-def install_upload_dragover_guard(*, pdf_preview_data_uri: str = "") -> None:
+def install_upload_dragover_guard(*, file_previews: list[dict[str, str]] | None = None) -> None:
     """Add stable dragover classes to Streamlit's native file uploader.
 
     Called by the upload screen after the file uploader is rendered. The helper
@@ -2693,7 +2693,7 @@ def install_upload_dragover_guard(*, pdf_preview_data_uri: str = "") -> None:
         """
     selection_markup = install_price_source_file_selection_guard(
         markup_only=True,
-        pdf_preview_data_uri=pdf_preview_data_uri,
+        file_previews=file_previews,
     )
     components.html(
         dragover_markup + selection_markup,
@@ -2705,7 +2705,7 @@ def install_upload_dragover_guard(*, pdf_preview_data_uri: str = "") -> None:
 def install_price_source_file_selection_guard(
     *,
     markup_only: bool = False,
-    pdf_preview_data_uri: str = "",
+    file_previews: list[dict[str, str]] | None = None,
 ) -> str | None:
     """Keep the Price Source picker in one-document MVP mode.
 
@@ -2728,7 +2728,7 @@ def install_price_source_file_selection_guard(
             const WARNING_CLASS = "costerly-selection-warning";
             const WARNING_COPY =
                 "Upload one PDF, XLSX or CSV at a time · JPG/PNG can be combined";
-            const PDF_PREVIEW_DATA_URI = __PDF_PREVIEW_DATA_URI__;
+            const FILE_PREVIEWS = __FILE_PREVIEWS__;
             let emptyWarningTimer = null;
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
@@ -2747,6 +2747,13 @@ def install_price_source_file_selection_guard(
                 if (files.length <= 1) return files;
                 if (isPhoto(files[0])) return files.filter(isPhoto);
                 return files.slice(0, 1);
+            }
+
+            function acceptedIncomingFiles(uploader, files) {
+                const existing = renderedFiles(uploader);
+                if (!existing.length) return acceptedFiles(files);
+                if (existing.every(isPhoto)) return files.filter(isPhoto);
+                return [];
             }
 
             function syncWarning() {
@@ -2789,28 +2796,36 @@ def install_price_source_file_selection_guard(
                     "costerly-single-document-selection",
                     files.length === 1 && !files.every(isPhoto)
                 );
-                const pdfSelected = files.length === 1 && /\.pdf$/i.test(files[0].name || "");
-                const icon = uploader.querySelector(
-                    '[data-testid="stFileChip"] > div:first-child'
-                );
-                let preview = icon && icon.querySelector(".costerly-pdf-preview");
+                let previewCount = 0;
+                const chips = Array.from(uploader.querySelectorAll('[data-testid="stFileChip"]'));
+                chips.forEach((chip, index) => {
+                    // Streamlit truncates long chip names in the DOM, so the
+                    // accepted-file order is the only stable preview identity.
+                    const item = FILE_PREVIEWS[index] || {};
+                    const dataUri = String(item.data_uri || "");
+                    const icon = chip.querySelector(':scope > div:first-child');
+                    let preview = icon && icon.querySelector(".costerly-file-preview");
+                    if (dataUri && icon) {
+                        previewCount += 1;
+                        if (!preview) {
+                            preview = parentDoc.createElement("img");
+                            preview.className = "costerly-file-preview";
+                            preview.alt = "File preview";
+                            icon.appendChild(preview);
+                        }
+                        if (preview.src !== dataUri) preview.src = dataUri;
+                    } else if (preview) {
+                        preview.remove();
+                    }
+                });
                 uploader.classList.toggle(
-                    "costerly-has-pdf-preview",
-                    Boolean(pdfSelected && PDF_PREVIEW_DATA_URI && icon)
+                    "costerly-has-document-preview",
+                    files.length === 1 && !files.every(isPhoto) && previewCount > 0
                 );
-                if (pdfSelected && PDF_PREVIEW_DATA_URI && icon) {
-                    if (!preview) {
-                        preview = parentDoc.createElement("img");
-                        preview.className = "costerly-pdf-preview";
-                        preview.alt = "PDF first page preview";
-                        icon.appendChild(preview);
-                    }
-                    if (preview.src !== PDF_PREVIEW_DATA_URI) {
-                        preview.src = PDF_PREVIEW_DATA_URI;
-                    }
-                } else if (preview) {
-                    preview.remove();
-                }
+                uploader.classList.toggle(
+                    "costerly-has-photo-previews",
+                    files.length > 0 && files.every(isPhoto) && previewCount > 0
+                );
             }
 
             function syncAll() {
@@ -2855,8 +2870,15 @@ def install_price_source_file_selection_guard(
                 const uploader = input.closest(UPLOADER_SELECTOR);
                 if (!uploader) return;
                 const files = Array.from(input.files || []);
-                const accepted = acceptedFiles(files);
+                const accepted = acceptedIncomingFiles(uploader, files);
                 setWarning(accepted.length < files.length);
+                if (files.length && !accepted.length) {
+                    replaceFiles(input, []);
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    syncMode(uploader, input);
+                    return;
+                }
                 replaceFiles(input, accepted);
                 syncMode(uploader, input);
             }
@@ -2869,12 +2891,17 @@ def install_price_source_file_selection_guard(
                 if (!uploader || !event.dataTransfer) return;
 
                 const files = Array.from(event.dataTransfer.files || []);
-                const accepted = acceptedFiles(files);
+                const accepted = acceptedIncomingFiles(uploader, files);
                 setWarning(accepted.length < files.length);
                 if (accepted.length === files.length) return;
 
                 event.preventDefault();
                 event.stopImmediatePropagation();
+
+                if (!accepted.length) {
+                    syncMode(uploader, uploader.querySelector("input[type='file']"));
+                    return;
+                }
 
                 const filteredDrop = new DragEvent("drop", {
                     bubbles: true,
@@ -2905,10 +2932,7 @@ def install_price_source_file_selection_guard(
         })();
         </script>
         """
-    markup = markup.replace(
-        "__PDF_PREVIEW_DATA_URI__",
-        json.dumps(pdf_preview_data_uri),
-    )
+    markup = markup.replace("__FILE_PREVIEWS__", json.dumps(file_previews or []))
     if markup_only:
         return markup
     components.html(
