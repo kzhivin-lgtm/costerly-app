@@ -469,7 +469,7 @@ byte duplicates, including renamed duplicates, therefore remain visibly
 reported as already processed with unchanged/unresolved counts, zero agent time,
 and zero TC instead of appearing as a silent no-op after the uploader rerun.
 
-## 3.12.1 revision 16 drag-state hotfix
+## 3.12.1 revision 16 uploader production checkpoint
 
 Dragging a second document over an occupied PDF/XLSX/CSV uploader no longer
 lets Streamlit replace the accepted preview with its generic red drop overlay.
@@ -477,3 +477,10 @@ The accepted chip stays visible and only the established card outline turns
 red. Leaving the drop zone clears that state immediately. Dropping the rejected
 document preserves the first file and shows the existing yellow one-document
 guidance. The multi-photo route remains unchanged.
+
+The owner verified in production that renamed duplicates finish visibly, PDF,
+XLSX, and JPEG previews render, the first document is preserved when a second
+document is attempted, and the corrected drag indication behaves consistently.
+Commit `1a2d7ca` is the accepted rollback checkpoint for this uploader scope.
+All 398 automated tests passed and Railway reported a successful deployment.
+B2 remains the next approved implementation block.

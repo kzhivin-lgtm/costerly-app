@@ -56,11 +56,15 @@
   invalid-second-document drag state: the accepted chip and preview stay
   visible, only the existing card border turns red, leaving the zone clears the
   red state immediately, and the yellow explanation appears only after reject.
+  The owner accepted the complete uploader behavior in production at
+  `1a2d7ca`; this is the rollback checkpoint for upload selection, previews,
+  repeat-result feedback, and occupied-zone drag indication.
   Next is block B2, an isolated recurring internal-offer lane, followed by
   source-level VAT confirmation in block C. Mixed-document queueing remains
   deferred under 3.12.3, and resolver priority remains deferred until both offer
-  lanes have production evidence. Production acceptance remains pending. Contract:
-  `notes/PRICE_SOURCE_AGENT.md`.
+  lanes have production evidence. Production acceptance remains pending for
+  changed-value family revision behavior and the following extraction blocks.
+  Contract: `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price
   Source Agent cost display establishes the shared convention. Show compact
