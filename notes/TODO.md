@@ -39,6 +39,10 @@
   behind. Revision 12 makes that marker processing-cycle aware, so an old idle
   marker cannot immediately cancel the next click's progress state, and removes
   the misleading zero unchanged count from unresolved-only duplicate results.
+  Revision 13 establishes the MVP uploader contract: multiple JPEG/PNG pages
+  remain one logical document, while PDF, XLSX, CSV, and mixed selections keep
+  only the first selected file. Photos retain a four-column, two-row scrollable
+  grid; a single document gets a centered enlarged card with a readable name.
   Next is block B, structural template identity and
   an isolated recurring internal-offer lane. Production acceptance remains
   pending. Contract:
@@ -51,7 +55,7 @@
   configured pricing source, and unavailable-cost state. Apply to Detection,
   billable OCR, Naming, Estimation, and future agents.
 
-- 3.12.3 Batch Price Source ingestion: pending, P2. Let an owner drop several
+- 3.12.3 Batch Price Source ingestion: deferred after MVP, P2. Let an owner drop several
   independent PDF, spreadsheet, and image documents in one action, split them
   into logical sources, and process them through a bounded sequential queue.
   Each source needs its own validation, progress, result, retry, duplicate or

@@ -3,7 +3,26 @@
 Task: 3.12.1
 Status: active
 Priority: P1
-Protected checkpoint: `d99a594` (accepted 3.12.1 Price Lists interaction checkpoint)
+Protected checkpoint: `a5a7ae9` (accepted 3.12.1 Price Lists interaction checkpoint)
+
+## Revision 13 MVP upload contract
+
+[Verified] The previous uploader accepted several files before server-side
+validation rejected a multi-document selection. That allowed invalid selections
+to enter the interaction and could leave processing feedback out of sync.
+
+Revision 13 keeps one logical source per extraction:
+
+- one or more JPEG/PNG pages are accepted together as one document;
+- PDF, XLSX, and CSV accept only the first selected file;
+- mixed selections also retain only the first selected file;
+- photo pages use the existing four-column grid, with two visible rows and an
+  internal scroll area for additional pages;
+- a single PDF or spreadsheet uses a centered, enlarged file card so the
+  accepted filename remains legible.
+
+Independent mixed-document queues remain outside this task and are tracked as
+3.12.3.
 
 ## Revision 12 interaction correction
 

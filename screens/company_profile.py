@@ -24,6 +24,7 @@ from ui.company_metrics_bridge import company_metrics_bridge
 from ui.js_guards import (
     install_company_logo_picker_guard,
     install_company_metrics_input_guard,
+    install_price_source_file_selection_guard,
     install_price_source_processing_guard,
     install_upload_dragover_guard,
 )
@@ -38,6 +39,7 @@ from use_cases.company_logo import (
 from use_cases.price_sources import (
     PRICE_CATALOG_DEPARTMENTS,
     PriceSourceError,
+    accepted_price_source_uploads,
     canonical_price_source_category,
     combine_price_source_files,
     create_price_source_download_url,
@@ -2472,7 +2474,9 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
 
 def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
     """Capture the selected source before the Price Lists fragment reruns."""
-    uploaded_files = list(st.session_state.get(uploader_key) or [])
+    uploaded_files = accepted_price_source_uploads(
+        list(st.session_state.get(uploader_key) or [])
+    )
     source_url = str(st.session_state.get(url_key) or "")
     try:
         validate_price_source_upload_selection(uploaded_files)
@@ -2569,6 +2573,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     ),
                 )
                 install_upload_dragover_guard()
+                install_price_source_file_selection_guard()
             with details_column:
                 st.text_input(
                     "Paste supplier page URL",

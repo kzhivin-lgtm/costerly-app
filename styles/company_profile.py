@@ -927,6 +927,53 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-single-document-selection
+        [data-testid="stFileChips"] > div {
+            grid-template-columns: minmax(0, 280px) !important;
+            grid-auto-rows: 132px !important;
+            justify-content: center !important;
+            align-content: center !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-single-document-selection
+        [data-testid="stFileChip"] {
+            grid-template-rows: 62px minmax(0, 1fr) !important;
+            width: 100% !important;
+            height: 132px !important;
+            padding: 12px 28px 10px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-single-document-selection
+        [data-testid="stFileChip"] > div:first-child {
+            width: 58px !important;
+            height: 58px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-single-document-selection
+        [data-testid="stFileChip"] > div:first-child svg {
+            width: 55px !important;
+            height: 55px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-single-document-selection
+        [data-testid="stFileChipName"] {
+            overflow: visible !important;
+            font-size: 13px !important;
+            line-height: 1.25 !important;
+            text-overflow: clip !important;
+            white-space: normal !important;
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_source_add_card [data-testid="stElementContainer"][data-stale="true"],
         .stApp:has(.company-profile-active)
         .st-key-price_catalog_shell [data-testid="stElementContainer"][data-stale="true"],

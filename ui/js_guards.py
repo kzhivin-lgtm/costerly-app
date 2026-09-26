@@ -2697,6 +2697,90 @@ def install_upload_dragover_guard() -> None:
     )
 
 
+def install_price_source_file_selection_guard() -> None:
+    """Keep the Price Source picker in one-document MVP mode.
+
+    Several photos may form one document. PDF and spreadsheet selections retain
+    only the first selected file, and mixed selections retain only their first
+    file. Filtering happens during the capture phase so Streamlit receives the
+    accepted FileList rather than briefly rendering rejected files.
+    """
+    components.html(
+        r"""
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const CLEANUP_KEY = "__costerlyPriceSourceFileSelectionGuardCleanup";
+            const UPLOADER_SELECTOR =
+                ".st-key-price_source_add_body [data-testid='stFileUploader']";
+            const PHOTO_PATTERN = /\.(jpe?g|png)$/i;
+
+            if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
+
+            function isPhoto(file) {
+                return PHOTO_PATTERN.test(String(file && file.name || ""));
+            }
+
+            function acceptedFiles(files) {
+                if (files.length <= 1 || files.every(isPhoto)) return files;
+                return files.slice(0, 1);
+            }
+
+            function replaceFiles(input, files) {
+                if (files.length === input.files.length) return;
+                const transfer = new DataTransfer();
+                files.forEach((file) => transfer.items.add(file));
+                input.files = transfer.files;
+            }
+
+            function syncMode(uploader, input) {
+                const files = Array.from(input && input.files || []);
+                uploader.classList.toggle(
+                    "costerly-photo-selection",
+                    files.length > 0 && files.every(isPhoto)
+                );
+                uploader.classList.toggle(
+                    "costerly-single-document-selection",
+                    files.length === 1 && !files.every(isPhoto)
+                );
+            }
+
+            function syncAll() {
+                parentDoc.querySelectorAll(UPLOADER_SELECTOR).forEach((uploader) => {
+                    const input = uploader.querySelector("input[type='file']");
+                    if (input) syncMode(uploader, input);
+                });
+            }
+
+            function handleChange(event) {
+                const input = event.target;
+                if (!input || !input.matches || !input.matches("input[type='file']")) return;
+                const uploader = input.closest(UPLOADER_SELECTOR);
+                if (!uploader) return;
+                const files = Array.from(input.files || []);
+                replaceFiles(input, acceptedFiles(files));
+                syncMode(uploader, input);
+            }
+
+            parentDoc.addEventListener("change", handleChange, true);
+            const observer = new MutationObserver(syncAll);
+            observer.observe(parentDoc.body, {childList: true, subtree: true});
+            syncAll();
+
+            parentWindow[CLEANUP_KEY] = () => {
+                parentDoc.removeEventListener("change", handleChange, true);
+                observer.disconnect();
+                delete parentWindow[CLEANUP_KEY];
+            };
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def install_price_source_processing_guard() -> None:
     """Show immediate Extract progress while the fragment processes the source."""
     components.html(
@@ -2746,15 +2830,6 @@ def install_price_source_processing_guard() -> None:
                 if (!button || button.disabled) return;
                 const card = button.closest(".st-key-price_source_add_card");
                 if (!card) return;
-
-                const input = card.querySelector(
-                    "[data-testid='stFileUploader'] input[type='file']"
-                );
-                const files = input ? Array.from(input.files || []) : [];
-                const photoPattern = /\\.(jpe?g|png)$/i;
-                if (files.length > 1 && files.some((file) => !photoPattern.test(file.name))) {
-                    return;
-                }
 
                 const completeMarker = card.querySelector(
                     ".price-source-processing-complete-marker"

@@ -28,6 +28,7 @@ from use_cases.price_sources import (
     _validate_department,
     _validate_public_url,
     apply_legacy_price_benchmark,
+    accepted_price_source_uploads,
     canonical_price_source_category,
     combine_price_source_files,
     create_price_source_download_url,
@@ -560,6 +561,10 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     assert "display: flex !important" in delete_rule
     assert "z-index: 4 !important" in delete_rule
     assert "pointer-events: auto !important" in delete_rule
+    assert "costerly-single-document-selection" in source
+    assert "grid-template-columns: minmax(0, 280px) !important" in source
+    assert "grid-auto-rows: 132px !important" in source
+    assert "width: 55px !important" in source
 
 
 def test_price_source_fragment_does_not_dim_stale_content():
@@ -640,26 +645,25 @@ def test_price_source_uploader_installs_dragover_guard():
     source = inspect.getsource(_render_price_source_add)
 
     assert "install_upload_dragover_guard()" in source
+    assert "install_price_source_file_selection_guard()" in source
 
 
-def test_multiple_upload_rejects_mixed_document_types():
-    with pytest.raises(PriceSourceError, match="one PDF or spreadsheet"):
-        combine_price_source_files(
-            [
-                _UploadedPhoto("invoice.pdf", b"%PDF"),
-                _UploadedPhoto("page.png", b"png"),
-            ]
-        )
+def test_mixed_selection_keeps_only_the_first_file():
+    first = _UploadedPhoto("invoice.pdf", b"%PDF")
+    selected = accepted_price_source_uploads(
+        [first, _UploadedPhoto("page.png", b"png")]
+    )
+
+    assert selected == [first]
+    assert combine_price_source_files(selected) is first
 
 
-def test_multiple_spreadsheets_are_rejected_before_processing_is_queued():
-    with pytest.raises(PriceSourceError, match="one PDF or spreadsheet"):
-        validate_price_source_upload_selection(
-            [
-                _UploadedPhoto("prices-a.xlsx", b"first"),
-                _UploadedPhoto("prices-b.xlsx", b"second"),
-            ]
-        )
+def test_multiple_spreadsheets_keep_only_the_first_file():
+    first = _UploadedPhoto("prices-a.xlsx", b"first")
+
+    assert accepted_price_source_uploads(
+        [first, _UploadedPhoto("prices-b.xlsx", b"second")]
+    ) == [first]
 
 
 def test_multiple_photos_are_valid_as_one_document_before_processing_is_queued():
@@ -671,7 +675,7 @@ def test_multiple_photos_are_valid_as_one_document_before_processing_is_queued()
     )
 
 
-def test_invalid_multiple_spreadsheets_never_enter_processing_state(monkeypatch):
+def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
     from screens import company_profile
 
     class SessionState(dict):
@@ -692,19 +696,24 @@ def test_invalid_multiple_spreadsheets_never_enter_processing_state(monkeypatch)
 
     company_profile._queue_price_source_processing("price_upload", "price_url")
 
-    assert state["_price_source_processing"] is False
-    assert "_price_source_pending" not in state
-    assert "one PDF or spreadsheet" in state["_price_source_error"]
+    assert state["_price_source_processing"] is True
+    assert [item.name for item in state["_price_source_pending"]["uploaded_files"]] == [
+        "prices-a.xlsx"
+    ]
+    assert "_price_source_error" not in state
 
 
-def test_price_source_processing_guard_skips_invalid_multi_document_spinner():
-    from ui.js_guards import install_price_source_processing_guard
+def test_price_source_file_guard_filters_before_streamlit_receives_selection():
+    from ui.js_guards import install_price_source_file_selection_guard
 
-    source = inspect.getsource(install_price_source_processing_guard)
+    source = inspect.getsource(install_price_source_file_selection_guard)
 
-    assert "files.length > 1" in source
-    assert "photoPattern" in source
-    assert "return;" in source
+    assert "files.every(isPhoto)" in source
+    assert "return files.slice(0, 1)" in source
+    assert "new DataTransfer()" in source
+    assert 'parentDoc.addEventListener("change", handleChange, true)' in source
+    assert "costerly-photo-selection" in source
+    assert "costerly-single-document-selection" in source
 
 
 def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):

@@ -104,9 +104,20 @@ def validate_price_source_upload_selection(files: list) -> None:
         )
 
 
+def accepted_price_source_uploads(files: list) -> list:
+    """Apply the one-document MVP contract to a native multi-file selection."""
+    selected = [item for item in files if item is not None]
+    if len(selected) <= 1:
+        return selected
+    suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
+    if all(suffix in {".jpg", ".jpeg", ".png"} for suffix in suffixes):
+        return selected
+    return selected[:1]
+
+
 def combine_price_source_files(files: list) -> object | None:
     """Keep one upload as-is or combine ordered JPEG/PNG pages into one PDF."""
-    selected = [item for item in files if item is not None]
+    selected = accepted_price_source_uploads(files)
     if not selected:
         return None
     if len(selected) == 1:
