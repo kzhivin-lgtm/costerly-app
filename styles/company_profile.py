@@ -1176,6 +1176,9 @@ def apply_company_profile_css() -> None:
             background: #FFFFFF;
         }
 
+        [class*="st-key-price_source_row_"][data-testid="stVerticalBlock"],
+        [class*="st-key-price_catalog_row_"][data-testid="stVerticalBlock"],
+        [class*="st-key-price_review_row_"][data-testid="stVerticalBlock"],
         [class*="st-key-price_source_row_"] > [data-testid="stVerticalBlock"],
         [class*="st-key-price_catalog_row_"] > [data-testid="stVerticalBlock"],
         [class*="st-key-price_review_row_"] > [data-testid="stVerticalBlock"] {
@@ -1184,6 +1187,8 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_catalog_section [data-testid="stExpanderDetails"] > [data-testid="stVerticalBlock"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_review_queue[data-testid="stVerticalBlock"],
         .stApp:has(.company-profile-active)
         .st-key-price_source_review_queue > [data-testid="stVerticalBlock"] {
             gap: 0 !important;
@@ -1381,8 +1386,15 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-price_review_pagination[data-testid="stVerticalBlock"],
+        .stApp:has(.company-profile-active)
         .st-key-price_review_pagination > [data-testid="stVerticalBlock"] {
             gap: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_review_pagination [data-testid="stHorizontalBlock"] {
+            gap: var(--space-2) !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-price_catalog_shell {

@@ -2095,7 +2095,7 @@ def _render_price_source_row_remove_confirmation(
 ) -> None:
     source_id, row_id = target
     warning_col, confirm_col, cancel_col = st.columns(
-        [4.8, 0.72, 0.72],
+        [6, 0.55, 0.5],
         gap="small",
         vertical_alignment="center",
     )
@@ -2201,8 +2201,8 @@ def _render_price_source_review_queue(
         if page_count > 1:
             with st.container(key="price_review_pagination"):
                 previous_col, next_col, page_col, _ = st.columns(
-                    [0.8, 0.64, 0.56, 4.7],
-                    gap="small",
+                    [0.65, 0.5, 0.45, 8.4],
+                    gap=None,
                 )
                 if previous_col.button("Previous", disabled=page == 0, key="price_review_previous"):
                     st.session_state.price_review_page = page - 1
