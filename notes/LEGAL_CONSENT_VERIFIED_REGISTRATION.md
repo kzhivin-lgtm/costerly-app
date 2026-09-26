@@ -1,12 +1,17 @@
 # Legal Consent and Verified Registration
 
 Task: 3.11.1
-Status: completed and accepted in production at `3a4d8fa`; post-checkpoint legal revision active at `bc198fb` and recorded at `ed0c5c6`
+Status: fully closed; accepted production checkpoint `3a4d8fa`, final post-checkpoint legal revision active at `bc198fb`, recorded at `ed0c5c6`, and backed up at `6e0c1a7`
 
 Final owner confirmation on 25.09.2026 closes the production signup,
 email-confirmation, returning-user gate, mobile, Terms, and Privacy acceptance
 scope. This supersedes the earlier pending-state notes retained below as task
 history.
+
+Final owner confirmation on 26.09.2026 also closes the Terms 1.4 and Privacy
+1.3 post-checkpoint revision. Task 3.11.1 remains its historical identifier and
+is not reopened as an active block. The active product queue continues at
+3.12.1.
 
 ## Verified legal revision on 2026-09-26
 
