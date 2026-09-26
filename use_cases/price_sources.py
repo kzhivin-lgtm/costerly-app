@@ -312,6 +312,7 @@ def price_source_semantic_fingerprint(result: dict) -> str:
     """Identify the same commercial document across files, scans, or photos."""
     document_number = _normalized_name(str(result.get("document_number") or ""))
     basis: dict[str, object] = {
+        "source_origin": str(result.get("source_origin") or "unknown"),
         "supplier": _normalized_name(str(result.get("supplier_name") or "")),
         "document_number": document_number,
         "document_date": str(result.get("document_date") or ""),
@@ -352,6 +353,7 @@ def price_source_family_identity(
     else:
         origin = _normalized_name(Path(source_name).name)
     basis: dict[str, str] = {
+        "source_origin": _normalized_name(str(result.get("source_origin") or "unknown")),
         "supplier": _normalized_name(str(result.get("supplier_name") or "")),
         "source_kind": source_kind,
         "origin": origin,
@@ -591,7 +593,10 @@ def list_price_catalog(access) -> list[dict]:
     ).data or []
     sources = (
         client.table("company_price_sources")
-        .select("source_id,source_name,source_kind,source_url,processed_at,created_at")
+        .select(
+            "source_id,source_name,source_kind,source_url,processing_summary,"
+            "processed_at,created_at"
+        )
         .eq("company_id", company_id)
         .execute()
     ).data or []
@@ -612,6 +617,10 @@ def list_price_catalog(access) -> list[dict]:
         source = source_by_id.get(str(offer.get("source_id")), {})
         category = canonical_price_source_category(str(material.get("category") or "Other"))
         department = PRICE_CATALOG_DEPARTMENTS.get(category, "Wood")
+        source_summary = source.get("processing_summary") or {}
+        supplier_name = str(supplier.get("supplier_name") or "Unknown supplier")
+        if source_summary.get("source_origin") == "company_internal":
+            supplier_name = "Internal estimate"
         catalog.append(
             {
                 **offer,
@@ -620,7 +629,7 @@ def list_price_catalog(access) -> list[dict]:
                 "canonical_name": str(material.get("canonical_name") or "Material"),
                 "original_name": str(source_row.get("raw_description") or ""),
                 "source_row": source_row,
-                "supplier_name": str(supplier.get("supplier_name") or "Unknown supplier"),
+                "supplier_name": supplier_name,
                 "source_name": str(source.get("source_name") or ""),
                 "source_kind": str(source.get("source_kind") or ""),
                 "source_url": str(source.get("source_url") or ""),
@@ -1169,6 +1178,7 @@ def process_price_source(
             "excluded": excluded_count,
             "total": len(result["rows"]),
             "document_number": result["document_number"],
+            "source_origin": result["source_origin"],
             "price_context": result["price_context"],
             "document_subtotal": result["document_subtotal"],
             "document_vat_amount": result["document_vat_amount"],

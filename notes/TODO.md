@@ -30,7 +30,12 @@
   agent-accuracy work must preserve this version. Revision 8 adds internal
   source-family and revision metadata for recurring files and URLs while
   retaining exact-duplicate short-circuiting and row-level new, updated,
-  unchanged, and missing behavior. Its production repeat-upload matrix remains
+  unchanged, and missing behavior. Revision 9 prevents invalid multi-document
+  selections from entering processing. Revision 10 block A adds first-class
+  internal-estimate and customer-sale provenance, keeps internal rows reviewable
+  until their isolated offer lane exists, and deterministically excludes selling
+  prices from material costs. Next is block B, structural template identity and
+  an isolated recurring internal-offer lane. Production acceptance remains
   pending. Contract:
   `notes/PRICE_SOURCE_AGENT.md`.
 

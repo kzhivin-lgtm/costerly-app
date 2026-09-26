@@ -1619,6 +1619,9 @@ def _render_company_logo_card(
 
 
 def _price_source_supplier(source: dict) -> str:
+    summary = source.get("processing_summary") or source.get("summary") or {}
+    if summary.get("source_origin") == "company_internal":
+        return "Internal estimate"
     supplier = source.get("company_suppliers")
     if isinstance(supplier, dict):
         return str(supplier.get("supplier_name") or "Unknown supplier")
@@ -1731,6 +1734,8 @@ def _price_source_context_label(value: object) -> str:
         "public_list": "Public list",
         "supplier_quote": "Supplier quote",
         "customer_transaction": "Customer transaction",
+        "internal_cost_estimate": "Internal cost estimate",
+        "customer_sale": "Customer sale",
         "unknown": "Unknown context",
     }.get(str(value or ""), str(value or "").replace("_", " ").title())
 
@@ -2024,6 +2029,7 @@ def _price_source_review_reason(row: dict) -> str:
         "package_conversion_unresolved": "Package quantity required",
         "document_total_mismatch": "Document totals do not match",
         "extreme_legacy_price_difference": "Price differs significantly from the saved price",
+        "internal_price_lane_pending": "Confirm internal material cost",
         "below_auto_activation_threshold": "Review required",
     }
     for reason in row.get("reason_codes") or []:

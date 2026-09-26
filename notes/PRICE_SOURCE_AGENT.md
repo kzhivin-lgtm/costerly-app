@@ -354,3 +354,30 @@ Extracting prices. The client-side immediate-progress guard applies the same
 rule, preventing a stale optimistic spinner while the server reruns. Multiple
 JPEG/PNG pages remain valid as one logical document. Independent mixed-source
 batch ingestion is tracked separately as 3.12.3.
+
+## Approved internal-estimate delivery plan
+
+The owner approved internal historical costing workbooks as a first-class,
+high-value price source. Delivery is split into reversible blocks:
+
+1. extraction semantics and provenance, without changing price resolution;
+2. structural template fingerprinting and recurring-workbook revisions;
+3. one source-level VAT confirmation for rows with unknown VAT;
+4. independent mixed-file batch ingestion under task 3.12.3;
+5. evidence priority, production acceptance, and resolver integration.
+
+## 3.12.1 revision 10, block A candidate
+
+The extraction contract now distinguishes supplier evidence from company-owned
+internal calculations. `source_origin=company_internal`,
+`document_type=internal_estimate`, and
+`price_context=internal_cost_estimate` represent explicit material costs from an
+internal workbook without creating a fake supplier. Customer-facing prices use
+`customer_quote` and `customer_sale`; markup, labor, installation, and selling
+prices are excluded from active material costs. Provenance is retained in source
+summary metadata, catalog and review surfaces display Internal estimate, and
+supplier behavior and price resolution remain otherwise unchanged.
+Until block 2 introduces an isolated internal-offer identity lane, automatically
+extracted internal costs remain reviewable rather than replacing any active
+supplier-less offer. Customer selling prices are deterministically excluded even
+if the model marks them ready.

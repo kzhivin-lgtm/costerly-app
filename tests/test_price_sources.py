@@ -195,6 +195,7 @@ class _MutableClient:
 def _result(*, status: str = "ready", confidence: float = 96) -> dict:
     return {
         "supplier_name": "Supplier Ltd",
+        "source_origin": "supplier",
         "document_type": "price_list",
         "document_number": "PL-204",
         "document_date": "2026-09-20",
@@ -932,6 +933,52 @@ def test_supplier_may_be_unknown_and_negative_credit_rows_must_be_excluded():
     active_negative["rows"][0]["raw_price"] = -100
     with pytest.raises(PriceSourceSchemaError, match="must be excluded"):
         validate_price_source_result(active_negative)
+
+
+def test_internal_estimate_is_a_first_class_source_without_a_supplier():
+    internal = _result()
+    internal.update(
+        {
+            "supplier_name": "",
+            "source_origin": "company_internal",
+            "document_type": "internal_estimate",
+            "price_context": "internal_cost_estimate",
+        }
+    )
+
+    guarded = guard_price_source_row_activation(internal)
+
+    assert guarded["rows"][0]["status"] == "unresolved"
+    assert "internal_price_lane_pending" in guarded["rows"][0]["reason_codes"]
+    assert validate_price_source_result(guarded) is guarded
+
+
+def test_customer_sale_price_is_deterministically_excluded_from_material_costs():
+    customer_quote = _result()
+    customer_quote.update(
+        {
+            "supplier_name": "",
+            "source_origin": "company_internal",
+            "document_type": "customer_quote",
+            "price_context": "customer_sale",
+        }
+    )
+
+    guarded = guard_price_source_row_activation(customer_quote)
+
+    assert guarded["rows"][0]["status"] == "excluded"
+    assert "customer_sale_not_material_cost" in guarded["rows"][0]["reason_codes"]
+    assert validate_price_source_result(guarded) is guarded
+
+
+def test_prompt_separates_internal_cost_from_customer_sale_price():
+    prompt = Path("agents/prompts/price_source_agent_prompt.md").read_text()
+
+    assert "company's own estimating workbook" in prompt
+    assert "Never create a supplier from the company name" in prompt
+    assert "internal_cost_estimate" in prompt
+    assert "customer_sale" in prompt
+    assert "must never become\n  active material costs" in prompt
 
 
 def test_duplicate_source_row_numbers_are_rejected():

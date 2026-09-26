@@ -1334,6 +1334,15 @@ def test_price_source_categories_use_clear_user_facing_labels():
     assert company_profile._price_source_category_label("Finishes and Coatings") == "Paints & Coatings"
 
 
+def test_internal_estimate_source_does_not_create_a_fake_supplier_label():
+    source = {
+        "processing_summary": {"source_origin": "company_internal"},
+        "company_suppliers": None,
+    }
+
+    assert company_profile._price_source_supplier(source) == "Internal estimate"
+
+
 def test_price_source_metadata_uses_user_date_and_internal_tc_formats():
     assert company_profile._price_source_document_date("2026-09-25") == "09/25/26"
     assert company_profile._price_source_tc(0.0421) == "TC 0.042"

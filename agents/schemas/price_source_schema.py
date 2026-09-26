@@ -12,9 +12,19 @@ DOCUMENT_TYPES = {
     "delivery_note",
     "order_confirmation",
     "credit_note",
+    "internal_estimate",
+    "customer_quote",
     "other",
 }
-PRICE_CONTEXTS = {"public_list", "supplier_quote", "customer_transaction", "unknown"}
+SOURCE_ORIGINS = {"supplier", "company_internal", "unknown"}
+PRICE_CONTEXTS = {
+    "public_list",
+    "supplier_quote",
+    "customer_transaction",
+    "internal_cost_estimate",
+    "customer_sale",
+    "unknown",
+}
 VAT_MODES = {"included", "excluded", "mixed", "unknown"}
 ROW_STATUSES = {"ready", "unresolved", "excluded"}
 PRICE_SOURCE_CATEGORIES = (
@@ -45,6 +55,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": [
         "supplier_name",
+        "source_origin",
         "document_type",
         "document_number",
         "document_date",
@@ -58,6 +69,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
     ],
     "properties": {
         "supplier_name": {"type": "string"},
+        "source_origin": {"type": "string", "enum": sorted(SOURCE_ORIGINS)},
         "document_type": {"type": "string", "enum": sorted(DOCUMENT_TYPES)},
         "document_number": {"type": "string"},
         "document_date": {"type": "string"},
@@ -165,7 +177,15 @@ def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
     for row in result.get("rows") or []:
         if not isinstance(row, dict) or row.get("status") != "ready":
             continue
+        if result.get("price_context") == "customer_sale":
+            row["status"] = "excluded"
+            row["reason_codes"] = sorted(
+                set((row.get("reason_codes") or []) + ["customer_sale_not_material_cost"])
+            )
+            continue
         blockers: list[str] = []
+        if result.get("source_origin") == "company_internal":
+            blockers.append("internal_price_lane_pending")
         if row.get("raw_vat_mode") == "unknown":
             blockers.append("vat_basis_unknown")
         package_quantity = row.get("raw_package_quantity")
@@ -243,6 +263,8 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         raise PriceSourceSchemaError("price source result fields do not match the contract")
     if result["document_type"] not in DOCUMENT_TYPES:
         raise PriceSourceSchemaError("unsupported document type")
+    if result["source_origin"] not in SOURCE_ORIGINS:
+        raise PriceSourceSchemaError("unsupported source origin")
     if result["price_context"] not in PRICE_CONTEXTS:
         raise PriceSourceSchemaError("unsupported price context")
     if result["vat_mode"] not in VAT_MODES:
