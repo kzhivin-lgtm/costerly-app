@@ -1183,9 +1183,7 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-price_catalog_section [data-testid="stExpanderDetails"] > [data-testid="stVerticalBlock"],
-        .stApp:has(.company-profile-active)
-        .st-key-price_source_review_queue > [data-testid="stVerticalBlock"] {
+        .st-key-material_prices_card [data-testid="stExpanderDetails"] > [data-testid="stVerticalBlock"] {
             gap: 0 !important;
         }
 
@@ -1213,24 +1211,42 @@ def apply_company_profile_css() -> None:
             background: #FFFFFF;
         }
 
-        .stApp:has(.company-profile-active)
-        .st-key-price_catalog_section [data-testid="stExpander"] {
+        .stApp:has(.company-profile-active) .st-key-material_prices_card {
             overflow: hidden;
-            border-color: var(--color-border-soft) !important;
-            border-radius: 18px !important;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 18px;
+            background: var(--color-surface);
+            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-material_prices_card > [data-testid="stVerticalBlock"],
+        .stApp:has(.company-profile-active)
+        .st-key-material_prices_card > [data-testid="stVerticalBlockBorderWrapper"] > [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-material_prices_card [data-testid="stExpander"] {
+            margin: 0 !important;
+            overflow: hidden;
+            border: 0 !important;
+            border-top: 1px solid var(--color-border-soft) !important;
+            border-radius: 0 !important;
             background: #FBF9FD !important;
+            box-shadow: none !important;
             isolation: isolate;
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-price_catalog_section [data-testid="stExpanderDetails"] {
+        .st-key-material_prices_card [data-testid="stExpanderDetails"] {
             overflow: hidden;
             padding: 0 !important;
-            border-radius: 0 0 18px 18px !important;
+            border-radius: 0 !important;
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-price_catalog_section [data-testid="stExpander"] summary {
+        .st-key-material_prices_card [data-testid="stExpander"] summary {
             min-height: 46px;
             background: #F7F3FA;
         }
@@ -1300,14 +1316,6 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        [class*="st-key-price_source_row_form_"] button[kind="secondary"] {
-            border-color: var(--color-border-soft) !important;
-            background: transparent !important;
-            box-shadow: none !important;
-            color: var(--color-text) !important;
-        }
-
-        .stApp:has(.company-profile-active)
         [class*="st-key-confirm_remove_price_row_"] button,
         .stApp:has(.company-profile-active)
         [class*="st-key-cancel_remove_price_row_"] button,
@@ -1369,6 +1377,24 @@ def apply_company_profile_css() -> None:
             gap: 0 !important;
         }
 
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_review_queue > [data-testid="stVerticalBlockBorderWrapper"] > [data-testid="stVerticalBlock"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_review_queue [data-testid="stVerticalBlock"]:has(> [class*="st-key-price_review_row_"]) {
+            gap: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-price_review_pagination {
+            padding: var(--space-2) var(--space-4) var(--space-3);
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_review_pagination > [data-testid="stVerticalBlock"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_review_pagination > [data-testid="stVerticalBlockBorderWrapper"] > [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+        }
+
         .stApp:has(.company-profile-active) .st-key-price_catalog_shell {
             margin-top: 18px;
         }
@@ -1380,7 +1406,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_catalog_section > [data-testid="stVerticalBlock"] {
-            gap: 18px !important;
+            gap: var(--space-5) !important;
         }
 
         .price-catalog-card {
@@ -1409,6 +1435,11 @@ def apply_company_profile_css() -> None:
             font-weight: 700;
             letter-spacing: 0.04em;
             text-transform: uppercase;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-material_prices_card .price-catalog-title {
+            border-radius: 17px 17px 0 0;
         }
 
         .price-catalog-title span:last-child,
@@ -1592,7 +1623,8 @@ def apply_company_profile_css() -> None:
             padding-top: 8px;
             color: var(--color-text-muted);
             font-size: 12px;
-            text-align: center;
+            text-align: left;
+            white-space: nowrap;
         }
 
         .stApp:has(.company-profile-active)
@@ -1934,6 +1966,33 @@ def apply_company_profile_css() -> None:
             background: #6131A3 !important;
             border-color: #6131A3 !important;
             transform: translateY(0) scale(0.995);
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] [data-testid="stFormSubmitButton"] button {
+            border-color: var(--button-secondary-border) !important;
+            background: var(--button-secondary-bg) !important;
+            box-shadow: none !important;
+            color: var(--button-secondary-text) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] [data-testid="stFormSubmitButton"] button p {
+            color: var(--button-secondary-text) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] [data-testid="stFormSubmitButton"] button:hover {
+            border-color: var(--button-secondary-border) !important;
+            background: var(--button-secondary-bg-hover) !important;
+            box-shadow: none !important;
+            color: var(--color-text-strong) !important;
+            transform: none;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] [data-testid="stFormSubmitButton"] button:hover p {
+            color: var(--color-text-strong) !important;
         }
 
         .stApp:has(.company-profile-active)

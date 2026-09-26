@@ -2047,7 +2047,10 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
             )
         save_col, cancel_col, _ = st.columns([1, 1, 3])
         save = save_col.form_submit_button("Save price", type="primary")
-        cancel = cancel_col.form_submit_button("Cancel")
+        cancel = cancel_col.form_submit_button(
+            "Cancel",
+            key=f"cancel_price_row_{source_id}_{row_id}",
+        )
     if cancel:
         st.session_state.pop("_editing_price_source_row", None)
         st.session_state.pop("_price_source_action_location", None)
@@ -2191,17 +2194,21 @@ def _render_price_source_review_queue(
                     _render_price_source_row_editor(access, source, row)
 
         if page_count > 1:
-            previous_col, next_col, _, page_col = st.columns([0.8, 0.7, 4.4, 0.65])
-            if previous_col.button("Previous", disabled=page == 0, key="price_review_previous"):
-                st.session_state.price_review_page = page - 1
-                st.rerun(scope="fragment")
-            if next_col.button("Next", disabled=page == page_count - 1, key="price_review_next"):
-                st.session_state.price_review_page = page + 1
-                st.rerun(scope="fragment")
-            page_col.markdown(
-                f'<span class="price-review-page">{page + 1} / {page_count}</span>',
-                unsafe_allow_html=True,
-            )
+            with st.container(key="price_review_pagination"):
+                previous_col, next_col, page_col, _ = st.columns(
+                    [0.82, 0.64, 0.58, 4.7],
+                    gap="small",
+                )
+                if previous_col.button("Previous", disabled=page == 0, key="price_review_previous"):
+                    st.session_state.price_review_page = page - 1
+                    st.rerun(scope="fragment")
+                if next_col.button("Next", disabled=page == page_count - 1, key="price_review_next"):
+                    st.session_state.price_review_page = page + 1
+                    st.rerun(scope="fragment")
+                page_col.markdown(
+                    f'<span class="price-review-page">{page + 1} / {page_count}</span>',
+                    unsafe_allow_html=True,
+                )
 
 
 def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
@@ -2561,7 +2568,8 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
 
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):
-            _render_price_catalog(access, catalog, sources)
+            with st.container(key="material_prices_card"):
+                _render_price_catalog(access, catalog, sources)
             _render_price_source_review_queue(access, review_rows)
 
         with st.container(key="price_source_library_section"):
