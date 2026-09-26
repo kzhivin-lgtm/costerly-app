@@ -481,6 +481,21 @@ def test_price_source_fragment_does_not_dim_stale_content():
     assert "transition: none !important" in source
 
 
+def test_price_catalog_geometry_patch_stays_scoped_to_agreed_controls():
+    screen_source = Path("screens/company_profile.py").read_text()
+    style_source = Path("styles/company_profile.py").read_text()
+
+    assert "price-catalog-title price-catalog-title-main" in screen_source
+    assert 'key=f"save_price_row_{source_id}_{row_id}"' in screen_source
+    assert 'key=f"cancel_price_row_{source_id}_{row_id}"' in screen_source
+    assert 'st.container(key="price_review_pagination")' in screen_source
+    assert "height: 45px !important;" in style_source
+    assert "background: var(--button-secondary-bg-hover) !important;" in style_source
+    assert "border-radius: 18px 18px 0 0;" in style_source
+    assert ".st-key-price_review_pagination" in style_source
+    assert "padding: 0 0 var(--space-3) var(--space-4);" in style_source
+
+
 def test_price_source_processing_uses_callback_without_manual_rerun():
     from screens.company_profile import _render_price_lists, _render_price_source_add
 

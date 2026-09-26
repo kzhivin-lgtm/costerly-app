@@ -1219,6 +1219,7 @@ def apply_company_profile_css() -> None:
             border-color: var(--color-border-soft) !important;
             border-radius: 18px !important;
             background: #FBF9FD !important;
+            box-shadow: 0 0 0 1px var(--color-border-soft);
             isolation: isolate;
         }
 
@@ -1361,11 +1362,26 @@ def apply_company_profile_css() -> None:
             border: 1px solid var(--color-border-soft);
             border-radius: 18px;
             background: #FFFFFF;
-            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+            box-shadow: 0 0 0 1px var(--color-border-soft),
+                        0 12px 34px rgba(42, 31, 44, 0.06);
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_review_queue > [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_review_queue > [data-testid="stVerticalBlockBorderWrapper"] > [data-testid="stVerticalBlock"] {
+            gap: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-price_review_pagination {
+            padding: 0 0 var(--space-3) var(--space-4);
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_review_pagination > [data-testid="stVerticalBlock"] {
             gap: 0 !important;
         }
 
@@ -1409,6 +1425,13 @@ def apply_company_profile_css() -> None:
             font-weight: 700;
             letter-spacing: 0.04em;
             text-transform: uppercase;
+        }
+
+        .price-catalog-title-main {
+            border: 1px solid var(--color-border-soft);
+            border-bottom: 0;
+            border-radius: 18px 18px 0 0;
+            box-shadow: 0 0 0 1px var(--color-border-soft);
         }
 
         .price-catalog-title span:last-child,
@@ -1592,7 +1615,8 @@ def apply_company_profile_css() -> None:
             padding-top: 8px;
             color: var(--color-text-muted);
             font-size: 12px;
-            text-align: center;
+            text-align: left;
+            white-space: nowrap;
         }
 
         .stApp:has(.company-profile-active)
@@ -1617,7 +1641,8 @@ def apply_company_profile_css() -> None:
             border: 1px solid var(--color-border-soft) !important;
             border-radius: 18px !important;
             background: var(--color-surface) !important;
-            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+            box-shadow: 0 0 0 1px var(--color-border-soft),
+                        0 12px 34px rgba(42, 31, 44, 0.06);
         }
 
         .stApp:has(.company-profile-active)
@@ -1934,6 +1959,43 @@ def apply_company_profile_css() -> None:
             background: #6131A3 !important;
             border-color: #6131A3 !important;
             transform: translateY(0) scale(0.995);
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-save_price_row_"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] button {
+            height: 45px !important;
+            min-height: 45px !important;
+            max-height: 45px !important;
+            margin-top: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] button {
+            border-color: var(--button-secondary-border) !important;
+            background: var(--button-secondary-bg-hover) !important;
+            box-shadow: none !important;
+            color: var(--button-secondary-text) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] button p {
+            color: var(--button-secondary-text) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] button:hover {
+            border-color: var(--button-secondary-border) !important;
+            background: var(--button-secondary-bg-hover) !important;
+            box-shadow: none !important;
+            color: var(--color-text-strong) !important;
+            transform: none;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] button:hover p {
+            color: var(--color-text-strong) !important;
         }
 
         .stApp:has(.company-profile-active)
