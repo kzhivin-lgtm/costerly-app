@@ -13,6 +13,7 @@ from use_cases.platform_admin import (
     load_company_dashboard,
     load_platform_access,
     normalize_dashboard_row,
+    record_authenticated_session,
     record_rfq_upload,
     require_platform_access,
 )
@@ -97,7 +98,7 @@ def test_platform_access_denial_is_server_side():
         require_platform_access(_Client(), "user-1")
 
 
-def test_dashboard_uses_guarded_rpc_and_validates_period():
+def test_dashboard_uses_guarded_v2_rpc_and_validates_period():
     rows = [{"company_id": "company-a"}]
     client = _admin_client(rpc_data=rows)
 
@@ -108,7 +109,7 @@ def test_dashboard_uses_guarded_rpc_and_validates_period():
     ) == rows
     assert client.rpc_calls == [
         (
-            "platform_admin_company_dashboard",
+            "platform_admin_company_dashboard_v2",
             {"p_requesting_user_id": "user-1", "p_days": 30},
         )
     ]
@@ -119,11 +120,11 @@ def test_dashboard_uses_guarded_rpc_and_validates_period():
 @pytest.mark.parametrize(
     ("value", "unpriced", "expected"),
     [
-        ("0", 0, "0.0¢"),
-        ("0.071", 0, "7.1¢"),
-        ("1.25", 0, "$1.25"),
-        ("0", 2, "Cost unavailable"),
-        ("0.071", 2, "7.1¢ partial"),
+        ("0", 0, "0.00"),
+        ("0.071", 0, "0.07"),
+        ("1.25", 0, "1.25"),
+        ("0", 2, "—"),
+        ("0.071", 2, "0.07"),
     ],
 )
 def test_ai_cost_format_is_honest_about_unpriced_events(value, unpriced, expected):
@@ -150,6 +151,22 @@ def test_rfq_upload_returns_repeat_result_without_sending_file_content():
     assert name == "record_product_usage_event"
     assert params["p_event_name"] == "rfq_uploaded"
     assert params["p_entity_fingerprint"] != "sensitive document"
+    assert params["p_metadata"] == {}
+
+
+def test_authenticated_session_is_company_scoped_and_content_free():
+    client = _Client(rpc_data=[])
+
+    record_authenticated_session(
+        client,
+        company_id="company-a",
+        user_id="user-1",
+        session_id="session-1",
+    )
+    name, params = client.rpc_calls[0]
+    assert name == "record_product_usage_event"
+    assert params["p_event_name"] == "authenticated_session_started"
+    assert params["p_entity_fingerprint"] != "session-1"
     assert params["p_metadata"] == {}
 
 
@@ -186,10 +203,10 @@ def test_dashboard_escapes_company_name_and_omits_customer_content():
     assert "<script>" not in markup
     assert "&lt;script&gt;" in markup
     assert "must-not-render" not in markup
-    assert "4 documents" in markup
-    assert "12.0¢ partial" in markup
+    assert "4 doc" in markup
+    assert "0.12" in markup
     assert "10 calls" in markup
-    assert "$1.40" in markup
+    assert "1.40" in markup
     assert "<td><span class=\"platform-admin-metric-count\">—</span></td>" in markup
 
 
@@ -225,10 +242,11 @@ def test_normalization_and_status_do_not_infer_customer_sentiment():
     assert row["account_stage"] == "pilot"
     assert company_operational_status(row) == ("OK", "ok")
     assert company_operational_status({"failed_agent_events": 2}) == (
-        "2 failed",
+        "2 agent failures",
         "attention",
     )
-    assert company_operational_status({}) == ("No usage", "neutral")
+    assert company_operational_status({}) == ("No activity", "neutral")
+    assert company_operational_status({"price_source_runs": 1}) == ("OK", "ok")
 
 
 def test_admin_migration_is_private_and_rpc_rechecks_platform_access():
@@ -257,6 +275,20 @@ def test_admin_migration_is_private_and_rpc_rechecks_platform_access():
     assert "with metric_window as (" in migration
     assert "with window as (" not in migration
     assert "grant execute on function public.platform_admin_company_dashboard" in migration
+    assert "to service_role" in migration
+
+
+def test_admin_session_migration_has_rolling_session_counts_and_private_rpc():
+    migration = (
+        ROOT / "db/sql/2026_09_27_platform_admin_sessions.sql"
+    ).read_text()
+
+    assert "authenticated_session_started" in migration
+    assert "product_usage_events_session_idx" in migration
+    assert "platform_admin_company_dashboard_v2" in migration
+    assert "interval '7 days'" in migration
+    assert "interval '30 days'" in migration
+    assert "from public, anon, authenticated" in migration
     assert "to service_role" in migration
 
 

@@ -82,7 +82,7 @@ def _dashboard_table(rows: list[dict[str, Any]]) -> str:
             f'<td>{row["active_days_7"]} ({row["active_days_30"]})</td>'
             f'<td>{row["files_uploaded"]}</td>'
             f'<td>{row["files_reuploaded"]}</td>'
-            f'<td>{_metric_cell(row["detection_runs"], detection_cost, label="documents")}</td>'
+            f'<td>{_metric_cell(row["detection_runs"], detection_cost, label="doc")}</td>'
             f'<td>{_metric_cell(row["estimation_calls"], estimation_cost, label="calls")}</td>'
             f'<td>{_metric_cell(row["price_source_runs"], price_source_cost, label="sources")}</td>'
             '<td><span class="platform-admin-metric-count">—</span></td>'
@@ -96,16 +96,16 @@ def _dashboard_table(rows: list[dict[str, Any]]) -> str:
         '<div class="platform-admin-table-scroll">'
         '<table class="platform-admin-table">'
         "<colgroup>"
-        '<col style="width:180px"><col style="width:78px"><col style="width:60px">'
-        '<col style="width:92px"><col style="width:68px"><col style="width:82px">'
-        '<col style="width:128px"><col style="width:128px"><col style="width:128px">'
-        '<col style="width:60px"><col style="width:112px"><col style="width:108px">'
+        '<col style="width:174px"><col style="width:66px"><col style="width:52px">'
+        '<col style="width:82px"><col style="width:54px"><col style="width:72px">'
+        '<col style="width:92px"><col style="width:92px"><col style="width:92px">'
+        '<col style="width:50px"><col style="width:76px"><col style="width:116px">'
         "</colgroup>"
         "<thead><tr>"
         "<th>Company</th><th>Stage</th><th>Users</th>"
-        "<th>Active days<br>7d (30d)</th><th>Files</th><th>Reuploads</th>"
-        "<th>Detection</th><th>Estimation</th><th>Price Lists</th>"
-        "<th>PDFs</th><th>Total AI cost</th><th>Status</th>"
+        "<th>Sessions<br>7d (30d)</th><th>Files</th><th>Repeat files</th>"
+        "<th>Detection, $</th><th>Estimation, $</th><th>Price Lists, $</th>"
+        "<th>PDFs</th><th>AI cost, $</th><th>Status</th>"
         "</tr></thead>"
         f"<tbody>{''.join(body)}</tbody>"
         "</table></div></div>"

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version as package_version
 import platform
 import time
@@ -39,7 +38,7 @@ from db.supabase_client import get_supabase_client
 from styles.base import apply_base_css
 from ui.js_guards import scroll_parent_to_top, signal_app_ready_to_embed
 from ui.app_header import render_app_header
-from use_cases.platform_admin import load_platform_access, record_daily_activity
+from use_cases.platform_admin import load_platform_access, record_authenticated_session
 
 
 def _installed_version(distribution: str) -> str:
@@ -376,15 +375,16 @@ def main() -> None:
             st.session_state.screen = "admin"
             if "screen" in st.query_params:
                 del st.query_params["screen"]
-        activity_key = f"{access.company_id}:{datetime.now(UTC).date().isoformat()}"
-        if st.session_state.get("_product_activity_key") != activity_key:
+        activity_key = f"{access.company_id}:{trace.session_id}"
+        if st.session_state.get("_product_session_key") != activity_key:
             try:
-                record_daily_activity(
+                record_authenticated_session(
                     get_supabase_client(),
                     company_id=str(access.company_id),
                     user_id=str(access.user_id),
+                    session_id=trace.session_id,
                 )
-                st.session_state._product_activity_key = activity_key
+                st.session_state._product_session_key = activity_key
             except Exception as exc:
                 trace.event(
                     "server.product_activity_unavailable",

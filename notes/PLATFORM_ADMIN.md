@@ -11,14 +11,15 @@ Protected checkpoint: `193713e`.
 - Company authorization remains `owner/member` in the database and code. The interface displays those roles as `Company Admin/Team Member`.
 - Cross-company access is independent and explicit through `platform_staff`. Company registration and company roles never grant Platform Admin access.
 - The first dashboard is read-only and has no company detail page.
-- The first dashboard is one unfiltered all-time company matrix. Active days retain explicit 7-day and 30-day windows inside the table.
+- The first dashboard is one unfiltered all-time company matrix. Sessions retain explicit rolling 7-day and 30-day windows inside the table.
 - The matrix reuses the compact table geometry established by Overhead Expenses. Rows are not interactive until the company detail task is approved.
 - Dashboard rows expose company-level aggregates only. They do not expose file names, source content, prompts, or extracted customer data.
 - Account stage is an internal `test/pilot/paid` classification.
-- Active days are distinct company activity dates over 7 and 30 days, not persistent login sessions.
+- Sessions are distinct authenticated Streamlit runtime sessions started within rolling 7-day and 30-day windows. Reruns inside one runtime session are deduplicated.
+- Session history begins when this telemetry is deployed. Earlier sessions cannot be reconstructed from existing data.
 - Exact same-file reuploads are identified with a company-scoped SHA-256 fingerprint. The raw file is not stored in analytics metadata.
 - Detection cost groups OCR, Detection, and Naming. Estimation counts per-object calls. Price Lists counts Price Source calls.
-- Missing provider costs are shown as `partial` or `Cost unavailable`, never as a known zero.
+- AI costs use one display unit: tracked US dollars with two decimals. An entirely unpriced cost is shown as unavailable, never as a known zero.
 - PDFs display `—` until proposal generation and Projects persistence exist.
 
 ### Release order
@@ -35,5 +36,5 @@ Protected checkpoint: `193713e`.
 - Company Admin and Team Member do not see the action.
 - A direct Admin route is rejected unless the user has active `platform_staff` access.
 - Company Admin remains protected from removal despite the user-facing role rename.
-- Costs use cents below one dollar and dollars at or above one dollar.
+- Costs use tracked US dollars with two decimal places in every column.
 - Unknown cost and unavailable PDF data are visibly distinguished from zero.

@@ -52,13 +52,23 @@ def load_company_dashboard(
     if days not in PERIOD_OPTIONS:
         raise ValueError("Unsupported Admin dashboard period.")
     require_platform_access(client, requesting_user_id)
-    response = client.rpc(
-        "platform_admin_company_dashboard",
-        {
-            "p_requesting_user_id": requesting_user_id,
-            "p_days": days,
-        },
-    ).execute()
+    params = {
+        "p_requesting_user_id": requesting_user_id,
+        "p_days": days,
+    }
+    try:
+        response = client.rpc(
+            "platform_admin_company_dashboard_v2",
+            params,
+        ).execute()
+    except Exception as exc:
+        message = str(exc)
+        if "PGRST202" not in message and "Could not find the function" not in message:
+            raise
+        response = client.rpc(
+            "platform_admin_company_dashboard",
+            params,
+        ).execute()
     return [dict(row) for row in (response.data or [])]
 
 
@@ -75,20 +85,24 @@ def record_dashboard_view(client: Any, *, platform_user_id: str) -> None:
     ).execute()
 
 
-def record_daily_activity(
+def record_authenticated_session(
     client: Any,
     *,
     company_id: str,
     user_id: str,
+    session_id: str,
 ) -> None:
-    """Record one authenticated activity row per company user and UTC day."""
+    """Record one company activity row per authenticated runtime session."""
+    fingerprint = sha256(
+        f"{company_id}\0{session_id}".encode("utf-8")
+    ).hexdigest()
     client.rpc(
         "record_product_usage_event",
         {
             "p_company_id": company_id,
             "p_user_id": user_id,
-            "p_event_name": "authenticated_daily_activity",
-            "p_entity_fingerprint": None,
+            "p_event_name": "authenticated_session_started",
+            "p_entity_fingerprint": fingerprint,
             "p_metadata": {},
         },
     ).execute()
@@ -133,25 +147,31 @@ def _decimal(value: Any) -> Decimal:
 
 
 def format_ai_cost(value_usd: Any, *, unpriced_events: int = 0) -> str:
-    """Show cents below one dollar and preserve incomplete-cost evidence."""
+    """Show tracked provider cost in dollars without mixing display units."""
     value = _decimal(value_usd)
     if value == 0 and unpriced_events:
-        return "Cost unavailable"
-    if value < 1:
-        amount = f"{value * 100:.1f}¢"
-    else:
-        amount = f"${value:.2f}"
-    return f"{amount} partial" if unpriced_events else amount
+        return "—"
+    return f"{value:.2f}"
 
 
 def company_operational_status(row: dict[str, Any]) -> tuple[str, str]:
     """Return a factual status without inferring customer sentiment."""
     failed = int(row.get("failed_agent_events") or 0)
-    files = int(row.get("files_uploaded") or 0)
     if failed:
-        return (f"{failed} failed", "attention")
-    if not files:
-        return ("No usage", "neutral")
+        label = "failure" if failed == 1 else "failures"
+        return (f"{failed} agent {label}", "attention")
+    activity = sum(
+        int(row.get(key) or 0)
+        for key in (
+            "files_uploaded",
+            "detection_runs",
+            "estimation_calls",
+            "price_source_runs",
+            "pdfs_generated",
+        )
+    )
+    if not activity:
+        return ("No activity", "neutral")
     return ("OK", "ok")
 
 

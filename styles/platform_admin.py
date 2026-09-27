@@ -67,14 +67,26 @@ def apply_platform_admin_css() -> None:
             gap: 10px;
         }
 
+        .st-key-platform_admin_actions [data-testid="stButton"],
+        .st-key-platform_admin_actions [data-testid="stButton"] > div,
         .st-key-platform_admin_actions button {
             width: 100%;
+        }
+
+        .stApp:has(.platform-admin-active)
+        .st-key-platform_admin_actions div[data-testid="stButton"] button {
             height: 36px !important;
             min-height: 36px !important;
             max-height: 36px !important;
             padding: 0 10px !important;
             font-size: 12px !important;
             font-weight: 700 !important;
+        }
+
+        .stApp:has(.platform-admin-active)
+        .st-key-platform_admin_actions div[data-testid="stButton"] button p {
+            font-size: 12px !important;
+            white-space: nowrap !important;
         }
 
         .platform-admin-table-card {
@@ -92,7 +104,7 @@ def apply_platform_admin_css() -> None:
 
         .platform-admin-table {
             width: 100%;
-            min-width: 1420px;
+            min-width: 1210px;
             border-collapse: collapse;
             table-layout: fixed;
             font-family: var(--font-sans);
