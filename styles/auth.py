@@ -5,9 +5,11 @@ import html
 import streamlit as st
 import streamlit.components.v1 as components
 
+from use_cases.email_addresses import EMAIL_ADDRESS_FORMAT_ERROR
+
 
 _QUIET_FIELD_ERRORS = {
-    "Enter an email address like name@company.com",
+    EMAIL_ADDRESS_FORMAT_ERROR,
     "Enter your email to reset your password",
     "Enter your company name",
     "Password needs at least 8 characters, an uppercase letter, a lowercase letter and a number",
@@ -42,6 +44,36 @@ def render_auth_field_error(
         st.error(message)
 
 
+def render_auth_email_input(
+    *,
+    key: str,
+    placeholder: str | None = "you@company.com",
+    value: str | None = None,
+    disabled: bool = False,
+    invalid: bool = False,
+    error: str | None = None,
+    feedback_id: str | None = None,
+) -> str:
+    """Render the shared Auth email field and its consistent validation state."""
+    input_options: dict[str, object] = {
+        "key": key,
+        "disabled": disabled,
+    }
+    if placeholder is not None:
+        input_options["placeholder"] = placeholder
+    if value is not None:
+        input_options["value"] = value
+    email = st.text_input("Email", **input_options)
+    if invalid or error:
+        render_auth_field_error(
+            "email",
+            error or EMAIL_ADDRESS_FORMAT_ERROR,
+            show_message=bool(error),
+            feedback_id=feedback_id,
+        )
+    return str(email)
+
+
 def install_auth_form_interactions() -> None:
     """Add quiet blur validation without turning the Streamlit form into custom HTML."""
     components.html(
@@ -65,15 +97,27 @@ def install_auth_form_interactions() -> None:
 
           function validEmail(value) {
             const text = value.trim();
+            if (text.length > 254) return false;
             const pieces = text.split('@');
             if (pieces.length !== 2) return false;
             const [local, domain] = pieces;
-            if (!local || local.startsWith('.') || local.endsWith('.') || local.includes('..')) return false;
+            if (!local || local.length > 64) return false;
+            if (!/^[A-Za-z0-9!#$%&'*+\/=?^_`{|}~.-]+$/.test(local)) return false;
+            if (local.startsWith('.') || local.endsWith('.') || local.includes('..')) return false;
             if (/\s/.test(text)) return false;
-            const labels = domain.split('.');
-            if (labels.length < 2 || labels.some((label) => !label || label.startsWith('-') || label.endsWith('-'))) return false;
+            let asciiDomain = '';
+            try {
+              asciiDomain = new URL(`http://${domain}`).hostname;
+            } catch (_) {
+              return false;
+            }
+            if (!asciiDomain || asciiDomain.length > 253) return false;
+            const labels = asciiDomain.split('.');
+            if (labels.length < 2 || labels.some((label) => (
+              !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label)
+            ))) return false;
             const suffix = labels[labels.length - 1];
-            return suffix.length >= 2 && !/^\d+$/.test(suffix);
+            return /^(?:[A-Za-z]{2,63}|xn--[A-Za-z0-9-]{2,59})$/.test(suffix);
           }
 
           function setInvalid(field, invalid, scope = doc) {

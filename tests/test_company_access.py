@@ -26,7 +26,7 @@ from use_cases.invite_links import (
     new_invite_token,
     public_app_url,
 )
-from use_cases.email_addresses import is_valid_email_address
+from use_cases.email_addresses import EMAIL_ADDRESS_FORMAT_ERROR, is_valid_email_address
 from use_cases.rfq_processing import assign_server_run_id
 
 
@@ -354,7 +354,7 @@ def test_forgot_password_uses_neutral_response_and_existing_auth_layout(monkeypa
     assert not app.exception
 
 
-def test_sign_in_with_empty_fields_shows_shared_credentials_message(monkeypatch):
+def test_sign_in_with_empty_fields_shows_email_format_message(monkeypatch):
     monkeypatch.setattr(
         company_auth,
         "sign_in",
@@ -364,7 +364,8 @@ def test_sign_in_with_empty_fields_shows_shared_credentials_message(monkeypatch)
     next(button for button in app.button if button.label == "Sign in").click().run()
 
     markup = "".join(item.value for item in app.markdown)
-    assert "Check your email and password" in markup
+    assert EMAIL_ADDRESS_FORMAT_ERROR in markup
+    assert "Check your email and password" not in markup
     assert "data-auth-feedback-id=" in markup
     assert 'data-auth-field="email"' in markup
     assert 'data-auth-field="password"' in markup
@@ -384,7 +385,8 @@ def test_sign_in_with_password_only_marks_only_the_missing_email(monkeypatch):
 
     markup = "".join(item.value for item in app.markdown)
     assert calls == []
-    assert "Check your email and password" in markup
+    assert EMAIL_ADDRESS_FORMAT_ERROR in markup
+    assert "Check your email and password" not in markup
     assert 'data-auth-field="email"' in markup
     assert 'data-auth-field="password"' not in markup
     assert not app.exception
@@ -487,6 +489,9 @@ def test_forgot_password_requires_email_without_leaving_sign_in(monkeypatch):
     assert [field.label for field in app.text_input] == ["Email", "Password"]
     assert any("Sign in" in item.value for item in app.markdown)
     assert 'data-auth-field="email"' in "".join(
+        item.value for item in app.markdown
+    )
+    assert EMAIL_ADDRESS_FORMAT_ERROR in "".join(
         item.value for item in app.markdown
     )
     assert 'class="auth-form-feedback auth-form-feedback-error auth-form-feedback-dismissible"' in "".join(
@@ -661,6 +666,19 @@ def test_join_registration_reuses_sign_in_layout_and_loading_contract():
     assert "'Sign in'," in interactions
     assert "'Create account'," in interactions
     assert ".auth-brand-join-your-company" in interactions
+
+
+def test_join_registration_uses_shared_email_format_feedback():
+    app = AppTest.from_function(_render_join_registration_test).run()
+    app.text_input(key="signup_email").set_value("name@company..com")
+    app.text_input(key="signup_password").set_value("Strong123")
+    app.text_input(key="signup_password_confirm").set_value("Strong123")
+    next(button for button in app.button if button.label == "Create account").click().run()
+
+    markup = "".join(item.value for item in app.markdown)
+    assert EMAIL_ADDRESS_FORMAT_ERROR in markup
+    assert 'data-auth-field="email"' in markup
+    assert not app.exception
 
 
 def test_browser_policy_migration_removes_anonymous_cost_access():
@@ -3455,6 +3473,15 @@ def test_company_registration_uses_stable_loading_shell_and_versioned_feedback()
 
     assert "'Create Company Account'," in interactions
     assert 'data-auth-feedback-id="{safe_feedback_id}"' in interactions
+
+
+def test_auth_screens_share_one_email_input_component():
+    auth_source = Path("state/company_auth.py").read_text()
+    auth_styles = Path("styles/auth.py").read_text()
+
+    assert 'st.text_input("Email"' not in auth_source
+    assert auth_source.count("render_auth_email_input(") == 4
+    assert auth_styles.count('st.text_input("Email"') == 1
 
 
 @pytest.mark.parametrize("email,password,confirm,company", [

@@ -20,6 +20,7 @@ from db.supabase_client import get_supabase_client
 from styles.auth import (
     apply_auth_css,
     install_auth_form_interactions,
+    render_auth_email_input,
     render_auth_field_error,
     show_company_creation_started,
 )
@@ -31,7 +32,11 @@ from use_cases.invite_links import (
     public_app_url,
     valid_invite_token,
 )
-from use_cases.email_addresses import is_valid_email_address
+from use_cases.email_addresses import (
+    EMAIL_ADDRESS_FORMAT_ERROR,
+    email_address_validation_error,
+    is_valid_email_address,
+)
 from ui.app_header import render_account_header_controls
 from ui.browser_session import (
     browser_session_exchange,
@@ -141,8 +146,9 @@ def registration_validation_errors(
     errors: dict[str, str] = {}
     if company_name is not None and not company_name.strip():
         errors["company"] = "Enter your company name"
-    if not is_valid_email_address(email):
-        errors["email"] = "Enter an email address like name@company.com"
+    email_error = email_address_validation_error(email)
+    if email_error:
+        errors["email"] = email_error
     if len(password) < 8 or not re.search(r"[a-z]", password) or not re.search(r"[A-Z]", password) or not re.search(r"[0-9]", password):
         errors["password"] = "Password needs at least 8 characters, an uppercase letter, a lowercase letter and a number"
     if not password_confirm:
@@ -374,7 +380,7 @@ def password_recovery_url() -> str:
 def request_password_recovery(email: str) -> None:
     """Ask Supabase to send a neutral, expiring recovery link."""
     if not is_valid_email_address(email):
-        raise ValueError("Enter an email address like name@company.com")
+        raise ValueError(EMAIL_ADDRESS_FORMAT_ERROR)
     started_at = time.perf_counter()
     status = "ok"
     try:
@@ -449,13 +455,13 @@ def _submit_password_recovery_request() -> None:
     email = str(st.session_state.get("login_email") or "")
     st.session_state.auth_feedback_id = secrets.token_urlsafe(8)
     st.session_state.pop("company_login_error", None)
+    st.session_state.pop("company_login_email_error", None)
     st.session_state.pop("company_login_invalid_fields", None)
     st.session_state.pop("password_recovery_request_error", None)
     st.session_state.pop("password_recovery_request_complete", None)
-    if not is_valid_email_address(email):
-        st.session_state.password_recovery_request_error = (
-            "Enter your email to reset your password"
-        )
+    email_error = email_address_validation_error(email)
+    if email_error:
+        st.session_state.password_recovery_request_error = email_error
         return
     try:
         request_password_recovery(email)
@@ -726,17 +732,22 @@ def _submit_login() -> None:
     password = str(st.session_state.get("login_password") or "")
     st.session_state.auth_feedback_id = secrets.token_urlsafe(8)
     st.session_state.pop("company_login_error", None)
+    st.session_state.pop("company_login_email_error", None)
     st.session_state.pop("company_login_invalid_fields", None)
     st.session_state.pop("password_recovery_request_error", None)
     st.session_state.pop("password_recovery_request_complete", None)
     invalid_fields: list[str] = []
-    if not is_valid_email_address(email):
+    email_error = email_address_validation_error(email)
+    if email_error:
         invalid_fields.append("email")
     if not password:
         invalid_fields.append("password")
     if invalid_fields:
         st.session_state.company_login_invalid_fields = invalid_fields
-        st.session_state.company_login_error = "Check your email and password"
+        if email_error:
+            st.session_state.company_login_email_error = email_error
+        elif "password" in invalid_fields:
+            st.session_state.company_login_error = "Check your email and password"
         return
     try:
         sign_in(email, password)
@@ -1036,14 +1047,11 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             company_name = st.text_input("Your company name", key="signup_company_name", placeholder="Company name")
             if "company" in creation_errors:
                 render_auth_field_error("company", creation_errors["company"])
-            email = st.text_input("Email", key="signup_email", placeholder="you@company.com")
-            if "email" in creation_errors:
-                render_auth_field_error(
-                    "email",
-                    creation_errors["email"],
-                    show_message=True,
-                    feedback_id=f"company-email-{creation_error_revision}",
-                )
+            email = render_auth_email_input(
+                key="signup_email",
+                error=creation_errors.get("email"),
+                feedback_id=f"company-email-{creation_error_revision}",
+            )
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm Password", type="password", key="signup_password_confirm")
             if "password" in creation_errors:
@@ -1167,14 +1175,11 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             st.session_state.get("company_join_error_revision") or 0
         )
         with st.form("company_join_registration"):
-            email = st.text_input("Email", key="signup_email", placeholder="you@company.com")
-            if "email" in join_errors:
-                render_auth_field_error(
-                    "email",
-                    join_errors["email"],
-                    show_message=True,
-                    feedback_id=f"join-email-{join_error_revision}",
-                )
+            email = render_auth_email_input(
+                key="signup_email",
+                error=join_errors.get("email"),
+                feedback_id=f"join-email-{join_error_revision}",
+            )
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm password", type="password", key="signup_password_confirm")
             if "password" in join_errors:
@@ -1271,6 +1276,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
 
     _render_auth_heading("Sign in")
     login_error = st.session_state.get("company_login_error")
+    login_email_error = st.session_state.get("company_login_email_error")
     login_invalid_fields = set(
         st.session_state.get("company_login_invalid_fields") or []
     )
@@ -1282,7 +1288,15 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
     if st.session_state.pop("clear_recovery_browser_route", False):
         clear_recovery_browser_route()
     with st.form("company_login"):
-        st.text_input("Email", key="login_email", placeholder="you@company.com")
+        auth_feedback_id = str(
+            st.session_state.get("auth_feedback_id") or "auth-feedback"
+        )
+        render_auth_email_input(
+            key="login_email",
+            invalid="email" in login_invalid_fields,
+            error=str(recovery_request_error or login_email_error or "") or None,
+            feedback_id=auth_feedback_id,
+        )
         password_label, recovery_action = st.columns(
             [0.7, 0.3],
             gap=None,
@@ -1305,24 +1319,14 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             key="login_password",
             label_visibility="collapsed",
         )
-        if "email" in login_invalid_fields:
-            render_auth_field_error(
-                "email",
-                "Enter an email address like name@company.com",
-            )
         if "password" in login_invalid_fields:
             render_auth_field_error(
                 "password",
                 "Password needs at least 8 characters, an uppercase letter, a lowercase letter and a number",
             )
-        if recovery_request_error:
-            render_auth_field_error("email", str(recovery_request_error))
         feedback_message = ""
         feedback_kind = ""
-        if recovery_request_error:
-            feedback_message = "Enter your email to reset your password"
-            feedback_kind = "error"
-        elif login_error:
+        if login_error:
             feedback_message = "Check your email and password"
             feedback_kind = "error"
         elif recovery_request_complete:
@@ -1336,9 +1340,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             )
             feedback_kind = "success"
         if feedback_message:
-            feedback_id = str(
-                st.session_state.get("auth_feedback_id") or "auth-feedback"
-            )
+            feedback_id = auth_feedback_id
             feedback_classes = (
                 f"auth-form-feedback auth-form-feedback-{feedback_kind}"
             )
@@ -1382,11 +1384,11 @@ def render_password_reset() -> None:
     raw_error = st.session_state.get("password_reset_error") or {}
     errors = raw_error if isinstance(raw_error, dict) else {"service": str(raw_error)}
     with st.form("password_recovery_update"):
-        st.text_input(
-            "Email",
+        render_auth_email_input(
             value=str(st.session_state.get("auth_recovery_email") or ""),
             key="recovery_email",
             disabled=True,
+            placeholder=None,
         )
         password = st.text_input(
             "New password",
