@@ -204,9 +204,13 @@ def test_dashboard_escapes_company_name_and_omits_customer_content():
     assert "&lt;script&gt;" in markup
     assert "must-not-render" not in markup
     assert "4 doc" in markup
-    assert "0.12" in markup
+    assert "$0.12" in markup
     assert "10 calls" in markup
-    assert "1.40" in markup
+    assert "$1.40" in markup
+    assert "Detection, $" not in markup
+    assert "Estimation, $" not in markup
+    assert "Price Lists, $" not in markup
+    assert "AI cost, $" not in markup
     assert "<td><span class=\"platform-admin-metric-count\">—</span></td>" in markup
 
 

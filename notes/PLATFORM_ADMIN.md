@@ -20,6 +20,8 @@ Protected checkpoint: `193713e`.
 - Exact same-file reuploads are identified with a company-scoped SHA-256 fingerprint. The raw file is not stored in analytics metadata.
 - Detection cost groups OCR, Detection, and Naming. Estimation counts per-object calls. Price Lists counts Price Source calls.
 - AI costs use one display unit: tracked US dollars with two decimals. An entirely unpriced cost is shown as unavailable, never as a known zero.
+- Dollar signs appear beside monetary values, not in the column headings.
+- Cloudflare masks Upload/Profile/Admin transitions until the target screen's established heading and content geometry are ready.
 - PDFs display `—` until proposal generation and Projects persistence exist.
 
 ### Release order

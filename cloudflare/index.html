@@ -157,12 +157,20 @@
           sign_in: ["upload", "account", "company_setup"],
           upload_to_profile: ["account"],
           profile_to_upload: ["upload"],
+          upload_to_admin: ["admin"],
+          profile_to_admin: ["admin"],
+          admin_to_profile: ["account"],
+          admin_to_upload: ["upload"],
           profile_to_sign_out: ["login"],
           upload_to_sign_out: ["login"],
         };
         const maskedInternalTransitions = new Set([
           "upload_to_profile",
           "profile_to_upload",
+          "upload_to_admin",
+          "profile_to_admin",
+          "admin_to_profile",
+          "admin_to_upload",
           "profile_to_sign_out",
           "upload_to_sign_out",
         ]);

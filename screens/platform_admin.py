@@ -39,9 +39,10 @@ def _open_estimate() -> None:
 
 
 def _metric_cell(count: int, cost: str, *, label: str) -> str:
+    displayed_cost = cost if cost == "—" else f"${cost}"
     return (
         f'<span class="platform-admin-metric-count">{count} {escape(label)}</span>'
-        f'<span class="platform-admin-metric-cost">{escape(cost)}</span>'
+        f'<span class="platform-admin-metric-cost">{escape(displayed_cost)}</span>'
     )
 
 
@@ -74,6 +75,7 @@ def _dashboard_table(rows: list[dict[str, Any]]) -> str:
             row.get("total_ai_cost_usd"),
             unpriced_events=row["total_unpriced_events"],
         )
+        displayed_total_cost = total_cost if total_cost == "—" else f"${total_cost}"
         body.append(
             "<tr>"
             f'<td><span class="platform-admin-company">{escape(str(row.get("company_name") or "Untitled company"))}</span></td>'
@@ -86,7 +88,7 @@ def _dashboard_table(rows: list[dict[str, Any]]) -> str:
             f'<td>{_metric_cell(row["estimation_calls"], estimation_cost, label="calls")}</td>'
             f'<td>{_metric_cell(row["price_source_runs"], price_source_cost, label="sources")}</td>'
             '<td><span class="platform-admin-metric-count">—</span></td>'
-            f'<td><span class="platform-admin-metric-count">{escape(total_cost)}</span></td>'
+            f'<td><span class="platform-admin-metric-count">{escape(displayed_total_cost)}</span></td>'
             f'<td><span class="platform-admin-status platform-admin-status--{status_kind}">{escape(status)}</span></td>'
             "</tr>"
         )
@@ -104,8 +106,8 @@ def _dashboard_table(rows: list[dict[str, Any]]) -> str:
         "<thead><tr>"
         "<th>Company</th><th>Stage</th><th>Users</th>"
         "<th>Sessions<br>7d (30d)</th><th>Files</th><th>Repeat files</th>"
-        "<th>Detection, $</th><th>Estimation, $</th><th>Price Lists, $</th>"
-        "<th>PDFs</th><th>AI cost, $</th><th>Status</th>"
+        "<th>Detection</th><th>Estimation</th><th>Price Lists</th>"
+        "<th>PDFs</th><th>AI cost</th><th>Status</th>"
         "</tr></thead>"
         f"<tbody>{''.join(body)}</tbody>"
         "</table></div></div>"

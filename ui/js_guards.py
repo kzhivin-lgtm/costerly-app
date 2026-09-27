@@ -247,11 +247,29 @@ def signal_app_ready_to_embed(
                 if (button.closest(".st-key-profile_to_upload")) {
                     return "profile_to_upload";
                 }
+                if (button.closest(".st-key-profile_to_admin")) {
+                    return "profile_to_admin";
+                }
+                if (button.closest(".st-key-admin_to_profile")) {
+                    return "admin_to_profile";
+                }
+                if (button.closest(".st-key-admin_to_upload")) {
+                    return "admin_to_upload";
+                }
                 const label = String(button.innerText || button.textContent || "")
                     .trim()
                     .toLowerCase();
                 if (label === "sign in") return "sign_in";
-                if (label === "profile") return "upload_to_profile";
+                if (label === "admin") {
+                    return window.parent.document.querySelector(".company-profile-active")
+                        ? "profile_to_admin"
+                        : "upload_to_admin";
+                }
+                if (label === "profile") {
+                    return window.parent.document.querySelector(".platform-admin-active")
+                        ? "admin_to_profile"
+                        : "upload_to_profile";
+                }
                 if (label === "continue to upload" || label === "upload") {
                     return "profile_to_upload";
                 }
@@ -275,6 +293,11 @@ def signal_app_ready_to_embed(
                 }
                 if (transition === "upload_to_profile") return ".company-profile-active";
                 if (transition === "profile_to_upload") return ".upload-screen-active";
+                if (transition === "upload_to_admin" || transition === "profile_to_admin") {
+                    return ".platform-admin-active";
+                }
+                if (transition === "admin_to_profile") return ".company-profile-active";
+                if (transition === "admin_to_upload") return ".upload-screen-active";
                 if (transition === "profile_to_sign_out" || transition === "upload_to_sign_out") {
                     return ".auth-screen-active";
                 }
@@ -292,10 +315,17 @@ def signal_app_ready_to_embed(
                 const requiresStyledTarget =
                     transition === "upload_to_profile" ||
                     transition === "profile_to_upload" ||
+                    transition === "upload_to_admin" ||
+                    transition === "profile_to_admin" ||
+                    transition === "admin_to_profile" ||
+                    transition === "admin_to_upload" ||
                     transition === "profile_to_sign_out" ||
                     transition === "upload_to_sign_out";
                 const styledTargetReady = () => {
-                    if (transition === "upload_to_profile") {
+                    if (
+                        transition === "upload_to_profile" ||
+                        transition === "admin_to_profile"
+                    ) {
                         const heading = parentDocument.querySelector(".company-profile-heading");
                         const tabs = parentDocument.querySelector(
                             '.st-key-company_profile_tab [role="tablist"]'
@@ -308,7 +338,10 @@ def signal_app_ready_to_embed(
                             && tabsStyle.borderTopLeftRadius === "14px"
                             && tabsStyle.paddingTop === "6px";
                     }
-                    if (transition === "profile_to_upload") {
+                    if (
+                        transition === "profile_to_upload" ||
+                        transition === "admin_to_upload"
+                    ) {
                         const hero = parentDocument.querySelector(".upload-screen__hero");
                         const dropzone = parentDocument.querySelector(
                             'section[data-testid="stFileUploaderDropzone"]'
@@ -320,6 +353,19 @@ def signal_app_ready_to_embed(
                             && dropzoneStyle.borderTopLeftRadius === "20px"
                             && dropzoneStyle.display === "flex"
                             && Number.parseFloat(dropzoneStyle.height) >= 180;
+                    }
+                    if (
+                        transition === "upload_to_admin" ||
+                        transition === "profile_to_admin"
+                    ) {
+                        const heading = parentDocument.querySelector(".platform-admin-heading");
+                        const table = parentDocument.querySelector(".platform-admin-table-card");
+                        if (!heading || !table) return false;
+                        const headingStyle = window.parent.getComputedStyle(heading);
+                        const tableStyle = window.parent.getComputedStyle(table);
+                        return headingStyle.display === "flex"
+                            && headingStyle.minHeight === "56px"
+                            && tableStyle.borderTopLeftRadius === "12px";
                     }
                     const form = parentDocument.querySelector('div[data-testid="stForm"]');
                     const brand = parentDocument.querySelector(".auth-brand");

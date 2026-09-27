@@ -230,6 +230,10 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'concealInternalTransition(pendingTransition.name)' in wrapper
     assert '"upload_to_profile"' in wrapper
     assert '"profile_to_upload"' in wrapper
+    assert '"upload_to_admin"' in wrapper
+    assert '"profile_to_admin"' in wrapper
+    assert '"admin_to_profile"' in wrapper
+    assert '"admin_to_upload"' in wrapper
     assert '"profile_to_sign_out"' in wrapper
     assert '"upload_to_sign_out"' in wrapper
     masked_transitions = wrapper.split("const maskedInternalTransitions = new Set([", 1)[1].split("]);", 1)[0]
@@ -300,6 +304,12 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "const styledTargetReady = () =>" in ready_signal
     assert 'transition === "upload_to_profile"' in ready_signal
     assert 'transition === "profile_to_upload"' in ready_signal
+    assert 'transition === "upload_to_admin"' in ready_signal
+    assert 'transition === "profile_to_admin"' in ready_signal
+    assert 'transition === "admin_to_profile"' in ready_signal
+    assert 'transition === "admin_to_upload"' in ready_signal
+    assert 'parentDocument.querySelector(".platform-admin-heading")' in ready_signal
+    assert 'parentDocument.querySelector(".platform-admin-table-card")' in ready_signal
     assert 'parentDocument.querySelector(".company-profile-heading")' in ready_signal
     assert 'headingStyle.minHeight === "56px"' in ready_signal
     assert 'parentDocument.querySelector(".upload-screen__hero")' in ready_signal
