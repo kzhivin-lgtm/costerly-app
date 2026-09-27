@@ -21,7 +21,8 @@ from styles.auth import (
     apply_auth_css,
     install_auth_form_interactions,
     render_auth_email_input,
-    render_auth_field_error,
+    render_auth_field_marker,
+    render_auth_form_feedback,
     show_company_creation_started,
 )
 from use_cases.invite_links import (
@@ -170,6 +171,14 @@ def _set_registration_form_errors(
         st.session_state.get(revision_key) or 0
     ) + 1
     st.session_state[state_key] = errors
+
+
+def _first_auth_form_error(
+    errors: dict[str, str],
+    fields: tuple[str, ...],
+) -> str | None:
+    """Return the first actionable message in the form's visual field order."""
+    return next((str(errors[field]) for field in fields if errors.get(field)), None)
 
 
 def password_validation_errors(password: str, password_confirm: str) -> dict[str, str]:
@@ -646,7 +655,8 @@ def render_terms_acceptance(access: CompanyAccess) -> None:
     with st.form("current_terms_acceptance"):
         accepted = _render_registration_terms(documents, key="current_terms_accepted")
         if error:
-            render_auth_field_error("terms", error, show_message=True)
+            render_auth_field_marker("terms")
+        render_auth_form_feedback(error or None)
         submit = st.form_submit_button(
             "Continue",
             type="primary",
@@ -1046,18 +1056,17 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
         with st.form("company_creation_registration"):
             company_name = st.text_input("Your company name", key="signup_company_name", placeholder="Company name")
             if "company" in creation_errors:
-                render_auth_field_error("company", creation_errors["company"])
+                render_auth_field_marker("company")
             email = render_auth_email_input(
                 key="signup_email",
-                error=creation_errors.get("email"),
-                feedback_id=f"company-email-{creation_error_revision}",
+                invalid="email" in creation_errors,
             )
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm Password", type="password", key="signup_password_confirm")
             if "password" in creation_errors:
-                render_auth_field_error("password", creation_errors["password"])
+                render_auth_field_marker("password")
             if "confirm" in creation_errors:
-                render_auth_field_error("confirm", creation_errors["confirm"])
+                render_auth_field_marker("confirm")
             st.caption("Use at least 8 characters with an uppercase letter, a lowercase letter and a number")
             terms_accepted = True
             if legal_documents is not None:
@@ -1066,14 +1075,15 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                     key="company_creation_terms_accepted",
                 )
                 if "terms" in creation_errors:
-                    render_auth_field_error(
-                        "terms",
-                        creation_errors["terms"],
-                        show_message=True,
-                    )
+                    render_auth_field_marker("terms")
+            render_auth_form_feedback(
+                _first_auth_form_error(
+                    creation_errors,
+                    ("company", "email", "password", "confirm", "terms", "service"),
+                ),
+                feedback_id=f"company-form-{creation_error_revision}",
+            )
             submit = st.form_submit_button("Create Company Account", type="primary", use_container_width=True)
-            if "service" in creation_errors:
-                st.error(creation_errors["service"])
         install_auth_form_interactions()
         if submit:
             st.session_state.pop("company_creation_error", None)
@@ -1177,15 +1187,14 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
         with st.form("company_join_registration"):
             email = render_auth_email_input(
                 key="signup_email",
-                error=join_errors.get("email"),
-                feedback_id=f"join-email-{join_error_revision}",
+                invalid="email" in join_errors,
             )
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm password", type="password", key="signup_password_confirm")
             if "password" in join_errors:
-                render_auth_field_error("password", join_errors["password"])
+                render_auth_field_marker("password")
             if "confirm" in join_errors:
-                render_auth_field_error("confirm", join_errors["confirm"])
+                render_auth_field_marker("confirm")
             st.caption("At least 8 characters, one uppercase letter, one lowercase letter and one number")
             terms_accepted = True
             if legal_documents is not None:
@@ -1194,18 +1203,19 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                     key="company_join_terms_accepted",
                 )
                 if "terms" in join_errors:
-                    render_auth_field_error(
-                        "terms",
-                        join_errors["terms"],
-                        show_message=True,
-                    )
+                    render_auth_field_marker("terms")
+            render_auth_form_feedback(
+                _first_auth_form_error(
+                    join_errors,
+                    ("email", "password", "confirm", "terms", "service"),
+                ),
+                feedback_id=f"join-form-{join_error_revision}",
+            )
             submit = st.form_submit_button(
                 "Create account",
                 type="primary",
                 use_container_width=True,
             )
-            if "service" in join_errors:
-                st.error(join_errors["service"])
         install_auth_form_interactions()
         if submit:
             st.session_state.pop("company_join_error", None)
@@ -1293,9 +1303,11 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
         )
         render_auth_email_input(
             key="login_email",
-            invalid="email" in login_invalid_fields,
-            error=str(recovery_request_error or login_email_error or "") or None,
-            feedback_id=auth_feedback_id,
+            invalid=(
+                "email" in login_invalid_fields
+                or bool(recovery_request_error)
+                or bool(login_email_error)
+            ),
         )
         password_label, recovery_action = st.columns(
             [0.7, 0.3],
@@ -1320,39 +1332,27 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             label_visibility="collapsed",
         )
         if "password" in login_invalid_fields:
-            render_auth_field_error(
-                "password",
-                "Password needs at least 8 characters, an uppercase letter, a lowercase letter and a number",
-            )
-        feedback_message = ""
-        feedback_kind = ""
-        if login_error:
+            render_auth_field_marker("password")
+        feedback_message = str(recovery_request_error or login_email_error or "")
+        feedback_kind = "error" if feedback_message else ""
+        if not feedback_message and login_error:
             feedback_message = "Check your email and password"
             feedback_kind = "error"
-        elif recovery_request_complete:
+        elif not feedback_message and recovery_request_complete:
             feedback_message = (
                 "If an account exists for this email, we sent a password reset link"
             )
             feedback_kind = "notice"
-        elif recovery_complete:
+        elif not feedback_message and recovery_complete:
             feedback_message = (
                 "Your password has been updated. Sign in with your new password"
             )
             feedback_kind = "success"
-        if feedback_message:
-            feedback_id = auth_feedback_id
-            feedback_classes = (
-                f"auth-form-feedback auth-form-feedback-{feedback_kind}"
-            )
-            if feedback_kind == "error":
-                feedback_classes += " auth-form-feedback-dismissible"
-            st.markdown(
-                f'<div class="{feedback_classes}" '
-                f'data-auth-feedback-id="{feedback_id}" '
-                f'role="{"alert" if feedback_kind == "error" else "status"}">'
-                f"{feedback_message}</div>",
-                unsafe_allow_html=True,
-            )
+        render_auth_form_feedback(
+            feedback_message or None,
+            kind=feedback_kind or "error",
+            feedback_id=auth_feedback_id,
+        )
         if recovery_request_complete:
             st.markdown(
                 '<span class="auth-recovery-sent" role="status"></span>',
@@ -1401,28 +1401,21 @@ def render_password_reset() -> None:
             key="recovery_password_confirm",
         )
         if "password" in errors:
-            render_auth_field_error(
-                "password",
-                errors["password"],
-                show_message=True,
-            )
+            render_auth_field_marker("password")
         if "confirm" in errors:
-            render_auth_field_error(
-                "confirm",
-                errors["confirm"],
-                show_message=True,
-            )
+            render_auth_field_marker("confirm")
         if not ({"password", "confirm"} & errors.keys()):
             st.caption(
                 "At least 8 characters, one uppercase letter, one lowercase letter and one number"
             )
+        render_auth_form_feedback(
+            _first_auth_form_error(errors, ("password", "confirm", "service"))
+        )
         submit = st.form_submit_button(
             "Reset password",
             type="primary",
             use_container_width=True,
         )
-        if "service" in errors:
-            st.error(errors["service"])
     install_auth_form_interactions()
     if submit:
         st.session_state.pop("password_reset_error", None)

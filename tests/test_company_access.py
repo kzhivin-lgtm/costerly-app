@@ -3435,7 +3435,7 @@ def test_existing_login_error_is_shown_at_email_without_extra_button(monkeypatch
     next(button for button in app.button if button.label == "Create Company Account").click().run()
     rendered = "\n".join(item.value for item in app.markdown)
     assert company_auth.EXISTING_EMAIL_REGISTRATION_MESSAGE in rendered
-    assert 'data-auth-feedback-id="company-email-1"' in rendered
+    assert 'data-auth-feedback-id="company-form-1"' in rendered
     assert any('data-auth-field="email"' in item.value for item in app.markdown)
     assert not any('data-auth-field="password"' in item.value for item in app.markdown)
     assert not any(button.label.startswith("Already have a login?") for button in app.button)
@@ -3455,7 +3455,7 @@ def test_obvious_email_error_marks_field_and_shows_actionable_text():
     assert not any("23514" in error.value or "companies_id_format" in error.value for error in app.error)
 
 
-def test_submit_marks_every_invalid_registration_field_without_error_text():
+def test_submit_marks_every_invalid_registration_field_and_uses_one_feedback_slot():
     app = AppTest.from_function(_render_invitation_signup).run()
     app.text_input(key="signup_company_name").set_value("Workshop")
     next(button for button in app.button if button.label == "Create Company Account").click().run()
@@ -3465,6 +3465,7 @@ def test_submit_marks_every_invalid_registration_field_without_error_text():
     assert 'data-auth-field="password"' in markers
     assert 'data-auth-field="confirm"' in markers
     assert "Enter an email address like name@company.com" in markers
+    assert markers.count('<div class="auth-form-feedback-slot">') == 1
     assert not app.error
 
 

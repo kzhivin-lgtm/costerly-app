@@ -5,43 +5,43 @@ import html
 import streamlit as st
 import streamlit.components.v1 as components
 
-from use_cases.email_addresses import EMAIL_ADDRESS_FORMAT_ERROR
-
-
-_QUIET_FIELD_ERRORS = {
-    EMAIL_ADDRESS_FORMAT_ERROR,
-    "Enter your email to reset your password",
-    "Enter your company name",
-    "Password needs at least 8 characters, an uppercase letter, a lowercase letter and a number",
-    "Passwords do not match",
-    "Confirm your password",
-}
-
-
-def render_auth_field_error(
-    field: str,
-    message: str,
-    *,
-    show_message: bool = False,
-    feedback_id: str | None = None,
-) -> None:
-    """Mark a field invalid and optionally show its actionable message."""
+def render_auth_field_marker(field: str) -> None:
+    """Mark one Auth field invalid without choosing where its message appears."""
     st.markdown(
         f'<span class="auth-field-error-marker" data-auth-field="{field}"></span>',
         unsafe_allow_html=True,
     )
-    if show_message:
-        safe_feedback_id = html.escape(feedback_id or message, quote=True)
-        safe_message = html.escape(message)
+
+
+def render_auth_form_feedback(
+    message: str | None,
+    *,
+    kind: str = "error",
+    feedback_id: str | None = None,
+    dismissible: bool | None = None,
+) -> None:
+    """Render the one stable feedback slot immediately before an Auth CTA."""
+    safe_kind = kind if kind in {"error", "notice", "success"} else "error"
+    if not message:
         st.markdown(
-            '<div class="auth-form-feedback auth-form-feedback-error '
-            'auth-form-feedback-dismissible" role="alert" '
-            f'data-auth-feedback-id="{safe_feedback_id}">{safe_message}</div>',
+            '<div class="auth-form-feedback-slot" aria-hidden="true"></div>',
             unsafe_allow_html=True,
         )
         return
-    if message not in _QUIET_FIELD_ERRORS:
-        st.error(message)
+    should_dismiss = safe_kind == "error" if dismissible is None else dismissible
+    classes = f"auth-form-feedback auth-form-feedback-{safe_kind}"
+    if should_dismiss:
+        classes += " auth-form-feedback-dismissible"
+    safe_feedback_id = html.escape(feedback_id or message, quote=True)
+    safe_message = html.escape(message)
+    role = "alert" if safe_kind == "error" else "status"
+    st.markdown(
+        '<div class="auth-form-feedback-slot">'
+        f'<div class="{classes}" data-auth-feedback-id="{safe_feedback_id}" '
+        f'role="{role}">{safe_message}</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def render_auth_email_input(
@@ -51,8 +51,6 @@ def render_auth_email_input(
     value: str | None = None,
     disabled: bool = False,
     invalid: bool = False,
-    error: str | None = None,
-    feedback_id: str | None = None,
 ) -> str:
     """Render the shared Auth email field and its consistent validation state."""
     input_options: dict[str, object] = {
@@ -64,13 +62,8 @@ def render_auth_email_input(
     if value is not None:
         input_options["value"] = value
     email = st.text_input("Email", **input_options)
-    if invalid or error:
-        render_auth_field_error(
-            "email",
-            error or EMAIL_ADDRESS_FORMAT_ERROR,
-            show_message=bool(error),
-            feedback_id=feedback_id,
-        )
+    if invalid:
+        render_auth_field_marker("email")
     return str(email)
 
 
@@ -924,10 +917,15 @@ def apply_auth_css() -> None:
             width: auto !important;
         }
 
-        .stApp:has(.auth-screen-active) .auth-form-feedback,
-        .stApp:has(.auth-screen-active) .costerly-terms-feedback {
+        .stApp:has(.auth-screen-active) .auth-form-feedback-slot {
+            min-height: 19px;
             margin-top: -3px;
             margin-bottom: 1px;
+        }
+
+        .stApp:has(.auth-screen-active) .auth-form-feedback,
+        .stApp:has(.auth-screen-active) .costerly-terms-feedback {
+            margin: 0;
             display: block;
             font-family: var(--font-sans);
             font-size: 13px;
