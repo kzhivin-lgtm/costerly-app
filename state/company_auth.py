@@ -1550,25 +1550,38 @@ def _open_company_account() -> None:
     set_screen("account")
 
 
-def render_account_control(access: CompanyAccess) -> None:
-    if st.session_state.get("screen") == "account":
+def _open_platform_admin() -> None:
+    """Set navigation before Streamlit renders the Admin dashboard."""
+    from state.session import set_screen
+
+    set_screen("admin")
+
+
+def render_account_control(access: CompanyAccess, *, platform_access=None) -> None:
+    if st.session_state.get("screen") in {"account", "admin"}:
         return
     render_account_header_controls(
         on_profile=_open_company_account,
         on_sign_out=sign_out,
+        on_admin=_open_platform_admin,
+        show_admin=platform_access is not None,
         show_projects=st.session_state.get("screen", "upload") == "upload",
     )
 
 
-def render_company_account(access: CompanyAccess, *, trace=None) -> None:
+def render_company_account(access: CompanyAccess, *, platform_access=None, trace=None) -> None:
     if trace is None:
         from screens.company_profile import render_company_profile
 
-        render_company_profile(access)
+        render_company_profile(access, platform_access=platform_access)
         return
 
     with trace.span("server.company_profile_import"):
         from screens.company_profile import render_company_profile
 
     with trace.span("server.company_profile_render"):
-        render_company_profile(access, trace=trace)
+        render_company_profile(
+            access,
+            platform_access=platform_access,
+            trace=trace,
+        )

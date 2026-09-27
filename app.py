@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version as package_version
 import platform
 import time
@@ -38,6 +39,7 @@ from db.supabase_client import get_supabase_client
 from styles.base import apply_base_css
 from ui.js_guards import scroll_parent_to_top, signal_app_ready_to_embed
 from ui.app_header import render_app_header
+from use_cases.platform_admin import load_platform_access, record_daily_activity
 
 
 def _installed_version(distribution: str) -> str:
@@ -90,6 +92,9 @@ def _browser_route(screen: str) -> dict[str, str]:
         )
         return {"screen": "account", "profile_tab": tab_route}
 
+    if screen == "admin":
+        return {"screen": "admin"}
+
     if screen == "file_review":
         run_id = str(st.session_state.get("current_run_id") or "")
         return {"screen": screen, "run_id": run_id} if run_id else {"screen": "upload"}
@@ -126,7 +131,14 @@ def _signal_ready(trace, screen: str) -> None:
     trace.event("server.run_complete")
 
 
-def _render_screen(screen: str, company_id: str, *, access=None, trace=None) -> None:
+def _render_screen(
+    screen: str,
+    company_id: str,
+    *,
+    access=None,
+    platform_access=None,
+    trace=None,
+) -> None:
     if screen == "upload":
         from screens.upload import render_upload_screen
 
@@ -150,7 +162,17 @@ def _render_screen(screen: str, company_id: str, *, access=None, trace=None) -> 
     elif screen == "account":
         if access is None or access.company_id != company_id:
             raise PermissionError("Company access changed. Please sign in again.")
-        render_company_account(access, trace=trace)
+        render_company_account(
+            access,
+            platform_access=platform_access,
+            trace=trace,
+        )
+    elif screen == "admin":
+        if access is None or platform_access is None:
+            raise PermissionError("Platform Admin access is required.")
+        from screens.platform_admin import render_platform_admin_screen
+
+        render_platform_admin_screen(access, platform_access)
     else:
         st.session_state.screen = "upload"
         st.rerun()
@@ -189,6 +211,7 @@ def main() -> None:
 
     auth_enabled = company_auth_enabled()
     access = None
+    platform_access = None
     if auth_enabled:
         startup_probe = str(st.query_params.get("startup_probe") or "")
         recovery_requested = str(st.query_params.get("auth_flow") or "") == "recovery"
@@ -297,6 +320,7 @@ def main() -> None:
             _signal_ready(trace, "company_setup")
             return
         st.session_state.auth_company_id = access.company_id
+        st.session_state.auth_user_id = access.user_id
         st.session_state.auth_access_token = access.access_token
         requested_screen = st.query_params.get("screen")
         if requested_screen == "account":
@@ -323,8 +347,52 @@ def main() -> None:
                     render_terms_acceptance(access)
                 _signal_ready(trace, "terms_acceptance")
                 return
+        platform_user_id = str(access.user_id)
+        if st.session_state.get("_platform_access_user_id") == platform_user_id:
+            platform_access = st.session_state.get("_platform_access")
+        else:
+            try:
+                platform_access = load_platform_access(
+                    get_supabase_client(),
+                    platform_user_id,
+                )
+            except Exception as exc:
+                trace.event(
+                    "server.platform_access_unavailable",
+                    status="error",
+                    metadata={"error_type": type(exc).__name__},
+                )
+                platform_access = None
+            else:
+                st.session_state._platform_access_user_id = platform_user_id
+                st.session_state._platform_access = platform_access
+        if requested_screen == "admin":
+            if platform_access is None:
+                st.query_params.clear()
+                st.session_state.screen = "upload"
+                st.error("Platform Admin access is required.")
+                _signal_ready(trace, "platform_access_error")
+                return
+            st.session_state.screen = "admin"
+            if "screen" in st.query_params:
+                del st.query_params["screen"]
+        activity_key = f"{access.company_id}:{datetime.now(UTC).date().isoformat()}"
+        if st.session_state.get("_product_activity_key") != activity_key:
+            try:
+                record_daily_activity(
+                    get_supabase_client(),
+                    company_id=str(access.company_id),
+                    user_id=str(access.user_id),
+                )
+                st.session_state._product_activity_key = activity_key
+            except Exception as exc:
+                trace.event(
+                    "server.product_activity_unavailable",
+                    status="error",
+                    metadata={"error_type": type(exc).__name__},
+                )
         with trace.span("server.account_controls_render"):
-            render_account_control(access)
+            render_account_control(access, platform_access=platform_access)
     else:
         with trace.span("server.app_header_render"):
             render_app_header()
@@ -413,6 +481,11 @@ def main() -> None:
             st.error("The selected RFQ or estimate is not available to your company.")
             _signal_ready(trace, "company_access_error")
             return
+        if screen == "admin" and platform_access is None:
+            st.session_state.screen = "upload"
+            st.error("Platform Admin access is required.")
+            _signal_ready(trace, "platform_access_error")
+            return
     last_screen_for_scroll = st.session_state.get("_last_screen_for_scroll")
     if last_screen_for_scroll != screen:
         is_initial_upload_render = last_screen_for_scroll is None and screen == "upload"
@@ -422,7 +495,13 @@ def main() -> None:
 
     trace.set_screen(screen)
     with trace.span("server.screen_render", route=screen):
-        _render_screen(screen, company_id, access=access, trace=trace)
+        _render_screen(
+            screen,
+            company_id,
+            access=access,
+            platform_access=platform_access,
+            trace=trace,
+        )
 
     _signal_ready(trace, screen)
 

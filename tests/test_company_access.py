@@ -844,7 +844,9 @@ def test_company_account_traces_lazy_profile_import_and_render(monkeypatch):
     monkeypatch.setattr(
         company_profile,
         "render_company_profile",
-        lambda access, *, trace=None: rendered.append((access, trace)),
+        lambda access, *, platform_access=None, trace=None: rendered.append(
+            (access, platform_access, trace)
+        ),
     )
     access = company_auth.CompanyAccess(
         "user-1", "owner@example.com", "company-a", "owner", "token"
@@ -859,7 +861,7 @@ def test_company_account_traces_lazy_profile_import_and_render(monkeypatch):
         ("start", "server.company_profile_render"),
         ("end", "server.company_profile_render"),
     ]
-    assert rendered == [(access, trace)]
+    assert rendered == [(access, None, trace)]
 
 
 def test_owner_join_link_uses_public_application_not_localhost(monkeypatch):
@@ -1115,7 +1117,7 @@ def test_company_profile_has_seven_tabs_and_owner_only_controls(monkeypatch, rol
 
     def load_members(_access):
         calls["members"] += 1
-        return [{"Email": "owner@example.com", "Role": "Owner"}]
+        return [{"Email": "owner@example.com", "Role": "Company Admin"}]
 
     def load_metrics(_access):
         calls["metrics"] += 1
@@ -2276,12 +2278,12 @@ def test_owner_can_confirm_member_access_removal_from_users_tab(monkeypatch):
             {
                 "User ID": "user-1",
                 "Email": "owner@example.com",
-                "Role": "Owner",
+                "Role": "Company Admin",
             },
             {
                 "User ID": "user-2",
                 "Email": "member@example.com",
-                "Role": "Member",
+                "Role": "Team Member",
             },
         ],
     )

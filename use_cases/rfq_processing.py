@@ -50,6 +50,7 @@ from db.supabase_client import get_supabase_client
 from db.company_access import assert_run_owned
 from state.session import get_company_id
 from use_cases.retry import read_with_retry
+from use_cases.platform_admin import record_rfq_upload
 
 
 _DIAGNOSTICS_EXECUTOR = ThreadPoolExecutor(
@@ -309,11 +310,22 @@ def process_uploaded_rfq(
     file_name: str,
     file_bytes: bytes,
     company_id: str,
+    user_id: str | None = None,
     progress_callback: Callable[[str, int | None], None] | None = None,
 ) -> dict:
     """Run RFQ detection once and persist the validated result to Supabase."""
     cycle_started_at = datetime.now(UTC).isoformat()
     cycle_started = time.perf_counter()
+    client = get_supabase_client()
+    try:
+        record_rfq_upload(
+            client,
+            company_id=company_id,
+            user_id=user_id,
+            file_bytes=file_bytes,
+        )
+    except Exception as exc:
+        print(f"[Product Analytics] Could not record RFQ upload: {exc}")
     page_images = None
     page_image_diagnostics: dict[str, Any] = {}
     use_page_images = should_use_detection_page_images(
@@ -389,7 +401,6 @@ def process_uploaded_rfq(
 
     if progress_callback:
         progress_callback("Saving results", None)
-    client = get_supabase_client()
     upsert_rfq_detection_result(client, detection_result)
     if locked_objects is not None:
         naming_future = _NAMING_EXECUTOR.submit(

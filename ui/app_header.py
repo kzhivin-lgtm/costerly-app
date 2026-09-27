@@ -27,11 +27,30 @@ def render_account_header_controls(
     *,
     on_profile,
     on_sign_out,
+    on_admin=None,
+    show_admin: bool = False,
     show_projects: bool = False,
 ) -> None:
     """Render authenticated actions with navigation applied before the next run."""
     with st.container(key="costerly_header_controls"):
-        if show_projects:
+        if show_projects and show_admin:
+            projects, admin, profile, sign_out_control = st.columns(4)
+            with projects:
+                st.button(
+                    "Projects",
+                    key="open_projects_placeholder",
+                    use_container_width=True,
+                    disabled=True,
+                    help="Project history is coming next.",
+                )
+            with admin:
+                st.button(
+                    "Admin",
+                    key="open_platform_admin",
+                    use_container_width=True,
+                    on_click=on_admin,
+                )
+        elif show_projects:
             projects, profile, sign_out_control = st.columns(3)
             with projects:
                 st.button(
@@ -40,6 +59,15 @@ def render_account_header_controls(
                     use_container_width=True,
                     disabled=True,
                     help="Project history is coming next.",
+                )
+        elif show_admin:
+            admin, profile, sign_out_control = st.columns(3)
+            with admin:
+                st.button(
+                    "Admin",
+                    key="open_platform_admin",
+                    use_container_width=True,
+                    on_click=on_admin,
                 )
         else:
             profile, sign_out_control = st.columns(2)

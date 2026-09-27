@@ -90,6 +90,7 @@ def render_processing_screen(company_id: str) -> None:
                 file_name=file_name,
                 file_bytes=file_bytes,
                 company_id=company_id,
+                user_id=st.session_state.get("auth_user_id"),
                 progress_callback=update_phase,
             )
 

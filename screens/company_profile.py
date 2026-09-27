@@ -1127,9 +1127,12 @@ def load_company_members(access: CompanyAccess) -> list[dict]:
         members.append({
             "User ID": user_id,
             "Email": email,
-            "Role": "Owner" if row["role"] == "owner" else "Member",
+            "Role": "Company Admin" if row["role"] == "owner" else "Team Member",
         })
-    return sorted(members, key=lambda item: (item["Role"] != "Owner", item["Email"].lower()))
+    return sorted(
+        members,
+        key=lambda item: (item["Role"] != "Company Admin", item["Email"].lower()),
+    )
 
 
 def _owner_access(access: CompanyAccess) -> tuple[CompanyAccess, object]:
@@ -3082,7 +3085,7 @@ def _render_users(access: CompanyAccess) -> None:
         removable_members = {
             str(member.get("User ID") or ""): member
             for member in members
-            if member.get("Role") != "Owner" and member.get("User ID")
+            if member.get("Role") != "Company Admin" and member.get("User ID")
         }
         rows = "".join(
             "<tr>"
@@ -3095,7 +3098,7 @@ def _render_users(access: CompanyAccess) -> None:
                     'data-company-user-delete '
                     f'data-member-id="{escape(str(member.get("User ID") or ""))}" '
                     'aria-label="Remove user access" title="Remove user access">×</button>'
-                    if member.get("Role") != "Owner"
+                    if member.get("Role") != "Company Admin"
                     else ""
                 )
                 + "</td>"
@@ -3929,7 +3932,14 @@ def _open_upload_screen() -> None:
     set_screen("upload")
 
 
-def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
+def _open_platform_admin_screen() -> None:
+    """Set navigation before Streamlit renders the Admin dashboard."""
+    from state.session import set_screen
+
+    set_screen("admin")
+
+
+def render_company_profile(access: CompanyAccess, *, platform_access=None, trace=None) -> None:
     phase_started_at = time.perf_counter()
 
     def finish_phase(name: str, summary_key: str) -> None:
@@ -3961,7 +3971,22 @@ def render_company_profile(access: CompanyAccess, *, trace=None) -> None:
         )
     with header_right:
         with st.container(key="company_profile_actions"):
-            projects_action, estimate_action, sign_out_action = st.columns([1, 1.15, 1])
+            action_columns = (
+                st.columns([0.9, 1, 1.15, 1])
+                if platform_access is not None
+                else st.columns([1, 1.15, 1])
+            )
+            if platform_access is not None:
+                admin_action, projects_action, estimate_action, sign_out_action = action_columns
+                with admin_action:
+                    st.button(
+                        "Admin",
+                        key="profile_to_admin",
+                        use_container_width=True,
+                        on_click=_open_platform_admin_screen,
+                    )
+            else:
+                projects_action, estimate_action, sign_out_action = action_columns
             with projects_action:
                 st.button(
                     "Projects",
