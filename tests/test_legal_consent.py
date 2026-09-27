@@ -1,6 +1,8 @@
 from pathlib import Path
 import hashlib
+from types import SimpleNamespace
 
+import pytest
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
@@ -233,6 +235,73 @@ def test_one_accepted_signup_advances_directly_to_verification(monkeypatch):
     rendered = "\n".join(item.value for item in app.markdown)
     assert "Check your email to verify your account" in rendered
     assert not any(b.label == "Create Company Account" for b in app.button)
+
+
+def test_existing_email_is_rejected_before_pending_registration(monkeypatch):
+    invitation = company_auth.InvitationContext("create", "A" * 43)
+    pending_calls = []
+    auth = SimpleNamespace(
+        sign_up=lambda _payload: SimpleNamespace(
+            user=SimpleNamespace(id="obfuscated-user", identities=[]),
+            session=None,
+        )
+    )
+
+    monkeypatch.setattr(company_auth, "require_public_invitation_request", lambda: None)
+    monkeypatch.setattr(company_auth, "invitation_from_url", lambda: invitation)
+    monkeypatch.setattr(company_auth, "current_legal_documents", lambda _client: _documents())
+    monkeypatch.setattr(company_auth, "_server_client", lambda: object())
+    monkeypatch.setattr(
+        company_auth,
+        "_auth_client",
+        lambda: SimpleNamespace(auth=auth),
+    )
+    monkeypatch.setattr(
+        company_auth,
+        "record_pending_registration",
+        lambda *_args, **_kwargs: pending_calls.append("pending"),
+    )
+
+    with pytest.raises(
+        company_auth.ExistingLoginPasswordError,
+        match="This email already has a login",
+    ):
+        company_auth.begin_verified_sign_up(
+            "owner@example.com",
+            "Strong123",
+            invitation,
+            organization_name="Workshop",
+        )
+
+    assert pending_calls == []
+    assert "pending_verification_email" not in st.session_state
+
+
+def test_existing_email_stays_on_registration_form_with_actionable_error(monkeypatch):
+    monkeypatch.setattr(company_auth, "legal_consent_enabled", lambda: True)
+    monkeypatch.setattr(company_auth, "current_legal_documents", lambda _client: _documents())
+    monkeypatch.setattr(company_auth, "_server_client", lambda: object())
+
+    def reject_existing(*_args, **_kwargs):
+        raise company_auth.ExistingLoginPasswordError("existing")
+
+    monkeypatch.setattr(company_auth, "begin_verified_sign_up", reject_existing)
+    app = AppTest.from_function(_render_company_registration).run()
+    app.text_input(key="signup_company_name").set_value("Workshop")
+    app.text_input(key="signup_email").set_value("owner@example.com")
+    app.text_input(key="signup_password").set_value("Strong123")
+    app.text_input(key="signup_password_confirm").set_value("Strong123")
+    app.checkbox(key="company_creation_terms_accepted").check()
+    next(b for b in app.button if b.label == "Create Company Account").click().run()
+
+    assert not app.exception
+    assert any(b.label == "Create Company Account" for b in app.button)
+    assert any(
+        "This email already has a login. Sign in or use another email" in item.value
+        for item in app.error
+    )
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert "Check your email to verify your account" not in rendered
 
 
 def test_returning_sign_in_never_discloses_terms_before_authentication(monkeypatch):

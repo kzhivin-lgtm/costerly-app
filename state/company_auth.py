@@ -71,6 +71,11 @@ class ExistingLoginPasswordError(ValueError):
     """An invited signup used an existing email with a different password."""
 
 
+EXISTING_EMAIL_REGISTRATION_MESSAGE = (
+    "This email already has a login. Sign in or use another email"
+)
+
+
 _LOCAL_REGISTRATION_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
@@ -553,10 +558,9 @@ def begin_verified_sign_up(
     identities = getattr(user, "identities", None)
     if identities is not None and len(identities) == 0:
         # Supabase intentionally returns an obfuscated user for an existing
-        # address. Preserve the same visible outcome without fabricating legal
-        # evidence for an identity that did not authenticate.
-        st.session_state.pending_verification_email = email.strip()
-        return
+        # address. Invitation-only registration can reject that result on the
+        # submitted form without creating legal evidence or consuming the link.
+        raise ExistingLoginPasswordError(EXISTING_EMAIL_REGISTRATION_MESSAGE)
     if getattr(response, "session", None) is not None:
         raise RuntimeError("Email verification is not enabled for new accounts")
     record_pending_registration(
@@ -674,7 +678,7 @@ def authenticate_invited_creator(email: str, password: str, invitation: Invitati
     except AuthApiError as exc:
         if exc.code in {"email_exists", "user_already_exists"}:
             raise ExistingLoginPasswordError(
-                "This email already has a login. Enter the password from your first attempt."
+                EXISTING_EMAIL_REGISTRATION_MESSAGE
             ) from exc
         raise
 
@@ -1070,11 +1074,11 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                     raise RuntimeError("Sign-in session was not returned.")
                 if access.company_id is not None:
                     raise ExistingLoginPasswordError(
-                        "This email is already registered. Use a different email."
+                        EXISTING_EMAIL_REGISTRATION_MESSAGE
                     )
             except ExistingLoginPasswordError:
                 st.session_state.company_creation_error = {
-                    "email": "This email is already registered. Use a different email."
+                    "email": EXISTING_EMAIL_REGISTRATION_MESSAGE
                 }
                 st.rerun()
             except PermissionError as exc:
@@ -1085,7 +1089,7 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 st.rerun()
             except AuthApiError as exc:
                 message = (
-                    "This email is already registered. Use a different email."
+                    EXISTING_EMAIL_REGISTRATION_MESSAGE
                     if exc.code in {"email_exists", "user_already_exists"}
                     else "We couldn't create your login. Check your email and try again."
                 )
@@ -1179,12 +1183,17 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 if "invite" in st.query_params:
                     del st.query_params["invite"]
                 st.rerun()
+            except ExistingLoginPasswordError:
+                st.session_state.company_join_error = {
+                    "email": EXISTING_EMAIL_REGISTRATION_MESSAGE
+                }
+                st.rerun()
             except PermissionError as exc:
                 st.session_state.company_join_error = {"service": str(exc)}
                 st.rerun()
             except AuthApiError as exc:
                 message = (
-                    "This email is already registered. Sign in using the same company link."
+                    EXISTING_EMAIL_REGISTRATION_MESSAGE
                     if exc.code in {"email_exists", "user_already_exists"}
                     else "We couldn't create your login. Check your email and try again."
                 )

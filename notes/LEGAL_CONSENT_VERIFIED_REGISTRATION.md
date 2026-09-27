@@ -183,7 +183,7 @@ acceptance. It does not establish legal approval of the document text.
 | Valid signup is submitted | Resolve current published document versions and hashes on the server, create one unverified Auth user, append one signup acceptance, persist one pending registration, and show the verification screen |
 | Submit is clicked repeatedly | Disable duplicate submission and create at most one Auth user, pending registration, and signup acceptance |
 | Auth provider rejects or times out | End loading, preserve editable values, show an actionable service error, and permit a safe retry |
-| Existing confirmed email is submitted | Do not reveal account existence; show the same verification result without creating another legal event or registration |
+| Existing confirmed email is submitted | Keep the invitation registration form open, mark Email, show `This email already has a login. Sign in or use another email`, and create no pending registration or legal event |
 | Verification screen opens | Show the brand and `Check your email to verify your account`; do not expose application or company data |
 | Message does not arrive | Offer a quiet `Contact support` route; do not claim delivery failure that the provider did not report |
 | Verification screen is refreshed or revisited | Keep the account inactive; Sign in before verification returns to the verification state |

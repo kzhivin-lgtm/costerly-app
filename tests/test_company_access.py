@@ -3398,7 +3398,7 @@ def test_existing_email_with_wrong_password_gets_actionable_error(monkeypatch):
     monkeypatch.setattr(company_auth, "sign_up", lambda *_args: (_ for _ in ()).throw(
         company_auth.AuthApiError("A user with this email address has already been registered", 422, "email_exists")
     ))
-    with pytest.raises(company_auth.ExistingLoginPasswordError, match="password from your first attempt"):
+    with pytest.raises(company_auth.ExistingLoginPasswordError, match="already has a login"):
         company_auth.authenticate_invited_creator("owner@example.com", "Wrong123", company_auth.InvitationContext("create", new_invite_token()))
 
 
@@ -3415,7 +3415,10 @@ def test_existing_login_error_is_shown_at_email_without_extra_button(monkeypatch
     app.text_input(key="signup_password").set_value("Wrong123")
     app.text_input(key="signup_password_confirm").set_value("Wrong123")
     next(button for button in app.button if button.label == "Create Company Account").click().run()
-    assert any("already registered" in error.value for error in app.error)
+    assert any(
+        error.value == company_auth.EXISTING_EMAIL_REGISTRATION_MESSAGE
+        for error in app.error
+    )
     assert any('data-auth-field="email"' in item.value for item in app.markdown)
     assert not any('data-auth-field="password"' in item.value for item in app.markdown)
     assert not any(button.label.startswith("Already have a login?") for button in app.button)
