@@ -88,6 +88,12 @@ def _render_sign_in():
     company_auth.render_login_or_signup(None)
 
 
+def _render_email_confirmation_error():
+    from state import company_auth
+
+    company_auth.render_email_confirmation_error()
+
+
 def _render_member_registration():
     from state import company_auth
 
@@ -366,6 +372,21 @@ def test_verification_screen_is_minimal_and_has_quiet_support_route():
     assert "auth-message-card" in rendered
     assert not app.text_input
     assert not app.button
+
+
+def test_confirmation_error_returns_through_public_app_wrapper(monkeypatch):
+    monkeypatch.setattr(
+        company_auth,
+        "get_optional_secret",
+        lambda name: "https://app.costerly.ai/" if name == "COSTERLY_PUBLIC_URL" else None,
+    )
+
+    app = AppTest.from_function(_render_email_confirmation_error).run()
+
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert not app.exception
+    assert 'href="https://app.costerly.ai/" target="_top"' in rendered
+    assert 'href="/" target="_top"' not in rendered
 
 
 def test_every_company_setup_state_uses_the_shared_auth_template():

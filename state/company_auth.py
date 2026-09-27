@@ -646,10 +646,16 @@ def render_email_verification_pending() -> None:
 def render_email_confirmation_error() -> None:
     install_auth_form_interactions()
     _render_auth_heading("This verification link is invalid or has expired")
+    sign_in_url = html.escape(
+        public_app_url(
+            get_optional_secret("COSTERLY_PUBLIC_URL") or DEFAULT_PUBLIC_APP_URL
+        ),
+        quote=True,
+    )
     st.markdown(
         '<div class="auth-message-card">'
         f'<div class="auth-verification-support">'
-        f'<a href="/" target="_top">Return to sign in</a> · '
+        f'<a href="{sign_in_url}" target="_top">Return to sign in</a> · '
         f'<a href="mailto:{SUPPORT_EMAIL}">Contact support</a></div>'
         '</div>',
         unsafe_allow_html=True,
