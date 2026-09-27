@@ -428,6 +428,8 @@ def test_confirmation_and_permanent_privacy_routes_are_wired():
     assert '<a href="/privacy"' in wrapper
     assert 'args.confirmationRequested' in component
     assert 'confirmation: Boolean(confirmationSession)' in component
+    assert 'const confirmationStorageKey = `${storageKey}:confirmation`' in component
+    assert "window.sessionStorage.getItem(confirmationStorageKey)" in component
     assert "/confirm  /index.html  200" in redirects
     assert "/terms " not in redirects
     assert "/privacy " not in redirects

@@ -569,6 +569,26 @@ def test_recovery_bootstrap_bypasses_fast_resume_and_marks_recovery(monkeypatch)
     assert st.session_state._fast_resume_outcome == "recovery_session"
 
 
+def test_confirmation_rerun_reuses_restored_memory_without_overwriting_success(
+    monkeypatch,
+):
+    st = company_auth.st
+    st.session_state.clear()
+    st.session_state.auth_access_token = "confirmed-access"
+    st.session_state.auth_refresh_token = "confirmed-refresh"
+    st.session_state.auth_confirmation_complete = True
+    monkeypatch.setattr(
+        company_auth,
+        "browser_session_exchange",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            AssertionError("A consumed confirmation fragment must not be read again")
+        ),
+    )
+
+    assert company_auth.sync_browser_auth_session(confirmation_requested=True) is True
+    assert st.session_state._browser_auth_sync_outcome == "confirmation_already_restored"
+
+
 def test_recovered_password_uses_verified_session_and_registration_policy(monkeypatch):
     calls = []
 

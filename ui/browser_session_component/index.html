@@ -5,6 +5,7 @@
     <script>
       (() => {
         const storageKey = "costerly.supabase.session.v1";
+        const confirmationStorageKey = `${storageKey}:confirmation`;
         const resumeCookieName = "__Host-costerly-resume-v1";
         const resumeCookieMaxAge = 30 * 60;
         let lastValue = null;
@@ -134,10 +135,19 @@
                   expires_at: explicitExpiry || Math.floor(Date.now() / 1000) + expiresIn,
                 };
                 window.sessionStorage.setItem(storageKey, JSON.stringify(confirmationSession));
+                window.sessionStorage.setItem(
+                  confirmationStorageKey,
+                  JSON.stringify(confirmationSession),
+                );
                 return confirmationSession;
               }
             }
-            return null;
+            const cached = window.sessionStorage.getItem(confirmationStorageKey);
+            if (!cached) return null;
+            const confirmationSession = JSON.parse(cached);
+            return confirmationSession && typeof confirmationSession === "object"
+              ? confirmationSession
+              : null;
           } catch (_) {
             return null;
           }
@@ -152,6 +162,11 @@
           const session = recoverySession || confirmationSession || (
             args.recoveryRequested || args.confirmationRequested ? null : readSession()
           );
+          if (!args.confirmationRequested) {
+            try {
+              window.sessionStorage.removeItem(confirmationStorageKey);
+            } catch (_) {}
+          }
           if (recoverySession) {
             try {
               window.sessionStorage.removeItem(storageKey);
@@ -208,6 +223,7 @@
             } else if (args.action === "clear") {
               window.sessionStorage.removeItem(storageKey);
               window.sessionStorage.removeItem(`${storageKey}:recovery`);
+              window.sessionStorage.removeItem(confirmationStorageKey);
               clearResumeCookie();
             }
           } catch (_) {

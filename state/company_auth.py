@@ -261,6 +261,14 @@ def sync_browser_auth_session(
         and st.session_state.get("auth_refresh_token")
     )
     if (
+        confirmation_requested
+        and has_memory_session
+        and st.session_state.get("auth_confirmation_complete")
+    ):
+        st.session_state._browser_auth_initialized = True
+        st.session_state._browser_auth_sync_outcome = "confirmation_already_restored"
+        return True
+    if (
         not isinstance(pending, dict)
         and not st.session_state.get("_browser_auth_initialized")
         and not has_memory_session
