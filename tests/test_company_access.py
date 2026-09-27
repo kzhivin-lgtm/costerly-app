@@ -3245,6 +3245,7 @@ def test_empty_price_catalog_uses_complete_card_geometry():
     assert "border-radius: 0 0 17px 17px !important;" in css
     assert "justify-content: flex-start;" in css
     assert "text-align: left;" in css
+    assert "background: transparent;" in css
     assert '[data-testid="stMarkdownContainer"] {' in css
     assert "box-shadow: 0 0 0 1px var(--color-border-soft)" not in catalog_expander_rule
     assert "box-shadow: 0 0 0 1px var(--color-border-soft)" not in source_library_rule

@@ -1402,7 +1402,7 @@ def apply_company_profile_css() -> None:
             align-items: center;
             justify-content: flex-start;
             padding: 0 38px;
-            background: #FFFFFF;
+            background: transparent;
             color: var(--color-text-muted);
             font-size: 13px;
             line-height: 1.35;
