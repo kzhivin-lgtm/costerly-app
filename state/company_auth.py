@@ -46,6 +46,7 @@ from ui.browser_session import (
 )
 from state.session_resume import restore_resume_session, seal_resume_session
 from state.legal_consent import (
+    LegalDocumentSet,
     SUPPORT_EMAIL,
     TERMS_CHECKBOX_TEXT,
     current_legal_documents,
@@ -565,12 +566,14 @@ def begin_verified_sign_up(
     invitation: InvitationContext,
     *,
     organization_name: str | None = None,
+    documents: LegalDocumentSet | None = None,
 ) -> None:
     """Create an inactive account and preserve its legal registration context."""
     require_public_invitation_request()
     if not valid_invite_token(invitation.token) or invitation_from_url() != invitation:
         raise PermissionError("A valid invitation link is required.")
-    documents = current_legal_documents(_server_client())
+    if documents is None:
+        documents = current_legal_documents(_server_client())
     response = _auth_client().auth.sign_up({
         "email": email.strip(),
         "password": password,
@@ -709,6 +712,169 @@ def authenticate_invited_creator(email: str, password: str, invitation: Invitati
                 EXISTING_EMAIL_REGISTRATION_MESSAGE
             ) from exc
         raise
+
+
+def _submit_company_creation(
+    invitation: InvitationContext,
+    legal_documents: LegalDocumentSet | None,
+) -> None:
+    """Process company registration before the click-triggered render begins."""
+    email = str(st.session_state.get("signup_email") or "")
+    password = str(st.session_state.get("signup_password") or "")
+    confirm = str(st.session_state.get("signup_password_confirm") or "")
+    company_name = str(st.session_state.get("signup_company_name") or "")
+    terms_accepted = (
+        bool(st.session_state.get("company_creation_terms_accepted"))
+        if legal_documents is not None
+        else None
+    )
+    st.session_state.pop("company_creation_error", None)
+    validation_errors = registration_validation_errors(
+        email,
+        password,
+        confirm,
+        company_name,
+        terms_accepted,
+    )
+    if validation_errors:
+        _set_registration_form_errors("company_creation_error", validation_errors)
+        return
+    try:
+        if legal_documents is not None:
+            begin_verified_sign_up(
+                email,
+                password,
+                invitation,
+                organization_name=company_name,
+                documents=legal_documents,
+            )
+            return
+        authenticate_invited_creator(email, password, invitation)
+        access = current_company_access()
+        if access is None:
+            raise RuntimeError("Sign-in session was not returned.")
+        if access.company_id is not None:
+            raise ExistingLoginPasswordError(EXISTING_EMAIL_REGISTRATION_MESSAGE)
+    except ExistingLoginPasswordError:
+        _set_registration_form_errors(
+            "company_creation_error",
+            {"email": EXISTING_EMAIL_REGISTRATION_MESSAGE},
+        )
+        return
+    except PermissionError as exc:
+        _set_registration_form_errors(
+            "company_creation_error",
+            {"service": str(exc)},
+        )
+        return
+    except ValueError as exc:
+        _set_registration_form_errors(
+            "company_creation_error",
+            {"service": str(exc)},
+        )
+        return
+    except AuthApiError as exc:
+        message = (
+            EXISTING_EMAIL_REGISTRATION_MESSAGE
+            if exc.code in {"email_exists", "user_already_exists"}
+            else "We couldn't create your login. Check your email and try again."
+        )
+        field = (
+            "email"
+            if exc.code in {"email_exists", "user_already_exists"}
+            else "service"
+        )
+        _set_registration_form_errors("company_creation_error", {field: message})
+        return
+    except Exception:
+        _set_registration_form_errors(
+            "company_creation_error",
+            {"service": "We couldn't create your login. Try again in a moment."},
+        )
+        return
+    try:
+        show_company_creation_started()
+        create_company_for_user(access, company_name, invitation.token)
+        st.session_state.screen = "account"
+        if "invite" in st.query_params:
+            del st.query_params["invite"]
+    except Exception:
+        st.session_state.pending_company_name = company_name.strip()
+        st.session_state.company_setup_error = (
+            "Your login was created, but company setup did not finish. "
+            "Use this link to try again."
+        )
+
+
+def _submit_company_join(
+    invitation: InvitationContext,
+    legal_documents: LegalDocumentSet | None,
+) -> None:
+    """Process member registration before the click-triggered render begins."""
+    email = str(st.session_state.get("signup_email") or "")
+    password = str(st.session_state.get("signup_password") or "")
+    confirm = str(st.session_state.get("signup_password_confirm") or "")
+    terms_accepted = (
+        bool(st.session_state.get("company_join_terms_accepted"))
+        if legal_documents is not None
+        else None
+    )
+    st.session_state.pop("company_join_error", None)
+    validation_errors = registration_validation_errors(
+        email,
+        password,
+        confirm,
+        terms_accepted=terms_accepted,
+    )
+    if validation_errors:
+        _set_registration_form_errors("company_join_error", validation_errors)
+        return
+    try:
+        if legal_documents is not None:
+            begin_verified_sign_up(
+                email,
+                password,
+                invitation,
+                documents=legal_documents,
+            )
+            return
+        sign_up(email, password, invitation)
+        access = current_company_access()
+        if access is None:
+            raise RuntimeError("Sign-in session was not returned.")
+        join_company_for_user(access, invitation.token)
+        if "invite" in st.query_params:
+            del st.query_params["invite"]
+    except ExistingLoginPasswordError:
+        _set_registration_form_errors(
+            "company_join_error",
+            {"email": EXISTING_EMAIL_REGISTRATION_MESSAGE},
+        )
+    except PermissionError as exc:
+        _set_registration_form_errors(
+            "company_join_error",
+            {"service": str(exc)},
+        )
+    except AuthApiError as exc:
+        message = (
+            EXISTING_EMAIL_REGISTRATION_MESSAGE
+            if exc.code in {"email_exists", "user_already_exists"}
+            else "We couldn't create your login. Check your email and try again."
+        )
+        field = (
+            "email"
+            if exc.code in {"email_exists", "user_already_exists"}
+            else "service"
+        )
+        _set_registration_form_errors("company_join_error", {field: message})
+    except Exception:
+        _set_registration_form_errors(
+            "company_join_error",
+            {"service": (
+                "We couldn't finish joining this company. If your login was "
+                "created, sign in using the same link."
+            )},
+        )
 
 
 def sign_out() -> None:
@@ -1054,23 +1220,22 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             st.session_state.get("company_creation_error_revision") or 0
         )
         with st.form("company_creation_registration"):
-            company_name = st.text_input("Your company name", key="signup_company_name", placeholder="Company name")
+            st.text_input("Your company name", key="signup_company_name", placeholder="Company name")
             if "company" in creation_errors:
                 render_auth_field_marker("company")
-            email = render_auth_email_input(
+            render_auth_email_input(
                 key="signup_email",
                 invalid="email" in creation_errors,
             )
-            password = st.text_input("Password", type="password", key="signup_password")
-            confirm = st.text_input("Confirm Password", type="password", key="signup_password_confirm")
+            st.text_input("Password", type="password", key="signup_password")
+            st.text_input("Confirm Password", type="password", key="signup_password_confirm")
             if "password" in creation_errors:
                 render_auth_field_marker("password")
             if "confirm" in creation_errors:
                 render_auth_field_marker("confirm")
             st.caption("Use at least 8 characters with an uppercase letter, a lowercase letter and a number")
-            terms_accepted = True
             if legal_documents is not None:
-                terms_accepted = _render_registration_terms(
+                _render_registration_terms(
                     legal_documents,
                     key="company_creation_terms_accepted",
                 )
@@ -1083,87 +1248,14 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 ),
                 feedback_id=f"company-form-{creation_error_revision}",
             )
-            submit = st.form_submit_button("Create Company Account", type="primary", use_container_width=True)
-        install_auth_form_interactions()
-        if submit:
-            st.session_state.pop("company_creation_error", None)
-            validation_errors = registration_validation_errors(
-                email,
-                password,
-                confirm,
-                company_name,
-                terms_accepted if legal_documents is not None else None,
+            st.form_submit_button(
+                "Create Company Account",
+                type="primary",
+                use_container_width=True,
+                on_click=_submit_company_creation,
+                args=(invitation, legal_documents),
             )
-            if validation_errors:
-                _set_registration_form_errors(
-                    "company_creation_error",
-                    validation_errors,
-                )
-                st.rerun()
-            try:
-                if legal_documents is not None:
-                    begin_verified_sign_up(
-                        email,
-                        password,
-                        invitation,
-                        organization_name=company_name,
-                    )
-                    st.rerun()
-                authenticate_invited_creator(email, password, invitation)
-                access = current_company_access()
-                if access is None:
-                    raise RuntimeError("Sign-in session was not returned.")
-                if access.company_id is not None:
-                    raise ExistingLoginPasswordError(
-                        EXISTING_EMAIL_REGISTRATION_MESSAGE
-                    )
-            except ExistingLoginPasswordError:
-                _set_registration_form_errors(
-                    "company_creation_error",
-                    {"email": EXISTING_EMAIL_REGISTRATION_MESSAGE},
-                )
-                st.rerun()
-            except PermissionError as exc:
-                _set_registration_form_errors(
-                    "company_creation_error",
-                    {"service": str(exc)},
-                )
-                st.rerun()
-            except ValueError as exc:
-                _set_registration_form_errors(
-                    "company_creation_error",
-                    {"service": str(exc)},
-                )
-                st.rerun()
-            except AuthApiError as exc:
-                message = (
-                    EXISTING_EMAIL_REGISTRATION_MESSAGE
-                    if exc.code in {"email_exists", "user_already_exists"}
-                    else "We couldn't create your login. Check your email and try again."
-                )
-                field = "email" if exc.code in {"email_exists", "user_already_exists"} else "service"
-                _set_registration_form_errors(
-                    "company_creation_error",
-                    {field: message},
-                )
-                st.rerun()
-            except Exception:
-                _set_registration_form_errors(
-                    "company_creation_error",
-                    {"service": "We couldn't create your login. Try again in a moment."},
-                )
-                st.rerun()
-            try:
-                show_company_creation_started()
-                create_company_for_user(access, company_name, invitation.token)
-                st.session_state.screen = "account"
-                if "invite" in st.query_params:
-                    del st.query_params["invite"]
-                st.rerun()
-            except Exception:
-                st.session_state.pending_company_name = company_name.strip()
-                st.session_state.company_setup_error = "Your login was created, but company setup did not finish. Use this link to try again."
-                st.rerun()
+        install_auth_form_interactions()
         return
 
     if invitation is not None and invitation.kind == "join":
@@ -1185,20 +1277,19 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             st.session_state.get("company_join_error_revision") or 0
         )
         with st.form("company_join_registration"):
-            email = render_auth_email_input(
+            render_auth_email_input(
                 key="signup_email",
                 invalid="email" in join_errors,
             )
-            password = st.text_input("Password", type="password", key="signup_password")
-            confirm = st.text_input("Confirm password", type="password", key="signup_password_confirm")
+            st.text_input("Password", type="password", key="signup_password")
+            st.text_input("Confirm password", type="password", key="signup_password_confirm")
             if "password" in join_errors:
                 render_auth_field_marker("password")
             if "confirm" in join_errors:
                 render_auth_field_marker("confirm")
             st.caption("At least 8 characters, one uppercase letter, one lowercase letter and one number")
-            terms_accepted = True
             if legal_documents is not None:
-                terms_accepted = _render_registration_terms(
+                _render_registration_terms(
                     legal_documents,
                     key="company_join_terms_accepted",
                 )
@@ -1211,77 +1302,14 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 ),
                 feedback_id=f"join-form-{join_error_revision}",
             )
-            submit = st.form_submit_button(
+            st.form_submit_button(
                 "Create account",
                 type="primary",
                 use_container_width=True,
+                on_click=_submit_company_join,
+                args=(invitation, legal_documents),
             )
         install_auth_form_interactions()
-        if submit:
-            st.session_state.pop("company_join_error", None)
-            validation_errors = registration_validation_errors(
-                email,
-                password,
-                confirm,
-                terms_accepted=(
-                    terms_accepted if legal_documents is not None else None
-                ),
-            )
-            if validation_errors:
-                _set_registration_form_errors(
-                    "company_join_error",
-                    validation_errors,
-                )
-                st.rerun()
-            try:
-                if legal_documents is not None:
-                    begin_verified_sign_up(email, password, invitation)
-                    st.rerun()
-                sign_up(email, password, invitation)
-                access = current_company_access()
-                if access is None:
-                    raise RuntimeError("Sign-in session was not returned.")
-                join_company_for_user(access, invitation.token)
-                if "invite" in st.query_params:
-                    del st.query_params["invite"]
-                st.rerun()
-            except ExistingLoginPasswordError:
-                _set_registration_form_errors(
-                    "company_join_error",
-                    {"email": EXISTING_EMAIL_REGISTRATION_MESSAGE},
-                )
-                st.rerun()
-            except PermissionError as exc:
-                _set_registration_form_errors(
-                    "company_join_error",
-                    {"service": str(exc)},
-                )
-                st.rerun()
-            except AuthApiError as exc:
-                message = (
-                    EXISTING_EMAIL_REGISTRATION_MESSAGE
-                    if exc.code in {"email_exists", "user_already_exists"}
-                    else "We couldn't create your login. Check your email and try again."
-                )
-                field = (
-                    "email"
-                    if exc.code in {"email_exists", "user_already_exists"}
-                    else "service"
-                )
-                _set_registration_form_errors(
-                    "company_join_error",
-                    {field: message},
-                )
-                st.rerun()
-            except Exception:
-                _set_registration_form_errors(
-                    "company_join_error",
-                    {"service": (
-                        "We couldn't finish joining this company. If your login was "
-                        "created, sign in using the same link."
-                    )},
-                )
-                st.rerun()
         return
 
     _render_auth_heading("Sign in")

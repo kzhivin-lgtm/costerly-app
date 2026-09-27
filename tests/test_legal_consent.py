@@ -1,5 +1,6 @@
 from pathlib import Path
 import hashlib
+import inspect
 from types import SimpleNamespace
 
 import pytest
@@ -249,7 +250,13 @@ def test_existing_email_is_rejected_before_pending_registration(monkeypatch):
 
     monkeypatch.setattr(company_auth, "require_public_invitation_request", lambda: None)
     monkeypatch.setattr(company_auth, "invitation_from_url", lambda: invitation)
-    monkeypatch.setattr(company_auth, "current_legal_documents", lambda _client: _documents())
+    monkeypatch.setattr(
+        company_auth,
+        "current_legal_documents",
+        lambda _client: (_ for _ in ()).throw(
+            AssertionError("Preloaded legal documents must be reused")
+        ),
+    )
     monkeypatch.setattr(company_auth, "_server_client", lambda: object())
     monkeypatch.setattr(
         company_auth,
@@ -271,18 +278,41 @@ def test_existing_email_is_rejected_before_pending_registration(monkeypatch):
             "Strong123",
             invitation,
             organization_name="Workshop",
+            documents=_documents(),
         )
 
     assert pending_calls == []
     assert "pending_verification_email" not in st.session_state
 
 
+def test_invited_registration_callbacks_avoid_post_submit_reruns():
+    source = inspect.getsource(company_auth.render_login_or_signup)
+    create_branch = source.split('invitation.kind == "create"', 1)[1].split(
+        'invitation.kind == "join"', 1
+    )[0]
+    join_branch = source.split('invitation.kind == "join"', 1)[1].split(
+        '_render_auth_heading("Sign in")', 1
+    )[0]
+
+    assert "on_click=_submit_company_creation" in create_branch
+    assert "on_click=_submit_company_join" in join_branch
+    assert "st.rerun()" not in create_branch
+    assert "st.rerun()" not in join_branch
+
+
 def test_existing_email_stays_on_registration_form_with_actionable_error(monkeypatch):
+    documents = _documents()
+    legal_loads = []
     monkeypatch.setattr(company_auth, "legal_consent_enabled", lambda: True)
-    monkeypatch.setattr(company_auth, "current_legal_documents", lambda _client: _documents())
+    monkeypatch.setattr(
+        company_auth,
+        "current_legal_documents",
+        lambda _client: legal_loads.append("load") or documents,
+    )
     monkeypatch.setattr(company_auth, "_server_client", lambda: object())
 
-    def reject_existing(*_args, **_kwargs):
+    def reject_existing(*_args, **kwargs):
+        assert kwargs["documents"] is documents
         raise company_auth.ExistingLoginPasswordError("existing")
 
     monkeypatch.setattr(company_auth, "begin_verified_sign_up", reject_existing)
@@ -300,6 +330,7 @@ def test_existing_email_stays_on_registration_form_with_actionable_error(monkeyp
     assert "This email already has a login. Sign in or use another email" in rendered
     assert 'data-auth-feedback-id="company-form-1"' in rendered
     assert "Check your email to verify your account" not in rendered
+    assert legal_loads == ["load", "load"]
 
     app.text_input(key="signup_email").set_value("second@example.com")
     next(b for b in app.button if b.label == "Create Company Account").click().run()
@@ -309,6 +340,7 @@ def test_existing_email_stays_on_registration_form_with_actionable_error(monkeyp
     assert "This email already has a login. Sign in or use another email" in rendered
     assert 'data-auth-feedback-id="company-form-2"' in rendered
     assert "Check your email to verify your account" not in rendered
+    assert legal_loads == ["load", "load", "load"]
 
 
 def test_returning_sign_in_never_discloses_terms_before_authentication(monkeypatch):
