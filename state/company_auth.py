@@ -154,6 +154,18 @@ def registration_validation_errors(
     return errors
 
 
+def _set_registration_form_errors(
+    state_key: str,
+    errors: dict[str, str],
+) -> None:
+    """Store form errors with a new render identity for every submit result."""
+    revision_key = f"{state_key}_revision"
+    st.session_state[revision_key] = int(
+        st.session_state.get(revision_key) or 0
+    ) + 1
+    st.session_state[state_key] = errors
+
+
 def password_validation_errors(password: str, password_confirm: str) -> dict[str, str]:
     """Apply the registration password policy without requiring an email."""
     errors: dict[str, str] = {}
@@ -1017,13 +1029,21 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             if isinstance(raw_creation_error, tuple)
             else raw_creation_error
         )
+        creation_error_revision = int(
+            st.session_state.get("company_creation_error_revision") or 0
+        )
         with st.form("company_creation_registration"):
             company_name = st.text_input("Your company name", key="signup_company_name", placeholder="Company name")
             if "company" in creation_errors:
                 render_auth_field_error("company", creation_errors["company"])
             email = st.text_input("Email", key="signup_email", placeholder="you@company.com")
             if "email" in creation_errors:
-                render_auth_field_error("email", creation_errors["email"])
+                render_auth_field_error(
+                    "email",
+                    creation_errors["email"],
+                    show_message=True,
+                    feedback_id=f"company-email-{creation_error_revision}",
+                )
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm Password", type="password", key="signup_password_confirm")
             if "password" in creation_errors:
@@ -1057,7 +1077,10 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 terms_accepted if legal_documents is not None else None,
             )
             if validation_errors:
-                st.session_state.company_creation_error = validation_errors
+                _set_registration_form_errors(
+                    "company_creation_error",
+                    validation_errors,
+                )
                 st.rerun()
             try:
                 if legal_documents is not None:
@@ -1077,15 +1100,22 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                         EXISTING_EMAIL_REGISTRATION_MESSAGE
                     )
             except ExistingLoginPasswordError:
-                st.session_state.company_creation_error = {
-                    "email": EXISTING_EMAIL_REGISTRATION_MESSAGE
-                }
+                _set_registration_form_errors(
+                    "company_creation_error",
+                    {"email": EXISTING_EMAIL_REGISTRATION_MESSAGE},
+                )
                 st.rerun()
             except PermissionError as exc:
-                st.session_state.company_creation_error = {"service": str(exc)}
+                _set_registration_form_errors(
+                    "company_creation_error",
+                    {"service": str(exc)},
+                )
                 st.rerun()
             except ValueError as exc:
-                st.session_state.company_creation_error = {"service": str(exc)}
+                _set_registration_form_errors(
+                    "company_creation_error",
+                    {"service": str(exc)},
+                )
                 st.rerun()
             except AuthApiError as exc:
                 message = (
@@ -1094,10 +1124,16 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                     else "We couldn't create your login. Check your email and try again."
                 )
                 field = "email" if exc.code in {"email_exists", "user_already_exists"} else "service"
-                st.session_state.company_creation_error = {field: message}
+                _set_registration_form_errors(
+                    "company_creation_error",
+                    {field: message},
+                )
                 st.rerun()
             except Exception:
-                st.session_state.company_creation_error = {"service": "We couldn't create your login. Try again in a moment."}
+                _set_registration_form_errors(
+                    "company_creation_error",
+                    {"service": "We couldn't create your login. Try again in a moment."},
+                )
                 st.rerun()
             try:
                 show_company_creation_started()
@@ -1127,10 +1163,18 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
             if isinstance(raw_join_error, tuple)
             else raw_join_error
         )
+        join_error_revision = int(
+            st.session_state.get("company_join_error_revision") or 0
+        )
         with st.form("company_join_registration"):
             email = st.text_input("Email", key="signup_email", placeholder="you@company.com")
             if "email" in join_errors:
-                render_auth_field_error("email", join_errors["email"])
+                render_auth_field_error(
+                    "email",
+                    join_errors["email"],
+                    show_message=True,
+                    feedback_id=f"join-email-{join_error_revision}",
+                )
             password = st.text_input("Password", type="password", key="signup_password")
             confirm = st.text_input("Confirm password", type="password", key="signup_password_confirm")
             if "password" in join_errors:
@@ -1169,7 +1213,10 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                 ),
             )
             if validation_errors:
-                st.session_state.company_join_error = validation_errors
+                _set_registration_form_errors(
+                    "company_join_error",
+                    validation_errors,
+                )
                 st.rerun()
             try:
                 if legal_documents is not None:
@@ -1184,12 +1231,16 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                     del st.query_params["invite"]
                 st.rerun()
             except ExistingLoginPasswordError:
-                st.session_state.company_join_error = {
-                    "email": EXISTING_EMAIL_REGISTRATION_MESSAGE
-                }
+                _set_registration_form_errors(
+                    "company_join_error",
+                    {"email": EXISTING_EMAIL_REGISTRATION_MESSAGE},
+                )
                 st.rerun()
             except PermissionError as exc:
-                st.session_state.company_join_error = {"service": str(exc)}
+                _set_registration_form_errors(
+                    "company_join_error",
+                    {"service": str(exc)},
+                )
                 st.rerun()
             except AuthApiError as exc:
                 message = (
@@ -1202,15 +1253,19 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
                     if exc.code in {"email_exists", "user_already_exists"}
                     else "service"
                 )
-                st.session_state.company_join_error = {field: message}
+                _set_registration_form_errors(
+                    "company_join_error",
+                    {field: message},
+                )
                 st.rerun()
             except Exception:
-                st.session_state.company_join_error = {
-                    "service": (
+                _set_registration_form_errors(
+                    "company_join_error",
+                    {"service": (
                         "We couldn't finish joining this company. If your login was "
                         "created, sign in using the same link."
-                    )
-                }
+                    )},
+                )
                 st.rerun()
         return
 

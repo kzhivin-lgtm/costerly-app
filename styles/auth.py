@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import html
+
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -19,6 +21,7 @@ def render_auth_field_error(
     message: str,
     *,
     show_message: bool = False,
+    feedback_id: str | None = None,
 ) -> None:
     """Mark a field invalid and optionally show its actionable message."""
     st.markdown(
@@ -26,9 +29,12 @@ def render_auth_field_error(
         unsafe_allow_html=True,
     )
     if show_message:
+        safe_feedback_id = html.escape(feedback_id or message, quote=True)
+        safe_message = html.escape(message)
         st.markdown(
             '<div class="auth-form-feedback auth-form-feedback-error '
-            f'auth-form-feedback-dismissible" role="alert">{message}</div>',
+            'auth-form-feedback-dismissible" role="alert" '
+            f'data-auth-feedback-id="{safe_feedback_id}">{safe_message}</div>',
             unsafe_allow_html=True,
         )
         return
@@ -184,6 +190,7 @@ def install_auth_form_interactions() -> None:
             setLoadingLabel(button, loadingLabel);
             if ([
               'Sign in',
+              'Create Company Account',
               'Create account',
               'Forgot password?',
               'Reset password'

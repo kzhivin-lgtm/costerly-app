@@ -296,11 +296,18 @@ def test_existing_email_stays_on_registration_form_with_actionable_error(monkeyp
 
     assert not app.exception
     assert any(b.label == "Create Company Account" for b in app.button)
-    assert any(
-        "This email already has a login. Sign in or use another email" in item.value
-        for item in app.error
-    )
     rendered = "\n".join(item.value for item in app.markdown)
+    assert "This email already has a login. Sign in or use another email" in rendered
+    assert 'data-auth-feedback-id="company-email-1"' in rendered
+    assert "Check your email to verify your account" not in rendered
+
+    app.text_input(key="signup_email").set_value("second@example.com")
+    next(b for b in app.button if b.label == "Create Company Account").click().run()
+
+    assert not app.exception
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert "This email already has a login. Sign in or use another email" in rendered
+    assert 'data-auth-feedback-id="company-email-2"' in rendered
     assert "Check your email to verify your account" not in rendered
 
 

@@ -3415,16 +3415,15 @@ def test_existing_login_error_is_shown_at_email_without_extra_button(monkeypatch
     app.text_input(key="signup_password").set_value("Wrong123")
     app.text_input(key="signup_password_confirm").set_value("Wrong123")
     next(button for button in app.button if button.label == "Create Company Account").click().run()
-    assert any(
-        error.value == company_auth.EXISTING_EMAIL_REGISTRATION_MESSAGE
-        for error in app.error
-    )
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert company_auth.EXISTING_EMAIL_REGISTRATION_MESSAGE in rendered
+    assert 'data-auth-feedback-id="company-email-1"' in rendered
     assert any('data-auth-field="email"' in item.value for item in app.markdown)
     assert not any('data-auth-field="password"' in item.value for item in app.markdown)
     assert not any(button.label.startswith("Already have a login?") for button in app.button)
 
 
-def test_obvious_email_error_uses_quiet_field_marker_without_text():
+def test_obvious_email_error_marks_field_and_shows_actionable_text():
     app = AppTest.from_function(_render_invitation_signup).run()
     app.text_input(key="signup_company_name").set_value("Workshop")
     app.text_input(key="signup_email").set_value("name@company..com")
@@ -3432,7 +3431,9 @@ def test_obvious_email_error_uses_quiet_field_marker_without_text():
     app.text_input(key="signup_password_confirm").set_value("Strong123")
     next(button for button in app.button if button.label == "Create Company Account").click().run()
     assert not app.error
-    assert any('data-auth-field="email"' in item.value for item in app.markdown)
+    rendered = "\n".join(item.value for item in app.markdown)
+    assert 'data-auth-field="email"' in rendered
+    assert "Enter an email address like name@company.com" in rendered
     assert not any("23514" in error.value or "companies_id_format" in error.value for error in app.error)
 
 
@@ -3445,7 +3446,15 @@ def test_submit_marks_every_invalid_registration_field_without_error_text():
     assert 'data-auth-field="email"' in markers
     assert 'data-auth-field="password"' in markers
     assert 'data-auth-field="confirm"' in markers
+    assert "Enter an email address like name@company.com" in markers
     assert not app.error
+
+
+def test_company_registration_uses_stable_loading_shell_and_versioned_feedback():
+    interactions = (Path(__file__).parents[1] / "styles/auth.py").read_text()
+
+    assert "'Create Company Account'," in interactions
+    assert 'data-auth-feedback-id="{safe_feedback_id}"' in interactions
 
 
 @pytest.mark.parametrize("email,password,confirm,company", [
