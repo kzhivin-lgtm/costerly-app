@@ -1941,7 +1941,10 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
             expanded=True,
         ):
             if not rows:
-                st.caption("No active prices")
+                st.markdown(
+                    '<div class="price-catalog-empty-row">No active prices</div>',
+                    unsafe_allow_html=True,
+                )
                 continue
             header = st.columns([0.24, 2.55, 1.45, 1.1, 0.85, 0.58, 0.72])
             for column, label in zip(

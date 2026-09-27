@@ -1354,11 +1354,18 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_catalog_section [data-testid="stExpander"] {
             overflow: hidden;
-            border-color: var(--color-border-soft) !important;
+            border: 1px solid var(--color-border-soft) !important;
             border-radius: 18px !important;
             background: #FBF9FD !important;
-            box-shadow: 0 0 0 1px var(--color-border-soft);
+            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
             isolation: isolate;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_catalog_section
+        [data-testid="stElementContainer"]:has(.price-catalog-title-main)
+        + [data-testid="stExpander"] {
+            border-radius: 0 0 18px 18px !important;
         }
 
         .stApp:has(.company-profile-active)
@@ -1372,6 +1379,25 @@ def apply_company_profile_css() -> None:
         .st-key-price_catalog_section [data-testid="stExpander"] summary {
             min-height: 46px;
             background: #F7F3FA;
+        }
+
+        .price-catalog-empty-row {
+            display: flex;
+            width: 100%;
+            min-height: 52px;
+            box-sizing: border-box;
+            align-items: center;
+            padding: 0 38px;
+            background: #FFFFFF;
+            color: var(--color-text-muted);
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stElementContainer"]:has(.price-catalog-empty-row) {
+            width: 100%;
+            margin: 0 !important;
         }
 
         .stApp:has(.company-profile-active)
@@ -1620,7 +1646,7 @@ def apply_company_profile_css() -> None:
             border: 1px solid var(--color-border-soft);
             border-bottom: 0;
             border-radius: 18px 18px 0 0;
-            box-shadow: 0 0 0 1px var(--color-border-soft);
+            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
         }
 
         .price-catalog-title span:last-child,
@@ -1830,8 +1856,7 @@ def apply_company_profile_css() -> None:
             border: 1px solid var(--color-border-soft) !important;
             border-radius: 18px !important;
             background: var(--color-surface) !important;
-            box-shadow: 0 0 0 1px var(--color-border-soft),
-                        0 12px 34px rgba(42, 31, 44, 0.06);
+            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
         }
 
         .stApp:has(.company-profile-active)

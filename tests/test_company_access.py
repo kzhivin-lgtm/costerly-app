@@ -1757,7 +1757,7 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     assert "Wood · 0 prices" in expander_labels
     assert "Metal · 0 prices" in expander_labels
     assert "Coating · 0 prices" in expander_labels
-    assert sum(item.value == "No active prices" for item in app.caption) == 3
+    assert markup.count('class="price-catalog-empty-row"') == 3
     assert any(button.label == "Extract prices" for button in app.button)
     assert not any(field.label == "Department (optional)" for field in app.selectbox)
     assert not any(field.label == "Search" for field in app.text_input)
@@ -3224,6 +3224,25 @@ def test_company_profile_reuses_auth_input_contract():
     assert '[role="group"][data-focus-within="true"]' in css
     assert '.react-aria-ComboBox input[role="combobox"]' in css
     assert '[role="option"][aria-selected="true"] [data-item-hl]' in css
+
+
+def test_empty_price_catalog_uses_complete_card_geometry():
+    css = (Path(__file__).parents[1] / "styles/company_profile.py").read_text()
+    catalog_expander_rule = css.split(
+        '.st-key-price_catalog_section [data-testid="stExpander"] {', 1
+    )[1].split("}", 1)[0]
+    source_library_rule = css.split(
+        '.st-key-price_source_library_section [data-testid="stExpander"] {', 1
+    )[1].split("}", 1)[0]
+
+    assert ".price-catalog-empty-row {" in css
+    assert "width: 100%;" in css
+    assert 'border: 1px solid var(--color-border-soft) !important;' in catalog_expander_rule
+    assert 'border: 1px solid var(--color-border-soft) !important;' in source_library_rule
+    assert '+ [data-testid="stExpander"] {' in css
+    assert "border-radius: 0 0 18px 18px !important;" in css
+    assert "box-shadow: 0 0 0 1px var(--color-border-soft)" not in catalog_expander_rule
+    assert "box-shadow: 0 0 0 1px var(--color-border-soft)" not in source_library_rule
 
 
 def test_labor_card_spacing_and_disabled_select_placeholder_contract():
