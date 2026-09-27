@@ -20,6 +20,21 @@ def apply_platform_admin_css() -> None:
             display: none !important;
         }
 
+        /* Streamlit may retain the previous Upload tree for one reconciliation
+           frame. Admin owns the frame as soon as its marker exists. */
+        .stApp:has(.platform-admin-active) .upload-screen,
+        .stApp:has(.platform-admin-active) [data-testid="stFileUploader"],
+        .stApp:has(.platform-admin-active)
+        [data-testid="stElementContainer"]:has([data-testid="stFileUploader"]) {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+        }
+
         .stApp:has(.platform-admin-active) .block-container {
             width: min(1540px, calc(100vw - 48px));
             max-width: 1540px;

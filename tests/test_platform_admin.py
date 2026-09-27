@@ -241,6 +241,15 @@ def test_admin_matrix_reuses_overhead_expenses_table_geometry():
     assert ".platform-admin-table tbody tr:hover" not in admin_styles
 
 
+def test_admin_hides_stale_upload_tree_during_streamlit_reconciliation():
+    admin_styles = (ROOT / "styles/platform_admin.py").read_text()
+
+    assert ".stApp:has(.platform-admin-active) .upload-screen" in admin_styles
+    assert '[data-testid="stFileUploader"]' in admin_styles
+    assert "visibility: hidden !important;" in admin_styles
+    assert "height: 0 !important;" in admin_styles
+
+
 def test_normalization_and_status_do_not_infer_customer_sentiment():
     row = normalize_dashboard_row({"account_stage": "unknown", "files_uploaded": 2})
     assert row["account_stage"] == "pilot"
