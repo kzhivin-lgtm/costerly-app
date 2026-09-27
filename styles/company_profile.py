@@ -1327,6 +1327,12 @@ def apply_company_profile_css() -> None:
             gap: 0 !important;
         }
 
+        .stApp:has(.company-profile-active)
+        .st-key-price_catalog_section [data-testid="stExpanderDetails"] > [data-testid="stVerticalBlock"] {
+            min-height: 52px;
+            padding: 0 !important;
+        }
+
         [class*="st-key-price_catalog_row_"] [data-testid="stHorizontalBlock"],
         [class*="st-key-price_review_row_"] [data-testid="stHorizontalBlock"] {
             min-height: 52px;
