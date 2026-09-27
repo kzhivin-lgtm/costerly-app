@@ -77,22 +77,12 @@ def apply_platform_admin_css() -> None:
             font-weight: 700 !important;
         }
 
-        .platform-admin-controls {
-            margin-bottom: 16px;
-        }
-
-        .stApp:has(.platform-admin-active) [data-testid="stSelectbox"] label p {
-            font-size: 14px !important;
-            font-weight: 700 !important;
-            color: var(--color-text-strong) !important;
-        }
-
         .platform-admin-table-card {
             overflow: hidden;
-            border: 1px solid var(--color-border-soft);
-            border-radius: 18px;
+            border: 1px solid rgba(42, 31, 44, 0.14);
+            border-radius: 12px;
             background: var(--color-surface);
-            box-shadow: 0 14px 34px rgba(42, 31, 44, 0.07);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.045);
         }
 
         .platform-admin-table-scroll {
@@ -109,34 +99,31 @@ def apply_platform_admin_css() -> None:
         }
 
         .platform-admin-table th {
-            height: 58px;
-            padding: 0 12px;
-            border-bottom: 1px solid var(--color-border-soft);
-            color: var(--color-text-muted);
-            background: #FAF8FC;
+            min-height: 42px;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(42, 31, 44, 0.12);
+            color: var(--color-text-strong);
+            background: rgba(42, 31, 44, 0.045);
             font-family: var(--font-mono);
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
-            letter-spacing: 0.045em;
-            line-height: 1.2;
+            line-height: 1.24;
             text-align: left;
-            text-transform: uppercase;
             vertical-align: middle;
         }
 
         .platform-admin-table td {
-            height: 72px;
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--color-border-soft);
-            color: var(--color-text);
+            min-height: 42px;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(42, 31, 44, 0.12);
+            color: var(--color-text-strong);
             font-size: 13px;
             font-weight: 500;
-            line-height: 1.25;
+            line-height: 1.24;
             vertical-align: middle;
         }
 
         .platform-admin-table tr:last-child td { border-bottom: 0; }
-        .platform-admin-table tbody tr:hover { background: #FAF8FC; }
 
         .platform-admin-company {
             color: var(--color-text-strong);
@@ -206,7 +193,7 @@ def apply_platform_admin_css() -> None:
             }
 
             .platform-admin-heading h1 { font-size: 34px; }
-            .platform-admin-table-card { border-radius: 14px; }
+            .platform-admin-table-card { border-radius: 12px; }
         }
         </style>
         """,

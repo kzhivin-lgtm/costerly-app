@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from html import escape
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -19,14 +20,7 @@ from use_cases.platform_admin import (
     require_platform_access,
 )
 
-
-PERIOD_LABELS = {
-    "Last 7 days": 7,
-    "Last 30 days": 30,
-    "Last 90 days": 90,
-    "All time": 0,
-}
-STAGE_LABELS = ("All companies", "Test", "Pilot", "Paid")
+LOGGER = logging.getLogger(__name__)
 
 
 def _brand_mark() -> str:
@@ -55,7 +49,7 @@ def _dashboard_table(rows: list[dict[str, Any]]) -> str:
     if not rows:
         return (
             '<div class="platform-admin-table-card">'
-            '<div class="platform-admin-empty">No companies match these filters</div>'
+            '<div class="platform-admin-empty">No companies yet</div>'
             "</div>"
         )
 
@@ -168,32 +162,14 @@ def render_platform_admin_screen(access, platform_access: PlatformAccess) -> Non
         record_dashboard_view(client, platform_user_id=str(access.user_id))
         st.session_state._platform_admin_dashboard_audited = True
 
-    with st.container(key="platform_admin_controls"):
-        period_column, stage_column, spacer = st.columns([1, 1, 3])
-        with period_column:
-            period_label = st.selectbox(
-                "Period",
-                options=list(PERIOD_LABELS),
-                index=1,
-                key="platform_admin_period",
-            )
-        with stage_column:
-            stage_filter = st.selectbox(
-                "Company stage",
-                options=STAGE_LABELS,
-                key="platform_admin_stage",
-            )
-
-    rows = load_company_dashboard(
-        client,
-        requesting_user_id=str(access.user_id),
-        days=PERIOD_LABELS[period_label],
-    )
-    if stage_filter != "All companies":
-        expected_stage = stage_filter.lower()
-        rows = [
-            row
-            for row in rows
-            if str(row.get("account_stage") or "pilot").lower() == expected_stage
-        ]
+    try:
+        rows = load_company_dashboard(
+            client,
+            requesting_user_id=str(access.user_id),
+            days=0,
+        )
+    except Exception:
+        LOGGER.exception("Platform Admin company dashboard failed to load")
+        st.error("Admin data is temporarily unavailable. Try again in a moment")
+        return
     st.markdown(_dashboard_table(rows), unsafe_allow_html=True)

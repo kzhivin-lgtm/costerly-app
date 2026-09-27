@@ -2,15 +2,17 @@
 
 ## 3.13.1 Cross-company dashboard
 
-Status: implemented locally, awaiting database migration, staff grant, deployment, and production acceptance.
+Status: first production checkpoint deployed; unfiltered matrix revision implemented locally and awaiting deployment and production acceptance.
 
-Protected checkpoint: `42df88d`.
+Protected checkpoint: `193713e`.
 
 ### Decisions
 
 - Company authorization remains `owner/member` in the database and code. The interface displays those roles as `Company Admin/Team Member`.
 - Cross-company access is independent and explicit through `platform_staff`. Company registration and company roles never grant Platform Admin access.
 - The first dashboard is read-only and has no company detail page.
+- The first dashboard is one unfiltered all-time company matrix. Active days retain explicit 7-day and 30-day windows inside the table.
+- The matrix reuses the compact table geometry established by Overhead Expenses. Rows are not interactive until the company detail task is approved.
 - Dashboard rows expose company-level aggregates only. They do not expose file names, source content, prompts, or extracted customer data.
 - Account stage is an internal `test/pilot/paid` classification.
 - Active days are distinct company activity dates over 7 and 30 days, not persistent login sessions.

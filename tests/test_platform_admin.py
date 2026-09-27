@@ -193,6 +193,33 @@ def test_dashboard_escapes_company_name_and_omits_customer_content():
     assert "<td><span class=\"platform-admin-metric-count\">—</span></td>" in markup
 
 
+def test_admin_screen_is_an_unfiltered_all_time_company_matrix():
+    screen_source = (ROOT / "screens/platform_admin.py").read_text()
+
+    assert "PERIOD_LABELS" not in screen_source
+    assert "STAGE_LABELS" not in screen_source
+    assert 'st.selectbox("Period"' not in screen_source
+    assert '"Company stage"' not in screen_source
+    assert "days=0" in screen_source
+    assert "Admin data is temporarily unavailable" in screen_source
+
+
+def test_admin_matrix_reuses_overhead_expenses_table_geometry():
+    admin_styles = (ROOT / "styles/platform_admin.py").read_text()
+    detail_styles = (ROOT / "styles/object_detail.py").read_text()
+
+    for declaration in (
+        "border: 1px solid rgba(42, 31, 44, 0.14);",
+        "border-radius: 12px;",
+        "box-shadow: 0 12px 24px rgba(0, 0, 0, 0.045);",
+        "min-height: 42px;",
+        "padding: 8px 12px;",
+    ):
+        assert declaration in detail_styles
+        assert declaration in admin_styles
+    assert ".platform-admin-table tbody tr:hover" not in admin_styles
+
+
 def test_normalization_and_status_do_not_infer_customer_sentiment():
     row = normalize_dashboard_row({"account_stage": "unknown", "files_uploaded": 2})
     assert row["account_stage"] == "pilot"
