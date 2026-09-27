@@ -3246,7 +3246,10 @@ def test_empty_price_catalog_uses_complete_card_geometry():
     assert "justify-content: flex-start;" in css
     assert "text-align: left;" in css
     assert "background: transparent;" in css
+    assert '[data-testid="stMarkdown"],' in css
+    assert '[data-testid="stMarkdown"] > div,' in css
     assert '[data-testid="stMarkdownContainer"] {' in css
+    assert "margin-bottom: 0 !important;" in css
     assert '[data-testid="stExpanderDetails"] > [data-testid="stVerticalBlock"] {' in css
     assert "min-height: 52px;\n            padding: 0 !important;" in css
     assert "box-shadow: 0 0 0 1px var(--color-border-soft)" not in catalog_expander_rule

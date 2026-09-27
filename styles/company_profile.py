@@ -1426,9 +1426,16 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         [data-testid="stElementContainer"]:has(.price-catalog-empty-row)
+        [data-testid="stMarkdown"],
+        .stApp:has(.company-profile-active)
+        [data-testid="stElementContainer"]:has(.price-catalog-empty-row)
+        [data-testid="stMarkdown"] > div,
+        .stApp:has(.company-profile-active)
+        [data-testid="stElementContainer"]:has(.price-catalog-empty-row)
         [data-testid="stMarkdownContainer"] {
             width: 100%;
             height: 52px;
+            margin-bottom: 0 !important;
         }
 
         .stApp:has(.company-profile-active)
