@@ -3241,8 +3241,20 @@ def test_empty_price_catalog_uses_complete_card_geometry():
     assert 'border: 1px solid var(--color-border-soft) !important;' in source_library_rule
     assert '+ [data-testid="stExpander"] {' in css
     assert "border-radius: 0 0 18px 18px !important;" in css
+    assert '[data-testid="stExpander"] > details {' in css
+    assert "border-radius: 0 0 17px 17px !important;" in css
+    assert "justify-content: center;" in css
+    assert "text-align: center;" in css
     assert "box-shadow: 0 0 0 1px var(--color-border-soft)" not in catalog_expander_rule
     assert "box-shadow: 0 0 0 1px var(--color-border-soft)" not in source_library_rule
+
+
+def test_company_profile_header_keeps_all_action_labels_visible():
+    source = (Path(__file__).parents[1] / "screens/company_profile.py").read_text()
+
+    assert "st.columns([3, 2.4])" in source
+    assert "st.columns([0.8, 0.9, 1.35, 1.15])" in source
+    assert "st.columns([0.9, 1.35, 1.15])" in source
 
 
 def test_labor_card_spacing_and_disabled_select_placeholder_contract():

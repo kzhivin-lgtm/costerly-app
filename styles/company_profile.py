@@ -1369,6 +1369,19 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-price_catalog_section [data-testid="stExpander"] > details {
+            overflow: hidden !important;
+            border-radius: 17px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_catalog_section
+        [data-testid="stElementContainer"]:has(.price-catalog-title-main)
+        + [data-testid="stExpander"] > details {
+            border-radius: 0 0 17px 17px !important;
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_catalog_section [data-testid="stExpanderDetails"] {
             overflow: hidden;
             padding: 0 !important;
@@ -1387,11 +1400,13 @@ def apply_company_profile_css() -> None:
             min-height: 52px;
             box-sizing: border-box;
             align-items: center;
-            padding: 0 38px;
+            justify-content: center;
+            padding: 0 22px;
             background: #FFFFFF;
             color: var(--color-text-muted);
             font-size: 13px;
             line-height: 1.35;
+            text-align: center;
         }
 
         .stApp:has(.company-profile-active)
@@ -1857,6 +1872,22 @@ def apply_company_profile_css() -> None:
             border-radius: 18px !important;
             background: var(--color-surface) !important;
             box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_library_section [data-testid="stExpander"] > details {
+            overflow: hidden !important;
+            border-radius: 17px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_library_section [data-testid="stExpander"] > details > summary {
+            border-radius: 17px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_library_section [data-testid="stExpander"] > details[open] > summary {
+            border-radius: 17px 17px 0 0 !important;
         }
 
         .stApp:has(.company-profile-active)

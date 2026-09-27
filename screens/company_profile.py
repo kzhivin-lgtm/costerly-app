@@ -3965,7 +3965,7 @@ def render_company_profile(access: CompanyAccess, *, platform_access=None, trace
     )
     finish_phase("server.company_profile_styles", "p_styles_ms")
 
-    header_left, header_right = st.columns([3.6, 2])
+    header_left, header_right = st.columns([3, 2.4])
     with header_left:
         st.markdown(
             f'<div class="company-profile-heading"><div class="company-profile-mark">{_brand_mark()}</div>'
@@ -3975,9 +3975,9 @@ def render_company_profile(access: CompanyAccess, *, platform_access=None, trace
     with header_right:
         with st.container(key="company_profile_actions"):
             action_columns = (
-                st.columns([0.9, 1, 1.15, 1])
+                st.columns([0.8, 0.9, 1.35, 1.15])
                 if platform_access is not None
-                else st.columns([1, 1.15, 1])
+                else st.columns([0.9, 1.35, 1.15])
             )
             if platform_access is not None:
                 admin_action, projects_action, estimate_action, sign_out_action = action_columns
