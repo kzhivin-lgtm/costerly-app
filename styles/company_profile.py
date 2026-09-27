@@ -1397,22 +1397,32 @@ def apply_company_profile_css() -> None:
         .price-catalog-empty-row {
             display: flex;
             width: 100%;
-            min-height: 52px;
+            height: 52px;
             box-sizing: border-box;
             align-items: center;
-            justify-content: center;
-            padding: 0 22px;
+            justify-content: flex-start;
+            padding: 0 38px;
             background: #FFFFFF;
             color: var(--color-text-muted);
             font-size: 13px;
             line-height: 1.35;
-            text-align: center;
+            text-align: left;
         }
 
         .stApp:has(.company-profile-active)
         [data-testid="stElementContainer"]:has(.price-catalog-empty-row) {
+            display: flex;
             width: 100%;
+            height: 52px;
+            align-items: center;
             margin: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [data-testid="stElementContainer"]:has(.price-catalog-empty-row)
+        [data-testid="stMarkdownContainer"] {
+            width: 100%;
+            height: 52px;
         }
 
         .stApp:has(.company-profile-active)
