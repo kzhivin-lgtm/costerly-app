@@ -2,9 +2,9 @@
 
 ## 3.13.1 Cross-company dashboard
 
-Status: first production checkpoint deployed; unfiltered matrix revision implemented locally and awaiting deployment and production acceptance.
+Status: accepted production checkpoint, closed 27.09.2026.
 
-Protected checkpoint: `193713e`.
+Protected checkpoint: `d8e0c8e`.
 
 ### Decisions
 
@@ -24,13 +24,13 @@ Protected checkpoint: `193713e`.
 - Cloudflare masks Upload/Profile/Admin transitions until the target screen's established heading and content geometry are ready.
 - PDFs display `—` until proposal generation and Projects persistence exist.
 
-### Release order
+### Applied release
 
-1. Apply `db/sql/2026_09_27_platform_admin_dashboard.sql`.
-2. Grant one existing trusted account with `tools/grant_platform_access.py`.
-3. Optionally classify companies with `tools/set_company_stage.py`.
-4. Deploy the application code.
-5. Run authenticated production acceptance for Platform Admin, Company Admin, Team Member, and a direct unauthorized Admin route.
+1. Applied `db/sql/2026_09_27_platform_admin_dashboard.sql` and the corrected dashboard RPC for legacy timestamps.
+2. Applied `db/sql/2026_09_27_platform_admin_sessions.sql`; session telemetry now starts from deployment and does not infer historical sessions.
+3. Granted explicit Platform Admin access to the two approved trusted accounts.
+4. Deployed the application through `d8e0c8e`, including the final stale Upload-frame transition fix.
+5. Verified the live dashboard RPC, production company aggregates, rolling session counts, agent costs, and successful Railway deployment. The owner accepted the production matrix and closed the task.
 
 ### Verification contract
 
