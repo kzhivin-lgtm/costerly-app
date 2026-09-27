@@ -143,6 +143,13 @@ screen.
 - Company Profile content cards use the accepted 18 px outer radius and the
   same first-card gap below the tab rail. A tab must not introduce its own
   smaller outer radius or extra top offset.
+- Every value, label, action, and empty-state message inside a table or
+  table-like row is vertically centered against the row's actual content box.
+  Center through the row and wrapper layout (`align-items: center` with equal
+  top and bottom geometry), never with `top`, `translateY`, negative margins,
+  or an eyeballed pixel offset. When Streamlit inserts wrapper elements, those
+  wrappers must occupy the row height and must not retain framework margins
+  that change the centered margin-box.
 - Hover and active states should communicate interactivity without changing
   layout or moving surrounding content.
 - Desktop and mobile versions use the same hierarchy, wording, and validation

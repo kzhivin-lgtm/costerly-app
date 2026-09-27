@@ -7,11 +7,13 @@ The owner accepted the compact presentation on 25.09.2026. After the separate
 3.11.1 Legal block, agent-quality work resumes as 3.12.1. Preserve this UI while diagnosing extraction,
 classification, normalization, and activation behavior.
 
-The later production interaction checkpoint `d99a594`, accepted on 26.09.2026,
-is the current rollback baseline. It preserves this structure and adds the
-accepted Needs review, row-level actions, direct Source behavior, and fast
-single-cycle interactions. Its remaining visual imperfections are explicitly
-non-blocking and are not permission to redesign the accepted layout.
+The current production presentation checkpoint is `dcefabb`, accepted on
+27.09.2026. It preserves the interaction baseline from `d99a594`, adds the
+accepted empty-catalog card geometry, and vertically centers every `No active
+prices` value through the row layout. DOM measurement confirmed a 186.71875 px
+text center against a 186.5 px content center after removing Streamlit's scoped
+negative wrapper margin. Do not reintroduce manual vertical offsets or negative
+margins for table-row alignment.
 
 ## Product boundary
 
