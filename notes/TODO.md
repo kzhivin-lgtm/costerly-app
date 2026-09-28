@@ -14,9 +14,14 @@ Current owner-approved execution order:
   owner direction. The production activation checkpoint is verified: 280
   active v1 baselines cover 280 distinct materials, retain 331 evidence links,
   have complete approval metadata, and expose confidence 10 to 65. The next
-  action is the deterministic company-first price resolver. Automatic
-  Estimation fallback, widened identity linking, and private-data market
-  learning remain separate decision gates.
+  checkpoint is also complete: the isolated company-first resolver handles
+  VAT-exclusive normalization, compatible units, multiple supplier ranges,
+  price-scope separation, baseline fallback, and explicit review results. A
+  production batch resolves all 280 active catalog materials, but production
+  has no company material offers yet. Next, Price Source must link recognized
+  company items to `reference_material_id`. Automatic Estimation fallback,
+  widened identity linking, and private-data market learning remain separate
+  decision gates.
 
 - 3.15.1 Israel Reference Catalog foundation: completed at `1f8d6ab`.
   The ordered master plan is `notes/ISRAEL_REFERENCE_PROGRAM_PLAN.md`. Its

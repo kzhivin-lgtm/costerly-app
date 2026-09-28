@@ -263,3 +263,25 @@ The active catalog is now a valid platform price authority. The source offers
 remain immutable candidate evidence, which is intentional: offer review status
 and baseline activation are separate lifecycles. Estimation is still
 disconnected until the company-first resolver is implemented and tested.
+
+## Company-first resolver checkpoint
+
+The isolated deterministic resolver is implemented without connecting the
+legacy Estimation Agent. Its authority order is:
+
+1. active company offers linked to the exact reference material;
+2. an exact active baseline for the company's market;
+3. `needs_review`.
+
+Company prices are normalized to VAT-exclusive values, support only explicit
+unit conversions within mass, volume, length, or area, and form a low, median,
+and high range when several compatible supplier offers exist. Incompatible or
+unknown-VAT company rows do not override the market baseline. Different price
+scopes are never silently aggregated.
+
+A read-only production batch resolved all 280 active materials through the
+Israel baseline across 11 canonical units, with zero `needs_review` results.
+Production currently has zero company material items and zero company offers,
+so the company-priority route is verified deterministically by tests rather
+than claimed as a live-data acceptance. Price Source must populate
+`reference_material_id` before real company prices can enter that route.
