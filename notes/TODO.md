@@ -2,13 +2,19 @@
 
 Current owner-approved execution order:
 
-1. Finish 3.15.2 Israel material baselines, furniture-core coverage, and fast
-   material recognition. Detailed plan:
-   `notes/ISRAEL_REFERENCE_BASELINES_3_15_2.md`.
-2. Integrate Price Source with the shared Material Resolution Core and identity
-   candidate buffer.
+1. Finish 3.15.3 shared Material Resolution Core and identity-candidate buffer.
+   Detailed checkpoint: `notes/MATERIAL_RESOLUTION_CORE_3_15_3.md`.
+2. Integrate Price Source with the core as task 3.15.4, including historical
+   reprocessing without repeating OCR.
 3. Complete operations, labor, machinery, and subcontractor reference models.
 4. Replace the legacy Estimation Agent only after those inputs are verified.
+
+- 3.15.3 Material Resolution Core: active, P0. The deterministic candidate
+  resolves exact supplier SKU, company alias, market alias, hard attributes,
+  then a maximum-five shortlist. The production read-only benchmark returned
+  797/797 correct unique alias matches and 201/201 correct unique supplier-SKU
+  matches, with zero false resolutions across five collision keys. The additive
+  schema migration is prepared but not yet applied to production.
 
 - 3.15.2 Israel material baselines and furniture-core completion: active, P0 by
   owner direction. The production activation checkpoint is verified: 280
