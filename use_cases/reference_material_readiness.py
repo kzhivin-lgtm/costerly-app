@@ -725,6 +725,7 @@ def derive_complete_catalog_candidates(
             if not peers:
                 continue
             typical = _median(peer.price_typical for peer in peers)
+            price_scope = _scope_mode(peers)
             result[material_id] = CatalogPriceCandidate(
                 material_id=material_id,
                 price_low=_round_price(typical * (Decimal("1") - downside)),
@@ -732,7 +733,7 @@ def derive_complete_catalog_candidates(
                 price_high=_round_price(typical * (Decimal("1") + downside * 2)),
                 unit=material.base_unit,
                 currency=currency,
-                price_scope=_scope_mode(peers),
+                price_scope=price_scope,
                 confidence=_round_price(confidence),
                 tier=tier,
                 methodology=(
@@ -740,7 +741,14 @@ def derive_complete_catalog_candidates(
                     "broad asymmetric uncertainty"
                 ),
                 offer_ids=tuple(
-                    sorted({offer_id for peer in peers for offer_id in peer.offer_ids})
+                    sorted(
+                        {
+                            offer_id
+                            for peer in peers
+                            if peer.price_scope == price_scope
+                            for offer_id in peer.offer_ids
+                        }
+                    )
                 ),
             )
             break

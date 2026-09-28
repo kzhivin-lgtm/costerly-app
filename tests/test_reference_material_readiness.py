@@ -293,6 +293,41 @@ def test_complete_catalog_falls_back_by_department_then_unit():
     assert candidates["packaging-missing"].confidence == Decimal("5.000000")
 
 
+def test_complete_catalog_fallback_evidence_matches_selected_price_scope():
+    materials = (
+        ReferenceMaterial("material-a", "wood", "mdf", "sqm"),
+        ReferenceMaterial("material-b", "wood", "mdf", "sqm"),
+        ReferenceMaterial("missing", "wood", "mdf", "sqm"),
+    )
+    offers = (
+        _offer(
+            offer_id="material-only-offer",
+            material_id="material-a",
+            price_scope="material_only",
+            normalized_price_ex_vat=Decimal("50"),
+            normalized_unit="sqm",
+        ),
+        _offer(
+            offer_id="cut-offer",
+            material_id="material-b",
+            price_scope="cut_to_size",
+            normalized_price_ex_vat=Decimal("70"),
+            normalized_unit="sqm",
+        ),
+    )
+
+    candidates = {
+        candidate.material_id: candidate
+        for candidate in derive_complete_catalog_candidates(
+            materials=materials,
+            offers=offers,
+        )
+    }
+
+    assert candidates["missing"].price_scope == "cut_to_size"
+    assert candidates["missing"].offer_ids == ("cut-offer",)
+
+
 def test_complete_catalog_uses_configurable_range_before_department_median():
     materials = (
         ReferenceMaterial("known", "wood", "mdf", "sqm"),

@@ -237,5 +237,13 @@ dimensions were observed.
 Complete-catalog confidence ranges from 10 to 65, with a median of 55. The 36
 modeled candidates are deliberately distinguishable from the 244 candidates
 backed by normalized evidence. No baseline row has been inserted or activated,
-and Estimation remains disconnected. Owner review is the next gate before any
-production baseline write.
+and Estimation remains disconnected.
+
+The owner explicitly approved activating all 280 first-version prices on
+2026-09-28. The activation is prepared in
+`db/sql/2026_09_28_israel_reference_baselines_v1_activation.sql`. It inserts
+the complete versioned snapshot, links each baseline to compatible evidence,
+uses the active platform administrator as approver, and activates all rows in
+one transaction. It refuses to replace a different active Israel baseline and
+is idempotent for this exact v1 snapshot. Production application and
+post-application verification remain pending.
