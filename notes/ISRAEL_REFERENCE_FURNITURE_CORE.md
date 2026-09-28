@@ -1,6 +1,7 @@
 # Israel Reference Furniture Core
 
-Task: 3.15.1
+Created in: 3.15.1
+Current task: 3.15.2
 Market: Israel (`IL`, `ILS`)
 Status: optimized Estimation coverage denominator
 

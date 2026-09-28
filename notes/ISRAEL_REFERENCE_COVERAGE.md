@@ -1,6 +1,7 @@
 # Israel Reference Catalog Coverage
 
-Task: 3.15.1
+Created in: 3.15.1
+Current task: 3.15.2
 Status: active coverage control
 
 This matrix prevents common retail availability from being mistaken for full

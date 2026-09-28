@@ -94,6 +94,9 @@ This file explains where code belongs so the project stays understandable.
   staged delivery plan.
 - `notes/ISRAEL_REFERENCE_CATALOG.md` stores the 3.15.1 multi-market boundary,
   Israel fallback contract, evidence rules, and staged catalog plan.
+- `notes/ISRAEL_REFERENCE_BASELINES_3_15_2.md` stores the active 3.15.2
+  checkpoint, protected data, baseline rules, delivery sequence, verification,
+  and decision gates.
 - `notes/ISRAEL_REFERENCE_SOURCE_REGISTER.md` records candidate Israeli market
   sources, their valid use, and evidence gaps before catalog activation.
 - `notes/ISRAEL_REFERENCE_COVERAGE.md` tracks every furniture-material domain as

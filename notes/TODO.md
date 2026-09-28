@@ -2,22 +2,30 @@
 
 Current owner-approved execution order:
 
-1. Finish 3.14.1 CNC / Laser through production schema, Staff Admin, reviewed
-   parameters, runtime composition, and production acceptance. Detailed plan:
-   `notes/CNC_LASER_FINISH_PLAN_2026_09_28.md`.
-2. Finish 3.15.1 shared materials, Israel identities, prices, operations, and
-   deterministic catalog resolution.
-3. Integrate Price Source with the shared Material Resolution Core and identity
+1. Finish 3.15.2 Israel material baselines, furniture-core coverage, and fast
+   material recognition. Detailed plan:
+   `notes/ISRAEL_REFERENCE_BASELINES_3_15_2.md`.
+2. Integrate Price Source with the shared Material Resolution Core and identity
    candidate buffer.
+3. Complete operations, labor, machinery, and subcontractor reference models.
 4. Replace the legacy Estimation Agent only after those inputs are verified.
 
-- 3.15.1 Israel Reference Catalog foundation: active, P1 by owner direction.
+- 3.15.2 Israel material baselines and furniture-core completion: active, P0 by
+  owner direction. Start from the verified 3.15.1 production checkpoint. Build
+  a reproducible readiness report, normalize compatible candidate evidence,
+  derive non-active low/typical/high candidates, close impact-weighted core
+  gaps, and expand deterministic aliases. Baseline activation, automatic
+  Estimation fallback, widened identity linking, and private-data market
+  learning remain explicit decision gates.
+
+- 3.15.1 Israel Reference Catalog foundation: completed at `1f8d6ab`.
   The ordered master plan is `notes/ISRAEL_REFERENCE_PROGRAM_PLAN.md`. Its
   Packages A through J preserve the accumulated material and price work and add
   the approved shared Price Source, identity-candidate, market-learning,
-  operations, review-governance, and Estimation-readiness sequence. Execution is
-  paused while the higher-priority CNC / Laser finish runs. Resume with Package
-  A inventory, followed by Package B entity-card contract.
+  operations, review-governance, and Estimation-readiness sequence. Production
+  now contains the verified schema, identities, profiles, candidate offers, and
+  aliases recorded in `notes/ISRAEL_REFERENCE_CATALOG.md`; continuation moved
+  to 3.15.2.
   Replace the empty legacy material, work-time, and machining-points foundation
   with a multi-market reference architecture. Global material, operation, and
   labor-role identities remain separate from market-specific prices, local

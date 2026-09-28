@@ -1,12 +1,14 @@
 # Israel Reference Data Program Plan
 
-Task: 3.15.1
+Program: 3.15 Israel Reference Data
+Completed foundation: 3.15.1 at `1f8d6ab`
+Current task: 3.15.2
 Status: active master plan
 Market: Israel (`IL`, `ILS`)
 
-Execution is temporarily paused after plan capture while task 3.14.1 CNC / Laser
-is finished. Resume at Package A, then Package B. No accumulated catalog input
-may be discarded or silently reclassified during the pause.
+The executable foundation and Israel candidate evidence are deployed. Task
+3.15.2 now continues Packages D, G, and the baseline-ready parts of F and J.
+No accumulated catalog input may be discarded or silently reclassified.
 
 ## Objective
 
@@ -17,9 +19,9 @@ governance, and deterministic resolution. Preserve every accumulated source and
 candidate while replacing incompatible or duplicated structures through
 explicit migrations and mappings rather than deletion.
 
-The work packages below are stages inside task 3.15.1. They do not change the
-authoritative product block number. A later distinct task number is assigned
-only when one of these packages becomes separately actionable implementation.
+The work packages below form the 3.15 program. Foundation and candidate-data
+deployment completed as 3.15.1. Baseline derivation, furniture-core completion,
+and recognition expansion are now separately actionable as 3.15.2.
 
 ## Protected inputs
 
@@ -317,6 +319,9 @@ Explicit approval is required before:
 
 ## Current next action
 
-Complete Package A and produce the field-level Package B contract. Do not add
-more broad source batches, build the review UI, activate global learning, or
-rewrite Estimation until those two packages establish the verified foundation.
+Execute 3.15.2 from
+`notes/ISRAEL_REFERENCE_BASELINES_3_15_2.md`: generate the reproducible
+readiness report, derive non-active candidate baselines, close high-impact
+furniture-core gaps, and expand deterministic recognition. Do not activate a
+baseline, global private-data learning, or Estimation fallback without the
+corresponding decision gate.

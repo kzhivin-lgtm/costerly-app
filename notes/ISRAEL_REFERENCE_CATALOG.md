@@ -1,7 +1,10 @@
 # Israel Reference Catalog
 
 Task: 3.15.1
-Status: production foundation and candidate evidence deployed
+Status: completed production checkpoint at `1f8d6ab`; continued in 3.15.2
+
+Current baseline-completion task:
+`notes/ISRAEL_REFERENCE_BASELINES_3_15_2.md`
 
 ## Production checkpoint, 2026-09-28
 
