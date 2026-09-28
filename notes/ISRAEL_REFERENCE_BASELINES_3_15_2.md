@@ -177,3 +177,10 @@ directly state that website prices include VAT when applicable. Eight offers
 have a complete price quantity and can be normalized. Three mirror offers stay
 blocked because mirror thickness is not stated. The identity blocker is not
 overridden by resolving VAT.
+
+The IKEA Israel batch was applied and verified in production on 2026-09-28
+from commit `87c30c9`. Eight candidate offers were normalized. The three mirror
+offers remain blocked as designed. Production now has 233 eligible offers
+covering 219 of 280 materials, 61 materials remain blocked, and 230 review-only
+baseline candidates can be derived. All 320 offers remain candidates and the
+baseline table remains empty.

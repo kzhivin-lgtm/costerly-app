@@ -106,6 +106,35 @@ Post-application production verification:
 The Camisa batch changed candidate evidence only. It did not approve an offer,
 create a baseline, or connect Estimation fallback.
 
+## IKEA Israel normalization checkpoint
+
+The IKEA Israel normalization batch was applied and verified in production on
+2026-09-28 from commit `87c30c9`. IKEA Israel's own terms directly state that
+website prices include VAT when applicable. Eight offers with complete pricing
+quantities were normalized. Three decorative mirror offers remain blocked
+because mirror thickness is not stated.
+
+Post-application production verification:
+
+- Materials: 280
+- Candidate offers: 320
+- Offer statuses: 320 candidate, 0 reviewed, 0 active, 0 archived
+- Eligible normalized offers: 233
+- Materials with an eligible price: 219
+- Materials blocked: 61
+- Comparable baseline groups: 230
+- Single-source provisional groups: 228
+- Multi-source candidate groups: 2
+- Offers missing normalized price: 87
+- Offers with unknown VAT: 71
+- Offers missing normalized unit: 28
+- Active or candidate market baselines: 0
+- IKEA Israel offers normalized: 8
+- IKEA Israel mirror offers intentionally still blocked: 3
+
+The IKEA batch changed candidate evidence only. It did not approve an offer,
+create a baseline, or connect Estimation fallback.
+
 ## Reproduction
 
 ```bash
