@@ -198,3 +198,9 @@ canonical `sheet` unit. Production now has 245 eligible offers covering 230 of
 280 materials, 50 materials remain blocked, and 242 review-only baseline
 candidates can be derived. All 320 offers remain candidates and the baseline
 table remains empty.
+
+A.R. Sharpening is the next isolated batch. Fourteen offers have complete pack
+or weight quantities. The supplier's online-sale and return terms invoke
+Israel's Consumer Protection Law, but do not directly state VAT inclusion.
+Normalization therefore uses legal-inference provenance and caps confidence at
+60. No identity, quantity, or source-scope assumption is added.

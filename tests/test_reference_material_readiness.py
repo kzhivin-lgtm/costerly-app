@@ -249,3 +249,22 @@ def test_algolan_normalization_preserves_price_per_sheet_without_area_guess():
     assert "normalized_unit = 'sqm'" not in sql
     assert "insert into public.market_material_baselines" not in lowered
     assert "status = 'active'" not in lowered
+
+
+def test_ar_sharpening_normalization_handles_piece_and_weight_packages():
+    sql = (
+        Path(__file__).parents[1]
+        / "db/sql/2026_09_28_israel_reference_ar_sharpening_normalization.sql"
+    ).read_text()
+    lowered = sql.lower()
+
+    assert "expected 14 candidates" in sql
+    assert "o.supplier_name in ('A.R. Sharpening', 'AR Sharpening')" in sql
+    assert "s.source_url like 'https://www.ar-aia.co.il/%'" in sql
+    assert "when m.base_unit = 'kg'" in sql
+    assert "when m.base_unit = 'ea' then o.package_quantity" in sql
+    assert "'vat_evidence_type', 'legal_inference'" in sql
+    assert "confidence = least(coalesce(o.confidence, 60), 60)" in sql
+    assert "source_price / 1.18 / normalized_quantity" in sql
+    assert "insert into public.market_material_baselines" not in lowered
+    assert "status = 'active'" not in lowered
