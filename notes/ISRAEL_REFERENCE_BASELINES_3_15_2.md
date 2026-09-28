@@ -204,3 +204,10 @@ or weight quantities. The supplier's online-sale and return terms invoke
 Israel's Consumer Protection Law, but do not directly state VAT inclusion.
 Normalization therefore uses legal-inference provenance and caps confidence at
 60. No identity, quantity, or source-scope assumption is added.
+
+The A.R. Sharpening batch was applied and verified in production on 2026-09-28
+from commit `9737a52`. All 14 pack or weight prices are normalized with
+legal-inference provenance and confidence capped at 60. Production now has 259
+eligible offers covering 244 of 280 materials, 36 materials remain blocked,
+and 256 review-only baseline candidates can be derived. All 320 offers remain
+candidates and the baseline table remains empty.

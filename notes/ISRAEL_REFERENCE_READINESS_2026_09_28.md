@@ -164,6 +164,35 @@ The Algolan batch changed candidate evidence only. It did not infer a price per
 square metre, approve an offer, create a baseline, or connect Estimation
 fallback.
 
+## A.R. Sharpening normalization checkpoint
+
+The A.R. Sharpening batch was applied and verified in production on 2026-09-28
+from commit `9737a52`. Fourteen connector and adhesive offers had complete pack
+or weight quantities. The supplier's online-sale and return terms invoke
+Israel's Consumer Protection Law but do not directly state VAT inclusion, so
+the normalization retains legal-inference provenance and confidence capped at
+60.
+
+Post-application production verification:
+
+- Materials: 280
+- Candidate offers: 320
+- Offer statuses: 320 candidate, 0 reviewed, 0 active, 0 archived
+- Eligible normalized offers: 259
+- Materials with an eligible price: 244
+- Materials blocked: 36
+- Comparable baseline groups: 256
+- Single-source provisional groups: 254
+- Multi-source candidate groups: 2
+- Offers missing normalized price: 61
+- Offers with unknown VAT: 57
+- Offers missing normalized unit: 16
+- Active or candidate market baselines: 0
+- A.R. Sharpening offers normalized: 14
+
+The A.R. Sharpening batch changed candidate evidence only. It did not approve
+an offer, create a baseline, or connect Estimation fallback.
+
 ## Reproduction
 
 ```bash
