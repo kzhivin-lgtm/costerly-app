@@ -1,12 +1,14 @@
 from pathlib import Path
 
 from use_cases import machinery
+from use_cases.manufacturing_parameters import MANUFACTURING_PARAMETER_DEFINITIONS
 
 
 ROOT = Path(__file__).parents[1]
 MIGRATION = ROOT / "db/sql/2026_09_28_manufacturing_cost_parameters.sql"
 PLAN = ROOT / "notes/CNC_LASER_COSTING.md"
 ESTIMATE_LEVEL_MIGRATION = ROOT / "db/sql/2026_09_28_cnc_estimate_levels.sql"
+ISRAEL_SEED = ROOT / "db/sql/2026_09_28_manufacturing_cost_parameters_israel_seed_v1.sql"
 
 
 def test_cnc_laser_foundation_preserves_compact_machinery_profile():
@@ -57,6 +59,32 @@ def test_parameter_read_path_is_platform_staff_only_and_audited():
     assert "manufacturing_cost_parameters_viewed" in sql
     assert "revoke all on public.manufacturing_cost_parameters from public, anon, authenticated" in sql
     assert "grant all on public.manufacturing_cost_parameters to service_role" in sql
+
+
+def test_israel_seed_covers_every_admin_parameter_family_without_activating_priors():
+    sql = ISRAEL_SEED.read_text()
+    for calculator, definitions in MANUFACTURING_PARAMETER_DEFINITIONS.items():
+        assert f"'{calculator}'" in sql
+        for definition in definitions:
+            assert f"'{definition.key}'" in sql
+
+    assert sql.count("'reviewed'") > 10
+    assert sql.count("'candidate'") > 10
+    assert "'active'" not in sql
+    assert "Algolan Express" in sql
+    assert "Iron Laser Israel price guide" in sql
+    assert "Laser Portal" in sql
+    assert "Israel Electricity Authority tariff book" in sql
+    assert "TRUMPF TruLaser 3000 fiber" in sql
+
+
+def test_israel_seed_keeps_incompatible_provider_models_separate():
+    sql = ISRAEL_SEED.read_text()
+    assert "bundled_panel_service" in sql
+    assert "dxf_cutting_service" in sql
+    assert "cut_charge_per_meter" in sql
+    assert "cut_charge_per_machine_minute" in sql
+    assert "Do not average with per-metre offers" in sql
 
 
 def test_saved_plan_rejects_machinery_expansion_and_legacy_weights():

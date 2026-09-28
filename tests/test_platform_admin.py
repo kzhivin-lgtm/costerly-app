@@ -339,7 +339,8 @@ def test_four_manufacturing_routes_expose_distinct_parameter_models():
 
     assert len(set(route_keys.values())) == 4
     assert "effective_feed_rate_m_per_min" in route_keys["cnc_router_in_house"]
-    assert "hole_charge" in route_keys["cnc_router_subcontractor"]
+    assert "bundled_panel_service" in route_keys["cnc_router_subcontractor"]
+    assert "internal_feature_charge" in route_keys["cnc_router_subcontractor"]
     assert "assist_gas_cost_per_machine_hour" in route_keys["sheet_laser_in_house"]
     assert "cut_charge_per_machine_minute" in route_keys["sheet_laser_subcontractor"]
     assert "assist_gas_cost_per_machine_hour" not in route_keys["cnc_router_in_house"]
