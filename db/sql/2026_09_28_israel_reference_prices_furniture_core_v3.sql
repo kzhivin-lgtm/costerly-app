@@ -1,0 +1,44 @@
+-- 3.15.1 Israel furniture-core price evidence v3.
+-- Exact nail and staple packages retrieved 2026-09-28. Count-priced evidence
+-- remains separate from the future kilogram-based estimation baseline.
+
+insert into public.reference_sources(source_id,market_code,source_type,source_channel,source_name,source_url,source_date,language_code,region,evidence) values
+('9b2a7d9d-40b3-591c-b7da-e04eb4569c6f','IL','retailer','diy_retail','Home Center Rapid fastener consumables','https://www.homecenter.co.il/collections/staple-and-rivet-guns','2026-09-28','he-IL',null,'{"date_basis":"retrieved","selection_rule":"all currently orderable Rapid staple and brad packages with explicit counts","vat_statement":"not stated on captured listing"}'::jsonb),
+('2dccda6e-5e62-53c1-b7c4-69598a52b859','IL','retailer','specialist_retailer','Italox brad nails','https://www.italox.co.il/%D7%9E%D7%95%D7%A6%D7%A8%D7%99%D7%9D/%D7%A1%D7%99%D7%9B%D7%95%D7%AA-%D7%9E%D7%A1%D7%9E%D7%A8-25-%D7%9E%D7%9E-5000-%D7%99%D7%97%D7%99%D7%93%D7%95%D7%AA-%D7%91%D7%97%D7%91%D7%99%D7%9C%D7%94?c=68392163316ab','2026-09-28','he-IL',null,'{"date_basis":"retrieved","package_quantity":5000,"vat_statement":"price excludes VAT"}'::jsonb)
+on conflict(source_id) do update set source_type=excluded.source_type,source_channel=excluded.source_channel,source_name=excluded.source_name,source_url=excluded.source_url,source_date=excluded.source_date,language_code=excluded.language_code,region=excluded.region,evidence=excluded.evidence,retrieved_at=now();
+
+insert into public.reference_materials(material_id,material_code,department,category_code,canonical_name,base_unit,specifications) values
+('37fa6683-dd86-5907-8592-5645ed73748f','staple_type53_6mm','hardware','bulk_nail_staple','Type 53 staple, 6 mm','ea','{"fastener_type":"staple","series":"53","length_mm":6,"brand":"Rapid"}'::jsonb),
+('7e7704a8-49a1-5a16-aecb-5625dd8fa10a','staple_type53_8mm','hardware','bulk_nail_staple','Type 53 staple, 8 mm','ea','{"fastener_type":"staple","series":"53","length_mm":8,"brand":"Rapid"}'::jsonb),
+('b14b8ff0-3c62-5b79-96a5-36c6740f37f1','staple_type53_10mm','hardware','bulk_nail_staple','Type 53 staple, 10 mm','ea','{"fastener_type":"staple","series":"53","length_mm":10,"brand":"Rapid"}'::jsonb),
+('b9a9f7f0-cd8c-5512-9252-801c8b4938a3','staple_type53_12mm','hardware','bulk_nail_staple','Type 53 staple, 12 mm','ea','{"fastener_type":"staple","series":"53","length_mm":12,"brand":"Rapid"}'::jsonb),
+('f40003f9-4e1e-5187-ad91-b833ffce9a48','staple_type53_14mm','hardware','bulk_nail_staple','Type 53 staple, 14 mm','ea','{"fastener_type":"staple","series":"53","length_mm":14,"brand":"Rapid"}'::jsonb),
+('3edbe075-4390-5cea-8fcb-fcb020d7f63f','upholstery_staple_1_1x6x18mm','hardware','bulk_nail_staple','Upholstery staple, 1.1 x 6 x 18 mm','ea','{"fastener_type":"staple","wire_thickness_mm":1.1,"crown_width_mm":6,"length_mm":18,"brand":"Rapid"}'::jsonb),
+('c5be4303-4893-5863-9b6c-ca69d432884a','brad_model8_15mm','hardware','bulk_nail_staple','Model 8 brad nail, 15 mm','ea','{"fastener_type":"brad","series":"8","length_mm":15,"brand":"Rapid"}'::jsonb),
+('125b435c-31d2-5bf8-bf13-ba5f6f9c9a34','brad_nail_25mm','hardware','bulk_nail_staple','Brad nail, 25 mm','ea','{"fastener_type":"brad","length_mm":25,"coating":"anti-rust","supplier_sku":"SIM-25-6-10-5000-N-154"}'::jsonb)
+on conflict(material_code) do update set department=excluded.department,category_code=excluded.category_code,canonical_name=excluded.canonical_name,base_unit=excluded.base_unit,specifications=excluded.specifications,active=true,updated_at=now();
+
+insert into public.market_material_profiles(material_id,market_code,market_name,language_code,local_specifications,availability_status)
+select material_id,'IL',case material_code
+when 'staple_type53_6mm' then 'קופסת סיכות סוג 53 אורך 6 מ״מ, 2,500 יחידות'
+when 'staple_type53_8mm' then 'קופסת סיכות סוג 53 אורך 8 מ״מ, 2,500 יחידות'
+when 'staple_type53_10mm' then 'קופסת סיכות סוג 53 אורך 10 מ״מ, 2,500 יחידות'
+when 'staple_type53_12mm' then 'קופסת סיכות סוג 53 אורך 12 מ״מ, 2,500 יחידות'
+when 'staple_type53_14mm' then 'קופסת סיכות סוג 53 אורך 14 מ״מ, 2,500 יחידות'
+when 'upholstery_staple_1_1x6x18mm' then '3,600 סיכות רפיד, עובי 1.1 מ״מ, רוחב 6 מ״מ, אורך 18 מ״מ'
+when 'brad_model8_15mm' then 'קופסת מסמרים דגם 8 אורך 15 מ״מ, 5,700 יחידות'
+when 'brad_nail_25mm' then 'סיכות מסמר 25 מ״מ, 5,000 יחידות בחבילה'
+end,'he-IL','{"market":"Israel","source_language":"Hebrew"}'::jsonb,'common'
+from public.reference_materials where material_code in ('staple_type53_6mm','staple_type53_8mm','staple_type53_10mm','staple_type53_12mm','staple_type53_14mm','upholstery_staple_1_1x6x18mm','brad_model8_15mm','brad_nail_25mm')
+on conflict(material_id,market_code,language_code) do update set market_name=excluded.market_name,local_specifications=excluded.local_specifications,availability_status=excluded.availability_status,active=true,updated_at=now();
+
+insert into public.market_material_offers(market_offer_id,material_id,market_code,source_id,supplier_name,supplier_sku,source_price,source_currency,source_unit,price_scope,included_services,delivery_included,package_quantity,minimum_order_quantity,vat_mode,normalized_price_ex_vat,normalized_unit,conversion_basis,region,valid_from,confidence,status) values
+('27169091-2b4d-5301-ae9e-00f864a023b5','37fa6683-dd86-5907-8592-5645ed73748f','IL','9b2a7d9d-40b3-591c-b7da-e04eb4569c6f','Home Center',null,27.90,'ILS','pack_2500','retail_package','{}',false,2500,1,'unknown',null,'ea','{"package_quantity":2500,"normalization_blocked_by":"VAT status and package mass not stated"}'::jsonb,null,'2026-09-28',90,'candidate'),
+('0a1bd1b1-b411-5c56-afab-7b7d35e4f061','7e7704a8-49a1-5a16-aecb-5625dd8fa10a','IL','9b2a7d9d-40b3-591c-b7da-e04eb4569c6f','Home Center','1738652852281',32.90,'ILS','pack_2500','retail_package','{}',false,2500,1,'unknown',null,'ea','{"package_quantity":2500,"normalization_blocked_by":"VAT status and package mass not stated"}'::jsonb,null,'2026-09-28',92,'candidate'),
+('296017ee-bd19-5a57-ba1d-592c7c77859a','b14b8ff0-3c62-5b79-96a5-36c6740f37f1','IL','9b2a7d9d-40b3-591c-b7da-e04eb4569c6f','Home Center','1738594668542',37.90,'ILS','pack_2500','retail_package','{}',false,2500,1,'unknown',null,'ea','{"package_quantity":2500,"normalization_blocked_by":"VAT status and package mass not stated"}'::jsonb,null,'2026-09-28',92,'candidate'),
+('19c7f59a-aeb2-5031-89f4-9e30a29ae9ac','b9a9f7f0-cd8c-5512-9252-801c8b4938a3','IL','9b2a7d9d-40b3-591c-b7da-e04eb4569c6f','Home Center',null,42.90,'ILS','pack_2500','retail_package','{}',false,2500,1,'unknown',null,'ea','{"package_quantity":2500,"normalization_blocked_by":"VAT status and package mass not stated"}'::jsonb,null,'2026-09-28',90,'candidate'),
+('fc10affc-9fa1-565e-a803-c181d553cc15','f40003f9-4e1e-5187-ad91-b833ffce9a48','IL','9b2a7d9d-40b3-591c-b7da-e04eb4569c6f','Home Center',null,57.90,'ILS','pack_2500','retail_package','{}',false,2500,1,'unknown',null,'ea','{"package_quantity":2500,"normalization_blocked_by":"VAT status and package mass not stated"}'::jsonb,null,'2026-09-28',90,'candidate'),
+('dcbf4430-91af-5ccf-ba02-f09f10ca66eb','3edbe075-4390-5cea-8fcb-fcb020d7f63f','IL','9b2a7d9d-40b3-591c-b7da-e04eb4569c6f','Home Center','3038310210',179.90,'ILS','pack_3600','retail_package','{}',false,3600,1,'unknown',null,'ea','{"package_quantity":3600,"normalization_blocked_by":"VAT status and package mass not stated"}'::jsonb,null,'2026-09-28',92,'candidate'),
+('fb541f35-1c0f-59ab-924e-b7db3ab340b5','c5be4303-4893-5863-9b6c-ca69d432884a','IL','9b2a7d9d-40b3-591c-b7da-e04eb4569c6f','Home Center',null,99.90,'ILS','pack_5700','retail_package','{}',false,5700,1,'unknown',null,'ea','{"package_quantity":5700,"normalization_blocked_by":"VAT status and package mass not stated"}'::jsonb,null,'2026-09-28',90,'candidate'),
+('62719648-35da-50cb-8351-e6bf501da83f','125b435c-31d2-5bf8-bf13-ba5f6f9c9a34','IL','2dccda6e-5e62-53c1-b7c4-69598a52b859','Italox','SIM-25-6-10-5000-N-154',116.00,'ILS','pack_5000','retail_package','{}',false,5000,1,'excluded',0.0232,'ea','{"package_quantity":5000,"calculation":"116 / 5000","kilogram_normalization_blocked_by":"package mass not stated"}'::jsonb,null,'2026-09-28',94,'candidate')
+on conflict(market_offer_id) do update set source_price=excluded.source_price,source_currency=excluded.source_currency,source_unit=excluded.source_unit,price_scope=excluded.price_scope,included_services=excluded.included_services,delivery_included=excluded.delivery_included,package_quantity=excluded.package_quantity,minimum_order_quantity=excluded.minimum_order_quantity,vat_mode=excluded.vat_mode,normalized_price_ex_vat=excluded.normalized_price_ex_vat,normalized_unit=excluded.normalized_unit,conversion_basis=excluded.conversion_basis,region=excluded.region,valid_from=excluded.valid_from,confidence=excluded.confidence,status=excluded.status;

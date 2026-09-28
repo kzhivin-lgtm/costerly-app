@@ -1,0 +1,29 @@
+-- 3.15.1 accelerated furniture-core coverage v4.
+-- Installation-fastener, tooling-wear and indoor wood-oil evidence retrieved 2026-09-28.
+
+insert into public.reference_sources(source_id,market_code,source_type,source_channel,source_name,source_url,source_date,language_code,region,evidence) values
+('30bc6a8a-de6c-4512-8dec-f7360cd2daf6','IL','retailer','diy_retail','IKEA Israel TRIXIG screw and plug set','https://www.ikea.com/il/he/p/trixig-175-piece-screw-and-plug-set-50546908/','2026-09-28','he-IL',null,'{"date_basis":"retrieved","vat_statement":"not stated"}'::jsonb),
+('ee16a6e7-4e86-4e32-b43f-2b19b5280dce','IL','retailer','diy_retail','Home Center Bosch circular-saw blade','https://www.homecenter.co.il/products/3032005123','2026-09-28','he-IL',null,'{"date_basis":"retrieved","vat_statement":"not stated"}'::jsonb),
+('b47d3e27-afff-4637-a9ae-7ff2f1b7a000','IL','retailer','diy_retail','IKEA Israel TRIXIG indoor wood oil','https://www.ikea.com/il/he/p/trixig-wood-treatment-oil-indoor-use-00581065/','2026-09-28','he-IL',null,'{"date_basis":"retrieved","vat_statement":"not stated"}'::jsonb)
+on conflict(source_id) do update set source_type=excluded.source_type,source_channel=excluded.source_channel,source_name=excluded.source_name,source_url=excluded.source_url,source_date=excluded.source_date,language_code=excluded.language_code,region=excluded.region,evidence=excluded.evidence,retrieved_at=now();
+
+insert into public.reference_materials(material_id,material_code,department,category_code,canonical_name,base_unit,specifications) values
+('9b8814e8-45ca-403f-9d66-f3c8a1d97211','installation_screw_plug_mix_trixig_175','hardware','installation_fastener_allowance','TRIXIG mixed installation screw and wall-plug set, 175 pieces','set','{"piece_count":175,"screws":{"material":"galvanized steel","sizes_mm":["4x30","4.5x40","4.5x50"]},"wall_plugs":{"material":"polyamide","sizes_mm":["6x28","8x37"]},"package_weight_kg":0.49,"indoor":true}'::jsonb),
+('0704db0e-2beb-4db9-90bb-9c953d855b08','circular_saw_blade_bosch_7_25in_40t','consumable','tooling_consumable','Bosch circular-saw blade, 7.25 inch, 40 teeth','ea','{"tool_type":"circular saw blade","diameter_in":7.25,"tooth_count":40,"application":"clean precise cuts in wood"}'::jsonb),
+('7dfac777-d338-4462-9e22-f7baab56a211','wood_oil_trixig_indoor_250ml','coating','wood_oil_wax','TRIXIG refined vegetable wood-treatment oil for indoor use, 250 ml','l','{"volume_l":0.25,"base":"refined vegetable oil","indoor":true,"food_contact_approved":true,"coverage_sqm_per_container":[3,6]}'::jsonb)
+on conflict(material_code) do update set department=excluded.department,category_code=excluded.category_code,canonical_name=excluded.canonical_name,base_unit=excluded.base_unit,specifications=excluded.specifications,active=true,updated_at=now();
+
+insert into public.market_material_profiles(material_id,market_code,market_name,language_code,local_specifications,availability_status)
+select material_id,'IL',case material_code
+when 'installation_screw_plug_mix_trixig_175' then 'TRIXIG סט ברגים ודיבלים, 175 חלקים'
+when 'circular_saw_blade_bosch_7_25in_40t' then 'להב מסור עגול Bosch, ‏7¼ אינץ׳, 40 שיניים'
+when 'wood_oil_trixig_indoor_250ml' then 'TRIXIG שמן לטיפול בעץ לשימוש בבית, 250 מ״ל'
+end,'he-IL','{"market":"Israel","source_language":"Hebrew"}'::jsonb,'common'
+from public.reference_materials where material_code in ('installation_screw_plug_mix_trixig_175','circular_saw_blade_bosch_7_25in_40t','wood_oil_trixig_indoor_250ml')
+on conflict(material_id,market_code,language_code) do update set market_name=excluded.market_name,local_specifications=excluded.local_specifications,availability_status=excluded.availability_status,active=true,updated_at=now();
+
+insert into public.market_material_offers(market_offer_id,material_id,market_code,source_id,supplier_name,supplier_sku,source_price,source_currency,source_unit,price_scope,included_services,delivery_included,package_quantity,minimum_order_quantity,vat_mode,normalized_price_ex_vat,normalized_unit,conversion_basis,region,valid_from,confidence,status) values
+('167bb3aa-a8c3-4501-8642-df9ecee6ada7','9b8814e8-45ca-403f-9d66-f3c8a1d97211','IL','30bc6a8a-de6c-4512-8dec-f7360cd2daf6','IKEA Israel','505.469.08',35,'ILS','set_175','retail_package','{}',false,175,1,'unknown',null,'set','{"piece_count":175,"package_weight_kg":0.49,"allowance_normalization_requires":"project installation rule","normalization_blocked_by":"VAT status not stated"}'::jsonb,null,'2026-09-28',95,'candidate'),
+('a27ff1f3-8677-41dd-94df-e7d359e6d5f9','0704db0e-2beb-4db9-90bb-9c953d855b08','IL','ee16a6e7-4e86-4e32-b43f-2b19b5280dce','Home Center','3032005123',99.90,'ILS','displayed_item','retail_package','{}',false,1,1,'unknown',null,'ea','{"wear_allowance_requires":"verified tool life by material and operation","normalization_blocked_by":"VAT status not stated"}'::jsonb,null,'2026-09-28',93,'candidate'),
+('662c2307-c6e6-4a1a-9e15-4c8ad327a836','7dfac777-d338-4462-9e22-f7baab56a211','IL','b47d3e27-afff-4637-a9ae-7ff2f1b7a000','IKEA Israel','005.810.65',29,'ILS','container_250ml','retail_package','{}',false,1,1,'unknown',null,'l','{"net_volume_l":0.25,"coverage_sqm_per_container":[3,6],"normalization_blocked_by":"VAT status not stated"}'::jsonb,null,'2026-09-28',96,'candidate')
+on conflict(market_offer_id) do update set source_price=excluded.source_price,source_currency=excluded.source_currency,source_unit=excluded.source_unit,price_scope=excluded.price_scope,included_services=excluded.included_services,delivery_included=excluded.delivery_included,package_quantity=excluded.package_quantity,minimum_order_quantity=excluded.minimum_order_quantity,vat_mode=excluded.vat_mode,normalized_price_ex_vat=excluded.normalized_price_ex_vat,normalized_unit=excluded.normalized_unit,conversion_basis=excluded.conversion_basis,region=excluded.region,valid_from=excluded.valid_from,confidence=excluded.confidence,status=excluded.status;

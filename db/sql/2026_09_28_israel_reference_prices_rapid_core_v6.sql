@@ -1,0 +1,30 @@
+-- 3.15.1 accelerated furniture-core coverage v6.
+-- Current Euro-system screw evidence retrieved 2026-09-28.
+-- Starting prices and unavailable listings remain explicit candidate evidence.
+
+insert into public.reference_sources(source_id,market_code,source_type,source_channel,source_name,source_url,source_date,language_code,region,evidence) values
+('b4789535-dcbe-47e4-87d2-7e80f362e02f','IL','retailer','trade_supplier','Yuvalim Pirzul Euro screws','https://www.yuvalimpirzul.com/product-page/%D7%91%D7%95%D7%A8%D7%92-%D7%99%D7%95%D7%A8%D7%95-6-3-%D7%A9%D7%98%D7%95%D7%97-%D7%91%D7%9E%D7%99%D7%93%D7%95%D7%AA-%D7%A9%D7%95%D7%A0%D7%95%D7%AA-%D7%93%D7%92%D7%9D-euro','2026-09-28','he-IL','Azor','{"date_basis":"retrieved","price_basis":"displayed starting price","package_quantity":1000,"vat_statement":"not stated"}'::jsonb),
+('84f49914-6656-43cb-8f41-1424facbd886','IL','retailer','trade_supplier','Gold Pirzul Euro screws','https://www.gold-pirzul.co.il/1101006311','2026-09-28','he-IL','Haifa Bay','{"date_basis":"retrieved","selection_rule":"exact 1000-piece Euro-screw listings","availability":"captured listings show unavailable combination","vat_statement":"not stated"}'::jsonb)
+on conflict(source_id) do update set source_type=excluded.source_type,source_channel=excluded.source_channel,source_name=excluded.source_name,source_url=excluded.source_url,source_date=excluded.source_date,language_code=excluded.language_code,region=excluded.region,evidence=excluded.evidence,retrieved_at=now();
+
+insert into public.reference_materials(material_id,material_code,department,category_code,canonical_name,base_unit,specifications) values
+('c8f3ed2d-3066-4a54-aa7c-06625905e5c1','euro_screw_flat_6_3mm_assorted_1000','hardware','system_specific_screw','Flat-head Euro system screw, 6.3 mm, assorted lengths, pack of 1000','ea','{"diameter_mm":6.3,"length_options_mm":[9,10,12,15],"package_quantity":1000,"application":"hinge, runner or furniture-system mounting"}'::jsonb),
+('dc5e111f-591d-4f1c-8a55-a24e4781cfd6','euro_screw_6_3x13mm_1000','hardware','system_specific_screw','Euro system screw, 6.3 x 13 mm, pack of 1000','ea','{"diameter_mm":6.3,"length_mm":13,"head_dimension_mm":7,"package_quantity":1000,"application":"hinge, runner or furniture-system mounting"}'::jsonb),
+('5ce23b74-7f58-4979-b6ec-076e00c46ab7','euro_screw_6_3x11mm_1000','hardware','system_specific_screw','Euro system screw, 6.3 x 11 mm, pack of 1000','ea','{"diameter_mm":6.3,"length_mm":11,"head_dimension_mm":7.5,"package_quantity":1000,"application":"hinge, runner or furniture-system mounting"}'::jsonb)
+on conflict(material_code) do update set department=excluded.department,category_code=excluded.category_code,canonical_name=excluded.canonical_name,base_unit=excluded.base_unit,specifications=excluded.specifications,active=true,updated_at=now();
+
+insert into public.market_material_profiles(material_id,market_code,market_name,language_code,local_specifications,availability_status)
+select material_id,'IL',case material_code
+when 'euro_screw_flat_6_3mm_assorted_1000' then 'בורג יורו שטוח 6.3 מ״מ, אורכים 9-15 מ״מ, 1000 יחידות'
+when 'euro_screw_6_3x13mm_1000' then 'בורג יורו 6.3×13 מ״מ, 1000 יחידות'
+when 'euro_screw_6_3x11mm_1000' then 'בורג יורו 6.3×11 מ״מ, 1000 יחידות'
+end,'he-IL','{"market":"Israel","source_language":"Hebrew"}'::jsonb,
+case when material_code='euro_screw_flat_6_3mm_assorted_1000' then 'common' else 'temporarily_unavailable' end
+from public.reference_materials where material_code in ('euro_screw_flat_6_3mm_assorted_1000','euro_screw_6_3x13mm_1000','euro_screw_6_3x11mm_1000')
+on conflict(material_id,market_code,language_code) do update set market_name=excluded.market_name,local_specifications=excluded.local_specifications,availability_status=excluded.availability_status,active=true,updated_at=now();
+
+insert into public.market_material_offers(market_offer_id,material_id,market_code,source_id,supplier_name,supplier_sku,source_price,source_currency,source_unit,price_scope,included_services,delivery_included,package_quantity,minimum_order_quantity,vat_mode,normalized_price_ex_vat,normalized_unit,conversion_basis,region,valid_from,confidence,status) values
+('4b83f050-2457-4a4c-a169-f42c62a8a269','c8f3ed2d-3066-4a54-aa7c-06625905e5c1','IL','b4789535-dcbe-47e4-87d2-7e80f362e02f','Yuvalim Pirzul',null,86,'ILS','pack_1000','retail_package','{}',false,1000,1,'unknown',null,'ea','{"gross_price_per_piece_ils":0.086,"price_is_starting_from":true,"normalization_blocked_by":"selected length and VAT status not bound to displayed starting price"}'::jsonb,'Azor','2026-09-28',86,'candidate'),
+('a6f4d84e-cf52-4828-a82b-9f470f1ef388','dc5e111f-591d-4f1c-8a55-a24e4781cfd6','IL','84f49914-6656-43cb-8f41-1424facbd886','Gold Pirzul','1101006311',184.29,'ILS','pack_1000','retail_package','{}',false,1000,1,'unknown',null,'ea','{"gross_price_per_piece_ils":0.18429,"availability":"unavailable at retrieval","normalization_blocked_by":"VAT status not stated"}'::jsonb,'Haifa Bay','2026-09-28',91,'candidate'),
+('0b409054-b6f7-47f9-a120-ab498c44031a','5ce23b74-7f58-4979-b6ec-076e00c46ab7','IL','84f49914-6656-43cb-8f41-1424facbd886','Gold Pirzul','1101006314',161.60,'ILS','pack_1000','retail_package','{}',false,1000,1,'unknown',null,'ea','{"gross_price_per_piece_ils":0.1616,"availability":"unavailable at retrieval","normalization_blocked_by":"VAT status not stated"}'::jsonb,'Haifa Bay','2026-09-28',88,'candidate')
+on conflict(market_offer_id) do update set source_price=excluded.source_price,source_currency=excluded.source_currency,source_unit=excluded.source_unit,price_scope=excluded.price_scope,included_services=excluded.included_services,delivery_included=excluded.delivery_included,package_quantity=excluded.package_quantity,minimum_order_quantity=excluded.minimum_order_quantity,vat_mode=excluded.vat_mode,normalized_price_ex_vat=excluded.normalized_price_ex_vat,normalized_unit=excluded.normalized_unit,conversion_basis=excluded.conversion_basis,region=excluded.region,valid_from=excluded.valid_from,confidence=excluded.confidence,status=excluded.status;

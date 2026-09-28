@@ -2,14 +2,19 @@
 
 Task: 3.15.1
 Market: Israel (`IL`, `ILS`)
-Status: master denominator for material-price coverage
+Status: long-term assortment map, not the Estimation launch denominator
 
 ## Purpose
 
-This is the fixed bingo board for furniture-estimation material coverage. It is
-not a list of every decorative SKU sold in Israel. It is the complete set of
-materially different families and price-changing variants needed to estimate
-the supported furniture and custom-fabrication scope responsibly.
+This is the long-term bingo board for furniture and custom-fabrication
+assortment coverage. It is not a list of every decorative SKU sold in Israel.
+It remains useful for research planning, but its 395 cells are too granular to
+measure the first furniture Estimation release.
+
+Launch readiness is measured in
+`notes/ISRAEL_REFERENCE_FURNITURE_CORE.md`. That denominator groups items by
+their actual estimating behaviour and prices ordinary fasteners by weight or
+allowance instead of treating each dimension as a required SKU.
 
 A color, pattern, or designer shape does not create a mandatory cell unless it
 changes the price tier. Material, grade, thickness, section, load class,
@@ -22,7 +27,7 @@ service do create separate cells because they can materially change cost.
 - `[~]` Some required variants have exact offers, but the cell is incomplete.
 - `[x]` The representative variant set has exact offers. This does not mean an
   active baseline exists.
-- `Observed:` lists evidence already stored in the seven candidate SQL batches.
+- `Observed:` lists evidence already stored in the 26 candidate SQL batches.
 - Every cell still needs compatible units, VAT status, package constraints,
   service scope, source date, and at least one exact offer.
 - Baseline activation is a separate decision. None of the current offers is an
@@ -36,18 +41,18 @@ service do create separate cells because they can materially change cost.
 - [ ] A04 Colored-through MDF. Required: black, grey, brown core and 8/12/16/19 mm price tiers.
 - [ ] A05 Ultralight MDF. Required: standard furniture thicknesses and sheet sizes.
 - [ ] A06 Flexible or bendable MDF. Required: longitudinal and transverse groove direction, common thicknesses.
-- [ ] A07 Veneer-faced MDF. Required: one-side and two-side, common species, backing balance, thickness.
-- [ ] A08 HPL-faced MDF. Required: one-side and two-side, standard and premium laminate tiers, thickness.
+- [~] A07 Veneer-faced MDF. Required: one-side and two-side, common species, backing balance, thickness. Observed: a configurable oak veneer-faced family includes MDF among three substrates, crown and quarter cuts, 16.5/28 mm and unfinished or lacquered options; displayed range is not bound to a selected configuration.
+- [~] A08 HPL-faced MDF. Required: one-side and two-side, standard and premium laminate tiers, thickness. Observed: one exact 17 mm, 1220 x 2440 mm MDF sheet with white textured-matte HPL on one face and white gloss HPL on the other.
 - [ ] A09 Acrylic/PET-faced MDF. Required: matte, high-gloss, anti-fingerprint price tiers and thickness.
 - [ ] A10 Raw particleboard. Required: 8/10/12/16/17/18/22/25/28 mm.
 - [~] A11 Melamine-faced particleboard. Required: white, solid color, woodgrain, synchronized texture, one/two-side, 17/18/25/28 mm. Observed: colored 17 mm.
 - [ ] A12 Moisture-resistant particleboard. Required: raw and melamine-faced, common thicknesses.
 - [ ] A13 Fire-retardant particleboard. Required: local/common fire classes and thicknesses.
 - [ ] A14 Lightweight honeycomb board. Required: paper or aluminium core, skin type, 25/38/50 mm.
-- [ ] A15 Hardboard/HDF backing. Required: raw, white, colored, perforated, 2.5/3/4/6 mm.
+- [~] A15 Hardboard/HDF backing. Required: raw, white, colored, perforated, 2.5/3/4/6 mm. Observed: two current cut-to-size offers for approximately 3 and 3.5 mm backing board; displayed prices are configurable minima without selected-area binding.
 - [~] A16 Standard commercial plywood. Required: 4/6/8/10/12/15/17/18/20/21/24/30 mm, face grade and species. Observed: 4, 6, 8, 10, 12, 17, 20, 24 mm.
 - [~] A17 Birch plywood. Required: 4/6/9/12/15/16/18/21/24/27/30 mm and face grades. Observed: 9, 12, 16, 18 mm.
-- [ ] A18 Poplar plywood. Required: common furniture thicknesses and face grades.
+- [~] A18 Poplar plywood. Required: common furniture thicknesses and face grades. Observed: 4, 6, 12, 16, 18, 21, 24, 27 and 30 mm; face grade and most sheet dimensions remain unstated.
 - [ ] A19 Marine plywood. Required: glue class, species, 6/9/12/15/18/21/25 mm.
 - [ ] A20 Film-faced plywood. Required: smooth/mesh face, 12/15/18/21 mm.
 - [ ] A21 Flexible plywood. Required: bend direction and 3/5/8/10 mm.
@@ -73,9 +78,9 @@ service do create separate cells because they can materially change cost.
 - [ ] B10 Iroko/teak exterior hardwood. Required: species, grade, section and moisture.
 - [ ] B11 Sapele/mahogany family. Required: exact species, grade and thickness.
 - [ ] B12 Rubberwood. Required: boards and glued panels by thickness.
-- [ ] B13 Eucalyptus or other locally common hardwood. Required: exact species and grade.
-- [~] B14 Glued solid-wood panels. Required: pine, beech, oak, walnut/rubberwood tiers; finger-jointed versus continuous lamella; 18/20/26/30/40 mm. Observed: Finnish pine 18 mm, 1220x2440.
-- [ ] B15 Butcher-block worktops. Required: species, stave type, thickness, width, unfinished versus finished.
+- [~] B13 Eucalyptus or other locally common hardwood. Required: exact species and grade. Observed: exact kiln-dried Brazilian Sucupira S4S E4E 19 x 90 mm and Jatoba 19 x 140 mm exterior-grade profiles by linear metre; furniture grades and additional species remain missing.
+- [~] B14 Glued solid-wood panels. Required: pine, beech, oak, walnut/rubberwood tiers; finger-jointed versus continuous lamella; 18/20/26/30/40 mm. Observed: Finnish pine 18 mm, 1220x2440, and oak 19 mm with source dimensions unstated.
+- [~] B15 Butcher-block worktops. Required: species, stave type, thickness, width, unfinished versus finished. Observed: oak 18 and 26 mm; sheet dimensions and finish remain unstated.
 - [ ] B16 Solid-wood stair/worktop slabs. Required: species, live edge versus straight, kiln-dried, thickness bands.
 - [ ] B17 Wooden dowel rod and round stock. Required: species and diameters 6 through 50 mm.
 - [ ] B18 Mouldings and profiles. Required: pine and hardwood, simple versus decorative section, linear metre.
@@ -158,7 +163,7 @@ service do create separate cells because they can materially change cost.
 - [ ] F06 Tempered extra-clear or tinted glass. Required: color and thickness tiers.
 - [ ] F07 Laminated glass. Required: 3+3, 4+4, 5+5, 6+6; clear/frosted/interlayer type.
 - [ ] F08 Wired or fire-rated glass. Required: rating, thickness and size.
-- [ ] F09 Standard silver mirror. Required: 3/4/5/6 mm, raw and cut-to-size.
+- [~] F09 Standard silver mirror. Required: 3/4/5/6 mm, raw and cut-to-size. Observed: three exact safety-backed frameless retail mirror products with known package areas; thickness and raw/cut scope remain missing.
 - [ ] F10 Extra-clear mirror. Required: thickness and cut scope.
 - [ ] F11 Grey/bronze/smoked mirror. Required: tint and thickness.
 - [ ] F12 Antique/decorative mirror. Required: standard and premium pattern tiers.
@@ -204,7 +209,7 @@ service do create separate cells because they can materially change cost.
 - [~] I05 Bi-fold/corner folding hinge. Required: door pairing geometry and angle. Observed: one Blum folding-corner hinge.
 - [ ] I06 Glass-door concealed or pivot hinge. Required: drilled/clamp type, glass thickness, load.
 - [ ] I07 Piano/continuous hinge. Required: steel/stainless/brass, width, thickness and length.
-- [ ] I08 Butt hinge. Required: material, size, bearing/non-bearing and finish tiers.
+- [~] I08 Butt hinge. Required: material, size, bearing/non-bearing and finish tiers. Observed: one exact 3-inch pair; material, bearing class and finish remain unstated.
 - [ ] I09 Pivot hinge. Required: top/bottom set, load and opening control.
 - [ ] I10 Soft-close damper, separate. Required: hinge-compatible and universal types.
 - [~] I11 Concealed-hinge mounting plate. Required: heights, screw/dowel/expando, steel/zinc tiers. Observed: ten Blum plate variants from 3 to 18 mm and multiple fixings.
@@ -212,14 +217,14 @@ service do create separate cells because they can materially change cost.
 
 ## J. Drawer runners and drawer systems
 
-- [ ] J01 Roller runner. Required: 250 through 600 mm, white/brown, load class.
+- [~] J01 Roller runner. Required: 250 through 600 mm, white/brown, load class. Observed: six basic drawer-runner pairs from 300 through 550 mm; mechanism, finish and load remain unstated.
 - [ ] J02 Ball-bearing side runner. Required: partial/full extension, 250 through 700 mm, 30/45/60/100 kg classes.
 - [ ] J03 Soft-close ball-bearing runner. Required: lengths and load classes.
 - [ ] J04 Push-to-open ball-bearing runner. Required: lengths and load classes.
-- [ ] J05 Concealed undermount runner. Required: partial/full extension, soft-close/push, lengths and load classes.
+- [~] J05 Concealed undermount runner. Required: partial/full extension, soft-close/push, lengths and load classes. Observed: GG80C single runners for 19 mm drawers at 250 and 270 mm; extension, closing mechanism and load remain unstated.
 - [ ] J06 Wooden-drawer undermount set. Required: runner plus locking devices and optional synchronization.
-- [ ] J07 Metal drawer box, low. Required: nominal length, height, load, soft-close/push and complete component set.
-- [ ] J08 Metal drawer box, medium/high. Required: height tiers and complete component set.
+- [~] J07 Metal drawer box, low. Required: nominal length, height, load, soft-close/push and complete component set. Observed: exact 60 x 60 cm low soft-close MAXIMERA complete drawer.
+- [~] J08 Metal drawer box, medium/high. Required: height tiers and complete component set. Observed: exact 60 x 60 cm medium and high soft-close MAXIMERA complete drawers.
 - [ ] J09 Inner drawer and gallery rail components. Required: front, railing, brackets and height tiers.
 - [ ] J10 Heavy-duty drawer/platform slide. Required: 100/150/200+ kg, locking/non-locking and length.
 - [ ] J11 Keyboard/light-duty slide. Required: length, extension and finish.
@@ -232,8 +237,8 @@ service do create separate cells because they can materially change cost.
 - [ ] K03 Bi-fold lift. Required: power factor and complete kit.
 - [ ] K04 Up-and-over lift. Required: power factor and complete kit.
 - [ ] K05 Downward flap stay. Required: load class and soft opening.
-- [ ] K06 Gas spring. Required: force 40 through 250 N, length and brackets.
-- [ ] K07 Cabinet sliding-door system. Required: top/bottom running, 1/2/3 doors, door weight and thickness.
+- [~] K06 Gas spring. Required: force 40 through 250 N, length and brackets. Observed: exact 80, 100 and 120 N cabinet gas springs; lower and higher force classes, length and bracket geometry remain missing.
+- [~] K07 Cabinet sliding-door system. Required: top/bottom running, 1/2/3 doors, door weight and thickness. Observed: exact two-door PYRAMID 100 set with four dampers, 80 kg per door and maximum 28 mm door thickness.
 - [ ] K08 Wardrobe sliding-door system. Required: aluminium/steel track, door weight, soft-close and complete rollers.
 - [ ] K09 Folding wardrobe/cabinet door system. Required: number of leaves and weight.
 - [ ] K10 Pocket-door system. Required: single/double door, door size/weight and pocket hardware.
@@ -243,8 +248,8 @@ service do create separate cells because they can materially change cost.
 
 ## L. Handles, locks, legs and functional furniture hardware
 
-- [ ] L01 Knob handle. Required: economy/standard/premium material and finish tiers.
-- [ ] L02 Bow/pull handle. Required: center-to-center bands, material and finish tiers.
+- [~] L01 Knob handle. Required: economy/standard/premium material and finish tiers. Observed: 20 mm matte-gold and 49 mm brushed-nickel knobs.
+- [~] L02 Bow/pull handle. Required: center-to-center bands, material and finish tiers. Observed: 64/96/128/160 mm models in black, nickel, brass and porcelain.
 - [ ] L03 Bar handle. Required: length bands and finish tiers.
 - [ ] L04 Edge/profile handle. Required: aluminium/steel, lengths and finish tiers.
 - [ ] L05 Recessed/flush handle. Required: routing geometry, material and finish tier.
@@ -253,83 +258,83 @@ service do create separate cells because they can materially change cost.
 - [ ] L08 Leather/wood specialty pull. Required: material and standard/premium tier.
 - [ ] L09 Handleless Gola profile. Required: C/J/L profiles, internal/external corner pieces and finish.
 - [~] L10 Push-to-open latch. Required: magnetic/non-magnetic, short/long, surface/recessed, adapter. Observed: one long grey Blum mechanism and adapter.
-- [ ] L11 Magnetic catch. Required: force and surface/recessed form.
+- [~] L11 Magnetic catch. Required: force and surface/recessed form. Observed: rectangular 48 x 22 x 9 mm and round 25 x 5 and 32 x 5 mm magnetic forms; holding force and mounting form remain unstated.
 - [ ] L12 Roller/ball/touch latch. Required: type and finish.
 - [ ] L13 Cam lock. Required: cylinder length, keyed alike/different and finish.
 - [ ] L14 Furniture deadbolt/wardrobe lock. Required: door type and finish.
 - [ ] L15 Sliding-door lock. Required: glass/wood/aluminium-door type.
 - [ ] L16 Electronic/RFID furniture lock. Required: power, credential and lock form.
 - [ ] L17 Levelling foot. Required: M6/M8/M10 threads, height range and load.
-- [ ] L18 Cabinet leg. Required: plastic/steel/aluminium, 80/100/120/150/200 mm and load.
+- [~] L18 Cabinet leg. Required: plastic/steel/aluminium, 80/100/120/150/200 mm and load. Observed: 100, 130 and 150 mm furniture-leg forms; material and load are incomplete.
 - [ ] L19 Table leg. Required: material, height, section and standard/design tier.
 - [ ] L20 Desk frame/base. Required: fixed/manual/electric sit-stand, size and load.
 - [ ] L21 Plinth/toe-kick system. Required: leg, clip, board/profile, corner and seal.
-- [ ] L22 Caster. Required: fixed/swivel/braked, diameter, material and load class.
-- [ ] L23 Felt/plastic/rubber glide. Required: nail/screw/adhesive, size and material.
-- [ ] L24 Shelf support pin. Required: 3/5 mm, metal/plastic and locking/non-locking.
+- [~] L22 Caster. Required: fixed/swivel/braked, diameter, material and load class. Observed: 3-inch industrial caster with and without brake; material, swivel state and load remain unstated.
+- [~] L23 Felt/plastic/rubber glide. Required: nail/screw/adhesive, size and material. Observed: ten exact EVA, felt, nylon, rubber, silicone and PTFE packs across adhesive, nail and screw forms.
+- [~] L24 Shelf support pin. Required: 3/5 mm, metal/plastic and locking/non-locking. Observed: five plastic nail or metal-pin forms plus one 5x7.5 mm Duplo metal support in a pack of 24; 3 mm and locking forms remain missing.
 - [ ] L25 Concealed floating-shelf support. Required: length and load class.
 - [ ] L26 Glass shelf support/clamp. Required: glass thickness, pin/clamp and finish.
-- [ ] L27 Cabinet suspension bracket and wall rail. Required: load, handed pair, cover and rail length.
-- [ ] L28 Countertop/worktop connector and support bracket. Required: connector length and bracket load.
+- [~] L27 Cabinet suspension bracket and wall rail. Required: load, handed pair, cover and rail length. Observed: exact 2 m galvanized METOD suspension rail; brackets, load and covers remain missing.
+- [~] L28 Countertop/worktop connector and support bracket. Required: connector length and bracket load. Observed: pine and oak shelf-support brackets in 150x150 and 200x200 mm, plastic corner connectors, zinc reinforcement strap and small metal angles; load and worktop connectors remain missing.
 - [ ] L29 Bed connector and center support. Required: rail fitting, corner plate, center beam/leg.
 - [ ] L30 Table extension mechanism. Required: synchronized/non-synchronized, extension length and load.
 - [ ] L31 Folding table bracket/leg mechanism. Required: load and locking type.
-- [ ] L32 Cable grommet and cable tray. Required: diameter/length, plastic/metal and finish.
-- [ ] L33 Ventilation grille. Required: aluminium/plastic, section and size.
+- [~] L32 Cable grommet and cable tray. Required: diameter/length, plastic/metal and finish. Observed: exact 60 mm zinc-alloy desk grommet with three finishes; cable trays remain missing.
+- [~] L33 Ventilation grille. Required: aluminium/plastic, section and size. Observed: exact stainless-steel METOD grille; dimensions are not stated in the captured row.
 - [ ] L34 Kitchen cabinet hanger/accessory rail. Required: load class and compatible covers/rail.
-- [ ] L35 Wardrobe rail and supports. Required: round/oval/rectangular, finish and load.
+- [~] L35 Wardrobe rail and supports. Required: round/oval/rectangular, finish and load. Observed: exact 1 m round nickel-plated 25 mm rail; supports and load remain missing.
 - [ ] L36 Wardrobe pull-down lift. Required: width and load.
 - [ ] L37 Pull-out basket/pantry/corner mechanism. Required: cabinet width, height, load and complete kit.
-- [ ] L38 Waste-bin pull-out system. Required: volume, cabinet width and runner inclusion.
+- [~] L38 Waste-bin pull-out system. Required: volume, cabinet width and runner inclusion. Observed: exact 16 l door-connected and split 52 l organizer pull-out systems; runner and cabinet-width details remain incomplete.
 - [ ] L39 Sink/cooktop mounting clips and brackets. Required: application and package.
 - [ ] L40 Glass-door patch, clamp and lock hardware. Required: glass thickness and load.
 
 ## M. Fasteners and furniture connectors
 
-- [ ] M01 Chipboard/wood screw, countersunk. Required: diameters 3 through 6 mm, length bands, zinc/black/stainless, package sizes.
+- [~] M01 Chipboard/wood screw, countersunk. Required: diameters 3 through 6 mm, length bands, zinc/black/stainless, package sizes. Observed: 17 exact diameter and length combinations from 3x20 through 5x80 mm, with packs of 50, 100 and 1000 from four suppliers. Head style and finish remain unstated, diameter 6 mm is still missing, and one 5x70 trade price is flagged for outlier review.
 - [ ] M02 Cabinet installation screw. Required: structural rating, diameter/length and head type.
-- [ ] M03 Confirmat screw. Required: 5/7 mm families, lengths and finish.
-- [ ] M04 Euro screw. Required: diameter/length and package.
+- [~] M03 Confirmat screw. Required: 5/7 mm families, lengths and finish. Observed: one exact 7 x 50 mm pack of 12; 5 mm family, other lengths and finish remain missing.
+- [~] M04 Euro screw. Required: diameter/length and package. Observed: exact 1000-piece 6.3 mm listings at 11 and 13 mm plus a selectable 9-15 mm family; one price is only a family minimum, two exact variants were unavailable at retrieval, and another live source is still required.
 - [ ] M05 Hinge/runner system screw. Required: system type, diameter/length and package.
-- [ ] M06 Machine screw. Required: M3 through M12, head, length and finish.
+- [~] M06 Machine screw. Required: M3 through M12, head, length and finish. Observed: furniture-handle M4 screws in 25, 30 and 40 mm lengths, packs of 20; head and finish remain unstated, and other metric diameters are missing.
 - [ ] M07 Hex bolt. Required: M5 through M16, grade, length and finish.
 - [ ] M08 Nut, washer and locknut. Required: matching metric sizes, material and finish.
 - [ ] M09 Threaded insert/T-nut. Required: wood/metal/plastic type and M4 through M12.
 - [ ] M10 Threaded rod. Required: M6 through M20, 1/2 m lengths, zinc/stainless.
-- [ ] M11 Wooden dowel. Required: 6/8/10/12 mm diameter and lengths.
+- [~] M11 Wooden dowel. Required: 6/8/10/12 mm diameter and lengths. Observed: pre-cut fluted dowels in 6x40 and five 8 mm lengths from 25 through 50 mm, plus 1 m beech rods in 8, 10, 12, 15, 18 and 22 mm diameters. Pre-cut 10 and 12 mm options and additional suppliers remain missing.
 - [ ] M12 Metal/plastic shelf dowel. Required: form, diameter and finish.
-- [ ] M13 Cam/minifix connector set. Required: bolt lengths, cam diameters and cover caps.
+- [~] M13 Cam/minifix connector set. Required: bolt lengths, cam diameters and cover caps. Observed: exact 16/15 direct-to-wood short-neck bolt by 1000 and 15 mm flat zinc cam for 16 mm board by 100; compatibility as a complete set and cover caps remain unverified.
 - [ ] M14 Rafix or one-piece panel connector. Required: type and panel thickness.
 - [ ] M15 Cross dowel/barrel nut connector. Required: thread and length.
-- [ ] M16 Biscuit/loose-tenon connector. Required: sizes and package.
+- [~] M16 Biscuit/loose-tenon connector. Required: sizes and package. Observed: original Lamello wood biscuits no. 0, 10 and 20 in packs of 1000, plus Bisco P10 and P14 alignment connectors in packs of 100. Loose-tenon systems and additional suppliers remain missing.
 - [ ] M17 Pocket-hole screw. Required: fine/coarse, length and package.
-- [ ] M18 Knock-down wedge/concealed connector. Required: load and tool/system tier.
+- [~] M18 Knock-down wedge/concealed connector. Required: load and tool/system tier. Observed: Lamello Tenso P10/P14, Clamex P10/P14, Divario P18, Cabineo 186316, a Tenso P14 clip and a complete Qfix set. Exact geometry, panel limits, package quantities and stated load are retained where published; alternative suppliers and economy tiers remain missing.
 - [ ] M19 Corner brace and mending plate. Required: sizes, thickness and finish.
 - [ ] M20 Blind rivet. Required: aluminium/steel/stainless, diameter/length and package.
 - [ ] M21 Rivet nut. Required: M4 through M12, material and grip range.
-- [ ] M22 Nail and brad. Required: gauge, length, galvanized/stainless and package.
-- [ ] M23 Staple. Required: crown/gauge/length and package.
-- [ ] M24 Wall plug. Required: nylon/universal, diameter and package.
+- [~] M22 Nail and brad. Required: gauge, length, galvanized/stainless and package. Observed: exact 15 mm model 8 and 25 mm brad packages of 5,700 and 5,000; gauge and finish coverage remain incomplete.
+- [~] M23 Staple. Required: crown/gauge/length and package. Observed: exact Type 53 packages at 6, 8, 10, 12 and 14 mm plus a 1.1 x 6 x 18 mm upholstery staple; professional narrow and medium crown families remain missing.
+- [~] M24 Wall plug. Required: nylon/universal, diameter and package. Observed: exact mixed 175-piece installation set includes 45 polyamide 6 x 28 mm and 10 polyamide 8 x 37 mm plugs; standalone trade packages and load data remain missing.
 - [ ] M25 Concrete/masonry anchor. Required: wedge/sleeve/drop-in/chemical and load class.
 - [ ] M26 Drywall/cavity anchor. Required: toggle/molly/self-drill and load class.
-- [ ] M27 Cover cap and decorative plug. Required: screw/confirmat/minifix families and decor tier.
+- [~] M27 Cover cap and decorative plug. Required: screw/confirmat/minifix families and decor tier. Observed: exact pack of 100 black 5 mm cabinet-hole covers; system-specific decor families remain missing.
 
 ## N. Wood coatings and finishing materials
 
 - [ ] N01 Sanding sealer. Required: water/solvent, clear/pigmented and package sizes.
-- [ ] N02 Wood primer. Required: MDF primer, tannin blocker, exterior primer and package.
+- [~] N02 Wood primer. Required: MDF primer, tannin blocker, exterior primer and package. Observed: one exact 2.5 litre synthetic wood primer.
 - [ ] N03 Wood stain/dye. Required: water/solvent/oil, standard/premium color tiers and package.
 - [~] N04 Clear water-based lacquer. Required: 1K/2K, matte/satin/gloss, interior/worktop/exterior tiers. Observed: one 0.5 l worktop varnish only.
 - [ ] N05 Clear polyurethane lacquer. Required: 1K/2K, sheen and package.
 - [ ] N06 Acrylic/nitrocellulose lacquer. Required: system, sheen and package.
 - [ ] N07 Pigmented furniture lacquer. Required: water/PU/acrylic system, sheen, base and colorant.
-- [ ] N08 Enamel/opaque wood paint. Required: water/oil/PU tiers and sheen.
+- [~] N08 Enamel/opaque wood paint. Required: water/oil/PU tiers and sheen. Observed: exact 4.5 litre glossy synthetic furniture enamel in base A and pastel base.
 - [ ] N09 Exterior wood coating. Required: transparent/opaque, UV and moisture class.
-- [ ] N10 Decking/furniture oil. Required: indoor/outdoor and package.
+- [~] N10 Decking/furniture oil. Required: indoor/outdoor and package. Observed: exact 2.5 l clear-gloss and 5 l teak-tone exterior oils plus a 250 ml refined vegetable indoor oil approved for food-contact wood; hardwax tiers remain missing.
 - [ ] N11 Hardwax oil. Required: clear/color and package.
 - [ ] N12 Wax/polish. Required: paste/liquid and package.
 - [ ] N13 Epoxy pour/coating resin. Required: clear/color, casting depth and kit weight.
-- [ ] N14 Wood filler/grain filler. Required: water/solvent/2K, color and package.
+- [~] N14 Wood filler/grain filler. Required: water/solvent/2K, color and package. Observed: exact black and walnut 200 g wood-filler pastes; chemistry is unstated.
 - [ ] N15 Hardener/catalyst. Required: exact coating system compatibility and mixing ratio.
 - [ ] N16 Retarder, accelerator and flattening additive. Required: system compatibility and package.
 
@@ -350,26 +355,26 @@ service do create separate cells because they can materially change cost.
 
 ## P. Adhesives, sealants and bonding consumables
 
-- [~] P01 PVA wood glue. Required: D2/D3/D4 classes, open-time tiers and package sizes. Observed: Tambour 305 fast 3.7 l, VAT unresolved.
-- [ ] P02 One-component PU wood glue. Required: D4 and package.
+- [~] P01 PVA wood glue. Required: D2/D3/D4 classes, open-time tiers and package sizes. Observed: Tambour 305 fast 3.7 l, Unifix D3 250/500 ml, Hercules 250/500 g and Elmers 118 ml; several classes and VAT remain unresolved.
+- [~] P02 One-component PU wood glue. Required: D4 and package. Observed: one 640 ml one-component PU liquid adhesive listed for wood and synthetic turf; exact D4 documentation remains missing.
 - [ ] P03 UF veneer/lamination adhesive. Required: powder/liquid system, hardener and package.
-- [ ] P04 Contact adhesive. Required: solvent/water, spray/brush and package.
-- [ ] P05 Hot-melt edge adhesive EVA. Required: filled/unfilled, temperature/speed class and kg package.
+- [~] P04 Contact adhesive. Required: solvent/water, spray/brush and package. Observed: Hercules 40/250/500/1000 ml and Hercules/Bison 500 ml aerosols; solvent/water classifications remain unstated.
+- [~] P05 Hot-melt edge adhesive EVA. Required: filled/unfilled, temperature/speed class and kg package. Observed: three exact 25 kg industrial edge-machine thermoplastic hot-melt offers; current product pages do not explicitly confirm EVA chemistry.
 - [ ] P06 Hot-melt edge adhesive PUR. Required: cartridge/block package and performance class.
 - [ ] P07 Hot-melt glue sticks. Required: diameter, temperature and package.
-- [ ] P08 Two-part epoxy adhesive. Required: fast/structural/clear tiers and kit size.
-- [ ] P09 Cyanoacrylate adhesive. Required: viscosity and activator.
+- [~] P08 Two-part epoxy adhesive. Required: fast/structural/clear tiers and kit size. Observed: Poxipol clear/grey 14 ml and Bison syringe 24 ml; structural tiers remain incomplete.
+- [~] P09 Cyanoacrylate adhesive. Required: viscosity and activator. Observed: thin/thick R21 20 g and Visbella 50 ml; activator and additional viscosity tiers remain missing.
 - [ ] P10 MS-polymer construction adhesive. Required: color, cartridge and strength tier.
 - [ ] P11 PU construction adhesive. Required: cartridge and strength tier.
 - [ ] P12 Acrylic construction adhesive. Required: cartridge and application.
-- [ ] P13 Neutral-cure silicone. Required: clear/white/color, sanitary/glass/metal tiers.
+- [~] P13 Neutral-cure silicone. Required: clear/white/color, sanitary/glass/metal tiers. Observed: Sikasil-C neutral grey 300 ml and Bison clear sanitary 60 ml; the application matrix remains incomplete.
 - [ ] P14 Acetoxy silicone. Required: package and application.
 - [ ] P15 Acrylic sealant. Required: interior/exterior and cartridge.
 - [ ] P16 PU sealant. Required: movement class and cartridge/sausage.
-- [ ] P17 Threadlocker and retaining compound. Required: strength and bottle size.
+- [~] P17 Threadlocker and retaining compound. Required: strength and bottle size. Observed: Bison threadlocker 10 ml; strength and retaining-compound variants remain missing.
 - [ ] P18 Double-sided mounting tape. Required: foam/acrylic/VHB tiers, width and roll length.
-- [ ] P19 Spray adhesive. Required: general/upholstery/contact tier and can size.
-- [ ] P20 Mirror adhesive. Required: mirror-safe chemistry and package.
+- [~] P19 Spray adhesive. Required: general/upholstery/contact tier and can size. Observed: Hercules and Bison contact-spray adhesives, 500 ml; upholstery and temperature classes remain missing.
+- [~] P20 Mirror adhesive. Required: mirror-safe chemistry and package. Observed: exact white and clear 290 ml polymer cartridges, including one explicitly stated not to attack mirror backing.
 
 ## Q. Abrasives and polishing
 
@@ -452,7 +457,7 @@ service do create separate cells because they can materially change cost.
 - [ ] V01 Paint thinner by coating system. Required: PU/acrylic/nitro/epoxy compatible and package.
 - [~] V02 Cleaning thinner/solvent. Required: acetone, IPA, mineral spirits, recycled cleaning thinner and packages. Observed: recycled thinner 21, 5 l, cleaning only, VAT unresolved.
 - [ ] V03 Degreaser and surface cleaner. Required: wood/metal/glass safe tiers and package.
-- [ ] V04 Masking tape. Required: general, automotive, fine-line, high-temperature; widths and roll lengths.
+- [~] V04 Masking tape. Required: general, automotive, fine-line, high-temperature; widths and roll lengths. Observed: exact general paper rolls at 48 x 20 m and 50 x 33 m.
 - [ ] V05 Masking paper and film. Required: width, area and static/pre-taped tiers.
 - [ ] V06 Tack cloth and lint-free wipe. Required: package.
 - [ ] V07 Mixing cup, paint strainer and stirrer. Required: sizes and package.
@@ -463,24 +468,24 @@ service do create separate cells because they can materially change cost.
 - [ ] V12 Expanding PU foam. Required: gun/hand, fire class and can.
 - [ ] V13 Shims and packers. Required: plastic/wood, thickness set and package.
 - [ ] V14 Protective floor film/drop cloth. Required: area and adhesive/non-adhesive.
-- [ ] V15 Drill/router/saw consumable allowance. Required: blade, bit and cutter classes tracked only where project wear is material.
+- [~] V15 Drill/router/saw consumable allowance. Required: blade, bit and cutter classes tracked only where project wear is material. Observed: one exact Bosch 7.25-inch 40-tooth woodworking circular-saw blade; tool-life normalization remains missing.
 
 ## W. Packaging, protection and logistics materials
 
 - [ ] W01 Single-wall corrugated carton. Required: FEFCO/common box styles, size bands and quantity tiers.
 - [ ] W02 Double-wall corrugated carton. Required: board grade, box style and size bands.
-- [ ] W03 Corrugated cardboard sheet/roll. Required: single-face/sheet grade, dimensions and area.
+- [~] W03 Corrugated cardboard sheet/roll. Required: single-face/sheet grade, dimensions and area. Observed: 1x50 and 1.2x50 m rolls; grade and VAT remain unstated.
 - [ ] W04 Honeycomb cardboard panel. Required: thickness, cell and sheet size.
 - [ ] W05 Paper bag. Required: kraft/white, flat/twisted handle, size and quantity tier.
 - [ ] W06 Plastic/poly bag. Required: LDPE/HDPE, thickness, size, resealable/non-resealable and quantity.
-- [ ] W07 Bubble wrap. Required: bubble size, width and roll area.
+- [~] W07 Bubble wrap. Required: bubble size, width and roll area. Observed: 0.5x25, 0.75x75, three-layer 1x75 and paper-backed three-layer 1x50 m rolls; bubble size remains unstated.
 - [ ] W08 PE/EPE foam roll or sheet. Required: thickness, density, width and area.
 - [ ] W09 EPS/XPS protective foam. Required: density, thickness and sheet/block.
 - [ ] W10 Foam profile/corner. Required: U/L/corner section and package.
 - [ ] W11 Paper/cardboard corner protector. Required: section, thickness and length.
-- [ ] W12 Stretch film. Required: hand/machine, width, micron, roll weight and core treatment.
+- [~] W12 Stretch film. Required: hand/machine, width, micron, roll weight and core treatment. Observed: one hand roll, 500 mm wide; micron, length, weight and core remain unstated.
 - [ ] W13 Shrink film or bag. Required: material, micron, size and roll/package.
-- [ ] W14 Packing tape. Required: acrylic/hot-melt/solvent, width, length and pack.
+- [~] W14 Packing tape. Required: acrylic/hot-melt/solvent, width, length and pack. Observed: exact clear rolls at 50 x 40 m and 48 x 50 m; adhesive chemistry is unstated.
 - [ ] W15 Reinforced filament tape. Required: width, length and pack.
 - [ ] W16 Strapping. Required: PP/PET/steel, width, thickness and roll.
 - [ ] W17 Buckle/seal and edge guard for strapping. Required: compatible system and package.
@@ -494,7 +499,7 @@ service do create separate cells because they can materially change cost.
 
 ## X. Evidence already stored
 
-The current seven SQL batches contain 76 exact material identities and 85
+The current 26 SQL batches contain 280 exact material identities and 320
 observed offers:
 
 - 24 panel offers covering standard/MR MDF, commercial/birch/laminate-faced
@@ -509,10 +514,45 @@ observed offers:
 - Nine PVC edge-band offers in one 1.1x22 mm geometry.
 - Sixteen acrylic offers covering eight thicknesses, each as a raw full sheet
   and as a 1000x1000 mm laser-cut piece.
+- 13 poplar-plywood and oak-panel offers covering nine poplar thicknesses, two
+  oak butcher-block thicknesses, one glued-oak panel and a second 18 mm poplar
+  offer with stated sheet dimensions.
+- 19 general-hardware offers covering casters, furniture legs, wooden support
+  brackets, concealed runners, knobs and pull handles.
+- 51 fastener and furniture-connector offers covering 33 exact identities:
+  17 chipboard-screw dimensions, seven pre-cut dowels, six beech dowel rods and
+  three M4 furniture-handle screws. Package size is stored on each offer rather
+  than duplicated in the material identity.
+- 13 system-connector offers covering Lamello biscuits, Bisco alignment pieces,
+  Tenso, Clamex, Divario, Cabineo and one complete Qfix set. System, model,
+  geometry, panel limit, load and package are retained independently.
+- Eight packaging offers covering stretch film, bubble wrap, PE film and
+  corrugated cardboard rolls.
+- 29 adhesive and sealant offers covering wood/contact/PU/epoxy/cyanoacrylate
+  adhesives, threadlocker, construction adhesives and silicone/sealant packs.
+- 11 comparable-source offers add second or third observations for Unifix D3,
+  Hercules contact adhesive, Sikaflex 11FC, Poxipol clear, 0.5x25 m bubble wrap
+  and 1x50 m corrugated cardboard. Each source is classified by commercial
+  channel, and eleven exact supplier-listing aliases are stored.
+- 22 furniture-core offers cover six basic runner-pair lengths, all six current
+  Home Center cabinet shelf-support forms and ten representative glide or pad
+  packages across six material classes.
+- 25 additional furniture-core offers cover confirmat and Minifix connectors,
+  gas springs, cabinet magnets, brackets, staples and brads.
+- 10 coating and packaging offers cover masking and packing tape, wood primer,
+  opaque furniture paint and wood filler.
+- 10 system-hardware offers cover complete drawer and sliding-door systems,
+  suspension, cable management, ventilation, pull-out bins and cover caps.
+- 23 offers cover wardrobe rail, mirror adhesive, wood oil, installation
+  fastener allowance, one saw blade, hardboard, edge hot melt and mirrors.
+- Three Euro-screw offers cover common system-specific sizes in 1000-piece
+  packs.
+- Five final core offers cover Sucupira, Jatoba, one HPL-faced MDF sheet and a
+  configurable oak veneer-faced panel. Sucupira has two length-band offers.
 
 ### Exact identity inventory
 
-All 76 stored identities are mapped into the bingo board above. Their stable
+All 280 stored identities are mapped into the bingo board above. Their stable
 catalog codes are retained here so a future status update cannot hide or double
 count an existing item.
 
@@ -583,6 +623,160 @@ Plastics, 8 identities and 16 offers:
 - `acrylic_cast_clear_6mm`, `acrylic_cast_clear_8mm`
 - `acrylic_cast_clear_10mm`, `acrylic_cast_clear_15mm`
 
+Poplar plywood and oak panels, 12 identities and 13 offers:
+
+- `poplar_plywood_4mm`, `poplar_plywood_6mm`, `poplar_plywood_12mm`,
+  `poplar_plywood_16mm`, `poplar_plywood_18mm`, `poplar_plywood_21mm`,
+  `poplar_plywood_24mm`, `poplar_plywood_27mm`, `poplar_plywood_30mm`
+- `oak_butcher_block_18mm`, `oak_butcher_block_26mm`,
+  `oak_glued_panel_19mm`
+
+General hardware, 19 identities and 19 offers:
+
+- `caster_industrial_orange_3in_brake`,
+  `caster_industrial_orange_3in_plain`
+- `leg_hairpin_black_150mm`, `leg_diagonal_150mm`,
+  `leg_brushed_nickel_100mm`, `leg_sofa_ms104_black_130mm`
+- `shelf_bracket_oak_150x150`, `shelf_bracket_oak_200x200`,
+  `shelf_bracket_pine_150x150`
+- `runner_concealed_gg80c_270mm`, `runner_concealed_gg80c_250mm`
+- `handle_6250_160mm_nickel`, `handle_7440_64mm_black`,
+  `knob_9360_49mm_nickel`, `knob_9377_20mm_gold`,
+  `handle_5430_96mm_black`, `handle_8556_96mm_porcelain`,
+  `handle_m56_128mm_porcelain`, `handle_m62_96mm_porcelain`
+
+Furniture-core hardware, 22 identities and 22 offers:
+
+- `drawer_runner_basic_pair_300mm`, `drawer_runner_basic_pair_350mm`,
+  `drawer_runner_basic_pair_400mm`, `drawer_runner_basic_pair_450mm`,
+  `drawer_runner_basic_pair_500mm`, `drawer_runner_basic_pair_550mm`
+- `shelf_support_plastic_brown_nail`, `shelf_support_plastic_white_nail`,
+  `shelf_support_plastic_brown_metal_pin`,
+  `shelf_support_plastic_white_metal_pin`,
+  `shelf_support_duplo_metal_5x7_5mm`,
+  `shelf_support_plastic_clear_metal_pin`
+- `glide_eva_nail_26mm_white_pack8`, `glide_ptfe_screw_50mm_pack4`,
+  `bumper_rubber_round_22mm_black_pack16`,
+  `glide_nylon_nail_26mm_white_pack8`, `bumper_silicone_25mm_pack12`,
+  `foot_rubber_22mm_white_pack4`, `glide_ptfe_round_20mm_pack8`,
+  `glide_ptfe_square_50mm_pack4`,
+  `glide_ptfe_rectangle_100x25mm_pack4`,
+  `pad_felt_round_22mm_black_pack16`
+
+Fasteners and furniture connectors, 33 identities and 51 offers:
+
+- `chipboard_screw_3x20mm`, `chipboard_screw_3x30mm`
+- `chipboard_screw_3_5x35mm`, `chipboard_screw_3_5x45mm`
+- `chipboard_screw_4x20mm`, `chipboard_screw_4x30mm`,
+  `chipboard_screw_4x40mm`, `chipboard_screw_4x50mm`,
+  `chipboard_screw_4x60mm`
+- `chipboard_screw_4_5x20mm`, `chipboard_screw_4_5x40mm`,
+  `chipboard_screw_4_5x60mm`
+- `chipboard_screw_5x30mm`, `chipboard_screw_5x50mm`,
+  `chipboard_screw_5x60mm`, `chipboard_screw_5x70mm`,
+  `chipboard_screw_5x80mm`
+- `wood_dowel_fluted_6x40mm`, `wood_dowel_fluted_8x25mm`,
+  `wood_dowel_fluted_8x30mm`, `wood_dowel_fluted_8x35mm`,
+  `wood_dowel_fluted_8x40mm`, `wood_dowel_fluted_8x45mm`,
+  `wood_dowel_fluted_8x50mm`
+- `beech_dowel_rod_8mm`, `beech_dowel_rod_10mm`,
+  `beech_dowel_rod_12mm`, `beech_dowel_rod_15mm`,
+  `beech_dowel_rod_18mm`, `beech_dowel_rod_22mm`
+- `machine_screw_m4x25mm`, `machine_screw_m4x30mm`,
+  `machine_screw_m4x40mm`
+
+System connectors, 13 identities and 13 offers:
+
+- `lamello_biscuit_0_4x15x47mm`, `lamello_biscuit_10_4x19x53mm`,
+  `lamello_biscuit_20_4x23x56mm`
+- `lamello_bisco_p10_52x19x7mm`, `lamello_bisco_p14_65x27x7mm`
+- `lamello_tenso_p10_66x27x9_7mm`, `lamello_tenso_p14_66x27x9_7mm`,
+  `lamello_tenso_p14_clip`
+- `lamello_clamex_p10_52x19x9_7mm`,
+  `lamello_clamex_p14_66x27x9_7mm`
+- `lamello_divario_p18_75x25x9_7mm`,
+  `lamello_cabineo_186316_m6_8mm`
+- `qfix_white_20mm_screw_7_5mm_cover_set`
+
+Packaging, 8 identities and 8 offers:
+
+- `stretch_wrap_hand_500mm_roll`
+- `bubble_wrap_750mm_75m`, `bubble_wrap_500mm_25m`,
+  `bubble_wrap_three_layer_1x75m`,
+  `bubble_wrap_paper_three_layer_1x50m`
+- `polyethylene_film_80micron_2x50m`
+- `corrugated_cardboard_roll_1x50m`,
+  `corrugated_cardboard_roll_1_2x50m`
+
+Adhesives and sealants batch 2, 29 identities and 29 offers:
+
+- `pva_unifix_d3_250ml`, `pva_unifix_d3_500ml`,
+  `pva_hercules_250g`, `pva_hercules_500g`, `pva_elmers_118ml`
+- `contact_hercules_40ml`, `contact_hercules_250ml`,
+  `contact_hercules_500ml`, `contact_hercules_1l`
+- `spray_contact_hercules_500ml`, `spray_contact_bison_500ml`
+- `epoxy_poxipol_clear_14ml`, `epoxy_poxipol_grey_14ml`,
+  `epoxy_bison_24ml`
+- `ca_r21_thin_20g`, `ca_r21_thick_20g`,
+  `ca_visbella_thin_50ml`, `ca_visbella_thick_50ml`
+- `threadlocker_bison_10ml`
+- `construction_powergrab_177ml`, `construction_turbotack_100ml`,
+  `construction_polymax_clear_115g`, `pu_liquid_640ml`
+- `neutral_sikasil_grey_300ml`, `pu_sikaflex11fc_grey_300ml`,
+  `pu_sikaflex11fc_offwhite_300ml`,
+  `construction_sika118_white_300ml`,
+  `construction_sika112_clear_290ml`, `sanitary_bison_clear_60ml`
+
+Additional furniture hardware and fasteners, 25 identities and 25 offers:
+
+- `confirmat_screw_7x50mm`, `minifix_bolt_direct_wood_16_15_short_neck`,
+  `minifix_cam_flat_15mm_board16`
+- `gas_spring_80n`, `gas_spring_100n`, `gas_spring_120n`
+- `corner_connector_plastic_dark_brown_pack10`,
+  `corner_connector_plastic_light_brown_pack10`,
+  `corner_connector_plastic_white_pack10`
+- `magnet_rectangular_48x22x9mm`, `magnet_round_hole_32x5mm`,
+  `magnet_round_25x5mm`
+- `reinforcement_strap_zinc_15x100mm`, `metal_angle_30x30x30mm`,
+  `chair_angle_zinc_15x50x50mm`, `chair_angle_zinc_15x40x40mm`,
+  `chair_angle_zinc_15x25x25mm`
+- `staple_type53_6mm`, `staple_type53_8mm`, `staple_type53_10mm`,
+  `staple_type53_12mm`, `staple_type53_14mm`,
+  `upholstery_staple_1_1x6x18mm`, `brad_model8_15mm`,
+  `brad_nail_25mm`
+
+Rapid furniture-core coverage, 43 identities and 44 offers:
+
+- `butt_hinge_3in_pack2`, `masking_tape_paper_48mm_20m`,
+  `masking_tape_paper_50mm_33m`, `packing_tape_clear_50mm_40m`,
+  `packing_tape_clear_48mm_50m`
+- `wood_primer_synthetic_2_5l`,
+  `opaque_wood_paint_superlac_base_a_4_5l`,
+  `opaque_wood_paint_superlac_pastel_4_5l`,
+  `wood_filler_black_200g`, `wood_filler_walnut_200g`
+- `maximera_drawer_low_60x60`, `maximera_drawer_medium_60x60`,
+  `maximera_drawer_high_60x60`, `pyramid_sliding_set_2door_80kg`,
+  `metod_suspension_rail_2000mm`, `cable_grommet_metal_60mm`,
+  `metod_ventilation_grille_stainless`, `pullout_bin_16l_model289`,
+  `pullout_bin_split_52l_pds500`, `variera_hole_cover_5mm_pack100`
+- `wardrobe_rail_round_nickel_25mm_1m`,
+  `mirror_adhesive_super7_white_290ml`,
+  `mirror_adhesive_super7_clear_290ml`, `wood_oil_clear_gloss_2_5l`,
+  `wood_oil_tambour_teak_5l`, `wood_oil_trixig_indoor_250ml`
+- `installation_screw_plug_mix_trixig_175`,
+  `circular_saw_blade_bosch_7_25in_40t`
+- `hardboard_white_one_side_3_5mm_cut`, `hardboard_backing_3mm_cut`,
+  `edge_hotmelt_white_25kg_italox`,
+  `edge_hotmelt_henkel_ks351_white_25kg`,
+  `edge_hotmelt_henkel_ks217_25kg`
+- `mirror_blodlonn_300x300_pack4`, `mirror_lonsas_210x300`,
+  `mirror_honefoss_180x210_pack10`
+- `euro_screw_flat_6_3mm_assorted_1000`,
+  `euro_screw_6_3x13mm_1000`, `euro_screw_6_3x11mm_1000`
+- `sucupira_s4s_19x90mm`, `jatoba_19x140mm`,
+  `mdf_hpl_white_two_side_17mm_1220x2440`,
+  `oak_veneer_faced_panel_configurable`
+
 ## Y. Completion rule
 
 A bingo cell is marked `[x]` only after its required representative variants
@@ -596,6 +790,9 @@ have exact Israeli offers. A domain is estimator-ready only when:
    are explicit;
 5. company-price matching can identify the same technical cell;
 6. representative projects pass without an unsupported silent substitute.
+7. every stored identity has canonical, technical-code, and Israel market-name
+   aliases; recurring supplier spellings are stored as sourced aliases rather
+   than duplicated material identities.
 
 This checklist is the denominator. Source collection should update cell status
 instead of merely increasing a global SKU count.

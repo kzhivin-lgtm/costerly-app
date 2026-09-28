@@ -1,0 +1,38 @@
+-- 3.15.1 accelerated furniture-core coverage v3.
+-- Wardrobe rail, mirror-safe adhesive and wood-oil evidence retrieved 2026-09-28.
+-- Exact offers remain candidates. No market baseline is activated here.
+
+insert into public.reference_sources(source_id,market_code,source_type,source_channel,source_name,source_url,source_date,language_code,region,evidence) values
+('2c365e47-c125-4cc9-ba6e-0cb12957d925','IL','retailer','diy_retail','ACE wardrobe rail','https://www.ace.co.il/4212346','2026-09-28','he-IL',null,'{"date_basis":"retrieved","promotion_valid_through":"2026-10-04","vat_statement":"VAT-free site promotion"}'::jsonb),
+('cc64f89b-9ead-46a6-949b-d2a3a7abfe29','IL','retailer','diy_retail','Home Center Super 7 white','https://www.homecenter.co.il/products/4546005221','2026-09-28','he-IL',null,'{"date_basis":"retrieved","price_channel":"online","vat_statement":"not stated"}'::jsonb),
+('af68f751-8298-4922-a823-be8e3d9601a7','IL','retailer','diy_retail','Home Center Super 7 clear','https://www.homecenter.co.il/products/4546005222','2026-09-28','he-IL',null,'{"date_basis":"retrieved","price_channel":"online","vat_statement":"not stated"}'::jsonb),
+('73240eb7-d364-47c7-a4e0-f629f2f91841','IL','retailer','diy_retail','Home Center clear deck oil','https://www.homecenter.co.il/products/1720421985780','2026-09-28','he-IL',null,'{"date_basis":"retrieved","vat_statement":"not stated"}'::jsonb),
+('df222a57-9e98-4d13-8f90-0c8cb0520bb3','IL','retailer','diy_retail','ACE Tambour teak deck oil','https://www.ace.co.il/1120460','2026-09-28','he-IL',null,'{"date_basis":"retrieved","promotion_valid_through":"2026-10-04","vat_statement":"not stated"}'::jsonb)
+on conflict(source_id) do update set source_type=excluded.source_type,source_channel=excluded.source_channel,source_name=excluded.source_name,source_url=excluded.source_url,source_date=excluded.source_date,language_code=excluded.language_code,region=excluded.region,evidence=excluded.evidence,retrieved_at=now();
+
+insert into public.reference_materials(material_id,material_code,department,category_code,canonical_name,base_unit,specifications) values
+('9cadb2ed-ec5f-4483-b6f9-c7c4cf7f699b','wardrobe_rail_round_nickel_25mm_1m','hardware','wardrobe_rail','Round nickel-plated wardrobe rail, 25 mm x 1 m','lm','{"profile":"round","diameter_mm":25,"length_m":1,"material":"hollow metal","finish":"nickel plated","supports_included":false}'::jsonb),
+('0dd84bfa-a3a4-4e0e-92e1-fbf25a8149d0','mirror_adhesive_super7_white_290ml','consumable','mirror_adhesive','Super 7 mirror-safe adhesive and sealant, white, 290 ml','cartridge','{"volume_ml":290,"colour":"white","mirror_application_stated":true}'::jsonb),
+('a7ac0798-d392-48f7-bf23-5df432e2aeed','mirror_adhesive_super7_clear_290ml','consumable','mirror_adhesive','Super 7 mirror-safe adhesive and sealant, clear, 290 ml','cartridge','{"volume_ml":290,"colour":"clear","mirror_backing_safe_stated":true}'::jsonb),
+('ef9ca603-500a-4982-9859-6fd3aa1d6da2','wood_oil_clear_gloss_2_5l','coating','wood_oil_wax','Clear gloss penetrating wood oil, 2.5 l','l','{"volume_l":2.5,"finish":"clear gloss","application":["wood","deck"],"exterior":true}'::jsonb),
+('b0b95634-8ba6-44c6-b97a-1f5f43b3c646','wood_oil_tambour_teak_5l','coating','wood_oil_wax','Tambour teak-tone deck and furniture oil, 5 l','l','{"volume_l":5,"colour":"teak 036","application":["deck","wood wall","furniture","fence"],"base":"turpentine"}'::jsonb)
+on conflict(material_code) do update set department=excluded.department,category_code=excluded.category_code,canonical_name=excluded.canonical_name,base_unit=excluded.base_unit,specifications=excluded.specifications,active=true,updated_at=now();
+
+insert into public.market_material_profiles(material_id,market_code,market_name,language_code,local_specifications,availability_status)
+select material_id,'IL',case material_code
+when 'wardrobe_rail_round_nickel_25mm_1m' then 'מוט תלייה עגול מצופה ניקל, 25 מ״מ, 1 מטר'
+when 'mirror_adhesive_super7_white_290ml' then 'סופר 7 לבן להדבקת מראות, 290 מ״ל'
+when 'mirror_adhesive_super7_clear_290ml' then 'סופר 7 שקוף שאינו תוקף את גב המראה, 290 מ״ל'
+when 'wood_oil_clear_gloss_2_5l' then 'שמן דק שקוף מבריק, 2.5 ליטר'
+when 'wood_oil_tambour_teak_5l' then 'שמן לדקים טמבור טיק 036, 5 ליטר'
+end,'he-IL','{"market":"Israel","source_language":"Hebrew"}'::jsonb,'common'
+from public.reference_materials where material_code in ('wardrobe_rail_round_nickel_25mm_1m','mirror_adhesive_super7_white_290ml','mirror_adhesive_super7_clear_290ml','wood_oil_clear_gloss_2_5l','wood_oil_tambour_teak_5l')
+on conflict(material_id,market_code,language_code) do update set market_name=excluded.market_name,local_specifications=excluded.local_specifications,availability_status=excluded.availability_status,active=true,updated_at=now();
+
+insert into public.market_material_offers(market_offer_id,material_id,market_code,source_id,supplier_name,supplier_sku,source_price,source_currency,source_unit,price_scope,included_services,delivery_included,package_quantity,minimum_order_quantity,vat_mode,normalized_price_ex_vat,normalized_unit,conversion_basis,region,valid_from,confidence,status) values
+('9223d38d-271d-4360-b72d-3e9395de4de1','9cadb2ed-ec5f-4483-b6f9-c7c4cf7f699b','IL','2c365e47-c125-4cc9-ba6e-0cb12957d925','ACE','4212346',41.53,'ILS','rail_1m','retail_package','{}',false,1,1,'excluded',41.53,'lm','{"length_m":1,"regular_price_ils_gross":49,"promotion":"VAT-free site price","supports_included":false}'::jsonb,null,'2026-09-28',95,'candidate'),
+('2915e02c-b3b6-444b-abe4-d53ee22ef4b2','0dd84bfa-a3a4-4e0e-92e1-fbf25a8149d0','IL','cc64f89b-9ead-46a6-949b-d2a3a7abfe29','Home Center','4546005221',26.90,'ILS','cartridge_290ml','retail_package','{}',false,1,1,'unknown',null,'cartridge','{"net_volume_ml":290,"store_price_ils":44.90,"normalization_blocked_by":"VAT status not stated"}'::jsonb,null,'2026-09-28',95,'candidate'),
+('1e7490d5-447e-46b4-b854-b7f99138cce8','a7ac0798-d392-48f7-bf23-5df432e2aeed','IL','af68f751-8298-4922-a823-be8e3d9601a7','Home Center','4546005222',29.90,'ILS','cartridge_290ml','retail_package','{}',false,1,1,'unknown',null,'cartridge','{"net_volume_ml":290,"store_price_ils":44.90,"mirror_backing_safe_stated":true,"normalization_blocked_by":"VAT status not stated"}'::jsonb,null,'2026-09-28',96,'candidate'),
+('2b17af63-b28b-49d8-9a51-5bdcf2f02f51','ef9ca603-500a-4982-9859-6fd3aa1d6da2','IL','73240eb7-d364-47c7-a4e0-f629f2f91841','Home Center','1720421985780',199.90,'ILS','container_2_5l','retail_package','{}',false,1,1,'unknown',null,'l','{"net_volume_l":2.5,"normalization_blocked_by":"VAT status not stated"}'::jsonb,null,'2026-09-28',94,'candidate'),
+('1e4cdcf6-2243-49bb-bd19-f8425e84054f','b0b95634-8ba6-44c6-b97a-1f5f43b3c646','IL','df222a57-9e98-4d13-8f90-0c8cb0520bb3','ACE','1120460',289,'ILS','container_5l','retail_package','{}',false,1,1,'unknown',null,'l','{"net_volume_l":5,"regular_price_ils":319,"normalization_blocked_by":"VAT status not stated"}'::jsonb,null,'2026-09-28',94,'candidate')
+on conflict(market_offer_id) do update set source_price=excluded.source_price,source_currency=excluded.source_currency,source_unit=excluded.source_unit,price_scope=excluded.price_scope,included_services=excluded.included_services,delivery_included=excluded.delivery_included,package_quantity=excluded.package_quantity,minimum_order_quantity=excluded.minimum_order_quantity,vat_mode=excluded.vat_mode,normalized_price_ex_vat=excluded.normalized_price_ex_vat,normalized_unit=excluded.normalized_unit,conversion_basis=excluded.conversion_basis,region=excluded.region,valid_from=excluded.valid_from,confidence=excluded.confidence,status=excluded.status;

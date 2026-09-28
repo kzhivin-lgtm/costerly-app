@@ -1,8 +1,8 @@
 -- 3.15.1 Israel Reference Catalog v1, plastics batch 1.
 -- Retrieved 2026-09-28. Prices include VAT. Delivery is excluded.
 
-insert into public.reference_sources(source_id,market_code,source_type,source_name,source_url,source_date,language_code,region,evidence) values
-('31e7c82b-0a3a-5b00-9035-bc3940ec9704','IL','fabricator_retailer','Acrylicut clear cast acrylic price table','https://acrylicut.co.il/clear-perspex','2026-09-28','he-IL','Modiin','{"date_basis":"retrieved","material":"clear grade-A cast acrylic","light_transmission_percent":92,"full_sheet_mm":[1220,2440],"cut_example_mm":[1000,1000],"cut_method":"laser","vat_statement":"prices include VAT","delivery":"excluded; separately priced by region"}'::jsonb)
+insert into public.reference_sources(source_id,market_code,source_type,source_channel,source_name,source_url,source_date,language_code,region,evidence) values
+('31e7c82b-0a3a-5b00-9035-bc3940ec9704','IL','retailer','specialist_retailer','Acrylicut clear cast acrylic price table','https://acrylicut.co.il/clear-perspex','2026-09-28','he-IL','Modiin','{"date_basis":"retrieved","material":"clear grade-A cast acrylic","light_transmission_percent":92,"full_sheet_mm":[1220,2440],"cut_example_mm":[1000,1000],"cut_method":"laser","vat_statement":"prices include VAT","delivery":"excluded; separately priced by region"}'::jsonb)
 on conflict(source_id) do update set source_name=excluded.source_name,source_url=excluded.source_url,source_date=excluded.source_date,language_code=excluded.language_code,region=excluded.region,evidence=excluded.evidence,retrieved_at=now();
 
 insert into public.reference_materials(material_id,material_code,department,category_code,canonical_name,base_unit,specifications) values

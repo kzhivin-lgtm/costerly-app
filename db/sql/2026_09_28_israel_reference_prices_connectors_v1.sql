@@ -1,0 +1,66 @@
+-- 3.15.1 Israel Reference Catalog v1, furniture connectors batch 1.
+-- Retrieved 2026-09-28. Exact model, dimensions and package quantities only.
+
+insert into public.reference_sources(source_id,market_code,source_type,source_channel,source_name,source_url,source_date,language_code,region,evidence) values
+('5cff2511-2646-52a8-8c71-8ffec2154808','IL','retailer','trade_supplier','A.R. Sharpening Lamello connectors','https://www.ar-aia.co.il/574254-%D7%9C%D7%9E%D7%9C%D7%95-%D7%95%D7%9E%D7%95%D7%A6%D7%A8%D7%99%D7%95-LAMELLO','2026-09-28','he-IL','Kiryat Bialik','{"date_basis":"retrieved","selection_rule":"exact model, dimensions and stated package quantity","vat_statement":"not stated on captured product evidence","supplier_claim":"official Lamello distributor in Israel"}'::jsonb),
+('ebd204d4-2a3f-5808-9914-ce6ccceec6bf','IL','retailer','importer_distributor','Adr Trading Qfix connector set','https://www.adrtrading.co.il/product?c0=583421','2026-09-28','he-IL','Rishon LeZion','{"date_basis":"retrieved","selection_rule":"complete named set only","vat_statement":"not stated on captured product evidence"}'::jsonb)
+on conflict(source_id) do update set source_type=excluded.source_type,source_channel=excluded.source_channel,source_name=excluded.source_name,source_url=excluded.source_url,source_date=excluded.source_date,language_code=excluded.language_code,region=excluded.region,evidence=excluded.evidence,retrieved_at=now();
+
+insert into public.reference_materials(material_id,material_code,department,category_code,canonical_name,base_unit,specifications) values
+('b5217a50-4b85-57ca-b33c-5d5c88ef1401','lamello_biscuit_0_4x15x47mm','hardware','biscuit_connector','Lamello wood biscuit no. 0, 4 x 15 x 47 mm','ea','{"brand":"Lamello","system":"classic biscuit","size":"0","dimensions_mm":[4,15,47],"material":"wood"}'::jsonb),
+('760aa545-a147-582e-a255-0112325c2017','lamello_biscuit_10_4x19x53mm','hardware','biscuit_connector','Lamello wood biscuit no. 10, 4 x 19 x 53 mm','ea','{"brand":"Lamello","system":"classic biscuit","size":"10","dimensions_mm":[4,19,53],"material":"wood"}'::jsonb),
+('0fee1d3e-513d-524f-8ef3-4dbde4477111','lamello_biscuit_20_4x23x56mm','hardware','biscuit_connector','Lamello wood biscuit no. 20, 4 x 23 x 56 mm','ea','{"brand":"Lamello","system":"classic biscuit","size":"20","dimensions_mm":[4,23,56],"material":"wood"}'::jsonb),
+('1e3003f6-65e9-5e85-a976-54b099ebc7f6','lamello_bisco_p10_52x19x7mm','hardware','biscuit_connector','Lamello Bisco P10 alignment biscuit, 52 x 19 x 7 mm','ea','{"brand":"Lamello","system":"P-System","model":"Bisco P10","dimensions_mm":[52,19,7],"material":"rigid plastic","purpose":"alignment test before final Tenso connector"}'::jsonb),
+('6ac24658-4efc-54f2-a410-83ec7179d7b4','lamello_bisco_p14_65x27x7mm','hardware','biscuit_connector','Lamello Bisco P14 alignment biscuit, 65 x 27 x 7 mm','ea','{"brand":"Lamello","system":"P-System","model":"Bisco P14","dimensions_mm":[65,27,7],"material":"rigid plastic","purpose":"alignment test before final Tenso connector"}'::jsonb),
+('9ea14e8b-3beb-51a4-9ac5-92cef65391c0','lamello_tenso_p10_66x27x9_7mm','hardware','concealed_connector','Lamello Tenso P10 concealed connector, 66 x 27 x 9.7 mm','ea','{"brand":"Lamello","system":"P-System","model":"Tenso P10","dimensions_mm":[66,27,9.7],"minimum_panel_thickness_mm":15,"self_clamping":true}'::jsonb),
+('2e8a7f57-3085-5ffc-9acd-87fcbb018720','lamello_tenso_p14_66x27x9_7mm','hardware','concealed_connector','Lamello Tenso P14 concealed connector, 66 x 27 x 9.7 mm','ea','{"brand":"Lamello","system":"P-System","model":"Tenso P14","dimensions_mm":[66,27,9.7],"minimum_panel_thickness_mm":15,"clamping_force_kg":15,"self_clamping":true}'::jsonb),
+('4bf24051-0c49-5288-8eb4-fdcf70ba4b76','lamello_tenso_p14_clip','hardware','concealed_connector','Lamello Tenso P14 clip','ea','{"brand":"Lamello","system":"P-System","model":"L145426 P14","application":"mitre Tenso P14 connection"}'::jsonb),
+('2ef39a6a-ca0d-51a1-8787-9d324331b624','lamello_clamex_p10_52x19x9_7mm','hardware','concealed_connector','Lamello Clamex P10 detachable connector, 52 x 19 x 9.7 mm','ea','{"brand":"Lamello","system":"P-System","model":"Clamex P10","dimensions_mm":[52,19,9.7],"minimum_panel_thickness_mm":13,"detachable":true}'::jsonb),
+('1c9be49b-d631-5104-ae52-0c986af0c79d','lamello_clamex_p14_66x27x9_7mm','hardware','concealed_connector','Lamello Clamex P14 detachable connector, 66 x 27 x 9.7 mm','ea','{"brand":"Lamello","system":"P-System","model":"Clamex P14","dimensions_mm":[66,27,9.7],"minimum_panel_thickness_mm":16,"clamping_force_kg":90,"detachable":true}'::jsonb),
+('10e9967e-0fde-527a-a88b-5a7769d0b570','lamello_divario_p18_75x25x9_7mm','hardware','concealed_connector','Lamello Divario P18 detachable shelf connector, 75 x 25 x 9.7 mm','ea','{"brand":"Lamello","system":"P-System","model":"Divario P18","dimensions_mm":[75,25,9.7],"clamping_force_kg":90,"application":"shelving","detachable":true}'::jsonb),
+('be651eda-3274-55b6-9b6e-860a6ef8d858','lamello_cabineo_186316_m6_8mm','hardware','concealed_connector','Lamello Cabineo 186316 connector with M6 insert and 8 mm screw','ea','{"brand":"Lamello","system":"Cabineo","model":"186316","thread":"M6","screw_length_mm":8,"drill_diameter_mm":8,"clamping_force_kg":170,"application":"wood to metal or aluminium","detachable":true}'::jsonb),
+('06447210-e484-5f6a-a0f9-1c7977ad9505','qfix_white_20mm_screw_7_5mm_cover_set','hardware','concealed_connector','Qfix white 20 mm connector set with 7.5 mm screw and cover','set','{"brand":"Qfix","colour":"white","connector_diameter_mm":20,"screw_length_mm":7.5,"components":["connector","short screw","white cover"]}'::jsonb)
+on conflict(material_code) do update set department=excluded.department,category_code=excluded.category_code,canonical_name=excluded.canonical_name,base_unit=excluded.base_unit,specifications=excluded.specifications,active=true,updated_at=now();
+
+insert into public.market_material_profiles(material_id,market_code,market_name,language_code,local_specifications,availability_status)
+select material_id,'IL',case material_code
+  when 'lamello_biscuit_0_4x15x47mm' then 'למלו ביסקוויט עץ מספר 0, 4×15×47 מ״מ'
+  when 'lamello_biscuit_10_4x19x53mm' then 'למלו ביסקוויט עץ מספר 10, 4×19×53 מ״מ'
+  when 'lamello_biscuit_20_4x23x56mm' then 'למלו ביסקוויט עץ מספר 20, 4×23×56 מ״מ'
+  when 'lamello_bisco_p10_52x19x7mm' then 'למלו Bisco P10, 52×19×7 מ״מ'
+  when 'lamello_bisco_p14_65x27x7mm' then 'למלו Bisco P14, 65×27×7 מ״מ'
+  when 'lamello_tenso_p10_66x27x9_7mm' then 'למלו Tenso P10, 66×27×9.7 מ״מ'
+  when 'lamello_tenso_p14_66x27x9_7mm' then 'למלו Tenso P14, 66×27×9.7 מ״מ'
+  when 'lamello_tenso_p14_clip' then 'קליפס למחבר למלו Tenso P14'
+  when 'lamello_clamex_p10_52x19x9_7mm' then 'למלו Clamex P10, 52×19×9.7 מ״מ'
+  when 'lamello_clamex_p14_66x27x9_7mm' then 'למלו Clamex P14, 66×27×9.7 מ״מ'
+  when 'lamello_divario_p18_75x25x9_7mm' then 'למלו Divario P18, 75×25×9.7 מ״מ'
+  when 'lamello_cabineo_186316_m6_8mm' then 'למלו Cabineo 186316 עם מופה M6 ובורג 8 מ״מ'
+  when 'qfix_white_20mm_screw_7_5mm_cover_set' then 'סט מחבר Qfix לבן 20 מ״מ עם בורג 7.5 מ״מ וכיסוי'
+end,'he-IL','{"market":"Israel"}'::jsonb,'common'
+from public.reference_materials where material_code in (
+  'lamello_biscuit_0_4x15x47mm','lamello_biscuit_10_4x19x53mm',
+  'lamello_biscuit_20_4x23x56mm','lamello_bisco_p10_52x19x7mm',
+  'lamello_bisco_p14_65x27x7mm','lamello_tenso_p10_66x27x9_7mm',
+  'lamello_tenso_p14_66x27x9_7mm','lamello_tenso_p14_clip',
+  'lamello_clamex_p10_52x19x9_7mm','lamello_clamex_p14_66x27x9_7mm',
+  'lamello_divario_p18_75x25x9_7mm','lamello_cabineo_186316_m6_8mm',
+  'qfix_white_20mm_screw_7_5mm_cover_set'
+)
+on conflict(material_id,market_code,language_code) do update set market_name=excluded.market_name,local_specifications=excluded.local_specifications,availability_status=excluded.availability_status,active=true,updated_at=now();
+
+insert into public.market_material_offers(market_offer_id,material_id,market_code,source_id,supplier_name,supplier_sku,source_price,source_currency,source_unit,price_scope,included_services,delivery_included,package_quantity,minimum_order_quantity,vat_mode,normalized_price_ex_vat,normalized_unit,conversion_basis,region,valid_from,confidence,status) values
+('dc62d10f-6108-5962-b60b-29a22b72b8e3','b5217a50-4b85-57ca-b33c-5d5c88ef1401','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','181086',170,'ILS','pack_1000','trade_package','{}',false,1000,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('a4eca5f0-67d0-59cb-9468-3208962cf133','760aa545-a147-582e-a255-0112325c2017','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','181087',170,'ILS','pack_1000','trade_package','{}',false,1000,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('45b337ac-a0e5-5c94-b9ef-0491030a9d65','0fee1d3e-513d-524f-8ef3-4dbde4477111','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','181088',170,'ILS','pack_1000','trade_package','{}',false,1000,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('808cee5a-78d8-5bad-a159-fb09aa81d144','1e3003f6-65e9-5e85-a976-54b099ebc7f6','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','141133',160,'ILS','pack_100','trade_package','{}',false,100,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('1514f6c7-9e56-533c-8ede-670ecd06a227','6ac24658-4efc-54f2-a410-83ec7179d7b4','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','141126',160,'ILS','pack_100','trade_package','{}',false,100,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('1218ee28-1ca9-5e56-bb9c-aad5179b5574','9ea14e8b-3beb-51a4-9ac5-92cef65391c0','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','141128',330,'ILS','pack_100','trade_package','{}',false,100,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('45f8adb7-a62e-546a-94db-0d161aa32d15','2e8a7f57-3085-5ffc-9acd-87fcbb018720','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','141123',284,'ILS','pack_100','trade_package','{}',false,100,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('6ba9a8b9-8529-5069-9e2e-0a31a877aece','4bf24051-0c49-5288-8eb4-fdcf70ba4b76','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','141130',318,'ILS','pack_300','trade_package','{}',false,300,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('ef3ddbc2-6c37-56b2-bd04-53e951c7182e','2ef39a6a-ca0d-51a1-8787-9d324331b624','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','141117',398,'ILS','pack_100','trade_package','{}',false,100,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('50e5b592-66cd-5f40-8b59-fce1bdb405d9','1c9be49b-d631-5104-ae52-0c986af0c79d','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','141239',398,'ILS','pack_100','trade_package','{}',false,100,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('9ac752a8-f08d-52bb-8fe1-3c2ea1f97a5a','10e9967e-0fde-527a-a88b-5a7769d0b570','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','141111',395,'ILS','pack_100','trade_package','{}',false,100,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('28c81de8-92a6-58f5-891f-998fe3522518','be651eda-3274-55b6-9b6e-860a6ef8d858','IL','5cff2511-2646-52a8-8c71-8ffec2154808','A.R. Sharpening','141152',304,'ILS','pack_200','trade_package','{}',false,200,1,'unknown',null,'ea','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Kiryat Bialik','2026-09-28',90,'candidate'),
+('6bb53166-788b-53fe-b234-17c737ff200f','06447210-e484-5f6a-a0f9-1c7977ad9505','IL','ebd204d4-2a3f-5808-9914-ce6ccceec6bf','Adr Trading','AT60402',4,'ILS','set','retail_package','{}',false,1,1,'unknown',null,'set','{"normalization_blocked_by":"VAT status not stated"}'::jsonb,'Rishon LeZion','2026-09-28',92,'candidate')
+on conflict(market_offer_id) do update set source_price=excluded.source_price,source_currency=excluded.source_currency,source_unit=excluded.source_unit,price_scope=excluded.price_scope,included_services=excluded.included_services,delivery_included=excluded.delivery_included,package_quantity=excluded.package_quantity,minimum_order_quantity=excluded.minimum_order_quantity,vat_mode=excluded.vat_mode,normalized_price_ex_vat=excluded.normalized_price_ex_vat,normalized_unit=excluded.normalized_unit,conversion_basis=excluded.conversion_basis,region=excluded.region,valid_from=excluded.valid_from,confidence=excluded.confidence,status=excluded.status;

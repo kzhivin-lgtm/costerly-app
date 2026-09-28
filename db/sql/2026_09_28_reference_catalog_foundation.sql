@@ -48,6 +48,11 @@ create table if not exists public.reference_sources (
         'official', 'supplier', 'manufacturer', 'retailer', 'industry',
         'research', 'platform_observation'
     )),
+    source_channel text not null default 'other' constraint reference_sources_source_channel_check check (source_channel in (
+        'manufacturer', 'importer_distributor', 'trade_supplier',
+        'specialist_retailer', 'diy_retail', 'marketplace',
+        'public_procurement', 'other'
+    )),
     source_name text not null check (length(trim(source_name)) between 1 and 240),
     source_url text not null check (length(trim(source_url)) between 1 and 2000),
     source_date date not null,
@@ -60,6 +65,27 @@ create table if not exists public.reference_sources (
     created_at timestamptz not null default now(),
     unique (source_id, market_code)
 );
+
+alter table public.reference_sources
+    add column if not exists source_channel text not null default 'other';
+
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'reference_sources_source_channel_check'
+          and conrelid = 'public.reference_sources'::regclass
+    ) then
+        alter table public.reference_sources
+            add constraint reference_sources_source_channel_check
+            check (source_channel in (
+                'manufacturer', 'importer_distributor', 'trade_supplier',
+                'specialist_retailer', 'diy_retail', 'marketplace',
+                'public_procurement', 'other'
+            ));
+    end if;
+end $$;
 
 create table if not exists public.reference_material_categories (
     category_code text primary key check (
@@ -116,6 +142,53 @@ create table if not exists public.market_material_profiles (
     updated_at timestamptz not null default now(),
     unique (material_id, market_code, language_code)
 );
+
+create or replace function public.normalize_reference_material_alias(value text)
+returns text
+language sql
+immutable
+strict
+set search_path = public
+as $$
+    select lower(trim(regexp_replace(value, '[[:space:]]+', ' ', 'g')))
+$$;
+
+create table if not exists public.reference_material_aliases (
+    alias_id uuid primary key default gen_random_uuid(),
+    material_id uuid not null references public.reference_materials(material_id)
+        on delete cascade,
+    market_code text not null references public.reference_markets(market_code),
+    language_code text not null check (length(trim(language_code)) between 2 and 20),
+    alias_text text not null check (length(trim(alias_text)) between 1 and 500),
+    alias_key text not null check (
+        length(trim(alias_key)) between 1 and 500
+        and alias_key = public.normalize_reference_material_alias(alias_text)
+    ),
+    alias_kind text not null check (alias_kind in (
+        'canonical', 'market_name', 'supplier_listing', 'technical_code',
+        'synonym'
+    )),
+    source_id uuid,
+    supplier_name text,
+    exact_identity boolean not null default false,
+    confidence numeric(5, 2) not null check (confidence between 0 and 100),
+    active boolean not null default true,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint reference_material_aliases_source_market_fk
+        foreign key (source_id, market_code)
+        references public.reference_sources(source_id, market_code),
+    unique (material_id, market_code, language_code, alias_key)
+);
+
+create index if not exists reference_material_aliases_lookup_idx
+    on public.reference_material_aliases (
+        market_code, alias_key, active, confidence desc
+    );
+
+create index if not exists reference_material_aliases_material_idx
+    on public.reference_material_aliases (material_id, market_code)
+    where active;
 
 create table if not exists public.market_material_offers (
     market_offer_id uuid primary key default gen_random_uuid(),
@@ -413,6 +486,7 @@ alter table public.reference_sources enable row level security;
 alter table public.reference_materials enable row level security;
 alter table public.reference_material_categories enable row level security;
 alter table public.market_material_profiles enable row level security;
+alter table public.reference_material_aliases enable row level security;
 alter table public.market_material_offers enable row level security;
 alter table public.market_material_baselines enable row level security;
 alter table public.market_material_baseline_evidence enable row level security;
@@ -429,6 +503,7 @@ revoke all on public.reference_sources from public, anon, authenticated;
 revoke all on public.reference_materials from public, anon, authenticated;
 revoke all on public.reference_material_categories from public, anon, authenticated;
 revoke all on public.market_material_profiles from public, anon, authenticated;
+revoke all on public.reference_material_aliases from public, anon, authenticated;
 revoke all on public.market_material_offers from public, anon, authenticated;
 revoke all on public.market_material_baselines from public, anon, authenticated;
 revoke all on public.market_material_baseline_evidence from public, anon, authenticated;
@@ -445,6 +520,7 @@ grant all on public.reference_sources to service_role;
 grant all on public.reference_materials to service_role;
 grant all on public.reference_material_categories to service_role;
 grant all on public.market_material_profiles to service_role;
+grant all on public.reference_material_aliases to service_role;
 grant all on public.market_material_offers to service_role;
 grant all on public.market_material_baselines to service_role;
 grant all on public.market_material_baseline_evidence to service_role;
