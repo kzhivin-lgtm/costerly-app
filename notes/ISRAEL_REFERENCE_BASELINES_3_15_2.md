@@ -125,3 +125,9 @@ The first evidence-bounded normalization batch is prepared in
 Center website terms section 65 confirms that all displayed website prices
 include VAT and exclude delivery and installation. The migration can normalize
 92 candidate offers and does not review or activate them.
+
+The Home Center batch was applied and verified in production on 2026-09-28.
+Eligible materials increased from 103 to 190, while blocked materials decreased
+from 177 to 90. All 320 offers remain candidates and the baseline table remains
+empty. Continue with Camisa and Abo Srya VAT and unit evidence, then derive
+non-active candidates under the approved calculable-catalog policy.

@@ -51,8 +51,38 @@ more low-impact SKUs. Independent-source collection remains necessary for the
 highest-impact furniture groups because 110 of 111 comparable groups currently
 depend on one source.
 
+## Production normalization checkpoint
+
+Home Center VAT normalization was applied to production on 2026-09-28 from
+commit `6ef34f5`. Home Center website terms section 65 confirm that displayed
+website prices include VAT and exclude delivery and installation.
+
+Post-application production verification:
+
+- Materials: 280
+- Candidate offers: 320
+- Offer statuses: 320 candidate, 0 reviewed, 0 active, 0 archived
+- Eligible normalized offers: 204
+- Materials with an eligible price: 190
+- Materials blocked: 90
+- Comparable baseline groups: 201
+- Single-source provisional groups: 199
+- Multi-source candidate groups: 2
+- Offers missing normalized price: 116
+- Offers with unknown VAT: 100
+- Offers missing normalized unit: 49
+- Active or candidate market baselines: 0
+- Remaining Home Center offers with unknown VAT: 0
+
+The normalization changed candidate evidence only. It did not approve an offer,
+create a baseline, or connect Estimation fallback.
+
 ## Reproduction
 
 ```bash
 .venv/bin/python tools/israel_reference_readiness.py --format markdown
 ```
+
+The local seed report reproduces the pre-normalization checkpoint. Production
+post-normalization counts were verified directly through the service-role data
+client and are recorded above.
