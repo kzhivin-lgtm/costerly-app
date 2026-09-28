@@ -6,8 +6,13 @@ Current owner-approved execution order:
    Core. Detailed checkpoint: `notes/PRICE_SOURCE_MATERIAL_RESOLUTION_3_15_4.md`.
 2. Run the first representative production Price Source through the resolver
    and accept exact, shortlist, and unmatched behavior with real evidence.
-3. Complete operations, labor, machinery, and subcontractor reference models.
-4. Replace the legacy Estimation Agent only after those inputs are verified.
+3. Build the internal material identity review interface as task 3.15.5. Staff
+   must be able to inspect the source evidence and bounded shortlist, link an
+   existing reference material or create a reviewed new identity, preserve an
+   immutable decision audit, and publish a confirmed alias for future imports.
+   This is an internal Admin workflow, not a required company-user action.
+4. Complete operations, labor, machinery, and subcontractor reference models.
+5. Replace the legacy Estimation Agent only after those inputs are verified.
 
 - 3.15.4 Price Source Material Resolution integration: active, P0. The
   implementation candidate routes every activated Price Source row through the
@@ -17,8 +22,14 @@ Current owner-approved execution order:
   enter the review buffer. Resolution events are append-only, same-version
   batch reruns are idempotent, and resolver failure does not invalidate a
   completed price import. Production currently has zero Price Source rows, so
-  the historical pass correctly examined zero rows. Full suite: 656 passed.
-  Next acceptance requires the first representative production import.
+  the historical pass correctly examined zero rows. The first production URL
+  then extracted 47 rows: 41 price-ready, one unresolved, and five excluded;
+  identity resolution produced two exact links and 39 bounded shortlists. That
+  run exposed a latency regression: sequential identity writes added about 36
+  seconds after the 60.6-second agent call and about 31 seconds of legacy row
+  persistence. The resolver candidate now batches candidate, source-row, and
+  audit writes. A 40-row regression test enforces one write per destination
+  table. Full suite: 657 passed. Production timing acceptance remains pending.
 
 - 3.15.3 Material Resolution Core: completed, P0. The deterministic candidate
   resolves exact supplier SKU, company alias, market alias, hard attributes,

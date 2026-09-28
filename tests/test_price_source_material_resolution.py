@@ -48,6 +48,11 @@ class _Query:
         self.payload = deepcopy(payload)
         return self
 
+    def upsert(self, payload, **_kwargs):
+        self.operation = "upsert"
+        self.payload = deepcopy(payload)
+        return self
+
     def _matches(self, row):
         for operation, key, value in self.filters:
             if operation == "eq" and row.get(key) != value:
@@ -61,19 +66,47 @@ class _Query:
         return True
 
     def execute(self):
+        self.client.calls.append((self.table, self.operation))
         rows = self.client.tables[self.table]
         if self.operation == "insert":
-            inserted = deepcopy(self.payload)
+            payloads = self.payload if isinstance(self.payload, list) else [self.payload]
+            inserted_rows = []
             id_fields = {
                 "material_identity_candidates": "candidate_id",
                 "material_identity_resolution_events": "resolution_event_id",
             }
             id_field = id_fields.get(self.table)
-            if id_field:
-                inserted.setdefault(id_field, f"{self.table}-{len(rows) + 1}")
-            inserted.setdefault("status", "pending")
-            rows.append(inserted)
-            return SimpleNamespace(data=[deepcopy(inserted)])
+            for payload in payloads:
+                inserted = deepcopy(payload)
+                if id_field:
+                    inserted.setdefault(id_field, f"{self.table}-{len(rows) + 1}")
+                inserted.setdefault("status", "pending")
+                rows.append(inserted)
+                inserted_rows.append(deepcopy(inserted))
+            return SimpleNamespace(data=inserted_rows)
+        if self.operation == "upsert":
+            payloads = self.payload if isinstance(self.payload, list) else [self.payload]
+            primary_keys = {
+                "company_price_source_rows": "row_id",
+            }
+            primary_key = primary_keys[self.table]
+            upserted = []
+            for payload in payloads:
+                existing = next(
+                    (
+                        row
+                        for row in rows
+                        if row.get(primary_key) == payload.get(primary_key)
+                    ),
+                    None,
+                )
+                if existing is None:
+                    existing = deepcopy(payload)
+                    rows.append(existing)
+                else:
+                    existing.update(deepcopy(payload))
+                upserted.append(deepcopy(existing))
+            return SimpleNamespace(data=upserted)
         matches = [row for row in rows if self._matches(row)]
         if self.row_limit is not None:
             matches = matches[: self.row_limit]
@@ -86,6 +119,7 @@ class _Query:
 class _Client:
     def __init__(self, tables):
         self.tables = tables
+        self.calls = []
 
     def table(self, name):
         return _Query(self, name)
@@ -205,3 +239,22 @@ def test_repeat_run_does_not_duplicate_same_version_event():
 
     assert second.unchanged == 1
     assert len(tables["material_identity_resolution_events"]) == 1
+
+
+def test_large_shortlist_batch_uses_one_write_per_destination_table():
+    tables = _tables(exact_alias=False)
+    template = tables["company_price_source_rows"][0]
+    tables["company_price_source_rows"] = [
+        {**template, "row_id": f"row-{index}"}
+        for index in range(40)
+    ]
+    client = _Client(tables)
+
+    batch = resolve_price_source_material_identities(
+        client, company_id="company-1", source_id="source-1"
+    )
+
+    assert batch.shortlisted == 40
+    assert client.calls.count(("material_identity_candidates", "insert")) == 1
+    assert client.calls.count(("company_price_source_rows", "upsert")) == 1
+    assert client.calls.count(("material_identity_resolution_events", "insert")) == 1

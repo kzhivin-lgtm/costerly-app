@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 from typing import Any, Mapping, Sequence
+from uuid import uuid4
 
 from use_cases.material_identity_resolution import (
     MaterialIdentityResolution,
@@ -202,8 +203,25 @@ def resolve_price_source_material_identities(
         for event in prior_events
         if event.get("source_row_id")
     }
+    source_row_ids = [str(row["row_id"]) for row in rows]
+    pending_candidates = (
+        client.table("material_identity_candidates")
+        .select("candidate_id,source_row_id")
+        .eq("company_id", company_id)
+        .eq("status", "pending")
+        .in_("source_row_id", source_row_ids)
+        .execute()
+    ).data or []
+    pending_by_source_row = {
+        str(candidate["source_row_id"]): str(candidate["candidate_id"])
+        for candidate in pending_candidates
+    }
 
     examined = resolved = shortlisted = needs_review = unchanged = 0
+    new_candidates: list[dict[str, Any]] = []
+    source_rows_to_update: list[dict[str, Any]] = []
+    resolution_events: list[dict[str, Any]] = []
+    resolved_offer_rows_by_confidence: dict[float, list[str]] = {}
     for row in rows:
         source_row_id = str(row["row_id"])
         if not force and source_row_id in processed_rows:
@@ -288,15 +306,6 @@ def resolve_price_source_material_identities(
             resolved += 1
         else:
             reference_material_id = None
-            pending_query = (
-                client.table("material_identity_candidates")
-                .select("candidate_id")
-                .eq("company_id", company_id)
-                .eq("source_row_id", source_row_id)
-                .eq("status", "pending")
-                .limit(1)
-                .execute()
-            ).data or []
             candidate_payload = {
                 "company_id": company_id,
                 "market_code": market,
@@ -313,35 +322,36 @@ def resolve_price_source_material_identities(
                 "confidence_dimensions": {"identity": identity_confidence},
                 "resolver_version": resolver_version,
             }
-            if pending_query:
-                candidate_id = str(pending_query[0]["candidate_id"])
+            candidate_id = pending_by_source_row.get(source_row_id)
+            if candidate_id:
                 client.table("material_identity_candidates").update(
                     candidate_payload
                 ).eq("candidate_id", candidate_id).execute()
             else:
-                inserted = client.table("material_identity_candidates").insert(
-                    candidate_payload
-                ).execute().data or []
-                candidate_id = str(inserted[0]["candidate_id"])
+                candidate_id = str(uuid4())
+                new_candidates.append(
+                    {"candidate_id": candidate_id, **candidate_payload}
+                )
             if resolution.status == "shortlist":
                 shortlisted += 1
             else:
                 needs_review += 1
 
-        row_update = {
-            "reference_material_id": reference_material_id,
-            "identity_candidate_id": candidate_id,
-            "identity_route": resolution.route,
-            "identity_confidence": identity_confidence,
-            "resolver_version": resolver_version,
-        }
-        client.table("company_price_source_rows").update(row_update).eq(
-            "company_id", company_id
-        ).eq("row_id", source_row_id).execute()
-        client.table("company_material_offers").update(
-            {"identity_confidence": identity_confidence}
-        ).eq("company_id", company_id).eq("source_row_id", source_row_id).execute()
-        client.table("material_identity_resolution_events").insert(
+        source_rows_to_update.append(
+            {
+                **row,
+                "reference_material_id": reference_material_id,
+                "identity_candidate_id": candidate_id,
+                "identity_route": resolution.route,
+                "identity_confidence": identity_confidence,
+                "resolver_version": resolver_version,
+            }
+        )
+        if resolution.status == "resolved":
+            resolved_offer_rows_by_confidence.setdefault(
+                identity_confidence, []
+            ).append(source_row_id)
+        resolution_events.append(
             {
                 "company_id": company_id,
                 "market_code": market,
@@ -360,6 +370,24 @@ def resolve_price_source_material_identities(
                 "confidence_dimensions": {"identity": identity_confidence},
                 "resolver_version": resolver_version,
             }
+        )
+
+    if new_candidates:
+        client.table("material_identity_candidates").insert(new_candidates).execute()
+    if source_rows_to_update:
+        client.table("company_price_source_rows").upsert(
+            source_rows_to_update,
+            on_conflict="row_id",
+        ).execute()
+    for confidence, resolved_source_row_ids in resolved_offer_rows_by_confidence.items():
+        client.table("company_material_offers").update(
+            {"identity_confidence": confidence}
+        ).eq("company_id", company_id).in_(
+            "source_row_id", resolved_source_row_ids
+        ).execute()
+    if resolution_events:
+        client.table("material_identity_resolution_events").insert(
+            resolution_events
         ).execute()
 
     return PriceSourceIdentityBatch(

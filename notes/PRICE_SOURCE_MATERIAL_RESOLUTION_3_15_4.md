@@ -42,13 +42,27 @@ block stronger exact SKU, company alias, or market alias evidence.
 - non-exact match stays private and creates one review candidate;
 - repeated same-version batch creates no duplicate event;
 - isolated resolution and Price Source suite: 89 passed;
-- complete repository suite: 656 passed;
+- complete repository suite: 657 passed;
 - production no-OCR smoke pass: zero rows examined, as expected from the empty
   company Price Source tables.
 
+## First production source
+
+The first real supplier URL completed successfully with 47 extracted rows: 41
+price-ready, one unresolved, and five excluded. The identity stage linked two
+exact materials and created 39 bounded shortlists. No global identity was
+created automatically.
+
+The run also exposed a real latency regression. The agent took 60.6 seconds,
+legacy row and offer persistence took about 31 seconds, and sequential identity
+writes added about 36 seconds. The identity stage now batches new candidates,
+source-row updates, and immutable events. A 40-row test verifies one write per
+destination table. The complete suite now passes 657 tests. A new production
+source is required to measure the deployed batch path.
+
 ## Next acceptance
 
-Deploy the candidate, import one representative real supplier source, and
-verify exact, shortlist, unmatched, price activation, refresh, and tenant
-isolation behavior in production. This stage does not activate Estimation
-fallback and does not publish private company data to the Israel catalog.
+Deploy the batching revision and measure a new representative production
+source. Verify completion-state reset, unmatched behavior, refresh, and tenant
+isolation. This stage does not activate Estimation fallback and does not publish
+private company data to the Israel catalog.
