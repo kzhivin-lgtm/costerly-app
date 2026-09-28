@@ -119,3 +119,9 @@ The reproducible readiness report is implemented and recorded in
 VAT and unit-normalization blockers by furniture-estimate impact, then derive
 non-active candidate baselines. Do not activate or deploy a market baseline
 until the report and methodology are reviewed.
+
+The first evidence-bounded normalization batch is prepared in
+`db/sql/2026_09_28_israel_reference_home_center_vat_normalization.sql`. Home
+Center website terms section 65 confirms that all displayed website prices
+include VAT and exclude delivery and installation. The migration can normalize
+92 candidate offers and does not review or activate them.

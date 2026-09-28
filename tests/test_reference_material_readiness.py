@@ -1,4 +1,5 @@
 from decimal import Decimal
+from pathlib import Path
 
 from tools.israel_reference_readiness import load_seed_report
 from use_cases.reference_material_readiness import (
@@ -102,3 +103,23 @@ def test_current_israel_seed_readiness_counts_are_reproducible():
         "missing_normalized_unit": 78,
         "unknown_vat": 192,
     }
+
+
+def test_home_center_normalization_is_evidence_bounded_and_non_activating():
+    sql = (
+        Path(__file__).parents[1]
+        / "db/sql/2026_09_28_israel_reference_home_center_vat_normalization.sql"
+    ).read_text()
+    lowered = sql.lower()
+
+    assert "website terms section 65" in sql
+    assert "o.supplier_name = 'Home Center'" in sql
+    assert "s.source_url like 'https://www.homecenter.co.il/%'" in sql
+    assert "o.market_code = 'IL'" in sql
+    assert "o.status = 'candidate'" in sql
+    assert "o.vat_mode = 'unknown'" in sql
+    assert "source_price / 1.18 / normalized_quantity" in sql
+    assert "when m.base_unit = 'l'" in sql
+    assert "when m.base_unit = 'kg'" in sql
+    assert "insert into public.market_material_baselines" not in lowered
+    assert "status = 'active'" not in lowered
