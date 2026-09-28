@@ -11,8 +11,18 @@ Current owner-approved execution order:
    existing reference material or create a reviewed new identity, preserve an
    immutable decision audit, and publish a confirmed alias for future imports.
    This is an internal Admin workflow, not a required company-user action.
-4. Complete operations, labor, machinery, and subcontractor reference models.
-5. Replace the legacy Estimation Agent only after those inputs are verified.
+4. Optimize Price Source end-to-end latency as task 3.15.6. Benchmark URLs,
+   PDFs, spreadsheets, and photos separately; measure fetch or upload, parsing,
+   model time, legacy material and offer persistence, identity resolution, and
+   final UI refresh. Batch remaining row and offer writes, avoid repeated reads,
+   preserve accuracy and audit behavior, and add honest stage progress or a
+   recoverable background workflow for genuinely long runs. The first URL
+   baseline was more than two minutes: 60.6 seconds in the model, about 31
+   seconds in legacy persistence, and about 36 seconds in the original
+   sequential identity stage. The identity stage is already batched; its new
+   production timing remains to be measured.
+5. Complete operations, labor, machinery, and subcontractor reference models.
+6. Replace the legacy Estimation Agent only after those inputs are verified.
 
 - 3.15.4 Price Source Material Resolution integration: active, P0. The
   implementation candidate routes every activated Price Source row through the
