@@ -97,6 +97,8 @@ This file explains where code belongs so the project stays understandable.
 - `notes/ISRAEL_REFERENCE_BASELINES_3_15_2.md` stores the active 3.15.2
   checkpoint, protected data, baseline rules, delivery sequence, verification,
   and decision gates.
+- `notes/ISRAEL_REFERENCE_READINESS_2026_09_28.md` records the reproducible
+  normalized-price and source-depth starting metrics for 3.15.2.
 - `notes/ISRAEL_REFERENCE_SOURCE_REGISTER.md` records candidate Israeli market
   sources, their valid use, and evidence gaps before catalog activation.
 - `notes/ISRAEL_REFERENCE_COVERAGE.md` tracks every furniture-material domain as

@@ -114,6 +114,8 @@ Explicit owner approval is required before:
 
 ## Next action
 
-Build the reproducible readiness report and candidate baseline derivation. Do
-not activate or deploy a market baseline until the report and methodology are
-reviewed.
+The reproducible readiness report is implemented and recorded in
+`notes/ISRAEL_REFERENCE_READINESS_2026_09_28.md`. Next, resolve the existing
+VAT and unit-normalization blockers by furniture-estimate impact, then derive
+non-active candidate baselines. Do not activate or deploy a market baseline
+until the report and methodology are reviewed.
