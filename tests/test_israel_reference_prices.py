@@ -60,6 +60,88 @@ ALL_PRICE_FILES = (
 )
 
 
+def _split_sql_values(value_block: str) -> list[list[str]]:
+    rows = []
+    row_start = None
+    depth = 0
+    in_string = False
+    index = 0
+    while index < len(value_block):
+        character = value_block[index]
+        if character == "'":
+            if in_string and index + 1 < len(value_block) and value_block[index + 1] == "'":
+                index += 2
+                continue
+            in_string = not in_string
+        elif not in_string:
+            if character == "(":
+                if depth == 0:
+                    row_start = index + 1
+                depth += 1
+            elif character == ")":
+                depth -= 1
+                if depth == 0 and row_start is not None:
+                    row = value_block[row_start:index]
+                    fields = []
+                    field_start = 0
+                    field_depth = 0
+                    field_in_string = False
+                    field_index = 0
+                    while field_index < len(row):
+                        field_character = row[field_index]
+                        if field_character == "'":
+                            if (
+                                field_in_string
+                                and field_index + 1 < len(row)
+                                and row[field_index + 1] == "'"
+                            ):
+                                field_index += 2
+                                continue
+                            field_in_string = not field_in_string
+                        elif not field_in_string:
+                            if field_character in "([":
+                                field_depth += 1
+                            elif field_character in ")]":
+                                field_depth -= 1
+                            elif field_character == "," and field_depth == 0:
+                                fields.append(row[field_start:field_index].strip())
+                                field_start = field_index + 1
+                        field_index += 1
+                    fields.append(row[field_start:].strip())
+                    rows.append(fields)
+                    row_start = None
+        index += 1
+    return rows
+
+
+def _sql_literal(value: str) -> str | None:
+    value = value.strip()
+    if value.lower() == "null":
+        return None
+    if value.startswith("'") and value.endswith("'"):
+        return value[1:-1].replace("''", "'")
+    return value
+
+
+def _insert_rows(path: Path, table: str, conflict_column: str):
+    conflict_pattern = r"\s*,\s*".join(
+        re.escape(column.strip()) for column in conflict_column.split(",")
+    )
+    pattern = re.compile(
+        rf"insert into public\.{table}\s*\((.*?)\)\s*values\s*(.*?)"
+        rf"on conflict\s*\({conflict_pattern}\)",
+        re.DOTALL | re.IGNORECASE,
+    )
+    for match in pattern.finditer(path.read_text()):
+        columns = [column.strip() for column in match.group(1).split(",")]
+        for values in _split_sql_values(match.group(2)):
+            assert len(values) == len(columns), (
+                f"{path.name} has {len(values)} values for {len(columns)} columns "
+                f"in public.{table}"
+            )
+            yield dict(zip(columns, map(_sql_literal, values)))
+
+
 def test_panel_batch_is_israel_only_and_candidate_only():
     sql = PANELS.read_text()
     assert sql.count("'IL'") >= 10
@@ -244,11 +326,184 @@ def test_reference_price_batches_use_the_canonical_source_contract():
         "'timber_yard_retail'",
         "'fabricator_retailer'",
         "'catalog'",
+        "'trade_package'",
+        "'trade_price_unit'",
+        "'catalog_package'",
+        "'temporarily_unavailable'",
     )
     for path in ALL_PRICE_FILES:
         sql = path.read_text()
         for fragment in forbidden_fragments:
             assert fragment not in sql, f"{path.name} uses obsolete source field/value {fragment}"
+
+
+def test_every_offer_row_satisfies_foundation_enum_constraints():
+    offers = [
+        row
+        for path in ALL_PRICE_FILES
+        for row in _insert_rows(path, "market_material_offers", "market_offer_id")
+    ]
+    assert len(offers) == 320
+    assert {row["price_scope"] for row in offers} <= {
+        "material_only",
+        "cut_to_size",
+        "fabricated_component",
+        "retail_package",
+    }
+    assert {row["vat_mode"] for row in offers} <= {
+        "included",
+        "excluded",
+        "exempt",
+        "unknown",
+    }
+    assert {row["status"] for row in offers} <= {
+        "candidate",
+        "reviewed",
+        "active",
+        "archived",
+    }
+    assert all(re.fullmatch(r"[A-Z]{3}", row["source_currency"]) for row in offers)
+    assert all(Decimal(row["source_price"]) >= 0 for row in offers)
+    assert all(
+        row["package_quantity"] is None or Decimal(row["package_quantity"]) > 0
+        for row in offers
+    )
+    assert all(
+        row["minimum_order_quantity"] is None
+        or Decimal(row["minimum_order_quantity"]) >= 0
+        for row in offers
+    )
+    assert all(Decimal(row["confidence"]) >= 0 for row in offers)
+    assert all(Decimal(row["confidence"]) <= 100 for row in offers)
+    assert all(
+        row["normalized_price_ex_vat"] is None or row["normalized_unit"] is not None
+        for row in offers
+    )
+    assert all(
+        row.get("valid_to") is None
+        or row.get("valid_from") is None
+        or row["valid_from"] <= row["valid_to"]
+        for row in offers
+    )
+
+
+def test_every_source_and_material_row_satisfies_foundation_enum_constraints():
+    sources = [
+        row
+        for path in ALL_PRICE_FILES
+        for row in _insert_rows(path, "reference_sources", "source_id")
+    ]
+    materials = [
+        row
+        for path in ALL_PRICE_FILES
+        for row in _insert_rows(path, "reference_materials", "material_code")
+    ]
+    assert len(sources) == 99
+    assert len(materials) == 280
+    assert {row["source_type"] for row in sources} <= {
+        "official",
+        "supplier",
+        "manufacturer",
+        "retailer",
+        "industry",
+        "research",
+        "platform_observation",
+    }
+    assert {row.get("source_channel", "other") for row in sources} <= {
+        "manufacturer",
+        "importer_distributor",
+        "trade_supplier",
+        "specialist_retailer",
+        "diy_retail",
+        "marketplace",
+        "public_procurement",
+        "other",
+    }
+    assert {row["department"] for row in materials} <= {
+        "wood",
+        "metal",
+        "glass_stone_plastic",
+        "coating",
+        "hardware",
+        "consumable",
+        "packaging",
+    }
+
+
+def test_market_profiles_cover_every_material_and_use_valid_availability_statuses():
+    material_id_to_code = {}
+    profiled_codes = set()
+    availability_statuses = set()
+    allowed_statuses = {"common", "limited", "special_order", "unavailable"}
+    for path in ALL_PRICE_FILES:
+        for row in _insert_rows(path, "reference_materials", "material_code"):
+            material_id_to_code[row["material_id"]] = row["material_code"]
+
+    for path in ALL_PRICE_FILES:
+        sql = path.read_text()
+        for row in _insert_rows(
+            path,
+            "market_material_profiles",
+            "material_id,market_code,language_code",
+        ):
+            profiled_codes.add(material_id_to_code[row["material_id"]])
+            availability_statuses.add(row["availability_status"])
+
+        for match in re.finditer(
+            r"insert into public\.market_material_profiles.*?"
+            r"on conflict\s*\(material_id\s*,\s*market_code\s*,\s*language_code\)",
+            sql,
+            re.DOTALL | re.IGNORECASE,
+        ):
+            statement = match.group(0)
+            for code_list in re.findall(
+                r"where (?:m\.)?material_code in\s*\((.*?)\)",
+                statement,
+                re.DOTALL,
+            ):
+                profiled_codes.update(re.findall(r"'([^']+)'", code_list))
+            profiled_codes.update(
+                re.findall(
+                    r"where (?:m\.)?material_code\s*=\s*'([^']+)'", statement
+                )
+            )
+            availability_statuses.update(
+                re.findall(r"::jsonb\s*,\s*'([^']+)'\s+from", statement)
+            )
+            availability_statuses.update(
+                value
+                for pair in re.findall(
+                    r"then\s*'([^']+)'\s+else\s*'([^']+)'\s+end\s+from",
+                    statement,
+                )
+                for value in pair
+            )
+
+    assert len(material_id_to_code) == 280
+    assert profiled_codes == set(material_id_to_code.values())
+    assert availability_statuses <= allowed_statuses
+
+
+def test_explicit_supplier_aliases_satisfy_alias_constraints():
+    aliases = [
+        row
+        for path in ALL_PRICE_FILES
+        for row in _insert_rows(
+            path,
+            "reference_material_aliases",
+            "material_id,market_code,language_code,alias_key",
+        )
+    ]
+    assert len(aliases) == 11
+    assert {row["alias_kind"] for row in aliases} <= {
+        "canonical",
+        "market_name",
+        "supplier_listing",
+        "technical_code",
+        "synonym",
+    }
+    assert all(Decimal(row["confidence"]) >= 0 for row in aliases)
+    assert all(Decimal(row["confidence"]) <= 100 for row in aliases)
 
 
 def test_documented_catalog_totals_have_unique_material_and_offer_ids():

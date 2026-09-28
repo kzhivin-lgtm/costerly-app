@@ -19,7 +19,7 @@ when 'euro_screw_flat_6_3mm_assorted_1000' then 'בורג יורו שטוח 6.3 
 when 'euro_screw_6_3x13mm_1000' then 'בורג יורו 6.3×13 מ״מ, 1000 יחידות'
 when 'euro_screw_6_3x11mm_1000' then 'בורג יורו 6.3×11 מ״מ, 1000 יחידות'
 end,'he-IL','{"market":"Israel","source_language":"Hebrew"}'::jsonb,
-case when material_code='euro_screw_flat_6_3mm_assorted_1000' then 'common' else 'temporarily_unavailable' end
+case when material_code='euro_screw_flat_6_3mm_assorted_1000' then 'common' else 'unavailable' end
 from public.reference_materials where material_code in ('euro_screw_flat_6_3mm_assorted_1000','euro_screw_6_3x13mm_1000','euro_screw_6_3x11mm_1000')
 on conflict(material_id,market_code,language_code) do update set market_name=excluded.market_name,local_specifications=excluded.local_specifications,availability_status=excluded.availability_status,active=true,updated_at=now();
 

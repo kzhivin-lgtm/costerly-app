@@ -227,8 +227,9 @@ create table if not exists public.market_material_offers (
         foreign key (source_id, market_code)
         references public.reference_sources(source_id, market_code),
     constraint market_material_offers_normalized_pair_check check (
-        (normalized_price_ex_vat is null and normalized_unit is null)
-        or (normalized_price_ex_vat >= 0 and length(trim(normalized_unit)) > 0)
+        (normalized_price_ex_vat is null or normalized_price_ex_vat >= 0)
+        and (normalized_unit is null or length(trim(normalized_unit)) > 0)
+        and (normalized_price_ex_vat is null or normalized_unit is not null)
     ),
     constraint market_material_offers_validity_check check (
         valid_to is null or valid_from is null or valid_from <= valid_to
