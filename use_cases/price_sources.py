@@ -15,7 +15,7 @@ import socket
 import time
 from pathlib import Path
 from typing import Any, Mapping
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import quote, urljoin, urlsplit
 from uuid import uuid4
 
 import httpx
@@ -355,6 +355,27 @@ def _same_host_wordpress_json_alternate(
         ):
             return _validate_public_url(candidate)
     return None
+
+
+def _same_host_wordpress_slug_endpoint(page_url: str) -> str | None:
+    parsed = urlsplit(page_url)
+    slug = parsed.path.strip("/").split("/")[-1]
+    if not slug or not parsed.hostname:
+        return None
+    candidate = (
+        f"{parsed.scheme}://{parsed.netloc}/wp-json/wp/v2/pages"
+        f"?slug={quote(slug, safe='')}&_fields=content,link"
+    )
+    return _validate_public_url(candidate)
+
+
+def _wordpress_rendered_html(payload: Any) -> str:
+    if isinstance(payload, list) and payload:
+        payload = payload[0]
+    if not isinstance(payload, dict):
+        return ""
+    content = payload.get("content") or {}
+    return str(content.get("rendered") or "") if isinstance(content, dict) else ""
 
 
 def _normalized_name(value: str) -> str:
@@ -790,18 +811,17 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
                 alternate_url = _same_host_wordpress_json_alternate(
                     current,
                     response.headers.get("link", ""),
-                )
+                ) or _same_host_wordpress_slug_endpoint(current)
                 if alternate_url:
                     alternate = http.get(alternate_url, follow_redirects=False)
                     alternate.raise_for_status()
                     if len(alternate.content) > MAX_SOURCE_BYTES:
                         raise PriceSourceError("The supplier page is too large to process.")
-                    payload = alternate.json()
-                    rendered = (
-                        (payload.get("content") or {}).get("rendered", "")
-                        if isinstance(payload, dict)
-                        else ""
-                    )
+                    try:
+                        payload = alternate.json()
+                    except (AttributeError, ValueError):
+                        payload = None
+                    rendered = _wordpress_rendered_html(payload)
                     visible_text = _visible_text_from_html(str(rendered or ""))
                     if visible_text:
                         return current, alternate.content, visible_text

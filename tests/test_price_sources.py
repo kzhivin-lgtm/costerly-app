@@ -1658,6 +1658,51 @@ def test_script_only_wordpress_page_uses_same_host_json_alternate(monkeypatch):
     assert "MDF 18 mm" in text
 
 
+def test_script_only_wordpress_page_can_discover_json_by_slug(monkeypatch):
+    class HtmlResponse:
+        status_code = 200
+        headers = {"content-type": "text/html"}
+        content = b"<html><script>renderPrices()</script></html>"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class JsonResponse:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+        content = b"[]"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return [{"content": {"rendered": "<p>Birch plywood 18 mm 310 ILS</p>"}}]
+
+    class Client:
+        @staticmethod
+        def get(url, *, follow_redirects=False):
+            assert follow_redirects is False
+            if "/wp-json/wp/v2/pages?slug=materials-and-prices" in url:
+                return JsonResponse()
+            return HtmlResponse()
+
+    monkeypatch.setattr(
+        "use_cases.price_sources._validate_public_url",
+        lambda value: value,
+    )
+
+    _, _, text = fetch_public_page(
+        "https://example.com/materials-and-prices/", client=Client()
+    )
+
+    assert "Birch plywood 18 mm" in text
+
+
 @pytest.mark.parametrize(
     "url",
     [
