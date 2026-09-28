@@ -9,6 +9,8 @@ MIGRATION = ROOT / "db/sql/2026_09_28_manufacturing_cost_parameters.sql"
 PLAN = ROOT / "notes/CNC_LASER_COSTING.md"
 ESTIMATE_LEVEL_MIGRATION = ROOT / "db/sql/2026_09_28_cnc_estimate_levels.sql"
 ISRAEL_SEED = ROOT / "db/sql/2026_09_28_manufacturing_cost_parameters_israel_seed_v1.sql"
+ISRAEL_BENCHMARK = ROOT / "db/sql/2026_09_28_manufacturing_cost_parameters_israel_benchmark_v1.sql"
+ISRAEL_OPERATIONS = ROOT / "db/sql/2026_09_28_manufacturing_cost_parameters_israel_operations_v1.sql"
 
 
 def test_cnc_laser_foundation_preserves_compact_machinery_profile():
@@ -62,7 +64,7 @@ def test_parameter_read_path_is_platform_staff_only_and_audited():
 
 
 def test_israel_seed_covers_every_admin_parameter_family_without_activating_priors():
-    sql = ISRAEL_SEED.read_text()
+    sql = "\n".join(path.read_text() for path in (ISRAEL_SEED, ISRAEL_BENCHMARK, ISRAEL_OPERATIONS))
     for calculator, definitions in MANUFACTURING_PARAMETER_DEFINITIONS.items():
         assert f"'{calculator}'" in sql
         for definition in definitions:
@@ -85,6 +87,28 @@ def test_israel_seed_keeps_incompatible_provider_models_separate():
     assert "cut_charge_per_meter" in sql
     assert "cut_charge_per_machine_minute" in sql
     assert "Do not average with per-metre offers" in sql
+
+
+def test_israel_benchmark_preserves_observations_and_exposes_normalized_ranges():
+    sql = ISRAEL_BENCHMARK.read_text()
+    for source in ("Algolan", "Alfandari", "Egoz"):
+        assert source in sql
+    assert "Costerly Israel benchmark v1" in sql
+    assert "'melamine_white', 17" in sql
+    assert "220, 225, 250" in sql
+    assert "'melamine_colored', 17" in sql
+    assert "240, 245, 280" in sql
+    assert "'active'" not in sql
+
+
+def test_israel_operations_adds_loaded_labor_machine_capacity_and_laser_minute_benchmark():
+    sql = ISRAEL_OPERATIONS.read_text()
+    assert "operator_rate_per_hour" in sql
+    assert "programmer_rate_per_hour" in sql
+    assert "machine_capacity_rate_per_hour" in sql
+    assert "62, 88, 122" in sql
+    assert "15, 20, 40" in sql
+    assert "Company labor profile overrides" in sql
 
 
 def test_saved_plan_rejects_machinery_expansion_and_legacy_weights():
