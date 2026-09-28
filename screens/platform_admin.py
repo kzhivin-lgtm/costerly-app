@@ -21,15 +21,36 @@ from use_cases.platform_admin import (
     record_dashboard_view,
     require_platform_access,
 )
+from use_cases.manufacturing_parameters import MANUFACTURING_PARAMETER_DEFINITIONS
 
 LOGGER = logging.getLogger(__name__)
 
 ADMIN_VIEWS = {"companies", "cnc_laser"}
 MANUFACTURING_SECTIONS = (
-    ("CNC Router", "In-house", "cnc_router_in_house"),
-    ("CNC Router", "Subcontractor", "cnc_router_subcontractor"),
-    ("Sheet Laser", "In-house", "sheet_laser_in_house"),
-    ("Sheet Laser", "Subcontractor", "sheet_laser_subcontractor"),
+    (
+        "CNC Router",
+        "In-house",
+        "cnc_router_in_house",
+        "Internal machining time and cost from routing, drilling, setup, machine capacity and attendance",
+    ),
+    (
+        "CNC Router",
+        "Subcontractor",
+        "cnc_router_subcontractor",
+        "Supplier charges, included work, minimum order, delivery and rush conditions",
+    ),
+    (
+        "Sheet Laser",
+        "In-house",
+        "sheet_laser_in_house",
+        "Internal cutting time and cost from speed, piercing, gas, energy, setup and attendance",
+    ),
+    (
+        "Sheet Laser",
+        "Subcontractor",
+        "sheet_laser_subcontractor",
+        "Named provider model, setup, cutting basis, included material, minimum order and delivery",
+    ),
 )
 
 
@@ -175,91 +196,148 @@ def _source_markup(row: dict[str, Any]) -> str:
 
 
 def _manufacturing_parameter_table(rows: list[dict[str, Any]]) -> str:
-    if not rows:
-        body = (
-            '<tr><td colspan="12" class="platform-admin-parameter-empty">'
-            "No parameters yet"
-            "</td></tr>"
+    rendered_rows: list[str] = []
+    for row in rows:
+        placeholder = bool(row.get("_placeholder"))
+        parameter_name = str(row.get("_label") or row.get("parameter_key") or "")
+        raw_code = str(row.get("parameter_key") or "")
+        parameter_markup = (
+            f'<span class="platform-admin-parameter-name">{escape(parameter_name)}</span>'
+            f'<span class="platform-admin-parameter-code">{escape(raw_code)}</span>'
         )
-    else:
-        rendered_rows: list[str] = []
-        for row in rows:
+        if placeholder:
             rendered_rows.append(
-                "<tr>"
-                f'<td><span class="platform-admin-parameter-name">{escape(str(row.get("parameter_key") or ""))}</span></td>'
-                f'<td>{escape(_parameter_scope(row))}</td>'
-                f'<td>{escape(_display_decimal(row.get("value_low")))}</td>'
-                f'<td>{escape(_display_decimal(row.get("value_typical")))}</td>'
-                f'<td>{escape(_display_decimal(row.get("value_high")))}</td>'
+                '<tr class="platform-admin-parameter-placeholder">'
+                f"<td>{parameter_markup}</td>"
+                f'<td>{escape(str(row.get("_scope_hint") or "Required parameter"))}</td>'
+                "<td>—</td><td>—</td><td>—</td>"
                 f'<td>{escape(str(row.get("unit") or "—"))}</td>'
-                f'<td>{_source_markup(row)}</td>'
-                f'<td>{escape(str(row.get("source_date") or "—"))}</td>'
-                f'<td>{escape(_display_decimal(row.get("confidence")))}</td>'
-                f'<td>{escape(str(row.get("status") or "—").title())}</td>'
-                f'<td>{escape(str(row.get("version") or "—"))}</td>'
+                "<td>—</td><td>—</td><td>—</td>"
+                '<td><span class="platform-admin-parameter-missing">Not configured</span></td>'
                 "<td>—</td>"
                 "</tr>"
             )
-        body = "".join(rendered_rows)
+            continue
+        rendered_rows.append(
+            "<tr>"
+            f"<td>{parameter_markup}</td>"
+            f'<td>{escape(_parameter_scope(row))}</td>'
+            f'<td>{escape(_display_decimal(row.get("value_low")))}</td>'
+            f'<td>{escape(_display_decimal(row.get("value_typical")))}</td>'
+            f'<td>{escape(_display_decimal(row.get("value_high")))}</td>'
+            f'<td>{escape(str(row.get("unit") or "—"))}</td>'
+            f'<td>{_source_markup(row)}</td>'
+            f'<td>{escape(str(row.get("source_date") or "—"))}</td>'
+            f'<td>{escape(_display_decimal(row.get("confidence")))}</td>'
+            f'<td>{escape(str(row.get("status") or "—").title())}</td>'
+            f'<td>{escape(str(row.get("version") or "—"))}</td>'
+            "</tr>"
+        )
+    body = "".join(rendered_rows)
     return (
         '<div class="platform-admin-table-card platform-admin-parameter-card">'
         '<div class="platform-admin-table-scroll">'
         '<table class="platform-admin-table platform-admin-parameter-table">'
         "<colgroup>"
-        '<col style="width:190px"><col style="width:260px">'
+        '<col style="width:240px"><col style="width:280px">'
         '<col style="width:78px"><col style="width:78px"><col style="width:78px">'
         '<col style="width:92px"><col style="width:150px"><col style="width:108px">'
-        '<col style="width:88px"><col style="width:88px"><col style="width:70px">'
-        '<col style="width:70px">'
+        '<col style="width:88px"><col style="width:118px"><col style="width:70px">'
         "</colgroup>"
         "<thead><tr>"
         "<th>Parameter</th><th>Scope</th><th>Low</th><th>Typical</th><th>High</th>"
         "<th>Unit</th><th>Source</th><th>Source date</th><th>Confidence</th>"
-        "<th>Status</th><th>Version</th><th>Action</th>"
+        "<th>Status</th><th>Version</th>"
         "</tr></thead>"
         f"<tbody>{body}</tbody>"
         "</table></div></div>"
     )
 
 
+def _parameter_rows_for_route(
+    calculator: str,
+    rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    definitions = MANUFACTURING_PARAMETER_DEFINITIONS[calculator]
+    definition_by_key = {definition.key: definition for definition in definitions}
+    actual_by_key: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        actual_by_key.setdefault(str(row.get("parameter_key") or ""), []).append(row)
+    rendered: list[dict[str, Any]] = []
+    for definition in definitions:
+        matches = actual_by_key.pop(definition.key, [])
+        if matches:
+            rendered.extend({**row, "_label": definition.label} for row in matches)
+        else:
+            rendered.append(
+                {
+                    "_placeholder": True,
+                    "_label": definition.label,
+                    "_scope_hint": definition.scope_hint,
+                    "parameter_key": definition.key,
+                    "unit": definition.unit,
+                }
+            )
+    for key in sorted(actual_by_key):
+        rendered.extend(actual_by_key[key])
+    return rendered
+
+
 def _render_manufacturing_library(client, access, platform_access: PlatformAccess) -> None:
-    title_column, history_column = st.columns([4, 1])
-    with title_column:
-        st.subheader("CNC / Laser")
-        st.caption("Versioned production-cost parameters for deterministic calculations")
-    with history_column:
-        include_history = st.checkbox(
-            "Show archived",
-            value=False,
-            key="platform_admin_manufacturing_history",
-        )
+    st.subheader("CNC / Laser")
+    st.caption("Four independent cost models. Missing values remain visible and are never guessed")
     try:
         rows = load_manufacturing_parameter_library(
             client,
             requesting_user_id=str(access.user_id),
-            include_history=include_history,
+            include_history=True,
         )
     except Exception:
         LOGGER.exception("CNC / Laser parameter library failed to load")
         st.error("CNC / Laser parameters are temporarily unavailable. Try again in a moment")
         return
     by_calculator: dict[str, list[dict[str, Any]]] = {
-        calculator: [] for _process, _route, calculator in MANUFACTURING_SECTIONS
+        calculator: []
+        for _process, _route, calculator, _description in MANUFACTURING_SECTIONS
+    }
+    archived_by_calculator: dict[str, list[dict[str, Any]]] = {
+        calculator: []
+        for _process, _route, calculator, _description in MANUFACTURING_SECTIONS
     }
     for row in rows:
         calculator = str(row.get("calculator") or "")
         if calculator in by_calculator:
-            by_calculator[calculator].append(row)
+            target = (
+                archived_by_calculator
+                if str(row.get("status") or "") == "archived"
+                else by_calculator
+            )
+            target[calculator].append(row)
     current_process = ""
-    for process, route, calculator in MANUFACTURING_SECTIONS:
+    for process, route, calculator, description in MANUFACTURING_SECTIONS:
         if process != current_process:
             st.markdown(f'<h2 class="platform-admin-process-title">{escape(process)}</h2>', unsafe_allow_html=True)
             current_process = process
         st.markdown(f'<h3 class="platform-admin-route-title">{escape(route)}</h3>', unsafe_allow_html=True)
         st.markdown(
-            _manufacturing_parameter_table(by_calculator[calculator]),
+            f'<p class="platform-admin-route-description">{escape(description)}</p>',
             unsafe_allow_html=True,
         )
+        st.markdown(
+            _manufacturing_parameter_table(
+                _parameter_rows_for_route(calculator, by_calculator[calculator])
+            ),
+            unsafe_allow_html=True,
+        )
+        archived = archived_by_calculator[calculator]
+        if archived:
+            with st.expander(f"Previous versions ({len(archived)})"):
+                st.markdown(
+                    _manufacturing_parameter_table(
+                        _parameter_rows_for_route(calculator, archived)
+                    ),
+                    unsafe_allow_html=True,
+                )
 
 
 def render_platform_admin_screen(access, platform_access: PlatformAccess) -> None:

@@ -235,10 +235,17 @@ def apply_platform_admin_css() -> None:
         }
 
         .platform-admin-route-title {
-            margin: 18px 0 8px;
+            margin: 18px 0 4px;
             color: var(--color-text-strong);
             font-size: 15px;
             line-height: 1.2;
+        }
+
+        .platform-admin-route-description {
+            margin: 0 0 10px;
+            color: var(--color-text-muted);
+            font-size: 13px;
+            line-height: 1.35;
         }
 
         .platform-admin-parameter-card {
@@ -246,13 +253,22 @@ def apply_platform_admin_css() -> None:
         }
 
         .platform-admin-parameter-table {
-            min-width: 1350px;
+            min-width: 1380px;
         }
 
         .platform-admin-parameter-name {
+            display: block;
             color: var(--color-text-strong);
-            font-family: var(--font-mono);
             font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .platform-admin-parameter-code {
+            display: block;
+            margin-top: 3px;
+            color: var(--color-text-muted);
+            font-family: var(--font-mono);
+            font-size: 10px;
             overflow-wrap: anywhere;
         }
 
@@ -261,6 +277,17 @@ def apply_platform_admin_css() -> None:
             color: var(--color-text-muted) !important;
             text-align: center !important;
             vertical-align: middle !important;
+        }
+
+        .platform-admin-parameter-placeholder td {
+            background: rgba(42, 31, 44, 0.018);
+        }
+
+        .platform-admin-parameter-missing {
+            color: var(--color-text-muted);
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
         }
 
         .platform-admin-source-link {

@@ -8,6 +8,7 @@ from screens.platform_admin import (
     _dashboard_table,
     _manufacturing_parameter_table,
     _parameter_scope,
+    _parameter_rows_for_route,
 )
 from use_cases.platform_admin import (
     PlatformAccess,
@@ -262,11 +263,13 @@ def test_admin_exposes_a_separate_read_only_cnc_laser_library():
     screen_source = (ROOT / "screens/platform_admin.py").read_text()
 
     assert '"CNC / Laser"' in screen_source
-    assert '"CNC Router", "In-house", "cnc_router_in_house"' in screen_source
-    assert '"CNC Router", "Subcontractor", "cnc_router_subcontractor"' in screen_source
-    assert '"Sheet Laser", "In-house", "sheet_laser_in_house"' in screen_source
-    assert '"Sheet Laser", "Subcontractor", "sheet_laser_subcontractor"' in screen_source
+    assert '"cnc_router_in_house"' in screen_source
+    assert '"cnc_router_subcontractor"' in screen_source
+    assert '"sheet_laser_in_house"' in screen_source
+    assert '"sheet_laser_subcontractor"' in screen_source
     assert "CNC / Laser parameters are temporarily unavailable" in screen_source
+    assert "Show archived" not in screen_source
+    assert "Previous versions" in screen_source
 
 
 def test_manufacturing_parameter_table_preserves_scope_evidence_and_escapes_content():
@@ -302,10 +305,11 @@ def test_manufacturing_parameter_table_preserves_scope_evidence_and_escapes_cont
 
 
 def test_manufacturing_parameter_empty_table_is_bounded_and_has_all_columns():
-    markup = _manufacturing_parameter_table([])
+    rows = _parameter_rows_for_route("cnc_router_in_house", [])
+    markup = _manufacturing_parameter_table(rows)
 
-    assert 'colspan="12"' in markup
-    assert "No parameters yet" in markup
+    assert "Effective feed rate" in markup
+    assert "Not configured" in markup
     for heading in (
         "Parameter",
         "Scope",
@@ -318,9 +322,47 @@ def test_manufacturing_parameter_empty_table_is_bounded_and_has_all_columns():
         "Confidence",
         "Status",
         "Version",
-        "Action",
     ):
         assert f"<th>{heading}</th>" in markup
+
+
+def test_four_manufacturing_routes_expose_distinct_parameter_models():
+    route_keys = {
+        route: tuple(row["parameter_key"] for row in _parameter_rows_for_route(route, []))
+        for route in (
+            "cnc_router_in_house",
+            "cnc_router_subcontractor",
+            "sheet_laser_in_house",
+            "sheet_laser_subcontractor",
+        )
+    }
+
+    assert len(set(route_keys.values())) == 4
+    assert "effective_feed_rate_m_per_min" in route_keys["cnc_router_in_house"]
+    assert "hole_charge" in route_keys["cnc_router_subcontractor"]
+    assert "assist_gas_cost_per_machine_hour" in route_keys["sheet_laser_in_house"]
+    assert "cut_charge_per_machine_minute" in route_keys["sheet_laser_subcontractor"]
+    assert "assist_gas_cost_per_machine_hour" not in route_keys["cnc_router_in_house"]
+
+
+def test_actual_parameter_replaces_only_its_route_placeholder():
+    rows = _parameter_rows_for_route(
+        "cnc_router_in_house",
+        [
+            {
+                "parameter_key": "setup_minutes",
+                "value_low": 10,
+                "value_typical": 15,
+                "value_high": 20,
+                "unit": "min/job",
+            }
+        ],
+    )
+
+    setup = [row for row in rows if row["parameter_key"] == "setup_minutes"]
+    assert len(setup) == 1
+    assert setup[0].get("_placeholder") is not True
+    assert setup[0]["_label"] == "Machine setup time"
 
 
 def test_admin_matrix_reuses_overhead_expenses_table_geometry():

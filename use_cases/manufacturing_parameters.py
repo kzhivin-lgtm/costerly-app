@@ -23,6 +23,67 @@ SOURCE_PRIORITY = {
 }
 
 
+@dataclass(frozen=True)
+class ParameterDefinition:
+    key: str
+    label: str
+    unit: str
+    scope_hint: str
+
+
+MANUFACTURING_PARAMETER_DEFINITIONS: dict[CalculatorIdentity, tuple[ParameterDefinition, ...]] = {
+    "cnc_router_in_house": (
+        ParameterDefinition("effective_feed_rate_m_per_min", "Effective feed rate", "m/min", "Material, thickness and machine"),
+        ParameterDefinition("seconds_per_hole", "Drilling time", "s/hole", "Material, hole type and machine"),
+        ParameterDefinition("tool_change_and_non_cutting_minutes", "Tool change and non-cutting time", "min/job", "Machine and job family"),
+        ParameterDefinition("programming_minutes", "Programming time", "min/job", "Object family and complexity"),
+        ParameterDefinition("setup_minutes", "Machine setup time", "min/job", "Machine and job family"),
+        ParameterDefinition("sheet_handling_minutes", "Sheet handling time", "min/sheet", "Sheet type and machine"),
+        ParameterDefinition("machine_capacity_rate_per_hour", "Machine capacity cost", "ILS/hour", "Machine class"),
+        ParameterDefinition("operator_attendance_fraction", "Operator attendance", "ratio", "Machine class"),
+        ParameterDefinition("tooling_and_consumables_cost_per_machine_hour", "Tooling and consumables", "ILS/hour", "Material and machine"),
+        ParameterDefinition("expected_rework_percent", "Expected rework allowance", "%", "Material and object family"),
+    ),
+    "cnc_router_subcontractor": (
+        ParameterDefinition("provider_base_charge", "Provider base charge", "ILS/job", "Named provider and service model"),
+        ParameterDefinition("programming_or_file_preparation", "Programming or file preparation", "ILS/job", "Named provider"),
+        ParameterDefinition("cutting_charge_per_meter", "Routing charge", "ILS/m", "Provider, material and thickness"),
+        ParameterDefinition("hole_charge", "Hole or drilling charge", "ILS/hole", "Provider and hole type"),
+        ParameterDefinition("pocket_charge", "Pocket charge", "ILS/pocket", "Provider and pocket class"),
+        ParameterDefinition("edge_banding_charge", "Edge banding charge", "ILS/m", "Provider and edge type"),
+        ParameterDefinition("provider_minimum", "Minimum order charge", "ILS/job", "Named provider"),
+        ParameterDefinition("allocated_delivery", "Allocated delivery", "ILS/job", "Provider and region"),
+        ParameterDefinition("rush_surcharge_percent", "Rush surcharge", "%", "Named provider"),
+    ),
+    "sheet_laser_in_house": (
+        ParameterDefinition("effective_cut_speed_m_per_min", "Effective cut speed", "m/min", "Material, thickness, gas and machine"),
+        ParameterDefinition("pierce_seconds", "Piercing time", "s/pierce", "Material and thickness"),
+        ParameterDefinition("rapid_moves_and_sheet_exchange_minutes", "Rapid moves and sheet exchange", "min/sheet", "Machine and sheet class"),
+        ParameterDefinition("programming_and_nesting_minutes", "Programming and nesting", "min/job", "Object family and complexity"),
+        ParameterDefinition("setup_minutes", "Machine setup time", "min/job", "Machine and material"),
+        ParameterDefinition("machine_capacity_rate_per_hour", "Machine capacity cost", "ILS/hour", "Machine class"),
+        ParameterDefinition("operator_attendance_fraction", "Operator attendance", "ratio", "Machine class"),
+        ParameterDefinition("assist_gas_cost_per_machine_hour", "Assist gas cost", "ILS/hour", "Gas, material and thickness"),
+        ParameterDefinition("average_production_kw", "Average production power", "kW", "Machine, material and thickness"),
+        ParameterDefinition("electricity_cost_per_kwh", "Electricity tariff", "ILS/kWh", "Israel tariff and effective date"),
+        ParameterDefinition("consumables_cost_per_machine_hour", "Machine consumables", "ILS/hour", "Machine and material"),
+        ParameterDefinition("loading_unloading_minutes", "Loading and unloading", "min/sheet", "Sheet class and machine"),
+        ParameterDefinition("expected_rework_percent", "Expected rework allowance", "%", "Material and object family"),
+    ),
+    "sheet_laser_subcontractor": (
+        ParameterDefinition("provider_base_charge", "Provider base charge", "ILS/job", "Named provider and service model"),
+        ParameterDefinition("provider_setup", "Provider setup", "ILS/job", "Named provider"),
+        ParameterDefinition("cut_charge_per_meter", "Cut charge by length", "ILS/m", "Provider, material and thickness"),
+        ParameterDefinition("cut_charge_per_machine_minute", "Cut charge by machine time", "ILS/min", "Named provider model"),
+        ParameterDefinition("file_preparation", "File preparation", "ILS/job", "Named provider"),
+        ParameterDefinition("secondary_operations", "Secondary operations", "ILS/job", "Provider and operation scope"),
+        ParameterDefinition("provider_minimum", "Minimum order charge", "ILS/job", "Named provider"),
+        ParameterDefinition("allocated_delivery", "Allocated delivery", "ILS/job", "Provider and region"),
+        ParameterDefinition("rush_surcharge_percent", "Rush surcharge", "%", "Named provider"),
+    ),
+}
+
+
 class ManufacturingParameterError(ValueError):
     pass
 
