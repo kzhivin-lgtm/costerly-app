@@ -808,10 +808,12 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
                 raise PriceSourceError("The supplier page is too large to process.")
             visible_text = _visible_text_from_html(response.text)
             if not visible_text:
-                alternate_url = _same_host_wordpress_json_alternate(
-                    current,
-                    response.headers.get("link", ""),
-                ) or _same_host_wordpress_slug_endpoint(current)
+                alternate_url = _same_host_wordpress_slug_endpoint(current)
+                if not alternate_url:
+                    alternate_url = _same_host_wordpress_json_alternate(
+                        current,
+                        response.headers.get("link", ""),
+                    )
                 if alternate_url:
                     alternate = http.get(alternate_url, follow_redirects=False)
                     alternate.raise_for_status()
