@@ -2,19 +2,32 @@
 
 Current owner-approved execution order:
 
-1. Finish 3.15.3 shared Material Resolution Core and identity-candidate buffer.
-   Detailed checkpoint: `notes/MATERIAL_RESOLUTION_CORE_3_15_3.md`.
-2. Integrate Price Source with the core as task 3.15.4, including historical
-   reprocessing without repeating OCR.
+1. Finish 3.15.4 Price Source integration with the shared Material Resolution
+   Core. Detailed checkpoint: `notes/PRICE_SOURCE_MATERIAL_RESOLUTION_3_15_4.md`.
+2. Run the first representative production Price Source through the resolver
+   and accept exact, shortlist, and unmatched behavior with real evidence.
 3. Complete operations, labor, machinery, and subcontractor reference models.
 4. Replace the legacy Estimation Agent only after those inputs are verified.
 
-- 3.15.3 Material Resolution Core: active, P0. The deterministic candidate
+- 3.15.4 Price Source Material Resolution integration: active, P0. The
+  implementation candidate routes every activated Price Source row through the
+  shared resolver after extraction, so historical rows can be processed without
+  repeating OCR. Exact identity links the private company material to the
+  reference catalog. Shortlists and unmatched identities remain private and
+  enter the review buffer. Resolution events are append-only, same-version
+  batch reruns are idempotent, and resolver failure does not invalidate a
+  completed price import. Production currently has zero Price Source rows, so
+  the historical pass correctly examined zero rows. Full suite: 656 passed.
+  Next acceptance requires the first representative production import.
+
+- 3.15.3 Material Resolution Core: completed, P0. The deterministic candidate
   resolves exact supplier SKU, company alias, market alias, hard attributes,
   then a maximum-five shortlist. The production read-only benchmark returned
   797/797 correct unique alias matches and 201/201 correct unique supplier-SKU
   matches, with zero false resolutions across five collision keys. The additive
-  schema migration is prepared but not yet applied to production.
+  schema migration is applied to production. The active resolver is
+  `material_identity_v1`; all four protected tables were verified through the
+  service role before 3.15.4 began.
 
 - 3.15.2 Israel material baselines and furniture-core completion: active, P0 by
   owner direction. The production activation checkpoint is verified: 280

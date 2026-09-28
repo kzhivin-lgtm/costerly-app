@@ -149,6 +149,7 @@ def resolve_material_identity(
     supplier_sku: str | None = None,
     category_code: str | None = None,
     specifications: Mapping[str, Any] | None = None,
+    candidate_departments: Sequence[str] = (),
     shortlist_limit: int = 5,
 ) -> MaterialIdentityResolution:
     """Resolve identity by exact routes before returning a bounded shortlist."""
@@ -165,6 +166,9 @@ def resolve_material_identity(
         )
     market = str(market_code or "").strip().upper()
     requested_specs = dict(specifications or {})
+    shortlist_departments = {
+        str(value).strip() for value in candidate_departments if str(value).strip()
+    }
     material_by_id = {
         str(row.get("material_id")): row
         for row in materials
@@ -256,6 +260,11 @@ def resolve_material_identity(
 
     compatible_materials: list[tuple[Mapping[str, Any], int]] = []
     for material in material_by_id.values():
+        if (
+            shortlist_departments
+            and str(material.get("department") or "") not in shortlist_departments
+        ):
+            continue
         is_compatible, matched_specs = _hard_compatibility(
             material,
             category_code=category_code,

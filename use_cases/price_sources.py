@@ -14,6 +14,7 @@ import re
 import socket
 import time
 from pathlib import Path
+from typing import Any, Mapping
 from urllib.parse import urljoin, urlsplit
 from uuid import uuid4
 
@@ -29,6 +30,9 @@ from agents.schemas.price_source_schema import (
 from db.company_access import assert_company_owner
 from db.repositories import insert_agent_usage_event
 from db.supabase_client import get_supabase_client
+from use_cases.price_source_material_resolution import (
+    resolve_price_source_material_identities,
+)
 
 
 PRICE_SOURCE_BUCKET = "company-price-sources"
@@ -1091,6 +1095,51 @@ def _refresh_price_source_summary(client, company_id: str, source_id: str) -> No
     ).eq("company_id", company_id).eq("source_id", source_id).execute()
 
 
+def _record_identity_resolution_summary(
+    client,
+    *,
+    company_id: str,
+    source_id: str,
+    summary: Mapping[str, Any],
+) -> None:
+    source = _owned_price_source(client, company_id, source_id)
+    processing_summary = dict(source.get("processing_summary") or {})
+    processing_summary["material_identity"] = dict(summary)
+    client.table("company_price_sources").update(
+        {"processing_summary": processing_summary}
+    ).eq("company_id", company_id).eq("source_id", source_id).execute()
+
+
+def _resolve_and_record_price_source_identities(
+    client,
+    *,
+    company_id: str,
+    source_id: str,
+    row_id: str | None = None,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Run the additive identity stage without invalidating a completed import."""
+    try:
+        batch = resolve_price_source_material_identities(
+            client,
+            company_id=company_id,
+            source_id=source_id,
+            row_id=row_id,
+            force=force,
+        )
+        summary: dict[str, Any] = {"status": "complete", **batch.as_summary()}
+    except Exception:
+        logger.exception("Price source material identity resolution failed")
+        summary = {"status": "retry_required"}
+    _record_identity_resolution_summary(
+        client,
+        company_id=company_id,
+        source_id=source_id,
+        summary=summary,
+    )
+    return summary
+
+
 _SOURCE_DEFAULT_RESOLVED_REASONS = {
     "below_auto_activation_threshold",
     "unknown_currency",
@@ -1409,6 +1458,11 @@ def apply_price_source_defaults(
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
     ).eq("company_id", company_id).eq("source_id", source_id).execute()
+    _resolve_and_record_price_source_identities(
+        client,
+        company_id=company_id,
+        source_id=source_id,
+    )
     _refresh_price_source_summary(client, company_id, source_id)
     return {
         "activated": activated,
@@ -1595,6 +1649,13 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
             "confidence": row.get("confidence") or 0,
         }
     ).execute()
+    _resolve_and_record_price_source_identities(
+        client,
+        company_id=company_id,
+        source_id=source_id,
+        row_id=row_id,
+        force=True,
+    )
     if not source.get("currency"):
         client.table("company_price_sources").update({"currency": raw_currency}).eq(
             "company_id", company_id
@@ -2038,11 +2099,18 @@ def process_price_source(
                 if sku:
                     offers_by_sku[(current_lane, sku)] = [inserted_offer]
 
+        identity_summary = _resolve_and_record_price_source_identities(
+            client,
+            company_id=company_id,
+            source_id=source_id,
+        )
+
         source_summary.update(
             {
                 "new": new_count,
                 "updated": updated_count,
                 "unchanged": unchanged_count,
+                "material_identity": identity_summary,
             }
         )
         client.table("company_price_sources").update(
