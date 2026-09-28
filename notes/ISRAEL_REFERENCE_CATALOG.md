@@ -1,7 +1,25 @@
 # Israel Reference Catalog
 
 Task: 3.15.1
-Status: architecture and schema candidate
+Status: production foundation and candidate evidence deployed
+
+## Production checkpoint, 2026-09-28
+
+The reference-catalog foundation and Israel candidate evidence are deployed to
+production. Verified production counts are:
+
+- 1 reference market;
+- 99 reference sources;
+- 113 material categories;
+- 280 reference materials and 280 Israel market profiles;
+- 320 market offers, all with `candidate` status;
+- 851 material aliases;
+- 0 active material baselines.
+
+Exact alias lookup is verified for both a technical material code and its
+Hebrew Israel market name. This checkpoint does not activate fallback prices
+for Estimation. Baseline derivation, review, approval, and resolver integration
+remain separate work.
 
 Ordered delivery plan: `notes/ISRAEL_REFERENCE_PROGRAM_PLAN.md`
 
