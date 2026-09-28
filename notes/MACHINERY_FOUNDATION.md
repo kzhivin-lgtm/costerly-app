@@ -38,6 +38,10 @@ source of truth for this implementation.
 | CNC router is in-house | Ask working length, working width, maximum thickness, solid wood, horizontal drilling, 5-axis machining, and an optional machine rate per hour |
 | CNC machine rate is blank | Store costing as not provided; do not ask for a separate costing-method choice |
 | CNC machine rate is provided | Store it as the internal hourly machine rate; derive customer-facing per-part or whole-job prices from machining time plus material, programming, setup, tooling, and labor |
+| CNC router is in-house | Show one in-house estimate level from 1 to 5; do not show or activate a subcontractor level |
+| CNC router is not in-house | Show one subcontractor estimate level from 1 to 5; do not show or activate an in-house level |
+| CNC estimate level is untouched | Use effective level 3 without storing it as user feedback |
+| Owner changes the active CNC estimate level | Save the level with the active route and append a bounded change event without estimate cost or customer content |
 | CNC router handles standard sheet goods | Assume MDF, particleboard / LDSP, plywood, and melamine-faced board; do not ask the owner to confirm them |
 | CNC router requires machining on both faces | Treat the second face as another setup; do not ask a vague two-sided-processing question |
 | Veneer or laminating press is in-house | Require press length, press width, and pressing force in tonnes |
@@ -131,6 +135,10 @@ source of truth for this implementation.
   internal hourly machine rate. It uses the shared numeric input convention,
   including grouped thousands. Customer-facing per-sheet, per-part, and
   whole-job prices remain derived outputs rather than stored cost bases.
+- CNC has one estimate-level selector for the active route. `Yes` exposes the
+  in-house level and `No` exposes the subcontractor level. The two levels are
+  never active or displayed together. Level 3 is the effective default, but it
+  becomes behavioral feedback only after an explicit user change.
 - Sheet laser does not ask for a generic costing method. Its minimum profile
   asks working length, working width, laser power, copper / brass, and bevel
   cutting. Copper / brass uses the first detail column and bevel cutting uses

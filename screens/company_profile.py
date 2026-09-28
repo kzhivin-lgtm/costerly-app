@@ -54,6 +54,9 @@ from use_cases.price_sources import (
     validate_price_source_upload_selection,
 )
 from use_cases.machinery import (
+    CNC_ESTIMATE_LEVEL_DEFAULT,
+    CNC_ESTIMATE_LEVEL_KEY,
+    CNC_ESTIMATE_LEVELS,
     INDUSTRY_LABELS,
     PROFILE_COSTING_MACHINE_CODES,
     PROFILE_MACHINE_SPECS,
@@ -256,6 +259,20 @@ MACHINERY_PRICING_LABELS = {
     "per_part": "Per part",
     "per_job": "Per job",
     "quote_only": "Quote each job",
+}
+CNC_ESTIMATE_LEVEL_LABELS = {
+    1: "1 · Lower edge",
+    2: "2 · Below central",
+    3: "3 · Central estimate",
+    4: "4 · Above central",
+    5: "5 · Upper edge",
+}
+CNC_ESTIMATE_LEVEL_COMMENTS = {
+    1: "Lower preliminary cost estimate",
+    2: "Below the central estimate",
+    3: "Central preliminary cost estimate",
+    4: "Above the central estimate",
+    5: "Upper preliminary cost estimate",
 }
 
 
@@ -463,6 +480,54 @@ def _render_cnc_machine_rate(
     return "hourly", pricing
 
 
+def _mark_cnc_estimate_level_explicit(flag_key: str) -> None:
+    st.session_state[flag_key] = True
+
+
+def _render_cnc_estimate_level(
+    saved: dict,
+    key_prefix: str,
+    *,
+    route: str,
+    column,
+) -> int | None:
+    saved_route = str(saved.get("availability_status") or "")
+    saved_pricing = saved.get("pricing") or {}
+    raw_saved_level = (
+        saved_pricing.get(CNC_ESTIMATE_LEVEL_KEY)
+        if saved_route == route
+        else None
+    )
+    saved_level = (
+        int(raw_saved_level)
+        if raw_saved_level in CNC_ESTIMATE_LEVELS
+        else None
+    )
+    widget_key = f"{key_prefix}_{route}_estimate_level"
+    explicit_key = f"{widget_key}_explicit"
+    with column:
+        selected_level = st.slider(
+            "Cost estimate range",
+            min_value=min(CNC_ESTIMATE_LEVELS),
+            max_value=max(CNC_ESTIMATE_LEVELS),
+            value=saved_level or CNC_ESTIMATE_LEVEL_DEFAULT,
+            step=1,
+            help=(
+                "Selects where the CNC cost is taken within the preliminary "
+                "estimate range. Level 1 uses the lower edge, level 3 uses the "
+                "central estimate, and level 5 uses the upper edge. It does not "
+                "change machine speed or technical inputs"
+            ),
+            key=widget_key,
+            on_change=_mark_cnc_estimate_level_explicit,
+            args=(explicit_key,),
+        )
+        st.caption(CNC_ESTIMATE_LEVEL_COMMENTS[int(selected_level)])
+    if saved_level is None and not st.session_state.get(explicit_key, False):
+        return None
+    return int(selected_level)
+
+
 def _render_member_machinery(machine_rows: dict[str, dict], service_rows: list[dict], supplier_names: dict[str, str]) -> None:
     configured = [spec for spec in PROFILE_MACHINE_SPECS if spec.code in machine_rows]
     if not configured:
@@ -491,6 +556,21 @@ def _render_member_machinery(machine_rows: dict[str, dict], service_rows: list[d
                 pricing_method = str(row.get("pricing_method") or "unknown")
                 if pricing_method != "unknown":
                     st.markdown(f"**Pricing:** {MACHINERY_PRICING_LABELS.get(pricing_method, pricing_method)}")
+                if spec.code == "wood_cnc_router":
+                    estimate_level = (row.get("pricing") or {}).get(
+                        CNC_ESTIMATE_LEVEL_KEY
+                    )
+                    explicit_level = estimate_level in CNC_ESTIMATE_LEVELS
+                    effective_level = (
+                        int(estimate_level)
+                        if explicit_level
+                        else CNC_ESTIMATE_LEVEL_DEFAULT
+                    )
+                    default_suffix = "" if explicit_level else " (default)"
+                    st.markdown(
+                        "**Estimate level:** "
+                        f"{CNC_ESTIMATE_LEVEL_LABELS[effective_level]}{default_suffix}"
+                    )
                 matching = [service for service in service_rows if service.get("machine_code") == spec.code]
                 for service in matching:
                     supplier_name = supplier_names.get(str(service.get("supplier_id")), "Supplier")
@@ -708,6 +788,7 @@ def _render_owner_machinery(
                     capabilities: dict[str, object] = {}
                     pricing_method = "unknown"
                     pricing: dict[str, object] = {}
+                    estimate_level = None
                     subcontractor_name = ""
                     confirm_change = False
                     if availability == "Yes":
@@ -781,29 +862,46 @@ def _render_owner_machinery(
                                         )
                                     )
                         if defer_costing:
-                            detail_row = st.columns(3)
-                            first_column_count = 2 if len(boolean_fields) >= 3 else 1
-                            with detail_row[0]:
-                                for field in boolean_fields[:first_column_count]:
-                                    capabilities[field.key] = (
-                                        _render_machine_capability_widget(
-                                            field, saved, row_key
-                                        )
-                                    )
-                            with detail_row[1]:
-                                for field in boolean_fields[first_column_count:]:
-                                    capabilities[field.key] = (
-                                        _render_machine_capability_widget(
-                                            field, saved, row_key
-                                        )
-                                    )
                             if spec.code == "wood_cnc_router":
+                                costing_row = st.columns([1, 2])
                                 pricing_method, pricing = _render_cnc_machine_rate(
                                     saved,
                                     row_key,
-                                    method_column=detail_row[2],
+                                    method_column=costing_row[0],
                                 )
+                                estimate_level = _render_cnc_estimate_level(
+                                    saved,
+                                    row_key,
+                                    route="in_house",
+                                    column=costing_row[1],
+                                )
+                                checkbox_row = st.columns(3)
+                                for index, field in enumerate(boolean_fields[:3]):
+                                    with checkbox_row[index]:
+                                        capabilities[field.key] = (
+                                            _render_machine_capability_widget(
+                                                field, saved, row_key
+                                            )
+                                        )
                             else:
+                                detail_row = st.columns(3)
+                                first_column_count = (
+                                    2 if len(boolean_fields) >= 3 else 1
+                                )
+                                with detail_row[0]:
+                                    for field in boolean_fields[:first_column_count]:
+                                        capabilities[field.key] = (
+                                            _render_machine_capability_widget(
+                                                field, saved, row_key
+                                            )
+                                        )
+                                with detail_row[1]:
+                                    for field in boolean_fields[first_column_count:]:
+                                        capabilities[field.key] = (
+                                            _render_machine_capability_widget(
+                                                field, saved, row_key
+                                            )
+                                        )
                                 pricing_method, pricing = _render_machinery_pricing(
                                     saved,
                                     row_key,
@@ -874,6 +972,16 @@ def _render_owner_machinery(
                                     )
                             elif supplier_choice != no_supplier:
                                 subcontractor_name = supplier_choice
+                        if (
+                            spec.code == "wood_cnc_router"
+                            and saved_status == "not_in_house"
+                        ):
+                            estimate_level = _render_cnc_estimate_level(
+                                saved,
+                                row_key,
+                                route="not_in_house",
+                                column=detail_columns[1],
+                            )
                     submitted = st.button(
                         "Save",
                         key=f"{row_key}_save",
@@ -899,6 +1007,7 @@ def _render_owner_machinery(
                         pricing_method=pricing_method,
                         pricing=pricing,
                         accepts_external_work=False,
+                        estimate_level=estimate_level,
                     )
                     deactivate_supplier_services(access, machine_code=spec.code)
                     if status == "not_in_house" and supplier_id:

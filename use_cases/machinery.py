@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import logging
 import re
 from typing import TYPE_CHECKING, Mapping, Sequence
 
@@ -21,6 +22,10 @@ PRICING_METHODS = {
     "quote_only",
 }
 STRUCTURED_PRICING_METHODS = {"hourly", "per_sheet", "per_part", "per_job"}
+CNC_ESTIMATE_LEVELS = (1, 2, 3, 4, 5)
+CNC_ESTIMATE_LEVEL_DEFAULT = 3
+CNC_ESTIMATE_LEVEL_KEY = "estimate_level"
+LOGGER = logging.getLogger(__name__)
 
 
 class MachineryError(ValueError):
@@ -293,6 +298,30 @@ def _validate_pricing(method: str, values: Mapping[str, object]) -> tuple[str, d
     return method, pricing
 
 
+def _validate_cnc_estimate_level(value: object) -> int:
+    try:
+        level = int(value)
+    except (TypeError, ValueError) as exc:
+        raise MachineryError("Choose a CNC estimate level from 1 to 5.") from exc
+    if level not in CNC_ESTIMATE_LEVELS:
+        raise MachineryError("Choose a CNC estimate level from 1 to 5.")
+    return level
+
+
+def effective_cnc_estimate_level(machine: Mapping[str, object]) -> tuple[int, bool]:
+    """Return the active CNC level and whether the owner set it explicitly."""
+    pricing = machine.get("pricing") or {}
+    if not isinstance(pricing, Mapping):
+        return CNC_ESTIMATE_LEVEL_DEFAULT, False
+    raw_level = pricing.get(CNC_ESTIMATE_LEVEL_KEY)
+    if raw_level is None:
+        return CNC_ESTIMATE_LEVEL_DEFAULT, False
+    try:
+        return _validate_cnc_estimate_level(raw_level), True
+    except MachineryError:
+        return CNC_ESTIMATE_LEVEL_DEFAULT, False
+
+
 def list_company_machinery(access: CompanyAccess) -> list[dict]:
     company_id = _require_company(access)
     return (
@@ -336,6 +365,7 @@ def save_company_machinery(
     pricing_method: str = "unknown",
     pricing: Mapping[str, object] | None = None,
     accepts_external_work: bool | None = None,
+    estimate_level: object = None,
 ) -> dict:
     company_id = _require_company(access)
     if machine_code not in MACHINE_SPEC_BY_CODE:
@@ -353,6 +383,31 @@ def save_company_machinery(
         clean_method = "unknown"
         clean_pricing = {}
         external_work = None
+    clean_estimate_level = None
+    if estimate_level is not None:
+        if machine_code != "wood_cnc_router":
+            raise MachineryError("Estimate level is available only for CNC router.")
+        clean_estimate_level = _validate_cnc_estimate_level(estimate_level)
+        clean_pricing[CNC_ESTIMATE_LEVEL_KEY] = clean_estimate_level
+    previous_level = CNC_ESTIMATE_LEVEL_DEFAULT
+    previous_level_explicit = False
+    previous_route = None
+    if clean_estimate_level is not None:
+        previous_rows = (
+            client.table("company_machinery")
+            .select("availability_status,pricing")
+            .eq("company_id", company_id)
+            .eq("machine_code", machine_code)
+            .eq("active", True)
+            .limit(1)
+            .execute()
+        ).data or []
+        if previous_rows:
+            previous_route = str(previous_rows[0].get("availability_status") or "")
+            if previous_route == availability_status:
+                previous_level, previous_level_explicit = (
+                    effective_cnc_estimate_level(previous_rows[0])
+                )
     payload = {
         "company_id": company_id,
         "machine_code": machine_code,
@@ -373,6 +428,35 @@ def save_company_machinery(
     ).data or []
     if not rows:
         raise MachineryError("Machinery settings could not be saved.")
+    if (
+        clean_estimate_level is not None
+        and (
+            previous_route != availability_status
+            or previous_level != clean_estimate_level
+            or not previous_level_explicit
+        )
+    ):
+        try:
+            client.table("company_cnc_estimate_level_events").insert(
+                {
+                    "company_id": company_id,
+                    "user_id": access.user_id,
+                    "route": (
+                        "in_house"
+                        if availability_status == "in_house"
+                        else "subcontractor"
+                    ),
+                    "previous_level": previous_level,
+                    "previous_level_explicit": previous_level_explicit,
+                    "selected_level": clean_estimate_level,
+                    "source": "machinery_setting",
+                }
+            ).execute()
+        except Exception:
+            LOGGER.exception(
+                "CNC estimate-level feedback event could not be recorded",
+                extra={"company_id": company_id, "route": availability_status},
+            )
     return rows[0]
 
 
@@ -521,6 +605,11 @@ def build_company_production_context(company_id: str, *, client=None) -> dict:
         .eq("active", True)
         .execute()
     ).data or []
+    for row in machinery:
+        if row.get("machine_code") == "wood_cnc_router":
+            level, explicit = effective_cnc_estimate_level(row)
+            row["estimate_level"] = level
+            row["estimate_level_explicit"] = explicit
     suppliers = (
         client.table("company_suppliers")
         .select("supplier_id,supplier_name")

@@ -1319,6 +1319,7 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     app.get("button_group")[0].set_value("Yes")
     app.run()
     assert "Costing method" not in [field.label for field in app.selectbox]
+    assert [field.label for field in app.slider] == ["Cost estimate range"]
     machine_rate = next(
         field for field in app.text_input
         if field.label == "Machine rate / hour (ILS)"
@@ -1349,6 +1350,7 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     assert saved[0]["pricing_method"] == "hourly"
     assert saved[0]["pricing"]["rate"] == "1200"
     assert saved[0]["pricing"]["currency"] == "ILS"
+    assert saved[0]["estimate_level"] is None
 
 
 def test_grouped_number_input_formats_whole_and_decimal_thousands():
@@ -1907,6 +1909,7 @@ def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):
 
     app.get("button_group")[0].set_value("No")
     app.run()
+    assert not app.slider
     supplier_select = next(
         field for field in app.selectbox if field.label == "Regular subcontractor"
     )
@@ -1931,6 +1934,8 @@ def test_machinery_subcontractor_flow_can_add_a_name(monkeypatch):
 
     assert ("supplier", "Cut Co") in writes
     service = next(value for kind, value in writes if kind == "service")
+    machine = next(value for kind, value in writes if kind == "machine")
+    assert machine["estimate_level"] is None
     assert service["supplier_id"] == "supplier-1"
     assert service["pricing_method"] == "quote_only"
     assert "typical_lead_time_days" not in service
@@ -2041,6 +2046,13 @@ def test_machinery_subcontractor_can_be_selected_or_removed(monkeypatch):
 
     next(button for button in app.button if button.label == "⌄").click()
     app.run()
+    subcontractor_level = next(
+        field for field in app.slider
+        if field.label == "Cost estimate range"
+    )
+    assert subcontractor_level.value == 3
+    subcontractor_level.set_value(5)
+    app.run()
     supplier_select = next(
         field for field in app.selectbox if field.label == "Regular subcontractor"
     )
@@ -2058,6 +2070,8 @@ def test_machinery_subcontractor_can_be_selected_or_removed(monkeypatch):
 
     assert any(kind == "deactivate" for kind, _value in writes)
     assert not any(kind == "service" for kind, _value in writes)
+    machine = next(value for kind, value in writes if kind == "machine")
+    assert machine["estimate_level"] == 5
 
 
 def test_saved_machinery_row_is_collapsed_with_summary_and_can_reopen(monkeypatch):

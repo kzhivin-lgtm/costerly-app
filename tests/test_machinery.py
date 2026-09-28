@@ -43,6 +43,13 @@ class _Query:
         self.client.writes.append((self.table, payload))
         return self
 
+    def insert(self, payload):
+        if self.table in self.client.fail_inserts:
+            raise RuntimeError("insert unavailable")
+        self.payload = payload
+        self.client.writes.append((self.table, payload))
+        return self
+
     def update(self, payload):
         self.payload = payload
         self.client.writes.append((self.table, payload))
@@ -55,8 +62,9 @@ class _Query:
 
 
 class _Client:
-    def __init__(self, reads=None):
+    def __init__(self, reads=None, fail_inserts=None):
         self.reads = reads or {}
+        self.fail_inserts = set(fail_inserts or [])
         self.writes: list[tuple[str, dict]] = []
 
     def table(self, name: str):
@@ -125,6 +133,21 @@ def test_machinery_migration_is_additive_and_seeds_the_application_catalog():
     for code in machinery.MACHINE_SPEC_BY_CODE:
         assert f"'{code}'" in sql
     assert "alter table public.company_machines" not in sql
+
+
+def test_cnc_estimate_level_events_are_private_bounded_and_content_free():
+    sql = (
+        Path(__file__).parents[1]
+        / "db/sql/2026_09_28_cnc_estimate_levels.sql"
+    ).read_text().lower()
+    assert "company_cnc_estimate_level_events" in sql
+    assert "between 1 and 5" in sql
+    assert "'in_house', 'subcontractor'" in sql
+    assert "previous_level_explicit boolean not null" in sql
+    assert "revoke all on public.company_cnc_estimate_level_events" in sql
+    assert "to service_role" in sql
+    for forbidden in ("estimate_cost", "customer_content", "file_name", "document_text"):
+        assert forbidden not in sql
 
 
 def test_cnc_requires_work_area_and_keeps_only_exceptional_capabilities():
@@ -247,6 +270,148 @@ def test_quote_only_does_not_invent_a_rate():
         "quote_only",
         {},
     )
+
+
+@pytest.mark.parametrize("level", [1, 2, 3, 4, 5])
+def test_cnc_estimate_level_accepts_only_five_positions(level):
+    assert machinery._validate_cnc_estimate_level(level) == level
+
+
+@pytest.mark.parametrize("level", [0, 6, "", "balanced"])
+def test_cnc_estimate_level_rejects_values_outside_the_contract(level):
+    with pytest.raises(machinery.MachineryError, match="from 1 to 5"):
+        machinery._validate_cnc_estimate_level(level)
+
+
+def test_explicit_in_house_cnc_level_is_saved_and_recorded(monkeypatch):
+    client = _Client()
+    monkeypatch.setattr(machinery, "get_supabase_client", lambda: client)
+    monkeypatch.setattr(machinery, "assert_company_owner", lambda *_args: None)
+
+    machinery.save_company_machinery(
+        ACCESS,
+        machine_code="wood_cnc_router",
+        availability_status="in_house",
+        capabilities={"work_area_x_mm": 2500, "work_area_y_mm": 1300},
+        estimate_level=2,
+    )
+
+    assert client.writes[0][0] == "company_machinery"
+    assert client.writes[0][1]["pricing"] == {"estimate_level": 2}
+    assert client.writes[1] == (
+        "company_cnc_estimate_level_events",
+        {
+            "company_id": "company-a",
+            "user_id": "user-1",
+            "route": "in_house",
+            "previous_level": 3,
+            "previous_level_explicit": False,
+            "selected_level": 2,
+            "source": "machinery_setting",
+        },
+    )
+
+
+def test_explicit_subcontractor_cnc_level_uses_the_exclusive_route(monkeypatch):
+    client = _Client()
+    monkeypatch.setattr(machinery, "get_supabase_client", lambda: client)
+    monkeypatch.setattr(machinery, "assert_company_owner", lambda *_args: None)
+
+    machinery.save_company_machinery(
+        ACCESS,
+        machine_code="wood_cnc_router",
+        availability_status="not_in_house",
+        capabilities={"work_area_x_mm": 2500},
+        pricing_method="hourly",
+        pricing={"rate": 300, "currency": "ILS"},
+        estimate_level=5,
+    )
+
+    machine_payload = client.writes[0][1]
+    event_payload = client.writes[1][1]
+    assert machine_payload["capabilities"] == {}
+    assert machine_payload["pricing_method"] == "unknown"
+    assert machine_payload["pricing"] == {"estimate_level": 5}
+    assert event_payload["route"] == "subcontractor"
+    assert event_payload["selected_level"] == 5
+
+
+def test_untouched_balanced_default_is_not_saved_as_feedback(monkeypatch):
+    client = _Client()
+    monkeypatch.setattr(machinery, "get_supabase_client", lambda: client)
+    monkeypatch.setattr(machinery, "assert_company_owner", lambda *_args: None)
+
+    machinery.save_company_machinery(
+        ACCESS,
+        machine_code="wood_cnc_router",
+        availability_status="in_house",
+        capabilities={"work_area_x_mm": 2500, "work_area_y_mm": 1300},
+    )
+
+    assert [table for table, _payload in client.writes] == ["company_machinery"]
+    assert client.writes[0][1]["pricing"] == {}
+
+
+def test_unchanged_explicit_cnc_level_does_not_duplicate_feedback(monkeypatch):
+    client = _Client(
+        {
+            "company_machinery": [
+                {
+                    "availability_status": "in_house",
+                    "pricing": {"estimate_level": 4},
+                }
+            ]
+        }
+    )
+    monkeypatch.setattr(machinery, "get_supabase_client", lambda: client)
+    monkeypatch.setattr(machinery, "assert_company_owner", lambda *_args: None)
+
+    machinery.save_company_machinery(
+        ACCESS,
+        machine_code="wood_cnc_router",
+        availability_status="in_house",
+        capabilities={"work_area_x_mm": 2500, "work_area_y_mm": 1300},
+        estimate_level=4,
+    )
+
+    assert [table for table, _payload in client.writes] == ["company_machinery"]
+
+
+def test_feedback_telemetry_failure_does_not_undo_the_saved_level(monkeypatch):
+    client = _Client(fail_inserts={"company_cnc_estimate_level_events"})
+    monkeypatch.setattr(machinery, "get_supabase_client", lambda: client)
+    monkeypatch.setattr(machinery, "assert_company_owner", lambda *_args: None)
+
+    result = machinery.save_company_machinery(
+        ACCESS,
+        machine_code="wood_cnc_router",
+        availability_status="in_house",
+        capabilities={"work_area_x_mm": 2500, "work_area_y_mm": 1300},
+        estimate_level=2,
+    )
+
+    assert result["pricing"] == {"estimate_level": 2}
+    assert [table for table, _payload in client.writes] == ["company_machinery"]
+
+
+def test_production_context_exposes_effective_default_without_feedback():
+    client = _Client(
+        {
+            "company_machinery": [
+                {
+                    "machine_code": "wood_cnc_router",
+                    "availability_status": "not_in_house",
+                    "pricing": {},
+                }
+            ]
+        }
+    )
+
+    context = machinery.build_company_production_context("company-a", client=client)
+
+    cnc = context["machines"][0]
+    assert cnc["estimate_level"] == 3
+    assert cnc["estimate_level_explicit"] is False
 
 
 def test_saving_not_in_house_clears_machine_details(monkeypatch):
