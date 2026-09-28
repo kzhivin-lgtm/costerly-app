@@ -11,12 +11,12 @@ Current owner-approved execution order:
 4. Replace the legacy Estimation Agent only after those inputs are verified.
 
 - 3.15.2 Israel material baselines and furniture-core completion: active, P0 by
-  owner direction. Start from the verified 3.15.1 production checkpoint. Build
-  a reproducible readiness report, normalize compatible candidate evidence,
-  derive non-active low/typical/high candidates, close impact-weighted core
-  gaps, and expand deterministic aliases. Baseline activation, automatic
+  owner direction. The production activation checkpoint is verified: 280
+  active v1 baselines cover 280 distinct materials, retain 331 evidence links,
+  have complete approval metadata, and expose confidence 10 to 65. The next
+  action is the deterministic company-first price resolver. Automatic
   Estimation fallback, widened identity linking, and private-data market
-  learning remain explicit decision gates.
+  learning remain separate decision gates.
 
 - 3.15.1 Israel Reference Catalog foundation: completed at `1f8d6ab`.
   The ordered master plan is `notes/ISRAEL_REFERENCE_PROGRAM_PLAN.md`. Its

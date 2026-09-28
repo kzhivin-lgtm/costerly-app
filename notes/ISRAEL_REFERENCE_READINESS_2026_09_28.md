@@ -212,9 +212,18 @@ provenance. Unknown VAT remains represented as a wider range. Configurable
 minimums are not treated as exact unit prices. The weakest remaining candidates
 have confidence 10, and the complete-catalog median confidence is 55.
 
-This establishes calculability, not activation or market-price verification.
-There are still zero rows in `market_material_baselines`, every source offer
-remains `candidate`, and Estimation is not connected.
+This first established calculability without activation. The owner then
+approved the complete v1 catalog for production use. The transactional
+activation was applied and independently verified on 2026-09-28:
+
+- 280 active baselines for 280 distinct materials;
+- 331 evidence links and zero baselines without evidence;
+- zero missing approvals and zero invalid price ranges;
+- version 1 for every active row;
+- confidence range 10 to 65.
+
+Every source offer remains `candidate` because offer review and platform
+baseline approval are separate lifecycles. Estimation is not connected yet.
 
 ## Reproduction
 

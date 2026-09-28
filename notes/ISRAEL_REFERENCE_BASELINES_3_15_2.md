@@ -245,5 +245,21 @@ The owner explicitly approved activating all 280 first-version prices on
 the complete versioned snapshot, links each baseline to compatible evidence,
 uses the active platform administrator as approver, and activates all rows in
 one transaction. It refuses to replace a different active Israel baseline and
-is idempotent for this exact v1 snapshot. Production application and
-post-application verification remain pending.
+is idempotent for this exact v1 snapshot.
+
+## Production activation checkpoint
+
+The v1 activation was applied and independently verified in production on
+2026-09-28:
+
+- 280 baseline rows are active for 280 distinct materials;
+- all rows are version 1 and have approval identity and timestamp;
+- all low, typical, and high ranges are ordered correctly;
+- 331 compatible evidence links are attached;
+- no active baseline is missing evidence;
+- confidence ranges from 10 to 65.
+
+The active catalog is now a valid platform price authority. The source offers
+remain immutable candidate evidence, which is intentional: offer review status
+and baseline activation are separate lifecycles. Estimation is still
+disconnected until the company-first resolver is implemented and tested.
