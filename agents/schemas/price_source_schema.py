@@ -27,6 +27,21 @@ PRICE_CONTEXTS = {
 }
 VAT_MODES = {"included", "excluded", "mixed", "unknown"}
 ROW_STATUSES = {"ready", "unresolved", "excluded"}
+ITEM_KINDS = {"material", "operation_service", "non_material"}
+IDENTITY_ATTRIBUTE_FIELDS = (
+    "thickness_mm",
+    "width_mm",
+    "length_mm",
+    "diameter_mm",
+    "species",
+    "substrate",
+    "surface",
+    "coating",
+    "colour",
+    "grade",
+    "construction",
+    "finish",
+)
 PRICE_SOURCE_CATEGORIES = (
     "Wood Sheets",
     "Solid Wood",
@@ -86,7 +101,10 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                 "additionalProperties": False,
                 "required": [
                     "source_row_number",
+                    "item_kind",
                     "material_type",
+                    "material_family",
+                    "identity_attributes",
                     "raw_description",
                     "raw_sku",
                     "raw_price",
@@ -111,7 +129,28 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                 ],
                 "properties": {
                     "source_row_number": {"type": "integer"},
+                    "item_kind": {"type": "string", "enum": sorted(ITEM_KINDS)},
                     "material_type": {"type": "string", "enum": list(PRICE_SOURCE_CATEGORIES)},
+                    "material_family": {"type": "string"},
+                    "identity_attributes": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": list(IDENTITY_ATTRIBUTE_FIELDS),
+                        "properties": {
+                            "thickness_mm": {"type": "number", "minimum": 0},
+                            "width_mm": {"type": "number", "minimum": 0},
+                            "length_mm": {"type": "number", "minimum": 0},
+                            "diameter_mm": {"type": "number", "minimum": 0},
+                            "species": {"type": "string"},
+                            "substrate": {"type": "string"},
+                            "surface": {"type": "string"},
+                            "coating": {"type": "string"},
+                            "colour": {"type": "string"},
+                            "grade": {"type": "string"},
+                            "construction": {"type": "string"},
+                            "finish": {"type": "string"},
+                        },
+                    },
                     "raw_description": {"type": "string"},
                     "raw_sku": {"type": "string"},
                     "raw_price": {"type": "number"},
@@ -176,6 +215,18 @@ def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
     """Keep rows with missing critical pricing evidence out of active pricing."""
     for row in result.get("rows") or []:
         if not isinstance(row, dict) or row.get("status") != "ready":
+            continue
+        if row.get("item_kind") == "operation_service":
+            row["status"] = "excluded"
+            row["reason_codes"] = sorted(
+                set((row.get("reason_codes") or []) + ["operation_service_not_material"])
+            )
+            continue
+        if row.get("item_kind") == "non_material":
+            row["status"] = "excluded"
+            row["reason_codes"] = sorted(
+                set((row.get("reason_codes") or []) + ["non_material_row"])
+            )
             continue
         if result.get("price_context") == "customer_sale":
             row["status"] = "excluded"
@@ -284,6 +335,19 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         seen_numbers.add(number)
         if row["material_type"] not in PRICE_SOURCE_CATEGORIES:
             raise PriceSourceSchemaError("unsupported row material type")
+        if row["item_kind"] not in ITEM_KINDS:
+            raise PriceSourceSchemaError("unsupported row item kind")
+        attributes = row["identity_attributes"]
+        if not isinstance(attributes, dict) or set(attributes) != set(IDENTITY_ATTRIBUTE_FIELDS):
+            raise PriceSourceSchemaError("identity attributes do not match the contract")
+        for key in ("thickness_mm", "width_mm", "length_mm", "diameter_mm"):
+            if not isinstance(attributes[key], (int, float)) or attributes[key] < 0:
+                raise PriceSourceSchemaError(f"{key} must be a non-negative number")
+        for key in set(IDENTITY_ATTRIBUTE_FIELDS) - {
+            "thickness_mm", "width_mm", "length_mm", "diameter_mm"
+        }:
+            if not isinstance(attributes[key], str):
+                raise PriceSourceSchemaError(f"{key} must be a string")
         if row["status"] not in ROW_STATUSES:
             raise PriceSourceSchemaError("unsupported row status")
         if row["raw_vat_mode"] not in VAT_MODES:
@@ -311,6 +375,8 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
             if row[key] < 0 and row["status"] != "excluded":
                 raise PriceSourceSchemaError(f"negative {key} must be excluded")
         if row["status"] == "ready":
+            if row["item_kind"] != "material":
+                raise PriceSourceSchemaError("only material rows may be ready")
             if not str(row["normalized_name"]).strip():
                 raise PriceSourceSchemaError("ready row requires a normalized name")
             if row["normalized_price"] <= 0:

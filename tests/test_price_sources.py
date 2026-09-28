@@ -333,7 +333,23 @@ def _result(*, status: str = "ready", confidence: float = 96) -> dict:
         "rows": [
             {
                 "source_row_number": 1,
+                "item_kind": "material",
                 "material_type": "Wood Sheets",
+                "material_family": "birch plywood",
+                "identity_attributes": {
+                    "thickness_mm": 10,
+                    "width_mm": 1220,
+                    "length_mm": 2440,
+                    "diameter_mm": 0,
+                    "species": "birch",
+                    "substrate": "plywood",
+                    "surface": "",
+                    "coating": "",
+                    "colour": "",
+                    "grade": "",
+                    "construction": "",
+                    "finish": "",
+                },
                 "raw_description": "Birch plywood 10 mm 2440x1220",
                 "raw_sku": "PLY-10",
                 "raw_price": 90,
@@ -363,6 +379,27 @@ def _result(*, status: str = "ready", confidence: float = 96) -> dict:
 def test_price_source_schema_accepts_evidenced_unit_conversion():
     result = _result()
     assert validate_price_source_result(result) is result
+
+
+def test_operation_service_is_preserved_as_excluded_evidence():
+    result = _result()
+    row = result["rows"][0]
+    row["item_kind"] = "operation_service"
+    row["material_family"] = "cutting service"
+
+    guarded = guard_price_source_row_activation(result)
+
+    assert guarded["rows"][0]["status"] == "excluded"
+    assert "operation_service_not_material" in guarded["rows"][0]["reason_codes"]
+    assert validate_price_source_result(guarded) is guarded
+
+
+def test_identity_attributes_require_the_fixed_contract():
+    result = _result()
+    del result["rows"][0]["identity_attributes"]["thickness_mm"]
+
+    with pytest.raises(PriceSourceSchemaError, match="identity attributes"):
+        validate_price_source_result(result)
 
 
 def test_fractional_confidence_scale_is_normalized_before_activation():

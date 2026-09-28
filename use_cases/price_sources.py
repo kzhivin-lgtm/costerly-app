@@ -22,6 +22,7 @@ import httpx
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
+from agents.material_identity_agent import run_material_identity_agent
 from agents.price_source_agent import run_price_source_agent
 from agents.schemas.price_source_schema import (
     CANONICAL_UNIT_CODES,
@@ -1126,6 +1127,7 @@ def _resolve_and_record_price_source_identities(
             source_id=source_id,
             row_id=row_id,
             force=force,
+            identity_agent=run_material_identity_agent,
         )
         summary: dict[str, Any] = {"status": "complete", **batch.as_summary()}
     except Exception:
@@ -1598,6 +1600,7 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         ).execute()
     evidence = dict(row.get("evidence") or {})
     evidence["material_type"] = material_type
+    evidence["item_kind"] = "material"
     evidence["comparison_status"] = result_status
     resolved_codes = {
         "below_auto_activation_threshold",
@@ -2044,6 +2047,11 @@ def process_price_source(
                         else:
                             new_count += 1
                 else:
+                    identity_attributes = {
+                        key: value
+                        for key, value in (row.get("identity_attributes") or {}).items()
+                        if value not in (None, "", 0, 0.0, [])
+                    }
                     material = client.table("company_material_items").insert(
                         {
                             "company_id": company_id,
@@ -2051,6 +2059,7 @@ def process_price_source(
                             "canonical_name": row["normalized_name"],
                             "normalized_name": normalized,
                             "preferred_unit": row["calculation_unit"],
+                            "specifications": identity_attributes,
                             "created_from_source_id": source_id,
                         }
                     ).execute().data[0]
@@ -2086,6 +2095,9 @@ def process_price_source(
                     "evidence": {
                         "reference": row["evidence_reference"],
                         "material_type": row_category,
+                        "item_kind": row["item_kind"],
+                        "material_family": row["material_family"],
+                        "identity_attributes": row["identity_attributes"],
                         "discount_percent": row["raw_discount_percent"],
                         "discount_amount": row["raw_discount_amount"],
                         "comparison_status": result_status,

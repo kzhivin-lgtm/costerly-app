@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from decimal import Decimal
+import logging
 from typing import Any, Mapping, Sequence
 from uuid import uuid4
 
@@ -25,6 +26,8 @@ PRICE_SOURCE_REFERENCE_DEPARTMENTS = {
     "Coating Supplies": ("coating", "consumable"),
 }
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class PriceSourceIdentityBatch:
@@ -44,10 +47,22 @@ def _score(value: Decimal | int | float | str | None) -> float:
     return float(value)
 
 
-def _candidate_payload(resolution: MaterialIdentityResolution) -> list[dict[str, Any]]:
+def _candidate_payload(
+    resolution: MaterialIdentityResolution,
+    materials_by_id: Mapping[str, Mapping[str, Any]],
+) -> list[dict[str, Any]]:
     return [
         {
             "material_id": candidate.material_id,
+            "canonical_name": str(
+                (materials_by_id.get(candidate.material_id) or {}).get("canonical_name") or ""
+            ),
+            "category_code": str(
+                (materials_by_id.get(candidate.material_id) or {}).get("category_code") or ""
+            ),
+            "specifications": dict(
+                (materials_by_id.get(candidate.material_id) or {}).get("specifications") or {}
+            ),
             "score": _score(candidate.score),
             "route": candidate.route,
             "matched_alias": candidate.matched_alias,
@@ -150,12 +165,16 @@ def resolve_price_source_material_identities(
     row_id: str | None = None,
     market_code: str = "IL",
     force: bool = False,
+    identity_agent=None,
 ) -> PriceSourceIdentityBatch:
     """Resolve active Price Source rows without repeating source extraction."""
 
     market = str(market_code or "").strip().upper()
     index = _load_resolution_index(client, company_id=company_id, market_code=market)
     resolver_version = index["resolver_version"]
+    reference_material_by_id = {
+        str(item["material_id"]): item for item in index["materials"]
+    }
 
     row_query = (
         client.table("company_price_source_rows")
@@ -222,6 +241,8 @@ def resolve_price_source_material_identities(
     source_rows_to_update: list[dict[str, Any]] = []
     resolution_events: list[dict[str, Any]] = []
     resolved_offer_rows_by_confidence: dict[float, list[str]] = {}
+    agent_requests: list[dict[str, Any]] = []
+    agent_contexts: dict[str, dict[str, Any]] = {}
     for row in rows:
         source_row_id = str(row["row_id"])
         if not force and source_row_id in processed_rows:
@@ -235,12 +256,29 @@ def resolve_price_source_material_identities(
         source = source_by_id.get(str(row.get("source_id") or ""), {})
         supplier_id = str(source.get("supplier_id") or "") or None
         supplier_name = supplier_name_by_id.get(str(supplier_id or ""), "")
+        evidence = row.get("evidence") or {}
         phrase = str(
             row.get("normalized_name")
             or row.get("raw_description")
             or company_material.get("canonical_name")
             or ""
         ).strip()
+        alternate_phrases = tuple(
+            value
+            for value in (
+                str(row.get("raw_description") or "").strip(),
+                str(evidence.get("material_family") or "").strip(),
+            )
+            if value and normalize_material_phrase(value) != normalize_material_phrase(phrase)
+        )
+        extracted_specifications = {
+            key: value
+            for key, value in {
+                **(company_material.get("specifications") or {}),
+                **(evidence.get("identity_attributes") or {}),
+            }.items()
+            if value not in (None, "", 0, 0.0, [])
+        }
         existing_reference_id = str(company_material.get("reference_material_id") or "")
         if existing_reference_id:
             resolution = MaterialIdentityResolution(
@@ -252,12 +290,13 @@ def resolve_price_source_material_identities(
             )
         else:
             material_type = str(
-                (row.get("evidence") or {}).get("material_type")
+                evidence.get("material_type")
                 or company_material.get("category")
                 or ""
             )
             resolution = resolve_material_identity(
                 phrase=phrase,
+                alternate_phrases=alternate_phrases,
                 market_code=market,
                 materials=index["materials"],
                 reference_aliases=index["reference_aliases"],
@@ -266,13 +305,13 @@ def resolve_price_source_material_identities(
                 supplier_name=supplier_name,
                 supplier_id=supplier_id,
                 supplier_sku=str(row.get("raw_sku") or "") or None,
-                specifications=company_material.get("specifications") or {},
+                specifications=extracted_specifications,
                 candidate_departments=PRICE_SOURCE_REFERENCE_DEPARTMENTS.get(
                     material_type, ()
                 ),
             )
 
-        candidates = _candidate_payload(resolution)
+        candidates = _candidate_payload(resolution, reference_material_by_id)
         identity_confidence = _identity_confidence(resolution)
         candidate_id = None
         if resolution.status == "resolved":
@@ -315,8 +354,8 @@ def resolve_price_source_material_identities(
                 "normalized_phrase": resolution.normalized_phrase,
                 "supplier_id": supplier_id,
                 "supplier_sku": row.get("raw_sku"),
-                "proposed_category": (row.get("evidence") or {}).get("material_type"),
-                "extracted_specifications": company_material.get("specifications") or {},
+                "proposed_category": evidence.get("material_type"),
+                "extracted_specifications": extracted_specifications,
                 "candidate_materials": candidates,
                 "resolution_route": resolution.route,
                 "confidence_dimensions": {"identity": identity_confidence},
@@ -337,8 +376,7 @@ def resolve_price_source_material_identities(
             else:
                 needs_review += 1
 
-        source_rows_to_update.append(
-            {
+        source_row_update = {
                 **row,
                 "reference_material_id": reference_material_id,
                 "identity_candidate_id": candidate_id,
@@ -346,13 +384,12 @@ def resolve_price_source_material_identities(
                 "identity_confidence": identity_confidence,
                 "resolver_version": resolver_version,
             }
-        )
+        source_rows_to_update.append(source_row_update)
         if resolution.status == "resolved":
             resolved_offer_rows_by_confidence.setdefault(
                 identity_confidence, []
             ).append(source_row_id)
-        resolution_events.append(
-            {
+        resolution_event = {
                 "company_id": company_id,
                 "market_code": market,
                 "company_material_id": company_material_id,
@@ -363,6 +400,8 @@ def resolve_price_source_material_identities(
                 "resolution_route": resolution.route,
                 "normalized_input": {
                     "phrase": resolution.normalized_phrase,
+                    "alternate_phrases": list(alternate_phrases),
+                    "specifications": extracted_specifications,
                     "supplier_id": supplier_id,
                     "supplier_sku": row.get("raw_sku"),
                 },
@@ -370,7 +409,108 @@ def resolve_price_source_material_identities(
                 "confidence_dimensions": {"identity": identity_confidence},
                 "resolver_version": resolver_version,
             }
-        )
+        resolution_events.append(resolution_event)
+        if resolution.status != "resolved" and not pending_by_source_row.get(source_row_id):
+            agent_requests.append(
+                {
+                    "source_row_id": source_row_id,
+                    "raw_description": str(row.get("raw_description") or ""),
+                    "normalized_name": str(row.get("normalized_name") or ""),
+                    "material_family": str(evidence.get("material_family") or ""),
+                    "material_type": str(evidence.get("material_type") or ""),
+                    "identity_attributes": extracted_specifications,
+                    "supplier_sku": str(row.get("raw_sku") or ""),
+                    "candidates": candidates,
+                }
+            )
+            agent_contexts[source_row_id] = {
+                "company_material_id": company_material_id,
+                "candidate_id": candidate_id,
+                "source_update": source_row_update,
+                "event": resolution_event,
+                "prior_status": resolution.status,
+            }
+
+    if identity_agent and agent_requests:
+        try:
+            decisions = identity_agent(agent_requests[:60])
+        except Exception:
+            logger.exception("Bounded material identity agent failed; retaining review candidates")
+            decisions = []
+        for decision in decisions:
+            source_row_id = str(decision.get("source_row_id") or "")
+            context = agent_contexts.get(source_row_id)
+            if not context:
+                continue
+            decision_name = str(decision.get("decision") or "")
+            confidence = float(decision.get("confidence") or 0)
+            selected_material_id = str(decision.get("selected_material_id") or "")
+            event = context["event"]
+            source_update = context["source_update"]
+            event["normalized_input"]["agent_decision"] = decision_name
+            event["normalized_input"]["agent_reason"] = str(decision.get("reason") or "")
+            event["confidence_dimensions"]["identity_agent"] = confidence
+            source_update["identity_confidence"] = confidence
+            if decision_name == "link_existing" and confidence >= 90 and selected_material_id:
+                company_material_id = context["company_material_id"]
+                linked_rows = client.table("company_material_items").update(
+                    {"reference_material_id": selected_material_id}
+                ).eq("company_id", company_id).eq(
+                    "company_material_id", company_material_id
+                ).is_("reference_material_id", "null").execute().data or []
+                if not linked_rows:
+                    continue
+                candidate_id = context["candidate_id"]
+                new_candidates[:] = [
+                    row for row in new_candidates
+                    if str(row.get("candidate_id")) != str(candidate_id)
+                ]
+                source_update.update(
+                    {
+                        "reference_material_id": selected_material_id,
+                        "identity_candidate_id": None,
+                        "identity_route": "identity_agent_link_existing",
+                    }
+                )
+                event.update(
+                    {
+                        "candidate_id": None,
+                        "selected_material_id": selected_material_id,
+                        "resolution_status": "resolved",
+                        "resolution_route": "identity_agent_link_existing",
+                    }
+                )
+                if context["prior_status"] == "shortlist":
+                    shortlisted -= 1
+                else:
+                    needs_review -= 1
+                resolved += 1
+                resolved_offer_rows_by_confidence.setdefault(confidence, []).append(
+                    source_row_id
+                )
+            else:
+                route = f"identity_agent_{decision_name or 'unresolved'}"
+                source_update["identity_route"] = route
+                event["resolution_route"] = route
+                for candidate in new_candidates:
+                    if str(candidate.get("candidate_id")) == str(context["candidate_id"]):
+                        candidate["resolution_route"] = route
+                        candidate["confidence_dimensions"] = {
+                            "identity": source_update["identity_confidence"],
+                            "identity_agent": confidence,
+                        }
+                        break
+                if decision_name == "operation_service" and confidence >= 90:
+                    source_update["result_status"] = "excluded"
+                    source_update["reason_codes"] = sorted(
+                        set(source_update.get("reason_codes") or [])
+                        | {"operation_service_not_material"}
+                    )
+                    client.table("company_material_offers").update(
+                        {"status": "unresolved"}
+                    ).eq("company_id", company_id).eq(
+                        "source_row_id", source_row_id
+                    ).execute()
 
     if new_candidates:
         client.table("material_identity_candidates").insert(new_candidates).execute()

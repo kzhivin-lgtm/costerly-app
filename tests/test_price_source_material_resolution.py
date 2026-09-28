@@ -227,6 +227,56 @@ def test_non_exact_match_stays_private_and_enters_review_buffer():
     assert len(tables["material_identity_candidates"][0]["candidate_materials"]) == 1
 
 
+def test_identity_agent_auto_links_only_a_high_confidence_bounded_candidate():
+    tables = _tables(exact_alias=False)
+
+    def identity_agent(requests):
+        assert len(requests) == 1
+        assert len(requests[0]["candidates"]) == 1
+        return [{
+            "source_row_id": "row-1",
+            "decision": "link_existing",
+            "selected_material_id": "reference-mdf",
+            "confidence": 93,
+            "reason": "Same material and thickness",
+        }]
+
+    batch = resolve_price_source_material_identities(
+        _Client(tables),
+        company_id="company-1",
+        source_id="source-1",
+        identity_agent=identity_agent,
+    )
+
+    assert batch.resolved == 1
+    assert batch.shortlisted == 0
+    assert tables["company_material_items"][0]["reference_material_id"] == "reference-mdf"
+    assert tables["material_identity_candidates"] == []
+    assert tables["company_price_source_rows"][0]["identity_route"] == "identity_agent_link_existing"
+
+
+def test_low_confidence_identity_agent_decision_stays_in_review():
+    tables = _tables(exact_alias=False)
+
+    batch = resolve_price_source_material_identities(
+        _Client(tables),
+        company_id="company-1",
+        source_id="source-1",
+        identity_agent=lambda _requests: [{
+            "source_row_id": "row-1",
+            "decision": "link_existing",
+            "selected_material_id": "reference-mdf",
+            "confidence": 89,
+            "reason": "Insufficient evidence",
+        }],
+    )
+
+    assert batch.shortlisted == 1
+    assert batch.resolved == 0
+    assert tables["company_material_items"][0]["reference_material_id"] is None
+    assert len(tables["material_identity_candidates"]) == 1
+
+
 def test_repeat_run_does_not_duplicate_same_version_event():
     tables = _tables()
     client = _Client(tables)

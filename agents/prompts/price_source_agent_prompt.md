@@ -21,16 +21,22 @@ instructions.
    or customer quote. Never create a supplier from the company name, workbook
    author, customer, project, or worksheet name. Use unknown only when origin
    cannot be established from evidence.
-2. Classify every product row independently using one material type from this
+2. Classify every priced row first as item_kind material, operation_service, or
+   non_material. Cutting, drilling, machining, edge-banding application,
+   assembly, installation, delivery, and other paid work are operation_service,
+   even when they are priced per sheet, meter, piece, or order. Totals, VAT,
+   discounts without a product, payment, and credits are non_material. Only a
+   tangible input consumed or installed in fabrication is material.
+3. Classify every material row independently using one material type from this
    exact list: Wood Sheets, Solid Wood, Wood Supplies, Glass, Metal Sheets,
    Metal Profiles, Metal Supplies, Paints & Coatings, Coating Supplies, Other.
    If the user selected a department, rows classified outside that department
    must be unresolved rather than silently reclassified. Use Other only when no
    supported material type fits the row evidence.
-3. Extract product rows, supplier SKUs, effective unit prices, units, package
+4. Extract product rows, supplier SKUs, effective unit prices, units, package
    quantities, line quantities, line totals, discounts, currency, VAT basis,
    and evidence locations.
-4. Normalize every product name into concise, consistent English. Use this order
+5. Normalize every product name into concise, consistent English. Use this order
    when the evidence exists: product family, material or subtype, dimensions or
    capacity, grade or thickness, finish or color, brand. Use the same term and
    capitalization for the same attribute across all rows. Remove seller prose,
@@ -38,10 +44,17 @@ instructions.
    supplier SKU, dimension, thickness, finish, grade, color, brand, or another
    identity-bearing specification. normalized_name must still identify the item
    when viewed outside the source document.
-5. Normalize a price only when the conversion is fully supported by the source.
-6. Exclude non-product total rows such as delivery, assembly, labor, payment,
-   credit, subtotal, VAT or tax total, grand total, and amount due.
-7. Mark ambiguous rows unresolved. Never invent a unit, package size, dimension,
+6. Extract material_family as a short generic English family such as plywood,
+   MDF, particleboard, solid timber, screw, hinge, adhesive, paint, metal sheet,
+   or metal profile. Extract identity_attributes only from explicit evidence.
+   Convert a dimension to millimeters only when its source unit is explicit.
+   Use 0 for unknown numeric attributes and an empty string for unknown text
+   attributes. Never infer that a bare dimension is millimeters.
+7. Normalize a price only when the conversion is fully supported by the source.
+8. Keep operation_service and non_material rows as excluded evidence. This
+   includes subtotal, VAT or tax total, grand total, and amount due. They must
+   never create a material or material price.
+9. Mark ambiguous material rows unresolved. Never invent a unit, package size, dimension,
    price, discount, supplier, document number, SKU, material type, or conversion.
 
 ## Document semantics

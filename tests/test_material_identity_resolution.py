@@ -107,6 +107,18 @@ def test_exact_market_alias_resolves_without_model():
     assert result.selected_material_id == MDF_ID
 
 
+def test_raw_supplier_phrase_can_resolve_when_normalized_name_was_translated():
+    result = _resolve(
+        phrase="Birch plywood 18 mm",
+        alternate_phrases=("לביד ליבנה 18 מ״מ",),
+        reference_aliases=(_alias(PLYWOOD_ID, "לביד ליבנה 18 מ״מ"),),
+    )
+
+    assert result.status == "resolved"
+    assert result.route == "exact_market_alias"
+    assert result.selected_material_id == PLYWOOD_ID
+
+
 def test_conflicting_hard_attribute_rejects_exact_alias():
     result = _resolve(
         category_code="mdf",

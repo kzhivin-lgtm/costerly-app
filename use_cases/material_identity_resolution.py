@@ -139,6 +139,7 @@ def _unique_material_ids(rows: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
 def resolve_material_identity(
     *,
     phrase: str,
+    alternate_phrases: Sequence[str] = (),
     market_code: str,
     materials: Sequence[Mapping[str, Any]],
     reference_aliases: Sequence[Mapping[str, Any]],
@@ -165,6 +166,16 @@ def resolve_material_identity(
             reason_codes=("material_phrase_missing",),
         )
     market = str(market_code or "").strip().upper()
+    normalized_phrases = tuple(
+        dict.fromkeys(
+            value
+            for value in (
+                normalized_phrase,
+                *(normalize_material_phrase(item) for item in alternate_phrases),
+            )
+            if value
+        )
+    )
     requested_specs = dict(specifications or {})
     shortlist_departments = {
         str(value).strip() for value in candidate_departments if str(value).strip()
@@ -211,7 +222,7 @@ def resolve_material_identity(
         row
         for row in company_aliases
         if row.get("active", True)
-        and normalize_material_phrase(row.get("alias_text")) == normalized_phrase
+        and normalize_material_phrase(row.get("alias_text")) in normalized_phrases
         and (not row.get("supplier_id") or str(row.get("supplier_id")) == str(supplier_id or ""))
         and compatible(str(row.get("material_id") or ""))
     ]
@@ -237,7 +248,7 @@ def resolve_material_identity(
         for row in reference_aliases
         if row.get("active", True)
         and str(row.get("market_code") or "") == market
-        and normalize_material_phrase(row.get("alias_text")) == normalized_phrase
+        and normalize_material_phrase(row.get("alias_text")) in normalized_phrases
         and row.get("exact_identity") is True
         and compatible(str(row.get("material_id") or ""))
     ]
@@ -294,7 +305,7 @@ def resolve_material_identity(
                 ),
             )
 
-    phrase_tokens = set(normalized_phrase.split())
+    phrase_token_sets = [set(value.split()) for value in normalized_phrases]
     aliases_by_material: dict[str, list[str]] = {}
     for row in reference_aliases:
         if row.get("active", True) and str(row.get("market_code") or "") == market:
@@ -311,7 +322,11 @@ def resolve_material_identity(
             tokens = set(normalize_material_phrase(name).split())
             if not tokens:
                 continue
-            overlap = Decimal(len(phrase_tokens & tokens)) / Decimal(len(phrase_tokens | tokens))
+            overlap = max(
+                Decimal(len(phrase_tokens & tokens))
+                / Decimal(len(phrase_tokens | tokens))
+                for phrase_tokens in phrase_token_sets
+            )
             if overlap > best_overlap:
                 best_overlap = overlap
                 best_alias = name
