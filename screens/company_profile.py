@@ -39,6 +39,7 @@ from use_cases.price_sources import (
     PRICE_CATALOG_DEPARTMENTS,
     PriceSourceError,
     accepted_price_source_uploads,
+    archive_price_source,
     apply_price_source_defaults,
     canonical_price_source_category,
     combine_price_source_files,
@@ -1950,6 +1951,27 @@ def _cancel_price_source_row_removal() -> None:
     st.session_state.pop("_price_source_action_location", None)
 
 
+def _cancel_price_source_removal() -> None:
+    st.session_state.pop("_removing_price_source_id", None)
+
+
+def _archive_price_source_action(access: CompanyAccess, source_id: str) -> None:
+    try:
+        result = archive_price_source(access, source_id)
+    except Exception:
+        logger.exception("Price source removal failed")
+        st.session_state._price_source_action_error = (
+            "The source could not be removed. Try again"
+        )
+    else:
+        _clear_price_lists_snapshot()
+        st.session_state.pop("_removing_price_source_id", None)
+        st.session_state.pop("_price_source_notice", None)
+        st.session_state._price_source_action_notice = (
+            f'{result["archived_offers"]} prices removed with the source'
+        )
+
+
 def _save_price_source_row_action(
     access: CompanyAccess,
     source_id: str,
@@ -2932,8 +2954,8 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                         for source in sources:
                             source_id = str(source["source_id"])
                             summary = source.get("processing_summary") or {}
-                            left, category_col, status_col, items_col, action_col = st.columns(
-                                [2.3, 1.45, 0.8, 0.65, 0.65],
+                            left, category_col, status_col, items_col, action_col, remove_col = st.columns(
+                                [2.3, 1.45, 0.8, 0.65, 0.65, 0.65],
                                 vertical_alignment="center",
                             )
                             with left:
@@ -2970,6 +2992,36 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                         key=f"view_price_source_{source_id}",
                                         use_container_width=True,
                                     )
+                            with remove_col:
+                                if st.button(
+                                    "Remove",
+                                    key=f"remove_price_source_{source_id}",
+                                    use_container_width=True,
+                                ):
+                                    st.session_state._removing_price_source_id = source_id
+                            if st.session_state.get("_removing_price_source_id") == source_id:
+                                warning_col, confirm_col, cancel_col = st.columns(
+                                    [4.8, 0.8, 0.7],
+                                    gap="small",
+                                    vertical_alignment="center",
+                                )
+                                warning_col.warning(
+                                    "Remove this source and all of its active prices?"
+                                )
+                                confirm_col.button(
+                                    "Remove",
+                                    key=f"confirm_remove_price_source_{source_id}",
+                                    type="primary",
+                                    on_click=_archive_price_source_action,
+                                    args=(access, source_id),
+                                    use_container_width=True,
+                                )
+                                cancel_col.button(
+                                    "Cancel",
+                                    key=f"cancel_remove_price_source_{source_id}",
+                                    on_click=_cancel_price_source_removal,
+                                    use_container_width=True,
+                                )
 
 
 

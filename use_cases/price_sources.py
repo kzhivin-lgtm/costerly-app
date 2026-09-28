@@ -1691,6 +1691,29 @@ def remove_price_source_row(access, source_id: str, row_id: str) -> None:
     _refresh_price_source_summary(client, company_id, source_id)
 
 
+def archive_price_source(access, source_id: str) -> dict[str, int]:
+    """Remove one source from active company pricing while preserving its audit."""
+    client = get_supabase_client()
+    company_id = str(access.company_id)
+    assert_company_owner(client, str(access.user_id), company_id)
+    _owned_price_source(client, company_id, source_id)
+    result = client.rpc(
+        "archive_company_price_source",
+        {
+            "p_company_id": company_id,
+            "p_source_id": source_id,
+        },
+    ).execute().data
+    if isinstance(result, list):
+        result = result[0] if result else {}
+    if not isinstance(result, dict):
+        result = {}
+    return {
+        "archived_offers": int(result.get("archived_offers") or 0),
+        "archived_materials": int(result.get("archived_materials") or 0),
+    }
+
+
 def process_price_source(
     access,
     *,
@@ -1958,6 +1981,7 @@ def process_price_source(
         )
         offers_by_identity: dict[tuple[str, str], list[dict]] = {}
         offers_by_sku: dict[tuple[str, str], list[dict]] = {}
+        material_ids_to_restore: set[str] = set()
         for offer in active_offers:
             offer_source = source_by_id.get(str(offer.get("source_id") or ""), {})
             offer_lane = price_offer_lane_key(
@@ -1989,7 +2013,7 @@ def process_price_source(
                     if sku_offers
                     else (
                         client.table("company_material_items")
-                        .select("company_material_id")
+                        .select("company_material_id,status")
                         .eq("company_id", company_id)
                         .eq("category", row_category)
                         .eq("normalized_name", normalized)
@@ -1999,6 +2023,8 @@ def process_price_source(
                 )
                 if existing:
                     material_id = existing[0]["company_material_id"]
+                    if existing[0].get("status") == "archived":
+                        material_ids_to_restore.add(str(material_id))
                     identity = (str(material_id), current_lane)
                     matching_offers = offers_by_identity.get(identity, [])
                     if matching_offers and any(
@@ -2098,6 +2124,13 @@ def process_price_source(
                 offers_by_identity[identity] = [inserted_offer]
                 if sku:
                     offers_by_sku[(current_lane, sku)] = [inserted_offer]
+
+        if material_ids_to_restore:
+            client.table("company_material_items").update(
+                {"status": "private", "updated_at": datetime.now(timezone.utc).isoformat()}
+            ).eq("company_id", company_id).in_(
+                "company_material_id", sorted(material_ids_to_restore)
+            ).execute()
 
         identity_summary = _resolve_and_record_price_source_identities(
             client,

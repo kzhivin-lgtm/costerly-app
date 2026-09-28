@@ -29,6 +29,7 @@ from use_cases.price_sources import (
     _validate_department,
     _validate_public_url,
     apply_legacy_price_benchmark,
+    archive_price_source,
     accepted_price_source_uploads,
     canonical_price_source_category,
     combine_price_source_files,
@@ -85,6 +86,53 @@ def test_price_source_download_url_is_direct_owned_and_attachment_scoped(monkeyp
             {"download": "invoice.pdf"},
         )
     ]
+
+
+def test_archive_price_source_uses_owned_transactional_rpc(monkeypatch):
+    calls = []
+
+    class Rpc:
+        def execute(self):
+            return SimpleNamespace(
+                data={"archived_offers": 47, "archived_materials": 39}
+            )
+
+    class Client:
+        def table(self, name):
+            assert name == "company_price_sources"
+            return _CatalogQuery(
+                [{"source_id": "source-1", "company_id": "company-1", "status": "ready"}]
+            )
+
+        def rpc(self, name, values):
+            calls.append((name, values))
+            return Rpc()
+
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", Client)
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+
+    result = archive_price_source(
+        SimpleNamespace(company_id="company-1", user_id="user-1"),
+        "source-1",
+    )
+
+    assert result == {"archived_offers": 47, "archived_materials": 39}
+    assert calls == [
+        (
+            "archive_company_price_source",
+            {"p_company_id": "company-1", "p_source_id": "source-1"},
+        )
+    ]
+
+
+def test_source_library_has_confirmed_whole_source_removal():
+    from screens.company_profile import _render_price_lists
+
+    source = inspect.getsource(_render_price_lists)
+
+    assert "_removing_price_source_id" in source
+    assert "Remove this source and all of its active prices?" in source
+    assert "on_click=_archive_price_source_action" in source
 
 
 def test_price_source_pdf_preview_renders_only_first_page():
@@ -176,6 +224,9 @@ class _CatalogQuery:
         return self
 
     def order(self, *_args, **_kwargs):
+        return self
+
+    def limit(self, *_args):
         return self
 
     def execute(self):
