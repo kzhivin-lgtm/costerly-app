@@ -1,5 +1,51 @@
 # TODO
 
+- 3.15.1 Israel Reference Catalog foundation: active, P1 by owner direction.
+  Replace the empty legacy material, work-time, and machining-points foundation
+  with a multi-market reference architecture. Global material, operation, and
+  labor-role identities remain separate from market-specific prices, local
+  specifications, and productivity standards. Israel is the first explicit
+  market (`IL`, `ILS`), and cross-market fallback is forbidden. Company data
+  remains first priority; an exact Israel baseline is second; unsupported scope
+  returns `needs_review`. The schema candidate deliberately contains no invented
+  price or time seeds. The candidate taxonomy now contains 82 material
+  categories, 43 physical drivers, 77 operation identities, and 29 labor roles.
+  The first seven sourced Israel batches add 76 exact material identities and
+  85 observed offers: 24 panel offers, 16 fixed-price Blum hardware offers, one
+  galvanized steel stock-length offer, five coating/consumable offers, and 14
+  solid-wood/OSB offers, nine PVC edge-band offers, plus sixteen acrylic offers
+  covering eight raw sheets and eight cut-to-size equivalents.
+  `notes/ISRAEL_REFERENCE_MASTER_CHECKLIST.md` is now the fixed coverage
+  denominator: 395 materially distinct estimation cells across wood, metal,
+  glass, stone, plastics, hardware, fasteners, coatings, consumables,
+  upholstery, electrical components, installation, and packaging. Current
+  evidence closes 2 cells and partially covers 21; 372 remain empty.
+  None is promoted to an active market baseline from a single or incomparable
+  source. Continue source coverage and independent-source comparison before
+  activation. Contract: `notes/ISRAEL_REFERENCE_CATALOG.md`.
+
+- 3.14.1 CNC / Laser costing foundation: active, P1 by owner direction. The
+  calculation engine is demand-driven and runs only a required process for one
+  homogeneous part group. CNC `Yes` means in-house. CNC `No` uses a narrow
+  panel-saw plus manual route only for simple low-volume rectangular work and
+  otherwise uses a CNC subcontractor. Sheet laser `No` defaults strictly to a
+  subcontractor; rough basic in-house cutting is a rare explicitly confirmed
+  exception. The active CNC route has one explicit estimate level
+  from 1 to 5; level 3 is the effective untouched default and is not feedback.
+  Explicit changes append a bounded behavioral-calibration event without
+  estimate cost or customer content. The local candidate passes 514 tests.
+  `db/sql/2026_09_28_cnc_estimate_levels.sql` and the broader manufacturing
+  parameter migration have not been applied to production. The isolated
+  deterministic router, exclusive calculator dispatch, four pure calculators,
+  reserve-level selection, supplier-minimum handling, inclusion boundaries,
+  parameter snapshot IDs, and scenario fixtures are implemented and pass the
+  full suite locally. Active parameter resolution now enforces exact scope,
+  containing thickness bands, provider isolation, units, currency, effective
+  dates, approval, provenance, and explicit missing or ambiguous review states.
+  It never selects the nearest unsupported scope. None of this is connected to
+  current Estimation results. Continue with Revision A migration review and the
+  read-only Admin parameter library.
+
 - 3.12.1 Price Source Agent accuracy: active, P1. Improve real supplier-source
   extraction, material-type classification, unit normalization, confidence,
   and ready-versus-unresolved decisions while protecting the accepted 3.10.1
@@ -69,6 +115,13 @@
   that evidence, source-level VAT confirmation is block C. Mixed-document
   queueing remains deferred under 3.12.3, and resolver priority remains deferred
   until both offer lanes have production evidence.
+  Revision 18 block C1 is now a tested candidate. Needs Review can apply one
+  explicit currency and VAT basis to a persisted internal source without another
+  agent call. Complete positive unit prices can enter the B2 internal lane even
+  when line quantity is zero; unresolved units or conversions stay in review;
+  deterministic non-material cost rows are excluded. The full suite passes with
+  407 tests. Production acceptance on the latest internal workbook remains
+  required before C1 becomes a checkpoint.
   Contract: `notes/PRICE_SOURCE_AGENT.md`.
 
 - 3.12.2 Cross-agent Token Cost observability: pending, P1 after the Price
@@ -86,6 +139,15 @@
   the others. Preserve the existing rule that several JPEG/PNG pages may form
   one logical document; grouping mixed photos into documents needs an explicit
   user or deterministic grouping contract before implementation.
+
+- 3.12.4 Existing email registration guard: tested candidate, P1. After an
+  invitation signup is submitted, treat Supabase's obfuscated existing-user
+  response and explicit `email_exists` response identically. Keep the signup
+  form open, mark Email, and show `This email already has a login. Sign in or
+  use another email`. Do not create a pending legal registration, legal event,
+  company, or membership, and do not consume the invitation. The full suite
+  passes with 409 tests. Production acceptance with one existing address and
+  one fresh address on the same unconsumed invitation remains required.
 
 - 3.9.1 Machinery and production routing foundation: active, P1. Add a compact
   16-capability profile across woodworking, metalworking, and finishing while

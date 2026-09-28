@@ -1,0 +1,62 @@
+-- 3.15.1 Israel Reference Catalog v1, solid wood and OSB batch 1.
+-- Retrieved 2026-09-28. Prices include VAT. Delivery is excluded.
+
+insert into public.reference_sources(source_id,market_code,source_type,source_name,source_url,source_date,language_code,region,evidence) values
+('87cbbda3-d16b-5337-9511-89aaacef271f','IL','retailer','Gagot Avitan planed Finnish pine','https://gagot-avitan.co.il/%D7%A2%D7%A5-%D7%9E%D7%95%D7%A7%D7%A6%D7%A2-1/','2026-09-28','he-IL','Jerusalem','{"date_basis":"retrieved","source_unit":"linear metre","species":"Finnish pine","finish":"planed","delivery":"excluded"}'::jsonb),
+('56880429-ac05-56bd-8d37-57e9a889764f','IL','retailer','Gagot Avitan OSB sheets','https://gagot-avitan.co.il/%D7%A4%D7%9C%D7%98%D7%94-osb/','2026-09-28','he-IL','Jerusalem','{"date_basis":"retrieved","dimensions_mm":[2440,1220],"delivery":"excluded"}'::jsonb),
+('5721427e-f80d-5b30-be49-d4dbdf89f910','IL','retailer','Gagot Avitan glued pine panel','https://gagot-avitan.co.il/%D7%A4%D7%9C%D7%98%D7%94-%D7%9C%D7%9E%D7%99-%D7%9E%D7%A2%D7%A5-%D7%90%D7%95%D7%A8%D7%9F-18-%D7%9E-%D7%9E-122-244-%D7%A1-%D7%9E/','2026-09-28','he-IL','Jerusalem','{"date_basis":"retrieved","dimensions_mm":[2440,1220,18],"species":"Finnish pine","construction":"glued solid-wood panel","cutting":"available, inclusion not stated","delivery":"excluded"}'::jsonb),
+('5b18b2cc-942f-564d-ac66-7b28c8c84283','IL','retailer','Gagot Avitan site terms','https://gagot-avitan.co.il/terms/','2026-09-28','he-IL','Jerusalem','{"date_basis":"retrieved","vat_statement":"prices include VAT unless explicitly stated otherwise"}'::jsonb)
+on conflict(source_id) do update set source_name=excluded.source_name,source_url=excluded.source_url,source_date=excluded.source_date,language_code=excluded.language_code,region=excluded.region,evidence=excluded.evidence,retrieved_at=now();
+
+insert into public.reference_materials(material_id,material_code,department,category_code,canonical_name,base_unit,specifications) values
+('baa32f77-96e2-5d14-9fad-9b24adf109b3','pine_planed_25x50mm','wood','softwood','Planed Finnish pine, nominal 25 x 50 mm','lm','{"species":"pine","origin":"Finland","finish":"planed","nominal_mm":[25,50],"actual_mm":[20,45]}'::jsonb),
+('43262d64-c994-515e-92d6-5a7d897b009d','pine_planed_25x75mm','wood','softwood','Planed Finnish pine, nominal 25 x 75 mm','lm','{"species":"pine","origin":"Finland","finish":"planed","nominal_mm":[25,75],"actual_mm":[20,70]}'::jsonb),
+('e2c78719-6649-5f13-9ad7-d851bb5edfd6','pine_planed_40x50mm','wood','softwood','Planed Finnish pine, nominal 40 x 50 mm','lm','{"species":"pine","origin":"Finland","finish":"planed","nominal_mm":[40,50],"actual_mm":[35,45]}'::jsonb),
+('5bc46d6f-be08-5a0a-8b5e-d5b205e10d1e','pine_planed_40x75mm','wood','softwood','Planed Finnish pine, nominal 40 x 75 mm','lm','{"species":"pine","origin":"Finland","finish":"planed","nominal_mm":[40,75],"actual_mm":[35,70]}'::jsonb),
+('8cb04a71-bd17-5ac0-8164-02095133ef94','pine_planed_40x200mm','wood','softwood','Planed Finnish pine, nominal 40 x 200 mm','lm','{"species":"pine","origin":"Finland","finish":"planed","nominal_mm":[40,200],"actual_mm":[35,194]}'::jsonb),
+('8c6a4136-f3c6-5a02-92f8-b10e804a3db3','pine_planed_50x50mm','wood','softwood','Planed Finnish pine, nominal 50 x 50 mm','lm','{"species":"pine","origin":"Finland","finish":"planed","nominal_mm":[50,50],"actual_mm":[45,42]}'::jsonb),
+('f6043442-93d5-5bb4-b85b-d47f54c85933','pine_planed_50x100mm','wood','softwood','Planed Finnish pine, nominal 50 x 100 mm','lm','{"species":"pine","origin":"Finland","finish":"planed","nominal_mm":[50,100],"actual_mm":[45,94]}'::jsonb),
+('f60952db-ca7a-54bc-a6e9-ea0aa259bfe7','pine_planed_50x150mm','wood','softwood','Planed Finnish pine, nominal 50 x 150 mm','lm','{"species":"pine","origin":"Finland","finish":"planed","nominal_mm":[50,150],"actual_mm":[45,144]}'::jsonb),
+('a27ff074-d598-5909-8ac5-304bcabb28e3','pine_planed_50x200mm','wood','softwood','Planed Finnish pine, nominal 50 x 200 mm','lm','{"species":"pine","origin":"Finland","finish":"planed","nominal_mm":[50,200],"actual_mm":[45,194]}'::jsonb),
+('18090f2f-05ff-53e0-a468-bf93927eb94e','osb_9mm_2440x1220','wood','osb','OSB sheet 2440 x 1220 x 9 mm','sqm','{"dimensions_mm":[2440,1220],"thickness_mm":9}'::jsonb),
+('50765e70-ee6b-5581-8ef2-61ccd8fb81e0','osb_11mm_2440x1220','wood','osb','OSB sheet 2440 x 1220 x 11 mm','sqm','{"dimensions_mm":[2440,1220],"thickness_mm":11}'::jsonb),
+('32495f16-4551-5000-951b-67d93ecff1da','osb_15mm_2440x1220','wood','osb','OSB sheet 2440 x 1220 x 15 mm','sqm','{"dimensions_mm":[2440,1220],"thickness_mm":15}'::jsonb),
+('df19764c-2e79-5a0d-a666-51d5280e0f91','osb_18mm_2440x1220','wood','osb','OSB sheet 2440 x 1220 x 18 mm','sqm','{"dimensions_mm":[2440,1220],"thickness_mm":18}'::jsonb),
+('12ad516b-2b84-53a9-9ea7-d3ddc3fa38da','pine_glued_panel_18mm_2440x1220','wood','glued_wood_panel','Finnish pine glued panel 2440 x 1220 x 18 mm','sqm','{"species":"pine","origin":"Finland","construction":"glued solid-wood panel","dimensions_mm":[2440,1220],"thickness_mm":18}'::jsonb)
+on conflict(material_code) do update set department=excluded.department,category_code=excluded.category_code,canonical_name=excluded.canonical_name,base_unit=excluded.base_unit,specifications=excluded.specifications,active=true,updated_at=now();
+
+insert into public.market_material_profiles(material_id,market_code,market_name,language_code,local_specifications,availability_status)
+select material_id,'IL',case material_code
+when 'pine_planed_25x50mm' then 'עץ אורן פיני מוקצע 2.5×5 ס״מ'
+when 'pine_planed_25x75mm' then 'עץ אורן פיני מוקצע 2.5×7.5 ס״מ'
+when 'pine_planed_40x50mm' then 'עץ אורן פיני מוקצע 4×5 ס״מ'
+when 'pine_planed_40x75mm' then 'עץ אורן פיני מוקצע 4×7.5 ס״מ'
+when 'pine_planed_40x200mm' then 'עץ אורן פיני מוקצע 4×20 ס״מ'
+when 'pine_planed_50x50mm' then 'עץ אורן פיני מוקצע 5×5 ס״מ'
+when 'pine_planed_50x100mm' then 'עץ אורן פיני מוקצע 5×10 ס״מ'
+when 'pine_planed_50x150mm' then 'עץ אורן פיני מוקצע 5×15 ס״מ'
+when 'pine_planed_50x200mm' then 'עץ אורן פיני מוקצע 5×20 ס״מ'
+when 'osb_9mm_2440x1220' then 'לוח OSB ‏244×122 ס״מ, 9 מ״מ'
+when 'osb_11mm_2440x1220' then 'לוח OSB ‏244×122 ס״מ, 11 מ״מ'
+when 'osb_15mm_2440x1220' then 'לוח OSB ‏244×122 ס״מ, 15 מ״מ'
+when 'osb_18mm_2440x1220' then 'לוח OSB ‏244×122 ס״מ, 18 מ״מ'
+when 'pine_glued_panel_18mm_2440x1220' then 'פלטת עץ אורן פיני מודבק 244×122 ס״מ, 18 מ״מ'
+end,'he-IL','{"market":"Israel"}'::jsonb,'common' from public.reference_materials where material_code in ('pine_planed_25x50mm','pine_planed_25x75mm','pine_planed_40x50mm','pine_planed_40x75mm','pine_planed_40x200mm','pine_planed_50x50mm','pine_planed_50x100mm','pine_planed_50x150mm','pine_planed_50x200mm','osb_9mm_2440x1220','osb_11mm_2440x1220','osb_15mm_2440x1220','osb_18mm_2440x1220','pine_glued_panel_18mm_2440x1220')
+on conflict(material_id,market_code,language_code) do update set market_name=excluded.market_name,local_specifications=excluded.local_specifications,availability_status=excluded.availability_status,active=true,updated_at=now();
+
+insert into public.market_material_offers(market_offer_id,material_id,market_code,source_id,supplier_name,supplier_sku,source_price,source_currency,source_unit,price_scope,included_services,delivery_included,package_quantity,minimum_order_quantity,vat_mode,normalized_price_ex_vat,normalized_unit,conversion_basis,region,valid_from,confidence,status) values
+('dae37d9a-f8a5-56b3-b2d1-1e2c86aaa64b','baa32f77-96e2-5d14-9fad-9b24adf109b3','IL','87cbbda3-d16b-5337-9511-89aaacef271f','Gagot Avitan',null,4,'ILS','lm','material_only','{}',false,1,1,'included',3.389831,'lm','{"calculation":"4 / 1.18"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('433d6e69-dc5f-539d-85cd-d7ac7aa34f6f','43262d64-c994-515e-92d6-5a7d897b009d','IL','87cbbda3-d16b-5337-9511-89aaacef271f','Gagot Avitan',null,6,'ILS','lm','material_only','{}',false,1,1,'included',5.084746,'lm','{"calculation":"6 / 1.18"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('0a0e28f3-2ff6-5d63-95e0-5af7b0d5bb29','e2c78719-6649-5f13-9ad7-d851bb5edfd6','IL','87cbbda3-d16b-5337-9511-89aaacef271f','Gagot Avitan',null,7,'ILS','lm','material_only','{}',false,1,1,'included',5.932203,'lm','{"calculation":"7 / 1.18"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('63de200a-7ae4-5a1f-98df-9338d72617e5','5bc46d6f-be08-5a0a-8b5e-d5b205e10d1e','IL','87cbbda3-d16b-5337-9511-89aaacef271f','Gagot Avitan',null,10,'ILS','lm','material_only','{}',false,1,1,'included',8.474576,'lm','{"calculation":"10 / 1.18"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('854c5720-f26d-5173-b9ba-881268d0b053','8cb04a71-bd17-5ac0-8164-02095133ef94','IL','87cbbda3-d16b-5337-9511-89aaacef271f','Gagot Avitan',null,25,'ILS','lm','material_only','{}',false,1,1,'included',21.186441,'lm','{"calculation":"25 / 1.18"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('0974c12a-0560-522c-a8e7-553e9b6e64a0','8c6a4136-f3c6-5a02-92f8-b10e804a3db3','IL','87cbbda3-d16b-5337-9511-89aaacef271f','Gagot Avitan',null,8,'ILS','lm','material_only','{}',false,1,1,'included',6.779661,'lm','{"calculation":"8 / 1.18"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('37f362a7-7787-599f-bdba-5cf5a7ec8148','f6043442-93d5-5bb4-b85b-d47f54c85933','IL','87cbbda3-d16b-5337-9511-89aaacef271f','Gagot Avitan',null,15,'ILS','lm','material_only','{}',false,1,1,'included',12.711864,'lm','{"calculation":"15 / 1.18"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('c0578d52-16ce-59d6-af00-e0f6ab392a98','f60952db-ca7a-54bc-a6e9-ea0aa259bfe7','IL','87cbbda3-d16b-5337-9511-89aaacef271f','Gagot Avitan',null,20,'ILS','lm','material_only','{}',false,1,1,'included',16.949153,'lm','{"calculation":"20 / 1.18"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('ac60e152-7a58-5198-9201-261708e3a943','a27ff074-d598-5909-8ac5-304bcabb28e3','IL','87cbbda3-d16b-5337-9511-89aaacef271f','Gagot Avitan',null,29.5,'ILS','lm','material_only','{}',false,1,1,'included',25,'lm','{"calculation":"29.5 / 1.18"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('8b2803c0-f7cb-5af9-8507-08dcf1becc59','18090f2f-05ff-53e0-a468-bf93927eb94e','IL','56880429-ac05-56bd-8d37-57e9a889764f','Gagot Avitan',null,69,'ILS','sheet_2440x1220','material_only','{}',false,1,1,'included',19.643435,'sqm','{"sheet_area_sqm":2.9768,"calculation":"69 / 1.18 / 2.9768"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('41fb5da1-8d15-5123-ac09-0387fad69fd8','50765e70-ee6b-5581-8ef2-61ccd8fb81e0','IL','56880429-ac05-56bd-8d37-57e9a889764f','Gagot Avitan',null,76,'ILS','sheet_2440x1220','material_only','{}',false,1,1,'included',21.636247,'sqm','{"sheet_area_sqm":2.9768,"calculation":"76 / 1.18 / 2.9768"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('fb2d237d-ea83-55b6-9b90-5c75f269267a','32495f16-4551-5000-951b-67d93ecff1da','IL','56880429-ac05-56bd-8d37-57e9a889764f','Gagot Avitan',null,101,'ILS','sheet_2440x1220','material_only','{}',false,1,1,'included',28.753433,'sqm','{"sheet_area_sqm":2.9768,"calculation":"101 / 1.18 / 2.9768"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('f098d3bc-58be-5b7a-ad88-24a5b9b1e879','df19764c-2e79-5a0d-a666-51d5280e0f91','IL','56880429-ac05-56bd-8d37-57e9a889764f','Gagot Avitan',null,123,'ILS','sheet_2440x1220','material_only','{}',false,1,1,'included',35.016557,'sqm','{"sheet_area_sqm":2.9768,"calculation":"123 / 1.18 / 2.9768"}'::jsonb,'Jerusalem','2026-09-28',90,'candidate'),
+('fd81906a-c403-5267-bca7-116a2f07622f','12ad516b-2b84-53a9-9ea7-d3ddc3fa38da','IL','5721427e-f80d-5b30-be49-d4dbdf89f910','Gagot Avitan',null,359,'ILS','sheet_2440x1220','material_only','{}',false,1,1,'included',102.202798,'sqm','{"sheet_area_sqm":2.9768,"calculation":"359 / 1.18 / 2.9768","cutting":"not included unless separately confirmed"}'::jsonb,'Jerusalem','2026-09-28',92,'candidate')
+on conflict(market_offer_id) do update set source_price=excluded.source_price,source_currency=excluded.source_currency,source_unit=excluded.source_unit,price_scope=excluded.price_scope,included_services=excluded.included_services,delivery_included=excluded.delivery_included,package_quantity=excluded.package_quantity,minimum_order_quantity=excluded.minimum_order_quantity,vat_mode=excluded.vat_mode,normalized_price_ex_vat=excluded.normalized_price_ex_vat,normalized_unit=excluded.normalized_unit,conversion_basis=excluded.conversion_basis,region=excluded.region,valid_from=excluded.valid_from,confidence=excluded.confidence,status=excluded.status;

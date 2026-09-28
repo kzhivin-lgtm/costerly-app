@@ -59,6 +59,15 @@ instructions.
   document_type internal_estimate, price_context internal_cost_estimate, and an
   empty supplier_name. Missing supplier evidence does not reduce confidence for
   this source type.
+- In an internal estimate, a zero line quantity normally means that the material
+  was not used in this particular estimate. It does not invalidate a separate,
+  positive unit cost. When identity, unit, conversion, and unit cost are clear,
+  do not mark that price unresolved only because quantity is zero.
+- Internal workbooks often place materials beside labor, assembly, installation,
+  delivery, overhead, rent, electricity, depreciation, margin, markup, subtotal,
+  and total rows. Exclude those non-material costs even when they contain a
+  positive amount. Do not convert a work operation, project component, or cost
+  summary into a material merely because the row has a price.
 - A customer-facing quote normally has source_origin company_internal,
   document_type customer_quote, and price_context customer_sale. Selling prices,
   markup, margin, labor, installation, and project totals must never become

@@ -499,7 +499,8 @@ def test_production_context_preserves_price_precedence(monkeypatch):
     assert context["active_supplier_offers"][0]["service_offer_id"] == "offer-1"
     assert context["price_precedence"][0] == "active_supplier_offer"
     assert context["price_precedence"][-1] == "needs_review"
-    assert context["routing_rules"]["panel_material_manual_fallback_allowed"] is False
+    assert context["routing_rules"]["panel_material_manual_fallback_allowed"] is True
+    assert context["routing_rules"]["metal_basic_cutting_requires_explicit_confirmation"] is True
     assert context["routing_rules"]["wood_cnc_default_sheet_materials"] == [
         "MDF",
         "Particleboard / LDSP",

@@ -40,6 +40,44 @@ This file explains where code belongs so the project stays understandable.
 - `db/` contains Supabase client and repositories.
 - `db/sql/2026_09_24_machinery_foundation.sql` is the additive Machinery schema
   and catalog seed. It does not modify the prototype `company_machines` table.
+- `db/sql/2026_09_28_manufacturing_cost_parameters.sql` is the additive,
+  Platform Staff-only versioned parameter registry for the demand-driven CNC
+  and sheet-laser calculation strategies. It does not affect current Estimation.
+- `db/sql/2026_09_28_cnc_estimate_levels.sql` stores append-only explicit CNC
+  estimate-level changes for behavioral calibration without estimate cost or
+  customer content.
+- `db/sql/2026_09_28_reference_catalog_foundation.sql` separates global
+  material, operation, and labor-role identities from market-specific evidence,
+  prices, and time standards. Israel is the first market; it seeds no estimates.
+- `db/sql/2026_09_28_reference_catalog_taxonomy_v1.sql` seeds only controlled
+  category, labor-role, and physical-driver identities, with no prices or time
+  assumptions.
+- `db/sql/2026_09_28_israel_reference_prices_panels_v1.sql` stores the first
+  sourced Israeli panel-material identities and candidate offers without
+  manufacturing an unsupported market average.
+- `db/sql/2026_09_28_israel_reference_prices_hardware_v1.sql` stores exact
+  fixed-price Blum hardware observations from an Israeli retailer, preserves
+  the VAT evidence, and normalizes candidate prices excluding VAT.
+- `db/sql/2026_09_28_israel_reference_prices_metal_v1.sql` stores the first exact
+  Israeli galvanized-steel stock-length observation with VAT, cutting, delivery,
+  and purchasable-length boundaries preserved.
+- `db/sql/2026_09_28_israel_reference_prices_coatings_consumables_v1.sql` stores
+  exact varnish, adhesive, solvent, and abrasive package observations while
+  blocking normalization where VAT is unresolved.
+- `db/sql/2026_09_28_israel_reference_prices_solid_wood_v1.sql` stores exact
+  planed-pine sections, OSB sheets, and a glued-pine panel with nominal versus
+  actual geometry and VAT-normalized market units.
+- `db/sql/2026_09_28_israel_reference_prices_wood_surfaces_v1.sql` stores exact
+  Israeli PVC edge-band rolls with decor identity, roll geometry, VAT evidence,
+  and normalized linear-metre prices.
+- `db/sql/2026_09_28_israel_reference_prices_plastics_v1.sql` stores eight
+  clear cast-acrylic thicknesses and keeps raw full-sheet pricing separate from
+  cut-to-size laser pricing.
+- `notes/ISRAEL_REFERENCE_MASTER_CHECKLIST.md` is the 395-cell material and
+  purchased-component coverage denominator used to plan and measure Israel
+  source collection.
+- `db/sql/2026_09_28_remove_legacy_machining_point_rules.sql` removes the unused
+  machining-points table after the runtime read dependency is removed.
 - `engine/` will contain estimating/routing logic when we bring that part back.
 
 ## Project Notes
@@ -51,6 +89,16 @@ This file explains where code belongs so the project stays understandable.
   Auth and password-recovery contract.
 - `notes/MACHINERY_FOUNDATION.md` stores the 3.9.1 scenario matrix, catalog
   boundary, routing priority, and verification state.
+- `notes/CNC_LASER_COSTING.md` stores the 3.14.1 protected Machinery boundary,
+  Admin information architecture, scenario matrix, parameter precedence, and
+  staged delivery plan.
+- `notes/ISRAEL_REFERENCE_CATALOG.md` stores the 3.15.1 multi-market boundary,
+  Israel fallback contract, evidence rules, and staged catalog plan.
+- `notes/ISRAEL_REFERENCE_SOURCE_REGISTER.md` records candidate Israeli market
+  sources, their valid use, and evidence gaps before catalog activation.
+- `notes/ISRAEL_REFERENCE_COVERAGE.md` tracks every furniture-material domain as
+  observed, partial, or missing so common retail items cannot masquerade as a
+  complete fallback catalog.
 - `notes/LEGAL_CONSENT_VERIFIED_REGISTRATION.md` stores the 3.11.1 Terms,
   Privacy Policy, verified-signup, repeat-acceptance, and production acceptance
   contract.

@@ -655,7 +655,8 @@ def build_company_production_context(company_id: str, *, client=None) -> dict:
         ],
         "routing_rules": {
             "manual_fallback_requires_explicit_confirmation": True,
-            "panel_material_manual_fallback_allowed": False,
+            "panel_material_manual_fallback_allowed": True,
+            "metal_basic_cutting_requires_explicit_confirmation": True,
             "wood_cnc_default_sheet_materials": [
                 "MDF",
                 "Particleboard / LDSP",

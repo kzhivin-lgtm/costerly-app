@@ -1091,6 +1091,333 @@ def _refresh_price_source_summary(client, company_id: str, source_id: str) -> No
     ).eq("company_id", company_id).eq("source_id", source_id).execute()
 
 
+_SOURCE_DEFAULT_RESOLVED_REASONS = {
+    "below_auto_activation_threshold",
+    "unknown_currency",
+    "unknown_vat",
+    "vat_basis_unknown",
+    "zero_quantity",
+}
+_SOURCE_DEFAULT_BLOCKING_REASONS = {
+    "ambiguous_material",
+    "ambiguous_unit",
+    "document_total_mismatch",
+    "material_type_unresolved",
+    "missing_unit",
+    "package_conversion_unresolved",
+    "unsupported_material",
+}
+_INTERNAL_NON_MATERIAL_PATTERN = re.compile(
+    r"\b(?:assembly|delivery|electricity|grand\s+total|installation|labor|labour|"
+    r"margin|markup|overhead|rent|salary|shipping|subtotal|total|wages?|"
+    r"амортизация|аренда|доставка|зарплата|итого|маржа|монтаж|накладные|наценка|"
+    r"работа|работы|сборка|труд|הרכבה|התקנה|משלוח|עבודה|תקורה)\b",
+    re.IGNORECASE,
+)
+
+
+def prepare_internal_estimate_row_defaults(
+    row: dict,
+    *,
+    currency: str,
+    vat_mode: str,
+) -> dict:
+    """Apply confirmed source defaults without hiding unresolved row evidence."""
+    prepared = dict(row)
+    reasons = set(prepared.get("reason_codes") or [])
+    description = " ".join(
+        str(prepared.get(key) or "")
+        for key in ("raw_description", "normalized_name")
+    ).casefold()
+    if _INTERNAL_NON_MATERIAL_PATTERN.search(description):
+        prepared["result_status"] = "excluded"
+        prepared["reason_codes"] = sorted(reasons | {"internal_non_material_cost"})
+        return prepared
+
+    if not prepared.get("raw_currency"):
+        prepared["raw_currency"] = currency
+    if prepared.get("raw_vat_included") is None:
+        prepared["raw_vat_included"] = vat_mode == "included"
+    reasons -= _SOURCE_DEFAULT_RESOLVED_REASONS
+    prepared["reason_codes"] = sorted(reasons)
+
+    evidence = prepared.get("evidence") or {}
+    material_type = canonical_price_source_category(
+        str(evidence.get("material_type") or "Other")
+    )
+    purchase_unit = str(prepared.get("purchase_unit") or "")
+    calculation_unit = str(prepared.get("calculation_unit") or "")
+    try:
+        raw_price = float(prepared.get("raw_price") or 0)
+        conversion_factor = float(prepared.get("conversion_factor") or 0)
+    except (TypeError, ValueError):
+        raw_price = 0
+        conversion_factor = 0
+    can_activate = all(
+        (
+            raw_price > 0,
+            bool(str(prepared.get("normalized_name") or "").strip()),
+            bool(str(prepared.get("raw_unit") or "").strip()),
+            len(str(prepared.get("raw_currency") or "").strip()) == 3,
+            material_type in PRICE_SOURCE_CATEGORIES,
+            purchase_unit in CANONICAL_UNIT_CODES - {"unknown", "other"},
+            calculation_unit in CANONICAL_UNIT_CODES - {"unknown", "other"},
+            conversion_factor > 0,
+            not (reasons & _SOURCE_DEFAULT_BLOCKING_REASONS),
+        )
+    )
+    if can_activate:
+        prepared["normalized_price"] = raw_price / conversion_factor
+        prepared["normalized_unit"] = calculation_unit
+        prepared["result_status"] = "ready"
+    else:
+        prepared["result_status"] = "unresolved"
+    return prepared
+
+
+def apply_price_source_defaults(
+    access,
+    source_id: str,
+    *,
+    currency: str,
+    vat_mode: str,
+) -> dict[str, int]:
+    """Confirm one internal source's currency and VAT, then activate safe rows."""
+    normalized_currency = currency.strip().upper()
+    if len(normalized_currency) != 3:
+        raise PriceSourceError("Enter a three-letter currency code")
+    if vat_mode not in {"included", "excluded"}:
+        raise PriceSourceError("Choose whether VAT is included")
+
+    client = get_supabase_client()
+    company_id = str(access.company_id)
+    assert_company_owner(client, str(access.user_id), company_id)
+    source = _owned_price_source(client, company_id, source_id)
+    summary = dict(source.get("processing_summary") or {})
+    if summary.get("source_origin") != "company_internal":
+        raise PriceSourceError("Source defaults are available for internal estimates")
+    rows = (
+        client.table("company_price_source_rows")
+        .select("*")
+        .eq("company_id", company_id)
+        .eq("source_id", source_id)
+        .order("source_row_number")
+        .execute()
+    ).data or []
+    prepared_rows = [
+        prepare_internal_estimate_row_defaults(
+            row,
+            currency=normalized_currency,
+            vat_mode=vat_mode,
+        )
+        for row in rows
+    ]
+    ready_rows = [row for row in prepared_rows if row["result_status"] == "ready"]
+
+    materials = (
+        client.table("company_material_items")
+        .select("company_material_id,category,normalized_name,status")
+        .eq("company_id", company_id)
+        .execute()
+    ).data or []
+    material_by_identity = {
+        (str(item.get("category") or ""), str(item.get("normalized_name") or "")):
+        item["company_material_id"]
+        for item in materials
+    }
+    archived_material_ids = {
+        str(item["company_material_id"])
+        for item in materials
+        if item.get("status") == "archived"
+    }
+    missing_materials: dict[tuple[str, str], dict] = {}
+    for row in ready_rows:
+        evidence = dict(row.get("evidence") or {})
+        category = canonical_price_source_category(
+            str(evidence.get("material_type") or "Other")
+        )
+        normalized_name = _normalized_name(str(row.get("normalized_name") or ""))
+        identity = (category, normalized_name)
+        if identity not in material_by_identity:
+            missing_materials.setdefault(
+                identity,
+                {
+                    "company_id": company_id,
+                    "category": category,
+                    "canonical_name": str(row["normalized_name"]),
+                    "normalized_name": normalized_name,
+                    "preferred_unit": row["calculation_unit"],
+                    "created_from_source_id": source_id,
+                },
+            )
+    if missing_materials:
+        inserted = client.table("company_material_items").upsert(
+            list(missing_materials.values()),
+            on_conflict="company_id,category,normalized_name",
+        ).execute().data or []
+        material_by_identity.update(
+            {
+                (str(item["category"]), str(item["normalized_name"])):
+                item["company_material_id"]
+                for item in inserted
+            }
+        )
+        if any(identity not in material_by_identity for identity in missing_materials):
+            refreshed_materials = (
+                client.table("company_material_items")
+                .select("company_material_id,category,normalized_name,status")
+                .eq("company_id", company_id)
+                .execute()
+            ).data or []
+            material_by_identity.update(
+                {
+                    (str(item["category"]), str(item["normalized_name"])):
+                    item["company_material_id"]
+                    for item in refreshed_materials
+                }
+            )
+    reused_archived_ids = {
+        str(material_by_identity[
+            (
+                canonical_price_source_category(
+                    str((row.get("evidence") or {}).get("material_type") or "Other")
+                ),
+                _normalized_name(str(row.get("normalized_name") or "")),
+            )
+        ])
+        for row in ready_rows
+    } & archived_material_ids
+    if reused_archived_ids:
+        client.table("company_material_items").update({"status": "private"}).in_(
+            "company_material_id", sorted(reused_archived_ids)
+        ).execute()
+
+    active_offers = (
+        client.table("company_material_offers")
+        .select(
+            "offer_id,company_material_id,supplier_id,source_id,supplier_sku,"
+            "source_price,source_unit,purchase_unit,calculation_unit,conversion_factor,"
+            "normalized_price,currency,vat_included,status"
+        )
+        .eq("company_id", company_id)
+        .eq("status", "active")
+        .execute()
+    ).data or []
+    offer_sources = (
+        client.table("company_price_sources")
+        .select("source_id,supplier_id,processing_summary")
+        .eq("company_id", company_id)
+        .execute()
+    ).data or []
+    source_by_id = {str(item["source_id"]): item for item in offer_sources}
+    current_lane = price_offer_lane_key(
+        supplier_id=source.get("supplier_id"),
+        source_summary=summary,
+        source_id=source_id,
+    )
+    offers_by_identity: dict[tuple[str, str], list[dict]] = {}
+    for offer in active_offers:
+        offer_source = source_by_id.get(str(offer.get("source_id") or ""), {})
+        lane = price_offer_lane_key(
+            supplier_id=offer_source.get("supplier_id") or offer.get("supplier_id"),
+            source_summary=offer_source.get("processing_summary"),
+            source_id=offer.get("source_id"),
+        )
+        offers_by_identity.setdefault(
+            (str(offer.get("company_material_id") or ""), lane), []
+        ).append(offer)
+
+    offers_to_supersede: set[str] = set()
+    offers_to_insert: list[dict] = []
+    activated = 0
+    unchanged = 0
+    for row in ready_rows:
+        evidence = dict(row.get("evidence") or {})
+        category = canonical_price_source_category(
+            str(evidence.get("material_type") or "Other")
+        )
+        identity = (category, _normalized_name(str(row.get("normalized_name") or "")))
+        material_id = material_by_identity[identity]
+        row["company_material_id"] = material_id
+        matching = offers_by_identity.get((str(material_id), current_lane), [])
+        comparison_row = {
+            "raw_price": row.get("raw_price"),
+            "raw_currency": row.get("raw_currency"),
+            "raw_unit": row.get("raw_unit"),
+            "raw_vat_mode": vat_mode,
+            "purchase_unit": row.get("purchase_unit"),
+            "calculation_unit": row.get("calculation_unit"),
+            "conversion_factor": row.get("conversion_factor"),
+            "normalized_price": row.get("normalized_price"),
+        }
+        is_unchanged = any(
+            price_offer_matches_row(
+                offer,
+                comparison_row,
+                default_currency=normalized_currency,
+            )
+            for offer in matching
+        )
+        comparison_status = "unchanged" if is_unchanged else (
+            "updated" if matching else "new"
+        )
+        evidence["comparison_status"] = comparison_status
+        row["evidence"] = evidence
+        row["result_status"] = "updated" if is_unchanged else comparison_status
+        if is_unchanged:
+            unchanged += 1
+            continue
+        offers_to_supersede.update(str(offer["offer_id"]) for offer in matching)
+        offers_to_insert.append(
+            {
+                "company_id": company_id,
+                "company_material_id": material_id,
+                "supplier_id": source.get("supplier_id"),
+                "source_id": source_id,
+                "source_row_id": row["row_id"],
+                "supplier_sku": row.get("raw_sku"),
+                "source_price": row["raw_price"],
+                "source_unit": row["raw_unit"],
+                "purchase_unit": row["purchase_unit"],
+                "calculation_unit": row["calculation_unit"],
+                "conversion_factor": row["conversion_factor"],
+                "normalized_price": row["normalized_price"],
+                "normalized_unit": row["calculation_unit"],
+                "currency": normalized_currency,
+                "vat_included": vat_mode == "included",
+                "valid_from": source.get("document_date"),
+                "confidence": row.get("confidence") or 0,
+            }
+        )
+        activated += 1
+
+    if offers_to_supersede:
+        client.table("company_material_offers").update({"status": "superseded"}).in_(
+            "offer_id", sorted(offers_to_supersede)
+        ).execute()
+    if offers_to_insert:
+        client.table("company_material_offers").insert(offers_to_insert).execute()
+    if prepared_rows:
+        client.table("company_price_source_rows").upsert(
+            prepared_rows,
+            on_conflict="row_id",
+        ).execute()
+    client.table("company_price_sources").update(
+        {
+            "currency": normalized_currency,
+            "vat_mode": vat_mode,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    ).eq("company_id", company_id).eq("source_id", source_id).execute()
+    _refresh_price_source_summary(client, company_id, source_id)
+    return {
+        "activated": activated,
+        "unchanged": unchanged,
+        "unresolved": sum(row["result_status"] == "unresolved" for row in prepared_rows),
+        "excluded": sum(row["result_status"] == "excluded" for row in prepared_rows),
+    }
+
+
 def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> dict:
     """Validate a reviewed row, activate its offer, and retain its source evidence."""
     client = get_supabase_client()

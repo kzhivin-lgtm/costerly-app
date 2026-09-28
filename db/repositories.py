@@ -35,7 +35,6 @@ def fetch_company_data(client: Client, company_id: str) -> dict[str, pd.DataFram
         "overhead_settings": fetch_table(client, "overhead_settings", filters={"company_id": company_id}),
         "overhead_monthly": fetch_table(client, "overhead_monthly", filters={"company_id": company_id}),
         "work_drivers": fetch_table(client, "work_drivers", order_by="sort_order"),
-        "machining_point_rules": fetch_table(client, "machining_point_rules", order_by="sort_order"),
     }
 
 

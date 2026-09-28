@@ -510,3 +510,27 @@ Automated verification: 73 Price Source tests and 403 full-suite tests pass.
 Production acceptance is pending for one internal workbook, a changed revision
 of that workbook, and coexistence with an active supplier offer for the same
 material. Block C remains next after B2 production evidence.
+
+## 3.12.1 revision 18, block C1 candidate
+
+Needs Review now offers one source-level confirmation for each internal estimate
+whose currency or VAT basis is unknown. The owner selects the internal source,
+confirms a three-letter currency and explicitly chooses whether prices include
+or exclude VAT. Applying these settings reuses the persisted extraction and does
+not call the agent again.
+
+Rows with a positive material unit price, supported unit and conversion, and no
+remaining critical ambiguity become offers in the existing B2 internal-source
+lane. A zero line quantity no longer blocks an otherwise complete internal unit
+price. Missing or ambiguous units, material ambiguity, unsupported materials,
+package-conversion uncertainty, and document-total conflicts remain in Needs
+Review. Deterministically identified labor, assembly, installation, delivery,
+overhead, rent, electricity, depreciation, margin, markup, subtotal, and total
+rows become excluded rather than material offers. The extraction prompt carries
+the same internal-estimate rules for future sources.
+
+The accepted uploader, supplier lane, customer-sale exclusion, source-family
+identity, and resolver priority are unchanged. Automated verification: 260
+targeted Price Source/Profile tests and 407 full-suite tests pass. Production
+acceptance remains pending on the latest internal workbook, so revision 18 is a
+candidate and not a checkpoint.

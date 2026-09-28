@@ -38,6 +38,7 @@ from use_cases.price_sources import (
     guard_price_source_department,
     list_price_catalog,
     list_unresolved_price_source_rows,
+    prepare_internal_estimate_row_defaults,
     price_source_material_types,
     price_source_family_identity,
     price_source_semantic_fingerprint,
@@ -1322,6 +1323,84 @@ def test_internal_estimate_is_a_first_class_source_without_a_supplier():
     assert validate_price_source_result(guarded) is guarded
 
 
+def test_internal_source_defaults_resolve_vat_currency_and_zero_quantity():
+    row = {
+        "raw_description": "Plywood 12 mm",
+        "raw_price": 220,
+        "raw_currency": None,
+        "raw_unit": "sheet",
+        "raw_vat_included": None,
+        "normalized_name": "Plywood 12 mm",
+        "purchase_unit": "sheet",
+        "calculation_unit": "sheet",
+        "conversion_factor": 1,
+        "result_status": "unresolved",
+        "reason_codes": [
+            "unknown_currency",
+            "unknown_vat",
+            "zero_quantity",
+            "below_auto_activation_threshold",
+        ],
+        "evidence": {"material_type": "Wood Sheets"},
+    }
+
+    prepared = prepare_internal_estimate_row_defaults(
+        row,
+        currency="ILS",
+        vat_mode="excluded",
+    )
+
+    assert prepared["result_status"] == "ready"
+    assert prepared["raw_currency"] == "ILS"
+    assert prepared["raw_vat_included"] is False
+    assert prepared["reason_codes"] == []
+    assert prepared["normalized_price"] == 220
+
+
+def test_internal_source_defaults_keep_missing_unit_in_review():
+    row = {
+        "raw_description": "Drawer handle",
+        "raw_price": 60,
+        "raw_currency": None,
+        "raw_unit": None,
+        "raw_vat_included": None,
+        "normalized_name": "Drawer handle",
+        "purchase_unit": "unknown",
+        "calculation_unit": "unknown",
+        "conversion_factor": 0,
+        "result_status": "unresolved",
+        "reason_codes": ["missing_unit", "unknown_vat", "zero_quantity"],
+        "evidence": {"material_type": "Metal Supplies"},
+    }
+
+    prepared = prepare_internal_estimate_row_defaults(
+        row,
+        currency="ILS",
+        vat_mode="included",
+    )
+
+    assert prepared["result_status"] == "unresolved"
+    assert prepared["reason_codes"] == ["missing_unit"]
+
+
+def test_internal_source_defaults_exclude_non_material_costs():
+    row = {
+        "raw_description": "Assembly labor",
+        "raw_price": 350,
+        "result_status": "unresolved",
+        "reason_codes": ["unknown_vat"],
+    }
+
+    prepared = prepare_internal_estimate_row_defaults(
+        row,
+        currency="ILS",
+        vat_mode="excluded",
+    )
+
+    assert prepared["result_status"] == "excluded"
+    assert "internal_non_material_cost" in prepared["reason_codes"]
+
+
 def test_customer_sale_price_is_deterministically_excluded_from_material_costs():
     customer_quote = _result()
     customer_quote.update(
@@ -1348,6 +1427,14 @@ def test_prompt_separates_internal_cost_from_customer_sale_price():
     assert "internal_cost_estimate" in prompt
     assert "customer_sale" in prompt
     assert "must never become\n  active material costs" in prompt
+
+
+def test_prompt_keeps_internal_reference_price_when_quantity_is_zero():
+    prompt = Path("agents/prompts/price_source_agent_prompt.md").read_text()
+
+    assert "does not invalidate a separate,\n  positive unit cost" in prompt
+    assert "do not mark that price unresolved only because quantity is zero" in prompt
+    assert "Exclude those non-material costs even when they contain a" in prompt
 
 
 def test_duplicate_source_row_numbers_are_rejected():

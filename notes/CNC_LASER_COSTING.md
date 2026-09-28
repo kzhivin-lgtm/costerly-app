@@ -59,23 +59,121 @@ It first determines whether the documented work requires CNC routing or sheet
 laser cutting at all. Material alone is not sufficient: a metal part does not
 activate laser cutting unless its required operations call for it.
 
-For each required process, the Company Profile supplies one exclusive route:
+For each required process, the Company Profile supplies the primary machine
+availability. The deterministic router then selects one route for each
+homogeneous part group:
 
-1. CNC router, in-house or subcontractor
-2. Sheet laser, in-house or subcontractor
+1. CNC available: CNC router in-house
+2. CNC unavailable, panel saw available, simple low-volume rectangular work:
+   panel saw plus manual processing in-house
+3. CNC unavailable and the manual gate fails: CNC subcontractor
+4. Sheet laser available: sheet laser in-house
+5. Sheet laser unavailable: sheet laser subcontractor by default
+6. Sheet laser unavailable, explicitly confirmed rough straight cutting only:
+   basic sheet cutting in-house as a rare exception
 
-Only the applicable strategy runs. A project may invoke more than one strategy
-only when different documented parts require different processes. Parameters
-and calibration remain separate between strategies. A shared value such as an
-electricity tariff may be referenced by several strategies, but learned process
-coefficients are never silently shared.
+Only the selected strategy runs. A project may invoke more than one route only
+when different documented part groups require different processes. The four
+CNC and laser calculators remain separate. The two narrow fallback routes use
+ordinary cutting and labor costing rather than pretending that CNC or laser was
+used. Parameters and calibration remain separate between strategies. A shared
+value such as an electricity tariff may be referenced by several strategies,
+but learned process coefficients are never silently shared.
+
+### Deterministic routing gates
+
+The wood manual route requires a panel saw, rectangular parts, single-face
+processing, standard operations, low part count, low hole count, and explicit
+evidence that no freeform contour, internal cutout, pocket, horizontal or end
+drilling, repeated hole pattern, or tight positional relationship exists.
+Missing evidence returns `needs_review`; a failed gate selects the CNC
+subcontractor.
+
+The metal fallback is intentionally much stricter. Without an in-house sheet
+laser, subcontracting is the default even for apparently simple work. Basic
+in-house cutting is allowed only when it is explicitly confirmed for the job,
+all cuts are straight and edge-to-edge, the result may be rough, material and
+thickness are supported, volume is very low, and there are no holes, internal
+features, shaped edges, or precision and repeatability requirements. The
+router does not infer a guillotine from another metal capability because the
+compact Machinery profile does not expose one.
+
+Initial volume limits are versionable routing policy, not manufacturing facts.
+The candidate defaults are at most 6 wood parts and 12 holes, compared with at
+most 2 rough metal parts and 4 straight cuts. These values require later
+calibration and do not affect current Estimation results.
+
+Each routing decision records `manufacturing_route_decision_v1`, the routing
+policy version, reason codes, one costing strategy, and at most one specialized
+calculator identity. Manual fallback routes use the ordinary material and labor
+costing strategy. `not_required` and `needs_review` do not authorize a CNC or
+laser calculator.
+
+## Deterministic calculator contract
+
+The four specialized calculators are pure deterministic functions:
+
+1. `cnc_router_in_house`
+2. `cnc_router_subcontractor`
+3. `sheet_laser_in_house`
+4. `sheet_laser_subcontractor`
+
+The dispatcher accepts the routing decision and refuses inputs for every
+calculator except the one selected by that decision. Current Estimation does
+not call this dispatcher.
+
+Every calculator returns:
+
+- low, typical, and high net cost;
+- one selected cost for estimate reserve level 1 to 5;
+- auditable cost components;
+- subcontractor inclusion and minimum-charge details where applicable;
+- the immutable parameter record identifiers used for the calculation.
+
+Levels 1, 3, and 5 select low, typical, and high respectively. Levels 2 and 4
+select the midpoint of their adjacent scenarios. These are estimate scenarios,
+not statistically validated P10, P50, and P90 claims. A probabilistic label may
+be introduced only after actual-job calibration supports it.
+
+All calculated monetary values use decimal arithmetic and six-decimal storage
+precision. Supplier minimum is applied as `max(provider subtotal, minimum)`
+before delivery and rush charges. Material and cutting are not added when the
+provider base charge explicitly includes them.
+
+## Runtime parameter resolution
+
+The runtime reads only Active records for the selected calculator and country.
+Resolution is deterministic and produces
+`manufacturing_parameter_resolution_v1`.
+
+For every required parameter it applies these rules:
+
+1. calculator, country, parameter key, unit, and currency must agree;
+2. named scope fields may match exactly or use an explicitly unscoped fallback;
+3. a scoped material, machine class, object family, region, or provider model
+   is never selected when that input is unknown;
+4. thickness must fall inside the stored band; the nearest band is never used;
+5. a more specific scope wins over a general fallback;
+6. a narrower containing thickness band wins only after the named scope is
+   equally specific;
+7. source precedence breaks a remaining tie between different source classes;
+8. two equally ranked records remain ambiguous and return `needs_review`;
+9. Candidate, Reviewed, future, expired, unapproved, or source-less records
+   cannot enter a calculation.
+
+Provider models are isolated through qualifiers. Iron Laser and Laser Portal,
+for example, cannot be averaged or silently substituted for one another. A
+complete resolution exposes exact immutable parameter IDs, which the selected
+calculator carries into its result snapshot.
 
 ## CNC estimate level
 
-The CNC row in Machinery owns one estimate level for its currently selected
-route. If CNC is available in-house, the level applies only to the in-house
-strategy. If CNC is not available in-house, the level applies only to the
-subcontractor strategy. Both routes are never active at the same time.
+The CNC row in Machinery owns one estimate level for its configured CNC route.
+If CNC is available in-house, the level applies only to the in-house CNC
+strategy. If CNC is not available in-house, the level applies only when the
+router selects the CNC subcontractor. It does not turn simple panel-saw and
+manual work into subcontracted CNC work, and it is not applied to the manual
+labor fallback. Both CNC strategies are never active at the same time.
 
 `Estimate reserve` selects how much reserve is included in the CNC cost estimate:
 
@@ -157,7 +255,12 @@ not see this page and do not receive direct table access.
 | Existing estimate references an old version | The old record remains immutable and resolvable |
 | Calculator requests an unsupported scope | Return `needs_review`; do not choose the nearest value silently |
 | CNC is available in-house | Show and use only the in-house estimate level |
-| CNC is not available in-house | Show and use only the subcontractor estimate level |
+| CNC is not available in-house | Show the subcontractor estimate level; use it only when the router selects CNC subcontracting |
+| CNC is unavailable; panel saw and all manual gates pass | Select panel saw plus manual processing; do not run the CNC subcontractor calculator |
+| CNC is unavailable; any manual hard gate fails | Select the CNC subcontractor |
+| CNC is unavailable; manual evidence is incomplete | Return `needs_review`; do not guess the manual route |
+| Sheet laser is unavailable | Select the sheet-laser subcontractor by default |
+| Sheet laser is unavailable; rough internal cutting is explicitly confirmed and every strict gate passes | Select basic in-house sheet cutting without running a laser calculator |
 | CNC estimate level remains untouched | Use effective level 3 without recording feedback |
 | Owner explicitly changes the CNC estimate level | Persist the active-route level and append one bounded calibration event |
 | Member opens Machinery | Show the saved active-route level read-only |
@@ -184,8 +287,9 @@ overrides and actual-job calibration belong to the later Estimation block.
    history. Platform Viewer remains read-only.
 4. Reviewed Israeli seed data: official inputs, named provider curves, and
    explicitly low-confidence priors. Conflicting provider models remain separate.
-5. Four deterministic calculators and route fixtures. This begins only after the
-   Admin data and sources are accepted.
+5. Four deterministic calculators and route fixtures. The pure local candidate
+   is implemented; connection to active Admin parameters waits until the Admin
+   data and sources are accepted.
 6. Estimation integration: feature extraction contract, route resolver,
    parameter snapshot, cost range, confidence, and explanation.
 
