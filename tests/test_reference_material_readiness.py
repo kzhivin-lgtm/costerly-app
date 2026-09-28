@@ -207,3 +207,24 @@ def test_camisa_normalization_is_inference_labeled_and_non_activating():
     assert "confidence = least(coalesce(o.confidence, 68), 68)" in sql
     assert "insert into public.market_material_baselines" not in lowered
     assert "status = 'active'" not in lowered
+
+
+def test_ikea_normalization_uses_direct_terms_and_preserves_identity_blocker():
+    sql = (
+        Path(__file__).parents[1]
+        / "db/sql/2026_09_28_israel_reference_ikea_vat_normalization.sql"
+    ).read_text()
+    lowered = sql.lower()
+
+    assert "expected 11 total candidates" in sql
+    assert "pending_count + normalized_count <> 8" in sql
+    assert "excluded_mirror_count <> 3" in sql
+    assert "o.supplier_name = 'IKEA Israel'" in sql
+    assert "not like '%mirror thickness%'" in sql
+    assert "when m.base_unit = 'set' then 1::numeric" in sql
+    assert "when m.base_unit = 'l'" in sql
+    assert "'vat_evidence_type', 'direct_supplier_terms'" in sql
+    assert "'vat_mode_source', 'IKEA Israel website terms'" in sql
+    assert "source_price / 1.18 / normalized_quantity" in sql
+    assert "insert into public.market_material_baselines" not in lowered
+    assert "status = 'active'" not in lowered

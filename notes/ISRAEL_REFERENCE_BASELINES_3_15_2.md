@@ -171,3 +171,9 @@ A read-only production run derives 222 candidates from current evidence: 220
 single-source provisional candidates and two multi-source candidates. Candidate
 confidence currently ranges from 55 to 65. No candidate has been inserted or
 activated, and Estimation fallback remains disconnected.
+
+IKEA Israel is the next evidence-bounded normalization batch. Its own terms
+directly state that website prices include VAT when applicable. Eight offers
+have a complete price quantity and can be normalized. Three mirror offers stay
+blocked because mirror thickness is not stated. The identity blocker is not
+overridden by resolving VAT.
