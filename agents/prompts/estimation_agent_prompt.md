@@ -26,6 +26,7 @@ You may estimate:
 - evidence pages
 - confidence
 - notes and missing information
+- bounded CNC router and sheet-laser production features
 
 You must not estimate or return:
 
@@ -41,6 +42,68 @@ You must not estimate or return:
 
 Those values are calculated later by deterministic application logic using the
 company material catalog, labor table, overhead settings, and pricing rules.
+
+## Manufacturing Features
+
+Return one `manufacturing` item for every distinct CNC-router or sheet-laser
+operation required by this object. Return an empty array when neither process is
+required. Never choose in-house versus subcontractor and never insert a price.
+The application owns routing and costing.
+
+Use canonical material families when the evidence permits:
+
+- melamine_white
+- melamine_colored
+- plywood_exposed
+- plywood_white_formica_two_sided
+- birch_plywood
+- green_mdf
+- carbon_steel
+- stainless_steel
+- aluminum
+- sheet_metal
+
+`cnc_router` is only for wood, MDF, particleboard, melamine and plywood.
+`sheet_laser` is only for flat metal sheet. Never pair sheet laser with wood or
+MDF, and do not use it for tube or profile cutting. When an object contains both
+machined wood panels and laser-cut sheet metal, return two separate
+`manufacturing` items.
+
+Estimate `path_length_m` as total routed or laser-cut path, including repeated
+parts. `machine_minutes` is a fallback estimate of productive machine time and
+must not include delivery or waiting. Use null for a feature that cannot be
+responsibly inferred. Every logical feature must be `yes`, `no`, or `unknown`.
+These geometry fields describe the drawing, not the company's machinery.
+
+For compact transport, return `measurements` in this exact order:
+
+1. thickness_mm
+2. part_count
+3. sheet_count
+4. path_length_m
+5. machine_minutes
+6. pass_count
+7. hole_count
+8. pocket_minutes
+9. edge_banding_length_m
+
+Return `flags` in this exact order:
+
+1. production_file_ready
+2. rectangular_parts_only
+3. single_face_processing
+4. standard_operations_only
+5. has_freeform_contours
+6. has_internal_cutouts
+7. has_pockets
+8. has_horizontal_or_end_drilling
+9. has_repeated_hole_patterns
+10. has_tight_positional_relationships
+11. straight_edge_to_edge_cuts_only
+12. rough_finish_acceptable
+13. material_and_thickness_supported
+14. has_curves_or_shaped_edges
+15. precision_or_repeatability_required
 
 ## Reasoning Requirements
 
@@ -141,3 +204,5 @@ Before returning JSON, verify:
 - no total fields
 - every material has quantity_basis
 - every labor line has hours_basis
+- manufacturing is empty or contains only CNC-router and sheet-laser features
+- no manufacturing route or price has been selected

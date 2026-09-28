@@ -11,6 +11,7 @@ ESTIMATE_LEVEL_MIGRATION = ROOT / "db/sql/2026_09_28_cnc_estimate_levels.sql"
 ISRAEL_SEED = ROOT / "db/sql/2026_09_28_manufacturing_cost_parameters_israel_seed_v1.sql"
 ISRAEL_BENCHMARK = ROOT / "db/sql/2026_09_28_manufacturing_cost_parameters_israel_benchmark_v1.sql"
 ISRAEL_OPERATIONS = ROOT / "db/sql/2026_09_28_manufacturing_cost_parameters_israel_operations_v1.sql"
+RUNTIME_BASELINE = ROOT / "db/sql/2026_09_28_manufacturing_cost_parameters_runtime_v1.sql"
 
 
 def test_cnc_laser_foundation_preserves_compact_machinery_profile():
@@ -109,6 +110,17 @@ def test_israel_operations_adds_loaded_labor_machine_capacity_and_laser_minute_b
     assert "62, 88, 122" in sql
     assert "15, 20, 40" in sql
     assert "Company labor profile overrides" in sql
+
+
+def test_runtime_baseline_activates_curated_rows_with_platform_admin_approval():
+    sql = RUNTIME_BASELINE.read_text()
+    assert "status = 'active'" in sql
+    assert "approved_by = approver" in sql
+    assert "role = 'platform_admin'" in sql
+    assert "31412000-0000-4000-8000-000000000007" in sql
+    assert "31410000-0000-4000-8000-000000000007" in sql
+    assert "status = 'archived'" in sql
+    assert "set material_family = null" in sql
 
 
 def test_saved_plan_rejects_machinery_expansion_and_legacy_weights():

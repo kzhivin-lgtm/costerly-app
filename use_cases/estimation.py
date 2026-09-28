@@ -28,6 +28,9 @@ from state.company_auth import company_auth_enabled
 from state.session import get_company_id
 from models.estimation import ObjectEstimateSeed
 from use_cases.estimation_progress import clear_estimate_progress, set_object_progress
+from use_cases.machinery import build_company_production_context
+from use_cases.manufacturing_estimation import build_manufacturing_cost_lines
+from use_cases.manufacturing_parameters import load_active_manufacturing_parameter_rows
 from use_cases.pricing import price_estimated_object
 from use_cases.retry import read_with_retry
 
@@ -304,6 +307,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                     "hours": item.get("hours"),
                     "rate": item.get("rate"),
                     "cost": item.get("cost"),
+                    "source": item.get("source"),
                 }
             )
         elif item.get("section") == "overhead":
@@ -327,10 +331,23 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
             )
 
     material_total = sum(_number(row.get("cost"), 0) for row in material_rows)
-    labor_base_total = sum(_number(row.get("cost"), 0) for row in labor_rows)
-    labor_hours_total = sum(_number(row.get("hours"), 0) for row in labor_rows)
+    manufacturing_total = sum(
+        _number(row.get("cost"), 0)
+        for row in labor_rows
+        if row.get("source") == "manufacturing_engine"
+    )
+    labor_base_total = sum(
+        _number(row.get("cost"), 0)
+        for row in labor_rows
+        if row.get("source") != "manufacturing_engine"
+    )
+    labor_hours_total = sum(
+        _number(row.get("hours"), 0)
+        for row in labor_rows
+        if row.get("source") != "manufacturing_engine"
+    )
     employer_load = round(labor_base_total * employer_load_percent / 100, 2)
-    labor_total = labor_base_total + employer_load
+    labor_total = labor_base_total + employer_load + manufacturing_total
     overhead_total = sum(_number(row.get("cost"), 0) for row in overhead_rows)
 
     return {
@@ -622,6 +639,7 @@ def _recalculate_object_estimate_totals(
     )
     material_total = 0.0
     labor_base_total = 0.0
+    manufacturing_total = 0.0
     overhead_total = 0.0
     for _, line in lines_df.iterrows():
         row = line.to_dict()
@@ -630,12 +648,18 @@ def _recalculate_object_estimate_totals(
         if section == "material":
             material_total += cost
         elif section == "labor":
-            labor_base_total += cost
+            if row.get("source") == "manufacturing_engine":
+                manufacturing_total += cost
+            else:
+                labor_base_total += cost
         elif section == "overhead":
             overhead_total += cost
 
     employer_load = round(labor_base_total * employer_load_percent / 100, 2)
-    self_cost_ex_vat = round(material_total + labor_base_total + employer_load + overhead_total, 2)
+    self_cost_ex_vat = round(
+        material_total + labor_base_total + employer_load + manufacturing_total + overhead_total,
+        2,
+    )
     vat_amount = round(self_cost_ex_vat * vat_percent / 100, 2)
     update_rfq_object_estimate_totals(
         client,
@@ -818,6 +842,28 @@ def estimate_one_object(
         usage_event = estimation_result.pop("_agent_usage", None)
         validated = validate_estimation_result(estimation_result)
         lines = build_estimate_lines_from_agent_result(validated)
+        production_context = build_company_production_context(company_id, client=client)
+        parameter_rows = []
+        for calculator in (
+            "cnc_router_in_house",
+            "cnc_router_subcontractor",
+            "sheet_laser_in_house",
+            "sheet_laser_subcontractor",
+        ):
+            parameter_rows.extend(
+                load_active_manufacturing_parameter_rows(
+                    client,
+                    calculator=calculator,
+                    country_code="IL",
+                )
+            )
+        lines.extend(
+            build_manufacturing_cost_lines(
+                estimation_result=validated,
+                production_context=production_context,
+                parameter_rows=parameter_rows,
+            )
+        )
         _set_object_estimation_progress(
             client,
             estimate_id=estimate_id,

@@ -16,10 +16,44 @@ REQUIRED_RESULT_FIELDS = {
     "file_evidence_summary",
     "materials",
     "labor",
+    "manufacturing",
     "estimation_notes",
     "missing_information",
     "confidence",
 }
+
+REQUIRED_MANUFACTURING_FIELDS = {
+    "process",
+    "material_family",
+    "measurements",
+    "flags",
+    "evidence_pages",
+    "confidence",
+    "notes",
+}
+
+MANUFACTURING_MEASUREMENT_FIELDS = (
+    "thickness_mm", "part_count", "sheet_count", "path_length_m",
+    "machine_minutes", "pass_count", "hole_count", "pocket_minutes",
+    "edge_banding_length_m",
+)
+MANUFACTURING_FLAG_FIELDS = (
+    "production_file_ready", "rectangular_parts_only", "single_face_processing",
+    "standard_operations_only", "has_freeform_contours", "has_internal_cutouts",
+    "has_pockets", "has_horizontal_or_end_drilling", "has_repeated_hole_patterns",
+    "has_tight_positional_relationships", "straight_edge_to_edge_cuts_only",
+    "rough_finish_acceptable", "material_and_thickness_supported",
+    "has_curves_or_shaped_edges", "precision_or_repeatability_required",
+)
+NORMALIZED_MANUFACTURING_FIELDS = {
+    "process", "material_family", "evidence_pages", "confidence", "notes",
+    *MANUFACTURING_MEASUREMENT_FIELDS, *MANUFACTURING_FLAG_FIELDS,
+}
+WOOD_CNC_MATERIALS = {
+    "melamine_white", "melamine_colored", "plywood_exposed",
+    "plywood_white_formica_two_sided", "birch_plywood", "green_mdf",
+}
+SHEET_LASER_MATERIALS = {"carbon_steel", "stainless_steel", "aluminum", "sheet_metal"}
 
 REQUIRED_MATERIAL_FIELDS = {
     "group_name",
@@ -95,6 +129,33 @@ ESTIMATION_RESULT_JSON_SCHEMA: dict[str, Any] = {
                 },
             },
         },
+        "manufacturing": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": sorted(REQUIRED_MANUFACTURING_FIELDS),
+                "properties": {
+                    "process": {"type": "string", "enum": ["cnc_router", "sheet_laser"]},
+                    "material_family": {"type": "string"},
+                    "measurements": {
+                        "type": "array",
+                        "items": {"type": ["number", "null"]},
+                        "minItems": len(MANUFACTURING_MEASUREMENT_FIELDS),
+                        "maxItems": len(MANUFACTURING_MEASUREMENT_FIELDS),
+                    },
+                    "flags": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["yes", "no", "unknown"]},
+                        "minItems": len(MANUFACTURING_FLAG_FIELDS),
+                        "maxItems": len(MANUFACTURING_FLAG_FIELDS),
+                    },
+                    "evidence_pages": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 100},
+                    "notes": {"type": "string"},
+                },
+            },
+        },
         "estimation_notes": {"type": "array", "items": {"type": "string"}},
         "missing_information": {"type": "array", "items": {"type": "string"}},
         "confidence": {"type": "number", "minimum": 0, "maximum": 100},
@@ -158,6 +219,7 @@ def validate_estimation_result(result: dict[str, Any]) -> dict[str, Any]:
 
     materials = _require_list(result["materials"], "materials")
     labor = _require_list(result["labor"], "labor")
+    manufacturing = _require_list(result["manufacturing"], "manufacturing")
     _require_list(result["estimation_notes"], "estimation_notes")
     _require_list(result["missing_information"], "missing_information")
 
@@ -176,5 +238,48 @@ def validate_estimation_result(result: dict[str, Any]) -> dict[str, Any]:
         _check_no_extra_keys(item, REQUIRED_LABOR_FIELDS, name)
         _check_number_range(item["hours"], f"{name}.hours", 0, 999999)
         _check_number_range(item["confidence"], f"{name}.confidence", 0, 100)
+
+    normalized_manufacturing = []
+    for index, item in enumerate(manufacturing):
+        name = f"manufacturing[{index}]"
+        item = _require_dict(item, name)
+        if set(item) == NORMALIZED_MANUFACTURING_FIELDS:
+            normalized = item
+        else:
+            _check_required_keys(item, REQUIRED_MANUFACTURING_FIELDS, name)
+            _check_no_extra_keys(item, REQUIRED_MANUFACTURING_FIELDS, name)
+            measurements = _require_list(item["measurements"], f"{name}.measurements")
+            flags = _require_list(item["flags"], f"{name}.flags")
+            if len(measurements) != len(MANUFACTURING_MEASUREMENT_FIELDS):
+                raise EstimationSchemaError(f"{name}.measurements has an invalid length")
+            if len(flags) != len(MANUFACTURING_FLAG_FIELDS):
+                raise EstimationSchemaError(f"{name}.flags has an invalid length")
+            normalized = {
+                "process": item["process"],
+                "material_family": None if item["material_family"] == "unknown" else item["material_family"],
+                "evidence_pages": item["evidence_pages"],
+                "confidence": item["confidence"],
+                "notes": item["notes"],
+                **dict(zip(MANUFACTURING_MEASUREMENT_FIELDS, measurements)),
+                **dict(zip(MANUFACTURING_FLAG_FIELDS, flags)),
+            }
+        if normalized["process"] not in {"cnc_router", "sheet_laser"}:
+            raise EstimationSchemaError(f"{name}.process is unsupported")
+        material_family = normalized.get("material_family")
+        if material_family in WOOD_CNC_MATERIALS:
+            normalized["process"] = "cnc_router"
+        elif material_family in SHEET_LASER_MATERIALS:
+            normalized["process"] = "sheet_laser"
+        for field in MANUFACTURING_MEASUREMENT_FIELDS:
+            value = normalized[field]
+            if value is not None:
+                _check_number_range(value, f"{name}.{field}", 0, 999999)
+        for field in MANUFACTURING_FLAG_FIELDS:
+            if normalized[field] not in {"yes", "no", "unknown"}:
+                raise EstimationSchemaError(f"{name}.{field} must be yes, no, or unknown")
+        _check_number_range(normalized["confidence"], f"{name}.confidence", 0, 100)
+        normalized_manufacturing.append(normalized)
+
+    result["manufacturing"] = normalized_manufacturing
 
     return result

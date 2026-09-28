@@ -34,7 +34,7 @@ DEFAULT_CLAUDE_ESTIMATION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
 DETECTION_PROMPT_VERSION = "detection_v3_2_6_2_golden_streaming_telemetry"
 DETECTION_NO_NAMING_PROMPT_VERSION = "detection_v3_2_6_2_golden_streaming_telemetry"
-ESTIMATION_PROMPT_VERSION = "estimation_v1"
+ESTIMATION_PROMPT_VERSION = "estimation_v2_manufacturing_features"
 
 
 def get_secret(name: str, default: str | None = None) -> str | None:
@@ -197,6 +197,8 @@ def strip_schema_for_claude(schema: dict[str, Any]) -> dict[str, Any]:
         "maximum",
         "minLength",
         "maxLength",
+        "minItems",
+        "maxItems",
         "pattern",
         "format",
     }

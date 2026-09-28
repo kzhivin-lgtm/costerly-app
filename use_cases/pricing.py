@@ -41,6 +41,7 @@ def price_estimated_object(
     material_total = 0.0
     labor_base_total = 0.0
     labor_hours_total = 0.0
+    manufacturing_total = 0.0
 
     for _, line in lines_df.iterrows():
         item = line.to_dict()
@@ -48,6 +49,9 @@ def price_estimated_object(
             line_cost = _price_material_line(client, item, company_data["materials"])
             material_total += line_cost
         elif item.get("section") == "labor":
+            if item.get("source") == "manufacturing_engine":
+                manufacturing_total += _number(item.get("cost"), 0)
+                continue
             line_cost = _price_labor_line(client, item, company_data["labor"])
             labor_base_total += line_cost
             labor_hours_total += _number(item.get("hours"), 0)
@@ -60,7 +64,7 @@ def price_estimated_object(
         settings=settings,
         overhead_monthly=_first_row(company_data["overhead_monthly"]),
         labor_hours_total=labor_hours_total,
-        subtotal_before_overhead=material_total + labor_total,
+        subtotal_before_overhead=material_total + labor_total + manufacturing_total,
     )
     replace_rfq_overhead_lines_for_object(
         client,
@@ -70,7 +74,10 @@ def price_estimated_object(
     )
 
     overhead_total = sum(_number(line.get("cost"), 0) for line in overhead_lines)
-    self_cost_ex_vat = round(material_total + labor_total + overhead_total, 2)
+    self_cost_ex_vat = round(
+        material_total + labor_total + manufacturing_total + overhead_total,
+        2,
+    )
     vat_amount = round(self_cost_ex_vat * vat_percent / 100, 2)
     self_cost_total = round(self_cost_ex_vat + vat_amount, 2)
 
@@ -87,6 +94,7 @@ def price_estimated_object(
         "material_total": round(material_total, 2),
         "labor_base_total": round(labor_base_total, 2),
         "labor_total": round(labor_total, 2),
+        "manufacturing_total": round(manufacturing_total, 2),
         "labor_hours_total": round(labor_hours_total, 2),
         "overhead_total": round(overhead_total, 2),
         "self_cost_ex_vat": self_cost_ex_vat,
