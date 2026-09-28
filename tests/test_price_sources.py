@@ -1606,6 +1606,58 @@ def test_script_only_supplier_page_returns_actionable_error(monkeypatch):
         fetch_public_page("https://example.com/prices", client=Client())
 
 
+def test_script_only_wordpress_page_uses_same_host_json_alternate(monkeypatch):
+    class HtmlResponse:
+        status_code = 200
+        headers = {
+            "content-type": "text/html",
+            "link": '<https://example.com/wp-json/wp/v2/pages/269>; rel="alternate"; type="application/json"',
+        }
+        content = b"<html><script>renderPrices()</script></html>"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class JsonResponse:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+        content = b'{"content":{"rendered":"<table><tr><td>MDF 18 mm</td><td>210 ILS</td></tr></table>"}}'
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return {
+                "content": {
+                    "rendered": "<table><tr><td>MDF 18 mm</td><td>210 ILS</td></tr></table>"
+                }
+            }
+
+    class Client:
+        @staticmethod
+        def get(url, *, follow_redirects=False):
+            assert follow_redirects is False
+            return JsonResponse() if "/wp-json/" in url else HtmlResponse()
+
+    monkeypatch.setattr(
+        "use_cases.price_sources._validate_public_url",
+        lambda value: value,
+    )
+
+    resolved_url, source_bytes, text = fetch_public_page(
+        "https://example.com/prices", client=Client()
+    )
+
+    assert resolved_url == "https://example.com/prices"
+    assert source_bytes == JsonResponse.content
+    assert "MDF 18 mm" in text
+
+
 @pytest.mark.parametrize(
     "url",
     [

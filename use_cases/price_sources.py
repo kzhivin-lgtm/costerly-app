@@ -331,6 +331,32 @@ class _VisibleTextParser(HTMLParser):
         return re.sub(r"[ \t]+", " ", "".join(self.parts)).strip()
 
 
+def _visible_text_from_html(value: str) -> str:
+    parser = _VisibleTextParser()
+    parser.feed(value)
+    return parser.text()
+
+
+def _same_host_wordpress_json_alternate(
+    page_url: str,
+    link_header: str,
+) -> str | None:
+    page_host = (urlsplit(page_url).hostname or "").casefold()
+    for part in str(link_header or "").split(","):
+        match = re.match(r'\s*<([^>]+)>\s*;(.*)$', part)
+        if not match:
+            continue
+        attributes = match.group(2).casefold()
+        candidate = urljoin(page_url, match.group(1).strip())
+        if (
+            'rel="alternate"' in attributes
+            and 'type="application/json"' in attributes
+            and (urlsplit(candidate).hostname or "").casefold() == page_host
+        ):
+            return _validate_public_url(candidate)
+    return None
+
+
 def _normalized_name(value: str) -> str:
     return re.sub(r"[^\w]+", " ", value.casefold(), flags=re.UNICODE).strip()
 
@@ -759,9 +785,26 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
             content = response.content
             if len(content) > MAX_SOURCE_BYTES:
                 raise PriceSourceError("The supplier page is too large to process.")
-            parser = _VisibleTextParser()
-            parser.feed(response.text)
-            visible_text = parser.text()
+            visible_text = _visible_text_from_html(response.text)
+            if not visible_text:
+                alternate_url = _same_host_wordpress_json_alternate(
+                    current,
+                    response.headers.get("link", ""),
+                )
+                if alternate_url:
+                    alternate = http.get(alternate_url, follow_redirects=False)
+                    alternate.raise_for_status()
+                    if len(alternate.content) > MAX_SOURCE_BYTES:
+                        raise PriceSourceError("The supplier page is too large to process.")
+                    payload = alternate.json()
+                    rendered = (
+                        (payload.get("content") or {}).get("rendered", "")
+                        if isinstance(payload, dict)
+                        else ""
+                    )
+                    visible_text = _visible_text_from_html(str(rendered or ""))
+                    if visible_text:
+                        return current, alternate.content, visible_text
             if not visible_text:
                 raise PriceSourceError(
                     "This supplier page does not expose readable text. "
