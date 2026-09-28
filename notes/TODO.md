@@ -5,7 +5,9 @@ Current owner-approved execution order:
 1. Finish 3.15.4 Price Source integration with the shared Material Resolution
    Core. Detailed checkpoint: `notes/PRICE_SOURCE_MATERIAL_RESOLUTION_3_15_4.md`.
 2. Run the first representative production Price Source through the resolver
-   and accept exact, shortlist, and unmatched behavior with real evidence.
+   and accept exact, shortlist, and unmatched behavior with real evidence. The
+   second Tsidky run is not accepted: service separation improved, but canonical
+   resolution and the bounded Identity Agent failed their acceptance criteria.
 3. Build the internal material identity review interface as task 3.15.5. Staff
    must be able to inspect the source evidence and bounded shortlist, link an
    existing reference material or create a reviewed new identity, preserve an
@@ -40,6 +42,29 @@ Current owner-approved execution order:
   persistence. The resolver candidate now batches candidate, source-row, and
   audit writes. A 40-row regression test enforces one write per destination
   table. Full suite: 657 passed. Production timing acceptance remains pending.
+
+  P0 production acceptance blocker from the second Tsidky run on 29.09: v5
+  extracted 51 rows, with 37 active prices, five evidence-based unresolved rows,
+  and nine operation-service rows correctly excluded. This fixes the earlier
+  error where four edge-banding application rows became materials. Preserve and
+  regression-test this rule for cutting, drilling, machining, edge-banding
+  application, assembly, installation, and delivery on similar supplier pages.
+  Canonical resolution is not accepted: zero rows linked, 36 returned
+  `no_compatible_identity`, and one returned a shortlist. The resolver currently
+  treats a canonical material's missing stored specification as a conflict with
+  every extracted attribute, so useful candidates disappear before the agent.
+  Change retrieval so only explicit contradictory hard attributes reject a
+  candidate; missing canonical attributes reduce confidence and remain visible
+  to bounded comparison. Add controlled family-to-category retrieval for sheet
+  materials and solid timber without widening automatic-link rules. Correct
+  Israeli timber section notation such as `5/2.5` to an evidence-based 50 x 25
+  mm section instead of `5 x 2.5 mm` or diameter. The bounded Identity Agent
+  produced no recorded decisions in this run; stop swallowing that failure,
+  record its error and timing, call it only for rows with useful bounded
+  candidates, and preserve the 90 confidence plus no-hard-conflict auto-link
+  gate. Reprocess the persisted source rows through the corrected resolver
+  without repeating URL extraction, then accept service exclusion, candidate
+  recall, automatic links, review routes, latency, and immutable audit together.
 
 - 3.15.3 Material Resolution Core: completed, P0. The deterministic candidate
   resolves exact supplier SKU, company alias, market alias, hard attributes,
