@@ -261,18 +261,18 @@ MACHINERY_PRICING_LABELS = {
     "quote_only": "Quote each job",
 }
 CNC_ESTIMATE_LEVEL_LABELS = {
-    1: "1 · Lower edge",
-    2: "2 · Below central",
-    3: "3 · Central estimate",
-    4: "4 · Above central",
-    5: "5 · Upper edge",
+    1: "1 · Minimum reserve",
+    2: "2 · Low reserve",
+    3: "3 · Standard reserve",
+    4: "4 · High reserve",
+    5: "5 · Maximum reserve",
 }
 CNC_ESTIMATE_LEVEL_COMMENTS = {
-    1: "Lower preliminary cost estimate",
-    2: "Below the central estimate",
-    3: "Central preliminary cost estimate",
-    4: "Above the central estimate",
-    5: "Upper preliminary cost estimate",
+    1: "Minimum reserve",
+    2: "Low reserve",
+    3: "Standard reserve",
+    4: "High reserve",
+    5: "Maximum reserve",
 }
 
 
@@ -512,7 +512,7 @@ def _render_cnc_estimate_level(
     if displayed_level not in CNC_ESTIMATE_LEVELS:
         displayed_level = CNC_ESTIMATE_LEVEL_DEFAULT
     slider_label = (
-        "Cost estimate range "
+        "Estimate reserve "
         f":gray[{CNC_ESTIMATE_LEVEL_COMMENTS[int(displayed_level)]}]"
     )
     with column:
@@ -523,10 +523,10 @@ def _render_cnc_estimate_level(
             value=saved_level or CNC_ESTIMATE_LEVEL_DEFAULT,
             step=1,
             help=(
-                "Selects where the CNC cost is taken within the preliminary "
-                "estimate range. Level 1 uses the lower edge, level 3 uses the "
-                "central estimate, and level 5 uses the upper edge. It does not "
-                "change machine speed or technical inputs"
+                "Choose how much reserve to include in the CNC cost estimate. "
+                "Level 1 gives the lowest estimate with the least reserve. "
+                "Level 5 gives the highest estimate with the most reserve. "
+                "Level 3 is the standard setting"
             ),
             key=widget_key,
             on_change=_mark_cnc_estimate_level_explicit,

@@ -1320,7 +1320,7 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     app.run()
     assert "Costing method" not in [field.label for field in app.selectbox]
     assert [field.label for field in app.slider] == [
-        "Cost estimate range :gray[Central preliminary cost estimate]"
+        "Estimate reserve :gray[Standard reserve]"
     ]
     machine_rate = next(
         field for field in app.text_input
@@ -1486,6 +1486,22 @@ def test_slider_keeps_native_geometry_and_help_tooltips_visible():
     assert "filter: hue-rotate" not in profile_css
     assert "--cnc-estimate-progress" not in profile_css
     assert '\n        div[role="tooltip"] {' not in profile_css
+
+
+def test_cnc_estimate_reserve_copy_is_plain_and_directional():
+    source = Path("screens/company_profile.py").read_text()
+
+    assert company_profile.CNC_ESTIMATE_LEVEL_COMMENTS == {
+        1: "Minimum reserve",
+        2: "Low reserve",
+        3: "Standard reserve",
+        4: "High reserve",
+        5: "Maximum reserve",
+    }
+    assert '"Estimate reserve "' in source
+    assert "Level 1 gives the lowest estimate with the least reserve" in source
+    assert "Level 5 gives the highest estimate with the most reserve" in source
+    assert "Level 3 is the standard setting" in source
 
 
 def test_price_review_marks_only_blocking_fields_and_omits_redundant_heading():
@@ -2061,20 +2077,20 @@ def test_machinery_subcontractor_can_be_selected_or_removed(monkeypatch):
     app.run()
     subcontractor_level = next(
         field for field in app.slider
-        if field.label.startswith("Cost estimate range")
+        if field.label.startswith("Estimate reserve")
     )
     assert subcontractor_level.value == 3
     assert subcontractor_level.label == (
-        "Cost estimate range :gray[Central preliminary cost estimate]"
+        "Estimate reserve :gray[Standard reserve]"
     )
     subcontractor_level.set_value(5)
     app.run()
     subcontractor_level = next(
         field for field in app.slider
-        if field.label.startswith("Cost estimate range")
+        if field.label.startswith("Estimate reserve")
     )
     assert subcontractor_level.label == (
-        "Cost estimate range :gray[Upper preliminary cost estimate]"
+        "Estimate reserve :gray[Maximum reserve]"
     )
     supplier_select = next(
         field for field in app.selectbox if field.label == "Regular subcontractor"

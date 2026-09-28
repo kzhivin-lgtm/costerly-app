@@ -77,13 +77,17 @@ route. If CNC is available in-house, the level applies only to the in-house
 strategy. If CNC is not available in-house, the level applies only to the
 subcontractor strategy. Both routes are never active at the same time.
 
-`Cost estimate range` selects a position inside the base CNC cost range:
+`Estimate reserve` selects how much reserve is included in the CNC cost estimate:
 
-1. Lower edge
-2. Below central
-3. Central estimate
-4. Above central
-5. Upper edge
+1. Minimum reserve
+2. Low reserve
+3. Standard reserve
+4. High reserve
+5. Maximum reserve
+
+The help text explains the direction in plain language: level 1 gives the
+lowest estimate with the least reserve, level 5 gives the highest estimate with
+the most reserve, and level 3 is the standard setting.
 
 Level 3 is the effective default. Merely viewing or saving other Machinery data
 does not turn that default into feedback. Only an explicit level change is
@@ -95,6 +99,13 @@ This is behavioral calibration, not verified manufacturing truth. Aggregate
 changes may identify a systematic bias worth reviewing, but they do not
 automatically rewrite platform parameters. A later estimate-specific override
 will remain separate from the Company Profile default.
+
+### Accepted UI checkpoint, 2026-09-28
+
+- Keep Streamlit's native thin slider geometry and native color.
+- Show the current reserve name in muted gray beside `Estimate reserve`.
+- Keep the question-mark help text operational.
+- Do not add screen-specific track, fill, thumb, or mutation-observer styling.
 
 ## Admin information architecture
 
