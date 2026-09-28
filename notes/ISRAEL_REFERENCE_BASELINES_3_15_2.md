@@ -151,3 +151,23 @@ Next, audit the 69 blocked materials by source and furniture impact. Normalize
 Abo Srya only if its VAT basis can be established or explicitly modeled with a
 lower-confidence policy. Then derive non-active low, typical, and high baseline
 candidates for owner review.
+
+## Candidate derivation checkpoint
+
+The deterministic review-only derivation is implemented without writing a
+baseline to production. It groups evidence only when market, material, unit,
+currency, scope, and region match. Duplicate observations from one source are
+collapsed to one source median.
+
+For one source, the observed normalized price is `typical`. The candidate range
+uses the evidence confidence, bounded between plus or minus 15% and 40%, and
+candidate confidence is capped at 55. For multiple sources, `typical` is the
+median of one price per source. The observed range is capped at 40% below and
+60% above `typical`, and confidence increases with independent-source count but
+is capped at 85. These are uncertainty calculations, not a user setting. The
+CNC and Sheet Laser reserve slider remains unrelated to material prices.
+
+A read-only production run derives 222 candidates from current evidence: 220
+single-source provisional candidates and two multi-source candidates. Candidate
+confidence currently ranges from 55 to 65. No candidate has been inserted or
+activated, and Estimation fallback remains disconnected.

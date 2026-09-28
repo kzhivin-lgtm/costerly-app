@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Iterable, Mapping
 
 
@@ -23,6 +23,7 @@ class ReferenceOffer:
     normalized_unit: str | None
     status: str
     region: str | None = None
+    confidence: Decimal | None = None
 
 
 @dataclass(frozen=True, order=True)
@@ -42,6 +43,18 @@ class BaselineCandidateReadiness:
     price_low_observed: Decimal
     price_high_observed: Decimal
     readiness: str
+
+
+@dataclass(frozen=True)
+class DerivedBaselineCandidate:
+    key: BaselineGroupKey
+    price_low: Decimal
+    price_typical: Decimal
+    price_high: Decimal
+    confidence: Decimal
+    methodology: str
+    offer_ids: tuple[str, ...]
+    distinct_source_count: int
 
 
 @dataclass(frozen=True)
@@ -183,3 +196,122 @@ def build_reference_readiness_report(
         },
         groups=tuple(group_rows),
     )
+
+
+def _median(values: Iterable[Decimal]) -> Decimal:
+    ordered = sorted(values)
+    if not ordered:
+        raise ValueError("Median requires at least one value")
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / Decimal("2")
+
+
+def _round_price(value: Decimal) -> Decimal:
+    return value.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+
+
+def derive_baseline_candidates(
+    offers: Iterable[ReferenceOffer],
+    *,
+    market_code: str = "IL",
+    currency: str = "ILS",
+) -> tuple[DerivedBaselineCandidate, ...]:
+    """Derive review-only price candidates from eligible normalized evidence.
+
+    Duplicate observations from one source are collapsed to one source median.
+    A single source receives a confidence-driven provisional range. Multiple
+    sources use the median source price and a dispersion range capped at 40%
+    below and 60% above the median so one extreme source cannot define the
+    entire market interval.
+    """
+
+    eligible_by_group: dict[BaselineGroupKey, list[ReferenceOffer]] = defaultdict(list)
+    for offer in offers:
+        if offer_blocking_reasons(
+            offer,
+            market_code=market_code,
+            currency=currency,
+        ):
+            continue
+        key = BaselineGroupKey(
+            material_id=offer.material_id,
+            unit=offer.normalized_unit.strip(),
+            currency=offer.currency,
+            price_scope=offer.price_scope,
+            region=offer.region,
+        )
+        eligible_by_group[key].append(offer)
+
+    candidates = []
+    for key, group_offers in eligible_by_group.items():
+        offers_by_source: dict[str, list[ReferenceOffer]] = defaultdict(list)
+        for offer in group_offers:
+            offers_by_source[offer.source_id].append(offer)
+
+        source_prices = {
+            source_id: _median(
+                offer.normalized_price_ex_vat for offer in source_offers
+            )
+            for source_id, source_offers in offers_by_source.items()
+        }
+        source_confidences = {
+            source_id: _median(
+                offer.confidence if offer.confidence is not None else Decimal("50")
+                for offer in source_offers
+            )
+            for source_id, source_offers in offers_by_source.items()
+        }
+        typical = _median(source_prices.values())
+        source_count = len(source_prices)
+
+        if source_count == 1:
+            source_confidence = next(iter(source_confidences.values()))
+            uncertainty = min(
+                Decimal("0.40"),
+                max(Decimal("0.15"), (Decimal("100") - source_confidence) / 100),
+            )
+            low = typical * (Decimal("1") - uncertainty)
+            high = typical * (Decimal("1") + uncertainty)
+            confidence = min(source_confidence, Decimal("55"))
+            methodology = (
+                "single_source_provisional: source-median typical; symmetric "
+                f"confidence-derived range +/-{_round_price(uncertainty * 100)}%"
+            )
+        else:
+            low = max(min(source_prices.values()), typical * Decimal("0.60"))
+            high = min(max(source_prices.values()), typical * Decimal("1.60"))
+            confidence = min(
+                _median(source_confidences.values()),
+                Decimal("55") + Decimal("10") * (source_count - 1),
+                Decimal("85"),
+            )
+            methodology = (
+                "multi_source_robust: one median per source; median typical; "
+                "observed dispersion capped to -40%/+60% of typical"
+            )
+
+        candidates.append(
+            DerivedBaselineCandidate(
+                key=key,
+                price_low=_round_price(low),
+                price_typical=_round_price(typical),
+                price_high=_round_price(high),
+                confidence=_round_price(confidence),
+                methodology=methodology,
+                offer_ids=tuple(sorted(offer.offer_id for offer in group_offers)),
+                distinct_source_count=source_count,
+            )
+        )
+
+    candidates.sort(
+        key=lambda row: (
+            row.key.material_id,
+            row.key.unit,
+            row.key.currency,
+            row.key.price_scope,
+            row.key.region or "",
+        )
+    )
+    return tuple(candidates)

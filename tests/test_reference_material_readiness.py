@@ -5,6 +5,7 @@ from tools.israel_reference_readiness import load_seed_report
 from use_cases.reference_material_readiness import (
     ReferenceOffer,
     build_reference_readiness_report,
+    derive_baseline_candidates,
     offer_blocking_reasons,
 )
 
@@ -21,6 +22,7 @@ def _offer(**overrides):
         "normalized_price_ex_vat": Decimal("100"),
         "normalized_unit": "sqm",
         "status": "candidate",
+        "confidence": Decimal("80"),
     }
     values.update(overrides)
     return ReferenceOffer(**values)
@@ -85,6 +87,66 @@ def test_duplicate_offers_from_one_source_do_not_become_multi_source():
     assert report.groups[0].offer_count == 2
     assert report.groups[0].distinct_source_count == 1
     assert report.groups[0].readiness == "single_source_provisional"
+
+
+def test_single_source_candidate_uses_confidence_driven_provisional_range():
+    candidate = derive_baseline_candidates((_offer(),))[0]
+
+    assert candidate.price_low == Decimal("80.000000")
+    assert candidate.price_typical == Decimal("100.000000")
+    assert candidate.price_high == Decimal("120.000000")
+    assert candidate.confidence == Decimal("55.000000")
+    assert candidate.distinct_source_count == 1
+    assert candidate.methodology.startswith("single_source_provisional")
+
+
+def test_single_source_candidate_uncertainty_is_bounded():
+    high_confidence = derive_baseline_candidates(
+        (_offer(confidence=Decimal("99")),)
+    )[0]
+    low_confidence = derive_baseline_candidates(
+        (_offer(confidence=Decimal("10")),)
+    )[0]
+
+    assert (high_confidence.price_low, high_confidence.price_high) == (
+        Decimal("85.000000"),
+        Decimal("115.000000"),
+    )
+    assert (low_confidence.price_low, low_confidence.price_high) == (
+        Decimal("60.000000"),
+        Decimal("140.000000"),
+    )
+
+
+def test_multi_source_candidate_deduplicates_sources_and_caps_outlier():
+    candidates = derive_baseline_candidates(
+        (
+            _offer(normalized_price_ex_vat=Decimal("90")),
+            _offer(offer_id="offer-2", normalized_price_ex_vat=Decimal("110")),
+            _offer(
+                offer_id="offer-3",
+                source_id="source-2",
+                normalized_price_ex_vat=Decimal("1000"),
+                confidence=Decimal("70"),
+            ),
+        )
+    )
+
+    candidate = candidates[0]
+    assert candidate.price_typical == Decimal("550.000000")
+    assert candidate.price_low == Decimal("330.000000")
+    assert candidate.price_high == Decimal("880.000000")
+    assert candidate.confidence == Decimal("65.000000")
+    assert candidate.distinct_source_count == 2
+    assert candidate.methodology.startswith("multi_source_robust")
+
+
+def test_candidate_derivation_rejects_blocked_offer():
+    candidates = derive_baseline_candidates(
+        (_offer(vat_mode="unknown", normalized_price_ex_vat=None),)
+    )
+
+    assert candidates == ()
 
 
 def test_current_israel_seed_readiness_counts_are_reproducible():

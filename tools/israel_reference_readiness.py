@@ -135,6 +135,7 @@ def load_seed_report():
             normalized_unit=row["normalized_unit"],
             status=row["status"],
             region=row.get("region"),
+            confidence=Decimal(row["confidence"]),
         )
         for row in offer_rows.values()
     ]
