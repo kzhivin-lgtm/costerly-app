@@ -136,6 +136,14 @@ def load_seed_report():
             status=row["status"],
             region=row.get("region"),
             confidence=Decimal(row["confidence"]),
+            source_price=Decimal(row["source_price"]),
+            source_unit=row["source_unit"],
+            package_quantity=(
+                Decimal(row["package_quantity"])
+                if row["package_quantity"] is not None
+                else None
+            ),
+            conversion_basis={},
         )
         for row in offer_rows.values()
     ]

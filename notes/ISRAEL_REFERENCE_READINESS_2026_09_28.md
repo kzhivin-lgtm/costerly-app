@@ -193,6 +193,29 @@ Post-application production verification:
 The A.R. Sharpening batch changed candidate evidence only. It did not approve
 an offer, create a baseline, or connect Estimation fallback.
 
+## Complete calculable catalog checkpoint
+
+A read-only production-backed resolver run now produces 280 candidates for 280
+reference materials:
+
+- 244 exact candidates from eligible normalized evidence, including two with
+  more than one independent source;
+- 30 low-confidence candidates modeled from the material's own observed offer;
+- 3 low-confidence green-MDF candidates modeled from observed per-sheet prices
+  and an explicit standard-sheet area assumption;
+- 1 low-confidence configurable veneer range divided by its documented maximum
+  panel area;
+- 2 low-confidence department medians for configurable hardboard products.
+
+The fallback hierarchy preserves observed price, package, VAT, unit, and
+provenance. Unknown VAT remains represented as a wider range. Configurable
+minimums are not treated as exact unit prices. The weakest remaining candidates
+have confidence 10, and the complete-catalog median confidence is 55.
+
+This establishes calculability, not activation or market-price verification.
+There are still zero rows in `market_material_baselines`, every source offer
+remains `candidate`, and Estimation is not connected.
+
 ## Reproduction
 
 ```bash

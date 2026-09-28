@@ -4,7 +4,9 @@ from pathlib import Path
 from tools.israel_reference_readiness import load_seed_report
 from use_cases.reference_material_readiness import (
     ReferenceOffer,
+    ReferenceMaterial,
     build_reference_readiness_report,
+    derive_complete_catalog_candidates,
     derive_baseline_candidates,
     offer_blocking_reasons,
 )
@@ -147,6 +149,218 @@ def test_candidate_derivation_rejects_blocked_offer():
     )
 
     assert candidates == ()
+
+
+def test_complete_catalog_uses_vat_ambiguous_offer_without_mutating_evidence():
+    material = ReferenceMaterial("material-1", "hardware", "screw", "ea")
+    offer = _offer(
+        vat_mode="unknown",
+        normalized_price_ex_vat=None,
+        normalized_unit="ea",
+        source_price=Decimal("118"),
+        source_unit="pack_100",
+        package_quantity=Decimal("100"),
+        conversion_basis={"normalization_blocked_by": "VAT status not stated"},
+    )
+
+    candidate = derive_complete_catalog_candidates(
+        materials=(material,),
+        offers=(offer,),
+    )[0]
+
+    assert candidate.tier == "modeled_offer"
+    assert candidate.unit == "ea"
+    assert candidate.price_typical == Decimal("1.090000")
+    assert candidate.price_low == Decimal("0.872000")
+    assert candidate.price_high == Decimal("1.308000")
+    assert candidate.confidence == Decimal("35.000000")
+    assert offer.vat_mode == "unknown"
+
+
+def test_complete_catalog_skips_configurable_minimum_and_uses_category_peer():
+    materials = (
+        ReferenceMaterial("known", "wood", "mdf", "sqm"),
+        ReferenceMaterial("missing", "wood", "mdf", "sqm"),
+    )
+    offers = (
+        _offer(
+            material_id="known",
+            normalized_price_ex_vat=Decimal("50"),
+            normalized_unit="sqm",
+        ),
+        _offer(
+            offer_id="offer-2",
+            material_id="missing",
+            vat_mode="unknown",
+            normalized_price_ex_vat=None,
+            normalized_unit="sqm",
+            source_price=Decimal("10"),
+            source_unit="configurable_minimum",
+            package_quantity=Decimal("1"),
+            conversion_basis={"price_is_configurable_minimum": True},
+        ),
+    )
+
+    candidates = {
+        candidate.material_id: candidate
+        for candidate in derive_complete_catalog_candidates(
+            materials=materials,
+            offers=offers,
+        )
+    }
+
+    assert candidates["missing"].tier == "modeled_category"
+    assert candidates["missing"].price_typical == Decimal("50.000000")
+    assert candidates["missing"].confidence == Decimal("20.000000")
+
+
+def test_complete_catalog_uses_package_quantity_for_liquid_container():
+    material = ReferenceMaterial("material-1", "consumable", "glue", "l")
+    offer = _offer(
+        vat_mode="unknown",
+        normalized_price_ex_vat=None,
+        normalized_unit=None,
+        source_price=Decimal("118"),
+        source_unit="container_2l",
+        package_quantity=Decimal("2"),
+        conversion_basis={"normalization_blocked_by": "VAT status not stated"},
+    )
+
+    candidate = derive_complete_catalog_candidates(
+        materials=(material,),
+        offers=(offer,),
+    )[0]
+
+    assert candidate.tier == "modeled_offer"
+    assert candidate.price_typical == Decimal("54.500000")
+    assert candidate.unit == "l"
+
+
+def test_complete_catalog_keeps_starting_price_as_low_confidence_lower_bound():
+    material = ReferenceMaterial("material-1", "hardware", "screw", "ea")
+    offer = _offer(
+        vat_mode="unknown",
+        normalized_price_ex_vat=None,
+        normalized_unit="ea",
+        source_price=Decimal("86"),
+        source_unit="pack_1000",
+        package_quantity=Decimal("1000"),
+        confidence=Decimal("86"),
+        conversion_basis={
+            "price_is_starting_from": True,
+            "gross_price_per_piece_ils": 0.086,
+        },
+    )
+
+    candidate = derive_complete_catalog_candidates(
+        materials=(material,),
+        offers=(offer,),
+    )[0]
+
+    assert candidate.tier == "modeled_offer"
+    assert candidate.price_low == Decimal("0.072881")
+    assert candidate.price_typical == Decimal("0.099301")
+    assert candidate.price_high == Decimal("0.198602")
+    assert candidate.confidence == Decimal("20.000000")
+    assert "starting-price uplift" in candidate.methodology
+
+
+def test_complete_catalog_falls_back_by_department_then_unit():
+    materials = (
+        ReferenceMaterial("hardware-known", "hardware", "hinge", "ea"),
+        ReferenceMaterial("hardware-missing", "hardware", "handle", "ea"),
+        ReferenceMaterial("packaging-missing", "packaging", "strap", "ea"),
+    )
+    offers = (
+        _offer(
+            material_id="hardware-known",
+            normalized_price_ex_vat=Decimal("10"),
+            normalized_unit="ea",
+        ),
+    )
+
+    candidates = {
+        candidate.material_id: candidate
+        for candidate in derive_complete_catalog_candidates(
+            materials=materials,
+            offers=offers,
+        )
+    }
+
+    assert candidates["hardware-missing"].tier == "modeled_department"
+    assert candidates["hardware-missing"].confidence == Decimal("10.000000")
+    assert candidates["packaging-missing"].tier == "modeled_global_unit"
+    assert candidates["packaging-missing"].confidence == Decimal("5.000000")
+
+
+def test_complete_catalog_uses_configurable_range_before_department_median():
+    materials = (
+        ReferenceMaterial("known", "wood", "mdf", "sqm"),
+        ReferenceMaterial(
+            "veneer",
+            "wood",
+            "veneer_faced_panel",
+            "sqm",
+            specifications={"max_dimensions_mm": [2000, 1000]},
+        ),
+    )
+    offers = (
+        _offer(material_id="known", normalized_price_ex_vat=Decimal("50")),
+        _offer(
+            offer_id="offer-2",
+            material_id="veneer",
+            vat_mode="unknown",
+            normalized_price_ex_vat=None,
+            normalized_unit="sqm",
+            source_price=Decimal("400"),
+            source_unit="configurable_minimum",
+            package_quantity=Decimal("1"),
+            conversion_basis={
+                "price_is_configurable_minimum": True,
+                "displayed_price_range_ils": [400, 800],
+            },
+        ),
+    )
+
+    candidates = {
+        candidate.material_id: candidate
+        for candidate in derive_complete_catalog_candidates(
+            materials=materials,
+            offers=offers,
+        )
+    }
+
+    assert candidates["veneer"].tier == "modeled_configurable_range"
+    assert candidates["veneer"].price_low == Decimal("169.491525")
+    assert candidates["veneer"].price_typical == Decimal("284.745763")
+    assert candidates["veneer"].price_high == Decimal("400.000000")
+    assert candidates["veneer"].confidence == Decimal("15.000000")
+
+
+def test_complete_catalog_models_sheet_price_with_explicit_area_assumption():
+    material = ReferenceMaterial("green-mdf", "wood", "mdf", "sqm")
+    offer = _offer(
+        material_id="green-mdf",
+        vat_mode="excluded",
+        normalized_price_ex_vat=None,
+        normalized_unit=None,
+        source_price=Decimal("210"),
+        source_unit="sheet_dimensions_unstated",
+        package_quantity=Decimal("1"),
+        conversion_basis={"normalization_blocked_by": "sheet dimensions not stated"},
+    )
+
+    candidate = derive_complete_catalog_candidates(
+        materials=(material,),
+        offers=(offer,),
+    )[0]
+
+    assert candidate.tier == "modeled_sheet_area_assumption"
+    assert candidate.price_low == Decimal("36.231884")
+    assert candidate.price_typical == Decimal("70.545552")
+    assert candidate.price_high == Decimal("88.181940")
+    assert candidate.confidence == Decimal("15.000000")
+    assert "source dimensions remain unknown" in candidate.methodology
 
 
 def test_current_israel_seed_readiness_counts_are_reproducible():

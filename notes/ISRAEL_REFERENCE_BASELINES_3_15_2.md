@@ -211,3 +211,31 @@ legal-inference provenance and confidence capped at 60. Production now has 259
 eligible offers covering 244 of 280 materials, 36 materials remain blocked,
 and 256 review-only baseline candidates can be derived. All 320 offers remain
 candidates and the baseline table remains empty.
+
+## Complete-catalog candidate checkpoint
+
+The review-only resolver now returns one calculable candidate for all 280
+reference materials without changing the underlying evidence or writing to the
+baseline table. The production-backed distribution is:
+
+- 242 exact single-source candidates;
+- 2 exact multi-source candidates;
+- 30 candidates modeled from their own observed offer;
+- 3 candidates modeled from a per-sheet offer with an explicit sheet-area
+  assumption;
+- 1 configurable-range candidate;
+- 2 department-median candidates.
+
+The three green moisture-resistant MDF candidates retain Algolan's observed
+VAT-exclusive per-sheet prices. Algolan's own page states that pricing is by
+sheet, cutting is included, and VAT is excluded, but does not state sheet
+dimensions. Their square-metre candidates therefore use an explicit 2440 x
+1220 mm typical-sheet assumption, preserve a wider 2800 x 2070 mm alternative
+in the low bound, and carry confidence 15 rather than pretending that the
+dimensions were observed.
+
+Complete-catalog confidence ranges from 10 to 65, with a median of 55. The 36
+modeled candidates are deliberately distinguishable from the 244 candidates
+backed by normalized evidence. No baseline row has been inserted or activated,
+and Estimation remains disconnected. Owner review is the next gate before any
+production baseline write.
