@@ -184,3 +184,10 @@ offers remain blocked as designed. Production now has 233 eligible offers
 covering 219 of 280 materials, 61 materials remain blocked, and 230 review-only
 baseline candidates can be derived. All 320 offers remain candidates and the
 baseline table remains empty.
+
+The next blocker audit found a normalization defect in 12 Algolan offers. Their
+canonical unit is `sheet`, source unit is a single sheet, and VAT is already
+excluded. Unknown sheet dimensions prevent conversion to square metres, but do
+not prevent preserving an observed price per sheet. A bounded migration is
+prepared to normalize only to `sheet`, with the area-conversion limitation kept
+in provenance.

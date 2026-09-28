@@ -228,3 +228,24 @@ def test_ikea_normalization_uses_direct_terms_and_preserves_identity_blocker():
     assert "source_price / 1.18 / normalized_quantity" in sql
     assert "insert into public.market_material_baselines" not in lowered
     assert "status = 'active'" not in lowered
+
+
+def test_algolan_normalization_preserves_price_per_sheet_without_area_guess():
+    sql = (
+        Path(__file__).parents[1]
+        / "db/sql/2026_09_28_israel_reference_algolan_sheet_normalization.sql"
+    ).read_text()
+    lowered = sql.lower()
+
+    assert "expected 12 sheet candidates" in sql
+    assert "pending_count + normalized_count <> 12" in sql
+    assert "o.supplier_name = 'Algolan'" in sql
+    assert "m.base_unit = 'sheet'" in sql
+    assert "o.vat_mode = 'excluded'" in sql
+    assert "o.package_quantity = 1" in sql
+    assert "normalized_price_ex_vat = o.source_price" in sql
+    assert "normalized_unit = 'sheet'" in sql
+    assert "sheet_dimensions_required_for_area_conversion" in sql
+    assert "normalized_unit = 'sqm'" not in sql
+    assert "insert into public.market_material_baselines" not in lowered
+    assert "status = 'active'" not in lowered
