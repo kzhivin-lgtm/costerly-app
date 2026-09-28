@@ -270,6 +270,15 @@ def test_admin_exposes_a_separate_read_only_cnc_laser_library():
     assert "CNC / Laser parameters are temporarily unavailable" in screen_source
     assert "Show archived" not in screen_source
     assert "Previous versions" in screen_source
+    assert 'st.subheader("CNC / Laser")' not in screen_source
+    assert "Four independent cost models" not in screen_source
+    for title in (
+        "CNC Router In-house",
+        "CNC Router Contractor",
+        "Sheet Laser In-house",
+        "Sheet Laser Contractor",
+    ):
+        assert title in screen_source
 
 
 def test_manufacturing_parameter_table_preserves_scope_evidence_and_escapes_content():

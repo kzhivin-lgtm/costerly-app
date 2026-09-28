@@ -28,26 +28,22 @@ LOGGER = logging.getLogger(__name__)
 ADMIN_VIEWS = {"companies", "cnc_laser"}
 MANUFACTURING_SECTIONS = (
     (
-        "CNC Router",
-        "In-house",
+        "CNC Router In-house",
         "cnc_router_in_house",
         "Internal machining time and cost from routing, drilling, setup, machine capacity and attendance",
     ),
     (
-        "CNC Router",
-        "Subcontractor",
+        "CNC Router Contractor",
         "cnc_router_subcontractor",
         "Supplier charges, included work, minimum order, delivery and rush conditions",
     ),
     (
-        "Sheet Laser",
-        "In-house",
+        "Sheet Laser In-house",
         "sheet_laser_in_house",
         "Internal cutting time and cost from speed, piercing, gas, energy, setup and attendance",
     ),
     (
-        "Sheet Laser",
-        "Subcontractor",
+        "Sheet Laser Contractor",
         "sheet_laser_subcontractor",
         "Named provider model, setup, cutting basis, included material, minimum order and delivery",
     ),
@@ -284,8 +280,6 @@ def _parameter_rows_for_route(
 
 
 def _render_manufacturing_library(client, access, platform_access: PlatformAccess) -> None:
-    st.subheader("CNC / Laser")
-    st.caption("Four independent cost models. Missing values remain visible and are never guessed")
     try:
         rows = load_manufacturing_parameter_library(
             client,
@@ -298,11 +292,11 @@ def _render_manufacturing_library(client, access, platform_access: PlatformAcces
         return
     by_calculator: dict[str, list[dict[str, Any]]] = {
         calculator: []
-        for _process, _route, calculator, _description in MANUFACTURING_SECTIONS
+        for _title, calculator, _description in MANUFACTURING_SECTIONS
     }
     archived_by_calculator: dict[str, list[dict[str, Any]]] = {
         calculator: []
-        for _process, _route, calculator, _description in MANUFACTURING_SECTIONS
+        for _title, calculator, _description in MANUFACTURING_SECTIONS
     }
     for row in rows:
         calculator = str(row.get("calculator") or "")
@@ -313,12 +307,8 @@ def _render_manufacturing_library(client, access, platform_access: PlatformAcces
                 else by_calculator
             )
             target[calculator].append(row)
-    current_process = ""
-    for process, route, calculator, description in MANUFACTURING_SECTIONS:
-        if process != current_process:
-            st.markdown(f'<h2 class="platform-admin-process-title">{escape(process)}</h2>', unsafe_allow_html=True)
-            current_process = process
-        st.markdown(f'<h3 class="platform-admin-route-title">{escape(route)}</h3>', unsafe_allow_html=True)
+    for title, calculator, description in MANUFACTURING_SECTIONS:
+        st.markdown(f'<h2 class="platform-admin-process-title">{escape(title)}</h2>', unsafe_allow_html=True)
         st.markdown(
             f'<p class="platform-admin-route-description">{escape(description)}</p>',
             unsafe_allow_html=True,
