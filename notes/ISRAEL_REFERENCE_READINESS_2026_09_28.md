@@ -135,6 +135,35 @@ Post-application production verification:
 The IKEA batch changed candidate evidence only. It did not approve an offer,
 create a baseline, or connect Estimation fallback.
 
+## Algolan sheet-unit normalization checkpoint
+
+The Algolan sheet-unit batch was applied and verified in production on
+2026-09-28 from commit `a777b77`. Twelve offers had known VAT-exclusive prices,
+one-sheet package quantities, and canonical unit `sheet`. Missing sheet
+dimensions blocked square-metre conversion but did not justify blocking the
+direct observed price per sheet. The limitation remains in provenance.
+
+Post-application production verification:
+
+- Materials: 280
+- Candidate offers: 320
+- Offer statuses: 320 candidate, 0 reviewed, 0 active, 0 archived
+- Eligible normalized offers: 245
+- Materials with an eligible price: 230
+- Materials blocked: 50
+- Comparable baseline groups: 242
+- Single-source provisional groups: 240
+- Multi-source candidate groups: 2
+- Offers missing normalized price: 75
+- Offers with unknown VAT: 71
+- Offers missing normalized unit: 16
+- Active or candidate market baselines: 0
+- Algolan sheet offers normalized: 12
+
+The Algolan batch changed candidate evidence only. It did not infer a price per
+square metre, approve an offer, create a baseline, or connect Estimation
+fallback.
+
 ## Reproduction
 
 ```bash

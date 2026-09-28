@@ -191,3 +191,10 @@ excluded. Unknown sheet dimensions prevent conversion to square metres, but do
 not prevent preserving an observed price per sheet. A bounded migration is
 prepared to normalize only to `sheet`, with the area-conversion limitation kept
 in provenance.
+
+The Algolan batch was applied and verified in production on 2026-09-28 from
+commit `a777b77`. All 12 observed sheet prices are now normalized to the
+canonical `sheet` unit. Production now has 245 eligible offers covering 230 of
+280 materials, 50 materials remain blocked, and 242 review-only baseline
+candidates can be derived. All 320 offers remain candidates and the baseline
+table remains empty.
