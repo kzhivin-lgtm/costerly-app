@@ -131,3 +131,11 @@ Eligible materials increased from 103 to 190, while blocked materials decreased
 from 177 to 90. All 320 offers remain candidates and the baseline table remains
 empty. Continue with Camisa and Abo Srya VAT and unit evidence, then derive
 non-active candidates under the approved calculable-catalog policy.
+
+Camisa is the next isolated normalization batch. Its consumer terms make online
+sales subject to Israel's Consumer Protection Law and explicitly prohibit
+wholesale sales. The statutory total-price rule requires consumer-facing prices
+to include VAT. Because Camisa does not repeat that VAT statement on its product
+pages, this is recorded as a legal inference with capped confidence, not as
+direct supplier evidence. The prepared migration normalizes 21 sheet offers to
+VAT-exclusive ILS per square metre and does not activate any fallback.

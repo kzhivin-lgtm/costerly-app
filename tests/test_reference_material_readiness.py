@@ -123,3 +123,25 @@ def test_home_center_normalization_is_evidence_bounded_and_non_activating():
     assert "when m.base_unit = 'kg'" in sql
     assert "insert into public.market_material_baselines" not in lowered
     assert "status = 'active'" not in lowered
+
+
+def test_camisa_normalization_is_inference_labeled_and_non_activating():
+    sql = (
+        Path(__file__).parents[1]
+        / "db/sql/2026_09_28_israel_reference_camisa_vat_normalization.sql"
+    ).read_text()
+    lowered = sql.lower()
+
+    assert "expected 21 total candidates" in sql
+    assert "pending_count + normalized_count <> 21" in sql
+    assert "o.supplier_name = 'Camisa'" in sql
+    assert "s.source_url like 'https://www.camisa.co.il/%'" in sql
+    assert "o.market_code = 'IL'" in sql
+    assert "o.status = 'candidate'" in sql
+    assert "o.vat_mode = 'unknown'" in sql
+    assert "'vat_evidence_type', 'legal_inference'" in sql
+    assert "source_price / 1.18 / sheet_area_sqm" in sql
+    assert "m.base_unit = 'sqm'" in sql
+    assert "confidence = least(coalesce(o.confidence, 68), 68)" in sql
+    assert "insert into public.market_material_baselines" not in lowered
+    assert "status = 'active'" not in lowered
