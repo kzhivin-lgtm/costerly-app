@@ -807,6 +807,7 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
             if len(content) > MAX_SOURCE_BYTES:
                 raise PriceSourceError("The supplier page is too large to process.")
             visible_text = _visible_text_from_html(response.text)
+            wordpress_diagnostic = "not_attempted"
             if not visible_text:
                 alternate_url = _same_host_wordpress_slug_endpoint(current)
                 if not alternate_url:
@@ -815,22 +816,31 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
                         response.headers.get("link", ""),
                     )
                 if alternate_url:
-                    alternate = http.get(alternate_url, follow_redirects=False)
-                    alternate.raise_for_status()
-                    if len(alternate.content) > MAX_SOURCE_BYTES:
-                        raise PriceSourceError("The supplier page is too large to process.")
                     try:
-                        payload = alternate.json()
-                    except (AttributeError, ValueError):
-                        payload = None
-                    rendered = _wordpress_rendered_html(payload)
-                    visible_text = _visible_text_from_html(str(rendered or ""))
-                    if visible_text:
-                        return current, alternate.content, visible_text
+                        alternate = http.get(alternate_url, follow_redirects=False)
+                        alternate.raise_for_status()
+                        if len(alternate.content) > MAX_SOURCE_BYTES:
+                            raise PriceSourceError("The supplier page is too large to process.")
+                        try:
+                            payload = alternate.json()
+                        except (AttributeError, ValueError):
+                            payload = None
+                        rendered = _wordpress_rendered_html(payload)
+                        visible_text = _visible_text_from_html(str(rendered or ""))
+                        wordpress_diagnostic = (
+                            f"status_{alternate.status_code}_bytes_{len(alternate.content)}_"
+                            f"text_{len(visible_text)}"
+                        )
+                        if visible_text:
+                            return current, alternate.content, visible_text
+                    except httpx.HTTPError as exc:
+                        status_code = getattr(getattr(exc, "response", None), "status_code", "network")
+                        wordpress_diagnostic = f"error_{status_code}"
             if not visible_text:
                 raise PriceSourceError(
                     "This supplier page does not expose readable text. "
-                    "Upload its PDF, screenshot, or photo instead."
+                    "Upload its PDF, screenshot, or photo instead. "
+                    f"[url-fetch-v4 html_bytes={len(content)} wordpress={wordpress_diagnostic}]"
                 )
             return current, content, visible_text
         raise PriceSourceError("The supplier page redirected too many times.")
