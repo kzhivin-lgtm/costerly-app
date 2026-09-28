@@ -137,9 +137,13 @@ screen.
   system theme until a complete dark theme is designed.
 - Reuse shared input, button, spacing, focus, and error tokens before adding
   screen-specific CSS.
-- Every checked checkbox uses the shared interaction blue. The rule is global,
-  including Auth, Terms, Company Profile and Machinery; red is reserved for an
-  actual validation error or explicit negative status.
+- Every checked checkbox and active slider uses the shared interaction blue
+  `#4F8FCB`. Red is reserved for an actual validation error or explicit negative
+  status. This is a global native-control contract owned by `styles/base.py`,
+  including Auth, Terms, Company Profile and Machinery. Do not repair Streamlit's
+  default red with screen-specific CSS. The base contract must cover both the
+  current React Aria DOM and the older BaseWeb DOM, and must synchronize dynamic
+  control state after Streamlit rerenders.
 - Company Profile content cards use the accepted 18 px outer radius and the
   same first-card gap below the tab rail. A tab must not introduce its own
   smaller outer radius or extra top offset.

@@ -1476,16 +1476,17 @@ def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():
     assert 'transform: translateX(-8px);' in css
 
 
-def test_cnc_estimate_slider_uses_blue_and_keeps_help_tooltips_visible():
-    css = Path("styles/company_profile.py").read_text()
+def test_slider_uses_the_global_blue_control_contract_and_keeps_help_visible():
+    base_css = Path("styles/base.py").read_text()
+    profile_css = Path("styles/company_profile.py").read_text()
 
-    assert '[class*="_estimate_level"]' in css
-    assert "--cnc-estimate-progress: 0%;" in css
-    assert "--cnc-estimate-progress: 50%;" in css
-    assert "--cnc-estimate-progress: 100%;" in css
-    assert "filter: hue-rotate" not in css
-    assert "background: #2F80ED !important;" in css
-    assert '\n        div[role="tooltip"] {' not in css
+    assert "--primitive-interaction-blue: #4F8FCB;" in base_css
+    assert '.stApp [data-testid="stSlider"]' in base_css
+    assert "--costerly-slider-progress" in base_css
+    assert "function syncSlider(control)" in base_css
+    assert "filter: hue-rotate" not in profile_css
+    assert "--cnc-estimate-progress" not in profile_css
+    assert '\n        div[role="tooltip"] {' not in profile_css
 
 
 def test_price_review_marks_only_blocking_fields_and_omits_redundant_heading():
@@ -2291,7 +2292,8 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert 'label[data-selected="true"] > div:first-of-type' in base_css
     assert "input.checked" in base_css
     assert "MutationObserver" in base_css
-    assert "background-color: #4F8FCB !important;" in base_css
+    assert "--primitive-interaction-blue: #4F8FCB;" in base_css
+    assert "background-color: var(--color-interaction-blue) !important;" in base_css
     assert "gap: 8px !important;" in css
     assert "margin-bottom: 16px;" in css
     assert "box-sizing: border-box;" in css
