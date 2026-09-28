@@ -505,9 +505,19 @@ def _render_cnc_estimate_level(
     )
     widget_key = f"{key_prefix}_{route}_estimate_level"
     explicit_key = f"{widget_key}_explicit"
+    displayed_level = st.session_state.get(
+        widget_key,
+        saved_level or CNC_ESTIMATE_LEVEL_DEFAULT,
+    )
+    if displayed_level not in CNC_ESTIMATE_LEVELS:
+        displayed_level = CNC_ESTIMATE_LEVEL_DEFAULT
+    slider_label = (
+        "Cost estimate range "
+        f":gray[{CNC_ESTIMATE_LEVEL_COMMENTS[int(displayed_level)]}]"
+    )
     with column:
         selected_level = st.slider(
-            "Cost estimate range",
+            slider_label,
             min_value=min(CNC_ESTIMATE_LEVELS),
             max_value=max(CNC_ESTIMATE_LEVELS),
             value=saved_level or CNC_ESTIMATE_LEVEL_DEFAULT,
@@ -522,7 +532,6 @@ def _render_cnc_estimate_level(
             on_change=_mark_cnc_estimate_level_explicit,
             args=(explicit_key,),
         )
-        st.caption(CNC_ESTIMATE_LEVEL_COMMENTS[int(selected_level)])
     if saved_level is None and not st.session_state.get(explicit_key, False):
         return None
     return int(selected_level)

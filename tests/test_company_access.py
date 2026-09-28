@@ -1319,7 +1319,9 @@ def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch)
     app.get("button_group")[0].set_value("Yes")
     app.run()
     assert "Costing method" not in [field.label for field in app.selectbox]
-    assert [field.label for field in app.slider] == ["Cost estimate range"]
+    assert [field.label for field in app.slider] == [
+        "Cost estimate range :gray[Central preliminary cost estimate]"
+    ]
     machine_rate = next(
         field for field in app.text_input
         if field.label == "Machine rate / hour (ILS)"
@@ -1470,9 +1472,16 @@ def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():
     assert 'width: 30px !important;' in css
     assert '[class*="st-key-catalog_edit_"]' in css
     assert 'height: 32px !important;' in css
-    assert 'div[role="tooltip"] {' in css
-    assert 'display: none !important;' in css
+    assert '\n        div[role="tooltip"] {' not in css
     assert 'transform: translateX(-8px);' in css
+
+
+def test_cnc_estimate_slider_uses_blue_and_keeps_help_tooltips_visible():
+    css = Path("styles/company_profile.py").read_text()
+
+    assert '[class*="_estimate_level"]' in css
+    assert "background: #2F80ED !important;" in css
+    assert '\n        div[role="tooltip"] {' not in css
 
 
 def test_price_review_marks_only_blocking_fields_and_omits_redundant_heading():
@@ -2048,11 +2057,21 @@ def test_machinery_subcontractor_can_be_selected_or_removed(monkeypatch):
     app.run()
     subcontractor_level = next(
         field for field in app.slider
-        if field.label == "Cost estimate range"
+        if field.label.startswith("Cost estimate range")
     )
     assert subcontractor_level.value == 3
+    assert subcontractor_level.label == (
+        "Cost estimate range :gray[Central preliminary cost estimate]"
+    )
     subcontractor_level.set_value(5)
     app.run()
+    subcontractor_level = next(
+        field for field in app.slider
+        if field.label.startswith("Cost estimate range")
+    )
+    assert subcontractor_level.label == (
+        "Cost estimate range :gray[Upper preliminary cost estimate]"
+    )
     supplier_select = next(
         field for field in app.selectbox if field.label == "Regular subcontractor"
     )

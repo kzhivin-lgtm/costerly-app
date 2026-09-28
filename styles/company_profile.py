@@ -510,6 +510,51 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"] [data-testid="stWidgetLabel"] p {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"] [data-testid="stWidgetLabel"] p > span {
+            color: var(--color-text-muted) !important;
+            font-weight: 400 !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"]
+        [data-rac][data-orientation="horizontal"] > div:first-child {
+            filter: hue-rotate(210deg) saturate(0.9) brightness(0.93);
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"]
+        [data-baseweb="slider"] [style*="height: 0.25rem"] {
+            filter: hue-rotate(210deg) saturate(0.9) brightness(0.93);
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"]
+        [data-rac][data-orientation="horizontal"]
+        > [data-rac]:not([data-orientation]) {
+            background: #2F80ED !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"]
+        [data-baseweb="slider"] [role="slider"] {
+            background: #2F80ED !important;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"] [data-testid="stSliderThumbValue"] {
+            border-color: #2F80ED !important;
+            color: #2F80ED !important;
+        }
+
+        .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_detail"]
         > [data-testid="stVerticalBlock"] {
             gap: 18px !important;
@@ -2642,10 +2687,6 @@ def apply_company_profile_css() -> None:
             display: flex !important;
             align-items: center !important;
             min-height: 22px !important;
-        }
-
-        div[role="tooltip"] {
-            display: none !important;
         }
 
         .stApp:has(.company-profile-active) .st-key-company_labor_card
