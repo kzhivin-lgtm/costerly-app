@@ -588,44 +588,6 @@ def apply_base_css() -> None:
             outline: 3px solid rgba(79, 143, 203, 0.28) !important;
         }
 
-        .stApp [data-testid="stSlider"] {
-            --costerly-slider-progress: 0%;
-        }
-
-        .stApp [data-testid="stSlider"]
-        [data-rac][data-orientation="horizontal"] > div:first-child,
-        .stApp [data-testid="stSlider"]
-        [data-baseweb="slider"] [style*="height: 0.25rem"] {
-            background: linear-gradient(
-                to right,
-                var(--color-interaction-blue) 0%,
-                var(--color-interaction-blue) var(--costerly-slider-progress),
-                rgba(151, 166, 195, 0.25) var(--costerly-slider-progress),
-                rgba(151, 166, 195, 0.25) 100%
-            ) !important;
-        }
-
-        .stApp [data-testid="stSlider"]
-        [data-rac][data-orientation="horizontal"]
-        > [data-rac]:not([data-orientation]),
-        .stApp [data-testid="stSlider"]
-        [data-baseweb="slider"] [role="slider"] {
-            background: var(--color-interaction-blue) !important;
-        }
-
-        .stApp [data-testid="stSlider"] [data-testid="stSliderThumbValue"] {
-            border-color: var(--color-interaction-blue) !important;
-            color: var(--color-interaction-blue) !important;
-        }
-
-        .stApp [data-testid="stSlider"].costerly-slider-focused
-        [data-rac][data-orientation="horizontal"]
-        > [data-rac]:not([data-orientation]),
-        .stApp [data-testid="stSlider"].costerly-slider-focused
-        [data-baseweb="slider"] [role="slider"] {
-            outline: 3px solid rgba(79, 143, 203, 0.28) !important;
-            outline-offset: 2px !important;
-        }
         </style>
         """
 
@@ -654,55 +616,10 @@ def apply_base_css() -> None:
             input.addEventListener('blur', () => syncCheckbox(label));
           }
 
-          function sliderState(control) {
-            const input = control.querySelector('input[type="range"]');
-            if (input) {
-              return {
-                node: input,
-                value: Number(input.value),
-                min: Number(input.min),
-                max: Number(input.max),
-              };
-            }
-            const handle = control.querySelector('[role="slider"]');
-            if (!handle) return null;
-            return {
-              node: handle,
-              value: Number(handle.getAttribute('aria-valuenow')),
-              min: Number(handle.getAttribute('aria-valuemin')),
-              max: Number(handle.getAttribute('aria-valuemax')),
-            };
-          }
-
-          function syncSlider(control) {
-            const state = sliderState(control);
-            if (!state) return;
-            const span = state.max - state.min;
-            const ratio = span > 0 ? (state.value - state.min) / span : 0;
-            const percent = Math.max(0, Math.min(100, ratio * 100));
-            control.style.setProperty(
-              '--costerly-slider-progress',
-              `${percent}%`
-            );
-            control.classList.toggle(
-              'costerly-slider-focused',
-              control.contains(doc.activeElement) &&
-                doc.activeElement.matches(':focus-visible')
-            );
-            if (control.dataset.costerlyGlobalSliderBound === '1') return;
-            control.dataset.costerlyGlobalSliderBound = '1';
-            ['input', 'change', 'focusin', 'focusout'].forEach((eventName) => {
-              control.addEventListener(eventName, () => {
-                window.requestAnimationFrame(() => syncSlider(control));
-              });
-            });
-          }
-
           function refresh() {
             doc.querySelectorAll(
               '[data-testid="stCheckbox"] label[data-baseweb="checkbox"]'
             ).forEach(syncCheckbox);
-            doc.querySelectorAll('[data-testid="stSlider"]').forEach(syncSlider);
           }
 
           refresh();
@@ -711,10 +628,7 @@ def apply_base_css() -> None:
             childList: true,
             subtree: true,
             attributes: true,
-            attributeFilter: [
-              'checked', 'aria-checked', 'value', 'min', 'max',
-              'aria-valuenow', 'aria-valuemin', 'aria-valuemax'
-            ]
+            attributeFilter: ['checked', 'aria-checked']
           });
           window.addEventListener(
             'beforeunload',

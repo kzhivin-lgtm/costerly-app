@@ -1476,14 +1476,13 @@ def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():
     assert 'transform: translateX(-8px);' in css
 
 
-def test_slider_uses_the_global_blue_control_contract_and_keeps_help_visible():
+def test_slider_keeps_native_geometry_and_help_tooltips_visible():
     base_css = Path("styles/base.py").read_text()
     profile_css = Path("styles/company_profile.py").read_text()
 
-    assert "--primitive-interaction-blue: #4F8FCB;" in base_css
-    assert '.stApp [data-testid="stSlider"]' in base_css
-    assert "--costerly-slider-progress" in base_css
-    assert "function syncSlider(control)" in base_css
+    assert '.stApp [data-testid="stSlider"]' not in base_css
+    assert "--costerly-slider-progress" not in base_css
+    assert "function syncSlider(control)" not in base_css
     assert "filter: hue-rotate" not in profile_css
     assert "--cnc-estimate-progress" not in profile_css
     assert '\n        div[role="tooltip"] {' not in profile_css
