@@ -1,6 +1,23 @@
 # TODO
 
+Current owner-approved execution order:
+
+1. Finish 3.14.1 CNC / Laser through production schema, Staff Admin, reviewed
+   parameters, runtime composition, and production acceptance. Detailed plan:
+   `notes/CNC_LASER_FINISH_PLAN_2026_09_28.md`.
+2. Finish 3.15.1 shared materials, Israel identities, prices, operations, and
+   deterministic catalog resolution.
+3. Integrate Price Source with the shared Material Resolution Core and identity
+   candidate buffer.
+4. Replace the legacy Estimation Agent only after those inputs are verified.
+
 - 3.15.1 Israel Reference Catalog foundation: active, P1 by owner direction.
+  The ordered master plan is `notes/ISRAEL_REFERENCE_PROGRAM_PLAN.md`. Its
+  Packages A through J preserve the accumulated material and price work and add
+  the approved shared Price Source, identity-candidate, market-learning,
+  operations, review-governance, and Estimation-readiness sequence. Execution is
+  paused while the higher-priority CNC / Laser finish runs. Resume with Package
+  A inventory, followed by Package B entity-card contract.
   Replace the empty legacy material, work-time, and machining-points foundation
   with a multi-market reference architecture. Global material, operation, and
   labor-role identities remain separate from market-specific prices, local
@@ -22,10 +39,31 @@
   evidence closes 2 cells and partially covers 21; 372 remain empty.
   None is promoted to an active market baseline from a single or incomparable
   source. Continue source coverage and independent-source comparison before
-  activation. Contract: `notes/ISRAEL_REFERENCE_CATALOG.md`.
+  activation. Before additional broad source harvesting, integrate the accepted
+  shared Material Resolution Core contract with Price Source. Ordered backlog:
+  (1) define the shared reference, company, source-offer, and identity-candidate
+  cards; (2) unify category, specification, unit, alias, scope, provenance, and
+  confidence vocabularies; (3) add the candidate lifecycle and immutable review
+  audit; (4) route Price Source through exact SKU, company alias, Israel alias,
+  hard filters, and a maximum-five shortlist; (5) link matched company items to
+  `reference_material_id` while keeping unmatched usable items private; (6) add
+  a separate eligibility gate for anonymized market observations; (7) make
+  reviewed identities and aliases available to future imports through a
+  versioned resolver index; (8) specify merge, split, deprecation, remapping,
+  and historical reprocessing behavior; (9) build the staff review tool after
+  the lifecycle and permissions are verified; (10) apply the complete migration
+  chain to a clean database and test idempotency, tenant isolation, rejection
+  cases, and reprocessing before activation. The review tool is explicitly in
+  backlog and is not part of the current schema-contract revision. Contract:
+  `notes/ISRAEL_REFERENCE_CATALOG.md`.
 
-- 3.14.1 CNC / Laser costing foundation: active, P1 by owner direction. The
-  calculation engine is demand-driven and runs only a required process for one
+- 3.14.1 CNC / Laser costing foundation: active, P0 by owner direction. The
+  owner promoted this task to the highest current priority on 28.09. Follow
+  `notes/CNC_LASER_FINISH_PLAN_2026_09_28.md`. C1 production schema is verified;
+  C2 read-only Staff Admin has a tested implementation candidate awaiting live
+  acceptance. The material catalog remains preserved but paused until the CNC
+  subsystem reaches its production checkpoint. The calculation engine is
+  demand-driven and runs only a required process for one
   homogeneous part group. CNC `Yes` means in-house. CNC `No` uses a narrow
   panel-saw plus manual route only for simple low-volume rectangular work and
   otherwise uses a CNC subcontractor. Sheet laser `No` defaults strictly to a
@@ -35,7 +73,7 @@
   Explicit changes append a bounded behavioral-calibration event without
   estimate cost or customer content. The local candidate passes 514 tests.
   `db/sql/2026_09_28_cnc_estimate_levels.sql` and the broader manufacturing
-  parameter migration have not been applied to production. The isolated
+  parameter migration were applied to production on 28.09. The isolated
   deterministic router, exclusive calculator dispatch, four pure calculators,
   reserve-level selection, supplier-minimum handling, inclusion boundaries,
   parameter snapshot IDs, and scenario fixtures are implemented and pass the

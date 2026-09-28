@@ -104,6 +104,20 @@ def apply_platform_admin_css() -> None:
             white-space: nowrap !important;
         }
 
+        .st-key-platform_admin_sections {
+            margin-bottom: 24px;
+        }
+
+        .st-key-platform_admin_sections [data-testid="stHorizontalBlock"] {
+            gap: 10px;
+        }
+
+        .st-key-platform_admin_sections [data-testid="stButton"],
+        .st-key-platform_admin_sections [data-testid="stButton"] > div,
+        .st-key-platform_admin_sections button {
+            width: 100%;
+        }
+
         .platform-admin-table-card {
             overflow: hidden;
             border: 1px solid rgba(42, 31, 44, 0.14);
@@ -211,6 +225,52 @@ def apply_platform_admin_css() -> None:
             color: var(--color-text-muted);
             font-size: 14px;
             text-align: center;
+        }
+
+        .platform-admin-process-title {
+            margin: 30px 0 12px;
+            color: var(--color-text-strong);
+            font-size: 22px;
+            line-height: 1.2;
+        }
+
+        .platform-admin-route-title {
+            margin: 18px 0 8px;
+            color: var(--color-text-strong);
+            font-size: 15px;
+            line-height: 1.2;
+        }
+
+        .platform-admin-parameter-card {
+            margin-bottom: 18px;
+        }
+
+        .platform-admin-parameter-table {
+            min-width: 1350px;
+        }
+
+        .platform-admin-parameter-name {
+            color: var(--color-text-strong);
+            font-family: var(--font-mono);
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .platform-admin-parameter-empty {
+            height: 56px;
+            color: var(--color-text-muted) !important;
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
+
+        .platform-admin-source-link {
+            color: var(--color-accent-dark);
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .platform-admin-source-link:hover {
+            text-decoration: underline;
         }
 
         @media (max-width: 760px) {

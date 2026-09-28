@@ -1,7 +1,10 @@
 # CNC / Laser Costing
 
 Task: 3.14.1
-Status: architecture and data foundation in progress
+Status: production schema verified; read-only Admin implementation candidate complete
+
+Ordered production finish plan:
+`notes/CNC_LASER_FINISH_PLAN_2026_09_28.md`
 
 ## Product boundary
 

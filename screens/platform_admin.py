@@ -4,6 +4,7 @@ from html import escape
 import logging
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import streamlit as st
 
@@ -15,12 +16,21 @@ from use_cases.platform_admin import (
     company_operational_status,
     format_ai_cost,
     load_company_dashboard,
+    load_manufacturing_parameter_library,
     normalize_dashboard_row,
     record_dashboard_view,
     require_platform_access,
 )
 
 LOGGER = logging.getLogger(__name__)
+
+ADMIN_VIEWS = {"companies", "cnc_laser"}
+MANUFACTURING_SECTIONS = (
+    ("CNC Router", "In-house", "cnc_router_in_house"),
+    ("CNC Router", "Subcontractor", "cnc_router_subcontractor"),
+    ("Sheet Laser", "In-house", "sheet_laser_in_house"),
+    ("Sheet Laser", "Subcontractor", "sheet_laser_subcontractor"),
+)
 
 
 def _brand_mark() -> str:
@@ -36,6 +46,10 @@ def _open_profile() -> None:
 
 def _open_estimate() -> None:
     set_screen("upload")
+
+
+def _set_admin_view(view: str) -> None:
+    st.session_state.platform_admin_view = view if view in ADMIN_VIEWS else "companies"
 
 
 def _metric_cell(count: int, cost: str, *, label: str) -> str:
@@ -114,6 +128,140 @@ def _dashboard_table(rows: list[dict[str, Any]]) -> str:
     )
 
 
+def _display_decimal(value: Any) -> str:
+    if value in (None, ""):
+        return "—"
+    text = str(value)
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    return text or "0"
+
+
+def _parameter_scope(row: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for key, label in (
+        ("region", "Region"),
+        ("material_family", "Material"),
+        ("machine_class", "Machine"),
+        ("object_family", "Object"),
+    ):
+        value = str(row.get(key) or "").strip()
+        if value:
+            parts.append(f"{label}: {value}")
+    thickness_min = row.get("thickness_min_mm")
+    thickness_max = row.get("thickness_max_mm")
+    if thickness_min is not None or thickness_max is not None:
+        low = _display_decimal(thickness_min)
+        high = _display_decimal(thickness_max)
+        parts.append(f"Thickness: {low} to {high} mm")
+    qualifiers = row.get("qualifiers") or {}
+    if isinstance(qualifiers, dict):
+        for key, value in sorted(qualifiers.items()):
+            if value not in (None, "", [], {}):
+                parts.append(f"{str(key).replace('_', ' ').title()}: {value}")
+    return "; ".join(parts) or "All supported scope"
+
+
+def _source_markup(row: dict[str, Any]) -> str:
+    name = escape(str(row.get("source_name") or "Source"))
+    url = str(row.get("source_url") or "").strip()
+    parsed = urlsplit(url)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return (
+            f'<a class="platform-admin-source-link" href="{escape(url, quote=True)}" '
+            f'target="_blank" rel="noopener noreferrer">{name}</a>'
+        )
+    return name
+
+
+def _manufacturing_parameter_table(rows: list[dict[str, Any]]) -> str:
+    if not rows:
+        body = (
+            '<tr><td colspan="12" class="platform-admin-parameter-empty">'
+            "No parameters yet"
+            "</td></tr>"
+        )
+    else:
+        rendered_rows: list[str] = []
+        for row in rows:
+            rendered_rows.append(
+                "<tr>"
+                f'<td><span class="platform-admin-parameter-name">{escape(str(row.get("parameter_key") or ""))}</span></td>'
+                f'<td>{escape(_parameter_scope(row))}</td>'
+                f'<td>{escape(_display_decimal(row.get("value_low")))}</td>'
+                f'<td>{escape(_display_decimal(row.get("value_typical")))}</td>'
+                f'<td>{escape(_display_decimal(row.get("value_high")))}</td>'
+                f'<td>{escape(str(row.get("unit") or "—"))}</td>'
+                f'<td>{_source_markup(row)}</td>'
+                f'<td>{escape(str(row.get("source_date") or "—"))}</td>'
+                f'<td>{escape(_display_decimal(row.get("confidence")))}</td>'
+                f'<td>{escape(str(row.get("status") or "—").title())}</td>'
+                f'<td>{escape(str(row.get("version") or "—"))}</td>'
+                "<td>—</td>"
+                "</tr>"
+            )
+        body = "".join(rendered_rows)
+    return (
+        '<div class="platform-admin-table-card platform-admin-parameter-card">'
+        '<div class="platform-admin-table-scroll">'
+        '<table class="platform-admin-table platform-admin-parameter-table">'
+        "<colgroup>"
+        '<col style="width:190px"><col style="width:260px">'
+        '<col style="width:78px"><col style="width:78px"><col style="width:78px">'
+        '<col style="width:92px"><col style="width:150px"><col style="width:108px">'
+        '<col style="width:88px"><col style="width:88px"><col style="width:70px">'
+        '<col style="width:70px">'
+        "</colgroup>"
+        "<thead><tr>"
+        "<th>Parameter</th><th>Scope</th><th>Low</th><th>Typical</th><th>High</th>"
+        "<th>Unit</th><th>Source</th><th>Source date</th><th>Confidence</th>"
+        "<th>Status</th><th>Version</th><th>Action</th>"
+        "</tr></thead>"
+        f"<tbody>{body}</tbody>"
+        "</table></div></div>"
+    )
+
+
+def _render_manufacturing_library(client, access, platform_access: PlatformAccess) -> None:
+    title_column, history_column = st.columns([4, 1])
+    with title_column:
+        st.subheader("CNC / Laser")
+        st.caption("Versioned production-cost parameters for deterministic calculations")
+    with history_column:
+        include_history = st.checkbox(
+            "Show archived",
+            value=False,
+            key="platform_admin_manufacturing_history",
+        )
+    try:
+        rows = load_manufacturing_parameter_library(
+            client,
+            requesting_user_id=str(access.user_id),
+            include_history=include_history,
+        )
+    except Exception:
+        LOGGER.exception("CNC / Laser parameter library failed to load")
+        st.error("CNC / Laser parameters are temporarily unavailable. Try again in a moment")
+        return
+    by_calculator: dict[str, list[dict[str, Any]]] = {
+        calculator: [] for _process, _route, calculator in MANUFACTURING_SECTIONS
+    }
+    for row in rows:
+        calculator = str(row.get("calculator") or "")
+        if calculator in by_calculator:
+            by_calculator[calculator].append(row)
+    current_process = ""
+    for process, route, calculator in MANUFACTURING_SECTIONS:
+        if process != current_process:
+            st.markdown(f'<h2 class="platform-admin-process-title">{escape(process)}</h2>', unsafe_allow_html=True)
+            current_process = process
+        st.markdown(f'<h3 class="platform-admin-route-title">{escape(route)}</h3>', unsafe_allow_html=True)
+        st.markdown(
+            _manufacturing_parameter_table(by_calculator[calculator]),
+            unsafe_allow_html=True,
+        )
+
+
 def render_platform_admin_screen(access, platform_access: PlatformAccess) -> None:
     """Render the read-only cross-company overview."""
     apply_platform_admin_css()
@@ -159,6 +307,34 @@ def render_platform_admin_screen(access, platform_access: PlatformAccess) -> Non
                     use_container_width=True,
                     on_click=sign_out,
                 )
+
+    current_view = str(st.session_state.get("platform_admin_view") or "companies")
+    if current_view not in ADMIN_VIEWS:
+        current_view = "companies"
+    with st.container(key="platform_admin_sections"):
+        companies_column, manufacturing_column, spacer = st.columns([1, 1, 5])
+        with companies_column:
+            st.button(
+                "Companies",
+                key="platform_admin_companies_view",
+                type="primary" if current_view == "companies" else "secondary",
+                use_container_width=True,
+                on_click=_set_admin_view,
+                args=("companies",),
+            )
+        with manufacturing_column:
+            st.button(
+                "CNC / Laser",
+                key="platform_admin_cnc_laser_view",
+                type="primary" if current_view == "cnc_laser" else "secondary",
+                use_container_width=True,
+                on_click=_set_admin_view,
+                args=("cnc_laser",),
+            )
+
+    if current_view == "cnc_laser":
+        _render_manufacturing_library(client, access, platform_access)
+        return
 
     if not st.session_state.get("_platform_admin_dashboard_audited"):
         record_dashboard_view(client, platform_user_id=str(access.user_id))

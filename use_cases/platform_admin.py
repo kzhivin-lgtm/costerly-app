@@ -9,6 +9,12 @@ from typing import Any
 PLATFORM_ROLES = {"platform_admin", "platform_viewer"}
 ACCOUNT_STAGES = {"test", "pilot", "paid"}
 PERIOD_OPTIONS = {7, 30, 90, 0}
+MANUFACTURING_CALCULATORS = {
+    "cnc_router_in_house",
+    "cnc_router_subcontractor",
+    "sheet_laser_in_house",
+    "sheet_laser_subcontractor",
+}
 
 
 @dataclass(frozen=True)
@@ -69,6 +75,28 @@ def load_company_dashboard(
             "platform_admin_company_dashboard",
             params,
         ).execute()
+    return [dict(row) for row in (response.data or [])]
+
+
+def load_manufacturing_parameter_library(
+    client: Any,
+    *,
+    requesting_user_id: str,
+    calculator: str | None = None,
+    include_history: bool = False,
+) -> list[dict[str, Any]]:
+    """Load the Staff-only CNC / Laser parameter library through its guarded RPC."""
+    require_platform_access(client, requesting_user_id)
+    if calculator is not None and calculator not in MANUFACTURING_CALCULATORS:
+        raise ValueError("Unsupported manufacturing calculator.")
+    response = client.rpc(
+        "platform_admin_manufacturing_cost_parameters",
+        {
+            "p_requesting_user_id": requesting_user_id,
+            "p_calculator": calculator,
+            "p_include_history": bool(include_history),
+        },
+    ).execute()
     return [dict(row) for row in (response.data or [])]
 
 

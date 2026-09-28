@@ -3,6 +3,8 @@
 Task: 3.15.1
 Status: architecture and schema candidate
 
+Ordered delivery plan: `notes/ISRAEL_REFERENCE_PROGRAM_PLAN.md`
+
 ## Objective
 
 Build the verified fallback data required before replacing Estimation. Company
@@ -127,3 +129,59 @@ in Israel.
 
 Production migration, data activation, and Estimation integration are separate
 checkpoints.
+
+## Shared material identity and Price Source contract
+
+Price Source, Estimation, company material catalogs, and public market-source
+ingestion must use one Material Resolution Core. They must not maintain
+independent material names, category systems, unit vocabularies, or alias
+matching rules.
+
+The core owns:
+
+- reference material identities and category membership;
+- category-specific specification schemas;
+- canonical units and deterministic conversions;
+- global, market, supplier, and company alias lookup;
+- hard compatibility filtering and a maximum-five candidate shortlist;
+- identity-match route, confidence, evidence, and catalog version;
+- candidate creation when no compatible reference identity exists.
+
+The data model keeps four records separate:
+
+1. A reference material card defines what the material is. It contains the
+   stable identity, canonical name, category, base unit, structured technical
+   specifications, lifecycle status, and any replacement identity after a
+   merge or deprecation.
+2. A company material card defines how one company calls and uses that
+   material. It may link to a reference material, retains the company's display
+   name and private aliases, and never exposes company prices or purchasing
+   terms globally.
+3. A source offer card defines what one source stated at one point in time. It
+   retains raw description, supplier SKU, price, currency, unit, package,
+   quantity, discount, VAT basis, date, scope, included services, conversion
+   evidence, provenance, and independently measured extraction, identity, and
+   conversion confidence.
+4. An identity candidate is the review buffer between unmatched private
+   evidence and the reference catalog. It stores proposed category and
+   specifications, linked evidence, possible duplicates, decision status, and
+   the final reference identity when resolved.
+
+Price Source reads the active reference catalog before creating a new identity.
+An exact compatible match links the company material to `reference_material_id`.
+An unmatched usable row creates a private company material immediately and may
+also create an identity candidate. It must never create an active global
+identity directly.
+
+User confirmation creates a company-scoped alias immediately. A company alias,
+supplier phrase, or private SKU becomes a market or global alias only after
+review or independently corroborated evidence. New or changed reference
+identities and aliases become available to subsequent Price Source and
+Estimation resolution through a versioned resolver index.
+
+Identity learning and price learning are independent. A source row may
+contribute an anonymized market price observation only after its material
+identity, unit conversion, VAT basis, price scope, and evidence eligibility are
+confirmed. Market observations may propose a new versioned baseline, but never
+replace an active baseline or expose a contributor's private terms without the
+required review and approval.

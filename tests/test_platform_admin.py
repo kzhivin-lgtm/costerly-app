@@ -4,13 +4,18 @@ from pathlib import Path
 
 import pytest
 
-from screens.platform_admin import _dashboard_table
+from screens.platform_admin import (
+    _dashboard_table,
+    _manufacturing_parameter_table,
+    _parameter_scope,
+)
 from use_cases.platform_admin import (
     PlatformAccess,
     company_file_fingerprint,
     company_operational_status,
     format_ai_cost,
     load_company_dashboard,
+    load_manufacturing_parameter_library,
     load_platform_access,
     normalize_dashboard_row,
     record_authenticated_session,
@@ -115,6 +120,34 @@ def test_dashboard_uses_guarded_v2_rpc_and_validates_period():
     ]
     with pytest.raises(ValueError, match="period"):
         load_company_dashboard(client, requesting_user_id="user-1", days=31)
+
+
+def test_manufacturing_library_uses_guarded_rpc_and_validates_calculator():
+    rows = [{"parameter_id": "parameter-1"}]
+    client = _admin_client(rpc_data=rows)
+
+    assert load_manufacturing_parameter_library(
+        client,
+        requesting_user_id="user-1",
+        calculator="cnc_router_in_house",
+        include_history=True,
+    ) == rows
+    assert client.rpc_calls == [
+        (
+            "platform_admin_manufacturing_cost_parameters",
+            {
+                "p_requesting_user_id": "user-1",
+                "p_calculator": "cnc_router_in_house",
+                "p_include_history": True,
+            },
+        )
+    ]
+    with pytest.raises(ValueError, match="calculator"):
+        load_manufacturing_parameter_library(
+            client,
+            requesting_user_id="user-1",
+            calculator="combined_cnc_laser",
+        )
 
 
 @pytest.mark.parametrize(
@@ -223,6 +256,71 @@ def test_admin_screen_is_an_unfiltered_all_time_company_matrix():
     assert '"Company stage"' not in screen_source
     assert "days=0" in screen_source
     assert "Admin data is temporarily unavailable" in screen_source
+
+
+def test_admin_exposes_a_separate_read_only_cnc_laser_library():
+    screen_source = (ROOT / "screens/platform_admin.py").read_text()
+
+    assert '"CNC / Laser"' in screen_source
+    assert '"CNC Router", "In-house", "cnc_router_in_house"' in screen_source
+    assert '"CNC Router", "Subcontractor", "cnc_router_subcontractor"' in screen_source
+    assert '"Sheet Laser", "In-house", "sheet_laser_in_house"' in screen_source
+    assert '"Sheet Laser", "Subcontractor", "sheet_laser_subcontractor"' in screen_source
+    assert "CNC / Laser parameters are temporarily unavailable" in screen_source
+
+
+def test_manufacturing_parameter_table_preserves_scope_evidence_and_escapes_content():
+    row = {
+        "parameter_key": '<script>alert("x")</script>',
+        "region": "Israel central",
+        "material_family": "birch plywood",
+        "thickness_min_mm": "17.500",
+        "thickness_max_mm": "18.500",
+        "qualifiers": {"provider_model": "quoted per sheet"},
+        "value_low": "10.000000",
+        "value_typical": "12.500000",
+        "value_high": "15.000000",
+        "unit": "ILS/hour",
+        "source_name": "Official source",
+        "source_url": "https://example.com/evidence?q=1&x=2",
+        "source_date": "2026-09-28",
+        "confidence": "80.00",
+        "status": "candidate",
+        "version": 1,
+    }
+
+    assert _parameter_scope(row) == (
+        "Region: Israel central; Material: birch plywood; "
+        "Thickness: 17.5 to 18.5 mm; Provider Model: quoted per sheet"
+    )
+    markup = _manufacturing_parameter_table([row])
+    assert "<script>" not in markup
+    assert "&lt;script&gt;" in markup
+    assert "https://example.com/evidence?q=1&amp;x=2" in markup
+    assert ">12.5<" in markup
+    assert "Candidate" in markup
+
+
+def test_manufacturing_parameter_empty_table_is_bounded_and_has_all_columns():
+    markup = _manufacturing_parameter_table([])
+
+    assert 'colspan="12"' in markup
+    assert "No parameters yet" in markup
+    for heading in (
+        "Parameter",
+        "Scope",
+        "Low",
+        "Typical",
+        "High",
+        "Unit",
+        "Source",
+        "Source date",
+        "Confidence",
+        "Status",
+        "Version",
+        "Action",
+    ):
+        assert f"<th>{heading}</th>" in markup
 
 
 def test_admin_matrix_reuses_overhead_expenses_table_geometry():
