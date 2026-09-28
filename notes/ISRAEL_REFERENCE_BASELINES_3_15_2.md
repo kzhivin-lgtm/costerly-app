@@ -139,3 +139,15 @@ to include VAT. Because Camisa does not repeat that VAT statement on its product
 pages, this is recorded as a legal inference with capped confidence, not as
 direct supplier evidence. The prepared migration normalizes 21 sheet offers to
 VAT-exclusive ILS per square metre and does not activate any fallback.
+
+The Camisa batch was applied and verified in production on 2026-09-28 from
+commit `4fb5f7b`. All 21 Camisa offers are normalized to VAT-exclusive ILS per
+square metre with legal-inference provenance and confidence capped at 68.
+Production now has 225 eligible offers covering 211 of 280 materials, 69
+materials remain blocked, and 222 comparable candidate groups exist. All 320
+offers remain candidates and the baseline table remains empty.
+
+Next, audit the 69 blocked materials by source and furniture impact. Normalize
+Abo Srya only if its VAT basis can be established or explicitly modeled with a
+lower-confidence policy. Then derive non-active low, typical, and high baseline
+candidates for owner review.

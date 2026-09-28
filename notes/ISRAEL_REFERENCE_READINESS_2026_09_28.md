@@ -77,6 +77,35 @@ Post-application production verification:
 The normalization changed candidate evidence only. It did not approve an offer,
 create a baseline, or connect Estimation fallback.
 
+## Camisa normalization checkpoint
+
+The Camisa normalization batch was applied and verified in production on
+2026-09-28 from commit `4fb5f7b`. Camisa terms establish consumer online sales,
+application of Israel's Consumer Protection Law, and no wholesale sales. The
+statutory total-price requirement supports VAT-included classification, but the
+supplier does not state VAT inclusion directly. The 21 offers therefore retain
+legal-inference provenance and confidence capped at 68.
+
+Post-application production verification:
+
+- Materials: 280
+- Candidate offers: 320
+- Offer statuses: 320 candidate, 0 reviewed, 0 active, 0 archived
+- Eligible normalized offers: 225
+- Materials with an eligible price: 211
+- Materials blocked: 69
+- Comparable baseline groups: 222
+- Single-source provisional groups: 220
+- Multi-source candidate groups: 2
+- Offers missing normalized price: 95
+- Offers with unknown VAT: 79
+- Offers missing normalized unit: 28
+- Active or candidate market baselines: 0
+- Camisa offers normalized to VAT-exclusive ILS per square metre: 21
+
+The Camisa batch changed candidate evidence only. It did not approve an offer,
+create a baseline, or connect Estimation fallback.
+
 ## Reproduction
 
 ```bash
