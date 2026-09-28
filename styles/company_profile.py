@@ -524,15 +524,53 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-machinery-active)
-        [class*="_estimate_level"]
-        [data-rac][data-orientation="horizontal"] > div:first-child {
-            filter: hue-rotate(210deg) saturate(0.9) brightness(0.93);
+        [class*="_estimate_level"]:has(
+            [aria-valuenow="1"], input[aria-valuetext="1"]
+        ) {
+            --cnc-estimate-progress: 0%;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"]:has(
+            [aria-valuenow="2"], input[aria-valuetext="2"]
+        ) {
+            --cnc-estimate-progress: 25%;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"]:has(
+            [aria-valuenow="3"], input[aria-valuetext="3"]
+        ) {
+            --cnc-estimate-progress: 50%;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"]:has(
+            [aria-valuenow="4"], input[aria-valuetext="4"]
+        ) {
+            --cnc-estimate-progress: 75%;
+        }
+
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"]:has(
+            [aria-valuenow="5"], input[aria-valuetext="5"]
+        ) {
+            --cnc-estimate-progress: 100%;
         }
 
         .stApp:has(.company-machinery-active)
         [class*="_estimate_level"]
+        [data-rac][data-orientation="horizontal"] > div:first-child,
+        .stApp:has(.company-machinery-active)
+        [class*="_estimate_level"]
         [data-baseweb="slider"] [style*="height: 0.25rem"] {
-            filter: hue-rotate(210deg) saturate(0.9) brightness(0.93);
+            background: linear-gradient(
+                to right,
+                #2F80ED 0%,
+                #2F80ED var(--cnc-estimate-progress),
+                rgba(151, 166, 195, 0.25) var(--cnc-estimate-progress),
+                rgba(151, 166, 195, 0.25) 100%
+            ) !important;
         }
 
         .stApp:has(.company-machinery-active)

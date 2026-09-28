@@ -1480,6 +1480,10 @@ def test_cnc_estimate_slider_uses_blue_and_keeps_help_tooltips_visible():
     css = Path("styles/company_profile.py").read_text()
 
     assert '[class*="_estimate_level"]' in css
+    assert "--cnc-estimate-progress: 0%;" in css
+    assert "--cnc-estimate-progress: 50%;" in css
+    assert "--cnc-estimate-progress: 100%;" in css
+    assert "filter: hue-rotate" not in css
     assert "background: #2F80ED !important;" in css
     assert '\n        div[role="tooltip"] {' not in css
 
