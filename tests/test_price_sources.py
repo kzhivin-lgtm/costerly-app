@@ -1703,6 +1703,60 @@ def test_script_only_wordpress_page_can_discover_json_by_slug(monkeypatch):
     assert "Birch plywood 18 mm" in text
 
 
+def test_wordpress_json_alternate_retries_one_empty_accepted_response(monkeypatch):
+    class HtmlResponse:
+        status_code = 200
+        headers = {"content-type": "text/html"}
+        content = b"<html><script>renderPrices()</script></html>"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class AcceptedResponse:
+        status_code = 202
+        headers = {"content-type": "application/json"}
+        content = b"{}"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class ReadyResponse:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+        content = b'{"content":{"rendered":"<p>MDF 18 mm 210 ILS</p>"}}'
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return {"content": {"rendered": "<p>MDF 18 mm 210 ILS</p>"}}
+
+    calls = {"alternate": 0}
+
+    class Client:
+        @staticmethod
+        def get(url, *, follow_redirects=False):
+            if "/wp-json/" not in url:
+                return HtmlResponse()
+            calls["alternate"] += 1
+            return AcceptedResponse() if calls["alternate"] == 1 else ReadyResponse()
+
+    monkeypatch.setattr("use_cases.price_sources._validate_public_url", lambda value: value)
+    monkeypatch.setattr("use_cases.price_sources.time.sleep", lambda _seconds: None)
+
+    _, _, text = fetch_public_page("https://example.com/materials-and-prices/", client=Client())
+
+    assert calls["alternate"] == 2
+    assert "MDF 18 mm" in text
+
+
 @pytest.mark.parametrize(
     "url",
     [

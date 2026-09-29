@@ -818,6 +818,11 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
                 if alternate_url:
                     try:
                         alternate = http.get(alternate_url, follow_redirects=False)
+                        if alternate.status_code == 202:
+                            # Some WordPress hosts return an empty accepted response while
+                            # their REST page is warming. Retry only this bounded case.
+                            time.sleep(1)
+                            alternate = http.get(alternate_url, follow_redirects=False)
                         alternate.raise_for_status()
                         if len(alternate.content) > MAX_SOURCE_BYTES:
                             raise PriceSourceError("The supplier page is too large to process.")
