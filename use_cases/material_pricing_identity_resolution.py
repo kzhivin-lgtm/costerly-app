@@ -69,6 +69,10 @@ def _effective_attributes(
             "birch plywood": "plywood",
             "all birch plywood": "plywood",
             "mdf board": "mdf",
+            "solid timber laminated": "laminated solid wood panel",
+            "solid timber lami": "laminated solid wood panel",
+            "solid timber butcher block": "laminated solid wood panel",
+            "butcher block panel": "laminated solid wood panel",
         }.get(family, family)
         values["material_family"] = family
     return values

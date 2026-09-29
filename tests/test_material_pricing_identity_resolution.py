@@ -114,3 +114,23 @@ def test_missing_exact_thickness_never_uses_a_nearby_price_class():
 
     assert result.status == "needs_review"
     assert result.selected_pricing_identity_id is None
+
+
+def test_butcher_block_is_an_alias_of_laminated_solid_wood_not_a_price_family():
+    result = resolve_material_pricing_identity(
+        material_family="solid timber butcher block",
+        specifications={"thickness_mm": 20, "construction": "laminated", "species": "oak"},
+        market_code="IL",
+        pricing_identities=(
+            _identity(
+                "oak_laminated_panel_20",
+                material_family="laminated solid wood panel",
+                thickness_mm=20,
+                construction="laminated",
+                species="oak",
+            ),
+        ),
+    )
+
+    assert result.status == "resolved"
+    assert result.selected_pricing_identity_id == "oak_laminated_panel_20"

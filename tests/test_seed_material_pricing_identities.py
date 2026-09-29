@@ -26,3 +26,24 @@ def test_sheet_colours_and_decorative_names_collapse_but_construction_does_not()
     hpl = next(item for item in identities if item.price_attributes["construction"] == "plastic_laminate_faced")
     assert raw.members == ("raw-a", "raw-b")
     assert hpl.members == ("hpl",)
+
+
+def test_concrete_mdf_name_wins_over_shared_mdf_and_hdf_subcategory():
+    identities = build_identities(
+        (
+            _material(
+                "mdf-4",
+                "Standard MDF, raw, 4 mm",
+                thickness=4,
+                subcategory="MDF and HDF",
+            ),
+            _material(
+                "hdf-4",
+                "Standard HDF, raw, 4 mm",
+                thickness=4,
+                subcategory="MDF and HDF",
+            ),
+        )
+    )
+
+    assert {item.price_attributes["material_family"] for item in identities} == {"mdf", "hdf"}

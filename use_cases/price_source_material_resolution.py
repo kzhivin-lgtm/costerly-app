@@ -194,6 +194,7 @@ def _pricing_specifications(
         "formica": "plastic_laminate_faced",
         "hpl": "plastic_laminate_faced",
         "plastic": "plastic_laminate_faced",
+        "butcher block": "laminated",
     }
     if surface in construction_by_surface:
         result["construction"] = construction_by_surface[surface]
@@ -210,6 +211,13 @@ def _pricing_specifications(
         result["construction"] = "raw"
     if normalize_material_phrase(material_family) == "melamine":
         result["construction"] = "melamine_faced"
+    if normalize_material_phrase(material_family) in {
+        "solid timber laminated",
+        "solid timber lami",
+        "solid timber butcher block",
+        "butcher block panel",
+    }:
+        result["construction"] = "laminated"
     return result
 
 

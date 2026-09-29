@@ -70,6 +70,12 @@ def _family(material: dict[str, Any]) -> str:
     name = str(material["canonical_name"]).casefold()
     subcategory = str((material.get("specifications") or {}).get("subcategory_en") or "").casefold()
     haystack = f"{name} {subcategory}"
+    # Catalog subcategory "MDF and HDF" is shared. The concrete material name
+    # must decide the family before that broad label is consulted.
+    if re.search(r"\bmdf\b", name):
+        return "mdf"
+    if re.search(r"\bhdf\b", name):
+        return "hdf"
     if "plywood" in haystack:
         return "plywood"
     if "melamine" in haystack:
