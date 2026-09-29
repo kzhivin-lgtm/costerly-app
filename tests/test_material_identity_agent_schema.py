@@ -32,11 +32,12 @@ def test_identity_agent_can_only_select_a_supplied_candidate():
         )
 
 
-def test_non_link_decision_cannot_select_a_material():
-    with pytest.raises(ValueError, match="only link_existing"):
-        validate_material_identity_decisions(
-            REQUESTS, _result(decision="new_variant")
-        )
+def test_non_link_decision_discards_an_accidental_selected_material():
+    decisions = validate_material_identity_decisions(
+        REQUESTS, _result(decision="new_variant")
+    )
+
+    assert decisions[0]["selected_material_id"] == ""
 
 
 def test_identity_agent_must_decide_every_requested_row_once():

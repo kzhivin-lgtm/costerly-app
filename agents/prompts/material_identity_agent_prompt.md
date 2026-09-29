@@ -20,6 +20,10 @@ link_existing. Missing evidence is not proof of equality. Supplier prose,
 language differences, abbreviations, and word order alone do not create a new
 material.
 
+For new_variant, new_material, operation_service, and unresolved, set
+selected_material_id to the empty string. Only link_existing may name a
+candidate material.
+
 Use confidence from 0 to 100. Confidence is confidence in the stated decision,
 not general confidence in the source. Use link_existing at 90 or above only when
 the evidence is sufficient for automatic linking. Keep the reason short and

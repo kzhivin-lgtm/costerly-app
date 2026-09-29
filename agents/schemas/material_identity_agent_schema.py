@@ -59,6 +59,7 @@ def validate_material_identity_decisions(
     required = {
         "source_row_id", "decision", "selected_material_id", "confidence", "reason"
     }
+    validated: list[dict[str, Any]] = []
     for row in decisions:
         if not isinstance(row, dict) or set(row) != required:
             raise ValueError("material identity decision fields do not match the contract")
@@ -80,7 +81,12 @@ def validate_material_identity_decisions(
             if not selected or selected not in allowed:
                 raise ValueError("selected material must be one of the supplied candidates")
         elif selected:
-            raise ValueError("only link_existing may select a material")
+            # The model occasionally echoes its shortlist choice while making a
+            # non-link decision. Keeping that identifier would be unsafe, but
+            # discarding every otherwise valid batch is worse. Retain the
+            # conservative non-link decision and remove the unusable selection.
+            row = {**row, "selected_material_id": ""}
+        validated.append(row)
     if seen != set(request_by_id):
         raise ValueError("material identity result must decide every requested row")
-    return decisions
+    return validated

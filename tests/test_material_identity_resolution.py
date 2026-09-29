@@ -140,6 +140,19 @@ def test_exact_alias_tolerates_unrecorded_hard_attribute():
     assert result.selected_material_id == MDF_ID
 
 
+def test_shortlist_tolerates_unrecorded_hard_attribute():
+    result = _resolve(
+        phrase="MDF board",
+        reference_aliases=(),
+        category_code="mdf",
+        specifications={"thickness_mm": 18, "colour": "white"},
+    )
+
+    assert result.status == "resolved"
+    assert result.route == "compatible_hard_attributes"
+    assert result.selected_material_id == MDF_ID
+
+
 def test_unique_hard_attribute_match_resolves():
     result = _resolve(
         phrase="green board",
@@ -169,6 +182,60 @@ def test_non_exact_alias_returns_bounded_shortlist():
     assert result.status == "shortlist"
     assert len(result.candidates) == 5
     assert all(candidate.score <= Decimal("94") for candidate in result.candidates)
+
+
+def test_material_family_removes_cross_family_shortlist_candidates():
+    materials = (
+        _material("plywood-18", "wood", "Birch plywood, 18 mm", thickness_mm=18),
+        _material("oak-18", "wood", "Oak veneer, 18 mm", thickness_mm=18),
+    )
+    result = resolve_material_identity(
+        phrase="Plywood 18 mm",
+        market_code="IL",
+        materials=materials,
+        reference_aliases=(),
+        specifications={"thickness_mm": 18},
+        material_family="plywood",
+    )
+
+    assert result.status == "shortlist"
+    assert [candidate.material_id for candidate in result.candidates] == ["plywood-18"]
+
+
+def test_known_family_with_no_compatible_variant_never_falls_back_cross_family():
+    materials = (
+        _material("melamine-18", "wood", "Melamine board, 18 mm", thickness_mm=18),
+        _material("oak-17", "wood", "Oak veneer, 17 mm", thickness_mm=17),
+    )
+    result = resolve_material_identity(
+        phrase="Melamine 17 mm",
+        market_code="IL",
+        materials=materials,
+        reference_aliases=(),
+        specifications={"thickness_mm": 17},
+        material_family="melamine",
+    )
+
+    assert result.status == "new_identity_or_needs_review"
+    assert result.candidates == ()
+
+
+def test_laminated_solid_timber_uses_butcher_block_retrieval_synonym():
+    materials = (
+        _material("pine-block", "wood", "Pine butcher-block panel"),
+        _material("pine-plywood", "wood", "Pine plywood, 18 mm", thickness_mm=18),
+    )
+    result = resolve_material_identity(
+        phrase="Pine laminated 18 mm",
+        market_code="IL",
+        materials=materials,
+        reference_aliases=(),
+        specifications={"thickness_mm": 18},
+        material_family="solid timber laminated",
+    )
+
+    assert result.status == "shortlist"
+    assert [candidate.material_id for candidate in result.candidates] == ["pine-block"]
 
 
 def test_no_compatible_material_creates_review_route():

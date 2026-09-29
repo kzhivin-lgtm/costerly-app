@@ -39,6 +39,10 @@ class _Query:
         self.row_limit = value
         return self
 
+    def range(self, start, end):
+        self.row_range = (start, end)
+        return self
+
     def update(self, payload):
         self.operation = "update"
         self.payload = deepcopy(payload)
@@ -109,6 +113,9 @@ class _Query:
                 upserted.append(deepcopy(existing))
             return SimpleNamespace(data=upserted)
         matches = [row for row in rows if self._matches(row)]
+        if hasattr(self, "row_range"):
+            start, end = self.row_range
+            matches = matches[start:end + 1]
         if self.row_limit is not None:
             matches = matches[: self.row_limit]
         if self.operation == "update":
@@ -159,6 +166,7 @@ def _tables(*, exact_alias=True):
         "reference_material_aliases": aliases,
         "company_material_aliases": [],
         "market_material_offers": [],
+        "reference_material_pricing_identities": [],
         "company_price_sources": [
             {"source_id": "source-1", "company_id": "company-1", "supplier_id": None}
         ],
@@ -167,7 +175,8 @@ def _tables(*, exact_alias=True):
             {
                 "company_material_id": "company-material-1",
                 "company_id": "company-1",
-                "reference_material_id": None,
+            "reference_material_id": None,
+                "pricing_identity_id": None,
                 "category": "Wood Sheets",
                 "canonical_name": "MDF 18 mm",
                 "specifications": {},
@@ -224,6 +233,64 @@ def test_catalog_v1_is_not_selected_before_v2_is_active():
     index = _load_resolution_index(_Client(tables), company_id="company-1", market_code="IL")
 
     assert [row["material_id"] for row in index["materials"]] == ["catalog-v1-mdf"]
+
+
+def test_catalog_index_reads_past_the_default_postgrest_page():
+    tables = _tables()
+    tables["material_resolver_versions"][0]["resolver_version"] = "material_identity_v2"
+    tables["reference_materials"] = [
+        {
+            "material_id": f"catalog-{index}",
+            "department": "wood",
+            "category_code": "gcm_mdf",
+            "canonical_name": f"Global MDF {index}",
+            "base_unit": "sqm",
+            "specifications": {"catalog_version": "israel_global_catalog_v1"},
+            "active": True,
+        }
+        for index in range(1_001)
+    ]
+
+    index = _load_resolution_index(_Client(tables), company_id="company-1", market_code="IL")
+
+    assert len(index["materials"]) == 1_001
+
+
+def test_v3_uses_pricing_identity_before_detail_identity():
+    tables = _tables(exact_alias=False)
+    tables["material_resolver_versions"][0]["resolver_version"] = "material_identity_v3"
+    tables["reference_materials"][0]["specifications"] = {
+        "catalog_version": "israel_global_catalog_v1",
+        "thickness_mm": 18,
+    }
+    tables["company_price_source_rows"][0]["evidence"] = {
+        "material_type": "Wood Sheets",
+        "material_family": "mdf",
+        "identity_attributes": {"thickness_mm": 18, "surface": "exposed"},
+    }
+    tables["reference_material_pricing_identities"] = [{
+        "pricing_identity_id": "price-mdf-18-raw",
+        "market_code": "IL",
+        "department": "wood",
+        "canonical_name": "MDF, raw, 18 mm",
+        "base_unit": "m2",
+        "price_attributes": {
+            "material_family": "mdf",
+            "construction": "raw",
+            "thickness_mm": 18,
+        },
+        "status": "active",
+    }]
+
+    batch = resolve_price_source_material_identities(
+        _Client(tables), company_id="company-1", source_id="source-1"
+    )
+
+    assert batch.resolved == 1
+    assert tables["company_material_items"][0]["pricing_identity_id"] == "price-mdf-18-raw"
+    assert tables["company_price_source_rows"][0]["pricing_identity_id"] == "price-mdf-18-raw"
+    assert tables["material_identity_resolution_events"][0]["selected_pricing_identity_id"] == "price-mdf-18-raw"
+    assert tables["material_identity_candidates"] == []
 
 
 def test_exact_alias_links_company_material_and_records_immutable_event():

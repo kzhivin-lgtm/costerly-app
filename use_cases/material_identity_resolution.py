@@ -39,6 +39,13 @@ _UNIT_REPLACEMENTS = (
     (r"\b(?:milliliters?|millilitres?|мл|מ[\"״']?ל)\b", "ml"),
 )
 
+_GENERIC_FAMILY_TOKENS = frozenset(
+    {
+        "board", "material", "materials", "sheet", "sheets", "solid",
+        "timber", "wood", "woods", "panel", "panels",
+    }
+)
+
 
 @dataclass(frozen=True)
 class MaterialIdentityCandidate:
@@ -111,7 +118,12 @@ def _hard_compatibility(
     for key, value in specifications.items():
         if key not in HARD_SPECIFICATION_KEYS or value in (None, "", []):
             continue
-        if key not in stored or not _specification_equal(value, stored[key]):
+        # Catalog V1 deliberately leaves some dimensions unrecorded. Absence is
+        # uncertainty, not a contradictory material property. Only an explicit
+        # incompatible stored value may eliminate a shortlist candidate.
+        if key not in stored:
+            continue
+        if not _specification_equal(value, stored[key]):
             return False, matched
         matched += 1
     return True, matched
@@ -136,6 +148,36 @@ def _unique_material_ids(rows: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
     return tuple(sorted({str(row.get("material_id") or "") for row in rows if row.get("material_id")}))
 
 
+def _family_tokens(value: str | None) -> set[str]:
+    """Keep only material-identifying words from the extractor's family label."""
+    return {
+        token
+        for token in normalize_material_phrase(value).split()
+        if len(token) > 2 and token not in _GENERIC_FAMILY_TOKENS
+    }
+
+
+def _material_family_matches(material: Mapping[str, Any], family_tokens: set[str]) -> bool:
+    if not family_tokens:
+        return True
+    specifications = material.get("specifications") or {}
+    corpus = normalize_material_phrase(" ".join(
+        str(value or "")
+        for value in (
+            material.get("canonical_name"),
+            specifications.get("subcategory_en"),
+            specifications.get("category_en"),
+        )
+    ))
+    tokens = set(corpus.split())
+    # Supplier lists commonly call glued solid-wood panels "laminated" while
+    # the canonical catalog names that same purchasable family butcher-block.
+    # This is a retrieval synonym only, never an automatic identity link.
+    if family_tokens in ({"laminated"}, {"lami"}):
+        return {"butcher", "block"}.issubset(tokens)
+    return family_tokens.issubset(tokens)
+
+
 def resolve_material_identity(
     *,
     phrase: str,
@@ -150,6 +192,7 @@ def resolve_material_identity(
     supplier_sku: str | None = None,
     category_code: str | None = None,
     specifications: Mapping[str, Any] | None = None,
+    material_family: str | None = None,
     candidate_departments: Sequence[str] = (),
     shortlist_limit: int = 5,
 ) -> MaterialIdentityResolution:
@@ -299,6 +342,25 @@ def resolve_material_identity(
         )
         if is_compatible:
             compatible_materials.append((material, matched_specs))
+    family_tokens = _family_tokens(material_family)
+    family_known_in_catalog = any(
+        _material_family_matches(material, family_tokens)
+        and (
+            not shortlist_departments
+            or str(material.get("department") or "") in shortlist_departments
+        )
+        for material in material_by_id.values()
+    )
+    family_materials = [
+        item
+        for item in compatible_materials
+        if _material_family_matches(item[0], family_tokens)
+    ]
+    # An unfamiliar extractor label must not make all candidates disappear.
+    # But if the family is known, a missing compatible variant is a real gap in
+    # the catalog, never a reason to suggest another material family.
+    if family_materials or family_known_in_catalog:
+        compatible_materials = family_materials
     if category_code and requested_specs:
         hard_matches = [
             material

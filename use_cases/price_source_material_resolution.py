@@ -11,6 +11,10 @@ from use_cases.material_identity_resolution import (
     normalize_material_phrase,
     resolve_material_identity,
 )
+from use_cases.material_pricing_identity_resolution import (
+    PricingIdentityResolution,
+    resolve_material_pricing_identity,
+)
 
 
 PRICE_SOURCE_REFERENCE_DEPARTMENTS = {
@@ -27,6 +31,9 @@ PRICE_SOURCE_REFERENCE_DEPARTMENTS = {
 }
 
 logger = logging.getLogger(__name__)
+
+
+REFERENCE_INDEX_PAGE_SIZE = 1_000
 
 
 @dataclass(frozen=True)
@@ -81,6 +88,18 @@ def _identity_confidence(resolution: MaterialIdentityResolution) -> float:
     return 0.0
 
 
+def _select_all(query: Any, *, page_size: int = REFERENCE_INDEX_PAGE_SIZE) -> list[dict[str, Any]]:
+    """Read every row from a PostgREST query, not just its default first page."""
+    rows: list[dict[str, Any]] = []
+    start = 0
+    while True:
+        page = query.range(start, start + page_size - 1).execute().data or []
+        rows.extend(page)
+        if len(page) < page_size:
+            return rows
+        start += page_size
+
+
 def _load_resolution_index(
     client: Any,
     *,
@@ -97,15 +116,14 @@ def _load_resolution_index(
     ).data or []
     if not versions:
         raise RuntimeError(f"No active material resolver for market {market_code}")
-    all_materials = (
+    all_materials = _select_all(
         client.table("reference_materials")
         .select(
             "material_id,department,category_code,canonical_name,base_unit,"
             "specifications,active"
         )
         .eq("active", True)
-        .execute()
-    ).data or []
+    )
     catalog_v1_materials = [
         row
         for row in all_materials
@@ -113,6 +131,17 @@ def _load_resolution_index(
         == "israel_global_catalog_v1"
     ]
     resolver_version = str(versions[0]["resolver_version"])
+    pricing_identities: list[dict[str, Any]] = []
+    if resolver_version == "material_identity_v3":
+        pricing_identities = _select_all(
+            client.table("reference_material_pricing_identities")
+            .select(
+                "pricing_identity_id,market_code,department,canonical_name,base_unit,"
+                "price_attributes,status"
+            )
+            .eq("market_code", market_code)
+            .eq("status", "active")
+        )
     return {
         "resolver_version": resolver_version,
         # Do not let an incomplete multi-part data import change production
@@ -120,33 +149,57 @@ def _load_resolution_index(
         # explicitly active in the final migration part.
         "materials": (
             catalog_v1_materials
-            if resolver_version == "material_identity_v2" and catalog_v1_materials
+            if resolver_version in {"material_identity_v2", "material_identity_v3"}
+            and catalog_v1_materials
             else all_materials
         ),
-        "reference_aliases": (
+        "reference_aliases": _select_all(
             client.table("reference_material_aliases")
             .select(
                 "material_id,market_code,alias_text,exact_identity,confidence,active"
             )
             .eq("market_code", market_code)
             .eq("active", True)
-            .execute()
-        ).data or [],
-        "company_aliases": (
+        ),
+        "company_aliases": _select_all(
             client.table("company_material_aliases")
             .select("material_id,supplier_id,alias_text,resolver_key,active")
             .eq("company_id", company_id)
             .eq("active", True)
-            .execute()
-        ).data or [],
-        "market_offers": (
+        ),
+        "market_offers": _select_all(
             client.table("market_material_offers")
             .select("material_id,market_code,supplier_name,supplier_sku,status")
             .eq("market_code", market_code)
             .neq("status", "archived")
-            .execute()
-        ).data or [],
+        ),
+        "pricing_identities": pricing_identities,
     }
+
+
+def _pricing_specifications(
+    *,
+    material_family: str,
+    extracted_specifications: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Translate source evidence into the small set of price-bearing axes."""
+    result = dict(extracted_specifications)
+    surface = normalize_material_phrase(result.get("surface"))
+    construction_by_surface = {
+        "raw": "raw",
+        "exposed": "raw",
+        "unfinished": "raw",
+        "veneer": "veneer_faced",
+        "veneered": "veneer_faced",
+        "formica": "plastic_laminate_faced",
+        "hpl": "plastic_laminate_faced",
+        "plastic": "plastic_laminate_faced",
+    }
+    if surface in construction_by_surface:
+        result["construction"] = construction_by_surface[surface]
+    if normalize_material_phrase(material_family) == "melamine":
+        result["construction"] = "melamine_faced"
+    return result
 
 
 def _source_supplier_maps(
@@ -213,7 +266,7 @@ def resolve_price_source_material_identities(
         materials = (
             client.table("company_material_items")
             .select(
-                "company_material_id,reference_material_id,category,canonical_name,"
+                "company_material_id,reference_material_id,pricing_identity_id,category,canonical_name,"
                 "specifications,status"
             )
             .eq("company_id", company_id)
@@ -294,7 +347,58 @@ def resolve_price_source_material_identities(
             }.items()
             if value not in (None, "", 0, 0.0, [])
         }
+        material_family = str(evidence.get("material_family") or "")
+        existing_pricing_identity_id = str(
+            company_material.get("pricing_identity_id") or ""
+        )
+        pricing_resolution = PricingIdentityResolution(status="needs_review")
+        if existing_pricing_identity_id:
+            pricing_resolution = PricingIdentityResolution(
+                status="resolved",
+                selected_pricing_identity_id=existing_pricing_identity_id,
+            )
+        elif index["pricing_identities"]:
+            pricing_resolution = resolve_material_pricing_identity(
+                material_family=material_family,
+                specifications=_pricing_specifications(
+                    material_family=material_family,
+                    extracted_specifications=extracted_specifications,
+                ),
+                market_code=market,
+                pricing_identities=index["pricing_identities"],
+            )
+        pricing_identity_id = str(
+            pricing_resolution.selected_pricing_identity_id or ""
+        )
+        pricing_candidates = [
+            {
+                "pricing_identity_id": candidate.pricing_identity_id,
+                "score": _score(candidate.score),
+                "matched_price_attributes": list(candidate.matched_price_attributes),
+            }
+            for candidate in pricing_resolution.candidates
+        ]
+        pricing_resolved = bool(pricing_identity_id)
+        if pricing_resolved and not existing_pricing_identity_id:
+            linked_rows = client.table("company_material_items").update(
+                {"pricing_identity_id": pricing_identity_id}
+            ).eq("company_id", company_id).eq(
+                "company_material_id", company_material_id
+            ).is_("pricing_identity_id", "null").execute().data or []
+            if not linked_rows:
+                current_rows = (
+                    client.table("company_material_items")
+                    .select("pricing_identity_id")
+                    .eq("company_id", company_id)
+                    .eq("company_material_id", company_material_id)
+                    .limit(1)
+                    .execute()
+                ).data or []
+                if str((current_rows[0] if current_rows else {}).get("pricing_identity_id") or "") != pricing_identity_id:
+                    raise RuntimeError("Company material pricing identity changed during resolution")
+            company_material["pricing_identity_id"] = pricing_identity_id
         existing_reference_id = str(company_material.get("reference_material_id") or "")
+        reference_material_id: str | None = existing_reference_id or None
         if existing_reference_id:
             resolution = MaterialIdentityResolution(
                 status="resolved",
@@ -321,6 +425,7 @@ def resolve_price_source_material_identities(
                 supplier_id=supplier_id,
                 supplier_sku=str(row.get("raw_sku") or "") or None,
                 specifications=extracted_specifications,
+                material_family=material_family or None,
                 candidate_departments=PRICE_SOURCE_REFERENCE_DEPARTMENTS.get(
                     material_type, ()
                 ),
@@ -357,6 +462,7 @@ def resolve_price_source_material_identities(
                             "Company material identity changed during resolution"
                         )
                 company_material["reference_material_id"] = reference_material_id
+        if pricing_resolved or resolution.status == "resolved":
             resolved += 1
         else:
             reference_material_id = None
@@ -372,6 +478,7 @@ def resolve_price_source_material_identities(
                 "proposed_category": evidence.get("material_type"),
                 "extracted_specifications": extracted_specifications,
                 "candidate_materials": candidates,
+                "candidate_pricing_identities": pricing_candidates,
                 "resolution_route": resolution.route,
                 "confidence_dimensions": {"identity": identity_confidence},
                 "resolver_version": resolver_version,
@@ -386,7 +493,7 @@ def resolve_price_source_material_identities(
                 new_candidates.append(
                     {"candidate_id": candidate_id, **candidate_payload}
                 )
-            if resolution.status == "shortlist":
+            if pricing_resolution.status == "shortlist" or resolution.status == "shortlist":
                 shortlisted += 1
             else:
                 needs_review += 1
@@ -394,13 +501,14 @@ def resolve_price_source_material_identities(
         source_row_update = {
                 **row,
                 "reference_material_id": reference_material_id,
+                "pricing_identity_id": pricing_identity_id or None,
                 "identity_candidate_id": candidate_id,
                 "identity_route": resolution.route,
                 "identity_confidence": identity_confidence,
                 "resolver_version": resolver_version,
             }
         source_rows_to_update.append(source_row_update)
-        if resolution.status == "resolved":
+        if pricing_resolved or resolution.status == "resolved":
             resolved_offer_rows_by_confidence.setdefault(
                 identity_confidence, []
             ).append(source_row_id)
@@ -411,6 +519,7 @@ def resolve_price_source_material_identities(
                 "source_row_id": source_row_id,
                 "candidate_id": candidate_id,
                 "selected_material_id": reference_material_id,
+                "selected_pricing_identity_id": pricing_identity_id or None,
                 "resolution_status": resolution.status,
                 "resolution_route": resolution.route,
                 "normalized_input": {
@@ -421,11 +530,12 @@ def resolve_price_source_material_identities(
                     "supplier_sku": row.get("raw_sku"),
                 },
                 "candidate_materials": candidates,
+                "candidate_pricing_identities": pricing_candidates,
                 "confidence_dimensions": {"identity": identity_confidence},
                 "resolver_version": resolver_version,
             }
         resolution_events.append(resolution_event)
-        if resolution.status != "resolved" and not pending_by_source_row.get(source_row_id):
+        if not pricing_resolved and resolution.status != "resolved" and not pending_by_source_row.get(source_row_id):
             agent_requests.append(
                 {
                     "source_row_id": source_row_id,
