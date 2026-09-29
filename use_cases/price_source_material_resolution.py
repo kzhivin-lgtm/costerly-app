@@ -97,17 +97,32 @@ def _load_resolution_index(
     ).data or []
     if not versions:
         raise RuntimeError(f"No active material resolver for market {market_code}")
+    all_materials = (
+        client.table("reference_materials")
+        .select(
+            "material_id,department,category_code,canonical_name,base_unit,"
+            "specifications,active"
+        )
+        .eq("active", True)
+        .execute()
+    ).data or []
+    catalog_v1_materials = [
+        row
+        for row in all_materials
+        if (row.get("specifications") or {}).get("catalog_version")
+        == "israel_global_catalog_v1"
+    ]
+    resolver_version = str(versions[0]["resolver_version"])
     return {
-        "resolver_version": str(versions[0]["resolver_version"]),
+        "resolver_version": resolver_version,
+        # Do not let an incomplete multi-part data import change production
+        # matching. Catalog V1 becomes the resolver universe only when V2 is
+        # explicitly active in the final migration part.
         "materials": (
-            client.table("reference_materials")
-            .select(
-                "material_id,department,category_code,canonical_name,base_unit,"
-                "specifications,active"
-            )
-            .eq("active", True)
-            .execute()
-        ).data or [],
+            catalog_v1_materials
+            if resolver_version == "material_identity_v2" and catalog_v1_materials
+            else all_materials
+        ),
         "reference_aliases": (
             client.table("reference_material_aliases")
             .select(

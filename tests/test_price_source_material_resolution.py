@@ -2,6 +2,7 @@ from copy import deepcopy
 from types import SimpleNamespace
 
 from use_cases.price_source_material_resolution import (
+    _load_resolution_index,
     resolve_price_source_material_identities,
 )
 
@@ -196,6 +197,33 @@ def _tables(*, exact_alias=True):
         "material_identity_candidates": [],
         "material_identity_resolution_events": [],
     }
+
+
+def test_catalog_v1_is_not_selected_before_v2_is_active():
+    tables = _tables()
+    tables["reference_materials"].append(
+        {
+            "material_id": "catalog-v1-mdf",
+            "department": "wood",
+            "category_code": "gcm_mdf",
+            "canonical_name": "Global MDF 18 mm",
+            "base_unit": "sqm",
+            "specifications": {"catalog_version": "israel_global_catalog_v1"},
+            "active": True,
+        }
+    )
+
+    index = _load_resolution_index(_Client(tables), company_id="company-1", market_code="IL")
+
+    assert {row["material_id"] for row in index["materials"]} == {
+        "reference-mdf",
+        "catalog-v1-mdf",
+    }
+
+    tables["material_resolver_versions"][0]["resolver_version"] = "material_identity_v2"
+    index = _load_resolution_index(_Client(tables), company_id="company-1", market_code="IL")
+
+    assert [row["material_id"] for row in index["materials"]] == ["catalog-v1-mdf"]
 
 
 def test_exact_alias_links_company_material_and_records_immutable_event():

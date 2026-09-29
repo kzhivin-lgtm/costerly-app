@@ -8,7 +8,7 @@ from typing import Any, Literal, Mapping, Sequence
 
 
 ResolutionStatus = Literal["resolved", "needs_review"]
-PriceAuthority = Literal["company", "market_baseline"]
+PriceAuthority = Literal["company", "market_baseline", "market_model"]
 
 _SIX_PLACES = Decimal("0.000001")
 _UNIT_ALIASES = {
@@ -178,7 +178,7 @@ def _baseline_candidate(
     market_code: str,
     price_scope: str | None,
     as_of: date,
-) -> tuple[Decimal, Decimal, Decimal, Decimal, str, str] | None:
+) -> tuple[Decimal, Decimal, Decimal, Decimal, str, str, PriceAuthority] | None:
     if str(row.get("status") or "") != "active":
         return None
     if str(row.get("material_id") or "") != reference_material_id:
@@ -203,7 +203,7 @@ def _baseline_candidate(
     confidence = _decimal(row.get("confidence"), "confidence")
     if confidence < 0 or confidence > 100:
         return None
-    baseline_id = str(row.get("baseline_id") or "").strip()
+    baseline_id = str(row.get("baseline_id") or row.get("model_price_id") or "").strip()
     if not baseline_id:
         return None
     return (
@@ -213,6 +213,7 @@ def _baseline_candidate(
         confidence,
         baseline_id,
         row_scope,
+        "market_model" if row.get("model_price_id") else "market_baseline",
     )
 
 
@@ -304,7 +305,7 @@ def resolve_material_price(
         is not None
     )
     if len(baseline_candidates) == 1:
-        low, typical, high, confidence, baseline_id, scope = baseline_candidates[0]
+        low, typical, high, confidence, baseline_id, scope, authority = baseline_candidates[0]
         return ResolvedMaterialPrice(
             status="resolved",
             reference_material_id=material_id,
@@ -313,7 +314,7 @@ def resolve_material_price(
             price_low=low,
             price_typical=typical,
             price_high=high,
-            authority="market_baseline",
+            authority=authority,
             price_scope=scope,
             confidence=confidence,
             baseline_id=baseline_id,
@@ -389,7 +390,21 @@ def load_material_price_rows(
         .eq("status", "active")
         .execute()
     ).data or []
-    return company_rows, [dict(row) for row in baseline_rows]
+    if baseline_rows:
+        return company_rows, [dict(row) for row in baseline_rows]
+
+    model_rows = (
+        client.table("market_material_model_prices")
+        .select(
+            "model_price_id,material_id,market_code,price_low,price_typical,price_high,"
+            "unit,currency,price_scope,confidence,status,effective_from,effective_to"
+        )
+        .eq("material_id", reference_material_id)
+        .eq("market_code", market_code)
+        .eq("status", "active")
+        .execute()
+    ).data or []
+    return company_rows, [dict(row) for row in model_rows]
 
 
 def resolve_company_first_material_price(

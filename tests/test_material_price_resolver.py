@@ -122,6 +122,15 @@ def test_unusable_company_offer_falls_back_with_reason():
     assert result.reason_codes == ("company_offer_not_usable",)
 
 
+def test_market_model_is_a_distinct_fallback_authority():
+    model = _baseline(baseline_id=None, model_price_id="model-price-1")
+
+    result = _resolve(baselines=(model,))
+
+    assert result.authority == "market_model"
+    assert result.baseline_id == "model-price-1"
+
+
 def test_exact_price_scope_can_be_required():
     missing = _resolve(price_scope="cut_to_size")
     found = _resolve(

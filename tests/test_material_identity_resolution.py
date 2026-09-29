@@ -129,6 +129,17 @@ def test_conflicting_hard_attribute_rejects_exact_alias():
     assert result.selected_material_id is None
 
 
+def test_exact_alias_tolerates_unrecorded_hard_attribute():
+    result = _resolve(
+        category_code="mdf",
+        specifications={"thickness_mm": 18, "colour": "white"},
+    )
+
+    assert result.status == "resolved"
+    assert result.route == "exact_market_alias"
+    assert result.selected_material_id == MDF_ID
+
+
 def test_unique_hard_attribute_match_resolves():
     result = _resolve(
         phrase="green board",

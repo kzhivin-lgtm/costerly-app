@@ -197,6 +197,22 @@ def resolve_material_identity(
             )[0]
         )
 
+    def exact_compatible(material_id: str) -> bool:
+        """Reject an exact identity only on an explicit conflicting attribute."""
+        material = material_by_id.get(material_id)
+        if not material:
+            return False
+        stored = material.get("specifications") or {}
+        for key, value in requested_specs.items():
+            if (
+                key in HARD_SPECIFICATION_KEYS
+                and key in stored
+                and value not in (None, "", [])
+                and not _specification_equal(value, stored[key])
+            ):
+                return False
+        return True
+
     normalized_sku = normalize_supplier_sku(supplier_sku)
     normalized_supplier = normalize_material_phrase(supplier_name)
     if normalized_sku and normalized_supplier:
@@ -206,7 +222,7 @@ def resolve_material_identity(
             if str(row.get("market_code") or "") == market
             and normalize_supplier_sku(row.get("supplier_sku")) == normalized_sku
             and normalize_material_phrase(row.get("supplier_name")) == normalized_supplier
-            and compatible(str(row.get("material_id") or ""))
+            and exact_compatible(str(row.get("material_id") or ""))
         ]
         sku_ids = _unique_material_ids(sku_rows)
         if len(sku_ids) == 1:
@@ -224,7 +240,7 @@ def resolve_material_identity(
         if row.get("active", True)
         and normalize_material_phrase(row.get("alias_text")) in normalized_phrases
         and (not row.get("supplier_id") or str(row.get("supplier_id")) == str(supplier_id or ""))
-        and compatible(str(row.get("material_id") or ""))
+        and exact_compatible(str(row.get("material_id") or ""))
     ]
     company_ids = _unique_material_ids(company_rows)
     if len(company_ids) == 1:
@@ -250,7 +266,7 @@ def resolve_material_identity(
         and str(row.get("market_code") or "") == market
         and normalize_material_phrase(row.get("alias_text")) in normalized_phrases
         and row.get("exact_identity") is True
-        and compatible(str(row.get("material_id") or ""))
+        and exact_compatible(str(row.get("material_id") or ""))
     ]
     alias_ids = _unique_material_ids(alias_rows)
     if len(alias_ids) == 1:
