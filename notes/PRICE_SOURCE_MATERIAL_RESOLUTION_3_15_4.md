@@ -1,9 +1,19 @@
 # Price Source Material Resolution
 
 Task: 3.15.4
-Status: implementation candidate
+Status: pricing-identity checkpoint complete, awaiting fresh production-browser acceptance
 Started: 2026-09-28
 Market: Israel (`IL`)
+
+## Current checkpoint, 2026-09-29
+
+The detailed checkpoint is
+`notes/PRICE_SOURCE_PRICING_IDENTITY_CHECKPOINT_2026_09_29.md` at code commit
+`27afd06`. Production now has 2,832 active pricing identities and matching
+active price models. The representative Tsidky source replay resolved all 26
+material rows without a nearest-thickness substitution and kept nine services
+out of material resolution. This is a no-write replay, so a newly uploaded
+production source after Railway deploy remains the next acceptance gate.
 
 ## Objective
 
