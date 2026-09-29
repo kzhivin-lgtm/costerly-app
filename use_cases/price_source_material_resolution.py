@@ -197,6 +197,17 @@ def _pricing_specifications(
     }
     if surface in construction_by_surface:
         result["construction"] = construction_by_surface[surface]
+    elif any(token in surface for token in ("formica", "hpl", "plastic")):
+        result["construction"] = "plastic_laminate_faced"
+    elif "white lacquer" in normalize_material_phrase(result.get("coating")):
+        result["construction"] = "plastic_laminate_faced"
+    elif (
+        "plywood" in normalize_material_phrase(material_family)
+        and not surface
+        and not normalize_material_phrase(result.get("coating"))
+        and not normalize_material_phrase(result.get("construction"))
+    ):
+        result["construction"] = "raw"
     if normalize_material_phrase(material_family) == "melamine":
         result["construction"] = "melamine_faced"
     return result

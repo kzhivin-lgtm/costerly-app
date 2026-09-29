@@ -95,3 +95,22 @@ def test_ambiguous_price_classes_are_not_auto_linked():
 
     assert result.status == "shortlist"
     assert result.selected_pricing_identity_id is None
+
+
+def test_missing_exact_thickness_never_uses_a_nearby_price_class():
+    result = resolve_material_pricing_identity(
+        material_family="birch plywood",
+        specifications={"thickness_mm": 17, "surface": "raw"},
+        market_code="IL",
+        pricing_identities=(
+            _identity(
+                "plywood_raw_18",
+                material_family="plywood",
+                thickness_mm=18,
+                surface="raw",
+            ),
+        ),
+    )
+
+    assert result.status == "needs_review"
+    assert result.selected_pricing_identity_id is None

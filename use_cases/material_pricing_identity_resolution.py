@@ -64,7 +64,13 @@ def _effective_attributes(
         if value not in (None, "", [], {}) and key not in IGNORED_PRICE_VARIATION_FIELDS
     }
     if material_family:
-        values["material_family"] = material_family
+        family = _value(material_family)
+        family = {
+            "birch plywood": "plywood",
+            "all birch plywood": "plywood",
+            "mdf board": "mdf",
+        }.get(family, family)
+        values["material_family"] = family
     return values
 
 
@@ -130,18 +136,18 @@ def resolve_material_pricing_identity(
             )
         )
     candidates.sort(key=lambda row: (-row.score, row.pricing_identity_id))
-    if not candidates:
-        return PricingIdentityResolution(
-            status="needs_review", reason_codes=("pricing_identity_not_found",)
-        )
-    if len(candidates) == 1 or candidates[0].score > candidates[1].score:
+    if candidates and (len(candidates) == 1 or candidates[0].score > candidates[1].score):
         return PricingIdentityResolution(
             status="resolved",
             selected_pricing_identity_id=candidates[0].pricing_identity_id,
             candidates=tuple(candidates[:shortlist_limit]),
         )
+    if candidates:
+        return PricingIdentityResolution(
+            status="shortlist",
+            candidates=tuple(candidates[:shortlist_limit]),
+            reason_codes=("ambiguous_pricing_identity",),
+        )
     return PricingIdentityResolution(
-        status="shortlist",
-        candidates=tuple(candidates[:shortlist_limit]),
-        reason_codes=("ambiguous_pricing_identity",),
+        status="needs_review", reason_codes=("pricing_identity_not_found",)
     )
