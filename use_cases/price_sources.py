@@ -845,7 +845,7 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
                 raise PriceSourceError(
                     "This supplier page does not expose readable text. "
                     "Upload its PDF, screenshot, or photo instead. "
-                    f"[url-fetch-v4 html_bytes={len(content)} wordpress={wordpress_diagnostic}]"
+                    f"[url-fetch-v5 html_bytes={len(content)} wordpress={wordpress_diagnostic}]"
                 )
             return current, content, visible_text
         raise PriceSourceError("The supplier page redirected too many times.")

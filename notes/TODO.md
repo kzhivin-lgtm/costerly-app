@@ -2,6 +2,17 @@
 
 Current owner-approved execution order:
 
+0. Backlog, cross-agent failure observability: record every attempted run before
+   network, file, model, or persistence work begins. Keep an internal failure
+   record with agent name, company-safe correlation ID, input type and URL/file
+   metadata, stage, bounded diagnostics, timing, model/provider metadata, and
+   sanitized error. Build an internal review queue with retry, evidence view,
+   grouping by failure signature, and alerting for repeated or systemic failures.
+   Scope: Detection, Estimation, Price Source, Material Identity, and future
+   agents. This is internal only, must not expose one company's content to
+   another, and must not slow the happy path. The current Tsidky URL fetch
+   failure is the first acceptance case.
+
 1. Finish 3.15.4 Price Source integration with the shared Material Resolution
    Core. Detailed checkpoint: `notes/PRICE_SOURCE_MATERIAL_RESOLUTION_3_15_4.md`.
 2. Run the first representative production Price Source through the resolver
