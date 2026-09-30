@@ -12,6 +12,10 @@ source documents -> object facts -> Labor Engine -> labor trace and hours -> pri
 
 ## Accepted object input
 
+`estimation_object_facts_v1` is converted by the bounded
+`object_facts_v1 -> labor_input_v1` adapter. The extraction contract is not
+flattened or weakened for Labor.
+
 ```json
 {
   "object_id": "cabinet-01",
@@ -20,14 +24,18 @@ source documents -> object facts -> Labor Engine -> labor trace and hours -> pri
   "template_confidence": "medium",
   "dimensions_mm": {"width": 600, "depth": 560, "height": 720},
   "materials": [
-    {"family": "laminated_particleboard", "thickness_mm": 18, "evidence": "drawing note"}
+    {
+      "family": "particleboard",
+      "specification": {"thickness_mm": 18},
+      "evidence_refs": ["ocr:ocr-1:p1:b0002"]
+    }
   ],
   "features": {
     "shelf_count": 1,
     "door_count": 2,
     "drawer_count": 0,
     "finish": "none",
-    "installation_scope": "delivery_only"
+    "installation_scope": "included"
   },
   "construction_profile": "panel_screw_standard",
   "source_facts": [
@@ -43,7 +51,7 @@ source documents -> object facts -> Labor Engine -> labor trace and hours -> pri
 ```json
 {
   "company_id": "...",
-  "machinery": ["panel_saw", "wood_cnc_router"],
+  "machinery": ["wood_panel_saw", "wood_edge_bander", "wood_cnc_router"],
   "qualified_roles": ["wood_machine_operator", "cabinetmaker"],
   "machine_attendance_fraction": {"wood_cnc_router": 0.25},
   "route_preferences": {"stone": "external", "glass": "external"}
@@ -86,3 +94,6 @@ The Machinery list is limited to the accepted 16 Company Profile capabilities. I
 4. Labor output contains no money, labor rate, overhead, or margin.
 5. Confidence never silently changes calculated time.
 6. Missing route-critical facts produce `partial_review` or `review_required`, never fabricated precision.
+7. Delivery, vehicle loading and site installation are sales-price additions,
+   not Labor Engine self-cost operations. `installation_scope` cannot change
+   the Labor Engine trace.

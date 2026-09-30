@@ -210,7 +210,7 @@ Labor Engine не считает деньги. Позднее `role hours * comp
 - panel saw route без CNC для стандартного прямолинейного корпуса;
 - CNC route без одновременного panel saw/manual drilling;
 - derivation соединений и отверстий из construction profile;
-- carcass, doors, drawers, hardware, packaging, delivery и site labor;
+- carcass, doors, drawers, hardware, quality inspection и packaging;
 - внешняя каменная столешница без внутренней stone fabrication;
 - carbon-steel frame через MIG и внутреннюю powder coating;
 - visible stainless frame через TIG, grinding и polishing;
@@ -242,8 +242,9 @@ Labor Engine не считает деньги. Позднее `role hours * comp
    nesting result.
 5. Door and drawer geometry пока не развёрнута в полноценные material
    primitives. Labor для fitting есть, но расход материала требует доработки.
-6. `delivery_trip` пока использует один условный trip, а не фактические km и
-   traffic class.
+6. Delivery, vehicle loading и site installation исключены из Labor Engine:
+   они являются только project-level начислениями к продажной цене и не входят
+   в self cost.
 7. In-house sheet laser labor и external powder component в sheet-metal
    сценарии ещё не подключены.
 8. Не все declared qualified roles проверяются. Жёсткая проверка уже есть для
@@ -276,10 +277,12 @@ Labor Engine не считает деньги. Позднее `role hours * comp
 ### P0: закончить Labor Engine
 
 1. Добавить `solid_wood_table` и закрыть golden S04.
-2. Добавить `stone_top_on_base` и закрыть S08 с правильным разделением supplier
-   fabrication и company installation.
-3. Добавить `glass_metal_display` и закрыть S09, включая crew escalation.
-4. Закрыть S10 как invariant: installation scope не меняет workshop labor.
+2. Добавить `stone_top_on_base` и закрыть S08 с external supplier fabrication
+   без delivery или installation labor.
+3. Добавить `glass_metal_display` и закрыть S09 без delivery или installation
+   labor.
+4. Сохранить S10 как invariant: installation scope не меняет Labor Engine
+   output.
 5. Добавить остальные approved templates без расширения V0 limits.
 6. Добавить batch/session aggregation, чтобы setup считался один раз для
    совместимых объектов.

@@ -111,40 +111,36 @@ sheet-metal bending, external powder component, incoming quality inspection.
 Must not emit: internal sheet-laser labor or machine cost, sheet shearing,
 manual drilling for laser-cut cable cutouts, or internal powder operations.
 
-## S08: Stone top on installed cabinet base
+## S08: Stone top on cabinet base
 
 Input: one `stone_top_on_base`, base cabinet W1200 D600 H850, quartz top,
-one sink cutout, eased edge, supplier includes stone fabrication but not
-installation, company installation scope includes cabinet and top.
+one sink cutout and eased edge. The supplier includes stone fabrication.
 
 Expected operations: base cabinet route, external stone component containing
-cutting, edge and sink cutout, cabinet installation, two-person countertop
-installation, site sealing, final adjustment.
+cutting, edge and sink cutout, quality inspection and protective packaging.
 
 Must not emit: internal stone cutting, edge processing, cutout, seaming, or
-supplier countertop installation.
+any delivery or site-installation labor.
 
 ## S09: Glass and metal display cabinet
 
 Input: one `glass_metal_display`, W1000 D400 H1800, powder-coated steel frame,
-4 glass panels, company has profile saw, external glass supplier, installation
-included.
+4 glass panels, company has profile saw and an external glass supplier.
 
-Expected operations: metal frame route, external glass components, metalwork
-installation, glass/mirror installation with crew escalation based on panel
-area/weight, anchoring, final adjustment.
+Expected operations: metal frame route, external glass components, quality
+inspection and protective packaging.
 
 Must not emit: internal glass cutting, drilling or tempering; no duplicate
-supplier and internal glass labor.
+supplier and internal glass labor; no delivery or site-installation labor.
 
 ## S10: Delivery-only versus installation scope
 
 Input A: S01 with `installation_scope = false`. Input B: identical object with
 `installation_scope = true`.
 
-Expected difference: B adds site protection, cabinet installation, anchors,
-final adjustment and cleanup. A has packaging, loading and delivery only.
-Fabrication labor and material quantities must be identical.
+Expected difference: none in Labor Engine output. Delivery and installation are
+sales-price additions and never self-cost labor. Fabrication labor and material
+quantities must be identical.
 
 ## Global acceptance invariants
 
@@ -156,6 +152,6 @@ external, or supplier and company routes.
 zero internal fabricator labor.
 4. Every derived drilling, edge, weld and hardware quantity reconciles to a
 template primitive and selected connection profile.
-5. Changing only `installation_scope` cannot change workshop fabrication.
+5. Changing only `installation_scope` cannot change any Labor Engine output.
 6. Missing dimensions, incompatible material, unsupported template, or absent
 route produces a specific review reason, never a fabricated default.

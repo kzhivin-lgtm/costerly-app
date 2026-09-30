@@ -65,7 +65,7 @@ engine call.
 
 - 36 focused Estimation v2 evidence, extraction, persistence, composition and
   revision tests pass;
-- full suite passes with 766 tests and 28 warnings;
+- full suite passes with 769 tests and 28 warnings;
 - `py_compile` and `git diff --check` pass.
 
 ## Object Facts extractor, verified 2026-10-01
@@ -129,7 +129,7 @@ catalog contains 2,832 pricing identities across three PostgREST pages and 51
 material families. The runtime loader paginates all rows instead of silently
 stopping at the 1,000-row API default.
 
-Local verification now passes with 766 tests. The feature flag is not enabled,
+Local verification now passes with 769 tests. The feature flag is not enabled,
 and no production fact row has been written.
 
 ## Labor Engine compatibility inspection, 2026-10-01
@@ -148,19 +148,41 @@ context:
 - production uses family `stainless_steel` plus an alloy specification, while
   Labor expects `stainless_304` or `stainless_316` as family values;
 - only five of the 21 approved construction templates are implemented;
-- delivery and site setup are currently emitted per object even though their
-  own formula architecture requires project or site allocation.
+- delivery and site setup were emitted per object before the compatibility
+  repair, contradicting the approved sales-only policy.
 
-Direct compatibility probes returned `unsupported_template`,
+Direct compatibility probes before the repair returned `unsupported_template`,
 `edge_bander_availability_unknown` and
 `external_powder_component_not_yet_enabled` for otherwise valid v2 and
-production-shaped inputs. Do not connect Labor directly. Add a bounded
-`object_facts_v1 -> labor_input_v1` adapter, align canonical machine codes and
-settle project delivery and installation allocation first.
+production-shaped inputs. Labor must therefore receive facts only through the
+bounded adapter and production machine codes.
 
 One separate Object Facts issue found by the inspection was fixed: exact
 versioned material-family values may contain spaces. Validation now accepts a
 non-empty exact catalog value rather than requiring identifier syntax.
+
+## Labor Engine compatibility repair, 2026-10-01
+
+The user confirmed that delivery 3% and installation 10% are additions to the
+already calculated selling price. They are not self cost. Labor Engine now
+emits workshop labor only: fabrication, quality inspection and protective
+packaging. Vehicle loading, delivery trips and site installation operations
+were removed from its active baselines and cannot change the labor trace.
+
+The bounded `object_facts_v1 -> labor_input_v1` adapter now maps nested template
+and material facts without asking extraction to duplicate fields. Labor uses
+the production Company Profile codes `wood_edge_bander` and
+`finish_powder_booth`, reads nested thickness, and understands production
+`stainless_steel` with an explicit 304 or 316 alloy specification.
+
+Compatibility is verified against the real E01 Object Facts shape and real
+Company Profile machinery-row shape. Installation scope included versus
+excluded produces identical self-cost labor output. The five existing template
+routes are compatible; expanding the remaining templates and cross-object
+batch aggregation remains separate work.
+
+Verification: 11 direct Labor Engine tests, 83 Labor, Machinery and
+manufacturing tests, and the full 769-test suite pass.
 
 ## Next implementation slice
 

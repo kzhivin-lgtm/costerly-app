@@ -44,13 +44,6 @@ BASELINES: dict[str, OperationBaseline] = {
     "hardware_installation": OperationBaseline(3, 2.5, "carpenter", 25),
     "quality_inspection": OperationBaseline(3, 4, "production_manager", 25),
     "protective_packaging": OperationBaseline(3, 7, "packer", 25),
-    "vehicle_loading": OperationBaseline(5, 3, "general_worker", 25),
-    "delivery_trip": OperationBaseline(15, 1.4, "delivery_driver", 25),
-    "site_protection": OperationBaseline(5, 1.0, "installer", 25),
-    "cabinet_installation": OperationBaseline(8, 18, "installer", 25),
-    "site_anchoring": OperationBaseline(5, 2.2, "installer", 25),
-    "final_adjustment": OperationBaseline(3, 6, "installer", 25),
-    "site_cleanup": OperationBaseline(5, 1.0, "general_worker", 25),
     "metal_profile_cutting": OperationBaseline(8, 1.2, "metal_machine_operator", 25),
     "metal_assembly": OperationBaseline(8, 10, "welder", 25),
     "mig_mag_welding": OperationBaseline(8, 4.55, "welder", 70),
@@ -161,34 +154,38 @@ def _banded_length_m(panels: Sequence[tuple[float, float]]) -> float:
     return round(sum(height for _, height in panels[:2]) / 1000 + sum(width for width, _ in panels[2:4]) / 1000 + sum(width for width, _ in panels[5:]) / 1000, 3)
 
 
-def _common_postproduction(
+def _common_workshop_closeout(
     lines: list[dict[str, Any]],
     *,
-    installation_scope: str,
     module_count: int,
-    anchor_count: int,
     context: Mapping[str, Any],
     provenance: Sequence[str],
 ) -> None:
+    """Add self-cost workshop work only, never sales delivery or installation."""
     lines.extend(
         [
-            _line("quality_inspection", module_count, route="in_house_manual", provenance=provenance, context=context, batch_key="delivery"),
-            _line("protective_packaging", module_count, route="in_house_manual", provenance=provenance, context=context, batch_key="delivery"),
-            _line("vehicle_loading", module_count, route="in_house_manual", provenance=provenance, context=context, batch_key="delivery"),
-            _line("delivery_trip", 1, route="in_house_manual", provenance=provenance, context=context, batch_key="delivery"),
+            _line("quality_inspection", module_count, route="in_house_manual", provenance=provenance, context=context, batch_key="workshop_closeout"),
+            _line("protective_packaging", module_count, route="in_house_manual", provenance=provenance, context=context, batch_key="workshop_closeout"),
         ]
     )
-    if installation_scope != "included":
-        return
-    lines.extend(
-        [
-            _line("site_protection", 1, route="site", provenance=provenance, context=context, batch_key="site_visit"),
-            _line("cabinet_installation", module_count, route="site", provenance=provenance, context=context, batch_key="site_visit"),
-            _line("site_anchoring", anchor_count, route="site", provenance=provenance, context=context, batch_key="site_visit"),
-            _line("final_adjustment", module_count, route="site", provenance=provenance, context=context, batch_key="site_visit"),
-            _line("site_cleanup", 1, route="site", provenance=provenance, context=context, batch_key="site_visit"),
-        ]
-    )
+
+
+def _metal_alloy(material: Mapping[str, Any]) -> str | None:
+    family = str(material.get("family") or "").strip()
+    specification = material.get("specification") or {}
+    if not isinstance(specification, Mapping):
+        specification = {}
+    declared = str(specification.get("alloy") or "").lower().replace(" ", "_")
+    if family == "carbon_steel":
+        return "carbon_steel"
+    if family in {"stainless_304", "stainless_316"}:
+        return family
+    if family == "stainless_steel":
+        if "316" in declared:
+            return "stainless_316"
+        if "304" in declared:
+            return "stainless_304"
+    return None
 
 
 def _estimate_metal_table_frame(
@@ -209,8 +206,8 @@ def _estimate_metal_table_frame(
         return _review(str(error))
     if not materials or not isinstance(materials[0], Mapping):
         return _review("missing_metal_material")
-    alloy = str(materials[0].get("family") or "")
-    if alloy not in {"carbon_steel", "stainless_304", "stainless_316"}:
+    alloy = _metal_alloy(materials[0])
+    if alloy is None:
         return _review("unsupported_metal_alloy")
     machines = _machine_set(company_context)
     if "metal_profile_saw" not in machines:
@@ -254,14 +251,19 @@ def _estimate_metal_table_frame(
         polishing["role_allocations"][0]["hours"] = round(polishing["elapsed_minutes"] / 60, 4)
         lines.append(polishing)
     elif coating == "powder":
-        if "powder_coating_booth" in machines:
+        if "finish_powder_booth" in machines:
             lines.extend([
                 _line("powder_coating_preparation", quantity, route="in_house_machine", provenance=provenance, context=company_context, batch_key="powder:black"),
                 _line("powder_coating_application", quantity, route="in_house_machine", provenance=provenance, context=company_context, batch_key="powder:black"),
             ])
         else:
             return _review("external_powder_component_not_yet_enabled")
-    _common_postproduction(lines, installation_scope=str(features.get("installation_scope") or "delivery_only"), module_count=quantity, anchor_count=0, context=company_context, provenance=provenance)
+    _common_workshop_closeout(
+        lines,
+        module_count=quantity,
+        context=company_context,
+        provenance=provenance,
+    )
     return {"object_id": object_fact.get("object_id"), "status": "estimated", "labor_lines": lines, "purchased_components": [], "review_items": []}
 
 
@@ -338,7 +340,7 @@ def estimate_labor(
     has_panel_saw = "wood_panel_saw" in machines
     if not has_cnc and not has_panel_saw:
         return _review("no_supported_panel_route")
-    if "edge_bander" not in machines:
+    if "wood_edge_bander" not in machines:
         return _review("edge_bander_availability_unknown")
 
     try:
@@ -348,7 +350,15 @@ def estimate_labor(
     connections = 4 + 2 * shelves
     provenance = [f"template:{template}", f"connection:{profile}"]
     lines: list[dict[str, Any]] = []
-    material_batch = f"{primary_material['family']}:{primary_material.get('thickness_mm', 'unknown')}"
+    specification = primary_material.get("specification") or {}
+    thickness = (
+        specification.get("thickness_mm")
+        if isinstance(specification, Mapping)
+        else None
+    )
+    if thickness is None:
+        thickness = primary_material.get("thickness_mm", "unknown")
+    material_batch = f"{primary_material['family']}:{thickness}"
     panel_count = len(panels) * quantity
     lines.append(_line("panel_material_handling", panel_count, route="in_house_manual", provenance=provenance, context=company_context, batch_key=material_batch))
     lines.append(_line("sheet_nesting", quantity, route="in_house_manual", provenance=provenance, context=company_context, batch_key=material_batch))
@@ -386,8 +396,12 @@ def estimate_labor(
     if template == "vanity_cabinet":
         purchased.append({"component_type": "stone_countertop", "route": "external_component", "attributes": {"cutout_included": bool(features.get("plumbing_cutout"))}})
 
-    installation_scope = str(features.get("installation_scope") or "delivery_only")
-    _common_postproduction(lines, installation_scope=installation_scope, module_count=quantity, anchor_count=2 * quantity, context=company_context, provenance=provenance)
+    _common_workshop_closeout(
+        lines,
+        module_count=quantity,
+        context=company_context,
+        provenance=provenance,
+    )
     return {
         "object_id": object_fact.get("object_id"),
         "status": "estimated",
