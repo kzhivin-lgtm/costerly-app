@@ -113,12 +113,25 @@ def _run_estimation_job(
     except Exception as exc:
         print(f"[Estimation v2 shadow] Could not persist handoff: {exc}")
 
-    facts_shadow_queued = bool(created_v2_inputs and _estimation_v2_facts_shadow_enabled())
-    if facts_shadow_queued:
-        _ESTIMATION_V2_FACTS_EXECUTOR.submit(
-            _run_estimation_v2_facts_shadow,
-            created_v2_inputs,
-        )
+    facts_v2_enabled = _estimation_v2_facts_shadow_enabled()
+    facts_shadow_queued = bool(created_v2_inputs and facts_v2_enabled)
+    if facts_v2_enabled:
+        if facts_shadow_queued:
+            _ESTIMATION_V2_FACTS_EXECUTOR.submit(
+                _run_estimation_v2_facts_shadow,
+                created_v2_inputs,
+            )
+        return {
+            "estimate_id": estimate_id,
+            "run_id": run_id,
+            "shell": shell,
+            "estimation": {
+                "status": "v2_facts_queued" if facts_shadow_queued else "v2_input_unavailable",
+                "estimated_objects": 0,
+            },
+            "v2_facts_shadow_queued": facts_shadow_queued,
+        }
+
     estimation_result = estimate_all_objects_for_run(
         estimate_id=estimate_id,
         run_id=run_id,

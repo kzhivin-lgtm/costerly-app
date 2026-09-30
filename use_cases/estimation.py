@@ -8,6 +8,7 @@ from agents.schemas.estimation_schema import validate_estimation_result
 from db.repositories import (
     fetch_company_data,
     fetch_company_overhead_settings,
+    fetch_latest_estimation_v2_facts_by_object,
     fetch_rfq_estimate_pricing_overrides,
     fetch_rfq_estimate_lines_for_object,
     fetch_rfq_object_estimates,
@@ -120,10 +121,30 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     except Exception:
         overrides_df = None
     sale_price_overrides = _pricing_overrides_by_object(overrides_df)
+    facts_by_object: dict[str, dict] = {}
+    if not objects_df.empty:
+        run_id = str(objects_df.iloc[0].get("run_id") or "")
+        if run_id:
+            try:
+                facts_by_object = fetch_latest_estimation_v2_facts_by_object(
+                    client,
+                    run_id=run_id,
+                )
+            except Exception:
+                facts_by_object = {}
 
     rows = []
     for _, item in objects_df.iterrows():
         row = item.to_dict()
+        object_id = str(row.get("object_id") or "")
+        facts_result = facts_by_object.get(object_id) or {}
+        facts_payload = facts_result.get("facts_payload") or {}
+        materials = facts_payload.get("materials") or []
+        material_names = [
+            str(material.get("source_name") or "").strip()
+            for material in materials
+            if isinstance(material, dict) and str(material.get("source_name") or "").strip()
+        ]
         status = str(row.get("status") or "pending")
         self_cost = row.get("self_cost_ex_vat")
         sale_price_unit = _suggested_sale_price(self_cost) if status == "completed" else None
@@ -134,7 +155,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
             {
                 "object_key": row.get("object_id"),
                 "name": row.get("object_name"),
-                "materials": "",
+                "materials": ", ".join(material_names),
                 "quantity": row.get("quantity"),
                 "self_cost_unit": self_cost if self_cost is not None else status,
                 "status": status,
@@ -146,6 +167,8 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "sale_price_overridden": sale_price_overridden,
                 "suggestion": "suggested: SC + 30%",
                 "reviewed": bool(row.get("approved")),
+                "details_available": bool(facts_result),
+                "facts_status": facts_result.get("status"),
             }
         )
 
@@ -274,6 +297,15 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         raise RuntimeError(f"Object estimate not found: {estimate_id}/{object_id}")
 
     object_row = matching.iloc[0].to_dict()
+    facts_result = {}
+    try:
+        facts_result = fetch_latest_estimation_v2_facts_by_object(
+            client,
+            run_id=str(object_row.get("run_id") or ""),
+        ).get(object_id) or {}
+    except Exception:
+        facts_result = {}
+    facts_payload = facts_result.get("facts_payload") or {}
     company_data = fetch_company_data(client, str(object_row.get("company_id")))
     settings = _first_row(company_data["overhead_settings"])
     vat_percent = _number(settings.get("vat_percent"), 18)
@@ -330,6 +362,9 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                 }
             )
 
+    if not material_rows:
+        material_rows = _material_rows_from_v2_facts(facts_payload)
+
     material_total = sum(_number(row.get("cost"), 0) for row in material_rows)
     manufacturing_total = sum(
         _number(row.get("cost"), 0)
@@ -355,8 +390,14 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         "name": object_row.get("object_name"),
         "quantity": object_row.get("quantity"),
         "approved": bool(object_row.get("approved")),
-        "confidence": "—",
+        "confidence": (facts_payload.get("template") or {}).get("confidence") or "—",
         "preview_label": "Object preview",
+        "preview_url": _estimation_preview_url(
+            client,
+            str(facts_payload.get("primary_preview_ref") or ""),
+            company_id=str(object_row.get("company_id") or ""),
+        ),
+        "facts_status": facts_result.get("status"),
         "sections": [
             {
                 "key": "material",
@@ -400,6 +441,47 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
             "total": object_row.get("self_cost_total"),
         },
     }
+
+
+def _material_rows_from_v2_facts(facts_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    rows = []
+    for material in facts_payload.get("materials") or []:
+        if not isinstance(material, dict):
+            continue
+        rows.append({
+            "group": "Detected materials",
+            "line_id": material.get("requirement_id"),
+            "item": material.get("source_name") or material.get("family"),
+            "unit": material.get("unit"),
+            "unit_cost": None,
+            "qty": material.get("quantity"),
+            "cost": None,
+        })
+    return rows
+
+
+def _estimation_preview_url(
+    client: Any,
+    storage_ref: str,
+    *,
+    company_id: str,
+) -> str | None:
+    prefix = "storage://rfq-estimation-evidence/"
+    if not storage_ref.startswith(prefix):
+        return None
+    object_path = storage_ref.removeprefix(prefix)
+    if not company_id or not object_path.startswith(f"{company_id}/"):
+        return None
+    try:
+        response = client.storage.from_("rfq-estimation-evidence").create_signed_url(
+            object_path,
+            3600,
+        )
+    except Exception:
+        return None
+    if isinstance(response, dict):
+        return response.get("signedURL") or response.get("signed_url")
+    return getattr(response, "signedURL", None) or getattr(response, "signed_url", None)
 
 
 def approve_object_estimate(

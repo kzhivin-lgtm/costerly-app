@@ -175,6 +175,46 @@ def fetch_estimation_v2_fact_result(
     return dict(rows[0]) if rows else None
 
 
+def fetch_latest_estimation_v2_facts_by_object(
+    client: Client,
+    *,
+    run_id: str,
+) -> dict[str, dict]:
+    """Return the latest persisted Object Facts result for each object in a run."""
+    input_rows = (
+        client.table("rfq_estimation_object_inputs")
+        .select("input_id,object_id,object_input_revision,created_at")
+        .eq("run_id", run_id)
+        .order("object_input_revision", desc=True)
+        .execute()
+        .data
+        or []
+    )
+    input_ids = [str(row.get("input_id")) for row in input_rows if row.get("input_id")]
+    if not input_ids:
+        return {}
+    result_rows = (
+        client.table("rfq_estimation_object_fact_results")
+        .select("input_id,agent_version,status,facts_payload,created_at")
+        .in_("input_id", input_ids)
+        .order("created_at", desc=True)
+        .execute()
+        .data
+        or []
+    )
+    result_by_input: dict[str, dict] = {}
+    for row in result_rows:
+        result_by_input.setdefault(str(row.get("input_id") or ""), dict(row))
+
+    by_object: dict[str, dict] = {}
+    for input_row in input_rows:
+        object_id = str(input_row.get("object_id") or "")
+        result = result_by_input.get(str(input_row.get("input_id") or ""))
+        if object_id and result and object_id not in by_object:
+            by_object[object_id] = {**dict(input_row), **result}
+    return by_object
+
+
 def fetch_active_israel_material_families(client: Client) -> set[str]:
     """Load the bounded material-family vocabulary from active Israel price classes."""
     page_size = 1000

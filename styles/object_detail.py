@@ -68,6 +68,15 @@ def apply_object_detail_css() -> None:
             font-size: 13px;
             font-weight: 700;
             text-transform: uppercase;
+            overflow: hidden;
+        }
+
+        .object-detail-preview-image {
+            display: block;
+            width: 100%;
+            height: 178px;
+            object-fit: contain;
+            background: #FFFFFF;
         }
 
         .object-detail-section {

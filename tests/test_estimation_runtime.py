@@ -60,7 +60,7 @@ def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
     }
 
 
-def test_v2_facts_are_queued_before_legacy_estimation(monkeypatch):
+def test_v2_facts_replace_legacy_estimation_when_enabled(monkeypatch):
     events = []
 
     class FactsExecutor:
@@ -92,22 +92,18 @@ def test_v2_facts_are_queued_before_legacy_estimation(monkeypatch):
 
     monkeypatch.setattr(runtime, "estimate_all_objects_for_run", fail_legacy)
 
-    try:
-        runtime._run_estimation_job(
-            estimate_id="estimate-1",
-            run_id="run-1",
-            company_id="company-1",
-            file_name="drawing.pdf",
-            file_bytes=b"pdf",
-            ignored_object_ids=set(),
-            shell={"estimate_id": "estimate-1"},
-        )
-    except RuntimeError as exc:
-        assert str(exc) == "legacy failed"
-    else:
-        raise AssertionError("legacy failure was expected")
+    result = runtime._run_estimation_job(
+        estimate_id="estimate-1",
+        run_id="run-1",
+        company_id="company-1",
+        file_name="drawing.pdf",
+        file_bytes=b"pdf",
+        ignored_object_ids=set(),
+        shell={"estimate_id": "estimate-1"},
+    )
 
-    assert [event[0] for event in events] == ["facts_queued", "legacy_started"]
+    assert [event[0] for event in events] == ["facts_queued"]
+    assert result["estimation"]["status"] == "v2_facts_queued"
 
 
 class _Row:
