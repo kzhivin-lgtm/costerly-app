@@ -1,0 +1,85 @@
+{
+  "allowed_material_families": ["birch_plywood"],
+  "facts": {
+    "contract_version": "estimation_object_facts_v1",
+    "input_id": "input-e01-r1",
+    "object_input_revision": 1,
+    "run_id": "run-e01",
+    "company_id": "company-e01",
+    "object_id": "cabinet-e01",
+    "object_name": "CAB-01 Base cabinet",
+    "quantity": 1,
+    "status": "ready",
+    "template": {
+      "code": "base_cabinet_open",
+      "confidence": 96,
+      "provenance": "explicit",
+      "evidence_refs": ["ocr:p1:block-1"]
+    },
+    "dimensions_mm": {"width": 1200, "depth": 560, "height": 720},
+    "materials": [
+      {
+        "requirement_id": "material-e01-1",
+        "source_name": "18 mm birch plywood",
+        "family": "birch_plywood",
+        "specification": {"thickness_mm": 18, "species": "birch", "finish": "clear_matte"},
+        "quantity": 3.5,
+        "unit": "sqm",
+        "evidence_refs": ["ocr:p1:block-2"]
+      }
+    ],
+    "features": {
+      "shelf_count": 2,
+      "door_count": 0,
+      "drawer_count": 0,
+      "installation_scope": "included"
+    },
+    "manufacturing_features": [],
+    "purchased_components": [],
+    "source_facts": [
+      {
+        "path": "dimensions_mm.width",
+        "value": 1200,
+        "provenance": "explicit",
+        "evidence_refs": ["ocr:p1:block-3"]
+      }
+    ],
+    "review_items": [],
+    "primary_preview_ref": "storage://rfq-estimation-evidence/company-e01/run-e01/cabinet-e01/r1/preview.webp"
+  },
+  "cost_lines": [
+    {
+      "line_id": "material-e01",
+      "section": "material",
+      "status": "resolved",
+      "amount": 420,
+      "currency": "ILS",
+      "source_ref": "company-offer:offer-e01",
+      "reason_codes": []
+    },
+    {
+      "line_id": "labor-e01",
+      "section": "labor",
+      "status": "resolved",
+      "amount": 780,
+      "currency": "ILS",
+      "source_ref": "labor-result:labor-e01",
+      "reason_codes": []
+    },
+    {
+      "line_id": "overhead-e01",
+      "section": "overhead",
+      "status": "resolved",
+      "amount": 195,
+      "currency": "ILS",
+      "source_ref": "overhead-result:overhead-e01",
+      "reason_codes": []
+    }
+  ],
+  "expected": {
+    "status": "complete",
+    "self_cost_unit": 1395.0,
+    "self_cost_total": 1395.0,
+    "selling_price_unit_suggestion": 1813.5
+  }
+}
