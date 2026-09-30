@@ -137,11 +137,17 @@ def build_estimation_input_v2(
         raise ValueError("object evidence must contain at least one physical page reference")
     pages = tuple(ref["page_number"] for ref in page_refs)
     evidence = dict(ocr_package.get("evidence") or {})
-    blocks = [
-        dict(block)
-        for block in evidence.get("text_blocks") or []
-        if isinstance(block, Mapping) and block.get("page_number") in pages
-    ][:MAX_OCR_BLOCKS_PER_OBJECT]
+    blocks = []
+    for block_index, block in enumerate(evidence.get("text_blocks") or [], start=1):
+        if not isinstance(block, Mapping) or block.get("page_number") not in pages:
+            continue
+        page_number = int(block["page_number"])
+        blocks.append({
+            **dict(block),
+            "block_ref": f"ocr:{ocr_event_id}:p{page_number}:b{block_index:04d}",
+        })
+        if len(blocks) >= MAX_OCR_BLOCKS_PER_OBJECT:
+            break
     artifacts = _artifact_payload(evidence_artifacts, pages)
     previews = [artifact for artifact in artifacts if artifact["artifact_kind"] == "preview"]
     if len(previews) != 1:

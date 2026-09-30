@@ -58,6 +58,10 @@ def test_e03_builder_freezes_only_cited_ocr_blocks_and_private_evidence_refs():
         {"page_number": 3, "source_label": "3"},
     ]
     assert [row["text"] for row in result["evidence"]["ocr_blocks"]] == ["Reception desk", "MDF 18 mm"]
+    assert [row["block_ref"] for row in result["evidence"]["ocr_blocks"]] == [
+        "ocr:ocr-event-1:p1:b0001",
+        "ocr:ocr-event-1:p3:b0003",
+    ]
     assert result["evidence"]["primary_preview_ref"].endswith("preview.webp")
     assert result["document"]["ocr_event_id"] == "ocr-event-1"
 
@@ -94,6 +98,7 @@ def test_e02_two_objects_share_one_persisted_ocr_result_without_document_reread(
     assert first["document"]["ocr_event_id"] == second["document"]["ocr_event_id"]
     assert first["object"]["object_id"] != second["object"]["object_id"]
     assert [block["page_number"] for block in second["evidence"]["ocr_blocks"]] == [3]
+    assert second["evidence"]["ocr_blocks"][0]["block_ref"] == "ocr:ocr-event-shared:p3:b0003"
 
 
 def test_builder_rejects_missing_preview_instead_of_using_source_file():

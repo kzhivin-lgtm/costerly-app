@@ -195,10 +195,13 @@ def strip_schema_for_claude(schema: dict[str, Any]) -> dict[str, Any]:
     unsupported_keys = {
         "minimum",
         "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
         "minLength",
         "maxLength",
         "minItems",
         "maxItems",
+        "uniqueItems",
         "pattern",
         "format",
     }

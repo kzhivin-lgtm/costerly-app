@@ -63,13 +63,46 @@ engine call.
 
 ## Verification
 
-- 22 focused Estimation v2 evidence, composition and revision tests pass;
-- full suite passes with 753 tests and 27 existing warnings;
+- 27 focused Estimation v2 evidence, extraction, composition and revision tests pass;
+- full suite passes with 758 tests and 28 warnings;
 - `py_compile` and `git diff --check` pass.
+
+## Object Facts extractor, verified 2026-10-01
+
+`agents/estimation_v2_facts_agent.py` is a separate bounded extractor. It
+receives only one frozen `estimation_input_v2` package. The original source
+document is not attached and OCR is not called again.
+
+Each supplied OCR block now has a deterministic evidence reference in the form
+`ocr:{ocr_event_id}:p{page}:b{source_index}`. The extractor rejects citations
+outside the supplied OCR blocks and private evidence artifacts.
+
+Anthropic rejected the complete nested JSON grammar because of unsupported
+keywords and grammar-size limits. The provider boundary therefore uses one
+strict `facts_json` string field. The decoded compact transport is still
+checked for exact fields, normalized, validated against the full internal
+contract, checked against the versioned material-family set and checked for
+invented evidence references before it can leave the agent boundary.
+
+Server-owned versions, identifiers, object name, approved quantity and preview
+reference are never copied from model output. They are bound deterministically
+after extraction. This prevents the model from changing object identity and
+reduces unnecessary output tokens.
+
+Live synthetic checks passed:
+
+- E01 selected `base_cabinet_open`, extracted one birch-plywood requirement
+  and correctly returned `material_quantity_missing` rather than guessing;
+- E05 kept width, depth and height null and returned
+  `dimensions_missing` plus `material_quantity_missing`;
+- both usage records report `source_document_attached=false` and
+  `ocr_rerun=false`.
+
+No File Review, Objects, Object Detail, CSS or Labor Engine code changed.
 
 ## Next implementation slice
 
-Define the bounded Object Facts extraction request and response schema for the
-model, then run it against frozen E01, E05 and E06 evidence packages. The model
-must emit facts only. Material resolution, Labor Engine, machinery, overhead,
-self cost and UI persistence remain outside that call.
+Add persistence and runtime shadow wiring for frozen input, extracted facts and
+usage events. Keep the current UI and Labor Engine unchanged. Material
+resolution, machinery, overhead and self-cost publication remain deterministic
+downstream stages.

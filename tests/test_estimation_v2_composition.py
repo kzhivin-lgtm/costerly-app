@@ -131,7 +131,7 @@ def test_e05_review_facts_expose_missing_values_and_block_self_cost():
             "severity": "blocking",
             "path": "dimensions_mm",
             "message": "Overall dimensions are not stated in the evidence.",
-            "evidence_refs": ["ocr:p1:block-1"],
+            "evidence_refs": ["ocr:ocr-1:p1:b0001"],
         }
     ]
 
@@ -185,7 +185,7 @@ def test_e07_external_fabrication_is_purchased_without_matching_machine_cost():
                 "cutout_count": 1,
                 "installation_scope": "included",
             },
-            "evidence_refs": ["ocr:p1:block-4"],
+            "evidence_refs": ["ocr:ocr-1:p1:b0004"],
         }
     ]
     lines = copy.deepcopy(fixture["cost_lines"])
@@ -244,7 +244,7 @@ def test_e08_manufacturing_feature_requires_one_resolved_machinery_cost():
                 "rough_finish_acceptable": "no",
                 "material_and_thickness_supported": "yes"
             },
-            "evidence_refs": ["ocr:p1:block-5"],
+            "evidence_refs": ["ocr:ocr-1:p1:b0005"],
         }
     ]
     lines = copy.deepcopy(fixture["cost_lines"])

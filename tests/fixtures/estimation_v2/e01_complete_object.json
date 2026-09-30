@@ -14,7 +14,7 @@
       "code": "base_cabinet_open",
       "confidence": 96,
       "provenance": "explicit",
-      "evidence_refs": ["ocr:p1:block-1"]
+      "evidence_refs": ["ocr:ocr-1:p1:b0001"]
     },
     "dimensions_mm": {"width": 1200, "depth": 560, "height": 720},
     "materials": [
@@ -25,7 +25,7 @@
         "specification": {"thickness_mm": 18, "species": "birch", "finish": "clear_matte"},
         "quantity": 3.5,
         "unit": "sqm",
-        "evidence_refs": ["ocr:p1:block-2"]
+        "evidence_refs": ["ocr:ocr-1:p1:b0002"]
       }
     ],
     "features": {
@@ -41,7 +41,7 @@
         "path": "dimensions_mm.width",
         "value": 1200,
         "provenance": "explicit",
-        "evidence_refs": ["ocr:p1:block-3"]
+        "evidence_refs": ["ocr:ocr-1:p1:b0003"]
       }
     ],
     "review_items": [],
