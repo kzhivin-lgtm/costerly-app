@@ -43,6 +43,8 @@ REQUIRED_OBJECT_FIELDS = {
     "created_at",
 }
 
+OPTIONAL_OBJECT_FIELDS = {"evidence_page_refs", "evidence_anchors"}
+
 REQUIRED_DIMENSION_FIELDS = {
     "unit",
     "width",
@@ -118,6 +120,30 @@ DETECTION_RESULT_JSON_SCHEMA: dict[str, Any] = {
                         },
                     },
                     "notes": {"type": "string"},
+                    "evidence_page_refs": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["page_number", "source_label"],
+                            "properties": {
+                                "page_number": {"type": "integer", "minimum": 1},
+                                "source_label": {"type": "string"},
+                            },
+                        },
+                    },
+                    "evidence_anchors": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["page_number", "text"],
+                            "properties": {
+                                "page_number": {"type": "integer", "minimum": 1},
+                                "text": {"type": "string"},
+                            },
+                        },
+                    },
                     "approved": {"type": "boolean"},
                     "created_at": {"type": "string"},
                 },
@@ -210,7 +236,7 @@ def validate_detection_result(result: dict[str, Any]) -> dict[str, Any]:
         obj = _require_dict(obj, obj_name)
 
         _check_required_keys(obj, REQUIRED_OBJECT_FIELDS, obj_name)
-        _check_no_extra_keys(obj, REQUIRED_OBJECT_FIELDS, obj_name)
+        _check_no_extra_keys(obj, REQUIRED_OBJECT_FIELDS | OPTIONAL_OBJECT_FIELDS, obj_name)
 
         if obj["run_id"] != rfq_run["run_id"]:
             raise DetectionSchemaError(f"{obj_name}.run_id must match rfq_run.run_id")
@@ -234,6 +260,30 @@ def validate_detection_result(result: dict[str, Any]) -> dict[str, Any]:
 
         if not isinstance(obj["approved"], bool):
             raise DetectionSchemaError(f"{obj_name}.approved must be boolean")
+
+        if "evidence_page_refs" in obj:
+            page_refs = _require_list(obj["evidence_page_refs"], f"{obj_name}.evidence_page_refs")
+            for ref_index, page_ref in enumerate(page_refs):
+                ref_name = f"{obj_name}.evidence_page_refs[{ref_index}]"
+                page_ref = _require_dict(page_ref, ref_name)
+                _check_required_keys(page_ref, {"page_number", "source_label"}, ref_name)
+                _check_no_extra_keys(page_ref, {"page_number", "source_label"}, ref_name)
+                if not isinstance(page_ref["page_number"], int) or page_ref["page_number"] < 1:
+                    raise DetectionSchemaError(f"{ref_name}.page_number must be positive integer")
+                if not isinstance(page_ref["source_label"], str):
+                    raise DetectionSchemaError(f"{ref_name}.source_label must be string")
+
+        if "evidence_anchors" in obj:
+            anchors = _require_list(obj["evidence_anchors"], f"{obj_name}.evidence_anchors")
+            for anchor_index, anchor in enumerate(anchors):
+                anchor_name = f"{obj_name}.evidence_anchors[{anchor_index}]"
+                anchor = _require_dict(anchor, anchor_name)
+                _check_required_keys(anchor, {"page_number", "text"}, anchor_name)
+                _check_no_extra_keys(anchor, {"page_number", "text"}, anchor_name)
+                if not isinstance(anchor["page_number"], int) or anchor["page_number"] < 1:
+                    raise DetectionSchemaError(f"{anchor_name}.page_number must be positive integer")
+                if not isinstance(anchor["text"], str) or not anchor["text"].strip():
+                    raise DetectionSchemaError(f"{anchor_name}.text must be non-empty string")
 
         dimensions = _require_dict(obj["dimensions_json"], f"{obj_name}.dimensions_json")
         _check_required_keys(

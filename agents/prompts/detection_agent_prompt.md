@@ -280,7 +280,7 @@ Do not list ordinary brackets, fasteners, handles, rails, cable openings, or det
 
 evidence_pages must aggregate every page, sheet, or drawing reference that materially supports the canonical object. Use one string such as "1,2,5", "A101,A202", or "2,A202,Detail 03".
 
-Evidence from multiple pages enriches one object; it does not create duplicates.
+Return evidence_page_refs/evidence_anchors.
 
 ---
 
@@ -328,7 +328,9 @@ Detection must not:
 - invent hidden construction details;
 - decide final commercial pricing.
 
-The Estimation Agent receives the original file again and can inspect component details inside each detected object.
+Estimation receives the retained OCR evidence and bounded source-derived
+screenshots for each approved object. It does not receive the original file or
+rerun OCR.
 
 ---
 

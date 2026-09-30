@@ -45,6 +45,8 @@ def test_detection_prompt_v3_2_6_covers_ocr_identity_reconciliation():
     assert "Build one package-level candidate set" in prompt
     assert "Living room furniture assembly" in prompt
     assert 'use "W 3610 × H 630 × D 610 mm"' in prompt
+    assert "evidence_page_refs" in prompt
+    assert "does not receive the original file" in prompt
     assert DETECTION_PROMPT_VERSION == "detection_v3_2_6_2_golden_streaming_telemetry"
 
 

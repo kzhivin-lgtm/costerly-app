@@ -41,6 +41,7 @@ from db.repositories import (
     fetch_rfq_detected_objects,
     fetch_rfq_run,
     insert_agent_usage_event,
+    insert_agent_usage_event_returning_id,
     insert_agent_usage_events,
     update_rfq_detected_object,
     update_rfq_detected_object_name_if_unchanged,
@@ -51,6 +52,7 @@ from db.company_access import assert_run_owned
 from state.session import get_company_id
 from use_cases.retry import read_with_retry
 from use_cases.platform_admin import record_rfq_upload
+from use_cases.estimation_originals import persist_estimation_original
 
 
 _DIAGNOSTICS_EXECUTOR = ThreadPoolExecutor(
@@ -151,11 +153,7 @@ def _persist_rfq_diagnostics(
         ),
         status="failed" if ocr_package.get("status") == "failed" else "succeeded",
     )
-    events = [
-        event
-        for event in (ocr_event, usage_event, naming_event, cycle_event)
-        if event
-    ]
+    events = [event for event in (usage_event, naming_event, cycle_event) if event]
     try:
         insert_agent_usage_events(client, events)
     except Exception as exc:
@@ -326,6 +324,13 @@ def process_uploaded_rfq(
         )
     except Exception as exc:
         print(f"[Product Analytics] Could not record RFQ upload: {exc}")
+    original_future = _DIAGNOSTICS_EXECUTOR.submit(
+        persist_estimation_original,
+        client=client,
+        company_id=company_id,
+        file_name=file_name,
+        file_bytes=file_bytes,
+    )
     page_images = None
     page_image_diagnostics: dict[str, Any] = {}
     use_page_images = should_use_detection_page_images(
@@ -444,6 +449,30 @@ def process_uploaded_rfq(
             "naming_deferred": naming_future is not None,
         },
     )
+    ocr_event = _runtime_event(
+        agent_name="ocr",
+        operation="document_ocr",
+        company_id=company_id,
+        run_id=run_id,
+        file_name=file_name,
+        model=str(ocr_package.get("model") or "unknown"),
+        prompt_version=str(ocr_package.get("contract_version") or "ocr_v2"),
+        started_at=str(ocr_package.get("started_at") or cycle_started_at),
+        finished_at=str(ocr_package.get("finished_at") or cycle_finished_at),
+        duration_seconds=ocr_seconds,
+        raw_usage=_ocr_storage_usage(ocr_package, detection_context=detection_context),
+        status="failed" if ocr_package.get("status") == "failed" else "succeeded",
+    )
+    ocr_event_id = None
+    try:
+        ocr_event_id = insert_agent_usage_event_returning_id(client, ocr_event)
+    except Exception as exc:
+        print(f"[Estimation v2 shadow] Could not persist OCR handoff event: {exc}")
+    original = None
+    try:
+        original = original_future.result()
+    except Exception as exc:
+        print(f"[Estimation Original] Could not store source: {exc}")
     _DIAGNOSTICS_EXECUTOR.submit(
         _persist_rfq_diagnostics,
         client=client,
@@ -462,6 +491,8 @@ def process_uploaded_rfq(
         "run_id": run_id,
         "detection_result": detection_result,
         "ocr_package": ocr_package,
+        "ocr_event_id": ocr_event_id,
+        "original": original,
         "naming_future": naming_future,
         "timings": {
             "ocr_seconds": ocr_seconds,

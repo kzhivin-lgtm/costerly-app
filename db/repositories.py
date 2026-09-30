@@ -105,6 +105,57 @@ def insert_agent_usage_event(client: Client, usage_event: dict) -> None:
         client.table("agent_usage_events").insert(legacy_event).execute()
 
 
+def insert_agent_usage_event_returning_id(client: Client, usage_event: dict) -> str:
+    """Persist one immutable event and return its database identity for a handoff."""
+    row = dict(usage_event)
+    duration_seconds = row.pop("duration_seconds", None)
+    raw_usage = dict(row.get("raw_usage") or {})
+    if duration_seconds is not None:
+        raw_usage["duration_seconds"] = duration_seconds
+    row["raw_usage"] = raw_usage
+    response = client.table("agent_usage_events").insert(row).execute()
+    rows = response.data or []
+    if len(rows) != 1 or not str(rows[0].get("id") or ""):
+        raise RuntimeError("OCR event insert did not return one event ID.")
+    return str(rows[0]["id"])
+
+
+def insert_estimation_object_input(
+    client: Client,
+    *,
+    run_id: str,
+    company_id: str,
+    object_id: str,
+    original_file_ref: str,
+    original_content_sha256: str,
+    original_mime_type: str,
+    original_size_bytes: int,
+    ocr_event_id: str,
+    input_payload: dict,
+    artifacts: list[dict],
+) -> str:
+    """Insert immutable revision one, then its already-uploaded evidence refs."""
+    response = client.table("rfq_estimation_object_inputs").insert({
+        "run_id": run_id, "company_id": company_id, "object_id": object_id,
+        "object_input_revision": 1, "original_file_ref": original_file_ref,
+        "original_content_sha256": original_content_sha256,
+        "original_mime_type": original_mime_type,
+        "original_size_bytes": original_size_bytes, "ocr_event_id": ocr_event_id,
+        "contract_version": input_payload["contract_version"], "input_payload": input_payload,
+    }).execute()
+    rows = response.data or []
+    if len(rows) != 1 or not rows[0].get("input_id"):
+        raise RuntimeError("Estimation input insert did not return input_id.")
+    input_id = str(rows[0]["input_id"])
+    client.table("rfq_estimation_evidence_artifacts").insert([
+        {"input_id": input_id, "page_number": row["page_number"],
+         "source_label": str(row.get("source_label") or row["page_number"]),
+         "artifact_kind": row["artifact_kind"], "storage_ref": row["storage_ref"]}
+        for row in artifacts
+    ]).execute()
+    return input_id
+
+
 def insert_agent_usage_events(client: Client, usage_events: list[dict]) -> None:
     """Insert runtime diagnostics in one request using the current DB schema."""
     rows = []
@@ -152,7 +203,7 @@ def fetch_latest_ocr_result(client: Client, run_id: str) -> dict | None:
     """Load the latest complete OCR result and Detection handoff for a run."""
     response = (
         client.table("agent_usage_events")
-        .select("raw_usage")
+        .select("id,raw_usage")
         .eq("run_id", run_id)
         .eq("agent_name", "ocr")
         .eq("operation", "document_ocr")
@@ -176,6 +227,7 @@ def fetch_latest_ocr_result(client: Client, run_id: str) -> dict | None:
     if not isinstance(ocr_result, dict):
         return None
     return {
+        "ocr_event_id": str(response.data[0].get("id") or ""),
         "ocr_result": ocr_result,
         "detection_context": str(raw_usage.get("detection_context") or ""),
     }
