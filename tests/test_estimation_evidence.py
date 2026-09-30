@@ -42,7 +42,7 @@ ARTIFACTS = (
 )
 
 
-def test_builder_freezes_only_cited_ocr_blocks_and_private_evidence_refs():
+def test_e03_builder_freezes_only_cited_ocr_blocks_and_private_evidence_refs():
     result = build_estimation_input_v2(
         run=RUN,
         detected_object=OBJECT,
@@ -60,6 +60,40 @@ def test_builder_freezes_only_cited_ocr_blocks_and_private_evidence_refs():
     assert [row["text"] for row in result["evidence"]["ocr_blocks"]] == ["Reception desk", "MDF 18 mm"]
     assert result["evidence"]["primary_preview_ref"].endswith("preview.webp")
     assert result["document"]["ocr_event_id"] == "ocr-event-1"
+
+
+def test_e02_two_objects_share_one_persisted_ocr_result_without_document_reread():
+    first = build_estimation_input_v2(
+        run=RUN,
+        detected_object=OBJECT,
+        ocr_event_id="ocr-event-shared",
+        ocr_package=OCR,
+        evidence_artifacts=ARTIFACTS,
+        versions={"detection": "v1"},
+    )
+    second = build_estimation_input_v2(
+        run=RUN,
+        detected_object={
+            **OBJECT,
+            "object_id": "object-2",
+            "object_name": "Wall cabinet",
+            "evidence_pages": "3",
+        },
+        ocr_event_id="ocr-event-shared",
+        ocr_package=OCR,
+        evidence_artifacts=(
+            EvidenceArtifact(
+                storage_ref="storage://rfq-estimation-evidence/company-1/run-1/object-2/r1/preview.webp",
+                page_number=3,
+                artifact_kind="preview",
+            ),
+        ),
+        versions={"detection": "v1"},
+    )
+
+    assert first["document"]["ocr_event_id"] == second["document"]["ocr_event_id"]
+    assert first["object"]["object_id"] != second["object"]["object_id"]
+    assert [block["page_number"] for block in second["evidence"]["ocr_blocks"]] == [3]
 
 
 def test_builder_rejects_missing_preview_instead_of_using_source_file():

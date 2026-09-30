@@ -38,11 +38,23 @@ engine failures. Unsupported free-form reason codes are rejected.
 
 - E01: one complete cabinet fixture produces deterministic section totals,
   self cost and the temporary `self cost + 30%` unit selling-price suggestion;
+- E02: two objects share one persisted OCR event and receive independently
+  bounded evidence packages without another OCR call;
+- E03: only cited physical pages and their OCR blocks enter the object input;
+- E04: name, quantity and Ignore changes receive distinct bounded actions;
 - E05: missing required facts remain explicit, block self cost and require a
   blocking review reason;
 - E06: an unresolved material price remains visible while self cost and selling
   price remain unpublished;
-- missing labor output and mixed currencies also block self cost explicitly.
+- E07: external fabrication is a purchased component and has no corresponding
+  internal machinery line;
+- E08: manufacturing facts require a resolved machinery-cost result;
+- E09: a failed object does not invalidate a completed object;
+- E10: the same frozen input and version set has one stable idempotency key;
+- E11: a name-only change does not create a revision or recalculate cost;
+- E12: quantity and Ignore changes affect only aggregation or active membership.
+
+Missing labor output and mixed currencies also block self cost explicitly.
 
 The E01 fixture is stored at
 `tests/fixtures/estimation_v2/e01_complete_object.json`. Repeated composition of
@@ -51,13 +63,13 @@ engine call.
 
 ## Verification
 
-- 7 focused Estimation v2 composition tests pass;
-- full suite passes with 744 tests and 27 existing warnings;
+- 22 focused Estimation v2 evidence, composition and revision tests pass;
+- full suite passes with 753 tests and 27 existing warnings;
 - `py_compile` and `git diff --check` pass.
 
 ## Next implementation slice
 
-Freeze and implement E02-E04 and E07-E12 around multi-object independence,
-bounded evidence pages, File Review revision semantics, purchased fabrication,
-machinery routing, per-object failure, idempotency and selective recalculation.
-Continue to keep persistence and UI integration out of that pure slice.
+Define the bounded Object Facts extraction request and response schema for the
+model, then run it against frozen E01, E05 and E06 evidence packages. The model
+must emit facts only. Material resolution, Labor Engine, machinery, overhead,
+self cost and UI persistence remain outside that call.

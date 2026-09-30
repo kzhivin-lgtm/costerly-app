@@ -166,3 +166,128 @@ def test_currency_mismatch_never_publishes_self_cost():
     assert result["currency"] is None
     assert result["reason_codes"] == ["cost_currency_mismatch"]
     assert result["self_cost_total"] is None
+
+
+def test_e07_external_fabrication_is_purchased_without_matching_machine_cost():
+    fixture = _fixture()
+    facts = copy.deepcopy(fixture["facts"])
+    facts["purchased_components"] = [
+        {
+            "component_id": "stone-top-1",
+            "component_type": "stone_countertop",
+            "quantity": 1,
+            "unit": "job",
+            "specification": {
+                "width_mm": 1200,
+                "depth_mm": 560,
+                "material": "engineered_stone",
+                "finish": "polished",
+                "cutout_count": 1,
+                "installation_scope": "included",
+            },
+            "evidence_refs": ["ocr:p1:block-4"],
+        }
+    ]
+    lines = copy.deepcopy(fixture["cost_lines"])
+    lines.append({
+        "line_id": "purchased-stone-1",
+        "section": "purchased_component",
+        "status": "resolved",
+        "amount": 300,
+        "currency": "ILS",
+        "source_ref": "supplier-quote:stone-1",
+        "reason_codes": [],
+    })
+
+    result = compose_object_estimate(
+        facts=facts,
+        cost_lines=lines,
+        allowed_material_families=set(fixture["allowed_material_families"]),
+    )
+
+    assert result["status"] == "complete"
+    assert result["section_totals"]["purchased_component"] == 300.0
+    assert result["section_totals"]["machinery"] == 0.0
+    assert not any(line["section"] == "machinery" for line in result["cost_lines"])
+
+
+def test_e08_manufacturing_feature_requires_one_resolved_machinery_cost():
+    fixture = _fixture()
+    facts = copy.deepcopy(fixture["facts"])
+    facts["manufacturing_features"] = [
+        {
+            "feature_id": "cnc-1",
+            "process": "cnc_router",
+            "material_requirement_id": "material-e01-1",
+            "measurements": {
+                "thickness_mm": 18,
+                "part_count": 7,
+                "sheet_count": 2,
+                "path_length_m": 18.5,
+                "pass_count": 2,
+                "hole_count": 24,
+                "pocket_count": 0,
+                "edge_banding_length_m": 7.2,
+            },
+            "flags": {
+                "production_file_ready": "yes",
+                "rectangular_parts_only": "yes",
+                "single_face_processing": "yes",
+                "standard_operations_only": "yes",
+                "has_freeform_contours": "no",
+                "has_internal_cutouts": "no",
+                "has_pockets": "no",
+                "has_horizontal_or_end_drilling": "no",
+                "has_repeated_hole_patterns": "yes",
+                "has_tight_positional_relationships": "yes",
+                "straight_edge_to_edge_cuts_only": "yes",
+                "rough_finish_acceptable": "no",
+                "material_and_thickness_supported": "yes"
+            },
+            "evidence_refs": ["ocr:p1:block-5"],
+        }
+    ]
+    lines = copy.deepcopy(fixture["cost_lines"])
+    lines.append({
+        "line_id": "machinery-cnc-1",
+        "section": "machinery",
+        "status": "resolved",
+        "amount": 160,
+        "currency": "ILS",
+        "source_ref": "machinery-result:cnc-1",
+        "reason_codes": [],
+    })
+
+    result = compose_object_estimate(
+        facts=facts,
+        cost_lines=lines,
+        allowed_material_families=set(fixture["allowed_material_families"]),
+    )
+
+    assert result["status"] == "complete"
+    assert result["section_totals"]["machinery"] == 160.0
+    assert result["self_cost_total"] == 1555.0
+
+
+def test_e09_failed_object_does_not_invalidate_completed_object():
+    fixture = _fixture()
+    completed = compose_object_estimate(
+        facts=fixture["facts"],
+        cost_lines=fixture["cost_lines"],
+        allowed_material_families=set(fixture["allowed_material_families"]),
+    )
+    failed_lines = copy.deepcopy(fixture["cost_lines"])
+    labor = next(line for line in failed_lines if line["section"] == "labor")
+    labor["status"] = "failed"
+    labor["amount"] = None
+    labor["reason_codes"] = ["deterministic_engine_failed"]
+    failed = compose_object_estimate(
+        facts={**fixture["facts"], "input_id": "input-e09-r1", "object_id": "cabinet-e09"},
+        cost_lines=failed_lines,
+        allowed_material_families=set(fixture["allowed_material_families"]),
+    )
+
+    assert completed["status"] == "complete"
+    assert completed["self_cost_total"] == 1395.0
+    assert failed["status"] == "failed"
+    assert failed["self_cost_total"] is None
