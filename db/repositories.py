@@ -177,18 +177,27 @@ def fetch_estimation_v2_fact_result(
 
 def fetch_active_israel_material_families(client: Client) -> set[str]:
     """Load the bounded material-family vocabulary from active Israel price classes."""
-    response = (
-        client.table("reference_material_pricing_identities")
-        .select("price_attributes")
-        .eq("market_code", "IL")
-        .eq("status", "active")
-        .execute()
-    )
-    families = {
-        str((row.get("price_attributes") or {}).get("material_family") or "").strip()
-        for row in response.data or []
-        if isinstance(row, dict)
-    }
+    page_size = 1000
+    start = 0
+    families: set[str] = set()
+    while True:
+        response = (
+            client.table("reference_material_pricing_identities")
+            .select("price_attributes")
+            .eq("market_code", "IL")
+            .eq("status", "active")
+            .range(start, start + page_size - 1)
+            .execute()
+        )
+        rows = response.data or []
+        families.update(
+            str((row.get("price_attributes") or {}).get("material_family") or "").strip()
+            for row in rows
+            if isinstance(row, dict)
+        )
+        if len(rows) < page_size:
+            break
+        start += page_size
     return {family for family in families if family}
 
 

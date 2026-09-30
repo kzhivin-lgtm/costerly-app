@@ -63,9 +63,9 @@ engine call.
 
 ## Verification
 
-- 34 focused Estimation v2 evidence, extraction, persistence, composition and
+- 35 focused Estimation v2 evidence, extraction, persistence, composition and
   revision tests pass;
-- full suite passes with 764 tests and 28 warnings;
+- full suite passes with 765 tests and 28 warnings;
 - `py_compile` and `git diff --check` pass.
 
 ## Object Facts extractor, verified 2026-10-01
@@ -123,9 +123,14 @@ Estimation completes. `ESTIMATION_V2_FACTS_SHADOW_ENABLED` defaults to false,
 so the prepared code cannot alter production behavior before the migration and
 an explicit enablement decision.
 
-Local verification now passes with 764 tests. The migration is not yet applied
-to production, the feature flag is not enabled, and no production fact row has
-been written.
+The additive migration was applied to production on 2026-10-01. The new table
+is readable and contains no fact rows before acceptance. The active Israel
+catalog contains 2,832 pricing identities across three PostgREST pages and 51
+material families. The runtime loader paginates all rows instead of silently
+stopping at the 1,000-row API default.
+
+Local verification now passes with 765 tests. The feature flag is not enabled,
+and no production fact row has been written.
 
 ## Next implementation slice
 

@@ -18,6 +18,7 @@ class _Query:
         self.client = client
         self.table = table
         self.value = None
+        self.page = None
 
     def select(self, *_args):
         return self
@@ -30,17 +31,26 @@ class _Query:
         self.value = value
         return self
 
+    def range(self, start, end):
+        self.client.ranges.append((self.table, start, end))
+        self.page = (start, end)
+        return self
+
     def execute(self):
         if self.value is not None:
             self.client.inserted[self.table] = self.value
             return _Response([{"fact_result_id": "facts-1"}])
-        return _Response(self.client.selected.get(self.table, []))
+        rows = self.client.selected.get(self.table, [])
+        if self.page is not None:
+            rows = rows[self.page[0]:self.page[1] + 1]
+        return _Response(rows)
 
 
 class _Client:
     def __init__(self, selected=None):
         self.selected = selected or {}
         self.filters = []
+        self.ranges = []
         self.inserted = {}
 
     def table(self, name):
@@ -74,6 +84,21 @@ def test_repository_loads_only_nonempty_active_israel_material_families():
     assert fetch_active_israel_material_families(client) == {"mdf", "birch_plywood"}
     assert ("reference_material_pricing_identities", "market_code", "IL") in client.filters
     assert ("reference_material_pricing_identities", "status", "active") in client.filters
+    assert client.ranges == [("reference_material_pricing_identities", 0, 999)]
+
+
+def test_repository_pages_past_postgrest_thousand_row_limit():
+    rows = [
+        {"price_attributes": {"material_family": "mdf"}}
+        for _ in range(1000)
+    ] + [{"price_attributes": {"material_family": "plywood"}}]
+    client = _Client({"reference_material_pricing_identities": rows})
+
+    assert fetch_active_israel_material_families(client) == {"mdf", "plywood"}
+    assert client.ranges == [
+        ("reference_material_pricing_identities", 0, 999),
+        ("reference_material_pricing_identities", 1000, 1999),
+    ]
 
 
 def test_repository_persists_only_validated_fact_envelope():
