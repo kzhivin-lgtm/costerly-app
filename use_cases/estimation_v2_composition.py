@@ -303,6 +303,7 @@ def validate_object_facts(
         _evidence_refs(feature["evidence_refs"], f"facts.manufacturing_features[{index}].evidence_refs")
 
     component_ids: set[str] = set()
+    purchased_quantities_complete = True
     for index, value in enumerate(_sequence(facts["purchased_components"], "facts.purchased_components")):
         component = _mapping(value, f"facts.purchased_components[{index}]")
         _exact_keys(component, _PURCHASED_COMPONENT_FIELDS, f"facts.purchased_components[{index}]")
@@ -311,7 +312,14 @@ def validate_object_facts(
             raise EstimationV2ContractError("purchased component ids must be unique")
         component_ids.add(component_id)
         _identifier(component["component_type"], f"facts.purchased_components[{index}].component_type")
-        _positive_number(component["quantity"], f"facts.purchased_components[{index}].quantity")
+        component_quantity = _positive_number(
+            component["quantity"],
+            f"facts.purchased_components[{index}].quantity",
+            allow_none=True,
+        )
+        purchased_quantities_complete = (
+            purchased_quantities_complete and component_quantity is not None
+        )
         _text(component["unit"], f"facts.purchased_components[{index}].unit")
         specification = _mapping(component["specification"], f"facts.purchased_components[{index}].specification")
         extra_component_spec = set(specification) - set(_PURCHASED_SPECIFICATION_FIELDS)
@@ -355,6 +363,7 @@ def validate_object_facts(
         or not materials
         or not material_quantities_complete
         or not material_evidence_complete
+        or not purchased_quantities_complete
     )
     if status == "ready" and (blocking or missing_ready_facts):
         raise EstimationV2ContractError("ready facts cannot contain blocking review items or required-fact gaps")

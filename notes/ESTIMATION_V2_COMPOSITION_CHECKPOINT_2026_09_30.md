@@ -65,7 +65,7 @@ engine call.
 
 - 36 focused Estimation v2 evidence, extraction, persistence, composition and
   revision tests pass;
-- full suite passes with 776 tests and 27 warnings;
+- full suite passes with 778 tests and 27 warnings;
 - `py_compile` and `git diff --check` pass.
 
 ## Object Facts extractor, verified 2026-10-01
@@ -188,7 +188,7 @@ routes are compatible; expanding the remaining templates and cross-object
 batch aggregation remains separate work.
 
 Verification: 11 direct Labor Engine tests, 83 Labor, Machinery and
-manufacturing tests, and the full 776-test suite pass.
+manufacturing tests, and the full 778-test suite pass.
 
 ## Production transition repair, 2026-10-01
 
@@ -206,7 +206,7 @@ visible Estimation error instead of entering Objects with an invalid route.
 
 Verification: the regression test requires the order `edits_applied`,
 `shell_created`, `background_submitted`; 203 targeted access and persistence
-tests pass; the full 776-test suite passes.
+tests pass; the full 778-test suite passes.
 
 ## Image-only evidence repair, 2026-10-01
 
@@ -240,8 +240,14 @@ The first v2 retry correctly rejected unrelated OCR citations, then exposed a
 transport mismatch for square profile text such as `20x20`. The bounded
 normalizer now converts equal square dimensions to the numeric weld face used
 by Labor Engine. A rectangular value such as `20x40` remains blocked until the
-joint orientation identifies the actual weld face. The full 776-test suite
+joint orientation identifies the actual weld face. The full 778-test suite
 passes.
+
+The next retry exposed an asymmetric sentinel conversion. Unknown material
+quantity `0` already normalized to null, while an unknown purchased component
+quantity did not. Purchased component quantity now follows the same rule.
+Validation allows null only for `review_required` facts and still rejects it for
+`ready` facts. The full 778-test suite passes.
 
 ## Next implementation slice
 

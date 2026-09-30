@@ -243,7 +243,11 @@ def _normalize_provider_result(
                     specification[key] = parsed
             else:
                 specification[key] = value
-        purchased.append({**item, "specification": specification})
+        purchased.append({
+            **item,
+            "quantity": None if item.get("quantity") == 0 else item.get("quantity"),
+            "specification": specification,
+        })
 
     template_code = result.get("template_code")
     object_payload = _required_input(estimation_input, "object")

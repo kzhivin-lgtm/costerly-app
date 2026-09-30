@@ -304,3 +304,22 @@ def test_e09_failed_object_does_not_invalidate_completed_object():
     assert completed["self_cost_total"] == 1395.0
     assert failed["status"] == "failed"
     assert failed["self_cost_total"] is None
+
+
+def test_ready_facts_reject_unknown_purchased_component_quantity():
+    fixture = _fixture()
+    facts = copy.deepcopy(fixture["facts"])
+    facts["purchased_components"] = [{
+        "component_id": "edge-1",
+        "component_type": "perforated_metal_edging",
+        "quantity": None,
+        "unit": "job",
+        "specification": {},
+        "evidence_refs": ["ocr:ocr-1:p1:b0001"],
+    }]
+
+    with pytest.raises(EstimationV2ContractError, match="ready facts"):
+        validate_object_facts(
+            facts,
+            allowed_material_families=set(fixture["allowed_material_families"]),
+        )

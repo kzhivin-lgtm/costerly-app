@@ -237,3 +237,24 @@ def test_rectangular_profile_section_requires_explicit_weld_face():
         assert "explicit weld face" in str(exc)
     else:
         raise AssertionError("rectangular profile must not silently select one face")
+
+
+def test_unknown_purchased_component_quantity_normalizes_to_none():
+    transport = _provider_response()
+    transport["purchased_components"] = [{
+        "component_id": "edge-1",
+        "component_type": "perforated_metal_edging",
+        "quantity": 0,
+        "unit": "job",
+        "specification_items": [],
+        "evidence_refs": FIXTURE["facts"]["template"]["evidence_refs"],
+    }]
+
+    normalized = agent._normalize_provider_result(
+        transport,
+        input_id="input-e01-r1",
+        object_input_revision=1,
+        estimation_input=_input(),
+    )
+
+    assert normalized["purchased_components"][0]["quantity"] is None
