@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from decimal import Decimal
 import logging
 import time
+from threading import RLock
 from typing import Any, Mapping, Sequence
 from uuid import uuid4
 
@@ -14,6 +15,7 @@ from use_cases.material_identity_resolution import (
 )
 from use_cases.material_pricing_identity_resolution import (
     PricingIdentityResolution,
+    build_material_pricing_identity_index,
     resolve_material_pricing_identity,
 )
 
@@ -35,6 +37,13 @@ logger = logging.getLogger(__name__)
 
 
 REFERENCE_INDEX_PAGE_SIZE = 1_000
+
+# The global catalog is immutable for the duration of one resolver version.
+# Company aliases stay outside this cache because they are company-owned and
+# can change between imports.
+_GLOBAL_RESOLUTION_INDEX_CACHE: dict[tuple[int, str, str, str], tuple[Any, dict[str, Any]]] = {}
+_GLOBAL_RESOLUTION_INDEX_CACHE_LOCK = RLock()
+_GLOBAL_RESOLUTION_INDEX_CACHE_LIMIT = 8
 
 
 def _emit_duration(trace, name: str, started_at: float, **metadata: object) -> None:
@@ -111,22 +120,28 @@ def _select_all(query: Any, *, page_size: int = REFERENCE_INDEX_PAGE_SIZE) -> li
         start += page_size
 
 
-def _load_resolution_index(
+def invalidate_global_resolution_index(*, market_code: str | None = None) -> None:
+    """Explicitly discard cached global catalog data after a catalog update."""
+    market = str(market_code or "").upper().strip()
+    with _GLOBAL_RESOLUTION_INDEX_CACHE_LOCK:
+        for key in list(_GLOBAL_RESOLUTION_INDEX_CACHE):
+            if not market or key[1] == market:
+                del _GLOBAL_RESOLUTION_INDEX_CACHE[key]
+
+
+def _load_global_resolution_index(
     client: Any,
     *,
-    company_id: str,
     market_code: str,
-) -> dict[str, Any]:
-    versions = (
-        client.table("material_resolver_versions")
-        .select("resolver_version")
-        .eq("market_code", market_code)
-        .eq("status", "active")
-        .limit(1)
-        .execute()
-    ).data or []
-    if not versions:
-        raise RuntimeError(f"No active material resolver for market {market_code}")
+    resolver_version: str,
+    catalog_fingerprint: str,
+) -> tuple[dict[str, Any], bool]:
+    cache_key = (id(client), market_code, resolver_version, catalog_fingerprint)
+    with _GLOBAL_RESOLUTION_INDEX_CACHE_LOCK:
+        cached = _GLOBAL_RESOLUTION_INDEX_CACHE.get(cache_key)
+        if cached and cached[0] is client:
+            return cached[1], True
+
     all_materials = _select_all(
         client.table("reference_materials")
         .select(
@@ -141,7 +156,6 @@ def _load_resolution_index(
         if (row.get("specifications") or {}).get("catalog_version")
         == "israel_global_catalog_v1"
     ]
-    resolver_version = str(versions[0]["resolver_version"])
     pricing_identities: list[dict[str, Any]] = []
     if resolver_version == "material_identity_v3":
         pricing_identities = _select_all(
@@ -153,11 +167,7 @@ def _load_resolution_index(
             .eq("market_code", market_code)
             .eq("status", "active")
         )
-    return {
-        "resolver_version": resolver_version,
-        # Do not let an incomplete multi-part data import change production
-        # matching. Catalog V1 becomes the resolver universe only when V2 is
-        # explicitly active in the final migration part.
+    global_index = {
         "materials": (
             catalog_v1_materials
             if resolver_version in {"material_identity_v2", "material_identity_v3"}
@@ -166,16 +176,8 @@ def _load_resolution_index(
         ),
         "reference_aliases": _select_all(
             client.table("reference_material_aliases")
-            .select(
-                "material_id,market_code,alias_text,exact_identity,confidence,active"
-            )
+            .select("material_id,market_code,alias_text,exact_identity,confidence,active")
             .eq("market_code", market_code)
-            .eq("active", True)
-        ),
-        "company_aliases": _select_all(
-            client.table("company_material_aliases")
-            .select("material_id,supplier_id,alias_text,resolver_key,active")
-            .eq("company_id", company_id)
             .eq("active", True)
         ),
         "market_offers": _select_all(
@@ -185,6 +187,50 @@ def _load_resolution_index(
             .neq("status", "archived")
         ),
         "pricing_identities": pricing_identities,
+        "pricing_identity_index": build_material_pricing_identity_index(pricing_identities),
+    }
+    with _GLOBAL_RESOLUTION_INDEX_CACHE_LOCK:
+        if len(_GLOBAL_RESOLUTION_INDEX_CACHE) >= _GLOBAL_RESOLUTION_INDEX_CACHE_LIMIT:
+            _GLOBAL_RESOLUTION_INDEX_CACHE.pop(next(iter(_GLOBAL_RESOLUTION_INDEX_CACHE)))
+        _GLOBAL_RESOLUTION_INDEX_CACHE[cache_key] = (client, global_index)
+    return global_index, False
+
+
+def _load_resolution_index(
+    client: Any,
+    *,
+    company_id: str,
+    market_code: str,
+) -> dict[str, Any]:
+    versions = (
+        client.table("material_resolver_versions")
+        .select("resolver_version,catalog_fingerprint")
+        .eq("market_code", market_code)
+        .eq("status", "active")
+        .limit(1)
+        .execute()
+    ).data or []
+    if not versions:
+        raise RuntimeError(f"No active material resolver for market {market_code}")
+    resolver_version = str(versions[0]["resolver_version"])
+    catalog_fingerprint = str(versions[0].get("catalog_fingerprint") or resolver_version)
+    global_index, global_index_cache_hit = _load_global_resolution_index(
+        client,
+        market_code=market_code,
+        resolver_version=resolver_version,
+        catalog_fingerprint=catalog_fingerprint,
+    )
+    return {
+        "resolver_version": resolver_version,
+        "catalog_fingerprint": catalog_fingerprint,
+        "global_index_cache_hit": global_index_cache_hit,
+        **global_index,
+        "company_aliases": _select_all(
+            client.table("company_material_aliases")
+            .select("material_id,supplier_id,alias_text,resolver_key,active")
+            .eq("company_id", company_id)
+            .eq("active", True)
+        ),
     }
 
 
@@ -279,6 +325,7 @@ def resolve_price_source_material_identities(
         resolver_version=index["resolver_version"],
         reference_materials=len(index["materials"]),
         pricing_identities=len(index["pricing_identities"]),
+        global_index_cache_hit=index["global_index_cache_hit"],
     )
     resolver_version = index["resolver_version"]
     reference_material_by_id = {
@@ -409,6 +456,7 @@ def resolve_price_source_material_identities(
                 ),
                 market_code=market,
                 pricing_identities=index["pricing_identities"],
+                pricing_identity_index=index["pricing_identity_index"],
             )
         pricing_identity_id = str(
             pricing_resolution.selected_pricing_identity_id or ""

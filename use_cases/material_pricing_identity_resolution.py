@@ -49,6 +49,9 @@ class PricingIdentityResolution:
     reason_codes: tuple[str, ...] = ()
 
 
+PricingIdentityIndex = Mapping[tuple[str, str], tuple[Mapping[str, Any], ...]]
+
+
 def _value(value: Any) -> str:
     return normalize_material_phrase(value)
 
@@ -78,6 +81,39 @@ def _effective_attributes(
     return values
 
 
+def build_material_pricing_identity_index(
+    pricing_identities: Sequence[Mapping[str, Any]],
+) -> dict[tuple[str, str], tuple[Mapping[str, Any], ...]]:
+    """Bucket active identities by the one mandatory matching fact: material family.
+
+    Family-less identities remain available in every same-market bucket because
+    the legacy resolver permits them. This preserves resolution behaviour while
+    avoiding a full scan of unrelated material families for every source row.
+    """
+    familyless_by_market: dict[str, list[Mapping[str, Any]]] = {}
+    by_market_and_family: dict[tuple[str, str], list[Mapping[str, Any]]] = {}
+    active_identities: list[tuple[str, str, Mapping[str, Any]]] = []
+    for identity in pricing_identities:
+        market = str(identity.get("market_code") or "").upper().strip()
+        if not market or str(identity.get("status") or "") != "active":
+            continue
+        family = _value((identity.get("price_attributes") or {}).get("material_family"))
+        active_identities.append((market, family, identity))
+        if family:
+            by_market_and_family.setdefault((market, family), []).append(identity)
+        else:
+            familyless_by_market.setdefault(market, []).append(identity)
+
+    result: dict[tuple[str, str], tuple[Mapping[str, Any], ...]] = {}
+    for market, family, _identity in active_identities:
+        if not family or (market, family) in result:
+            continue
+        result[(market, family)] = tuple(
+            by_market_and_family[(market, family)] + familyless_by_market.get(market, [])
+        )
+    return result
+
+
 def _compatible(
     identity: Mapping[str, Any], requested: Mapping[str, Any]) -> tuple[bool, tuple[str, ...]]:
     attributes = dict(identity.get("price_attributes") or {})
@@ -101,6 +137,7 @@ def resolve_material_pricing_identity(
     specifications: Mapping[str, Any] | None,
     market_code: str,
     pricing_identities: Sequence[Mapping[str, Any]],
+    pricing_identity_index: PricingIdentityIndex | None = None,
     shortlist_limit: int = 5,
 ) -> PricingIdentityResolution:
     """Return one safe estimation class, never a decoration-driven pseudo-match."""
@@ -117,8 +154,14 @@ def resolve_material_pricing_identity(
             status="needs_review", reason_codes=("pricing_material_family_missing",)
         )
 
+    requested_family = _value(requested.get("material_family"))
+    identities_to_consider = (
+        pricing_identity_index.get((market, requested_family), ())
+        if pricing_identity_index is not None
+        else pricing_identities
+    )
     candidates: list[PricingIdentityCandidate] = []
-    for identity in pricing_identities:
+    for identity in identities_to_consider:
         if str(identity.get("market_code") or "").upper() != market:
             continue
         if str(identity.get("status") or "") != "active":

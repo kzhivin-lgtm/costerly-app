@@ -3,7 +3,12 @@ from types import SimpleNamespace
 
 from use_cases.price_source_material_resolution import (
     _load_resolution_index,
+    invalidate_global_resolution_index,
     resolve_price_source_material_identities,
+)
+from use_cases.material_pricing_identity_resolution import (
+    build_material_pricing_identity_index,
+    resolve_material_pricing_identity,
 )
 
 
@@ -254,6 +259,76 @@ def test_catalog_index_reads_past_the_default_postgrest_page():
     index = _load_resolution_index(_Client(tables), company_id="company-1", market_code="IL")
 
     assert len(index["materials"]) == 1_001
+
+
+def test_global_catalog_index_is_reused_until_explicitly_invalidated():
+    tables = _tables()
+    client = _Client(tables)
+    invalidate_global_resolution_index()
+
+    first = _load_resolution_index(client, company_id="company-1", market_code="IL")
+    first_reference_selects = client.calls.count(("reference_materials", "select"))
+    second = _load_resolution_index(client, company_id="company-1", market_code="IL")
+
+    assert first["global_index_cache_hit"] is False
+    assert second["global_index_cache_hit"] is True
+    assert client.calls.count(("reference_materials", "select")) == first_reference_selects
+
+    invalidate_global_resolution_index(market_code="IL")
+    third = _load_resolution_index(client, company_id="company-1", market_code="IL")
+
+    assert third["global_index_cache_hit"] is False
+    assert client.calls.count(("reference_materials", "select")) == first_reference_selects + 1
+
+    tables["material_resolver_versions"][0]["catalog_fingerprint"] = "catalog-after-update"
+    fourth = _load_resolution_index(client, company_id="company-1", market_code="IL")
+
+    assert fourth["global_index_cache_hit"] is False
+    assert client.calls.count(("reference_materials", "select")) == first_reference_selects + 2
+
+
+def test_pricing_identity_index_preserves_resolution_and_skips_other_families():
+    identities = [
+        {
+            "pricing_identity_id": "mdf-18",
+            "market_code": "IL",
+            "status": "active",
+            "price_attributes": {"material_family": "mdf", "thickness_mm": 18},
+        },
+        {
+            "pricing_identity_id": "plywood-18",
+            "market_code": "IL",
+            "status": "active",
+            "price_attributes": {"material_family": "plywood", "thickness_mm": 18},
+        },
+        {
+            "pricing_identity_id": "legacy-familyless",
+            "market_code": "IL",
+            "status": "active",
+            "price_attributes": {"thickness_mm": 18},
+        },
+    ]
+    index = build_material_pricing_identity_index(identities)
+
+    unindexed = resolve_material_pricing_identity(
+        material_family="MDF",
+        specifications={"thickness_mm": 18},
+        market_code="IL",
+        pricing_identities=identities,
+    )
+    indexed = resolve_material_pricing_identity(
+        material_family="MDF",
+        specifications={"thickness_mm": 18},
+        market_code="IL",
+        pricing_identities=identities,
+        pricing_identity_index=index,
+    )
+
+    assert indexed == unindexed
+    assert {item["pricing_identity_id"] for item in index[("IL", "mdf")]} == {
+        "mdf-18",
+        "legacy-familyless",
+    }
 
 
 def test_v3_uses_pricing_identity_before_detail_identity():
