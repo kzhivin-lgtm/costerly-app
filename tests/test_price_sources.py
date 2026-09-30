@@ -1799,6 +1799,59 @@ def test_script_only_wordpress_page_can_discover_json_by_slug(monkeypatch):
     assert "Birch plywood 18 mm" in text
 
 
+def test_script_only_wordpress_page_can_use_query_route_when_pretty_path_is_accepted(monkeypatch):
+    class HtmlResponse:
+        status_code = 200
+        headers = {"content-type": "text/html"}
+        content = b"<html><script>renderPrices()</script></html>"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class AcceptedResponse:
+        status_code = 202
+        headers = {"content-type": "application/json"}
+        content = b"{}"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class JsonResponse:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+        content = b'{"content":{"rendered":"<p>Birch plywood 18 mm 310 ILS</p>"}}'
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return {"content": {"rendered": "<p>Birch plywood 18 mm 310 ILS</p>"}}
+
+    class Client:
+        @staticmethod
+        def get(url, *, follow_redirects=False):
+            assert follow_redirects is False
+            if "rest_route=" in url:
+                return JsonResponse()
+            if "/wp-json/" in url:
+                return AcceptedResponse()
+            return HtmlResponse()
+
+    monkeypatch.setattr("use_cases.price_sources._validate_public_url", lambda value: value)
+    monkeypatch.setattr("use_cases.price_sources.time.sleep", lambda _seconds: None)
+
+    _, _, text = fetch_public_page("https://example.com/materials-and-prices/", client=Client())
+
+    assert "Birch plywood 18 mm" in text
+
+
 def test_wordpress_json_alternate_retries_bounded_accepted_responses(monkeypatch):
     class HtmlResponse:
         status_code = 200

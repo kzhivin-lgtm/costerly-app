@@ -39,6 +39,14 @@ from use_cases.price_source_material_resolution import (
 PRICE_SOURCE_BUCKET = "company-price-sources"
 MAX_SOURCE_BYTES = 50 * 1024 * 1024
 WORDPRESS_ACCEPTED_RETRY_DELAYS_SECONDS = (1, 2, 3)
+SUPPLIER_PAGE_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7",
+    "Accept-Language": "he-IL,he;q=0.9,en;q=0.8",
+}
 LEGACY_EXTREME_RATIO = 3.0
 LEGACY_CONFIDENCE_PENALTY = 15.0
 SUPPORTED_SUFFIXES = {".pdf", ".xlsx", ".csv", ".jpg", ".jpeg", ".png"}
@@ -366,6 +374,19 @@ def _same_host_wordpress_slug_endpoint(page_url: str) -> str | None:
     candidate = (
         f"{parsed.scheme}://{parsed.netloc}/wp-json/wp/v2/pages"
         f"?slug={quote(slug, safe='')}&_fields=content,link"
+    )
+    return _validate_public_url(candidate)
+
+
+def _same_host_wordpress_query_route_endpoint(page_url: str) -> str | None:
+    """Use WordPress' query route when the pretty REST path is intercepted."""
+    parsed = urlsplit(page_url)
+    slug = parsed.path.strip("/").split("/")[-1]
+    if not slug or not parsed.hostname:
+        return None
+    candidate = (
+        f"{parsed.scheme}://{parsed.netloc}/?rest_route=/wp/v2/pages"
+        f"&slug={quote(slug, safe='')}&_fields=content,link"
     )
     return _validate_public_url(candidate)
 
@@ -789,7 +810,7 @@ def _validate_public_url(url: str) -> str:
 
 def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[str, bytes, str]:
     current = _validate_public_url(url)
-    http = client or httpx.Client(timeout=20, headers={"User-Agent": "CosterlyAIPriceImporter/1.0"})
+    http = client or httpx.Client(timeout=20, headers=SUPPLIER_PAGE_HEADERS)
     owns_client = client is None
     try:
         for _ in range(4):
@@ -816,29 +837,31 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
             if len(content) > MAX_SOURCE_BYTES:
                 raise PriceSourceError("The supplier page is too large to process.")
             visible_text = _visible_text_from_html(response.text)
-            wordpress_diagnostic = "not_attempted"
+            primary_diagnostic = f"status_{response.status_code}_bytes_{len(content)}"
+            wordpress_diagnostics: list[str] = []
             if not visible_text:
                 alternate_urls = [
                     _same_host_wordpress_json_alternate(
                         current,
                         response.headers.get("link", ""),
                     ),
+                    _same_host_wordpress_query_route_endpoint(current),
                     _same_host_wordpress_slug_endpoint(current),
                 ]
                 tried_alternate_urls: set[str] = set()
+                accepted_alternate_urls: list[str] = []
                 for alternate_url in alternate_urls:
                     if not alternate_url or alternate_url in tried_alternate_urls:
                         continue
                     tried_alternate_urls.add(alternate_url)
                     try:
                         alternate = http.get(alternate_url, follow_redirects=False)
-                        for delay_seconds in WORDPRESS_ACCEPTED_RETRY_DELAYS_SECONDS:
-                            if alternate.status_code != 202:
-                                break
-                            # A WordPress REST endpoint can acknowledge the request before
-                            # its page payload is ready. Keep this retry narrow and bounded.
-                            time.sleep(delay_seconds)
-                            alternate = http.get(alternate_url, follow_redirects=False)
+                        if alternate.status_code == 202:
+                            accepted_alternate_urls.append(alternate_url)
+                            wordpress_diagnostics.append(
+                                f"accepted_{len(alternate.content)}"
+                            )
+                            continue
                         alternate.raise_for_status()
                         if len(alternate.content) > MAX_SOURCE_BYTES:
                             raise PriceSourceError("The supplier page is too large to process.")
@@ -848,20 +871,48 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
                             payload = None
                         rendered = _wordpress_rendered_html(payload)
                         visible_text = _visible_text_from_html(str(rendered or ""))
-                        wordpress_diagnostic = (
-                            f"status_{alternate.status_code}_bytes_{len(alternate.content)}_"
-                            f"text_{len(visible_text)}"
+                        wordpress_diagnostics.append(
+                            f"status_{alternate.status_code}_bytes_{len(alternate.content)}_text_{len(visible_text)}"
                         )
                         if visible_text:
                             return current, alternate.content, visible_text
                     except httpx.HTTPError as exc:
                         status_code = getattr(getattr(exc, "response", None), "status_code", "network")
-                        wordpress_diagnostic = f"error_{status_code}"
+                        wordpress_diagnostics.append(f"error_{status_code}")
+                for delay_seconds in WORDPRESS_ACCEPTED_RETRY_DELAYS_SECONDS:
+                    if visible_text or not accepted_alternate_urls:
+                        break
+                    time.sleep(delay_seconds)
+                    retry_urls = accepted_alternate_urls
+                    accepted_alternate_urls = []
+                    for alternate_url in retry_urls:
+                        try:
+                            alternate = http.get(alternate_url, follow_redirects=False)
+                            if alternate.status_code == 202:
+                                accepted_alternate_urls.append(alternate_url)
+                                continue
+                            alternate.raise_for_status()
+                            if len(alternate.content) > MAX_SOURCE_BYTES:
+                                raise PriceSourceError("The supplier page is too large to process.")
+                            try:
+                                payload = alternate.json()
+                            except (AttributeError, ValueError):
+                                payload = None
+                            rendered = _wordpress_rendered_html(payload)
+                            visible_text = _visible_text_from_html(str(rendered or ""))
+                            wordpress_diagnostics.append(
+                                f"retry_status_{alternate.status_code}_bytes_{len(alternate.content)}_text_{len(visible_text)}"
+                            )
+                            if visible_text:
+                                return current, alternate.content, visible_text
+                        except httpx.HTTPError as exc:
+                            status_code = getattr(getattr(exc, "response", None), "status_code", "network")
+                            wordpress_diagnostics.append(f"retry_error_{status_code}")
             if not visible_text:
                 raise PriceSourceError(
                     "This supplier page does not expose readable text. "
                     "Upload its PDF, screenshot, or photo instead. "
-                    f"[url-fetch-v5 html_bytes={len(content)} wordpress={wordpress_diagnostic}]"
+                    f"[url-fetch-v6 primary={primary_diagnostic} wordpress={','.join(wordpress_diagnostics) or 'not_attempted'}]"
                 )
             return current, content, visible_text
         raise PriceSourceError("The supplier page redirected too many times.")
