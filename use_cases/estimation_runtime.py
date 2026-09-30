@@ -17,7 +17,7 @@ _ESTIMATION_V2_FACTS_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 
 
 def _estimation_v2_facts_shadow_enabled() -> bool:
-    value = str(get_secret("ESTIMATION_V2_FACTS_SHADOW_ENABLED", "false") or "false")
+    value = str(get_secret("ESTIMATION_V2_FACTS_SHADOW_ENABLED", "true") or "true")
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 

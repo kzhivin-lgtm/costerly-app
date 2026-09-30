@@ -65,7 +65,7 @@ engine call.
 
 - 36 focused Estimation v2 evidence, extraction, persistence, composition and
   revision tests pass;
-- full suite passes with 769 tests and 28 warnings;
+- full suite passes with 771 tests and 28 warnings;
 - `py_compile` and `git diff --check` pass.
 
 ## Object Facts extractor, verified 2026-10-01
@@ -119,9 +119,9 @@ The shadow coordinator:
   Estimation.
 
 The runtime hook uses a separate executor and starts only after legacy
-Estimation completes. `ESTIMATION_V2_FACTS_SHADOW_ENABLED` defaults to false,
-so the prepared code cannot alter production behavior before the migration and
-an explicit enablement decision.
+Estimation completes. After production acceptance,
+`ESTIMATION_V2_FACTS_SHADOW_ENABLED` defaults to true. An explicit `false`
+remains the Railway rollback switch.
 
 The additive migration was applied to production on 2026-10-01. The new table
 is readable and contains no fact rows before acceptance. The active Israel
@@ -129,8 +129,14 @@ catalog contains 2,832 pricing identities across three PostgREST pages and 51
 material families. The runtime loader paginates all rows instead of silently
 stopping at the 1,000-row API default.
 
-Local verification now passes with 769 tests. The feature flag is not enabled,
-and no production fact row has been written.
+Production backend acceptance passed on 2026-10-01 with benchmark object
+`CB-01 Storage cabinet`. Revision 2 reused the persisted OCR event, original
+reference and private preview while adding deterministic OCR block refs. One
+bounded call persisted `estimation_object_facts_v1` as `review_required` with
+template `tall_cabinet`, four material requirements and explicit missing-
+quantity review items. Usage proves `source_document_attached=false` and
+`ocr_rerun=false`. An immediate repeat reused the stored result without a
+second model call.
 
 ## Labor Engine compatibility inspection, 2026-10-01
 
@@ -182,7 +188,7 @@ routes are compatible; expanding the remaining templates and cross-object
 batch aggregation remains separate work.
 
 Verification: 11 direct Labor Engine tests, 83 Labor, Machinery and
-manufacturing tests, and the full 769-test suite pass.
+manufacturing tests, and the full 771-test suite pass.
 
 ## Next implementation slice
 
