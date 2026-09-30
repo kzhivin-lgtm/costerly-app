@@ -38,6 +38,7 @@ from use_cases.price_source_material_resolution import (
 
 PRICE_SOURCE_BUCKET = "company-price-sources"
 MAX_SOURCE_BYTES = 50 * 1024 * 1024
+WORDPRESS_ACCEPTED_RETRY_DELAYS_SECONDS = (1, 2, 3)
 LEGACY_EXTREME_RATIO = 3.0
 LEGACY_CONFIDENCE_PENALTY = 15.0
 SUPPORTED_SUFFIXES = {".pdf", ".xlsx", ".csv", ".jpg", ".jpeg", ".png"}
@@ -818,10 +819,12 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
                 if alternate_url:
                     try:
                         alternate = http.get(alternate_url, follow_redirects=False)
-                        if alternate.status_code == 202:
-                            # Some WordPress hosts return an empty accepted response while
-                            # their REST page is warming. Retry only this bounded case.
-                            time.sleep(1)
+                        for delay_seconds in WORDPRESS_ACCEPTED_RETRY_DELAYS_SECONDS:
+                            if alternate.status_code != 202:
+                                break
+                            # A WordPress REST endpoint can acknowledge the request before
+                            # its page payload is ready. Keep this retry narrow and bounded.
+                            time.sleep(delay_seconds)
                             alternate = http.get(alternate_url, follow_redirects=False)
                         alternate.raise_for_status()
                         if len(alternate.content) > MAX_SOURCE_BYTES:
@@ -2176,6 +2179,9 @@ def process_price_source(
         )
 
         rows_apply_started = time.perf_counter()
+        source_row_payloads: list[dict[str, Any]] = []
+        offer_intents: list[dict[str, Any]] = []
+        prior_offer_ids_to_supersede: set[str] = set()
         for row in result["rows"]:
             row_category = canonical_price_source_category(str(row["material_type"]))
             material_id = None
@@ -2216,7 +2222,7 @@ def process_price_source(
                 else:
                     raise RuntimeError("Prepared company material was not available")
 
-            inserted_row = client.table("company_price_source_rows").insert(
+            source_row_payloads.append(
                 {
                     "source_id": source_id,
                     "company_id": company_id,
@@ -2252,22 +2258,24 @@ def process_price_source(
                         "comparison_status": result_status,
                     },
                 }
-            ).execute().data[0]
+            )
 
             if material_id and result_status in {"new", "updated"}:
                 identity = (str(material_id), current_lane)
                 for previous_offer in offers_by_identity.get(identity, []):
-                    client.table("company_material_offers").update(
-                        {"status": "superseded"}
-                    ).eq("offer_id", previous_offer["offer_id"]).execute()
-                    superseded_offer_ids.append(str(previous_offer["offer_id"]))
-                inserted_offer = client.table("company_material_offers").insert(
-                    {
+                    pending_intent_index = previous_offer.get("_pending_intent_index")
+                    if pending_intent_index is not None:
+                        offer_intents[pending_intent_index]["status"] = "superseded"
+                    else:
+                        prior_offer_ids_to_supersede.add(str(previous_offer["offer_id"]))
+                offer_intent = {
+                    "source_row_number": row["source_row_number"],
+                    "status": "active",
+                    "payload": {
                         "company_id": company_id,
                         "company_material_id": material_id,
                         "supplier_id": supplier_id,
                         "source_id": source_id,
-                        "source_row_id": inserted_row["row_id"],
                         "supplier_sku": row["raw_sku"] or None,
                         "source_price": row["raw_price"],
                         "source_unit": row["raw_unit"],
@@ -2280,11 +2288,43 @@ def process_price_source(
                         "vat_included": True if row["raw_vat_mode"] == "included" else False if row["raw_vat_mode"] == "excluded" else None,
                         "valid_from": _date_or_none(result["document_date"]),
                         "confidence": row["confidence"],
-                    }
-                ).execute().data[0]
-                offers_by_identity[identity] = [inserted_offer]
+                    },
+                }
+                offer_intents.append(offer_intent)
+                pending_offer = dict(offer_intent["payload"])
+                pending_offer["_pending_intent_index"] = len(offer_intents) - 1
+                offers_by_identity[identity] = [pending_offer]
                 if sku:
-                    offers_by_sku[(current_lane, sku)] = [inserted_offer]
+                    offers_by_sku[(current_lane, sku)] = [pending_offer]
+
+        inserted_rows = (
+            client.table("company_price_source_rows").insert(source_row_payloads).execute().data
+            or []
+        ) if source_row_payloads else []
+        row_id_by_number = {
+            str(inserted.get("source_row_number")): inserted.get("row_id")
+            for inserted in inserted_rows
+        }
+        if len(row_id_by_number) != len(source_row_payloads) or any(
+            not row_id_by_number.get(str(row["source_row_number"]))
+            for row in source_row_payloads
+        ):
+            raise RuntimeError("Inserted source rows could not be identified")
+
+        if prior_offer_ids_to_supersede:
+            client.table("company_material_offers").update(
+                {"status": "superseded"}
+            ).in_("offer_id", sorted(prior_offer_ids_to_supersede)).execute()
+            superseded_offer_ids.extend(sorted(prior_offer_ids_to_supersede))
+
+        offer_payloads: list[dict[str, Any]] = []
+        for intent in offer_intents:
+            payload = dict(intent["payload"])
+            payload["source_row_id"] = row_id_by_number[str(intent["source_row_number"])]
+            payload["status"] = intent["status"]
+            offer_payloads.append(payload)
+        if offer_payloads:
+            client.table("company_material_offers").insert(offer_payloads).execute()
 
         _emit_duration(
             trace,
@@ -2292,6 +2332,9 @@ def process_price_source(
             rows_apply_started,
             extracted_rows=len(result["rows"]),
             active_rows=ready_count,
+            source_rows_inserted=len(source_row_payloads),
+            offers_inserted=len(offer_payloads),
+            offers_superseded=len(prior_offer_ids_to_supersede),
         )
 
         if material_ids_to_restore:

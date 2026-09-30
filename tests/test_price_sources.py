@@ -261,6 +261,10 @@ class _MutableQuery:
         self.filters.append(("neq", key, value))
         return self
 
+    def in_(self, key, values):
+        self.filters.append(("in", key, set(values)))
+        return self
+
     def limit(self, value):
         self.row_limit = value
         return self
@@ -284,22 +288,32 @@ class _MutableQuery:
                 return False
             if operation == "neq" and row.get(key) == value:
                 return False
+            if operation == "in" and row.get(key) not in value:
+                return False
         return True
 
     def execute(self):
         rows = self.client.tables[self.table_name]
         if self.operation == "insert":
-            inserted = deepcopy(self.payload)
+            payloads = self.payload if isinstance(self.payload, list) else [self.payload]
             id_fields = {
                 "company_material_items": "company_material_id",
                 "company_material_offers": "offer_id",
+                "company_price_source_rows": "row_id",
             }
             id_field = id_fields.get(self.table_name)
-            if id_field and id_field not in inserted:
-                inserted[id_field] = f"generated-{len(rows) + 1}"
-            inserted.setdefault("status", "active" if self.table_name == "company_material_offers" else "private")
-            rows.append(inserted)
-            return SimpleNamespace(data=[deepcopy(inserted)])
+            inserted_rows = []
+            for payload in payloads:
+                inserted = deepcopy(payload)
+                if id_field and id_field not in inserted:
+                    inserted[id_field] = f"generated-{len(rows) + 1}"
+                inserted.setdefault(
+                    "status",
+                    "active" if self.table_name == "company_material_offers" else "private",
+                )
+                rows.append(inserted)
+                inserted_rows.append(deepcopy(inserted))
+            return SimpleNamespace(data=inserted_rows)
         matches = [row for row in rows if self._matches(row)]
         if self.row_limit is not None:
             matches = matches[: self.row_limit]
@@ -1703,7 +1717,7 @@ def test_script_only_wordpress_page_can_discover_json_by_slug(monkeypatch):
     assert "Birch plywood 18 mm" in text
 
 
-def test_wordpress_json_alternate_retries_one_empty_accepted_response(monkeypatch):
+def test_wordpress_json_alternate_retries_bounded_accepted_responses(monkeypatch):
     class HtmlResponse:
         status_code = 200
         headers = {"content-type": "text/html"}
@@ -1746,15 +1760,24 @@ def test_wordpress_json_alternate_retries_one_empty_accepted_response(monkeypatc
             if "/wp-json/" not in url:
                 return HtmlResponse()
             calls["alternate"] += 1
-            return AcceptedResponse() if calls["alternate"] == 1 else ReadyResponse()
+            return AcceptedResponse() if calls["alternate"] <= 3 else ReadyResponse()
 
     monkeypatch.setattr("use_cases.price_sources._validate_public_url", lambda value: value)
     monkeypatch.setattr("use_cases.price_sources.time.sleep", lambda _seconds: None)
 
     _, _, text = fetch_public_page("https://example.com/materials-and-prices/", client=Client())
 
-    assert calls["alternate"] == 2
+    assert calls["alternate"] == 4
     assert "MDF 18 mm" in text
+
+
+def test_price_source_processing_reruns_after_any_terminal_outcome():
+    from screens.company_profile import _process_pending_price_source
+
+    source = inspect.getsource(_process_pending_price_source)
+
+    assert "st.rerun()" in source
+    assert "if completed:" not in source
 
 
 @pytest.mark.parametrize(
