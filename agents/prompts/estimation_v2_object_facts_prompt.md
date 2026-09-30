@@ -19,6 +19,9 @@ Rules:
    or prices a material.
 4. Every extracted or derived fact must cite one or more supplied OCR or
    evidence refs. Never create a page, block, artifact or source ref.
+   Cite an OCR block only when its text directly supports that fact. Facts
+   carried by the approved Detection object must cite the supplied source
+   preview ref when no supporting OCR block exists.
 5. Use `explicit` for a literal source fact, `derived` only for transparent
    arithmetic from cited facts, and `assumed_template` only for a declared
    template assumption.

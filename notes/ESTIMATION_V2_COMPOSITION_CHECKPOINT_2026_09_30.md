@@ -227,6 +227,15 @@ Verification: the image-only fixture creates one immutable input with a private
 preview and zero OCR text blocks; ordering requires `facts_queued` before
 `legacy_started`; the full 774-test suite passes.
 
+The first bounded image-only production call then exposed an invalid citation:
+Object Facts correctly read dimensions and materials from the approved
+Detection object, but cited an unrelated OCR footer because it was present in
+the allowed page blocks. Image-only fallback inputs now remove all unrelated
+OCR blocks and leave the private source preview as the only evidence ref for
+Detection-derived facts. The prompt explicitly forbids citing OCR text that
+does not support the fact. The extractor version advanced to
+`estimation_object_facts_agent_v2`, so the invalid v1 result cannot be reused.
+
 ## Next implementation slice
 
 Deploy the transition repair and repeat the same production File Review to

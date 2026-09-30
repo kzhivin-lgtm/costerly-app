@@ -32,7 +32,7 @@ from use_cases.estimation_v2_composition import (
 )
 
 
-ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v1"
+ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v2"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_object_facts_prompt.md"
 
 

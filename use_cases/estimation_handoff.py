@@ -43,6 +43,7 @@ def persist_estimation_v2_shadow_inputs(
             resolved = resolve_anchor_bbox(anchor=anchor, ocr_package=ocr_package)
             if resolved:
                 break
+        exact_ocr_anchor = resolved is not None
         if not resolved:
             for page_ref in item.get("evidence_page_refs") or []:
                 try:
@@ -82,9 +83,19 @@ def persist_estimation_v2_shadow_inputs(
             client=client, company_id=str(run["company_id"]), run_id=str(run["run_id"]),
             object_id=object_id, page_number=page_number, webp_bytes=preview,
         )
+        bounded_ocr_package = ocr_package
+        if not exact_ocr_anchor:
+            bounded_ocr_package = {
+                **dict(ocr_package),
+                "evidence": {
+                    **dict(ocr_package.get("evidence") or {}),
+                    "text_blocks": [],
+                },
+            }
         payload = build_estimation_input_v2(
             run=run, detected_object=item, ocr_event_id=ocr_event_id,
-            ocr_package=ocr_package, evidence_artifacts=(artifact,), versions=versions,
+            ocr_package=bounded_ocr_package,
+            evidence_artifacts=(artifact,), versions=versions,
         )
         labels = {int(ref["page_number"]): str(ref.get("source_label") or ref["page_number"])
                   for ref in item.get("evidence_page_refs") or []}

@@ -91,7 +91,15 @@ def test_shadow_handoff_uses_source_page_when_image_only_ocr_cannot_resolve_anch
         ocr_package={
             "contract_version": "ocr_v2",
             "pages": [{"page_number": 1, "dimensions": {"width": 100, "height": 100}}],
-            "evidence": {"text_blocks": []},
+            "evidence": {"text_blocks": [{
+                "page_number": 1,
+                "text": "Drawing title",
+                "block_type": "header",
+                "bbox": {
+                    "top_left_x": 0, "top_left_y": 90,
+                    "bottom_right_x": 100, "bottom_right_y": 100,
+                },
+            }]},
         },
         original=describe_estimation_original(
             company_id="company-1", file_name="drawing.png", file_bytes=source
