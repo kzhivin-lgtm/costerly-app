@@ -32,6 +32,7 @@ def persist_estimation_v2_shadow_inputs(
     pages = _render_pages(file_name, file_bytes)
     ocr_pages = {int(row["page_number"]): row for row in ocr_package.get("pages") or [] if row.get("page_number")}
     created: list[str] = []
+    created_inputs: list[dict[str, Any]] = []
     skipped: dict[str, str] = {}
     for item in objects:
         object_id = str(item.get("object_id") or "")
@@ -75,4 +76,13 @@ def persist_estimation_v2_shadow_inputs(
                         "artifact_kind": artifact.artifact_kind, "storage_ref": artifact.storage_ref}],
         )
         created.append(input_id)
-    return {"created_input_ids": created, "skipped": skipped}
+        created_inputs.append({
+            "input_id": input_id,
+            "object_input_revision": 1,
+            "input_payload": payload,
+        })
+    return {
+        "created_input_ids": created,
+        "created_inputs": created_inputs,
+        "skipped": skipped,
+    }

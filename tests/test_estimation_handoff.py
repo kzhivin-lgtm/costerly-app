@@ -61,7 +61,13 @@ def test_shadow_handoff_persists_preview_input_and_artifact():
         versions={"detection": "test"},
     )
 
-    assert result == {"created_input_ids": ["input-1"], "skipped": {}}
+    assert result["created_input_ids"] == ["input-1"]
+    assert result["skipped"] == {}
+    assert result["created_inputs"] == [{
+        "input_id": "input-1",
+        "object_input_revision": 1,
+        "input_payload": client.rows["rfq_estimation_object_inputs"]["input_payload"],
+    }]
     assert client.uploads[0][0].endswith(".webp")
     assert client.rows["rfq_estimation_object_inputs"]["object_id"] == "object-1"
     assert client.rows["rfq_estimation_evidence_artifacts"][0]["source_label"] == "A-01"

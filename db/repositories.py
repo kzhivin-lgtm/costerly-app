@@ -156,6 +156,65 @@ def insert_estimation_object_input(
     return input_id
 
 
+def fetch_estimation_v2_fact_result(
+    client: Client,
+    *,
+    input_id: str,
+    agent_version: str,
+) -> dict | None:
+    """Return the immutable result for this exact input and extractor version."""
+    response = (
+        client.table("rfq_estimation_object_fact_results")
+        .select("*")
+        .eq("input_id", input_id)
+        .eq("agent_version", agent_version)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return dict(rows[0]) if rows else None
+
+
+def fetch_active_israel_material_families(client: Client) -> set[str]:
+    """Load the bounded material-family vocabulary from active Israel price classes."""
+    response = (
+        client.table("reference_material_pricing_identities")
+        .select("price_attributes")
+        .eq("market_code", "IL")
+        .eq("status", "active")
+        .execute()
+    )
+    families = {
+        str((row.get("price_attributes") or {}).get("material_family") or "").strip()
+        for row in response.data or []
+        if isinstance(row, dict)
+    }
+    return {family for family in families if family}
+
+
+def insert_estimation_v2_fact_result(
+    client: Client,
+    *,
+    input_id: str,
+    agent_version: str,
+    facts_payload: dict,
+    agent_usage_event_id: str,
+) -> str:
+    """Persist one already-validated immutable Object Facts result."""
+    response = client.table("rfq_estimation_object_fact_results").insert({
+        "input_id": input_id,
+        "agent_usage_event_id": agent_usage_event_id,
+        "agent_version": agent_version,
+        "contract_version": facts_payload["contract_version"],
+        "status": facts_payload["status"],
+        "facts_payload": facts_payload,
+    }).execute()
+    rows = response.data or []
+    if len(rows) != 1 or not rows[0].get("fact_result_id"):
+        raise RuntimeError("Estimation Object Facts insert did not return fact_result_id.")
+    return str(rows[0]["fact_result_id"])
+
+
 def insert_agent_usage_events(client: Client, usage_events: list[dict]) -> None:
     """Insert runtime diagnostics in one request using the current DB schema."""
     rows = []

@@ -63,8 +63,9 @@ engine call.
 
 ## Verification
 
-- 27 focused Estimation v2 evidence, extraction, composition and revision tests pass;
-- full suite passes with 758 tests and 28 warnings;
+- 34 focused Estimation v2 evidence, extraction, persistence, composition and
+  revision tests pass;
+- full suite passes with 764 tests and 28 warnings;
 - `py_compile` and `git diff --check` pass.
 
 ## Object Facts extractor, verified 2026-10-01
@@ -100,9 +101,35 @@ Live synthetic checks passed:
 
 No File Review, Objects, Object Detail, CSS or Labor Engine code changed.
 
+## Object Facts persistence candidate, verified locally 2026-10-01
+
+The additive `rfq_estimation_object_fact_results` migration stores one immutable
+validated result per `input_id + agent_version` and links it to the standard
+agent usage ledger. Company-member reads are protected through the owning
+immutable input row.
+
+The shadow coordinator:
+
+- loads the allowed family vocabulary only from active Israel pricing
+  identities;
+- reuses an existing result for the exact input and agent version without a
+  second model call;
+- persists usage and validated facts;
+- isolates one object's failure from every other object and from legacy
+  Estimation.
+
+The runtime hook uses a separate executor and starts only after legacy
+Estimation completes. `ESTIMATION_V2_FACTS_SHADOW_ENABLED` defaults to false,
+so the prepared code cannot alter production behavior before the migration and
+an explicit enablement decision.
+
+Local verification now passes with 764 tests. The migration is not yet applied
+to production, the feature flag is not enabled, and no production fact row has
+been written.
+
 ## Next implementation slice
 
-Add persistence and runtime shadow wiring for frozen input, extracted facts and
-usage events. Keep the current UI and Labor Engine unchanged. Material
-resolution, machinery, overhead and self-cost publication remain deterministic
-downstream stages.
+After explicit approval, apply the additive migration, deploy the code, enable
+the shadow flag and run one bounded production acceptance file. Keep the current
+UI and Labor Engine unchanged. Material resolution, machinery, overhead and
+self-cost publication remain deterministic downstream stages.
