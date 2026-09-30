@@ -241,7 +241,7 @@ def validate_object_facts(
             raise EstimationV2ContractError("material requirement ids must be unique")
         material_requirement_ids.add(requirement_id)
         _text(material["source_name"], f"facts.materials[{index}].source_name")
-        family = _identifier(material["family"], f"facts.materials[{index}].family")
+        family = _text(material["family"], f"facts.materials[{index}].family")
         if family not in allowed_material_families:
             raise EstimationV2ContractError(f"facts.materials[{index}].family is not in the versioned catalog")
         specification = _mapping(material["specification"], f"facts.materials[{index}].specification")

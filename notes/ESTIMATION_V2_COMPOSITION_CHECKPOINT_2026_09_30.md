@@ -63,9 +63,9 @@ engine call.
 
 ## Verification
 
-- 35 focused Estimation v2 evidence, extraction, persistence, composition and
+- 36 focused Estimation v2 evidence, extraction, persistence, composition and
   revision tests pass;
-- full suite passes with 765 tests and 28 warnings;
+- full suite passes with 766 tests and 28 warnings;
 - `py_compile` and `git diff --check` pass.
 
 ## Object Facts extractor, verified 2026-10-01
@@ -129,8 +129,38 @@ catalog contains 2,832 pricing identities across three PostgREST pages and 51
 material families. The runtime loader paginates all rows instead of silently
 stopping at the 1,000-row API default.
 
-Local verification now passes with 765 tests. The feature flag is not enabled,
+Local verification now passes with 766 tests. The feature flag is not enabled,
 and no production fact row has been written.
+
+## Labor Engine compatibility inspection, 2026-10-01
+
+The existing Labor Engine remains isolated and has no runtime caller outside
+its eight direct tests. Its deterministic core is useful, but it is not yet
+compatible with `estimation_object_facts_v1` or the production Company Profile
+context:
+
+- Object Facts stores the template under `template.code`; Labor expects
+  `template_code`;
+- material specifications are nested; Labor reads `thickness_mm` as a direct
+  material field;
+- Labor checks `edge_bander` and `powder_coating_booth`, while production uses
+  `wood_edge_bander` and `finish_powder_booth`;
+- production uses family `stainless_steel` plus an alloy specification, while
+  Labor expects `stainless_304` or `stainless_316` as family values;
+- only five of the 21 approved construction templates are implemented;
+- delivery and site setup are currently emitted per object even though their
+  own formula architecture requires project or site allocation.
+
+Direct compatibility probes returned `unsupported_template`,
+`edge_bander_availability_unknown` and
+`external_powder_component_not_yet_enabled` for otherwise valid v2 and
+production-shaped inputs. Do not connect Labor directly. Add a bounded
+`object_facts_v1 -> labor_input_v1` adapter, align canonical machine codes and
+settle project delivery and installation allocation first.
+
+One separate Object Facts issue found by the inspection was fixed: exact
+versioned material-family values may contain spaces. Validation now accepts a
+non-empty exact catalog value rather than requiring identifier syntax.
 
 ## Next implementation slice
 

@@ -112,6 +112,19 @@ def test_object_facts_require_versioned_material_and_template_vocabularies():
     assert "labor_result_unavailable" in ESTIMATION_REASON_CODE_VALUES
 
 
+def test_object_facts_allow_exact_catalog_family_with_spaces():
+    fixture = _fixture()
+    facts = copy.deepcopy(fixture["facts"])
+    facts["materials"][0]["family"] = "laminated solid wood panel"
+
+    result = validate_object_facts(
+        facts,
+        allowed_material_families={"laminated solid wood panel"},
+    )
+
+    assert result["materials"][0]["family"] == "laminated solid wood panel"
+
+
 def test_e05_review_facts_expose_missing_values_and_block_self_cost():
     fixture = _fixture()
     facts = copy.deepcopy(fixture["facts"])
