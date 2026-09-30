@@ -1423,7 +1423,7 @@ def test_price_source_notice_exposes_all_rows_status_time_and_tc():
 
     assert notice == (
         "10 rows extracted · 2 new · 1 updated · 5 unchanged · "
-        "2 unresolved · 13.8 s · TC 0.015"
+        "2 unresolved · Agent 13.8 s · TC 0.015"
     )
 
 
@@ -1445,7 +1445,7 @@ def test_exact_duplicate_notice_reports_cached_unchanged_result_without_agent_co
         }
     )
 
-    assert notice == "Already processed · 10 unchanged · 0.0 s · TC 0.000"
+    assert notice == "Already processed · 10 unchanged · Agent 0.0 s · TC 0.000"
 
 
 def test_exact_duplicate_notice_omits_zero_unchanged_count():
@@ -1461,7 +1461,23 @@ def test_exact_duplicate_notice_omits_zero_unchanged_count():
         }
     )
 
-    assert notice == "Already processed · 62 unresolved · 0.0 s · TC 0.000"
+    assert notice == "Already processed · 62 unresolved · Agent 0.0 s · TC 0.000"
+
+
+def test_price_source_notice_exposes_full_user_cycle_duration():
+    notice = company_profile._price_source_notice_text(
+        {
+            "summary": {
+                "total": 1,
+                "ready": 1,
+                "agent_duration_seconds": 13.836,
+                "full_cycle_duration_seconds": 17.25,
+                "token_cost": 0.015169,
+            }
+        }
+    )
+
+    assert notice == "1 row extracted · 1 active · 0 unresolved · Agent 13.8 s · Full cycle 17.2 s · TC 0.015"
 
 
 def test_price_source_result_notice_persists_until_the_next_extract_attempt():
@@ -1864,7 +1880,7 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
         )
     ]
     assert any(
-        notice.value == "10 rows extracted · 8 active · 2 unresolved · 13.8 s · TC 0.015"
+            notice.value == "10 rows extracted · 8 active · 2 unresolved · Agent 13.8 s · TC 0.015"
         for notice in app.success
     )
 

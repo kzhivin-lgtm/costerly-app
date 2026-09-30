@@ -2728,6 +2728,7 @@ def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
         "department": "",
         "source_url": source_url,
         "processing_cycle": processing_cycle,
+        "user_cycle_started_at": time.perf_counter(),
     }
     st.session_state._price_source_processing = True
     st.session_state.pop("_price_source_error", None)
@@ -2770,7 +2771,10 @@ def _price_source_notice_text(source: dict | None) -> str:
         parts.append(f"{excluded} excluded")
     duration = summary.get("agent_duration_seconds")
     if isinstance(duration, (int, float)):
-        parts.append(f"{duration:.1f} s")
+        parts.append(f"Agent {duration:.1f} s")
+    full_cycle = summary.get("full_cycle_duration_seconds")
+    if isinstance(full_cycle, (int, float)):
+        parts.append(f"Full cycle {full_cycle:.1f} s")
     parts.append(_price_source_tc(summary.get("token_cost")))
     return " · ".join(parts)
 
@@ -2877,6 +2881,9 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
         _clear_price_lists_snapshot()
         st.session_state._price_source_uploader_version = uploader_version + 1
         if hasattr(result, "source_id") and hasattr(result, "summary"):
+            result.summary["full_cycle_duration_seconds"] = (
+                time.perf_counter() - float(pending.get("user_cycle_started_at") or time.perf_counter())
+            )
             st.session_state._price_source_notice = {
                 "source_id": result.source_id,
                 "summary": result.summary,

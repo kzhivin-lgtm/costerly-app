@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 
 from use_cases.material_identity_resolution import (
+    build_material_identity_index,
     normalize_material_phrase,
     normalize_supplier_sku,
     resolve_material_identity,
@@ -252,3 +253,27 @@ def test_no_compatible_material_creates_review_route():
 def test_shortlist_limit_is_bounded():
     with pytest.raises(ValueError, match="between 1 and 5"):
         _resolve(shortlist_limit=6)
+
+
+def test_material_identity_index_preserves_family_and_alias_resolution():
+    materials = (
+        _material("mdf-18", "mdf", "Standard raw MDF 18 mm", thickness_mm=18),
+        _material("plywood-18", "plywood", "Birch plywood 18 mm", thickness_mm=18),
+        _material("steel-2", "steel", "Steel sheet 2 mm", thickness_mm=2),
+    )
+    aliases = (
+        _alias("mdf-18", "MDF 18 mm"),
+        _alias("plywood-18", "Birch plywood 18 mm", exact=False),
+    )
+    request = {
+        "phrase": "Birch plywood 18 mm",
+        "market_code": "IL",
+        "materials": materials,
+        "reference_aliases": aliases,
+        "specifications": {"thickness_mm": 18},
+        "material_family": "plywood",
+    }
+    assert resolve_material_identity(**request) == resolve_material_identity(
+        **request,
+        material_identity_index=build_material_identity_index(materials, aliases, "IL"),
+    )

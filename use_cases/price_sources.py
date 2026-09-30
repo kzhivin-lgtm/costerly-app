@@ -1937,9 +1937,11 @@ def process_price_source(
         .execute()
     ).data or []
     if duplicate:
+        duplicate_summary = _unchanged_duplicate_summary(duplicate[0])
+        duplicate_summary["processing_duration_seconds"] = time.perf_counter() - process_started
         return PriceSourceProcessResult(
             source_id=str(duplicate[0]["source_id"]),
-            summary=_unchanged_duplicate_summary(duplicate[0]),
+            summary=duplicate_summary,
         )
 
     agent_started = time.perf_counter()
@@ -2430,6 +2432,7 @@ def process_price_source(
                 "updated": updated_count,
                 "unchanged": unchanged_count,
                 "material_identity": identity_summary,
+                "processing_duration_seconds": time.perf_counter() - process_started,
             }
         )
         client.table("company_price_sources").update(

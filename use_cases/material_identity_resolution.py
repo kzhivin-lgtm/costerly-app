@@ -66,6 +66,9 @@ class MaterialIdentityResolution:
     resolver_version: str = "material_identity_v1"
 
 
+MaterialIdentityIndex = Mapping[str, Any]
+
+
 def normalize_material_phrase(value: Any) -> str:
     text = unicodedata.normalize("NFKC", str(value or "")).casefold().strip()
     text = text.replace("×", "x").replace("✕", "x")
@@ -178,6 +181,85 @@ def _material_family_matches(material: Mapping[str, Any], family_tokens: set[str
     return family_tokens.issubset(tokens)
 
 
+def _material_family_corpus_tokens(material: Mapping[str, Any]) -> set[str]:
+    specifications = material.get("specifications") or {}
+    return set(
+        normalize_material_phrase(
+            " ".join(
+                str(value or "")
+                for value in (
+                    material.get("canonical_name"),
+                    specifications.get("subcategory_en"),
+                    specifications.get("category_en"),
+                )
+            )
+        ).split()
+    )
+
+
+def build_material_identity_index(
+    materials: Sequence[Mapping[str, Any]],
+    reference_aliases: Sequence[Mapping[str, Any]],
+    market_code: str,
+) -> dict[str, Any]:
+    """Build safe retrieval buckets for the immutable market catalog.
+
+    Every bucket is a superset of the legacy resolver's possible candidates.
+    The resolver still performs the existing compatibility and ranking rules,
+    so indexing cannot turn an ambiguous match into an automatic link.
+    """
+    market = str(market_code or "").upper().strip()
+    materials_by_id: dict[str, Mapping[str, Any]] = {}
+    material_ids_by_department: dict[str, list[str]] = {}
+    material_ids_by_family_token: dict[str, set[str]] = {}
+    for material in materials:
+        material_id = str(material.get("material_id") or "")
+        if not material_id or not material.get("active", True):
+            continue
+        materials_by_id[material_id] = material
+        department = str(material.get("department") or "")
+        material_ids_by_department.setdefault(department, []).append(material_id)
+        for token in _material_family_corpus_tokens(material):
+            material_ids_by_family_token.setdefault(token, set()).add(material_id)
+
+    aliases_by_material: dict[str, list[str]] = {}
+    exact_alias_material_ids: dict[str, set[str]] = {}
+    for alias in reference_aliases:
+        if (
+            not alias.get("active", True)
+            or str(alias.get("market_code") or "").upper().strip() != market
+        ):
+            continue
+        material_id = str(alias.get("material_id") or "")
+        alias_text = str(alias.get("alias_text") or "")
+        if not material_id or not alias_text:
+            continue
+        aliases_by_material.setdefault(material_id, []).append(alias_text)
+        if alias.get("exact_identity") is True:
+            exact_alias_material_ids.setdefault(
+                normalize_material_phrase(alias_text), set()
+            ).add(material_id)
+
+    return {
+        "materials_by_id": materials_by_id,
+        "material_ids_by_department": {
+            department: tuple(sorted(ids))
+            for department, ids in material_ids_by_department.items()
+        },
+        "material_ids_by_family_token": {
+            token: frozenset(ids) for token, ids in material_ids_by_family_token.items()
+        },
+        "aliases_by_material": {
+            material_id: tuple(values)
+            for material_id, values in aliases_by_material.items()
+        },
+        "exact_alias_material_ids": {
+            phrase: frozenset(ids)
+            for phrase, ids in exact_alias_material_ids.items()
+        },
+    }
+
+
 def resolve_material_identity(
     *,
     phrase: str,
@@ -194,6 +276,7 @@ def resolve_material_identity(
     specifications: Mapping[str, Any] | None = None,
     material_family: str | None = None,
     candidate_departments: Sequence[str] = (),
+    material_identity_index: MaterialIdentityIndex | None = None,
     shortlist_limit: int = 5,
 ) -> MaterialIdentityResolution:
     """Resolve identity by exact routes before returning a bounded shortlist."""
@@ -223,11 +306,15 @@ def resolve_material_identity(
     shortlist_departments = {
         str(value).strip() for value in candidate_departments if str(value).strip()
     }
-    material_by_id = {
-        str(row.get("material_id")): row
-        for row in materials
-        if row.get("material_id") and row.get("active", True)
-    }
+    material_by_id = (
+        dict(material_identity_index.get("materials_by_id") or {})
+        if material_identity_index is not None
+        else {
+            str(row.get("material_id")): row
+            for row in materials
+            if row.get("material_id") and row.get("active", True)
+        }
+    )
 
     def compatible(material_id: str) -> bool:
         material = material_by_id.get(material_id)
@@ -302,16 +389,29 @@ def resolve_material_identity(
             ),
         )
 
-    alias_rows = [
-        row
-        for row in reference_aliases
-        if row.get("active", True)
-        and str(row.get("market_code") or "") == market
-        and normalize_material_phrase(row.get("alias_text")) in normalized_phrases
-        and row.get("exact_identity") is True
-        and exact_compatible(str(row.get("material_id") or ""))
-    ]
-    alias_ids = _unique_material_ids(alias_rows)
+    if material_identity_index is not None:
+        exact_aliases = material_identity_index.get("exact_alias_material_ids") or {}
+        alias_ids = tuple(
+            sorted(
+                {
+                    material_id
+                    for normalized in normalized_phrases
+                    for material_id in exact_aliases.get(normalized, ())
+                    if exact_compatible(str(material_id))
+                }
+            )
+        )
+    else:
+        alias_rows = [
+            row
+            for row in reference_aliases
+            if row.get("active", True)
+            and str(row.get("market_code") or "") == market
+            and normalize_material_phrase(row.get("alias_text")) in normalized_phrases
+            and row.get("exact_identity") is True
+            and exact_compatible(str(row.get("material_id") or ""))
+        ]
+        alias_ids = _unique_material_ids(alias_rows)
     if len(alias_ids) == 1:
         return MaterialIdentityResolution(
             status="resolved",
@@ -328,8 +428,23 @@ def resolve_material_identity(
             ),
         )
 
+    if material_identity_index is not None and shortlist_departments:
+        department_ids = material_identity_index.get("material_ids_by_department") or {}
+        candidate_material_ids = {
+            material_id
+            for department in shortlist_departments
+            for material_id in department_ids.get(department, ())
+        }
+        candidate_materials = [
+            material_by_id[material_id]
+            for material_id in sorted(candidate_material_ids)
+            if material_id in material_by_id
+        ]
+    else:
+        candidate_materials = list(material_by_id.values())
+
     compatible_materials: list[tuple[Mapping[str, Any], int]] = []
-    for material in material_by_id.values():
+    for material in candidate_materials:
         if (
             shortlist_departments
             and str(material.get("department") or "") not in shortlist_departments
@@ -343,14 +458,31 @@ def resolve_material_identity(
         if is_compatible:
             compatible_materials.append((material, matched_specs))
     family_tokens = _family_tokens(material_family)
-    family_known_in_catalog = any(
-        _material_family_matches(material, family_tokens)
-        and (
-            not shortlist_departments
-            or str(material.get("department") or "") in shortlist_departments
+    if material_identity_index is not None and family_tokens:
+        family_index = material_identity_index.get("material_ids_by_family_token") or {}
+        if family_tokens in ({"laminated"}, {"lami"}):
+            family_known_ids = set(family_index.get("butcher", ())) & set(
+                family_index.get("block", ())
+            )
+        else:
+            family_sets = [set(family_index.get(token, ())) for token in family_tokens]
+            family_known_ids = set.intersection(*family_sets) if family_sets else set()
+        if shortlist_departments:
+            family_known_ids &= {
+                str(material.get("material_id"))
+                for material in candidate_materials
+                if material.get("material_id")
+            }
+        family_known_in_catalog = bool(family_known_ids)
+    else:
+        family_known_in_catalog = any(
+            _material_family_matches(material, family_tokens)
+            and (
+                not shortlist_departments
+                or str(material.get("department") or "") in shortlist_departments
+            )
+            for material in material_by_id.values()
         )
-        for material in material_by_id.values()
-    )
     family_materials = [
         item
         for item in compatible_materials
@@ -384,12 +516,17 @@ def resolve_material_identity(
             )
 
     phrase_token_sets = [set(value.split()) for value in normalized_phrases]
-    aliases_by_material: dict[str, list[str]] = {}
-    for row in reference_aliases:
-        if row.get("active", True) and str(row.get("market_code") or "") == market:
-            aliases_by_material.setdefault(str(row.get("material_id") or ""), []).append(
-                str(row.get("alias_text") or "")
-            )
+    aliases_by_material = (
+        material_identity_index.get("aliases_by_material") or {}
+        if material_identity_index is not None
+        else {}
+    )
+    if material_identity_index is None:
+        for row in reference_aliases:
+            if row.get("active", True) and str(row.get("market_code") or "") == market:
+                aliases_by_material.setdefault(str(row.get("material_id") or ""), []).append(
+                    str(row.get("alias_text") or "")
+                )
     ranked: list[MaterialIdentityCandidate] = []
     for material, matched_specs in compatible_materials:
         material_id = str(material["material_id"])

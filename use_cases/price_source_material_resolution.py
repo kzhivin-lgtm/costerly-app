@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from use_cases.material_identity_resolution import (
     MaterialIdentityResolution,
+    build_material_identity_index,
     normalize_material_phrase,
     resolve_material_identity,
 )
@@ -189,6 +190,11 @@ def _load_global_resolution_index(
         "pricing_identities": pricing_identities,
         "pricing_identity_index": build_material_pricing_identity_index(pricing_identities),
     }
+    global_index["material_identity_index"] = build_material_identity_index(
+        global_index["materials"],
+        global_index["reference_aliases"],
+        market_code,
+    )
     with _GLOBAL_RESOLUTION_INDEX_CACHE_LOCK:
         if len(_GLOBAL_RESOLUTION_INDEX_CACHE) >= _GLOBAL_RESOLUTION_INDEX_CACHE_LIMIT:
             _GLOBAL_RESOLUTION_INDEX_CACHE.pop(next(iter(_GLOBAL_RESOLUTION_INDEX_CACHE)))
@@ -520,6 +526,7 @@ def resolve_price_source_material_identities(
                 candidate_departments=PRICE_SOURCE_REFERENCE_DEPARTMENTS.get(
                     material_type, ()
                 ),
+                material_identity_index=index["material_identity_index"],
             )
 
         candidates = _candidate_payload(resolution, reference_material_by_id)
