@@ -32,8 +32,8 @@ from agents.schemas.estimation_schema import (
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_ESTIMATION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
-DETECTION_PROMPT_VERSION = "detection_v3_2_6_2_golden_streaming_telemetry"
-DETECTION_NO_NAMING_PROMPT_VERSION = "detection_v3_2_6_2_golden_streaming_telemetry"
+DETECTION_PROMPT_VERSION = "detection_v3_2_6_3_estimation_evidence"
+DETECTION_NO_NAMING_PROMPT_VERSION = "detection_v3_2_6_3_estimation_evidence"
 ESTIMATION_PROMPT_VERSION = "estimation_v2_manufacturing_features"
 
 

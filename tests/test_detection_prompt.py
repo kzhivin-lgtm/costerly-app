@@ -46,8 +46,12 @@ def test_detection_prompt_v3_2_6_covers_ocr_identity_reconciliation():
     assert "Living room furniture assembly" in prompt
     assert 'use "W 3610 × H 630 × D 610 mm"' in prompt
     assert "evidence_page_refs" in prompt
+    assert "physical upload page number shown as P#" in prompt
+    assert "copied verbatim from P# TEXT entries" in prompt
+    assert "Never paraphrase, translate, combine, correct" in prompt
+    assert "return an empty evidence_anchors list" in prompt
     assert "does not receive the original file" in prompt
-    assert DETECTION_PROMPT_VERSION == "detection_v3_2_6_2_golden_streaming_telemetry"
+    assert DETECTION_PROMPT_VERSION == "detection_v3_2_6_3_estimation_evidence"
 
 
 def test_detection_prompt_v3_stays_compact():
@@ -60,7 +64,7 @@ def test_detection_prompt_v3_stays_compact():
 def test_no_naming_ab_prompt_delegates_user_facing_name_once():
     prompt = load_detection_agent_without_naming_prompt()
 
-    assert DETECTION_NO_NAMING_PROMPT_VERSION == "detection_v3_2_6_2_golden_streaming_telemetry"
+    assert DETECTION_NO_NAMING_PROMPT_VERSION == "detection_v3_2_6_3_estimation_evidence"
     assert "Your output has five user-facing jobs" in prompt
     assert "## 5. Object naming" not in prompt
     assert "Do not create, translate, shorten, improve, or validate" in prompt

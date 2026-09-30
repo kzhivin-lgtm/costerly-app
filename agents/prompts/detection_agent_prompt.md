@@ -280,7 +280,13 @@ Do not list ordinary brackets, fasteners, handles, rails, cable openings, or det
 
 evidence_pages must aggregate every page, sheet, or drawing reference that materially supports the canonical object. Use one string such as "1,2,5", "A101,A202", or "2,A202,Detail 03".
 
-Return evidence_page_refs/evidence_anchors.
+Return evidence_page_refs and evidence_anchors using this strict handoff contract:
+
+- evidence_page_refs.page_number is the physical upload page number shown as P# in OCR SPATIAL EVIDENCE. It is never a printed sheet number, drawing number, detail number, or a number inferred from the file name.
+- evidence_page_refs.source_label is the visible sheet, drawing, or detail label when one exists. It may differ from the physical page number.
+- evidence_anchors contains 1-3 unique bbox-bearing strings copied verbatim from P# TEXT entries on a supporting physical page. Keep the same P# as page_number.
+- Never paraphrase, translate, combine, correct, or visually retranscribe an evidence anchor. Never use an E= item as an anchor because it has no independent text bbox.
+- If no unique relevant P# TEXT string exists, return an empty evidence_anchors list. An empty list is safer than an invented or approximate anchor.
 
 ---
 
@@ -391,61 +397,15 @@ Do not return markdown, code fences, commentary, or text outside the JSON object
 
 ## 13. Decision examples
 
-### Example A — one curtain assembly
+### Examples
 
-The document shows curtain fabric, a suspension track, brackets, anchors, and mounting details. The same system appears in plan, elevation, section, and render. The object index is NR-90.
-
-Return one object:
-
-- object_name: NR-90 — Curtain system
-- quantity: number of complete curtain systems
-- external dimensions: overall system width/depth/height where supported
-- evidence_pages: all supporting pages
-- notes: only meaningful scope boundary or coordination questions
-
-Do not return separate objects for fabric, track, suspension, brackets, anchors, or individual views.
-
-### Example B — equipment inside a fabricated counter
-
-A custom bar counter contains a built-in freezer and coffee machine. The equipment is identified as another supplier's scope.
-
-Return one Bar counter object. Do not return the freezer or coffee machine. Mention openings, ventilation, access, services, and supplier interface in the counter notes when relevant.
-
-### Example C — same object on many sheets
-
-A kitchen appears on a plan, two elevations, a section, details, and a render with the same tag and dimensions.
-
-Return one Kitchen object and aggregate all evidence pages. Quantity is not the number of drawings.
-
-### Example D — valid commercial split
-
-A kitchen cabinet run and a kitchen island have different object-level codes, separate overall dimensions, and separate schedule rows.
-
-Return two objects because they are independent quotation positions.
-
-### Example E — repeated identical units
-
-Four physically separate display cabinets share code DC-01 and the same dimensions.
-
-Return one DC-01 — Display cabinet object with quantity 4. Do not return four duplicate object records.
-
-### Example F — non-English authoritative label
-
-A Hebrew drawing identifies object NR-90 as מערכת וילון.
-
-Use: NR-90 — Curtain system ("מערכת וילון").
-
-### Example G — several independent products on one furniture sheet
-
-One living-room furniture sheet shows a tall shelving unit, a sliding door system, and a TV console. The console is repeated in two projections. All products share one page title and coordinated finishes.
-
-Return exactly three objects:
-
-- Shelving unit;
-- Sliding door system;
-- TV console.
-
-Merge the two TV-console projections into one object. Do not merge the three products into "Living room furniture assembly". The sheet title is package context, not an object name.
+- NR-90 curtain fabric, track, brackets, anchors, and repeated views are one Curtain system. Use the overall envelope, complete-unit quantity, all evidence pages, and only actionable notes.
+- A fabricated counter containing another supplier's freezer and coffee machine is one Bar counter. Exclude the equipment and note relevant interfaces.
+- One tagged kitchen repeated across plan, elevations, section, details, and render is one Kitchen. Drawings do not increase quantity.
+- A cabinet run and island with separate codes, envelopes, and schedule rows are two objects.
+- Four identical DC-01 display cabinets are one DC-01 Display cabinet object with quantity 4.
+- For Hebrew NR-90 מערכת וילון, use NR-90 Curtain system ("מערכת וילון").
+- One furniture sheet with a shelving unit, sliding door system, and TV console contains three objects. Merge repeated console projections, but never merge the products into "Living room furniture assembly".
 
 For every object, raw_text contains only its compact overall W × H × D string and never the dimensions of neighboring products or internal components.
 
