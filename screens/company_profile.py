@@ -2735,6 +2735,25 @@ def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
     st.session_state.pop("_price_source_notice", None)
 
 
+def _clear_price_source_url_for_files(uploader_key: str, url_key: str) -> None:
+    """Keep one document source active when the user selects files."""
+    files = accepted_price_source_uploads(list(st.session_state.get(uploader_key) or []))
+    if files:
+        st.session_state[url_key] = ""
+
+
+def _clear_price_source_files_for_url(url_key: str) -> None:
+    """Replace an existing file selection when the user enters a supplier URL."""
+    source_url = str(st.session_state.get(url_key) or "")
+    if not source_url.strip():
+        return
+    next_uploader_version = int(
+        st.session_state.get("_price_source_uploader_version") or 0
+    ) + 1
+    st.session_state["_price_source_uploader_version"] = next_uploader_version
+    st.session_state[f"price_source_url_{next_uploader_version}"] = source_url
+
+
 def _price_source_notice_text(source: dict | None) -> str:
     if not source:
         return "Price source processed"
@@ -2801,6 +2820,8 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     key=uploader_key,
                     disabled=processing,
                     label_visibility="collapsed",
+                    on_change=_clear_price_source_url_for_files,
+                    args=(uploader_key, url_key),
                     help=(
                         "Upload one PDF or spreadsheet, or select several JPEG/PNG photos "
                         "that belong to the same document"
@@ -2829,6 +2850,8 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     placeholder="https://supplier.example/prices",
                     key=url_key,
                     disabled=processing,
+                    on_change=_clear_price_source_files_for_url,
+                    args=(url_key,),
                 )
                 if processing:
                     st.markdown(

@@ -1020,6 +1020,37 @@ def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
     assert "_price_source_error" not in state
 
 
+def test_price_source_file_selection_clears_the_supplier_url(monkeypatch):
+    from screens import company_profile
+
+    state = {
+        "price_upload": [_UploadedPhoto("prices.xlsx", b"first")],
+        "price_url": "https://supplier.example/prices",
+    }
+    monkeypatch.setattr(company_profile.st, "session_state", state)
+
+    company_profile._clear_price_source_url_for_files("price_upload", "price_url")
+
+    assert state["price_url"] == ""
+
+
+def test_price_source_url_entry_replaces_existing_file_selection(monkeypatch):
+    from screens import company_profile
+
+    state = {
+        "_price_source_uploader_version": 4,
+        "price_source_url_4": "https://supplier.example/prices",
+        "price_source_upload_4": [_UploadedPhoto("prices.xlsx", b"first")],
+    }
+    monkeypatch.setattr(company_profile.st, "session_state", state)
+
+    company_profile._clear_price_source_files_for_url("price_source_url_4")
+
+    assert state["_price_source_uploader_version"] == 5
+    assert state["price_source_url_5"] == "https://supplier.example/prices"
+    assert "price_source_upload_5" not in state
+
+
 def test_price_source_file_guard_filters_before_streamlit_receives_selection():
     from ui.js_guards import install_price_source_file_selection_guard
 
