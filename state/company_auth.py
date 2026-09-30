@@ -1339,7 +1339,10 @@ def render_login_or_signup(invitation: InvitationContext | None) -> None:
     recovery_complete = st.session_state.pop("password_recovery_complete", False)
     if st.session_state.pop("clear_recovery_browser_route", False):
         clear_recovery_browser_route()
-    with st.form("company_login"):
+    # The form contains two submit actions. Disable Streamlit's native Enter
+    # submitter selection so it can never choose password recovery by position.
+    # The guarded client handler explicitly routes Enter in Password to Sign in.
+    with st.form("company_login", enter_to_submit=False):
         auth_feedback_id = str(
             st.session_state.get("auth_feedback_id") or "auth-feedback"
         )

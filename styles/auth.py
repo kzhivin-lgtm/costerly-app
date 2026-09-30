@@ -379,6 +379,24 @@ def install_auth_form_interactions() -> None:
             });
           }
 
+          function bindSignInEnter() {
+            const form = Array.from(doc.querySelectorAll('div[data-testid="stForm"]')).find(
+              (node) => formHasAction(node, 'Sign in')
+            );
+            const password = fieldShell('password', form)?.input;
+            const submit = Array.from(
+              form?.querySelectorAll('div[data-testid="stFormSubmitButton"] button') || []
+            ).find((button) => button.textContent.trim() === 'Sign in');
+            if (!password || !submit || password.dataset.costerlySignInEnterBound === '1') return;
+            password.dataset.costerlySignInEnterBound = '1';
+            password.addEventListener('keydown', (event) => {
+              if (event.key !== 'Enter' || event.isComposing) return;
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              submit.click();
+            }, true);
+          }
+
           function bindPasswordUpdate() {
             const button = Array.from(
               doc.querySelectorAll('div[data-testid="stFormSubmitButton"] button')
@@ -468,6 +486,7 @@ def install_auth_form_interactions() -> None:
             bindSignIn();
             bindMemberCreation();
             bindPasswordRecoveryRequest();
+            bindSignInEnter();
             bindPasswordUpdate();
             bindTermsAcceptance();
           }

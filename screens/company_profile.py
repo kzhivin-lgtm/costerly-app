@@ -2855,6 +2855,7 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
 
     uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
     pending = st.session_state.get("_price_source_pending") or {}
+    completed = False
     try:
         uploaded_file = combine_price_source_files(pending.get("uploaded_files") or [])
         result = process_price_source(
@@ -2883,9 +2884,14 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
             }
         else:
             st.session_state._price_source_notice = result
+        completed = True
     finally:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
+    if completed:
+        # A fragment rerun can retain the pre-import catalog alongside the new
+        # catalog. Rebuild the app once so only the post-import snapshot remains.
+        st.rerun()
 
 
 @st.fragment

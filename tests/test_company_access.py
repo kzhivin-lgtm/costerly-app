@@ -511,6 +511,15 @@ def test_forgot_password_requires_email_without_leaving_sign_in(monkeypatch):
     assert "Enter your email to reset your password." not in source
 
 
+def test_enter_in_login_password_targets_sign_in_not_password_recovery():
+    interactions = Path("styles/auth.py").read_text()
+    auth_state = Path("state/company_auth.py").read_text()
+    assert "function bindSignInEnter()" in interactions
+    assert "formHasAction(node, 'Sign in')" in interactions
+    assert "submit.click();" in interactions
+    assert 'st.form("company_login", enter_to_submit=False)' in auth_state
+
+
 def test_recovery_request_uses_exact_public_callback(monkeypatch):
     calls = []
 
