@@ -72,9 +72,13 @@ def test_valid_estimation_contract_builds_db_lines():
     assert len(lines) == 2
     assert lines[0]["section"] == "material"
     assert lines[0]["needs_price"] is True
+    assert lines[0]["economic_classification"] == "direct_material"
+    assert lines[0]["price_scope"] == "material_only"
     assert "unit_cost" not in lines[0]
     assert lines[1]["section"] == "labor"
     assert lines[1]["hours"] == 6
+    assert lines[1]["economic_classification"] == "in_house_labor"
+    assert lines[1]["price_scope"] is None
     assert "rate" not in lines[1]
 
 

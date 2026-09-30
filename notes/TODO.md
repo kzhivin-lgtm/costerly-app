@@ -2,6 +2,29 @@
 
 Current owner-approved execution order:
 
+ACTIVE, 3.15.7 Labor reference-model foundation: checkpoint recorded in
+`notes/LABOR_FOUNDATION_3_15_7_CHECKPOINT_2026_09_30.md`. Time baselines,
+roles, drivers, source links, confidence markers, material-specific metal
+routes, formulas, construction templates, crew rules, golden scenarios, and
+the Labor Engine contract are prepared. Deterministic implementation is active:
+five templates are implemented and 40 targeted tests pass. Next: complete the
+remaining approved templates, batch aggregation and all ten golden scenarios.
+The Estimation Agent replacement remains a later task. Full continuation is in
+`notes/MATERIALS_LABOR_NEXT_CHAT_HANDOFF_2026_09_30.md`. This priority does not
+cancel 3.15.4 through 3.15.6; they remain pending at their recorded checkpoints.
+
+ACTIVE, pending Railway deploy, auth regression: pressing Enter while focused
+in the Sign in password field must submit Sign in, never trigger Forgot
+password. The local 29.09 observation proved that Streamlit selects the first
+form submit button, which was Forgot password. The local implementation is
+complete. Preserve recovery and verify it in the real authenticated production
+browser after Railway becomes available.
+
+UI follow-up, local Price Source: inspect and correct the observed green-on-green
+status treatment. Reuse the accepted production status-token hierarchy, then
+validate the actual rendered local and production states. Do not infer the
+cause from the local screenshot alone.
+
 0. Backlog, cross-agent failure observability: record every attempted run before
    network, file, model, or persistence work begins. Keep an internal failure
    record with agent name, company-safe correlation ID, input type and URL/file
@@ -34,6 +57,13 @@ Current owner-approved execution order:
    seconds in legacy persistence, and about 36 seconds in the original
    sequential identity stage. The identity stage is already batched; its new
    production timing remains to be measured.
+   Coatings pricing coverage is a separate deferred input task: seek an
+   evidence-backed Israel B2B catalog or invoice from a professional factory
+   coatings channel, beginning with Sayerlack through its Israeli professional
+   representative. Do not seed Israel baseline prices from retail suppliers or
+   foreign retail prices. Preserve real purchase-pack prices. A price-per-liter
+   figure may only be a comparison fact inside a comparable product line, never
+   the estimation fallback price.
 5. Complete operations, labor, machinery, and subcontractor reference models.
 6. Replace the legacy Estimation Agent only after those inputs are verified.
 

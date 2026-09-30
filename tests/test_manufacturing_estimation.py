@@ -110,6 +110,18 @@ def test_cnc_subcontractor_runtime_uses_company_slider_against_market_range():
         )
         assert len(lines) == 1
         assert lines[0]["source"] == "manufacturing_engine"
+        assert lines[0]["section"] == "material"
+        assert lines[0]["group_name"] == "Purchased fabricated components"
+        assert lines[0]["unit"] == "job"
+        assert lines[0]["quantity"] == 1
+        assert lines[0]["unit_cost"] == lines[0]["cost"]
+        assert lines[0]["economic_classification"] == "purchased_fabricated_component"
+        assert lines[0]["price_scope"] == "fabricated_component"
+        assert (
+            lines[0]["raw_agent_json"]["economic_classification"]
+            == "purchased_fabricated_component"
+        )
+        assert lines[0]["raw_agent_json"]["price_scope"] == "fabricated_component"
         assert lines[0]["raw_agent_json"]["calculator"] == "cnc_router_subcontractor"
         assert lines[0]["raw_agent_json"]["reserve_level"] == level
         selected.append(lines[0]["cost"])
@@ -128,3 +140,38 @@ def test_simple_low_volume_panel_work_stays_on_manual_route_without_cnc_charge()
         production_context=context,
         parameter_rows=_rows(),
     ) == []
+
+
+def test_in_house_manufacturing_remains_labor_not_a_purchased_component():
+    result = _result()
+    context = _context(3)
+    context["machines"][0]["availability_status"] = "in_house"
+    rows = [
+        _parameter("feed", "effective_feed_rate_m_per_min", 2, 2, 2, "m/min", currency=None),
+        _parameter("hole", "seconds_per_hole", 5, 5, 5, "s/hole", currency=None),
+        _parameter("noncut", "tool_change_and_non_cutting_minutes", 5, 5, 5, "min/job", currency=None),
+        _parameter("program", "programming_minutes", 30, 30, 30, "min/job", currency=None),
+        _parameter("setup", "setup_minutes", 20, 20, 20, "min/job", currency=None),
+        _parameter("handling", "sheet_handling_minutes", 10, 10, 10, "min/sheet", currency=None),
+        _parameter("machine", "machine_capacity_rate_per_hour", 120, 120, 120, "ILS/hour"),
+        _parameter("programmer", "programmer_rate_per_hour", 100, 100, 100, "ILS/hour"),
+        _parameter("operator", "operator_rate_per_hour", 60, 60, 60, "ILS/hour"),
+        _parameter("attendance", "operator_attendance_fraction", 0.25, 0.25, 0.25, "ratio", currency=None),
+    ]
+    for row in rows:
+        row["calculator"] = "cnc_router_in_house"
+        row["machine_class"] = "nested_router"
+
+    lines = build_manufacturing_cost_lines(
+        estimation_result=result,
+        production_context=context,
+        parameter_rows=rows,
+    )
+
+    assert len(lines) == 1
+    assert lines[0]["section"] == "labor"
+    assert lines[0]["group_name"] == "In-house CNC / Laser manufacturing"
+    assert lines[0]["economic_classification"] == "in_house_manufacturing"
+    assert lines[0]["price_scope"] is None
+    assert lines[0]["raw_agent_json"]["economic_classification"] == "in_house_manufacturing"
+    assert lines[0]["raw_agent_json"]["price_scope"] is None

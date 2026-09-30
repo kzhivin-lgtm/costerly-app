@@ -121,6 +121,15 @@ The four specialized calculators are pure deterministic functions:
 3. `sheet_laser_in_house`
 4. `sheet_laser_subcontractor`
 
+The route also controls the economic classification of the result. In-house
+calculators create manufacturing labor and machine-cost lines. Subcontractor
+calculators create `purchased_fabricated_component` material-like lines with
+`price_scope = fabricated_component`. For the customer company, the purchased
+deliverable is an input cost even when the supplier's invoice consists mostly
+of labor. The estimate must not add the same external labor or machine time a
+second time. Material remains separate only when the selected provider model
+explicitly excludes it.
+
 The dispatcher accepts the routing decision and refuses inputs for every
 calculator except the one selected by that decision. Current Estimation does
 not call this dispatcher.

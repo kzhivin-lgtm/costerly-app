@@ -46,6 +46,9 @@ def price_estimated_object(
     for _, line in lines_df.iterrows():
         item = line.to_dict()
         if item.get("section") == "material":
+            if item.get("source") == "manufacturing_engine":
+                material_total += _number(item.get("cost"), 0)
+                continue
             line_cost = _price_material_line(client, item, company_data["materials"])
             material_total += line_cost
         elif item.get("section") == "labor":
@@ -276,6 +279,8 @@ def _overhead_line(
         "allocation_basis": allocation_basis,
         "cost": cost,
         "source": "pricing_engine",
+        "economic_classification": "overhead",
+        "price_scope": None,
         "sort_order": sort_order,
         "needs_price": False,
         "needs_review": False,

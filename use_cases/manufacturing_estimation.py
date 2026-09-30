@@ -27,6 +27,11 @@ from use_cases.manufacturing_routing import (
     route_sheet_metal_work,
     route_wood_panel_work,
 )
+from use_cases.purchased_components import (
+    PURCHASED_FABRICATED_COMPONENT,
+    classify_process_cost,
+    price_scope_for_classification,
+)
 
 
 ZERO = ValueRange.point(0)
@@ -132,19 +137,32 @@ def _row(
     feature: Mapping[str, Any],
 ) -> dict[str, Any]:
     selected = calculation.selected_cost.quantize(Decimal("0.01"))
-    return {
+    process_code = (
+        "cnc_router"
+        if calculation.calculator.startswith("cnc_router_")
+        else "sheet_laser"
+    )
+    route = (
+        "subcontractor"
+        if calculation.calculator.endswith("_subcontractor")
+        else "in_house"
+    )
+    economic_classification = classify_process_cost(
+        process_code=process_code,
+        route=route,
+    )
+    is_purchased_component = (
+        economic_classification == PURCHASED_FABRICATED_COMPONENT
+    )
+    price_scope = price_scope_for_classification(economic_classification)
+    common = {
         "estimate_id": estimate_id,
         "object_id": object_id,
-        "line_id": f"{object_id}_manufacturing_{index:04d}",
         "company_id": company_id,
-        "section": "labor",
-        "group_name": "CNC / Laser manufacturing",
-        "item_name": calculation.calculator.replace("_", " ").title(),
-        "role": "machine service",
-        "hours": 1,
-        "rate": float(selected),
         "cost": float(selected),
         "source": "manufacturing_engine",
+        "economic_classification": economic_classification,
+        "price_scope": price_scope,
         "sort_order": 8_000 + index,
         "needs_price": False,
         "needs_review": float(feature.get("confidence") or 0) < 70,
@@ -152,7 +170,14 @@ def _row(
         "confidence": feature.get("confidence"),
         "notes": feature.get("notes") or "",
         "raw_agent_json": {
-            "schema_version": "manufacturing_estimate_line_v1",
+            "schema_version": "manufacturing_estimate_line_v2",
+            "economic_classification": economic_classification,
+            "price_scope": price_scope,
+            "double_count_exclusions": (
+                ["matching_external_labor", "matching_machine_time"]
+                if is_purchased_component
+                else []
+            ),
             "feature": dict(feature),
             "calculator": calculation.calculator,
             "reserve_level": calculation.reserve_level,
@@ -163,11 +188,44 @@ def _row(
                 "selected": str(calculation.selected_cost),
             },
             "components": {
-                key: {"low": str(value.low), "typical": str(value.typical), "high": str(value.high)}
+                key: {
+                    "low": str(value.low),
+                    "typical": str(value.typical),
+                    "high": str(value.high),
+                }
                 for key, value in calculation.components.items()
+            },
+            "details": {
+                key: {
+                    "low": str(value.low),
+                    "typical": str(value.typical),
+                    "high": str(value.high),
+                }
+                for key, value in calculation.details.items()
             },
             "parameter_ids": list(calculation.parameter_ids),
         },
+    }
+    if is_purchased_component:
+        return {
+            **common,
+            "line_id": f"{object_id}_purchased_component_{index:04d}",
+            "section": "material",
+            "group_name": "Purchased fabricated components",
+            "item_name": calculation.calculator.replace("_", " ").title(),
+            "unit": "job",
+            "quantity": 1,
+            "unit_cost": float(selected),
+        }
+    return {
+        **common,
+        "line_id": f"{object_id}_manufacturing_{index:04d}",
+        "section": "labor",
+        "group_name": "In-house CNC / Laser manufacturing",
+        "item_name": calculation.calculator.replace("_", " ").title(),
+        "role": "machine service",
+        "hours": 1,
+        "rate": float(selected),
     }
 
 
