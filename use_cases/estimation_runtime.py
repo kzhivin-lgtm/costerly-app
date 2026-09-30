@@ -45,34 +45,7 @@ def submit_estimation_job(
     ignored_object_ids: set[str],
     create_shell: bool,
 ) -> Future:
-    """Queue estimation work without blocking the Streamlit click path."""
-    return _ESTIMATION_EXECUTOR.submit(
-        _run_estimation_job,
-        estimate_id=estimate_id,
-        run_id=run_id,
-        company_id=company_id,
-        file_name=file_name,
-        file_bytes=file_bytes,
-        object_edits=object_edits,
-        edits_changed=edits_changed,
-        ignored_object_ids=ignored_object_ids,
-        create_shell=create_shell,
-    )
-
-
-def _run_estimation_job(
-    *,
-    estimate_id: str,
-    run_id: str,
-    company_id: str,
-    file_name: str,
-    file_bytes: bytes,
-    object_edits: dict[str, dict[str, object]],
-    edits_changed: bool,
-    ignored_object_ids: set[str],
-    create_shell: bool,
-) -> dict[str, object]:
-    """Persist edits, ensure the shell exists, then run queued object estimates."""
+    """Create the access-controlled shell, then queue the expensive agent work."""
     if edits_changed:
         ignored_object_ids = apply_file_review_edits(
             run_id=run_id,
@@ -83,6 +56,38 @@ def _run_estimation_job(
             },
         )
 
+    shell = None
+    if create_shell:
+        shell = start_estimation_for_run(
+            run_id=run_id,
+            company_id=company_id,
+            ignored_object_ids=ignored_object_ids,
+            estimate_id=estimate_id,
+        )
+
+    return _ESTIMATION_EXECUTOR.submit(
+        _run_estimation_job,
+        estimate_id=estimate_id,
+        run_id=run_id,
+        company_id=company_id,
+        file_name=file_name,
+        file_bytes=file_bytes,
+        ignored_object_ids=ignored_object_ids,
+        shell=shell,
+    )
+
+
+def _run_estimation_job(
+    *,
+    estimate_id: str,
+    run_id: str,
+    company_id: str,
+    file_name: str,
+    file_bytes: bytes,
+    ignored_object_ids: set[str],
+    shell: dict[str, object] | None,
+) -> dict[str, object]:
+    """Persist the v2 handoff, then run queued object estimates."""
     created_v2_inputs: list[dict[str, object]] = []
     try:
         client = get_supabase_client()
@@ -108,14 +113,6 @@ def _run_estimation_job(
     except Exception as exc:
         print(f"[Estimation v2 shadow] Could not persist handoff: {exc}")
 
-    shell = None
-    if create_shell:
-        shell = start_estimation_for_run(
-            run_id=run_id,
-            company_id=company_id,
-            ignored_object_ids=ignored_object_ids,
-            estimate_id=estimate_id,
-        )
     estimation_result = estimate_all_objects_for_run(
         estimate_id=estimate_id,
         run_id=run_id,

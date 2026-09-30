@@ -658,17 +658,23 @@ def _submit_objects_estimation_job(
         st.session_state.last_estimation_error = None
 
     _mark_first_object_estimation_started(estimate_id)
-    st.session_state.estimation_first_object_future = submit_estimation_job(
-        estimate_id=estimate_id,
-        run_id=run_id,
-        company_id=company_id,
-        file_name=file_name,
-        file_bytes=file_bytes,
-        object_edits=object_edits,
-        edits_changed=edits_changed,
-        ignored_object_ids=ignored_object_ids,
-        create_shell=create_shell,
-    )
+    try:
+        st.session_state.estimation_first_object_future = submit_estimation_job(
+            estimate_id=estimate_id,
+            run_id=run_id,
+            company_id=company_id,
+            file_name=file_name,
+            file_bytes=file_bytes,
+            object_edits=object_edits,
+            edits_changed=edits_changed,
+            ignored_object_ids=ignored_object_ids,
+            create_shell=create_shell,
+        )
+    except Exception as exc:
+        st.session_state.current_estimate_id = None
+        st.session_state.current_estimate_run_id = None
+        st.session_state.last_estimation_error = str(exc)
+        return False
     _mark_objects_estimation_cache_dirty(estimate_id)
     return True
 

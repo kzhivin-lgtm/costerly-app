@@ -65,7 +65,7 @@ engine call.
 
 - 36 focused Estimation v2 evidence, extraction, persistence, composition and
   revision tests pass;
-- full suite passes with 771 tests and 28 warnings;
+- full suite passes with 772 tests and 27 warnings;
 - `py_compile` and `git diff --check` pass.
 
 ## Object Facts extractor, verified 2026-10-01
@@ -188,11 +188,29 @@ routes are compatible; expanding the remaining templates and cross-object
 batch aggregation remains separate work.
 
 Verification: 11 direct Labor Engine tests, 83 Labor, Machinery and
-manufacturing tests, and the full 771-test suite pass.
+manufacturing tests, and the full 772-test suite pass.
+
+## Production transition repair, 2026-10-01
+
+The first live transition from File Review reached `Objects`, but the access
+guard ran before the background worker had created the `rfq_estimates` shell.
+Runtime events recorded `company_access_error` at 21:38:35 UTC, followed by the
+same estimate shell being created at 21:38:36 UTC. Detection and the background
+Estimation job had not failed. The UI had rejected a valid estimate during this
+one-second creation race.
+
+The shell and any File Review edits are now persisted synchronously before the
+expensive background job is submitted. The company access guard remains strict.
+If shell preparation fails, the transition stays in File Review and records a
+visible Estimation error instead of entering Objects with an invalid route.
+
+Verification: the regression test requires the order `edits_applied`,
+`shell_created`, `background_submitted`; 203 targeted access and persistence
+tests pass; the full 772-test suite passes.
 
 ## Next implementation slice
 
-After explicit approval, apply the additive migration, deploy the code, enable
-the shadow flag and run one bounded production acceptance file. Keep the current
-UI and Labor Engine unchanged. Material resolution, machinery, overhead and
-self-cost publication remain deterministic downstream stages.
+Deploy the transition repair and repeat the same production File Review to
+Objects acceptance. After the route is stable, verify the new input, facts and
+usage rows. Material resolution, machinery, overhead and self-cost publication
+remain deterministic downstream stages.
