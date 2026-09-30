@@ -1198,6 +1198,7 @@ def _resolve_and_record_price_source_identities(
     source_id: str,
     row_id: str | None = None,
     force: bool = False,
+    trace=None,
 ) -> dict[str, Any]:
     """Run the additive identity stage without invalidating a completed import."""
     try:
@@ -1208,6 +1209,7 @@ def _resolve_and_record_price_source_identities(
             row_id=row_id,
             force=force,
             identity_agent=run_material_identity_agent,
+            trace=trace,
         )
         summary: dict[str, Any] = {"status": "complete", **batch.as_summary()}
     except Exception:
@@ -1945,6 +1947,7 @@ def process_price_source(
     superseded_offer_ids: list[str] = []
     try:
         database_started = time.perf_counter()
+        source_record_started = time.perf_counter()
         supplier_name = price_source_supplier_name(result)
         supplier_id = None
         if supplier_name:
@@ -2035,7 +2038,9 @@ def process_price_source(
                 "processed_at": datetime.now(timezone.utc).isoformat(),
             }
         ).execute()
+        _emit_duration(trace, "server.price_source_database_source_record", source_record_started)
 
+        offer_index_started = time.perf_counter()
         active_offers = (
             client.table("company_material_offers")
             .select(
@@ -2083,6 +2088,94 @@ def process_price_source(
                     offer
                 )
 
+        _emit_duration(
+            trace,
+            "server.price_source_database_offer_index",
+            offer_index_started,
+            active_offers=len(active_offers),
+            source_count=len(offer_sources),
+        )
+
+        material_index_started = time.perf_counter()
+        ready_material_keys = {
+            (
+                canonical_price_source_category(str(row["material_type"])),
+                _normalized_name(row["normalized_name"]),
+            )
+            for row in result["rows"]
+            if row["status"] == "ready"
+        }
+        ready_material_names = sorted({name for _, name in ready_material_keys})
+        existing_material_rows = (
+            client.table("company_material_items")
+            .select("company_material_id,status,category,normalized_name")
+            .eq("company_id", company_id)
+            .in_("normalized_name", ready_material_names)
+            .execute()
+            .data
+            or []
+        ) if ready_material_names else []
+        materials_by_key: dict[tuple[str, str], dict] = {}
+        for material in existing_material_rows:
+            key = (
+                canonical_price_source_category(str(material.get("category") or "")),
+                _normalized_name(str(material.get("normalized_name") or "")),
+            )
+            if key in ready_material_keys and key not in materials_by_key:
+                materials_by_key[key] = material
+
+        new_material_payloads: list[dict] = []
+        for row in result["rows"]:
+            if row["status"] != "ready":
+                continue
+            key = (
+                canonical_price_source_category(str(row["material_type"])),
+                _normalized_name(row["normalized_name"]),
+            )
+            if key in materials_by_key:
+                continue
+            identity_attributes = {
+                attribute: value
+                for attribute, value in (row.get("identity_attributes") or {}).items()
+                if value not in (None, "", 0, 0.0, [])
+            }
+            new_material_payloads.append(
+                {
+                    "company_id": company_id,
+                    "category": key[0],
+                    "canonical_name": row["normalized_name"],
+                    "normalized_name": key[1],
+                    "preferred_unit": row["calculation_unit"],
+                    "specifications": identity_attributes,
+                    "created_from_source_id": source_id,
+                }
+            )
+            # Reserve the key now so duplicate rows from one source still share
+            # one private material, as they did in the sequential path.
+            materials_by_key[key] = {}
+        if new_material_payloads:
+            created_materials = (
+                client.table("company_material_items")
+                .insert(new_material_payloads)
+                .execute()
+                .data
+                or []
+            )
+            for material in created_materials:
+                key = (
+                    canonical_price_source_category(str(material.get("category") or "")),
+                    _normalized_name(str(material.get("normalized_name") or "")),
+                )
+                materials_by_key[key] = material
+        _emit_duration(
+            trace,
+            "server.price_source_database_material_index",
+            material_index_started,
+            existing_materials=len(existing_material_rows),
+            created_materials=len(new_material_payloads),
+        )
+
+        rows_apply_started = time.perf_counter()
         for row in result["rows"]:
             row_category = canonical_price_source_category(str(row["material_type"]))
             material_id = None
@@ -2094,15 +2187,9 @@ def process_price_source(
                 existing = (
                     [{"company_material_id": sku_offers[0]["company_material_id"]}]
                     if sku_offers
-                    else (
-                        client.table("company_material_items")
-                        .select("company_material_id,status")
-                        .eq("company_id", company_id)
-                        .eq("category", row_category)
-                        .eq("normalized_name", normalized)
-                        .limit(1)
-                        .execute()
-                    ).data or []
+                    else [
+                        materials_by_key[(row_category, normalized)]
+                    ] if (row_category, normalized) in materials_by_key else []
                 )
                 if existing:
                     material_id = existing[0]["company_material_id"]
@@ -2127,25 +2214,7 @@ def process_price_source(
                         else:
                             new_count += 1
                 else:
-                    identity_attributes = {
-                        key: value
-                        for key, value in (row.get("identity_attributes") or {}).items()
-                        if value not in (None, "", 0, 0.0, [])
-                    }
-                    material = client.table("company_material_items").insert(
-                        {
-                            "company_id": company_id,
-                            "category": row_category,
-                            "canonical_name": row["normalized_name"],
-                            "normalized_name": normalized,
-                            "preferred_unit": row["calculation_unit"],
-                            "specifications": identity_attributes,
-                            "created_from_source_id": source_id,
-                        }
-                    ).execute().data[0]
-                    material_id = material["company_material_id"]
-                    result_status = "new"
-                    new_count += 1
+                    raise RuntimeError("Prepared company material was not available")
 
             inserted_row = client.table("company_price_source_rows").insert(
                 {
@@ -2217,6 +2286,14 @@ def process_price_source(
                 if sku:
                     offers_by_sku[(current_lane, sku)] = [inserted_offer]
 
+        _emit_duration(
+            trace,
+            "server.price_source_database_rows_apply",
+            rows_apply_started,
+            extracted_rows=len(result["rows"]),
+            active_rows=ready_count,
+        )
+
         if material_ids_to_restore:
             client.table("company_material_items").update(
                 {"status": "private", "updated_at": datetime.now(timezone.utc).isoformat()}
@@ -2224,10 +2301,20 @@ def process_price_source(
                 "company_material_id", sorted(material_ids_to_restore)
             ).execute()
 
+        identity_started = time.perf_counter()
         identity_summary = _resolve_and_record_price_source_identities(
             client,
             company_id=company_id,
             source_id=source_id,
+            trace=trace,
+        )
+        _emit_duration(
+            trace,
+            "server.price_source_identity_stage",
+            identity_started,
+            examined=int(identity_summary.get("examined") or 0),
+            resolved=int(identity_summary.get("resolved") or 0),
+            shortlisted=int(identity_summary.get("shortlisted") or 0),
         )
 
         source_summary.update(

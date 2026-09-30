@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 import logging
+import time
 from typing import Any, Mapping, Sequence
 from uuid import uuid4
 
@@ -34,6 +35,16 @@ logger = logging.getLogger(__name__)
 
 
 REFERENCE_INDEX_PAGE_SIZE = 1_000
+
+
+def _emit_duration(trace, name: str, started_at: float, **metadata: object) -> None:
+    """Emit best-effort timing without coupling resolution to observability."""
+    if trace is not None:
+        trace.event(
+            name,
+            duration_ms=(time.perf_counter() - started_at) * 1000,
+            metadata=metadata,
+        )
 
 
 @dataclass(frozen=True)
@@ -253,11 +264,22 @@ def resolve_price_source_material_identities(
     market_code: str = "IL",
     force: bool = False,
     identity_agent=None,
+    trace=None,
 ) -> PriceSourceIdentityBatch:
     """Resolve active Price Source rows without repeating source extraction."""
 
+    total_started = time.perf_counter()
     market = str(market_code or "").strip().upper()
+    index_started = time.perf_counter()
     index = _load_resolution_index(client, company_id=company_id, market_code=market)
+    _emit_duration(
+        trace,
+        "server.price_source_identity_index_load",
+        index_started,
+        resolver_version=index["resolver_version"],
+        reference_materials=len(index["materials"]),
+        pricing_identities=len(index["pricing_identities"]),
+    )
     resolver_version = index["resolver_version"]
     reference_material_by_id = {
         str(item["material_id"]): item for item in index["materials"]
@@ -275,6 +297,7 @@ def resolve_price_source_material_identities(
         row_query = row_query.eq("row_id", row_id)
     rows = row_query.execute().data or []
     if not rows:
+        _emit_duration(trace, "server.price_source_identity_total", total_started, examined_rows=0)
         return PriceSourceIdentityBatch()
 
     company_material_ids = sorted(
@@ -330,6 +353,7 @@ def resolve_price_source_material_identities(
     resolved_offer_rows_by_confidence: dict[float, list[str]] = {}
     agent_requests: list[dict[str, Any]] = []
     agent_contexts: dict[str, dict[str, Any]] = {}
+    deterministic_started = time.perf_counter()
     for row in rows:
         source_row_id = str(row["row_id"])
         if not force and source_row_id in processed_rows:
@@ -575,12 +599,28 @@ def resolve_price_source_material_identities(
                 "prior_status": resolution.status,
             }
 
+    _emit_duration(
+        trace,
+        "server.price_source_identity_deterministic",
+        deterministic_started,
+        examined_rows=examined,
+        agent_candidate_rows=len(agent_requests),
+    )
+
     if identity_agent and agent_requests:
+        identity_agent_started = time.perf_counter()
         try:
             decisions = identity_agent(agent_requests[:60])
         except Exception:
             logger.exception("Bounded material identity agent failed; retaining review candidates")
             decisions = []
+        _emit_duration(
+            trace,
+            "server.price_source_identity_agent",
+            identity_agent_started,
+            requested_rows=min(len(agent_requests), 60),
+            returned_decisions=len(decisions),
+        )
         for decision in decisions:
             source_row_id = str(decision.get("source_row_id") or "")
             context = agent_contexts.get(source_row_id)
@@ -656,6 +696,7 @@ def resolve_price_source_material_identities(
                         "source_row_id", source_row_id
                     ).execute()
 
+    persist_started = time.perf_counter()
     if new_candidates:
         client.table("material_identity_candidates").insert(new_candidates).execute()
     if source_rows_to_update:
@@ -673,6 +714,21 @@ def resolve_price_source_material_identities(
         client.table("material_identity_resolution_events").insert(
             resolution_events
         ).execute()
+
+    _emit_duration(
+        trace,
+        "server.price_source_identity_persist",
+        persist_started,
+        source_row_updates=len(source_rows_to_update),
+        candidates=len(new_candidates),
+        resolution_events=len(resolution_events),
+    )
+    _emit_duration(
+        trace,
+        "server.price_source_identity_total",
+        total_started,
+        examined_rows=examined,
+    )
 
     return PriceSourceIdentityBatch(
         examined=examined,
