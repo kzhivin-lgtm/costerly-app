@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 import json
 from pathlib import Path
+import re
 from typing import Any, AbstractSet, Mapping
 
 from agents.anthropic_adapter import (
@@ -105,6 +106,21 @@ def _number_text(value: Any, name: str, *, integer: bool = False) -> int | float
     return number
 
 
+def _profile_section_number(value: Any, name: str) -> int | float:
+    text = str(value or "").strip()
+    match = re.fullmatch(
+        r"([0-9]+(?:\.[0-9]+)?)\s*[xX×]\s*([0-9]+(?:\.[0-9]+)?)",
+        text,
+    )
+    if match:
+        first = float(match.group(1))
+        second = float(match.group(2))
+        if first != second:
+            raise ValueError(f"{name} rectangular section requires an explicit weld face")
+        return int(first) if first.is_integer() else first
+    return _number_text(value, name)
+
+
 def _key_values(items: Any, *, allowed: tuple[str, ...], name: str) -> dict[str, str]:
     if not isinstance(items, list):
         raise ValueError(f"{name} must be an array")
@@ -176,7 +192,7 @@ def _normalize_provider_result(
             if parsed != -1:
                 features[key] = parsed
         elif key == "profile_section_mm":
-            parsed = _number_text(value, f"features.{key}")
+            parsed = _profile_section_number(value, f"features.{key}")
             if parsed != 0:
                 features[key] = parsed
         else:

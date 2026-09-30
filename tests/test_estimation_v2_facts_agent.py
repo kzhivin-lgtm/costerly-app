@@ -223,3 +223,17 @@ def test_agent_treats_omitted_optional_specification_items_as_empty(monkeypatch)
     )
 
     assert result["facts"]["materials"][0]["specification"] == {}
+
+
+def test_square_profile_section_transport_normalizes_to_face_mm():
+    assert agent._profile_section_number("20x20", "features.profile_section_mm") == 20
+    assert agent._profile_section_number("40 × 40", "features.profile_section_mm") == 40
+
+
+def test_rectangular_profile_section_requires_explicit_weld_face():
+    try:
+        agent._profile_section_number("20x40", "features.profile_section_mm")
+    except ValueError as exc:
+        assert "explicit weld face" in str(exc)
+    else:
+        raise AssertionError("rectangular profile must not silently select one face")
