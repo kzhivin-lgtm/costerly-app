@@ -1672,6 +1672,88 @@ def test_script_only_wordpress_page_uses_same_host_json_alternate(monkeypatch):
     assert "MDF 18 mm" in text
 
 
+def test_wordpress_exact_json_endpoint_is_tried_before_slug_fallback(monkeypatch):
+    class HtmlResponse:
+        status_code = 200
+        headers = {
+            "content-type": "text/html",
+            "link": '<https://example.com/wp-json/wp/v2/pages/269>; rel="alternate"; type="application/json"',
+        }
+        content = b"<html><script>renderPrices()</script></html>"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class JsonResponse:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+        content = b'{"content":{"rendered":"<p>MDF 18 mm 210 ILS</p>"}}'
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return {"content": {"rendered": "<p>MDF 18 mm 210 ILS</p>"}}
+
+    class Client:
+        @staticmethod
+        def get(url, *, follow_redirects=False):
+            assert follow_redirects is False
+            if "?slug=" in url:
+                raise AssertionError("slug fallback must not run before the exact endpoint")
+            return JsonResponse() if "/wp-json/" in url else HtmlResponse()
+
+    monkeypatch.setattr("use_cases.price_sources._validate_public_url", lambda value: value)
+
+    _, _, text = fetch_public_page("https://example.com/prices", client=Client())
+
+    assert "MDF 18 mm" in text
+
+
+def test_wordpress_page_retries_accepted_response_before_rest_fallback(monkeypatch):
+    class AcceptedResponse:
+        status_code = 202
+        headers = {"content-type": "text/html"}
+        content = b"<html>pending</html>"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    class ReadyResponse:
+        status_code = 200
+        headers = {"content-type": "text/html"}
+        content = b"<html><p>MDF 18 mm 210 ILS</p></html>"
+        text = content.decode()
+
+        @staticmethod
+        def raise_for_status():
+            return None
+
+    calls = {"page": 0}
+
+    class Client:
+        @staticmethod
+        def get(url, *, follow_redirects=False):
+            assert follow_redirects is False
+            calls["page"] += 1
+            return AcceptedResponse() if calls["page"] == 1 else ReadyResponse()
+
+    monkeypatch.setattr("use_cases.price_sources._validate_public_url", lambda value: value)
+    monkeypatch.setattr("use_cases.price_sources.time.sleep", lambda _seconds: None)
+
+    _, _, text = fetch_public_page("https://example.com/prices", client=Client())
+
+    assert calls["page"] == 2
+    assert "MDF 18 mm" in text
+
+
 def test_script_only_wordpress_page_can_discover_json_by_slug(monkeypatch):
     class HtmlResponse:
         status_code = 200

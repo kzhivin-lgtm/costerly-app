@@ -800,6 +800,14 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
                     raise PriceSourceError("The supplier page returned an invalid redirect.")
                 current = _validate_public_url(urljoin(current, location))
                 continue
+            for delay_seconds in WORDPRESS_ACCEPTED_RETRY_DELAYS_SECONDS:
+                if response.status_code != 202:
+                    break
+                # Some WordPress/CDN origins acknowledge a page request before
+                # the rendered page is available. Retry this bounded state before
+                # falling back to a REST endpoint.
+                time.sleep(delay_seconds)
+                response = http.get(current, follow_redirects=False)
             response.raise_for_status()
             content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
             if content_type not in {"text/html", "text/plain"}:
@@ -810,13 +818,18 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
             visible_text = _visible_text_from_html(response.text)
             wordpress_diagnostic = "not_attempted"
             if not visible_text:
-                alternate_url = _same_host_wordpress_slug_endpoint(current)
-                if not alternate_url:
-                    alternate_url = _same_host_wordpress_json_alternate(
+                alternate_urls = [
+                    _same_host_wordpress_json_alternate(
                         current,
                         response.headers.get("link", ""),
-                    )
-                if alternate_url:
+                    ),
+                    _same_host_wordpress_slug_endpoint(current),
+                ]
+                tried_alternate_urls: set[str] = set()
+                for alternate_url in alternate_urls:
+                    if not alternate_url or alternate_url in tried_alternate_urls:
+                        continue
+                    tried_alternate_urls.add(alternate_url)
                     try:
                         alternate = http.get(alternate_url, follow_redirects=False)
                         for delay_seconds in WORDPRESS_ACCEPTED_RETRY_DELAYS_SECONDS:
