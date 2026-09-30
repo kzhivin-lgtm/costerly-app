@@ -58,3 +58,80 @@ def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
         "estimate_id": "estimate-1",
         "status": "pending",
     }
+
+
+def test_v2_facts_are_queued_before_legacy_estimation(monkeypatch):
+    events = []
+
+    class FactsExecutor:
+        def submit(self, fn, inputs):
+            events.append(("facts_queued", fn, inputs))
+
+    monkeypatch.setattr(runtime, "_ESTIMATION_V2_FACTS_EXECUTOR", FactsExecutor())
+    monkeypatch.setattr(runtime, "_estimation_v2_facts_shadow_enabled", lambda: True)
+    monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
+    monkeypatch.setattr(runtime, "fetch_rfq_detected_objects", lambda _client, _run_id: _Frame([{}]))
+    monkeypatch.setattr(
+        runtime,
+        "fetch_latest_ocr_result",
+        lambda _client, _run_id: {"ocr_event_id": "ocr-1", "ocr_result": {}},
+    )
+    monkeypatch.setattr(
+        runtime,
+        "persist_estimation_v2_shadow_inputs",
+        lambda **_kwargs: {
+            "created_inputs": [{"input_id": "input-1", "input_payload": {}}]
+        },
+    )
+    monkeypatch.setattr(runtime, "describe_estimation_original", lambda **_kwargs: object())
+
+    def fail_legacy(**_kwargs):
+        events.append(("legacy_started",))
+        raise RuntimeError("legacy failed")
+
+    monkeypatch.setattr(runtime, "estimate_all_objects_for_run", fail_legacy)
+
+    try:
+        runtime._run_estimation_job(
+            estimate_id="estimate-1",
+            run_id="run-1",
+            company_id="company-1",
+            file_name="drawing.pdf",
+            file_bytes=b"pdf",
+            ignored_object_ids=set(),
+            shell={"estimate_id": "estimate-1"},
+        )
+    except RuntimeError as exc:
+        assert str(exc) == "legacy failed"
+    else:
+        raise AssertionError("legacy failure was expected")
+
+    assert [event[0] for event in events] == ["facts_queued", "legacy_started"]
+
+
+class _Row:
+    def __init__(self, value):
+        self._value = value
+
+    def to_dict(self):
+        return dict(self._value)
+
+
+class _ILoc:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def __getitem__(self, index):
+        return _Row(self._rows[index])
+
+
+class _Frame:
+    def __init__(self, rows):
+        self._rows = rows
+        self.iloc = _ILoc(rows)
+        self.empty = not rows
+
+    def iterrows(self):
+        for index, row in enumerate(self._rows):
+            yield index, _Row(row)

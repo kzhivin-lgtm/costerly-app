@@ -44,7 +44,29 @@ def persist_estimation_v2_shadow_inputs(
             if resolved:
                 break
         if not resolved:
-            skipped[object_id] = "evidence_anchor_not_resolved"
+            for page_ref in item.get("evidence_page_refs") or []:
+                try:
+                    page_number = int(page_ref.get("page_number"))
+                except (AttributeError, TypeError, ValueError):
+                    continue
+                ocr_page = ocr_pages.get(page_number)
+                dimensions = (ocr_page or {}).get("dimensions") or {}
+                width = dimensions.get("width")
+                height = dimensions.get("height")
+                if page_number <= len(pages) and width and height:
+                    resolved = {
+                        "page_number": page_number,
+                        "text": "",
+                        "bbox": {
+                            "top_left_x": 0,
+                            "top_left_y": 0,
+                            "bottom_right_x": width,
+                            "bottom_right_y": height,
+                        },
+                    }
+                    break
+        if not resolved:
+            skipped[object_id] = "evidence_page_not_resolved"
             continue
         page_number = int(resolved["page_number"])
         ocr_page = ocr_pages.get(page_number)

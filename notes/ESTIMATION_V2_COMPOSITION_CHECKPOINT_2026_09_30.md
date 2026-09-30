@@ -65,7 +65,7 @@ engine call.
 
 - 36 focused Estimation v2 evidence, extraction, persistence, composition and
   revision tests pass;
-- full suite passes with 772 tests and 27 warnings;
+- full suite passes with 774 tests and 27 warnings;
 - `py_compile` and `git diff --check` pass.
 
 ## Object Facts extractor, verified 2026-10-01
@@ -188,7 +188,7 @@ routes are compatible; expanding the remaining templates and cross-object
 batch aggregation remains separate work.
 
 Verification: 11 direct Labor Engine tests, 83 Labor, Machinery and
-manufacturing tests, and the full 772-test suite pass.
+manufacturing tests, and the full 774-test suite pass.
 
 ## Production transition repair, 2026-10-01
 
@@ -206,7 +206,26 @@ visible Estimation error instead of entering Objects with an invalid route.
 
 Verification: the regression test requires the order `edits_applied`,
 `shell_created`, `background_submitted`; 203 targeted access and persistence
-tests pass; the full 772-test suite passes.
+tests pass; the full 774-test suite passes.
+
+## Image-only evidence repair, 2026-10-01
+
+The first accepted production drawing exposed a second independent issue. OCR
+returned the page body as one image while Detection extracted object facts from
+the visual document. Exact text anchors therefore could not resolve to OCR
+bounding boxes, all four v2 inputs were skipped, and no Object Facts call ran.
+The visible `failed` status came from the legacy Estimation placeholder before
+it emitted a usage event. It was not an Object Facts failure.
+
+When an exact OCR anchor is unavailable, the handoff now uses the object's
+declared physical evidence page as a source-derived full-page preview. It does
+not attach the original document or invent crop coordinates. Exact OCR crops
+remain preferred when available. Object Facts is also queued before the legacy
+path so a legacy failure cannot prevent v2 evidence processing.
+
+Verification: the image-only fixture creates one immutable input with a private
+preview and zero OCR text blocks; ordering requires `facts_queued` before
+`legacy_started`; the full 774-test suite passes.
 
 ## Next implementation slice
 

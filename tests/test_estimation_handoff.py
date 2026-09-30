@@ -71,3 +71,37 @@ def test_shadow_handoff_persists_preview_input_and_artifact():
     assert client.uploads[0][0].endswith(".webp")
     assert client.rows["rfq_estimation_object_inputs"]["object_id"] == "object-1"
     assert client.rows["rfq_estimation_evidence_artifacts"][0]["source_label"] == "A-01"
+
+
+def test_shadow_handoff_uses_source_page_when_image_only_ocr_cannot_resolve_anchor():
+    source = _image_bytes()
+    client = _Client()
+    result = persist_estimation_v2_shadow_inputs(
+        client=client,
+        run={"run_id": "run-1", "company_id": "company-1", "file_name": "drawing.png"},
+        objects=[{
+            "object_id": "object-1", "object_name": "Shelving", "quantity": 1,
+            "quantity_explicit": True, "dimensions_json": {},
+            "detected_materials": "Steel profile", "notes": "",
+            "evidence_page_refs": [{"page_number": 1, "source_label": "A-01"}],
+            "evidence_anchors": [{"page_number": 1, "text": "20 x 20 profile"}],
+        }],
+        ignored_object_ids=set(), file_name="drawing.png", file_bytes=source,
+        ocr_event_id="ocr-1",
+        ocr_package={
+            "contract_version": "ocr_v2",
+            "pages": [{"page_number": 1, "dimensions": {"width": 100, "height": 100}}],
+            "evidence": {"text_blocks": []},
+        },
+        original=describe_estimation_original(
+            company_id="company-1", file_name="drawing.png", file_bytes=source
+        ),
+        versions={"detection": "test"},
+    )
+
+    assert result["created_input_ids"] == ["input-1"]
+    assert result["skipped"] == {}
+    assert client.uploads[0][0].endswith(".webp")
+    assert client.rows["rfq_estimation_object_inputs"]["input_payload"]["evidence"][
+        "ocr_blocks"
+    ] == []
