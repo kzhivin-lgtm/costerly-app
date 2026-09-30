@@ -58,6 +58,7 @@ def test_object_facts_migration_is_additive_private_and_immutable():
     assert "company_members" in sql
     assert "grant select" in sql and "to authenticated" in sql
     assert "drop table" not in sql.lower()
+    assert "drop policy" not in sql.lower()
     assert "alter table public.rfq_estimates" not in sql.lower()
 
 

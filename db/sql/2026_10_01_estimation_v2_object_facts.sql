@@ -26,18 +26,31 @@ create index if not exists rfq_estimation_object_fact_results_input_idx
 
 alter table public.rfq_estimation_object_fact_results enable row level security;
 
-drop policy if exists rfq_estimation_object_fact_results_company_member_read
-    on public.rfq_estimation_object_fact_results;
-create policy rfq_estimation_object_fact_results_company_member_read
-    on public.rfq_estimation_object_fact_results
-    for select to authenticated
-    using (exists (
+do $policy$
+begin
+    if not exists (
         select 1
-        from public.rfq_estimation_object_inputs input
-        join public.company_members member on member.company_id = input.company_id
-        where input.input_id = rfq_estimation_object_fact_results.input_id
-          and member.user_id = (select auth.uid())
-    ));
+        from pg_policies
+        where schemaname = 'public'
+          and tablename = 'rfq_estimation_object_fact_results'
+          and policyname = 'rfq_estimation_object_fact_results_company_member_read'
+    ) then
+        execute $sql$
+            create policy rfq_estimation_object_fact_results_company_member_read
+                on public.rfq_estimation_object_fact_results
+                for select to authenticated
+                using (exists (
+                    select 1
+                    from public.rfq_estimation_object_inputs input
+                    join public.company_members member
+                      on member.company_id = input.company_id
+                    where input.input_id = rfq_estimation_object_fact_results.input_id
+                      and member.user_id = (select auth.uid())
+                ))
+        $sql$;
+    end if;
+end
+$policy$;
 
 revoke all on public.rfq_estimation_object_fact_results from anon;
 grant select on public.rfq_estimation_object_fact_results to authenticated;
