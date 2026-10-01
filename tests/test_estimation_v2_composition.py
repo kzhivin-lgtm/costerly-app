@@ -96,6 +96,25 @@ def test_e06_unresolved_material_price_stays_visible_but_blocks_self_cost():
     assert any(line["section"] == "material" for line in result["cost_lines"])
 
 
+def test_estimated_material_price_is_counted_and_keeps_fallback_audit():
+    fixture = _fixture()
+    lines = copy.deepcopy(fixture["cost_lines"])
+    material = next(line for line in lines if line["section"] == "material")
+    material["status"] = "estimated"
+    material["reason_codes"] = ["material_price_unresolved"]
+
+    result = compose_object_estimate(
+        facts=fixture["facts"],
+        cost_lines=lines,
+        allowed_material_families=set(fixture["allowed_material_families"]),
+    )
+
+    assert result["status"] == "complete"
+    assert result["self_cost_total"] == fixture["expected"]["self_cost_total"]
+    assert result["reason_codes"] == []
+    assert result["fallback_reason_codes"] == ["material_price_unresolved"]
+
+
 def test_object_facts_require_versioned_material_and_operation_vocabularies():
     fixture = _fixture()
     facts = copy.deepcopy(fixture["facts"])

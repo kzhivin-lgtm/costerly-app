@@ -101,6 +101,48 @@ def test_role_rate_uses_company_profile_position_mapping():
     assert matched == "cnc_operator"
 
 
+def test_role_rate_falls_back_to_company_average():
+    rate, matched = publisher._role_rate(
+        "draftsperson",
+        [
+            {"position_code": "carpenter", "gross_hourly_rate": 40, "deleted_at": None},
+            {"position_code": "welder", "gross_hourly_rate": 60, "deleted_at": None},
+        ],
+        176,
+    )
+    assert rate == 50
+    assert matched == "company_average_all_roles"
+
+
+def test_unresolved_material_gets_audited_nonblocking_fallback(monkeypatch):
+    resolution = SimpleNamespace(
+        status="unresolved", authority=None, price_typical=None,
+        pricing_identity_price_id=None, offer_ids=(), thickness_policy=None,
+        requested_thickness_mm=None, priced_thickness_mm=None,
+        resolved_material_name=None,
+    )
+    monkeypatch.setattr(
+        publisher, "resolve_estimate_material_requirement", lambda **_kwargs: resolution
+    )
+    facts = _ready_facts()
+    facts["estimate_id"] = "estimate-1"
+    rows, costs = publisher._material_rows_and_costs(
+        facts=facts,
+        catalogs={
+            "items": [], "offers": [], "identities": [], "prices": [], "baselines": [],
+            "reference_materials": [], "reference_aliases": [],
+            "pricing_identity_members": [],
+        },
+        vat_percent=18,
+    )
+
+    assert rows[0]["cost"] == 200
+    assert rows[0]["needs_review"] is True
+    assert rows[0]["raw_agent_json"]["fallback"]["rule"] == "last_resort_unit_allowance"
+    assert costs[0]["status"] == "estimated"
+    assert costs[0]["amount"] == 200
+
+
 def test_manufacturing_features_are_routed_through_existing_cost_engine(monkeypatch):
     facts = _ready_facts()
     facts["materials"][0]["specification"] = {"thickness_mm": 5}
@@ -182,7 +224,7 @@ def test_publisher_preserves_review_required_without_fake_totals(monkeypatch):
     monkeypatch.setattr(publisher, "fetch_active_israel_material_families", lambda _client: {"mdf"})
     monkeypatch.setattr(publisher, "validate_object_facts", lambda *_args, **_kwargs: facts)
     monkeypatch.setattr(publisher, "_material_rows_and_costs", lambda **_kwargs: ([{"line_id": "m1"}], []))
-    monkeypatch.setattr(publisher, "_purchased_component_rows_and_costs", lambda _facts: ([], []))
+    monkeypatch.setattr(publisher, "_purchased_component_rows_and_costs", lambda _facts, _catalogs: ([], []))
     monkeypatch.setattr(publisher, "replace_rfq_estimate_lines_for_object", lambda *_args, **kwargs: events.append({"lines": kwargs["lines"]}))
     monkeypatch.setattr(publisher, "update_rfq_object_estimate_totals", lambda *_args, **kwargs: events.append({"totals": kwargs}))
     monkeypatch.setattr(publisher, "update_rfq_object_estimate_progress", lambda *_args, **kwargs: events.append(kwargs))

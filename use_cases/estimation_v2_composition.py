@@ -19,7 +19,7 @@ OBJECT_ESTIMATE_CONTRACT_VERSION = "estimation_object_composition_v1"
 
 OBJECT_FACT_STATUS_VALUES = frozenset({"ready", "review_required", "failed"})
 OBJECT_ESTIMATE_STATUS_VALUES = frozenset({"complete", "review_required", "failed"})
-COST_LINE_STATUS_VALUES = frozenset({"resolved", "review_required", "failed"})
+COST_LINE_STATUS_VALUES = frozenset({"resolved", "estimated", "review_required", "failed"})
 COST_SECTION_VALUES = frozenset({"material", "labor", "machinery", "purchased_component", "overhead"})
 REVIEW_SEVERITY_VALUES = frozenset({"blocking", "warning"})
 PROVENANCE_VALUES = frozenset({"explicit", "derived", "estimated"})
@@ -457,6 +457,7 @@ def compose_object_estimate(
     normalized_lines: list[dict[str, Any]] = []
     line_ids: set[str] = set()
     reasons = {str(item["code"]) for item in validated["review_items"] if item["severity"] == "blocking"}
+    fallback_reasons: set[str] = set()
     currencies: set[str] = set()
     failed_line = False
     for index, value in enumerate(cost_lines):
@@ -478,10 +479,13 @@ def compose_object_estimate(
         unknown_reasons = set(line_reasons) - set(ESTIMATION_REASON_CODE_VALUES)
         if unknown_reasons:
             raise EstimationV2ContractError(f"cost_lines[{index}] has unsupported reason codes: {sorted(unknown_reasons)}")
-        if status == "resolved":
+        if status in {"resolved", "estimated"}:
             amount = _decimal(line["amount"], f"cost_lines[{index}].amount")
-            if line_reasons:
+            if status == "resolved" and line_reasons:
                 raise EstimationV2ContractError("resolved cost lines cannot carry blocking reason codes")
+            if status == "estimated" and not line_reasons:
+                raise EstimationV2ContractError("estimated cost lines require a fallback reason code")
+            fallback_reasons.update(line_reasons)
         else:
             if line["amount"] is not None:
                 raise EstimationV2ContractError("unresolved cost lines cannot carry an amount")
@@ -500,7 +504,10 @@ def compose_object_estimate(
         required_sections.add("machinery")
     if validated["purchased_components"]:
         required_sections.add("purchased_component")
-    present_resolved = {line["section"] for line in normalized_lines if line["status"] == "resolved"}
+    present_resolved = {
+        line["section"] for line in normalized_lines
+        if line["status"] in {"resolved", "estimated"}
+    }
     missing_sections = required_sections - present_resolved
     missing_reasons = {
         "material": "material_price_unresolved",
@@ -514,13 +521,14 @@ def compose_object_estimate(
         reasons.add("cost_currency_mismatch")
 
     resolved_total = sum(
-        (_decimal(line["amount"], f"resolved.{line['line_id']}") for line in normalized_lines if line["status"] == "resolved"),
+        (_decimal(line["amount"], f"resolved.{line['line_id']}") for line in normalized_lines
+         if line["status"] in {"resolved", "estimated"}),
         Decimal("0"),
     )
     section_totals = {
         section: _money(sum(
             (_decimal(line["amount"], f"section.{section}") for line in normalized_lines
-             if line["status"] == "resolved" and line["section"] == section),
+             if line["status"] in {"resolved", "estimated"} and line["section"] == section),
             Decimal("0"),
         ))
         for section in sorted(COST_SECTION_VALUES)
@@ -554,6 +562,7 @@ def compose_object_estimate(
         "quantity": validated["quantity"],
         "status": status,
         "reason_codes": sorted(reasons),
+        "fallback_reason_codes": sorted(fallback_reasons),
         "currency": currency,
         "cost_lines": sorted(normalized_lines, key=lambda item: (item["section"], item["line_id"])),
         "section_totals": section_totals,
