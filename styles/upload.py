@@ -28,7 +28,9 @@ def apply_upload_css() -> None:
         .stApp:has(.upload-screen-active) [data-testid="stLayoutWrapper"]:has(.st-key-costerly_header_controls) {
             position: relative !important;
             order: 20 !important;
-            width: 100% !important;
+            left: 50vw;
+            width: 100vw !important;
+            transform: translateX(-50%);
             display: flex !important;
             justify-content: center !important;
         }

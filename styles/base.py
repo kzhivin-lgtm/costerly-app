@@ -595,6 +595,19 @@ def apply_base_css() -> None:
             cursor: not-allowed !important;
         }
 
+        /* This must follow the global button contract above. The shared
+           header is intentionally compact on every non-Processing screen. */
+        .stApp .st-key-costerly_header_controls div[data-testid="stButton"] button {
+            height: 32px !important;
+            min-height: 32px !important;
+            max-height: 32px !important;
+            padding: 0 9px !important;
+            font-family: var(--font-sans) !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            text-transform: none !important;
+        }
+
         @media (max-width: 760px) {
             :root {
                 --upload-width: min(92vw, 600px);
