@@ -15,7 +15,8 @@ Task: 3.15.8 Estimation v2 replacement
 
 `use_cases/estimation_v2_composition.py` defines two pure contracts:
 
-1. `estimation_object_facts_v1` accepts only evidence-backed object facts;
+1. `estimation_object_facts_v2` accepts evidence-backed object facts and a
+   universal physical-operation plan;
 2. `estimation_object_composition_v1` combines already-produced deterministic
    cost lines and publishes self cost only when every required line is resolved.
 

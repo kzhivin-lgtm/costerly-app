@@ -72,6 +72,20 @@ def test_object_facts_migration_is_additive_private_and_immutable():
     assert "alter table public.rfq_estimates" not in sql.lower()
 
 
+def test_object_facts_v2_contract_migration_preserves_v1_rows():
+    sql = Path(
+        "db/sql/2026_10_01_estimation_v2_object_facts_contract_v2.sql"
+    ).read_text()
+
+    assert "begin;" in sql and "commit;" in sql
+    assert "rfq_estimation_object_fact_results_contract_version_check" in sql
+    assert "'estimation_object_facts_v1'" in sql
+    assert "'estimation_object_facts_v2'" in sql
+    assert "drop table" not in sql.lower()
+    assert "delete from" not in sql.lower()
+    assert "update public.rfq_estimation_object_fact_results" not in sql.lower()
+
+
 def test_repository_loads_only_nonempty_active_israel_material_families():
     client = _Client({
         "reference_material_pricing_identities": [
