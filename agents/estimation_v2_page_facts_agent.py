@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, AbstractSet, Mapping, Sequence
 
 from agents.anthropic_adapter import (
-    DEFAULT_CLAUDE_FALLBACK_MODEL,
+    DEFAULT_CLAUDE_AGENT_MODEL,
     build_agent_usage_event,
     create_claude_message,
     extract_text_from_claude_response,
@@ -25,7 +25,7 @@ from use_cases.estimation_v2_composition import (
 from use_cases.labor_engine import BASELINES, MACHINE_REQUIREMENTS
 
 
-ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_page_facts_agent_v10"
+ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_page_facts_agent_v11_haiku"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_page_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 12000
 TIMEOUT_SECONDS = 180.0
@@ -170,7 +170,7 @@ def run_estimation_v2_page_facts_agent(
 ) -> dict[str, Any]:
     if not inputs:
         raise ValueError("inputs are required")
-    selected_model = model or get_secret("CLAUDE_ESTIMATION_V2_FACTS_MODEL", DEFAULT_CLAUDE_FALLBACK_MODEL)
+    selected_model = model or get_secret("CLAUDE_ESTIMATION_V2_PAGE_MODEL", DEFAULT_CLAUDE_AGENT_MODEL)
     targets = []
     for row in inputs:
         object_payload = row["input_payload"]["object"]
@@ -209,13 +209,27 @@ def run_estimation_v2_page_facts_agent(
     compact_by_id = {str(item.get("id") or ""): item for item in objects if isinstance(item, Mapping)}
     facts_by_input = {}
     failed = {}
+    object_diagnostics = []
     for row in inputs:
         input_id = str(row["input_id"])
         object_id = str(row["input_payload"]["object"]["object_id"])
         try:
             facts_by_input[input_id] = _expand_object(compact_by_id[object_id], row, allowed_material_families)
+            facts = facts_by_input[input_id]
+            object_diagnostics.append({
+                "input_id": input_id, "object_id": object_id, "status": "validated",
+                "material_count": len(facts["materials"]),
+                "operation_count": len(facts["labor_operations"]),
+                "manufacturing_count": len(facts["manufacturing_features"]),
+                "purchased_component_count": len(facts["purchased_components"]),
+            })
         except Exception as exc:
             failed[input_id] = f"{type(exc).__name__}: {exc}"
+            object_diagnostics.append({
+                "input_id": input_id, "object_id": object_id, "status": "failed_validation",
+                "error_type": type(exc).__name__, "error_message": str(exc)[:2000],
+                "compact_payload": compact_by_id.get(object_id),
+            })
     first = inputs[0]["input_payload"]
     usage = build_agent_usage_event(
         agent_name="estimation_v2_facts", operation="page_fact_extraction",
@@ -226,6 +240,16 @@ def run_estimation_v2_page_facts_agent(
         started_at=started_at, finished_at=finished_at,
         request_diagnostics={"object_count": len(inputs), "source_preview_attached": True, "compact_transport": True},
     )
+    usage["raw_usage"] = {
+        **dict(usage.get("raw_usage") or {}),
+        "object_diagnostics": object_diagnostics,
+        "returned_object_ids": sorted(compact_by_id),
+        "missing_object_ids": sorted(
+            str(row["input_payload"]["object"]["object_id"])
+            for row in inputs
+            if str(row["input_payload"]["object"]["object_id"]) not in compact_by_id
+        ),
+    }
     return {
         "facts_by_input": facts_by_input, "failed": failed, "usage_event": usage,
         "compact_objects": compact_by_id,
