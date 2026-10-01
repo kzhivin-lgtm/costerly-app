@@ -20,9 +20,8 @@ from db.repositories import (
 )
 from agents.estimation_v2_facts_agent import ESTIMATION_V2_FACTS_AGENT_VERSION
 from use_cases.estimate_material_resolution import resolve_estimate_material_requirement
-from use_cases.estimation_v2_bom import EstimationV2BomError, derive_supported_bom
 from use_cases.estimation_v2_composition import compose_object_estimate, validate_object_facts
-from use_cases.estimation_v2_labor_adapter import build_labor_input_v1
+from use_cases.estimation_v2_labor_adapter import build_labor_input
 from use_cases.labor_engine import estimate_labor
 from use_cases.machinery import build_company_production_context
 from use_cases.material_price_resolver import _unit_price_multiplier
@@ -185,7 +184,6 @@ def _material_rows_and_costs(
             source_ref = f"israel-pricing:{resolution.pricing_identity_price_id}"
         cost = round(quantity * unit_cost, 2) if unit_cost is not None and quantity > 0 else None
         reason_codes = [] if cost is not None else ["material_price_unresolved"]
-        assumption_review = material.get("requirement_id") in {"bom-profile", "bom-mdf"}
         cost_lines.append({
             "line_id": line_id, "section": "material",
             "status": "resolved" if cost is not None else "review_required",
@@ -199,12 +197,10 @@ def _material_rows_and_costs(
             "catalog_match_query": material.get("source_name"), "unit": unit,
             "unit_cost": unit_cost, "quantity": quantity or None, "cost": cost,
             "source": "estimation_v2", "sort_order": index * 10,
-            "needs_price": cost is None, "needs_review": cost is None or assumption_review,
-            "confidence": (facts.get("template") or {}).get("confidence"),
+            "needs_price": cost is None, "needs_review": cost is None,
+            "confidence": None,
             "raw_agent_json": _json_safe({
                 "facts": dict(material), "resolution": resolution.__dict__,
-                "bom_calculation": (facts.get("_bom_calculations") or {}).get(material.get("requirement_id")),
-                "bom_assumptions": facts.get("_bom_assumptions") or [],
             }),
         })
     return db_rows, cost_lines
@@ -265,7 +261,7 @@ def _labor_rows_and_costs(
     employees: Sequence[Mapping[str, Any]] | None = None,
     production_context: Mapping[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], float, float]:
-    labor_input = build_labor_input_v1(facts)
+    labor_input = build_labor_input(facts)
     context = dict(production_context or build_company_production_context(str(facts["company_id"]), client=client))
     result = estimate_labor(labor_input, context)
     if result.get("status") != "estimated":
@@ -356,18 +352,6 @@ def publish_estimation_v2_object(
     shared = dict(context or build_estimation_v2_context(client, str(facts["company_id"])))
     families = set(shared["families"])
     validate_object_facts(facts, allowed_material_families=families)
-
-    bom_result = None
-    if facts.get("status") != "failed":
-        try:
-            bom_result = derive_supported_bom(facts)
-        except EstimationV2BomError:
-            bom_result = None
-    if bom_result is not None:
-        facts = dict(bom_result["facts"])
-        validate_object_facts(facts, allowed_material_families=families)
-        facts["_bom_calculations"] = dict(bom_result["calculations"])
-        facts["_bom_assumptions"] = list(bom_result["assumptions"])
 
     if facts.get("status") != "ready":
         review_facts = {**facts, "estimate_id": estimate_id}

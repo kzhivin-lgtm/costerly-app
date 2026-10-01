@@ -14,7 +14,7 @@ import re
 from typing import Any, AbstractSet, Mapping, Sequence
 
 
-OBJECT_FACTS_CONTRACT_VERSION = "estimation_object_facts_v1"
+OBJECT_FACTS_CONTRACT_VERSION = "estimation_object_facts_v2"
 OBJECT_ESTIMATE_CONTRACT_VERSION = "estimation_object_composition_v1"
 
 OBJECT_FACT_STATUS_VALUES = frozenset({"ready", "review_required", "failed"})
@@ -22,22 +22,30 @@ OBJECT_ESTIMATE_STATUS_VALUES = frozenset({"complete", "review_required", "faile
 COST_LINE_STATUS_VALUES = frozenset({"resolved", "review_required", "failed"})
 COST_SECTION_VALUES = frozenset({"material", "labor", "machinery", "purchased_component", "overhead"})
 REVIEW_SEVERITY_VALUES = frozenset({"blocking", "warning"})
-PROVENANCE_VALUES = frozenset({"explicit", "derived", "assumed_template"})
+PROVENANCE_VALUES = frozenset({"explicit", "derived", "estimated"})
 
-CONSTRUCTION_TEMPLATE_VALUES = frozenset({
-    "base_cabinet_open", "base_cabinet_hinged", "base_cabinet_drawers",
-    "wall_cabinet_open", "wall_cabinet_hinged", "tall_cabinet",
-    "open_shelving_unit", "sliding_door_wardrobe", "vanity_cabinet",
-    "reception_or_custom_counter", "panel_table", "solid_wood_table",
-    "bench_panel", "solid_wood_bench", "wall_shelf", "metal_table_frame",
-    "metal_shelf_frame", "sheet_metal_box", "metal_bracket",
-    "glass_metal_display", "stone_top_on_base",
+LABOR_OPERATION_VALUES = frozenset({
+    "estimate_review", "shop_drawing", "cnc_programming", "sheet_nesting",
+    "supplier_quotation", "quality_inspection", "panel_material_handling",
+    "panel_saw_cutting", "cnc_router_profile_cutting", "cnc_vertical_drilling",
+    "cnc_horizontal_drilling", "cnc_grooving", "cnc_pocketing",
+    "manual_panel_cutting", "manual_drilling", "manual_routing", "edge_banding",
+    "veneer_lamination", "solid_wood_ripping", "solid_wood_crosscutting",
+    "solid_wood_jointing_planing", "solid_wood_profiling", "solid_wood_glueup",
+    "wood_sanding", "carcass_assembly", "drawer_assembly", "door_front_fitting",
+    "hardware_installation", "workshop_dry_fit", "sheet_laser_cutting",
+    "sheet_shearing", "metal_profile_cutting", "metal_drilling", "metal_milling",
+    "metal_punching", "sheet_metal_bending", "metal_profile_bending",
+    "metal_rolling", "mig_mag_welding", "tig_welding", "metal_grinding",
+    "metal_polishing", "metal_assembly", "finish_surface_preparation",
+    "wood_staining", "wood_priming", "wood_lacquering", "wet_spray_painting",
+    "powder_coating_preparation", "powder_coating_application", "sandblasting",
+    "galvanizing", "protective_packaging",
 })
 
 ESTIMATION_REASON_CODE_VALUES = frozenset({
     "evidence_anchor_missing", "evidence_conflict", "invalid_evidence_reference",
     "quantity_missing", "quantity_invalid", "dimensions_missing", "dimensions_conflict",
-    "construction_template_missing", "construction_template_unsupported",
     "material_requirement_missing", "material_quantity_missing",
     "material_identity_unresolved", "material_identity_ambiguous", "material_price_unresolved",
     "manufacturing_feature_unsupported", "machinery_route_unresolved",
@@ -49,11 +57,10 @@ ESTIMATION_REASON_CODE_VALUES = frozenset({
 
 _FACT_FIELDS = frozenset({
     "contract_version", "input_id", "object_input_revision", "run_id", "company_id",
-    "object_id", "object_name", "quantity", "status", "template", "dimensions_mm",
+    "object_id", "object_name", "quantity", "status", "dimensions_mm",
     "materials", "features", "manufacturing_features", "purchased_components",
-    "source_facts", "review_items", "primary_preview_ref",
+    "labor_operations", "source_facts", "review_items", "primary_preview_ref",
 })
-_TEMPLATE_FIELDS = frozenset({"code", "confidence", "provenance", "evidence_refs"})
 _MATERIAL_FIELDS = frozenset({
     "requirement_id", "source_name", "family", "specification", "quantity", "unit",
     "evidence_refs",
@@ -76,6 +83,11 @@ _MANUFACTURING_FLAG_FIELDS = frozenset({
 })
 _PURCHASED_COMPONENT_FIELDS = frozenset({
     "component_id", "component_type", "quantity", "unit", "specification", "evidence_refs",
+})
+_LABOR_OPERATION_FIELDS = frozenset({
+    "operation_id", "operation_code", "route", "quantity", "unit", "batch_key",
+    "machine_code", "material_requirement_ids", "basis", "provenance",
+    "evidence_refs", "confidence",
 })
 _PURCHASED_SPECIFICATION_FIELDS = frozenset({
     "width_mm", "depth_mm", "height_mm", "thickness_mm", "material", "finish",
@@ -210,18 +222,6 @@ def validate_object_facts(
     if status not in OBJECT_FACT_STATUS_VALUES:
         raise EstimationV2ContractError("facts.status is unsupported")
 
-    template = _mapping(facts["template"], "facts.template")
-    _exact_keys(template, _TEMPLATE_FIELDS, "facts.template")
-    template_code = None if template["code"] is None else str(template["code"] or "")
-    if template_code is not None and template_code not in CONSTRUCTION_TEMPLATE_VALUES:
-        raise EstimationV2ContractError("facts.template.code is unsupported")
-    if str(template["provenance"]) not in PROVENANCE_VALUES:
-        raise EstimationV2ContractError("facts.template.provenance is unsupported")
-    confidence = template["confidence"]
-    if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not 0 <= confidence <= 100:
-        raise EstimationV2ContractError("facts.template.confidence must be between 0 and 100")
-    template_evidence = _evidence_refs(template["evidence_refs"], "facts.template.evidence_refs")
-
     dimensions = _mapping(facts["dimensions_mm"], "facts.dimensions_mm")
     _exact_keys(dimensions, frozenset({"width", "depth", "height"}), "facts.dimensions_mm")
     dimension_values = {
@@ -329,6 +329,64 @@ def validate_object_facts(
             )
         _evidence_refs(component["evidence_refs"], f"facts.purchased_components[{index}].evidence_refs")
 
+    operation_ids: set[str] = set()
+    labor_operations = _sequence(facts["labor_operations"], "facts.labor_operations")
+    labor_evidence_complete = True
+    for index, value in enumerate(labor_operations):
+        operation = _mapping(value, f"facts.labor_operations[{index}]")
+        _exact_keys(operation, _LABOR_OPERATION_FIELDS, f"facts.labor_operations[{index}]")
+        operation_id = _identifier(
+            operation["operation_id"], f"facts.labor_operations[{index}].operation_id"
+        )
+        if operation_id in operation_ids:
+            raise EstimationV2ContractError("labor operation ids must be unique")
+        operation_ids.add(operation_id)
+        if operation["operation_code"] not in LABOR_OPERATION_VALUES:
+            raise EstimationV2ContractError(
+                f"facts.labor_operations[{index}].operation_code is unsupported"
+            )
+        if operation["route"] not in {"in_house_manual", "in_house_machine"}:
+            raise EstimationV2ContractError(
+                f"facts.labor_operations[{index}].route is unsupported"
+            )
+        _positive_number(operation["quantity"], f"facts.labor_operations[{index}].quantity")
+        _text(operation["unit"], f"facts.labor_operations[{index}].unit")
+        _text(operation["batch_key"], f"facts.labor_operations[{index}].batch_key")
+        machine_code = operation["machine_code"]
+        if operation["route"] == "in_house_machine":
+            _identifier(machine_code, f"facts.labor_operations[{index}].machine_code")
+        elif machine_code is not None:
+            raise EstimationV2ContractError(
+                f"facts.labor_operations[{index}].machine_code must be null for manual work"
+            )
+        requirement_ids = _sequence(
+            operation["material_requirement_ids"],
+            f"facts.labor_operations[{index}].material_requirement_ids",
+        )
+        for requirement_id in requirement_ids:
+            resolved_id = _identifier(
+                requirement_id,
+                f"facts.labor_operations[{index}].material_requirement_ids[]",
+            )
+            if resolved_id not in material_requirement_ids:
+                raise EstimationV2ContractError(
+                    f"facts.labor_operations[{index}] references an unknown material"
+                )
+        _text(operation["basis"], f"facts.labor_operations[{index}].basis")
+        if operation["provenance"] not in PROVENANCE_VALUES:
+            raise EstimationV2ContractError(
+                f"facts.labor_operations[{index}].provenance is unsupported"
+            )
+        confidence = operation["confidence"]
+        if isinstance(confidence, bool) or not isinstance(confidence, (int, float)) or not 0 <= confidence <= 100:
+            raise EstimationV2ContractError(
+                f"facts.labor_operations[{index}].confidence must be between 0 and 100"
+            )
+        operation_refs = _evidence_refs(
+            operation["evidence_refs"], f"facts.labor_operations[{index}].evidence_refs"
+        )
+        labor_evidence_complete = labor_evidence_complete and bool(operation_refs)
+
     for index, value in enumerate(_sequence(facts["source_facts"], "facts.source_facts")):
         source = _mapping(value, f"facts.source_facts[{index}]")
         _exact_keys(source, _SOURCE_FACT_FIELDS, f"facts.source_facts[{index}]")
@@ -357,13 +415,12 @@ def validate_object_facts(
         raise EstimationV2ContractError("facts.primary_preview_ref must reference private estimation evidence")
     missing_ready_facts = (
         quantity is None
-        or template_code is None
-        or not template_evidence
-        or any(value is None for value in dimension_values.values())
         or not materials
         or not material_quantities_complete
         or not material_evidence_complete
         or not purchased_quantities_complete
+        or not labor_operations
+        or not labor_evidence_complete
     )
     if status == "ready" and (blocking or missing_ready_facts):
         raise EstimationV2ContractError("ready facts cannot contain blocking review items or required-fact gaps")

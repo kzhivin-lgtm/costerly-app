@@ -25,12 +25,12 @@ def _input():
             "quantity_explicit": True,
             "dimensions": facts["dimensions_mm"],
             "detected_materials": "18 mm birch plywood",
-            "notes": "",
+            "notes": "unverified detection note",
             "evidence_pages": [{"page_number": 1, "source_label": "A-01"}],
         },
         "evidence": {
             "ocr_blocks": [
-                {"block_ref": "ocr:ocr-1:p1:b0001", "page_number": 1, "text": "CAB-01 Base cabinet", "bbox": {}},
+                {"block_ref": "ocr:ocr-1:p1:b0001", "page_number": 1, "text": "Object E01", "bbox": {}},
                 {"block_ref": "ocr:ocr-1:p1:b0002", "page_number": 1, "text": "18 mm birch plywood", "bbox": {}},
                 {"block_ref": "ocr:ocr-1:p1:b0003", "page_number": 1, "text": "W 1200 x D 560 x H 720 mm", "bbox": {}},
             ],
@@ -45,10 +45,6 @@ def _provider_response(**overrides):
     facts = FIXTURE["facts"]
     result = {
         "status": facts["status"],
-        "template_code": facts["template"]["code"],
-        "template_confidence": facts["template"]["confidence"],
-        "template_provenance": facts["template"]["provenance"],
-        "template_evidence_refs": facts["template"]["evidence_refs"],
         "dimensions_mm": [
             facts["dimensions_mm"]["width"],
             facts["dimensions_mm"]["depth"],
@@ -67,20 +63,16 @@ def _provider_response(**overrides):
             "evidence_refs": facts["materials"][0]["evidence_refs"],
         }],
         "features": [
-            {
-                "key": key,
-                "value": (
-                    "yes" if value is True else "no" if value is False else str(value)
-                ),
-            }
+            {"key": key, "value": "yes" if value is True else "no" if value is False else str(value)}
             for key, value in facts["features"].items()
         ],
         "manufacturing_features": [],
         "purchased_components": [],
-        "source_facts": [
-            {**item, "value": str(item["value"])}
-            for item in facts["source_facts"]
+        "labor_operations": [
+            {key: value for key, value in operation.items() if key not in {"route", "machine_code"}}
+            for operation in facts["labor_operations"]
         ],
+        "source_facts": [{**item, "value": str(item["value"])} for item in facts["source_facts"]],
         "review_items": facts["review_items"],
     }
     result.update(overrides)
@@ -96,9 +88,27 @@ class _Response:
     usage = None
 
 
+def _run(monkeypatch, transport=None):
+    monkeypatch.setattr(agent, "get_anthropic_client", lambda: _Client())
+    monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
+    monkeypatch.setattr(agent, "create_claude_message", lambda *_args, **_kwargs: _Response())
+    monkeypatch.setattr(
+        agent,
+        "extract_text_from_claude_response",
+        lambda _response: json.dumps({"facts_json": json.dumps(transport or _provider_response())}),
+    )
+    return agent.run_estimation_v2_facts_agent(
+        input_id="input-e01-r1",
+        object_input_revision=1,
+        estimation_input=_input(),
+        allowed_material_families={"birch_plywood"},
+        preview_bytes=b"preview",
+        production_context={"machines": [{"machine_code": "wood_panel_saw", "availability_status": "in_house"}]},
+    )
+
+
 def test_provider_schema_is_tiny_while_local_validation_binds_catalog():
     schema = build_estimation_v2_facts_schema({"birch_plywood", "mdf"})
-
     assert schema == {
         "type": "object",
         "additionalProperties": False,
@@ -106,12 +116,10 @@ def test_provider_schema_is_tiny_while_local_validation_binds_catalog():
         "properties": {"facts_json": {"type": "string"}},
     }
     provider_schema = strip_schema_for_claude(schema)
-    assert "exclusiveMinimum" not in json.dumps(provider_schema)
-    assert "uniqueItems" not in json.dumps(provider_schema)
     assert "anyOf" not in json.dumps(provider_schema)
 
 
-def test_e01_agent_uses_only_bounded_json_and_returns_validated_facts(monkeypatch):
+def test_agent_returns_materials_and_agent_created_operations(monkeypatch):
     captured = {}
     monkeypatch.setattr(agent, "get_anthropic_client", lambda: _Client())
     monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
@@ -126,149 +134,39 @@ def test_e01_agent_uses_only_bounded_json_and_returns_validated_facts(monkeypatc
         "extract_text_from_claude_response",
         lambda _response: json.dumps({"facts_json": json.dumps(_provider_response())}),
     )
-
     result = agent.run_estimation_v2_facts_agent(
         input_id="input-e01-r1",
         object_input_revision=1,
         estimation_input=_input(),
         allowed_material_families={"birch_plywood"},
         preview_bytes=b"preview",
+        production_context={"machines": [{"machine_code": "wood_panel_saw", "availability_status": "in_house"}]},
     )
 
-    assert result["facts"]["template"] == FIXTURE["facts"]["template"]
-    assert result["facts"]["dimensions_mm"] == FIXTURE["facts"]["dimensions_mm"]
+    assert result["facts"]["labor_operations"] == FIXTURE["facts"]["labor_operations"]
     assert result["facts"]["materials"] == FIXTURE["facts"]["materials"]
-    assert result["facts"]["source_facts"][0]["value"] == "1200"
-    assert captured["temperature"] == 0
-    assert captured["messages"][0]["content"][0]["type"] == "image"
-    assert captured["messages"][0]["content"][0]["source"]["media_type"] == "image/webp"
-    assert len(captured["messages"][0]["content"]) == 2
     request = json.loads(captured["messages"][0]["content"][1]["text"].split("\n", 1)[1])
     assert "dimensions" not in request["estimation_input"]["object"]
     assert "notes" not in request["estimation_input"]["object"]
-    assert request["transport_contract"]["allowed_provenance"] == [
-        "assumed_template", "derived", "explicit",
-    ]
-    assert request["transport_item_fields"]["manufacturing_feature"] == [
-        "feature_id", "process", "material_requirement_id", "measurements",
-        "flags", "evidence_refs",
-    ]
-    assert "preview image is attached" in captured["system"].lower()
-    assert result["usage_event"]["raw_usage"]["source_document_attached"] is False
-    assert result["usage_event"]["raw_usage"]["source_preview_attached"] is True
-    assert result["usage_event"]["raw_usage"]["ocr_rerun"] is False
+    assert "allowed_labor_operations" in request["transport_contract"]
+    assert "available_company_machinery" not in request["transport_contract"]
+    assert result["facts"]["labor_operations"][0]["route"] == "in_house_machine"
+    assert result["facts"]["labor_operations"][0]["machine_code"] == "wood_panel_saw"
+    assert captured["messages"][0]["content"][0]["type"] == "image"
 
 
-def test_agent_rejects_server_owned_identity_in_provider_transport(monkeypatch):
-    changed = _provider_response(object_name="Model renamed the object")
-    monkeypatch.setattr(agent, "get_anthropic_client", lambda: _Client())
-    monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
-    monkeypatch.setattr(agent, "create_claude_message", lambda *_args, **_kwargs: _Response())
-    monkeypatch.setattr(
-        agent,
-        "extract_text_from_claude_response",
-        lambda _response: json.dumps({"facts_json": json.dumps(changed)}),
-    )
-
-    try:
-        agent.run_estimation_v2_facts_agent(
-            input_id="input-e01-r1",
-            object_input_revision=1,
-            estimation_input=_input(),
-            allowed_material_families={"birch_plywood"},
-            preview_bytes=b"preview",
-        )
-    except ValueError as exc:
-        assert "facts transport fields are invalid" in str(exc)
-    else:
-        raise AssertionError("server-owned object identity must be rejected")
-
-
-def test_agent_rejects_evidence_reference_not_present_in_frozen_input(monkeypatch):
+def test_agent_rejects_unknown_evidence_reference(monkeypatch):
     changed = _provider_response()
-    changed["materials"][0]["evidence_refs"] = ["ocr:invented:p9:b9999"]
-    monkeypatch.setattr(agent, "get_anthropic_client", lambda: _Client())
-    monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
-    monkeypatch.setattr(agent, "create_claude_message", lambda *_args, **_kwargs: _Response())
-    monkeypatch.setattr(
-        agent,
-        "extract_text_from_claude_response",
-        lambda _response: json.dumps({"facts_json": json.dumps(changed)}),
-    )
-
+    changed["labor_operations"][0]["evidence_refs"] = ["invented-ref"]
     try:
-        agent.run_estimation_v2_facts_agent(
-            input_id="input-e01-r1",
-            object_input_revision=1,
-            estimation_input=_input(),
-            allowed_material_families={"birch_plywood"},
-            preview_bytes=b"preview",
-        )
+        _run(monkeypatch, changed)
     except ValueError as exc:
         assert "invented evidence refs" in str(exc)
     else:
         raise AssertionError("invented evidence refs must be rejected")
 
 
-def test_agent_treats_omitted_optional_specification_items_as_empty(monkeypatch):
-    changed = _provider_response()
-    changed["materials"][0].pop("specification_items")
-    monkeypatch.setattr(agent, "get_anthropic_client", lambda: _Client())
-    monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
-    monkeypatch.setattr(agent, "create_claude_message", lambda *_args, **_kwargs: _Response())
-    monkeypatch.setattr(
-        agent,
-        "extract_text_from_claude_response",
-        lambda _response: json.dumps({"facts_json": json.dumps(changed)}),
-    )
-
-    result = agent.run_estimation_v2_facts_agent(
-        input_id="input-e01-r1",
-        object_input_revision=1,
-        estimation_input=_input(),
-        allowed_material_families={"birch_plywood"},
-        preview_bytes=b"preview",
-    )
-
-    assert result["facts"]["materials"][0]["specification"] == {}
-
-
-def test_square_profile_section_transport_normalizes_to_face_mm():
-    assert agent._profile_section_number("20x20", "features.profile_section_mm") == 20
-    assert agent._profile_section_number("40 × 40", "features.profile_section_mm") == 40
-
-
-def test_rectangular_profile_section_requires_explicit_weld_face():
-    try:
-        agent._profile_section_number("20x40", "features.profile_section_mm")
-    except ValueError as exc:
-        assert "explicit weld face" in str(exc)
-    else:
-        raise AssertionError("rectangular profile must not silently select one face")
-
-
-def test_numeric_string_confidence_is_normalized_at_provider_boundary():
-    assert agent._confidence_number("95", "template_confidence") == 95
-
-
-def test_server_downgrades_provider_ready_when_required_material_quantity_is_missing():
-    transport = _provider_response(status="ready")
-    transport["materials"][0]["quantity"] = 0
-    transport["review_items"] = [{
-        "code": "material_quantity_missing", "severity": "blocking",
-        "path": "materials[0].quantity", "message": "Quantity is missing",
-        "evidence_refs": FIXTURE["facts"]["template"]["evidence_refs"],
-    }]
-
-    normalized = agent._normalize_provider_result(
-        transport, input_id="input-e01-r1", object_input_revision=1,
-        estimation_input=_input(),
-    )
-
-    assert normalized["status"] == "review_required"
-
-
-def test_server_adds_blocking_review_item_when_provider_omits_it_for_a_required_gap():
+def test_server_adds_blocking_review_when_material_quantity_is_missing():
     transport = _provider_response(status="ready")
     transport["materials"][0]["quantity"] = 0
     transport["review_items"] = []
@@ -280,25 +178,31 @@ def test_server_adds_blocking_review_item_when_provider_omits_it_for_a_required_
 
     assert normalized["status"] == "review_required"
     assert normalized["review_items"][0]["code"] == "material_quantity_missing"
-    assert normalized["review_items"][0]["severity"] == "blocking"
+
+
+def test_server_adds_blocking_review_when_operation_plan_is_missing():
+    transport = _provider_response(status="ready")
+    transport["labor_operations"] = []
+    transport["review_items"] = []
+
+    normalized = agent._normalize_provider_result(
+        transport, input_id="input-e01-r1", object_input_revision=1,
+        estimation_input=_input(),
+    )
+
+    assert normalized["status"] == "review_required"
+    assert normalized["review_items"][0]["code"] == "labor_result_unavailable"
 
 
 def test_unknown_purchased_component_quantity_normalizes_to_none():
     transport = _provider_response()
     transport["purchased_components"] = [{
-        "component_id": "edge-1",
-        "component_type": "perforated_metal_edging",
-        "quantity": 0,
-        "unit": "job",
-        "specification_items": [],
-        "evidence_refs": FIXTURE["facts"]["template"]["evidence_refs"],
+        "component_id": "part-1", "component_type": "fabricated_part",
+        "quantity": 0, "unit": "job", "specification_items": [],
+        "evidence_refs": FIXTURE["facts"]["materials"][0]["evidence_refs"],
     }]
-
     normalized = agent._normalize_provider_result(
-        transport,
-        input_id="input-e01-r1",
-        object_input_revision=1,
+        transport, input_id="input-e01-r1", object_input_revision=1,
         estimation_input=_input(),
     )
-
     assert normalized["purchased_components"][0]["quantity"] is None

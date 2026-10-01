@@ -1,73 +1,71 @@
-# ESTIMATION V2 OBJECT FACTS EXTRACTOR V2
+# ESTIMATION V2 UNIVERSAL OBJECT PLANNER
 
-You receive one frozen `estimation_input_v2` JSON object. It already contains
-the user-approved Detection object, bounded OCR blocks, private evidence refs
-and one source-derived preview ref. The persisted preview image is attached as
-the first user content block. The original document is not attached.
+You receive one frozen `estimation_input_v2` JSON object, a source-derived
+preview, a material-family catalog and a bounded production-operation catalog.
+Produce one evidence-backed fabrication plan for the named object.
 
-Return only facts needed by deterministic estimating engines. Never estimate or
-return prices, costs, labor operations, minutes, hours, crew sizes, labor rates,
-machine costs, overhead, margin, VAT, sale prices or totals.
+The planner is universal. The object's name must never select a fixed bill of
+materials or fixed sequence of work. Decompose the actual supplied object from
+its geometry, annotations, materials, connections and finishes.
+
+Return physical requirements only. Never return prices, costs, labor minutes,
+hours, crew sizes, labor rates, machine costs, overhead, markup, VAT, delivery,
+site installation, sale prices or totals. Deterministic server code validates
+the plan, resolves prices and converts operation quantities into labor hours.
 
 Rules:
 
-0. A preview can contain several different objects. Locate only the approved
-   object named in `estimation_input.object`, using its name and visible
-   material annotations. Ignore dimensions and annotations belonging to every
-   neighboring object. Detection dimensions and free-text notes are
-   deliberately omitted because they are unverified and may describe a
-   neighboring object. Read dimensions and local construction facts directly
-   from the attached preview.
-1. Server-owned identifiers, versions, object name, quantity and preview ref are
+1. A preview can contain several objects or several views of one object. Locate
+   only the approved object named in `estimation_input.object`. Do not count a
+   second view as another object. Ignore neighboring-object dimensions and
+   annotations. Detection dimensions and notes are omitted because they are not
+   trusted fabrication facts.
+2. Server-owned identifiers, versions, object name, quantity and preview ref are
    bound after extraction. Do not return them in `facts_json`.
-2. Select a construction template only from the schema enum. If evidence is
-   insufficient, use null and add a blocking reason.
-   `template_confidence` is a JSON number from 0 through 100, not a string.
-3. Select material family only from the schema enum. Keep the literal source
-   phrase in source_name. Supplier SKU is provenance only and never identifies
-   or prices a material.
-4. Every extracted or derived fact must cite one or more supplied OCR or
-   evidence refs. Never create a page, block, artifact or source ref.
-   Cite an OCR block only when its text directly supports that fact. Facts
-   read from the attached preview or carried by the approved Detection object
-   must cite the supplied source preview ref when no supporting OCR block exists.
-5. Use `explicit` for a literal source fact, `derived` only for transparent
-   arithmetic from cited facts, and `assumed_template` only for a declared
-   template assumption.
-6. Quantities describe physical material or component requirements. Do not use
-   a price, time or cost as a quantity.
-   When every operand is visible, calculate a net material takeoff and record
-   the arithmetic basis as source facts. Do not add waste, market conversion or
-   price-class assumptions. Those belong to the deterministic BOM layer.
-7. Purchased fabricated components describe externally supplied fabrication.
-   Do not add matching internal machinery or labor facts.
-8. Manufacturing features contain physical drivers and yes/no/unknown flags
-   only. They never contain machine time.
-9. `ready` requires positive quantity, all three overall dimensions, at least
-   one material requirement, a supported template and no blocking review item.
-10. Use `review_required` when a required fact is missing, contradictory or
-    unsupported. Keep missing numeric facts as null and add a specific blocking
-    reason code. Never guess to obtain `ready`.
-11. Use `failed` only when extraction itself cannot produce a safe result and
-    include `extraction_failed`.
-12. The transport schema is compact. dimensions_mm is exactly
-    `[width, depth, height]`. Manufacturing measurements and flags follow the
-    exact key order stated in the request. Sparse specification and feature
-    facts use unique `{key, value}` entries. Numeric values in those entries are
-    numeric strings. Use `0` for an unknown positive dimension or material
-    quantity, `-1` for an unknown count or manufacturing measurement where zero
-    is meaningful, an empty string for unknown optional text, and `unknown` for
-    an unknown template or tri-state feature. Sentinels are removed before
-    validation and never make a result `ready`.
-13. Every array item must be an object with exactly the fields listed in
-    `transport_item_fields`. `specification_items` may be omitted only when it
-    is empty. Do not abbreviate a material, manufacturing feature, purchased
-    component, source fact or review item as a string. Add a manufacturing
-    feature only for a CNC router or sheet laser driver directly supported by
-    supplied evidence. Otherwise return an empty array.
+3. Decompose the actual object into material requirements. Each material line
+   describes one purchase-relevant material occurrence with a literal source
+   phrase, allowed family, specifications, positive quantity, unit and evidence.
+   Calculate net quantities from visible geometry and record transparent
+   arithmetic in `source_facts`. Do not add market waste or price assumptions.
+4. Supplier SKU is provenance only. It never identifies or prices a material.
+5. Create the fabrication sequence in `labor_operations`. Select operation codes
+   only from `allowed_labor_operations`. Choose operations from the object's real
+   parts, materials, joints, finishes and required processing, never its name or
+   membership in a predefined object set.
+6. Every operation provides a positive physical driver quantity and unit, such
+   as panel parts, cut sequences, contour metres, holes, banded metres, weld
+   metres, finish area, hardware items, assemblies or packages. Do not provide
+   time. Explain the quantity in `basis` and reference affected materials.
+7. Do not select a route or machine. Local deterministic code resolves each
+   operation against the company's private Machinery profile after extraction.
+8. Work bought as completed fabrication belongs in `purchased_components` and
+   must not also appear as internal labor. Do not return external, delivery or
+   site-installation labor operations.
+9. Every extracted or derived fact cites supplied OCR or evidence refs. Never
+   invent a page, block, artifact or source ref. Use `explicit` for literal
+   source content, `derived` for transparent arithmetic and `estimated` only
+   for an explicitly disclosed production estimate. Estimated facts carry lower
+   confidence and a warning review item when they materially affect cost.
+10. `ready` requires a positive object quantity, at least one material with a
+    positive quantity, at least one fabrication operation, all purchased-
+    component quantities and no blocking review item. Overall dimensions may be
+    null when part-level quantities and operation drivers are sufficient.
+11. Use `review_required` when a required quantity, material, route or operation
+    cannot be supported. Keep unknown numeric values at the transport sentinel
+    and add a specific blocking reason. Never guess merely to obtain `ready`.
+12. Use `failed` only when extraction cannot produce a safe result and include
+    `extraction_failed`.
+13. The transport is compact. `dimensions_mm` is `[width, depth, height]`.
+    Manufacturing measurements and flags follow the supplied order. Sparse
+    specifications and features use unique `{key, value}` entries. Numeric
+    values inside those entries are numeric strings. Use `0` for an unknown
+    positive dimension or material quantity, `-1` for an unknown count where
+    zero is meaningful, an empty string for unknown optional text and `unknown`
+    for an unknown tri-state feature.
+14. Every array item contains exactly the fields listed in
+    `transport_item_fields`. Do not abbreviate an item as a string. Add a CNC or
+    laser manufacturing feature only when directly supported by evidence.
 
 The provider schema has one field, `facts_json`. Its value must be a JSON string
-containing the complete compact transport object described above. The transport
-object must contain exactly the fields shown in the supplied request contract,
-with no commentary or extra fields. It is parsed and fully validated after the
-provider response.
+containing the complete transport object with exactly the fields in the supplied
+request contract and no commentary.

@@ -16,15 +16,15 @@
 source documents
   -> extracted object facts
   -> material identity and price resolution
-  -> construction template and production route
-  -> labor operations and role hours
+  -> agent-created production operations and Company Machinery routes
+  -> deterministic operation formulas and role hours
   -> company rates, machine cost and overhead
   -> estimate
 ```
 
-Estimation Agent должен извлекать факты и выбирать только поддерживаемые
-сущности. Он не должен придумывать цены, минуты, количество операций или
-арифметику.
+Estimation Agent должен извлекать материалы и создавать операции с физическими
+drivers из утверждённого каталога, учитывая Company Machinery. Он не должен
+придумывать цены, минуты или часы.
 
 ## Последний проверенный Git checkpoint
 
@@ -131,11 +131,10 @@ route, а не автоматически purchased component.
 ### Принятый pipeline
 
 ```text
-object facts
-  -> validated construction template
-  -> primitives
+object facts and geometry
+  -> material and part decomposition
+  -> agent-created operation quantities
   -> exclusive production route from Company Machinery
-  -> operation quantities
   -> setup + rate * quantity
   -> attendance and crew allocation
   -> hours by labor role
@@ -176,8 +175,6 @@ Labor Engine не считает деньги. Позднее `role hours * comp
   - `D`: Costerly derived prior, confidence 25.
 - Отдельные metal branches для carbon steel, stainless 304/316, MIG, TIG,
   grinding, polishing, bending, rolling и machining.
-- Construction templates для panel furniture, solid wood, metal, glass/stone
-  combinations.
 - Crew allocation, route catalog, formula catalog и 10 golden scenarios.
 
 Главные документы:
@@ -185,7 +182,6 @@ Labor Engine не считает деньги. Позднее `role hours * comp
 - `notes/LABOR_TIME_BASELINE_V0.md`
 - `notes/LABOR_ROUTE_CATALOG_V0.md`
 - `notes/LABOR_OPERATION_FORMULAS_V0.md`
-- `notes/LABOR_CONSTRUCTION_TEMPLATES_V0.md`
 - `notes/LABOR_CREW_ALLOCATION_V0.md`
 - `notes/LABOR_GOLDEN_SCENARIOS_V0.md`
 - `notes/LABOR_ENGINE_CONTRACT_V0.md`
@@ -197,13 +193,8 @@ Labor Engine не считает деньги. Позднее `role hours * comp
 - `use_cases/labor_engine.py`
 - `tests/test_labor_engine.py`
 
-Сейчас поддерживаются пять template routes:
-
-1. `base_cabinet_open`;
-2. `wall_cabinet_hinged`;
-3. `vanity_cabinet`;
-4. `metal_table_frame`;
-5. `sheet_metal_box`.
+Исторические object-specific routes удалены. Engine принимает универсальный
+список операций, созданный Estimation Agent из конкретного чертежа.
 
 Реализованы следующие свойства:
 

@@ -1,21 +1,15 @@
 {
   "allowed_material_families": ["birch_plywood"],
   "facts": {
-    "contract_version": "estimation_object_facts_v1",
+    "contract_version": "estimation_object_facts_v2",
     "input_id": "input-e01-r1",
     "object_input_revision": 1,
     "run_id": "run-e01",
     "company_id": "company-e01",
-    "object_id": "cabinet-e01",
-    "object_name": "CAB-01 Base cabinet",
+    "object_id": "object-e01",
+    "object_name": "Object E01",
     "quantity": 1,
     "status": "ready",
-    "template": {
-      "code": "base_cabinet_open",
-      "confidence": 96,
-      "provenance": "explicit",
-      "evidence_refs": ["ocr:ocr-1:p1:b0001"]
-    },
     "dimensions_mm": {"width": 1200, "depth": 560, "height": 720},
     "materials": [
       {
@@ -36,6 +30,36 @@
     },
     "manufacturing_features": [],
     "purchased_components": [],
+    "labor_operations": [
+      {
+        "operation_id": "operation-e01-1",
+        "operation_code": "panel_saw_cutting",
+        "route": "in_house_machine",
+        "quantity": 11,
+        "unit": "cut_sequence",
+        "batch_key": "birch-plywood-18-panel-saw",
+        "machine_code": "wood_panel_saw",
+        "material_requirement_ids": ["material-e01-1"],
+        "basis": "Five rectangular parts require eleven cut sequences",
+        "provenance": "derived",
+        "evidence_refs": ["ocr:ocr-1:p1:b0003"],
+        "confidence": 70
+      },
+      {
+        "operation_id": "operation-e01-2",
+        "operation_code": "carcass_assembly",
+        "route": "in_house_manual",
+        "quantity": 1,
+        "unit": "assembly",
+        "batch_key": "object-e01-assembly",
+        "machine_code": null,
+        "material_requirement_ids": ["material-e01-1"],
+        "basis": "One fabricated assembly",
+        "provenance": "derived",
+        "evidence_refs": ["ocr:ocr-1:p1:b0001"],
+        "confidence": 70
+      }
+    ],
     "source_facts": [
       {
         "path": "dimensions_mm.width",
@@ -45,7 +69,7 @@
       }
     ],
     "review_items": [],
-    "primary_preview_ref": "storage://rfq-estimation-evidence/company-e01/run-e01/cabinet-e01/r1/preview.webp"
+    "primary_preview_ref": "storage://rfq-estimation-evidence/company-e01/run-e01/object-e01/r1/preview.webp"
   },
   "cost_lines": [
     {

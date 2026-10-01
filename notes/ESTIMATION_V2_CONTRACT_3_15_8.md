@@ -28,7 +28,8 @@ one OCR pass per source document
   -> Detection object set and durable evidence
   -> Estimation v2 object fact extraction
   -> deterministic material identity and price resolution
-  -> deterministic construction, production route and Labor Engine
+  -> agent-created fabrication operations constrained by Company Machinery
+  -> deterministic operation validation and Labor Engine formulas
   -> deterministic machinery, purchased-component and overhead cost
   -> object self cost
   -> temporary hardcoded sales policy and user confirmation
@@ -226,9 +227,9 @@ extracted evidence.
 The extraction layer may return only evidence-backed or explicitly derived
 facts required by deterministic engines:
 
-- construction-template candidate from the approved template vocabulary;
 - component and part primitives with dimensions, count and provenance;
 - material requirements with specification facts and evidence, but no price;
+- fabrication operations with physical driver quantities, routes and evidence;
 - bounded manufacturing features used by the CNC and Laser routers;
 - purchased fabricated-component requirements;
 - installation and delivery scope facts;
@@ -238,10 +239,9 @@ facts required by deterministic engines:
 The extraction layer must not return:
 
 - material prices or a chosen fallback price;
-- labor operations, minutes, hours, crew sizes or labor rates;
-- a chosen manual, machine or subcontractor route;
+- labor minutes, hours, crew sizes or labor rates;
 - machine cost, overhead, margin, sale price, VAT or totals;
-- unconstrained material, operation, role or template identifiers.
+- unconstrained material, operation or role identifiers.
 
 Candidate identifiers are validated against versioned catalogs. Unsupported
 values and route-critical missing facts become review items.
@@ -250,7 +250,7 @@ values and route-critical missing facts become review items.
 
 For one frozen object fact package:
 
-1. validate the construction template and primitives;
+1. validate material requirements and the agent-created operation plan;
 2. resolve every material identity;
 3. resolve company-first material price, then exact Israel fallback;
 4. choose exclusive production routes from Company Machinery;

@@ -16,9 +16,9 @@ row taking precedence. A formula that lacks a required fact returns `review`,
 not an invented quantity.
 
 `explicit` means stated in the source drawing or bill. `derived` means
-deterministically produced from a selected construction template. An LLM may
-select a supported template and extract facts, but cannot provide arbitrary
-labor minutes or free-form operation counts.
+transparently calculated from cited geometry or part facts. The Estimation
+Agent selects catalog operations and physical driver quantities, but cannot
+provide labor minutes or hours.
 
 ## Preproduction
 
@@ -135,11 +135,10 @@ labor minutes or free-form operation counts.
 
 ## Deterministic quantity derivation rules
 
-1. A selected object template yields panels, fronts, shelves, drawers, standard
-   connection classes, hardware families, and exposed edges.
-2. Construction templates produce hole and fastener quantities. The agent may
-   select `base_cabinet`, `wall_cabinet`, `drawer_unit`, `table_frame`, or
-   another approved archetype, but cannot submit a free-form hole count.
+1. The agent decomposes visible geometry into parts, fronts, shelves, drawers,
+   connection facts, hardware and exposed edges.
+2. Hole and fastener quantities must be explicit or transparently derived from
+   cited part and connection facts.
 3. Geometry supplies length and area drivers only where the drawing contains
    dimensions. Missing dimensions produce `review` or a separately declared
    object-size archetype, never a hidden assumed measurement.

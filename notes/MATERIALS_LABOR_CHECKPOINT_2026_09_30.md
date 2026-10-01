@@ -15,9 +15,10 @@ Status: saved implementation checkpoint before continuation in a new chat.
   present in the dirty worktree.
 - Labor taxonomy: 78 operations with roles and physical drivers.
 - Labor time baselines with formula evidence, sources and confidence classes.
-- Route rules, operation formulas, construction templates, crew rules and ten
+- Route rules, operation formulas, crew rules and ten
   golden scenarios.
-- Deterministic Labor Engine implementation for five initial templates.
+- Historical object-specific Labor proof, superseded by the universal
+  operation-plan engine on 2026-10-01.
 - Full continuation handoff in
   `notes/MATERIALS_LABOR_NEXT_CHAT_HANDOFF_2026_09_30.md`.
 
@@ -35,8 +36,7 @@ Status: saved implementation checkpoint before continuation in a new chat.
 ## Checkpoint limitations
 
 - Estimation v2 is not implemented or connected.
-- Labor Engine supports only five approved templates and is not production
-  complete.
+- Labor Engine was not production complete at this checkpoint.
 - Cross-object batch aggregation is not implemented.
 - Internal material identity review UI is not implemented.
 - Price Source latency, progress UX and production source matrix remain open.
@@ -45,6 +45,6 @@ Status: saved implementation checkpoint before continuation in a new chat.
 
 ## Protected next step
 
-Continue 3.15.7 from the handoff. Finish the remaining Labor templates, batch
-aggregation, route guards and all ten golden scenarios before connecting any
-new Estimation Agent.
+This protected next step was superseded on 2026-10-01. Continue with universal
+agent-created operations, batch aggregation, route guards and production
+scenarios without object-specific routing.

@@ -132,36 +132,18 @@ stopping at the 1,000-row API default.
 Production backend acceptance passed on 2026-10-01 with benchmark object
 `CB-01 Storage cabinet`. Revision 2 reused the persisted OCR event, original
 reference and private preview while adding deterministic OCR block refs. One
-bounded call persisted `estimation_object_facts_v1` as `review_required` with
-template `tall_cabinet`, four material requirements and explicit missing-
+bounded call persisted the earlier facts contract as `review_required` with
+four material requirements and explicit missing-
 quantity review items. Usage proves `source_document_attached=false` and
 `ocr_rerun=false`. An immediate repeat reused the stored result without a
 second model call.
 
 ## Labor Engine compatibility inspection, 2026-10-01
 
-The existing Labor Engine remains isolated and has no runtime caller outside
-its eight direct tests. Its deterministic core is useful, but it is not yet
-compatible with `estimation_object_facts_v1` or the production Company Profile
-context:
-
-- Object Facts stores the template under `template.code`; Labor expects
-  `template_code`;
-- material specifications are nested; Labor reads `thickness_mm` as a direct
-  material field;
-- Labor checks `edge_bander` and `powder_coating_booth`, while production uses
-  `wood_edge_bander` and `finish_powder_booth`;
-- production uses family `stainless_steel` plus an alloy specification, while
-  Labor expects `stainless_304` or `stainless_316` as family values;
-- only five of the 21 approved construction templates are implemented;
-- delivery and site setup were emitted per object before the compatibility
-  repair, contradicting the approved sales-only policy.
-
-Direct compatibility probes before the repair returned `unsupported_template`,
-`edge_bander_availability_unknown` and
-`external_powder_component_not_yet_enabled` for otherwise valid v2 and
-production-shaped inputs. Labor must therefore receive facts only through the
-bounded adapter and production machine codes.
+This historical inspection is superseded by the universal operation contract
+approved on 2026-10-01. Labor now consumes an agent-created operation plan,
+validates exact Company Profile capability codes and calculates hours without
+classifying the object. Delivery and site work remain excluded from self cost.
 
 One separate Object Facts issue found by the inspection was fixed: exact
 versioned material-family values may contain spaces. Validation now accepts a

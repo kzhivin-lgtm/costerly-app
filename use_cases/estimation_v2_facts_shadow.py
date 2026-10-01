@@ -15,6 +15,7 @@ from db.repositories import (
     insert_estimation_v2_fact_result,
 )
 from use_cases.estimation_artifacts import download_evidence_artifact
+from use_cases.machinery import build_company_production_context
 
 
 def run_estimation_v2_facts_batch(
@@ -38,6 +39,7 @@ def run_estimation_v2_facts_batch(
     created: list[str] = []
     reused: list[str] = []
     failed: dict[str, str] = {}
+    production_context_by_company: dict[str, dict[str, Any]] = {}
     for row in inputs:
         if on_object_start is not None:
             on_object_start(row)
@@ -56,6 +58,12 @@ def run_estimation_v2_facts_batch(
             if existing:
                 reused.append(input_id)
                 continue
+            company_id = str(payload.get("company_id") or "")
+            if company_id not in production_context_by_company:
+                production_context_by_company[company_id] = (
+                    build_company_production_context(company_id, client=client)
+                    if company_id else {}
+                )
             result = run_estimation_v2_facts_agent(
                 input_id=input_id,
                 object_input_revision=int(revision),
@@ -65,6 +73,7 @@ def run_estimation_v2_facts_batch(
                     client=client,
                     storage_ref=str((payload.get("evidence") or {}).get("primary_preview_ref") or ""),
                 ),
+                production_context=production_context_by_company[company_id],
             )
             usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])
             created.append(insert_estimation_v2_fact_result(

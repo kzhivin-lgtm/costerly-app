@@ -374,13 +374,19 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
     employer_load = round(labor_base_total * employer_load_percent / 100, 2)
     labor_total = labor_base_total + employer_load + manufacturing_total
     overhead_total = sum(_number(row.get("cost"), 0) for row in overhead_rows)
+    operation_confidences = [
+        _number(row.get("confidence"), 0)
+        for row in (facts_payload.get("labor_operations") or [])
+        if isinstance(row, dict) and row.get("confidence") is not None
+    ]
 
     return {
         "object_key": object_id,
         "name": object_row.get("object_name"),
         "quantity": object_row.get("quantity"),
         "approved": bool(object_row.get("approved")),
-        "confidence": (facts_payload.get("template") or {}).get("confidence") or "—",
+        "confidence": round(sum(operation_confidences) / len(operation_confidences))
+        if operation_confidences else "—",
         "preview_label": "Object preview",
         "preview_url": _estimation_preview_url(
             client,

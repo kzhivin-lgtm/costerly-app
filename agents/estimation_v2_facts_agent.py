@@ -26,15 +26,16 @@ from agents.schemas.estimation_v2_facts_schema import (
     build_estimation_v2_facts_schema,
 )
 from use_cases.estimation_v2_composition import (
-    CONSTRUCTION_TEMPLATE_VALUES,
     ESTIMATION_REASON_CODE_VALUES,
+    LABOR_OPERATION_VALUES,
     OBJECT_FACTS_CONTRACT_VERSION,
     PROVENANCE_VALUES,
     validate_object_facts,
 )
+from use_cases.labor_engine import MACHINE_REQUIREMENTS
 
 
-ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v4"
+ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v5"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_object_facts_prompt.md"
 
 
@@ -159,6 +160,7 @@ def _normalize_provider_result(
     input_id: str,
     object_input_revision: int,
     estimation_input: Mapping[str, Any],
+    production_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if set(result) != set(TRANSPORT_FIELDS):
         missing = set(TRANSPORT_FIELDS) - set(result)
@@ -267,14 +269,36 @@ def _normalize_provider_result(
             "specification": specification,
         })
 
-    template_code = result.get("template_code")
-    template_provenance = str(result.get("template_provenance") or "").strip()
-    template_provenance = {
-        "source": "explicit",
-        "source_document": "explicit",
-        "explicit_source": "explicit",
-        "template_assumption": "assumed_template",
-    }.get(template_provenance, template_provenance)
+    available_machines = {
+        str(row.get("machine_code") or "")
+        for row in ((production_context or {}).get("machines") or [])
+        if isinstance(row, Mapping)
+        and row.get("availability_status") == "in_house"
+        and row.get("machine_code")
+    }
+    labor_operations = []
+    unavailable_operation_machines: list[tuple[int, str]] = []
+    for index, raw in enumerate(result.get("labor_operations") or []):
+        if not isinstance(raw, Mapping):
+            raise ValueError(f"labor_operations[{index}] must be an object")
+        item = dict(raw)
+        material_ids = item.get("material_requirement_ids")
+        if not isinstance(material_ids, list):
+            raise ValueError(f"labor_operations[{index}].material_requirement_ids must be an array")
+        operation_code = str(item.get("operation_code") or "")
+        machine_code = MACHINE_REQUIREMENTS.get(operation_code)
+        if machine_code and machine_code not in available_machines:
+            unavailable_operation_machines.append((index, machine_code))
+        labor_operations.append({
+            **item,
+            "route": "in_house_machine" if machine_code else "in_house_manual",
+            "machine_code": machine_code,
+            "quantity": _number_text(item.get("quantity"), f"labor_operations[{index}].quantity"),
+            "confidence": _confidence_number(
+                item.get("confidence"), f"labor_operations[{index}].confidence"
+            ),
+            "material_requirement_ids": [str(value) for value in material_ids],
+        })
     object_payload = _required_input(estimation_input, "object")
     evidence = _required_input(estimation_input, "evidence")
     normalized_dimensions = {
@@ -287,10 +311,6 @@ def _normalize_provider_result(
         for item in review_items
     )
     server_gaps: list[tuple[str, str, str]] = []
-    if template_code in {None, "unknown"}:
-        server_gaps.append(("construction_template_missing", "template.code", "Construction template is missing"))
-    if any(value is None for value in normalized_dimensions.values()):
-        server_gaps.append(("dimensions_missing", "dimensions_mm", "One or more object dimensions are missing"))
     if not materials:
         server_gaps.append(("material_requirement_missing", "materials", "Material requirements are missing"))
     for index, material in enumerate(materials):
@@ -299,6 +319,14 @@ def _normalize_provider_result(
     for index, component in enumerate(purchased):
         if component.get("quantity") is None:
             server_gaps.append(("material_quantity_missing", f"purchased_components[{index}].quantity", "Purchased component quantity is missing"))
+    if not labor_operations:
+        server_gaps.append(("labor_result_unavailable", "labor_operations", "Production operations are missing"))
+    for index, machine_code in unavailable_operation_machines:
+        server_gaps.append((
+            "machinery_route_unresolved",
+            f"labor_operations[{index}].machine_code",
+            f"Required company machinery capability is unavailable: {machine_code}",
+        ))
     required_gap = bool(server_gaps)
     normalized_status = result.get("status")
     if required_gap and not blocking_review:
@@ -326,17 +354,12 @@ def _normalize_provider_result(
         "object_name": object_payload.get("object_name"),
         "quantity": object_payload.get("quantity"),
         "status": normalized_status,
-        "template": {
-            "code": None if template_code == "unknown" else template_code,
-            "confidence": _confidence_number(result.get("template_confidence"), "template_confidence"),
-            "provenance": template_provenance,
-            "evidence_refs": result.get("template_evidence_refs"),
-        },
         "dimensions_mm": normalized_dimensions,
         "materials": materials,
         "features": features,
         "manufacturing_features": manufacturing,
         "purchased_components": purchased,
+        "labor_operations": labor_operations,
         "source_facts": result.get("source_facts"),
         "review_items": review_items,
         "primary_preview_ref": evidence.get("primary_preview_ref"),
@@ -374,6 +397,7 @@ def run_estimation_v2_facts_agent(
     estimation_input: Mapping[str, Any],
     allowed_material_families: AbstractSet[str],
     preview_bytes: bytes,
+    production_context: Mapping[str, Any] | None = None,
     model: str | None = None,
 ) -> dict[str, Any]:
     """Extract bounded facts from one frozen input and its persisted preview."""
@@ -396,7 +420,7 @@ def run_estimation_v2_facts_agent(
         "allowed_material_families": sorted(allowed_material_families),
         "transport_contract": {
             "required_fields": sorted(TRANSPORT_FIELDS),
-            "allowed_construction_templates": sorted(CONSTRUCTION_TEMPLATE_VALUES),
+            "allowed_labor_operations": sorted(LABOR_OPERATION_VALUES),
             "allowed_reason_codes": sorted(ESTIMATION_REASON_CODE_VALUES),
             "allowed_provenance": sorted(PROVENANCE_VALUES),
             "allowed_review_severities": ["blocking", "warning"],
@@ -428,6 +452,11 @@ def run_estimation_v2_facts_agent(
             ],
             "source_fact": ["path", "value", "provenance", "evidence_refs"],
             "review_item": ["code", "severity", "path", "message", "evidence_refs"],
+            "labor_operation": [
+                "operation_id", "operation_code", "quantity", "unit",
+                "batch_key", "material_requirement_ids", "basis",
+                "provenance", "evidence_refs", "confidence",
+            ],
         },
     }
     started_at = datetime.now(UTC).isoformat()
@@ -476,6 +505,7 @@ def run_estimation_v2_facts_agent(
             input_id=resolved_input_id,
             object_input_revision=object_input_revision,
             estimation_input=estimation_input,
+            production_context=production_context,
         ),
         allowed_material_families=allowed_material_families,
     )

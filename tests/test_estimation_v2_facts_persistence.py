@@ -103,7 +103,7 @@ def test_repository_pages_past_postgrest_thousand_row_limit():
 
 def test_repository_persists_only_validated_fact_envelope():
     client = _Client()
-    facts = {"contract_version": "estimation_object_facts_v1", "status": "review_required"}
+    facts = {"contract_version": "estimation_object_facts_v2", "status": "review_required"}
 
     result_id = insert_estimation_v2_fact_result(
         client,
@@ -118,7 +118,7 @@ def test_repository_persists_only_validated_fact_envelope():
         "input_id": "input-1",
         "agent_usage_event_id": "usage-1",
         "agent_version": "agent-v1",
-        "contract_version": "estimation_object_facts_v1",
+        "contract_version": "estimation_object_facts_v2",
         "status": "review_required",
         "facts_payload": facts,
     }
@@ -133,7 +133,7 @@ def test_shadow_batch_persists_validated_facts_and_usage(monkeypatch):
         shadow,
         "run_estimation_v2_facts_agent",
         lambda **kwargs: {
-            "facts": {"contract_version": "estimation_object_facts_v1", "status": "review_required"},
+            "facts": {"contract_version": "estimation_object_facts_v2", "status": "review_required"},
             "usage_event": {"agent_name": "estimation_v2_facts"},
         },
     )

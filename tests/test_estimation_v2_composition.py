@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 from use_cases.estimation_v2_composition import (
-    CONSTRUCTION_TEMPLATE_VALUES,
     ESTIMATION_REASON_CODE_VALUES,
+    LABOR_OPERATION_VALUES,
     EstimationV2ContractError,
     compose_object_estimate,
     validate_object_facts,
@@ -96,7 +96,7 @@ def test_e06_unresolved_material_price_stays_visible_but_blocks_self_cost():
     assert any(line["section"] == "material" for line in result["cost_lines"])
 
 
-def test_object_facts_require_versioned_material_and_template_vocabularies():
+def test_object_facts_require_versioned_material_and_operation_vocabularies():
     fixture = _fixture()
     facts = copy.deepcopy(fixture["facts"])
     facts["materials"][0]["family"] = "agent_invented_family"
@@ -104,11 +104,11 @@ def test_object_facts_require_versioned_material_and_template_vocabularies():
         validate_object_facts(facts, allowed_material_families={"birch_plywood"})
 
     facts = copy.deepcopy(fixture["facts"])
-    facts["template"]["code"] = "agent_invented_template"
-    with pytest.raises(EstimationV2ContractError, match="template.code is unsupported"):
+    facts["labor_operations"][0]["operation_code"] = "agent_invented_operation"
+    with pytest.raises(EstimationV2ContractError, match="operation_code is unsupported"):
         validate_object_facts(facts, allowed_material_families={"birch_plywood"})
 
-    assert "base_cabinet_open" in CONSTRUCTION_TEMPLATE_VALUES
+    assert "panel_saw_cutting" in LABOR_OPERATION_VALUES
     assert "labor_result_unavailable" in ESTIMATION_REASON_CODE_VALUES
 
 
@@ -130,14 +130,9 @@ def test_e05_review_facts_expose_missing_values_and_block_self_cost():
     facts = copy.deepcopy(fixture["facts"])
     facts["status"] = "review_required"
     facts["quantity"] = None
-    facts["template"] = {
-        "code": None,
-        "confidence": 0,
-        "provenance": "explicit",
-        "evidence_refs": [],
-    }
     facts["dimensions_mm"] = {"width": None, "depth": None, "height": None}
     facts["materials"] = []
+    facts["labor_operations"] = []
     facts["review_items"] = [
         {
             "code": "dimensions_missing",

@@ -31,10 +31,9 @@ PURCHASED_SPECIFICATION_KEYS = (
     "cutout_count", "installation_scope",
 )
 TRANSPORT_FIELDS = frozenset({
-    "status", "template_code",
-    "template_confidence", "template_provenance", "template_evidence_refs",
-    "dimensions_mm", "materials", "features", "manufacturing_features",
+    "status", "dimensions_mm", "materials", "features", "manufacturing_features",
     "purchased_components", "source_facts", "review_items",
+    "labor_operations",
 })
 
 

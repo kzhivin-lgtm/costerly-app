@@ -51,7 +51,7 @@ def test_detection_prompt_v3_2_6_covers_ocr_identity_reconciliation():
     assert "Never paraphrase, translate, combine, correct" in prompt
     assert "return an empty evidence_anchors list" in prompt
     assert "does not receive the original file" in prompt
-    assert DETECTION_PROMPT_VERSION == "detection_v3_2_6_3_estimation_evidence"
+    assert DETECTION_PROMPT_VERSION == "detection_v3_2_6_4_deduplicated_objects"
 
 
 def test_detection_prompt_v3_stays_compact():

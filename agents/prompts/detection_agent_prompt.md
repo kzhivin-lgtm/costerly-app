@@ -16,7 +16,7 @@ OCR regions, text blocks, and dimension groups are evidence, not object boundari
 
 ### Stage B — lock identities and enrich from OCR
 
-After reconciliation, lock the canonical object set. Use OCR as the primary literal source for metadata, object labels and indices, quantities, dimensions, materials, finishes, hardware, notes, and responsibilities. Attach each fact only to a visually anchored object or package metadata. Do not retranscribe text OCR already provides.
+After reconciliation, lock the deduplicated detected-object set. Use OCR as the primary literal source for metadata, object labels and indices, quantities, dimensions, materials, finishes, hardware, notes, and responsibilities. Attach each fact only to a visually anchored object or package metadata. Do not retranscribe text OCR already provides.
 
 Detection alone makes all semantic decisions. Read text directly from the visual document only when OCR is missing, unreadable, internally inconsistent, or conflicts with the drawing. Resolve conflicts using the strongest visible evidence and record material uncertainty in notes.
 
@@ -155,7 +155,7 @@ Use this order:
 
 Do not start from the page title or room composition and assume it is one object.
 
-One object may appear in plans, elevations, sections, details, renders, schedules, repeated callouts, or several pages. Create one canonical object and aggregate its evidence.
+One object may appear in plans, elevations, sections, details, renders, schedules, repeated callouts, or several pages. Create one detected-object record and aggregate its evidence.
 
 Never increase object count or quantity because the same item appears in several views or pages.
 
@@ -278,7 +278,7 @@ detected_materials is a concise semicolon-separated list of only the 3–5 major
 
 Do not list ordinary brackets, fasteners, handles, rails, cable openings, or detailed components here. Do not invent brands, suppliers, grades, finishes, thicknesses, or hardware. Treat render-only finish appearance as uncertain and say so in notes when relevant.
 
-evidence_pages must aggregate every page, sheet, or drawing reference that materially supports the canonical object. Use one string such as "1,2,5", "A101,A202", or "2,A202,Detail 03".
+evidence_pages must aggregate every page, sheet, or drawing reference that materially supports the detected object. Use one string such as "1,2,5", "A101,A202", or "2,A202,Detail 03".
 
 Return evidence_page_refs and evidence_anchors using this strict handoff contract:
 
