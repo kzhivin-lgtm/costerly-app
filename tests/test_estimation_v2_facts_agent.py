@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import agents.estimation_v2_facts_agent as agent
+import agents.estimation_v2_page_facts_agent as page_agent
 
 
 FIXTURE = json.loads(
@@ -447,3 +448,38 @@ def test_agent_transport_does_not_offer_installation_scope_as_cost_fact(monkeypa
 
     request = json.loads(captured["messages"][0]["content"][1]["text"].split("\n", 1)[1])
     assert "installation_scope" not in request["transport_contract"]["feature_keys"]
+
+
+def test_page_agent_sends_one_labeled_preview_per_object(monkeypatch):
+    captured = {}
+    first = _input()
+    second = json.loads(json.dumps(first))
+    second["object"]["object_id"] = "object-2"
+    second["object"]["object_name"] = "Object 2"
+    rows = [
+        {"input_id": "input-1", "object_input_revision": 1, "input_payload": first},
+        {"input_id": "input-2", "object_input_revision": 1, "input_payload": second},
+    ]
+    monkeypatch.setattr(page_agent, "get_anthropic_client", lambda: _Client())
+    monkeypatch.setattr(page_agent, "get_secret", lambda *_args: "test-model")
+
+    def _create(_client, **kwargs):
+        captured.update(kwargs)
+        return _Response()
+
+    monkeypatch.setattr(page_agent, "create_claude_message", _create)
+    monkeypatch.setattr(page_agent, "extract_text_from_claude_response", lambda _response: '{"objects":[]}')
+    monkeypatch.setattr(page_agent, "build_agent_usage_event", lambda **_kwargs: {"raw_usage": {}})
+
+    page_agent.run_estimation_v2_page_facts_agent(
+        inputs=rows,
+        allowed_material_families={"birch_plywood"},
+        preview_bytes_by_input={"input-1": b"preview-one", "input-2": b"preview-two"},
+    )
+
+    content = captured["messages"][0]["content"]
+    labels = [json.loads(block["text"])["source_preview_for_object_id"] for block in content[:-1:2]]
+    images = [block for block in content if block["type"] == "image"]
+    assert labels == [first["object"]["object_id"], "object-2"]
+    assert len(images) == 2
+    assert images[0]["source"]["data"] != images[1]["source"]["data"]

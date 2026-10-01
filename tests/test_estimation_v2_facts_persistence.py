@@ -204,3 +204,36 @@ def test_shadow_batch_is_fail_isolated_per_object(monkeypatch):
 
     assert result["created_result_ids"] == []
     assert result["failed"] == {"input-1": "ValueError: unsafe evidence"}
+
+
+def test_shadow_batch_attaches_each_objects_own_preview(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(shadow, "fetch_active_israel_material_families", lambda _client: {"mdf"})
+    monkeypatch.setattr(shadow, "fetch_estimation_v2_fact_result", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        shadow, "download_evidence_artifact",
+        lambda *, client, storage_ref: storage_ref.encode("utf-8"),
+    )
+
+    def _run(**kwargs):
+        captured.update(kwargs)
+        return {
+            "facts_by_input": {
+                "input-1": {"contract_version": "estimation_object_facts_v2", "status": "ready"},
+                "input-2": {"contract_version": "estimation_object_facts_v2", "status": "ready"},
+            },
+            "failed": {}, "usage_event": {"agent_name": "estimation_v2_facts"},
+        }
+
+    monkeypatch.setattr(shadow, "run_estimation_v2_page_facts_agent", _run)
+    monkeypatch.setattr(shadow, "insert_agent_usage_event_returning_id", lambda *_args: "usage-1")
+    monkeypatch.setattr(shadow, "insert_estimation_v2_fact_result", lambda *_args, **kwargs: kwargs["input_id"])
+
+    shadow.run_estimation_v2_facts_batch(client=object(), inputs=[
+        {"input_id": "input-1", "input_payload": {"evidence": {"primary_preview_ref": "preview-one"}}},
+        {"input_id": "input-2", "input_payload": {"evidence": {"primary_preview_ref": "preview-two"}}},
+    ])
+
+    assert captured["preview_bytes_by_input"] == {
+        "input-1": b"preview-one", "input-2": b"preview-two",
+    }

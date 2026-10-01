@@ -101,20 +101,35 @@ def test_role_rate_uses_company_profile_position_mapping():
     assert matched == "cnc_operator"
 
 
-def test_role_rate_falls_back_to_company_average():
+def test_role_rate_falls_back_to_production_department_average_only():
     rate, matched = publisher._role_rate(
         "draftsperson",
         [
-            {"position_code": "carpenter", "gross_hourly_rate": 40, "deleted_at": None},
-            {"position_code": "welder", "gross_hourly_rate": 60, "deleted_at": None},
+            {"position_code": "carpenter", "department": "Production", "gross_hourly_rate": 40, "deleted_at": None},
+            {"position_code": "welder", "department": "production", "gross_hourly_rate": 60, "deleted_at": None},
+            {"position_code": "office_manager", "department": "Office", "gross_hourly_rate": 200, "deleted_at": None},
         ],
         176,
     )
     assert rate == 50
-    assert matched == "company_average_all_roles"
+    assert matched == "company_average_production"
 
 
-def test_unresolved_material_gets_audited_nonblocking_fallback(monkeypatch):
+def test_role_rate_never_uses_office_or_management_average():
+    rate, matched = publisher._role_rate(
+        "welder",
+        [
+            {"position_code": "office_manager", "department": "Office", "gross_hourly_rate": 200, "deleted_at": None},
+            {"position_code": "general_manager", "department": "Management", "gross_hourly_rate": 300, "deleted_at": None},
+        ],
+        176,
+    )
+
+    assert rate is None
+    assert matched is None
+
+
+def test_unresolved_material_does_not_receive_invented_unit_price(monkeypatch):
     resolution = SimpleNamespace(
         status="unresolved", authority=None, price_typical=None,
         pricing_identity_price_id=None, offer_ids=(), thickness_policy=None,
@@ -136,14 +151,16 @@ def test_unresolved_material_gets_audited_nonblocking_fallback(monkeypatch):
         vat_percent=18,
     )
 
-    assert rows[0]["cost"] == 200
+    assert rows[0]["cost"] is None
+    assert rows[0]["unit_cost"] is None
+    assert rows[0]["needs_price"] is True
     assert rows[0]["needs_review"] is True
-    assert rows[0]["raw_agent_json"]["fallback"]["rule"] == "last_resort_unit_allowance"
-    assert costs[0]["status"] == "estimated"
-    assert costs[0]["amount"] == 200
+    assert rows[0]["raw_agent_json"]["fallback"]["rule"] == "no_evidence_based_price"
+    assert costs[0]["status"] == "review_required"
+    assert costs[0]["amount"] is None
 
 
-def test_family_allowances_prevent_cross_family_unit_prices():
+def test_material_family_without_price_evidence_has_no_fixed_allowance():
     catalogs = {"identities": [], "prices": [], "baselines": [], "reference_materials": []}
     abrasive, abrasive_rule, _ = publisher._fallback_material_unit_cost(
         {"family": "abrasives", "unit": "sheet", "specification": {}}, catalogs
@@ -152,8 +169,91 @@ def test_family_allowances_prevent_cross_family_unit_prices():
         {"family": "counted_furniture_connectors", "unit": "pcs", "specification": {}}, catalogs
     )
 
-    assert (abrasive, abrasive_rule) == (5, "family_unit_allowance")
-    assert (fastener, fastener_rule) == (2.5, "family_unit_allowance")
+    assert (abrasive, abrasive_rule) == (None, "no_evidence_based_price")
+    assert (fastener, fastener_rule) == (None, "no_evidence_based_price")
+
+
+def test_square_tube_defaults_to_1_5_mm_and_uses_only_square_tube_kg_price():
+    catalogs = {
+        "identities": [
+            {"pricing_identity_id": "square", "price_attributes": {
+                "material_family": "carbon_steel", "detail_material_id": "mat-square"}},
+            {"pricing_identity_id": "sheet", "price_attributes": {
+                "material_family": "carbon_steel", "detail_material_id": "mat-sheet"}},
+        ],
+        "prices": [
+            {"pricing_identity_id": "square", "unit": "kg", "price_typical": 11.21},
+            {"pricing_identity_id": "sheet", "unit": "kg", "price_typical": 100},
+        ],
+        "baselines": [],
+        "reference_materials": [
+            {"material_id": "mat-square", "canonical_name": "Carbon steel S235, square tube, mill finish"},
+            {"material_id": "mat-sheet", "canonical_name": "Carbon steel S235, sheet, mill finish"},
+        ],
+    }
+
+    price, rule, details = publisher._fallback_material_unit_cost(
+        {"family": "carbon_steel", "source_name": "Square tube 20x20 mm",
+         "unit": "m", "specification": {"profile_section": "20x20mm"}},
+        catalogs,
+    )
+
+    assert rule == "steel_profile_length_to_weight"
+    assert details["wall_thickness_mm"] == 1.5
+    assert details["wall_thickness_policy"] == "furniture_profile_default_1_5_mm"
+    assert details["kg_price"] == 11.21
+    assert details["kg_per_m"] == pytest.approx(0.87135)
+    assert price == pytest.approx(10.7446)
+
+
+def test_angle_defaults_to_1_5_mm_but_explicit_wall_is_preserved():
+    defaulted = publisher._steel_profile_geometry({
+        "family": "carbon_steel", "source_name": "Steel angle 30x30", "specification": {},
+    })
+    explicit = publisher._steel_profile_geometry({
+        "family": "carbon_steel", "source_name": "Steel angle 30x30x3", "specification": {},
+    })
+
+    assert defaulted["material_form"] == "angle"
+    assert defaulted["wall_thickness_mm"] == 1.5
+    assert explicit["wall_thickness_mm"] == 3
+    assert explicit["wall_thickness_policy"] == "explicit"
+
+
+def test_consumables_are_five_percent_of_primary_material_cost():
+    facts = _ready_facts()
+    facts["estimate_id"] = "estimate-1"
+
+    rows, costs = publisher._consumables_rows_and_costs(
+        facts=facts, primary_material_total=500,
+    )
+
+    assert rows[0]["item_name"] == "Consumables"
+    assert rows[0]["cost"] == 25
+    assert rows[0]["raw_agent_json"]["percent"] == 5
+    assert costs[0]["amount"] == 25
+    assert costs[0]["status"] == "resolved"
+
+
+def test_routine_consumables_are_not_priced_as_separate_material_rows(monkeypatch):
+    monkeypatch.setattr(
+        publisher, "resolve_estimate_material_requirement",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("routine consumable must bypass resolver")),
+    )
+    facts = _ready_facts()
+    facts["estimate_id"] = "estimate-1"
+    facts["materials"][0].update({
+        "source_name": "Common screws", "family": "bulk_fasteners", "unit": "lot",
+    })
+
+    rows, costs = publisher._material_rows_and_costs(
+        facts=facts,
+        catalogs={"items": [], "offers": [], "identities": [], "prices": []},
+        vat_percent=18,
+    )
+
+    assert rows == []
+    assert costs == []
 
 
 def test_manufacturing_features_are_routed_through_existing_cost_engine(monkeypatch):

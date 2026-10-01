@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import re
 from statistics import median
 from typing import Any, Mapping, Sequence
 
@@ -49,6 +50,16 @@ _ROLE_CANDIDATES = {
     "metal_finisher": ("painter_finisher", "welder"),
     "powder_coating_operator": ("painter_finisher",),
 }
+
+_ROUTINE_CONSUMABLE_FAMILIES = frozenset({
+    "abrasives",
+    "adhesives_sealants_and_fillers",
+    "bulk_fasteners",
+    "counted_furniture_connectors",
+    "installation_consumables",
+    "shop_consumables_and_tool_wear",
+})
+_CONSUMABLES_PERCENT = 5.0
 
 
 def _rows(client: Any, table: str, *, company_id: str | None = None) -> list[dict[str, Any]]:
@@ -168,21 +179,18 @@ def _catalogs(client: Any, company_id: str) -> dict[str, Any]:
     }
 
 
-_LAST_RESORT_UNIT_COSTS = {
-    "ea": 25.0, "pcs": 2.5, "piece": 25.0, "kg": 50.0,
-    "l": 100.0, "litre": 100.0, "m": 25.0, "lm": 25.0,
-    "m2": 100.0, "sqm": 100.0, "sheet": 25.0,
-    "roll": 25.0, "lot": 75.0, "project": 75.0,
-}
-
-
 def _price_samples(
     catalogs: Mapping[str, Any], *, family: str | None, target_unit: str,
+    material_form: str | None = None,
 ) -> list[float]:
     family_key = str(family or "").strip().casefold()
     identities = {
         str(row.get("pricing_identity_id") or ""): row
         for row in catalogs.get("identities") or []
+    }
+    reference_materials = {
+        str(row.get("material_id") or ""): row
+        for row in catalogs.get("reference_materials") or []
     }
     samples: list[float] = []
     for row in catalogs.get("prices") or []:
@@ -191,6 +199,10 @@ def _price_samples(
         row_family = str(attributes.get("material_family") or "").strip().casefold()
         if family_key and row_family != family_key:
             continue
+        if material_form:
+            detail = reference_materials.get(str(attributes.get("detail_material_id") or ""), {})
+            if material_form.casefold() not in str(detail.get("canonical_name") or "").casefold():
+                continue
         multiplier = _unit_price_multiplier(str(row.get("unit") or ""), target_unit)
         value = _number(row.get("price_high") or row.get("price_typical"))
         if multiplier is not None and value > 0:
@@ -211,6 +223,8 @@ def _price_samples(
         )).casefold()
         if family_phrase and family_phrase not in corpus:
             continue
+        if material_form and material_form.casefold() not in corpus:
+            continue
         multiplier = _unit_price_multiplier(str(row.get("unit") or ""), target_unit)
         value = _number(row.get("price_high") or row.get("price_typical"))
         if multiplier is not None and value > 0:
@@ -218,9 +232,53 @@ def _price_samples(
     return samples
 
 
+_PROFILE_DIMENSIONS = re.compile(
+    r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(?:x|×|х)\s*(\d+(?:[.,]\d+)?)"
+    r"(?:\s*(?:x|×|х)\s*(\d+(?:[.,]\d+)?))?",
+    re.IGNORECASE,
+)
+
+
+def _steel_profile_geometry(material: Mapping[str, Any]) -> dict[str, Any] | None:
+    if str(material.get("family") or "").casefold() != "carbon_steel":
+        return None
+    specification = dict(material.get("specification") or {})
+    corpus = " ".join((str(material.get("source_name") or ""), str(specification.get("profile_section") or ""))).casefold()
+    shape = None
+    for candidate, tokens in (
+        ("square tube", ("square tube", "square hollow", "квадратн", "מרובע")),
+        ("rectangular tube", ("rectangular tube", "rectangular hollow", "прямоугольн", "מלבני")),
+        ("round tube", ("round tube", "circular tube", "кругл", "עגול")),
+        ("angle", ("angle", "угол", "זווית")),
+    ):
+        if any(token in corpus for token in tokens):
+            shape = candidate
+            break
+    if shape is None:
+        return None
+    match = _PROFILE_DIMENSIONS.search(corpus.replace(",", "."))
+    width = _number(specification.get("width_mm"))
+    height = _number(specification.get("height_mm"), width)
+    explicit_wall = _number(specification.get("wall_thickness_mm"))
+    if match:
+        width = width or float(match.group(1))
+        height = height or float(match.group(2))
+        explicit_wall = explicit_wall or (float(match.group(3)) if match.group(3) else 0)
+    if shape == "round tube":
+        width = _number(specification.get("diameter_mm")) or width
+        height = width
+    if width <= 0 or height <= 0:
+        return None
+    return {
+        "material_form": shape, "width_mm": width, "height_mm": height,
+        "wall_thickness_mm": explicit_wall or 1.5,
+        "wall_thickness_policy": "explicit" if explicit_wall else "furniture_profile_default_1_5_mm",
+    }
+
+
 def _fallback_material_unit_cost(
     material: Mapping[str, Any], catalogs: Mapping[str, Any],
-) -> tuple[float, str, dict[str, Any]]:
+) -> tuple[float | None, str, dict[str, Any]]:
     family = str(material.get("family") or "")
     unit = str(material.get("unit") or "")
     specification = dict(material.get("specification") or {})
@@ -230,21 +288,12 @@ def _fallback_material_unit_cost(
         return value, "family_high_median", {"sample_count": len(direct), "reserve_percent": 5}
 
     family_key = family.casefold()
-    family_unit_allowances = {
-        ("abrasives", "sheet"): 5.0,
-        ("abrasives", "m2"): 10.0,
-        ("abrasives", "sqm"): 10.0,
-        ("counted_furniture_connectors", "pcs"): 2.5,
-        ("bulk_fasteners", "lot"): 75.0,
-        ("shop_consumables_and_tool_wear", "lot"): 75.0,
-    }
-    family_allowance = family_unit_allowances.get((family_key, unit.casefold()))
-    if family_allowance is not None:
-        return family_allowance, "family_unit_allowance", {
-            "family": family_key, "unit": unit, "reserve_basis": "mvp_conservative_allowance",
-        }
     if family_key == "carbon_steel":
-        kg_prices = _price_samples(catalogs, family=family, target_unit="kg")
+        profile = _steel_profile_geometry(material)
+        kg_prices = _price_samples(
+            catalogs, family=family, target_unit="kg",
+            material_form=profile["material_form"] if profile else None,
+        )
         if kg_prices:
             kg_price = float(median(kg_prices))
             thickness = _number(specification.get("thickness_mm"))
@@ -255,17 +304,24 @@ def _fallback_material_unit_cost(
                     "steel_sheet_area_to_weight",
                     {"kg_per_m2": kg_per_unit, "kg_price": kg_price, "reserve_percent": 10},
                 )
-            width = _number(specification.get("width_mm"))
-            height = _number(specification.get("height_mm"), width)
-            wall = _number(specification.get("wall_thickness_mm"), 2)
-            if unit.casefold() in {"m", "lm"} and width > 0 and height > 0 and wall > 0:
-                inner_width = max(width - 2 * wall, 0)
-                inner_height = max(height - 2 * wall, 0)
-                kg_per_unit = (width * height - inner_width * inner_height) * 0.00785
+            if unit.casefold() in {"m", "lm"} and profile:
+                width = profile["width_mm"]
+                height = profile["height_mm"]
+                wall = profile["wall_thickness_mm"]
+                if profile["material_form"] == "angle":
+                    section_area = wall * (width + height - wall)
+                elif profile["material_form"] == "round tube":
+                    inner_diameter = max(width - 2 * wall, 0)
+                    section_area = 3.141592653589793 * (width ** 2 - inner_diameter ** 2) / 4
+                else:
+                    inner_width = max(width - 2 * wall, 0)
+                    inner_height = max(height - 2 * wall, 0)
+                    section_area = width * height - inner_width * inner_height
+                kg_per_unit = section_area * 0.00785
                 return (
                     round(kg_price * kg_per_unit * 1.10, 4),
-                    "steel_hollow_section_length_to_weight",
-                    {"kg_per_m": kg_per_unit, "kg_price": kg_price, "reserve_percent": 10},
+                    "steel_profile_length_to_weight",
+                    {**profile, "kg_per_m": kg_per_unit, "kg_price": kg_price, "reserve_percent": 10},
                 )
 
     if unit.casefold() in {"m2", "sqm"} and family_key in {"metal_coatings", "wood_coatings"}:
@@ -281,8 +337,7 @@ def _fallback_material_unit_cost(
                  "purchase_unit_price": price, "reserve_percent": 10},
             )
 
-    value = _LAST_RESORT_UNIT_COSTS.get(unit.casefold(), 75.0)
-    return value, "last_resort_unit_allowance", {"unit": unit, "reserve_basis": "mvp_default"}
+    return None, "no_evidence_based_price", {"family": family_key, "unit": unit}
 
 
 def _company_offer_price(
@@ -325,6 +380,8 @@ def _material_rows_and_costs(
     db_rows: list[dict[str, Any]] = []
     cost_lines: list[dict[str, Any]] = []
     for index, material in enumerate(facts.get("materials") or [], start=1):
+        if str(material.get("family") or "").casefold() in _ROUTINE_CONSUMABLE_FAMILIES:
+            continue
         line_id = f"{facts['object_id']}_material_{index:04d}"
         quantity = _number(material.get("quantity"))
         unit = str(material.get("unit") or "")
@@ -355,13 +412,13 @@ def _material_rows_and_costs(
         fallback: dict[str, Any] | None = None
         if unit_cost is None:
             unit_cost, fallback_rule, fallback_details = _fallback_material_unit_cost(material, catalogs)
-            source_ref = f"fallback-policy:{fallback_rule}"
+            source_ref = f"derived-price-policy:{fallback_rule}"
             fallback = {
                 "rule": fallback_rule, "details": fallback_details,
                 "original_resolution_status": resolution.status,
                 "requested_unit": unit, "estimated_unit_cost": unit_cost,
             }
-        cost = round(max(quantity, 1) * unit_cost, 2)
+        cost = None if unit_cost is None else round(max(quantity, 1) * unit_cost, 2)
         source_name = material.get("source_name") or material.get("family")
         displayed_name = (
             resolution.resolved_material_name
@@ -376,7 +433,7 @@ def _material_rows_and_costs(
             )
         cost_lines.append({
             "line_id": line_id, "section": "material",
-            "status": "estimated" if fallback else "resolved",
+            "status": "review_required" if unit_cost is None else "estimated" if fallback else "resolved",
             "amount": cost, "currency": "ILS", "source_ref": source_ref,
             "reason_codes": ["material_price_unresolved"] if fallback else [],
         })
@@ -387,16 +444,46 @@ def _material_rows_and_costs(
             "catalog_match_query": material.get("source_name"), "unit": unit,
             "unit_cost": unit_cost, "quantity": quantity or 1, "cost": cost,
             "source": "estimation_v2", "sort_order": index * 10,
-            "needs_price": False, "needs_review": bool(fallback),
-            "confidence": 45 if fallback else None,
+            "needs_price": unit_cost is None, "needs_review": bool(fallback),
+            "confidence": 45 if fallback and unit_cost is not None else None,
             "notes": normalization_note or (
-                f"Estimated by fallback policy: {fallback['rule']}" if fallback else None
+                f"Derived by policy: {fallback['rule']}" if fallback and unit_cost is not None
+                else "No evidence-based price available" if fallback else None
             ),
             "raw_agent_json": _json_safe({
                 "facts": dict(material), "resolution": resolution.__dict__, "fallback": fallback,
             }),
         })
     return db_rows, cost_lines
+
+
+def _consumables_rows_and_costs(
+    *, facts: Mapping[str, Any], primary_material_total: float,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Apply the temporary Pricing Policy allowance for routine consumables."""
+    amount = round(max(primary_material_total, 0) * _CONSUMABLES_PERCENT / 100, 2)
+    line_id = f"{facts['object_id']}_material_consumables"
+    db_row = {
+        "estimate_id": facts["estimate_id"], "object_id": facts["object_id"],
+        "line_id": line_id, "company_id": facts["company_id"], "section": "material",
+        "group_name": "Materials", "item_name": "Consumables",
+        "catalog_match_query": None, "unit": "%", "unit_cost": amount,
+        "quantity": 1, "cost": amount, "source": "pricing_policy",
+        "sort_order": 490, "needs_price": False, "needs_review": False,
+        "confidence": 100,
+        "notes": f"{_CONSUMABLES_PERCENT:g}% of primary material cost",
+        "raw_agent_json": {
+            "policy": "consumables_percent_of_primary_materials",
+            "percent": _CONSUMABLES_PERCENT,
+            "primary_material_total": round(max(primary_material_total, 0), 2),
+        },
+    }
+    cost_line = {
+        "line_id": f"{line_id}_cost", "section": "material", "status": "resolved",
+        "amount": amount, "currency": "ILS", "source_ref": "pricing-policy:consumables:5-percent",
+        "reason_codes": [],
+    }
+    return [db_row], [cost_line]
 
 
 def _manufacturing_input(facts: Mapping[str, Any]) -> dict[str, Any]:
@@ -459,37 +546,32 @@ def _manufacturing_rows_and_costs(
 def _fallback_manufacturing_rows(
     facts: Mapping[str, Any], production_context: Mapping[str, Any], diagnostic: str,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Keep costing moving with a visible one-hour machinery allowance per feature."""
-    machines = list(production_context.get("machines") or [])
+    """Expose unresolved machinery without inventing hours or rates."""
     db_rows: list[dict[str, Any]] = []
     cost_lines: list[dict[str, Any]] = []
     for index, feature in enumerate(facts.get("manufacturing_features") or [], start=1):
         process = str(feature.get("process") or "manufacturing")
         machine_code = "wood_cnc_router" if process == "cnc_router" else "metal_sheet_laser"
-        configured = next((row for row in machines if row.get("machine_code") == machine_code), {})
-        rate = _number((configured.get("pricing") or {}).get("rate"), 150)
-        if rate <= 0:
-            rate = 150
         line_id = f"{facts['object_id']}_manufacturing_fallback_{index:04d}"
         audit = {
-            "fallback_rule": "one_hour_machine_allowance", "machine_code": machine_code,
+            "resolution": "no_deterministic_machinery_cost", "machine_code": machine_code,
             "diagnostic": diagnostic, "feature": dict(feature),
         }
         db_rows.append({
             "estimate_id": facts["estimate_id"], "object_id": facts["object_id"],
             "line_id": line_id, "company_id": facts["company_id"], "section": "labor",
             "group_name": "In-house CNC / Laser manufacturing",
-            "item_name": f"{process.replace('_', ' ').title()} allowance",
-            "role": "machine service", "hours": 1, "rate": rate, "cost": rate,
-            "source": "estimation_v2_fallback", "sort_order": 800 + index * 10,
-            "needs_price": False, "needs_review": True, "confidence": 35,
-            "hours_basis": "One-hour conservative machinery allowance",
+            "item_name": process.replace('_', ' ').title(),
+            "role": "machine service", "hours": None, "rate": None, "cost": None,
+            "source": "estimation_v2", "sort_order": 800 + index * 10,
+            "needs_price": True, "needs_review": True, "confidence": None,
+            "hours_basis": "No deterministic machinery route available",
             "raw_agent_json": _json_safe(audit),
         })
         cost_lines.append({
-            "line_id": f"{line_id}_cost", "section": "machinery", "status": "estimated",
-            "amount": rate, "currency": "ILS",
-            "source_ref": f"fallback-policy:one-hour:{machine_code}",
+            "line_id": f"{line_id}_cost", "section": "machinery", "status": "review_required",
+            "amount": None, "currency": "ILS",
+            "source_ref": f"machinery-resolution:unresolved:{machine_code}",
             "reason_codes": ["machinery_cost_unresolved"],
         })
     return db_rows, cost_lines
@@ -534,22 +616,24 @@ def _purchased_component_rows_and_costs(
         }
         unit_cost, rule, details = _fallback_material_unit_cost(material, catalogs)
         quantity = max(_number(component.get("quantity")), 1)
-        cost = round(quantity * unit_cost, 2)
+        cost = None if unit_cost is None else round(quantity * unit_cost, 2)
         db_rows.append({
             "estimate_id": facts["estimate_id"], "object_id": facts["object_id"],
             "line_id": line_id, "company_id": facts["company_id"], "section": "material",
             "group_name": "Purchased fabricated components",
             "item_name": component_type.replace("_", " ").title(),
             "unit": component.get("unit"), "quantity": quantity,
-            "unit_cost": unit_cost, "cost": cost, "source": "estimation_v2_fallback",
-            "sort_order": 500 + index * 10, "needs_price": False, "needs_review": True,
-            "confidence": 35, "notes": f"Estimated by fallback policy: {rule}",
+            "unit_cost": unit_cost, "cost": cost, "source": "estimation_v2",
+            "sort_order": 500 + index * 10, "needs_price": unit_cost is None, "needs_review": True,
+            "confidence": 35 if unit_cost is not None else None,
+            "notes": f"Derived by policy: {rule}" if unit_cost is not None else "No evidence-based price available",
             "raw_agent_json": _json_safe({"facts": dict(component), "fallback": {"rule": rule, "details": details}}),
         })
         cost_lines.append({
             "line_id": f"{line_id}_cost", "section": "purchased_component",
-            "status": "estimated", "amount": cost, "currency": "ILS",
-            "source_ref": f"fallback-policy:{rule}",
+            "status": "estimated" if cost is not None else "review_required",
+            "amount": cost, "currency": "ILS",
+            "source_ref": f"derived-price-policy:{rule}",
             "reason_codes": ["purchased_component_price_unresolved"],
         })
     return db_rows, cost_lines
@@ -578,12 +662,10 @@ def _role_rate(
         row for row in active
         if str(row.get("department") or row.get("department_code") or "").casefold() == "production"
     ]
-    pool = production or active
-    rates = [rate for row in pool if (rate := _employee_rate(row, monthly_capacity)) is not None]
+    rates = [rate for row in production if (rate := _employee_rate(row, monthly_capacity)) is not None]
     if rates:
-        source = "company_average_production" if production else "company_average_all_roles"
-        return round(sum(rates) / len(rates), 4), source
-    return 50.0, "mvp_default_labor_rate"
+        return round(sum(rates) / len(rates), 4), "company_average_production"
+    return None, None
 
 
 def _labor_rows_and_costs(
@@ -620,14 +702,15 @@ def _labor_rows_and_costs(
             hours = _number(allocation.get("hours"))
             rate, matched_role = _role_rate(role, employees, monthly_capacity)
             cost = round(hours * rate, 2) if rate is not None and hours > 0 else 0.0
-            used_fallback = bool(matched_role and matched_role.startswith(("company_average_", "mvp_default_")))
-            unresolved = unresolved or used_fallback
+            used_company_average = bool(matched_role and matched_role.startswith("company_average_"))
+            missing_rate = rate is None
+            unresolved = unresolved or missing_rate
             base_total += cost
             hours_total += hours
             operation_audit = dict(operation)
             operation_audit["rate_resolution"] = {
                 "requested_role": role, "matched_role": matched_role,
-                "fallback": used_fallback, "rate": rate,
+                "fallback": used_company_average, "rate": rate,
             }
             db_rows.append({
                 "estimate_id": facts["estimate_id"], "object_id": facts["object_id"],
@@ -636,17 +719,18 @@ def _labor_rows_and_costs(
                 "group_name": "Labor", "item_name": str(operation.get("operation_code") or "Work").replace("_", " ").title(),
                 "role": matched_role or role, "hours": hours, "rate": rate, "cost": cost,
                 "source": "labor_engine_v0", "sort_order": sort_order,
-                "needs_price": False, "needs_review": used_fallback,
+                "needs_price": missing_rate, "needs_review": used_company_average or missing_rate,
                 "confidence": operation.get("baseline_confidence"), "hours_basis": operation.get("formula"),
-                "notes": "Estimated with company average labor rate" if used_fallback else None,
+                "notes": "Estimated with company average labor rate" if used_company_average
+                else "No company labor rate available" if missing_rate else None,
                 "raw_agent_json": operation_audit,
             })
     employer_percent = _number(settings.get("employer_load_percent"), 25)
     labor_total = round(base_total * (1 + employer_percent / 100), 2)
     cost_lines.append({
         "line_id": f"{facts['object_id']}_labor_total", "section": "labor",
-        "status": "estimated" if unresolved else "resolved",
-        "amount": labor_total, "currency": "ILS",
+        "status": "review_required" if unresolved else "resolved",
+        "amount": None if unresolved else labor_total, "currency": "ILS",
         "source_ref": "labor-engine:labor_time_v0",
         "reason_codes": ["labor_review_required"] if unresolved else [],
     })
@@ -702,6 +786,12 @@ def publish_estimation_v2_object(
             catalogs=shared.get("catalogs") or {"items": [], "offers": [], "identities": [], "prices": []},
             vat_percent=_number(review_settings.get("vat_percent"), 18),
         )
+        if material_rows and all(row.get("cost") is not None for row in material_rows):
+            consumable_rows, _consumable_costs = _consumables_rows_and_costs(
+                facts=review_facts,
+                primary_material_total=sum(_number(row.get("cost")) for row in material_rows),
+            )
+            material_rows.extend(consumable_rows)
         purchased_rows, _purchased_costs = _purchased_component_rows_and_costs(
             review_facts, shared.get("catalogs") or {}
         )
@@ -732,6 +822,13 @@ def publish_estimation_v2_object(
     material_rows, material_costs = _material_rows_and_costs(
         facts=pricing_facts, catalogs=shared["catalogs"], vat_percent=vat_percent
     )
+    if material_rows and all(row.get("cost") is not None for row in material_rows):
+        consumable_rows, consumable_costs = _consumables_rows_and_costs(
+            facts=pricing_facts,
+            primary_material_total=sum(_number(row.get("cost")) for row in material_rows),
+        )
+        material_rows.extend(consumable_rows)
+        material_costs.extend(consumable_costs)
     purchased_rows, purchased_costs = _purchased_component_rows_and_costs(
         pricing_facts, shared["catalogs"]
     )

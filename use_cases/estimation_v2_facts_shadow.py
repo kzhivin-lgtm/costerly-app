@@ -32,9 +32,18 @@ def run_estimation_v2_facts_batch(*, client: Any, inputs: Sequence[Mapping[str, 
         return {"created_result_ids": created, "reused_input_ids": reused, "failed": failed}
     first_payload = pending[0]["input_payload"]
     try:
+        preview_bytes_by_input = {
+            str(row["input_id"]): download_evidence_artifact(
+                client=client,
+                storage_ref=str(
+                    ((row.get("input_payload") or {}).get("evidence") or {}).get("primary_preview_ref") or ""
+                ),
+            )
+            for row in pending
+        }
         result = run_estimation_v2_page_facts_agent(
             inputs=pending, allowed_material_families=families,
-            preview_bytes=download_evidence_artifact(client=client, storage_ref=str((first_payload.get("evidence") or {}).get("primary_preview_ref") or "")),
+            preview_bytes_by_input=preview_bytes_by_input,
         )
         usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])
         failed.update(result["failed"])

@@ -25,7 +25,7 @@ from use_cases.estimation_v2_composition import (
 from use_cases.labor_engine import BASELINES, MACHINE_REQUIREMENTS
 
 
-ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_page_facts_agent_v11_haiku"
+ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_page_facts_agent_v12_per_object_previews"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_page_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 12000
 TIMEOUT_SECONDS = 180.0
@@ -166,7 +166,7 @@ def _expand_object(
 
 def run_estimation_v2_page_facts_agent(
     *, inputs: Sequence[Mapping[str, Any]], allowed_material_families: AbstractSet[str],
-    preview_bytes: bytes, model: str | None = None,
+    preview_bytes_by_input: Mapping[str, bytes], model: str | None = None,
 ) -> dict[str, Any]:
     if not inputs:
         raise ValueError("inputs are required")
@@ -192,14 +192,29 @@ def run_estimation_v2_page_facts_agent(
         "purchased_specification_keys": list(PURCHASED_SPECIFICATION_KEYS),
     }
     started_at = datetime.now(UTC).isoformat()
+    content: list[dict[str, Any]] = []
+    for row in inputs:
+        input_id = str(row["input_id"])
+        object_payload = row["input_payload"]["object"]
+        preview_bytes = preview_bytes_by_input.get(input_id)
+        if not preview_bytes:
+            raise ValueError(f"source preview is missing for input {input_id}")
+        content.extend([
+            {"type": "text", "text": json.dumps({
+                "source_preview_for_object_id": object_payload["object_id"],
+                "source_preview_for_input_id": input_id,
+            }, ensure_ascii=False, separators=(",", ":"))},
+            {"type": "image", "source": {
+                "type": "base64", "media_type": "image/webp",
+                "data": base64.b64encode(preview_bytes).decode("ascii"),
+            }},
+        ])
+    content.append({"type": "text", "text": json.dumps(request, ensure_ascii=False, separators=(",", ":"))})
     response = create_claude_message(
         get_anthropic_client().with_options(timeout=TIMEOUT_SECONDS, max_retries=0),
         model=selected_model, max_tokens=MAX_OUTPUT_TOKENS, temperature=0,
         system=PROMPT_PATH.read_text(encoding="utf-8").strip(),
-        messages=[{"role": "user", "content": [{"type": "image", "source": {
-            "type": "base64", "media_type": "image/webp",
-            "data": base64.b64encode(preview_bytes).decode("ascii"),
-        }}, {"type": "text", "text": json.dumps(request, ensure_ascii=False, separators=(",", ":"))}]}],
+        messages=[{"role": "user", "content": content}],
     )
     finished_at = datetime.now(UTC).isoformat()
     raw = json.loads(_provider_json_text(extract_text_from_claude_response(response)))
@@ -238,7 +253,10 @@ def run_estimation_v2_page_facts_agent(
         object_id="page-batch", object_name=f"{len(inputs)} objects", model=selected_model,
         prompt_version=ESTIMATION_V2_FACTS_AGENT_VERSION, response=response,
         started_at=started_at, finished_at=finished_at,
-        request_diagnostics={"object_count": len(inputs), "source_preview_attached": True, "compact_transport": True},
+        request_diagnostics={
+            "object_count": len(inputs), "source_preview_count": len(preview_bytes_by_input),
+            "per_object_source_previews": True, "compact_transport": True,
+        },
     )
     usage["raw_usage"] = {
         **dict(usage.get("raw_usage") or {}),
