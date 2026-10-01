@@ -40,6 +40,18 @@ Persisted self costs, excluding VAT:
 These values prove persistence and UI publication only. They are not accepted
 as accurate estimates.
 
+## Post-checkpoint correction
+
+The owner's subsequent Object Detail acceptance invalidated the original claim
+that all three detail pages were reliably accessible. One page opened, while
+two failed before data loading with the same transient Supabase HTTP/2
+`httpx.ReadError: [Errno 11] Resource temporarily unavailable` inside
+`assert_estimate_owned`. The persisted estimates and detail rows remained
+intact. Commit `dd975fe` replaced the shared synchronous Supabase HTTP/2
+transport with bounded HTTP/1.1 connections. Until production retesting opens
+all three details repeatedly, this checkpoint proves calculation, persistence
+and Objects publication, but Object Detail navigation reliability is pending.
+
 ## Timing
 
 - OCR provider wall time: 0.649 seconds
