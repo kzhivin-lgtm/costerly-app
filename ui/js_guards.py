@@ -1857,7 +1857,11 @@ def install_objects_progress_sync(
                 let subtotal = 0;
                 for (const row of rows) {
                     const objectState = ensureStateForRow(row);
-                    if (!objectState || String(objectState.status).toLowerCase() !== "completed") return;
+                    if (
+                        !objectState
+                        || !["completed", "review_required"].includes(String(objectState.status).toLowerCase())
+                        || !Number.isFinite(readNumber(objectState.selfCost, NaN))
+                    ) return;
 
                     const totalCell = row.querySelector(".objects-pricing-sale-total-cell");
                     subtotal += readMoneyNumber(totalCell ? totalCell.textContent : "");
@@ -1931,7 +1935,11 @@ def install_objects_progress_sync(
                 }
 
                 if (status === "review_required") {
-                    cell.textContent = "review";
+                    if (Number.isFinite(readNumber(objectState.selfCost, NaN))) {
+                        setCompletedPricing(row, objectState);
+                    } else {
+                        cell.textContent = "review";
+                    }
                     return;
                 }
 

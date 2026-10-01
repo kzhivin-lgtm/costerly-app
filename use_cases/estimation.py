@@ -136,8 +136,9 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         ]
         status = str(row.get("status") or "pending")
         self_cost = row.get("self_cost_ex_vat")
-        sale_price_unit = _suggested_sale_price(self_cost) if status == "completed" else None
-        sale_price_overridden = status == "completed" and row.get("object_id") in sale_price_overrides
+        priced = status in {"completed", "review_required"} and self_cost is not None
+        sale_price_unit = _suggested_sale_price(self_cost) if priced else None
+        sale_price_overridden = priced and row.get("object_id") in sale_price_overrides
         if sale_price_overridden:
             sale_price_unit = sale_price_overrides[row.get("object_id")]
         rows.append(
@@ -218,26 +219,28 @@ def _objects_project_pricing(
     """Calculate project-level suggested costs after all objects are priced."""
     sale_price_overrides = sale_price_overrides or {}
     object_rows = [row for row in rows if row.get("object_key")]
-    all_completed = bool(object_rows) and all(
-        str(row.get("status") or "").lower() == "completed" for row in object_rows
+    all_priced = bool(object_rows) and all(
+        str(row.get("status") or "").lower() in {"completed", "review_required"}
+        and row.get("sale_price_total") is not None
+        for row in object_rows
     )
     objects_subtotal = sum(_number(row.get("sale_price_total"), 0) for row in object_rows)
 
-    delivery_suggested = round(objects_subtotal * 0.03, 2) if all_completed else None
-    installation_suggested = round(objects_subtotal * 0.10, 2) if all_completed else None
+    delivery_suggested = round(objects_subtotal * 0.03, 2) if all_priced else None
+    installation_suggested = round(objects_subtotal * 0.10, 2) if all_priced else None
     delivery = sale_price_overrides.get("delivery", delivery_suggested)
     installation = sale_price_overrides.get("installation", installation_suggested)
     project_price = (
         round(objects_subtotal + _number(delivery, 0) + _number(installation, 0), 2)
-        if all_completed
+        if all_priced
         else None
     )
     vat = (
         round(_number(project_price, 0) * _number(vat_percent, 18) / 100, 2)
-        if all_completed
+        if all_priced
         else None
     )
-    total = round(_number(project_price, 0) + _number(vat, 0), 2) if all_completed else None
+    total = round(_number(project_price, 0) + _number(vat, 0), 2) if all_priced else None
 
     return (
         [

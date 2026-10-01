@@ -253,7 +253,7 @@ def _smooth_progress_percent(row: dict[str, object]) -> int:
 
 
 def _self_cost_unit_html(row: dict[str, object]) -> str:
-    if _row_status(row) == "review_required":
+    if _row_status(row) == "review_required" and row.get("self_cost_unit") in {None, "", "review_required"}:
         return "review"
     if _row_status(row) != "running":
         return _money(row.get("self_cost_unit"))

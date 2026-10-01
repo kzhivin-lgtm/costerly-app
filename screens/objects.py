@@ -122,7 +122,11 @@ def _project_cost_rows_for_seed(rows: list[dict[str, object]]) -> list[dict[str,
     """Build project-level cost rows while estimate results are still loading."""
     if not rows:
         return []
-    all_completed = all(objects_pricing.row_status(row) == "completed" for row in rows)
+    all_completed = all(
+        objects_pricing.row_status(row) in {"completed", "review_required"}
+        and row.get("sale_price_total") is not None
+        for row in rows
+    )
     subtotal = sum(objects_pricing.number(row.get("sale_price_total"), 0) for row in rows)
     delivery = round(subtotal * 0.03, 2) if all_completed else None
     installation = round(subtotal * 0.10, 2) if all_completed else None

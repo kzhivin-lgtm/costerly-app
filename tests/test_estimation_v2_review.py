@@ -1,5 +1,9 @@
 from ui import object_detail_view, objects_pricing
-from use_cases.estimation import _estimation_preview_url, _material_rows_from_v2_facts
+from use_cases.estimation import (
+    _estimation_preview_url,
+    _material_rows_from_v2_facts,
+    _objects_project_pricing,
+)
 
 
 def test_pending_object_without_v2_facts_stays_disabled():
@@ -27,6 +31,29 @@ def test_review_required_object_is_openable_without_fake_self_cost():
         run_id="run-1",
     )
     assert ">Review</a>" in markup
+
+
+def test_review_required_object_displays_persisted_approximate_self_cost():
+    row = {
+        "status": "review_required",
+        "object_key": "object-1",
+        "self_cost_unit": 1725.61,
+    }
+
+    assert objects_pricing._self_cost_unit_html(row) == "₪1\u202f726"
+
+
+def test_project_totals_include_priced_review_required_objects():
+    rows = [{
+        "object_key": "object-1", "status": "review_required",
+        "sale_price_total": 1300.0,
+    }]
+
+    project_costs, summary = _objects_project_pricing(rows, vat_percent=18)
+
+    assert project_costs[0]["sale_price_unit"] == 39.0
+    assert project_costs[1]["sale_price_unit"] == 130.0
+    assert summary == {"project_price": 1469.0, "vat": 264.42, "total": 1733.42}
 
 
 def test_object_detail_uses_v2_materials_without_inventing_costs():
