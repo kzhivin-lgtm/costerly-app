@@ -121,7 +121,14 @@ def test_provider_schema_is_tiny_while_local_validation_binds_catalog():
 
 def test_agent_returns_materials_and_agent_created_operations(monkeypatch):
     captured = {}
-    monkeypatch.setattr(agent, "get_anthropic_client", lambda: _Client())
+    client_options = {}
+
+    class _OptionsClient(_Client):
+        def with_options(self, **kwargs):
+            client_options.update(kwargs)
+            return self
+
+    monkeypatch.setattr(agent, "get_anthropic_client", lambda: _OptionsClient())
     monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
 
     def _create(_client, **kwargs):
@@ -153,6 +160,7 @@ def test_agent_returns_materials_and_agent_created_operations(monkeypatch):
     assert result["facts"]["labor_operations"][0]["route"] == "in_house_machine"
     assert result["facts"]["labor_operations"][0]["machine_code"] == "wood_panel_saw"
     assert captured["messages"][0]["content"][0]["type"] == "image"
+    assert client_options == {"timeout": 120.0, "max_retries": 0}
 
 
 def test_agent_rejects_unknown_evidence_reference(monkeypatch):

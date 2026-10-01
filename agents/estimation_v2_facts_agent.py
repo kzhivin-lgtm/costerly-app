@@ -461,7 +461,7 @@ def run_estimation_v2_facts_agent(
     }
     started_at = datetime.now(UTC).isoformat()
     response = create_claude_message(
-        get_anthropic_client().with_options(timeout=60.0, max_retries=0),
+        get_anthropic_client().with_options(timeout=120.0, max_retries=0),
         model=selected_model,
         max_tokens=8192,
         temperature=0,

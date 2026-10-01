@@ -82,14 +82,14 @@ def create_claude_message(client: anthropic.Anthropic, **kwargs: Any) -> Any:
     """Call Claude and turn SDK transport errors into actionable app errors."""
     try:
         return client.messages.create(**kwargs)
+    except anthropic.APITimeoutError as exc:
+        raise RuntimeError(
+            "Claude request timed out before receiving a response. Try again with the same file."
+        ) from exc
     except anthropic.APIConnectionError as exc:
         raise RuntimeError(
             "Claude connection failed before receiving a response. "
             "Check network access, Anthropic service availability, and Streamlit secrets."
-        ) from exc
-    except anthropic.APITimeoutError as exc:
-        raise RuntimeError(
-            "Claude request timed out before receiving a response. Try again with the same file."
         ) from exc
     except anthropic.RateLimitError as exc:
         raise RuntimeError("Claude rate limit reached. Try again later.") from exc
@@ -134,14 +134,14 @@ def create_claude_message_streamed(
                     first_token_seconds = elapsed
 
             response = stream.get_final_message()
+    except anthropic.APITimeoutError as exc:
+        raise RuntimeError(
+            "Claude request timed out before receiving a response. Try again with the same file."
+        ) from exc
     except anthropic.APIConnectionError as exc:
         raise RuntimeError(
             "Claude connection failed before receiving a response. "
             "Check network access, Anthropic service availability, and Streamlit secrets."
-        ) from exc
-    except anthropic.APITimeoutError as exc:
-        raise RuntimeError(
-            "Claude request timed out before receiving a response. Try again with the same file."
         ) from exc
     except anthropic.RateLimitError as exc:
         raise RuntimeError("Claude rate limit reached. Try again later.") from exc

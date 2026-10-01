@@ -2,6 +2,10 @@ from inspect import getsource
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import anthropic
+import httpx
+import pytest
+
 from agents.anthropic_adapter import (
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -9,6 +13,7 @@ from agents.anthropic_adapter import (
     build_detection_system_content,
     build_detection_user_text,
     build_uploaded_file_content_block,
+    create_claude_message,
     create_claude_message_streamed,
     normalize_detection_identity_fields,
 )
@@ -70,6 +75,24 @@ class _FakeClient:
     messages = _FakeMessages()
 
 
+class _TimeoutMessages:
+    @staticmethod
+    def _error():
+        return anthropic.APITimeoutError(
+            request=httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+        )
+
+    def create(self, **_kwargs):
+        raise self._error()
+
+    def stream(self, **_kwargs):
+        raise self._error()
+
+
+class _TimeoutClient:
+    messages = _TimeoutMessages()
+
+
 def test_anthropic_usage_event_contains_duration():
     event = build_agent_usage_event(
         agent_name="detection",
@@ -110,6 +133,20 @@ def test_streamed_message_records_first_token_and_generation_phases():
     assert diagnostics["stream_total_seconds"] == 0.5
     assert diagnostics["stream_event_count"] == 2
     assert diagnostics["text_delta_count"] == 1
+
+
+def test_message_timeout_is_not_misreported_as_connection_failure():
+    with pytest.raises(RuntimeError, match="timed out") as exc_info:
+        create_claude_message(_TimeoutClient(), messages=[])
+
+    assert "connection failed" not in str(exc_info.value).lower()
+
+
+def test_streamed_message_timeout_is_not_misreported_as_connection_failure():
+    with pytest.raises(RuntimeError, match="timed out") as exc_info:
+        create_claude_message_streamed(_TimeoutClient(), messages=[])
+
+    assert "connection failed" not in str(exc_info.value).lower()
 
 
 def test_benchmark_suffix_is_applied_after_detection(monkeypatch):
