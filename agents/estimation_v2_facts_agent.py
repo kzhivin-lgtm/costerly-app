@@ -33,7 +33,7 @@ from use_cases.estimation_v2_composition import (
 from use_cases.labor_engine import MACHINE_REQUIREMENTS
 
 
-ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v6"
+ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v7"
 ESTIMATION_V2_FACTS_MAX_OUTPUT_TOKENS = 16384
 ESTIMATION_V2_FACTS_TIMEOUT_SECONDS = 180.0
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_object_facts_prompt.md"
@@ -194,7 +194,8 @@ def _normalize_provider_result(
     if not isinstance(dimensions, list) or len(dimensions) != 3:
         raise ValueError("dimensions_mm transport must contain width, depth and height")
     numeric_specification = {
-        "thickness_mm", "width_mm", "length_mm", "diameter_mm", "wall_thickness_mm"
+        "thickness_mm", "width_mm", "height_mm", "length_mm", "diameter_mm",
+        "wall_thickness_mm",
     }
     materials = []
     for index, raw in enumerate(result.get("materials") or []):

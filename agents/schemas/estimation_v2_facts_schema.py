@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 SPECIFICATION_KEYS = (
-    "thickness_mm", "width_mm", "length_mm", "diameter_mm", "wall_thickness_mm",
+    "thickness_mm", "width_mm", "height_mm", "length_mm", "diameter_mm", "wall_thickness_mm",
     "profile_section", "species", "grade", "alloy", "temper", "finish", "surface",
     "color", "coating", "density_class", "fire_rating", "moisture_resistance",
     "supplier_sku",

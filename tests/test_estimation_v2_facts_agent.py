@@ -390,3 +390,25 @@ def test_unknown_purchased_component_quantity_normalizes_to_none():
         estimation_input=_input(),
     )
     assert normalized["purchased_components"][0]["quantity"] is None
+
+
+def test_hollow_profile_height_required_by_prompt_is_supported():
+    transport = _provider_response()
+    transport["materials"][0]["family"] = "carbon_steel"
+    transport["materials"][0]["specification_items"] = [
+        {"key": "profile_section", "value": "square_hollow"},
+        {"key": "width_mm", "value": "20"},
+        {"key": "height_mm", "value": "20"},
+        {"key": "wall_thickness_mm", "value": "1.5"},
+    ]
+
+    normalized = agent._normalize_provider_result(
+        transport,
+        input_id="input-e01-r1",
+        object_input_revision=1,
+        estimation_input=_input(),
+    )
+
+    specification = normalized["materials"][0]["specification"]
+    assert specification["height_mm"] == 20
+    assert specification["wall_thickness_mm"] == 1.5

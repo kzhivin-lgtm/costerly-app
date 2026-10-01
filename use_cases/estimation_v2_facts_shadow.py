@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any, Callable, Mapping, Sequence
 
 from agents.estimation_v2_facts_agent import (
@@ -84,7 +85,38 @@ def run_estimation_v2_facts_batch(
                 agent_usage_event_id=usage_id,
             ))
         except Exception as exc:
-            failed[input_id] = f"{type(exc).__name__}: {exc}"
+            error_message = f"{type(exc).__name__}: {exc}"
+            failed[input_id] = error_message
+            try:
+                now = datetime.now(UTC).isoformat()
+                insert_agent_usage_event_returning_id(client, {
+                    "company_id": str(payload.get("company_id") or ""),
+                    "run_id": str(payload.get("run_id") or ""),
+                    "file_name": str((payload.get("document") or {}).get("file_name") or ""),
+                    "object_id": str((payload.get("object") or {}).get("object_id") or ""),
+                    "object_name": str((payload.get("object") or {}).get("object_name") or ""),
+                    "agent_name": "estimation_v2_facts",
+                    "operation": "object_fact_extraction",
+                    "model": "unrecorded_before_valid_result",
+                    "prompt_version": ESTIMATION_V2_FACTS_AGENT_VERSION,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "input_cost_usd": None,
+                    "output_cost_usd": None,
+                    "total_cost_usd": None,
+                    "currency": "USD",
+                    "status": "failed",
+                    "error_message": error_message[:1000],
+                    "started_at": now,
+                    "finished_at": now,
+                    "raw_usage": {
+                        "input_id": input_id,
+                        "object_input_revision": revision,
+                        "error_type": type(exc).__name__,
+                    },
+                })
+            except Exception:
+                pass
     return {
         "created_result_ids": created,
         "reused_input_ids": reused,
