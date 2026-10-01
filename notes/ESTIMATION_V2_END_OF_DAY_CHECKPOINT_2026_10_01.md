@@ -294,13 +294,13 @@ Experimental or incomplete:
 - exact 20 mm MDF pricing;
 - exact square-tube wall thickness;
 - complete role-to-employee mapping policy;
-- validated labor baselines for this shelving template;
+- validated labor baselines for the actual emitted operation mix;
 - automatic v2 composition and publication;
 - full end-to-end telemetry;
 - processing of objects 002 through 004;
 - project totals, because three objects remain pending;
-- ten golden end-to-end scenarios;
-- remaining approved Labor templates and batch aggregation.
+- representative real-document end-to-end scenarios;
+- remaining operation coverage and batch aggregation.
 
 ## Required next implementation order
 
@@ -317,14 +317,14 @@ Experimental or incomplete:
 3. Implement the deterministic v2 publisher:
    - latest immutable Object Facts input;
    - material requirement resolution with company-first and Israel fallback;
-   - deterministic quantity derivation only for supported templates;
+   - deterministic quantity validation from physical operation drivers;
    - Labor Engine using the real production context;
    - company employee rate resolution;
    - deterministic Overhead allocation;
    - atomic material, labor, overhead and total publication;
    - object becomes `completed` only when required lines are publishable.
-4. Add the `open_shelving_unit` deterministic route or choose another approved
-   supported template. Validate the one-hour welding baseline rather than
+4. Run the universal planner for the actual production object and validate its
+   emitted physical operations. Validate the welding baseline rather than
    accepting it from this proof.
 5. Repeat this exact production object from a fresh immutable input with no
    manual calculation. Measure one end-to-end span from File Review action to
@@ -340,8 +340,8 @@ Experimental or incomplete:
    - refresh preserves every row and total.
 7. Only after the single-object automatic cycle is accepted, process the
    remaining objects and implement project-level sales pricing.
-8. Continue the deferred 3.15.7 Labor backlog: remaining templates, batch
-   aggregation and ten golden scenarios.
+8. Continue the deferred 3.15.7 Labor backlog: remaining operation formulas,
+   batch aggregation and real-document acceptance scenarios.
 
 ## Prohibited shortcuts
 

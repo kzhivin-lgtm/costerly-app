@@ -23,8 +23,8 @@ error, it is an explicit stop against false precision.
 | --- | --- | --- | --- | --- |
 | `site_measurement` | site-specific object or installation | `site` | exclude for repeat measured site | project + site |
 | `estimate_review` | every estimate | `in_house_manual` | never external | estimate |
-| `shop_drawing` | fabrication detail beyond source drawing | `in_house_manual` | `review` if design scope unknown | object family |
-| `cnc_programming` | internal CNC route with non-template work | `in_house_manual` | exclude for subcontractor price that includes programming | CNC batch |
+| `shop_drawing` | fabrication detail beyond source drawing | `in_house_manual` | `review` if design scope unknown | drawing package |
+| `cnc_programming` | internal CNC route with unique toolpath work | `in_house_manual` | exclude for subcontractor price that includes programming | CNC batch |
 | `sheet_nesting` | sheet cutting on internal CNC or panel saw | `in_house_manual` | exclude when supplier delivers cut-to-size parts | material + thickness + route |
 | `supplier_quotation` | external component needs quote | `in_house_manual` | exclude where active supplier price is deterministic | supplier + service |
 | `quality_inspection` | fabricated or purchased critical component | `in_house_manual` | exclude only for non-delivered preliminary estimate | delivery batch |
@@ -56,7 +56,7 @@ error, it is an explicit stop against false precision.
 
 | Operation | Trigger | Preferred route | Fallback or exclusion | Batch key |
 | --- | --- | --- | --- | --- |
-| `carcass_assembly` | cabinet carcass/module | `in_house_manual` | exclude if bought assembled module | module archetype |
+| `carcass_assembly` | cabinet carcass/module | `in_house_manual` | exclude if bought assembled module | module construction facts |
 | `drawer_assembly` | drawer box/system | `in_house_manual` | exclude if supplier supplies assembled drawer | drawer system |
 | `door_front_fitting` | door or front present | `in_house_manual` | site adjustment belongs to `final_adjustment` | front + hardware family |
 | `hardware_installation` | hardware item has internal installation scope | `in_house_manual` | exclude hardware supplied pre-fitted | hardware family |
@@ -79,7 +79,7 @@ error, it is an explicit stop against false precision.
 | `tig_welding` | thin, stainless, visible, sanitary or precision joint | `in_house_manual` | external fabricated frame when no qualified TIG welder | alloy + joint type + finish |
 | `metal_grinding` | structural weld or cut edge needs dressing | `in_house_manual` | exclude if supplier returns finished component | alloy + finish class |
 | `metal_polishing` | visible metal finish specified | `in_house_manual` | external pre-finished/fabricated component if finish class unsupported | alloy + finish class |
-| `metal_assembly` | frame needs alignment, tacking or mechanical joining | `in_house_manual` | exclude if supplied fabricated | frame archetype + alloy |
+| `metal_assembly` | frame needs alignment, tacking or mechanical joining | `in_house_manual` | exclude if supplied fabricated | frame geometry + alloy |
 
 ## Glass, stone and acrylic
 

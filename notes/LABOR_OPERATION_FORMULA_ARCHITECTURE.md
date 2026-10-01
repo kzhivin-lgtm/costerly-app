@@ -178,7 +178,7 @@ Machinery selects a recipe, not an arbitrary multiplier. Example for a panel:
 1. Partition all existing operations into route-specific recipes.
 2. Define each recipe's object facts, batch key, drivers, role allocation,
    exclusions, and complexity signals.
-3. Establish formula templates by family, without numeric priors yet.
+3. Establish formula definitions by operation family, without numeric priors yet.
 4. Research and enter source-backed Israel time priors.
 5. Validate recipes against structured representative objects before any agent
    integration.

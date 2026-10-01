@@ -26,8 +26,8 @@ provide labor minutes or hours.
 | --- | --- | --- | --- |
 | `site_measurement` | site zones, access condition | `q = count(site_zones)` | one visit setup; add restricted-access zone only if explicit |
 | `estimate_review` | objects, drawing pages, exclusions | `q = object_count + 0.25 * drawing_page_count` | one estimate batch |
-| `shop_drawing` | unique modules, drawing pages, revisions | `q = unique_module_count + 0.5 * revision_count` | one object-family setup |
-| `cnc_programming` | CNC batch, unique toolpaths, template status | `q = unique_toolpath_count` | zero when subcontractor includes programming or template is reusable |
+| `shop_drawing` | unique modules, drawing pages, revisions | `q = unique_module_count + 0.5 * revision_count` | one drawing-package setup |
+| `cnc_programming` | CNC batch, unique toolpaths, verified reusable-program status | `q = unique_toolpath_count` | zero when subcontractor includes programming or an existing verified program is reusable |
 | `sheet_nesting` | sheets, panels, grain constraints | `q = sheet_count` | one material-thickness-route batch |
 | `supplier_quotation` | suppliers, external components | `q = supplier_quote_count` | zero for active deterministic supplier price |
 | `quality_inspection` | completed modules and purchased critical parts | `q = completed_module_count + critical_component_count` | one delivery-batch setup |
@@ -39,12 +39,12 @@ provide labor minutes or hours.
 | `panel_material_handling` | internal panels, sheets | `q = internal_part_count + sheet_count` | one material-route batch |
 | `panel_saw_cutting` | cutting plan, straight cuts | `q = cut_sequence_count` | sequences derive from cutting-map class, never raw panel count |
 | `cnc_router_profile_cutting` | CNC contours | `q = sum(contour_length_lm)` | shared `cnc_router_session` setup per material, thickness and tool set |
-| `cnc_vertical_drilling` | template joint and hardware pattern | `q = derived_vertical_hole_count` | shared `cnc_router_session`; hole classes come from template |
-| `cnc_horizontal_drilling` | template end-hole pattern | `q = derived_horizontal_hole_count` | shared drilling-pattern session |
+| `cnc_vertical_drilling` | explicit or derived joint and hardware pattern | `q = derived_vertical_hole_count` | shared `cnc_router_session`; hole classes come from cited part and connection facts |
+| `cnc_horizontal_drilling` | explicit or derived end-hole pattern | `q = derived_horizontal_hole_count` | shared drilling-pattern session |
 | `cnc_grooving` | groove geometry | `q = sum(groove_length_lm)` | shared router session by cutter and depth class |
 | `cnc_pocketing` | pocket geometry and depth class | `q = sum(pocket_area_cm2) / 100` | shared router session by cutter and depth class |
 | `manual_panel_cutting` | supported simple straight cuts | `q = cut_sequence_count` | one material-thickness batch, prohibited for shaped parts |
-| `manual_drilling` | template hole pattern | `q = derived_manual_hole_count` | shared manual-drilling session by hole class |
+| `manual_drilling` | explicit or derived hole pattern | `q = derived_manual_hole_count` | shared manual-drilling session by hole class |
 | `manual_routing` | simple manual profile/groove | `q = sum(manual_routed_length_lm)` | shared manual-routing session by cutter |
 | `edge_banding` | exposed banded edges | `q = sum(banded_edge_length_lm)` | one edge-material and thickness batch |
 | `veneer_lamination` | substrate faces, veneer faces | `q = sum(pressed_surface_area_sqm)` | one substrate, veneer and adhesive batch |
@@ -59,7 +59,7 @@ provide labor minutes or hours.
 
 | Operation | Required facts | Quantity formula | Setup / minimum rule |
 | --- | --- | --- | --- |
-| `carcass_assembly` | selected carcass template | `q = carcass_module_count` | template defines structural panels and connection class, not agent-supplied minutes |
+| `carcass_assembly` | actual structural panels and connection facts | `q = carcass_module_count` | cited part and connection facts define the work, not agent-supplied minutes |
 | `drawer_assembly` | drawer type, count | `q = drawer_box_count` | one drawer-system batch |
 | `door_front_fitting` | doors/fronts, hardware family | `q = door_front_count` | one front-hardware batch |
 | `hardware_installation` | itemized hardware | `q = installed_hardware_count` | one hardware-family setup |
@@ -82,7 +82,7 @@ provide labor minutes or hours.
 | `tig_welding` | alloy, visible/precision class, weld paths | `q = sum(tig_weld_length_lm)` | one alloy, filler and finish class batch |
 | `metal_grinding` | alloy, weld/edge finish class | `q = sum(grind_length_lm)` | one abrasive and finish-class batch |
 | `metal_polishing` | alloy, exposed finish area, finish grade | `q = exposed_polish_area_sqm` | one alloy and finish-grade batch |
-| `metal_assembly` | frame template, joints, mechanical fasteners | `q = metal_subassembly_count` | one frame archetype batch |
+| `metal_assembly` | actual frame members, joints and mechanical fasteners | `q = metal_subassembly_count` | one compatible frame-geometry batch |
 
 ## Glass, stone and acrylic
 
@@ -140,8 +140,8 @@ provide labor minutes or hours.
 2. Hole and fastener quantities must be explicit or transparently derived from
    cited part and connection facts.
 3. Geometry supplies length and area drivers only where the drawing contains
-   dimensions. Missing dimensions produce `review` or a separately declared
-   object-size archetype, never a hidden assumed measurement.
+   dimensions. Missing dimensions produce `review`, never a hidden assumed
+   measurement.
 4. A formula emits source facts, derived facts, selected route, operation code,
    baseline version, confidence, and a human-readable explanation with every
    labor line.

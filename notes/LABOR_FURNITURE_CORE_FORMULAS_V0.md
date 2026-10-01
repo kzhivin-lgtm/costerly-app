@@ -180,7 +180,7 @@ for:
 1. panel and sheet derivation from object dimensions and material;
 2. compatible batch grouping;
 3. estimated cutting-map complexity from a panel list;
-4. construction-template connection and hole-set generation;
+4. connection and hole-set generation from explicit drawing and part facts;
 5. exposed-edge and finish-surface generation;
 6. hardware quantities and variants;
 7. confidence reduction when a driver is inferred rather than explicit.

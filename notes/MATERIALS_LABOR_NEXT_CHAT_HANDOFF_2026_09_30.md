@@ -175,7 +175,8 @@ Labor Engine не считает деньги. Позднее `role hours * comp
   - `D`: Costerly derived prior, confidence 25.
 - Отдельные metal branches для carbon steel, stainless 304/316, MIG, TIG,
   grinding, polishing, bending, rolling и machining.
-- Crew allocation, route catalog, formula catalog и 10 golden scenarios.
+- Crew allocation, route catalog, formula catalog и operation-based acceptance
+  cases.
 
 Главные документы:
 
@@ -183,7 +184,6 @@ Labor Engine не считает деньги. Позднее `role hours * comp
 - `notes/LABOR_ROUTE_CATALOG_V0.md`
 - `notes/LABOR_OPERATION_FORMULAS_V0.md`
 - `notes/LABOR_CREW_ALLOCATION_V0.md`
-- `notes/LABOR_GOLDEN_SCENARIOS_V0.md`
 - `notes/LABOR_ENGINE_CONTRACT_V0.md`
 
 ## Реализованный Labor Engine
@@ -224,9 +224,9 @@ Labor Engine не считает деньги. Позднее `role hours * comp
 
 Не называть Labor Engine законченным:
 
-1. Реализованы только 5 из утверждённых templates.
-2. S04, S08, S09 и полный S10 ещё не закрыты кодом. S01-S03 и S05-S07 покрыты
-   только текущими targeted tests, а не полной production acceptance.
+1. Не все operation formulas проверены на реальных production-документах.
+2. Универсальная декомпозиция wood, metal, glass, stone и purchased fabrication
+   ещё не прошла полную production acceptance.
 3. Batch aggregation между несколькими объектами отсутствует. Сейчас setup
    может повториться при отдельных вызовах Engine.
 4. Panel cut sequence пока прозрачный proxy, а не настоящий cutting-map или
@@ -267,21 +267,19 @@ Labor Engine не считает деньги. Позднее `role hours * comp
 
 ### P0: закончить Labor Engine
 
-1. Добавить `solid_wood_table` и закрыть golden S04.
-2. Добавить `stone_top_on_base` и закрыть S08 с external supplier fabrication
-   без delivery или installation labor.
-3. Добавить `glass_metal_display` и закрыть S09 без delivery или installation
-   labor.
-4. Сохранить S10 как invariant: installation scope не меняет Labor Engine
-   output.
-5. Добавить остальные approved templates без расширения V0 limits.
-6. Добавить batch/session aggregation, чтобы setup считался один раз для
+1. Проверить универсальный planner на реальных документах с panel, solid wood,
+   metal и purchased fabrication работами.
+2. Подтвердить, что имя или тип предмета не выбирает BOM, маршрут или набор
+   операций.
+3. Сохранить invariant: installation scope не меняет Labor Engine output.
+4. Закрыть недостающие operation formulas без object-specific ветвления.
+5. Добавить batch/session aggregation, чтобы setup считался один раз для
    совместимых объектов.
-7. Заменить panel cutting proxy на bounded cutting-map class или другой
+6. Заменить panel cutting proxy на bounded cutting-map class или другой
    детерминированный источник cut sequences.
-8. Завершить role qualification и Machinery guards для каждой route-critical
+7. Завершить role qualification и Machinery guards для каждой route-critical
    операции.
-9. Прогнать все 10 golden scenarios и negative/review cases.
+8. Прогнать representative real-document, negative и review cases.
 
 ### P0 после Labor
 
@@ -321,7 +319,7 @@ Labor Engine не считает деньги. Позднее `role hours * comp
 
 1. Targeted Labor tests.
 2. Existing manufacturing routing and costing tests.
-3. Все 10 golden scenarios с inspectable trace.
+3. Representative real-document scenarios с inspectable trace.
 4. Determinism: одинаковые входы дают одинаковый результат.
 5. Exclusivity: одна операция имеет только один route.
 6. External components дают ноль внутреннего fabrication labor.

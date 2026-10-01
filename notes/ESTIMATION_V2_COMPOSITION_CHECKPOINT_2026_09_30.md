@@ -24,13 +24,14 @@ Composed-estimate status is exactly `complete`, `review_required`, or `failed`.
 Cost-line status is exactly `resolved`, `review_required`, or `failed`.
 
 The extraction boundary rejects prices, costs, labor hours, machine minutes,
-rates, overhead, margin, VAT, sale price and totals. It accepts only the 21
-approved construction-template identifiers and material families supplied by a
-versioned catalog. Manufacturing features and purchased components have bounded
-field sets and cannot carry money or time estimates.
+rates, overhead, margin, VAT, sale price and totals. It decomposes each actual
+detected object directly from its evidence. Material families come from the
+versioned material catalog. Manufacturing features, purchased components and
+fabrication operations have bounded field sets and cannot carry money or time
+estimates.
 
 Blocking reason codes are finite and grouped around evidence, quantity,
-dimensions, template, material identity and price, machinery route and cost,
+dimensions, material identity and price, machinery route and cost,
 purchased components, labor, overhead, currency, extraction and deterministic
 engine failures. Unsupported free-form reason codes are rejected.
 
@@ -92,7 +93,7 @@ reduces unnecessary output tokens.
 
 Live synthetic checks passed:
 
-- E01 selected `base_cabinet_open`, extracted one birch-plywood requirement
+- E01 extracted one birch-plywood requirement from the supplied object evidence
   and correctly returned `material_quantity_missing` rather than guessing;
 - E05 kept width, depth and height null and returned
   `dimensions_missing` plus `material_quantity_missing`;
@@ -157,17 +158,16 @@ emits workshop labor only: fabrication, quality inspection and protective
 packaging. Vehicle loading, delivery trips and site installation operations
 were removed from its active baselines and cannot change the labor trace.
 
-The bounded `object_facts_v1 -> labor_input_v1` adapter now maps nested template
-and material facts without asking extraction to duplicate fields. Labor uses
+The bounded Object Facts to Labor adapter now maps actual part, connection and
+material facts without asking extraction to duplicate fields. Labor uses
 the production Company Profile codes `wood_edge_bander` and
 `finish_powder_booth`, reads nested thickness, and understands production
 `stainless_steel` with an explicit 304 or 316 alloy specification.
 
 Compatibility is verified against the real E01 Object Facts shape and real
 Company Profile machinery-row shape. Installation scope included versus
-excluded produces identical self-cost labor output. The five existing template
-routes are compatible; expanding the remaining templates and cross-object
-batch aggregation remains separate work.
+excluded produces identical self-cost labor output. Cross-object batch
+aggregation remains separate work.
 
 Verification: 11 direct Labor Engine tests, 83 Labor, Machinery and
 manufacturing tests, and the full 778-test suite pass.

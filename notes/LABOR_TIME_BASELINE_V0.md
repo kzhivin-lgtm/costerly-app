@@ -30,7 +30,7 @@ manual or external component route.
 | `site_measurement` | room zone | 15 | 20 | D | access, dimensions, photographs, documented exceptions |
 | `estimate_review` | object | 4 | 8 | D | scope and evidence review |
 | `shop_drawing` | unique object/module | 10 | 25 | D | fabrication drawing, part schedule, tolerances |
-| `cnc_programming` | CNC batch | 10 | 12 | D | CAM preparation after template selection |
+| `cnc_programming` | CNC batch | 10 | 12 | D | CAM preparation after toolpath review |
 | `sheet_nesting` | sheet | 4 | 3 | R | nesting is distinct from machining in custom MDF/plywood production |
 | `supplier_quotation` | supplier package | 5 | 8 | D | request, comparison, and recorded selection |
 | `quality_inspection` | finished module | 3 | 4 | D | dimensional, finish, and hardware check |

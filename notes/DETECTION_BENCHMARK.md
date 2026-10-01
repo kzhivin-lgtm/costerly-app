@@ -52,7 +52,7 @@ the object sheets on 2026-09-14. The earlier 23-object target was wrong. The
 table of contents is useful package evidence, not the final authority: the
 object sheets contain reused and conflicting codes.
 
-Canonical physical membership:
+Reference physical membership:
 
 - `CM-1.1`, `CM-1.2`, not the parent heading `CM-1`;
 - `CM-2`, `CM-3`, `CM-4`, `CM-4.1`, `CM-5`;
