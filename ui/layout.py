@@ -18,13 +18,13 @@ def _workflow_mark_src() -> str:
 
 
 def _workflow_title_html(title: str) -> str:
-    """Place the workflow mark before the established title line."""
+    """Replace the first workflow-title glyph without moving its line box."""
     return (
         '<span class="workflow-title-primary">'
         '<span class="workflow-title-mark" aria-hidden="true">'
         f'<img src="{_workflow_mark_src()}" alt="">'
         '</span>'
-        f'<span class="workflow-title-text">{html.escape(title)}</span>'
+        f'<span class="workflow-title-text">{html.escape(title[1:])}</span>'
         '</span>'
     )
 

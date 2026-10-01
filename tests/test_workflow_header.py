@@ -4,13 +4,13 @@ from ui.layout import post_upload_header_html
 from ui.object_detail_view import hero_html
 
 
-def test_workflow_header_mark_precedes_the_full_title():
+def test_workflow_header_mark_replaces_the_first_title_glyph():
     html = post_upload_header_html("File Review")
 
     assert 'class="post-upload-title workflow-title"' in html
     assert 'class="workflow-title-primary"' in html
     assert 'class="workflow-title-mark"' in html
-    assert 'class="workflow-title-text">File Review</span>' in html
+    assert 'class="workflow-title-text">ile Review</span>' in html
 
 
 def test_object_detail_keeps_black_label_and_lilac_object_name():
@@ -21,7 +21,7 @@ def test_object_detail_keeps_black_label_and_lilac_object_name():
         "preview_label": "Source preview",
     })
 
-    assert 'class="workflow-title-text">Object:</span>' in html
+    assert 'class="workflow-title-text">bject:</span>' in html
     assert 'class="object-detail-object-name">Display shelf</span>' in html
 
 

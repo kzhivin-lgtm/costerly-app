@@ -270,11 +270,9 @@ def apply_base_css() -> None:
         .st-key-costerly_header_controls {
             position: fixed !important;
             top: calc(var(--app-header-top) + 5px);
-            left: 50%;
-            right: auto;
+            right: 28px;
             z-index: 950;
             width: min(640px, calc(100vw - 56px)) !important;
-            transform: translateX(-50%);
             opacity: 0.58;
             transition: opacity 140ms ease;
         }
@@ -308,17 +306,10 @@ def apply_base_css() -> None:
             text-transform: none !important;
             background: rgba(255, 255, 255, 0.92) !important;
             backdrop-filter: blur(10px);
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
         }
 
         .st-key-costerly_header_controls button p {
             white-space: nowrap !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            line-height: 1 !important;
         }
 
         .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button {
@@ -337,7 +328,7 @@ def apply_base_css() -> None:
             width: 14px;
             height: 14px;
             margin-right: 0;
-            vertical-align: middle;
+            vertical-align: -2px;
             background: currentColor;
             -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4H5.8A1.8 1.8 0 0 0 4 5.8v12.4A1.8 1.8 0 0 0 5.8 20H10'/%3E%3Cpath d='M14 8l4 4-4 4'/%3E%3Cpath d='M8 12h10'/%3E%3C/svg%3E") center / contain no-repeat;
             mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4H5.8A1.8 1.8 0 0 0 4 5.8v12.4A1.8 1.8 0 0 0 5.8 20H10'/%3E%3Cpath d='M14 8l4 4-4 4'/%3E%3Cpath d='M8 12h10'/%3E%3C/svg%3E") center / contain no-repeat;
@@ -619,10 +610,8 @@ def apply_base_css() -> None:
 
             .st-key-costerly_header_controls {
                 top: calc(var(--app-header-top) + 8px);
-                left: 50%;
-                right: auto;
+                right: 14px;
                 width: calc(100vw - 28px) !important;
-                transform: translateX(-50%);
                 overflow-x: auto;
             }
 
