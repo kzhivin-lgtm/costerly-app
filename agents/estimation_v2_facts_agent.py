@@ -225,19 +225,32 @@ def _normalize_provider_result(
         if not isinstance(raw, Mapping):
             raise ValueError(f"manufacturing_features[{index}] must be an object")
         item = dict(raw)
-        measurements = item.pop("measurements", None)
-        flags = item.pop("flags", None)
-        if not isinstance(measurements, list) or len(measurements) != len(MANUFACTURING_MEASUREMENT_KEYS):
-            raise ValueError(f"manufacturing_features[{index}].measurements has invalid length")
-        if not isinstance(flags, list) or len(flags) != len(MANUFACTURING_FLAG_KEYS):
-            raise ValueError(f"manufacturing_features[{index}].flags has invalid length")
+        measurement_values = _key_values(
+            item.pop("measurement_items", []),
+            allowed=MANUFACTURING_MEASUREMENT_KEYS,
+            name=f"manufacturing_features[{index}].measurement_items",
+        )
+        flag_values = _key_values(
+            item.pop("flag_items", []),
+            allowed=MANUFACTURING_FLAG_KEYS,
+            name=f"manufacturing_features[{index}].flag_items",
+        )
+        measurements = {key: None for key in MANUFACTURING_MEASUREMENT_KEYS}
+        for key, value in measurement_values.items():
+            parsed = _number_text(value, f"manufacturing_features[{index}].{key}")
+            if parsed != -1:
+                measurements[key] = parsed
+        flags = {key: "unknown" for key in MANUFACTURING_FLAG_KEYS}
+        for key, value in flag_values.items():
+            if value not in {"yes", "no", "unknown"}:
+                raise ValueError(
+                    f"manufacturing_features[{index}].{key} must be yes, no, or unknown"
+                )
+            flags[key] = value
         manufacturing.append({
             **item,
-            "measurements": {
-                key: None if value == -1 else value
-                for key, value in zip(MANUFACTURING_MEASUREMENT_KEYS, measurements)
-            },
-            "flags": dict(zip(MANUFACTURING_FLAG_KEYS, flags)),
+            "measurements": measurements,
+            "flags": flags,
         })
 
     purchased = []
@@ -432,11 +445,7 @@ def run_estimation_v2_facts_agent(
             "feature_keys": list(FEATURE_KEYS),
             "purchased_specification_keys": list(PURCHASED_SPECIFICATION_KEYS),
         },
-        "transport_orders": {
-            "dimensions_mm": ["width", "depth", "height"],
-            "manufacturing_measurements": list(MANUFACTURING_MEASUREMENT_KEYS),
-            "manufacturing_flags": list(MANUFACTURING_FLAG_KEYS),
-        },
+        "transport_orders": {"dimensions_mm": ["width", "depth", "height"]},
         "transport_item_fields": {
             "material": [
                 "requirement_id", "source_name", "family", "specification_items",
@@ -445,8 +454,8 @@ def run_estimation_v2_facts_agent(
             "specification_item": ["key", "value"],
             "feature": ["key", "value"],
             "manufacturing_feature": [
-                "feature_id", "process", "material_requirement_id", "measurements",
-                "flags", "evidence_refs",
+                "feature_id", "process", "material_requirement_id",
+                "measurement_items", "flag_items", "evidence_refs",
             ],
             "purchased_component": [
                 "component_id", "component_type", "quantity", "unit",

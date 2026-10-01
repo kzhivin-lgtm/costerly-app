@@ -199,6 +199,41 @@ def test_agent_reports_output_token_truncation_before_json_parsing(monkeypatch):
         raise AssertionError("max_tokens response must be rejected before parsing")
 
 
+def test_sparse_named_manufacturing_fields_are_normalized_without_position():
+    transport = _provider_response()
+    material_id = transport["materials"][0]["requirement_id"]
+    transport["manufacturing_features"] = [{
+        "feature_id": "mf-1",
+        "process": "cnc_router",
+        "material_requirement_id": material_id,
+        "measurement_items": [
+            {"key": "thickness_mm", "value": "18"},
+            {"key": "part_count", "value": "6"},
+        ],
+        "flag_items": [
+            {"key": "production_file_ready", "value": "no"},
+            {"key": "has_internal_cutouts", "value": "yes"},
+        ],
+        "evidence_refs": transport["materials"][0]["evidence_refs"],
+    }]
+
+    normalized = agent._normalize_provider_result(
+        transport,
+        input_id="input-e01-r1",
+        object_input_revision=1,
+        estimation_input=_input(),
+        production_context={},
+    )
+
+    feature = normalized["manufacturing_features"][0]
+    assert feature["measurements"]["thickness_mm"] == 18
+    assert feature["measurements"]["part_count"] == 6
+    assert feature["measurements"]["sheet_count"] is None
+    assert feature["flags"]["production_file_ready"] == "no"
+    assert feature["flags"]["has_internal_cutouts"] == "yes"
+    assert feature["flags"]["has_pockets"] == "unknown"
+
+
 def test_agent_rejects_unknown_evidence_reference(monkeypatch):
     changed = _provider_response()
     changed["labor_operations"][0]["evidence_refs"] = ["invented-ref"]

@@ -56,12 +56,13 @@ Rules:
 12. Use `failed` only when extraction cannot produce a safe result and include
     `extraction_failed`.
 13. The transport is compact. `dimensions_mm` is `[width, depth, height]`.
-    Manufacturing measurements and flags follow the supplied order. Sparse
-    specifications and features use unique `{key, value}` entries. Numeric
-    values inside those entries are numeric strings. Use `0` for an unknown
-    positive dimension or material quantity, `-1` for an unknown count where
-    zero is meaningful, an empty string for unknown optional text and `unknown`
-    for an unknown tri-state feature.
+    Sparse specifications, features, manufacturing measurements and
+    manufacturing flags use unique `{key, value}` entries. Numeric values
+    inside those entries are numeric strings. Omitted manufacturing
+    measurements become null and omitted manufacturing flags become `unknown`.
+    Use `0` for an unknown positive dimension or material quantity, `-1` for an
+    unknown count where zero is meaningful, an empty string for unknown optional
+    text and `unknown` for an unknown tri-state feature.
 14. Every array item contains exactly the fields listed in
     `transport_item_fields`. Do not abbreviate an item as a string. Add a CNC or
     laser manufacturing feature only when directly supported by evidence.
