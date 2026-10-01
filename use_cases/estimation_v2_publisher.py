@@ -24,6 +24,12 @@ from use_cases.estimation_v2_composition import compose_object_estimate, validat
 from use_cases.estimation_v2_labor_adapter import build_labor_input
 from use_cases.labor_engine import estimate_labor
 from use_cases.machinery import build_company_production_context
+from use_cases.manufacturing_estimation import (
+    ManufacturingEstimationError,
+    build_manufacturing_cost_lines,
+)
+from use_cases.manufacturing_parameters import ManufacturingParameterError
+from use_cases.material_identity_resolution import build_material_identity_index
 from use_cases.material_price_resolver import _unit_price_multiplier
 from use_cases.overhead_engine import build_overhead_lines
 
@@ -94,7 +100,7 @@ def _settings(client: Any, company_id: str) -> tuple[dict[str, Any], dict[str, A
     return (settings[0] if settings else {}, monthly[0] if monthly else {})
 
 
-def _catalogs(client: Any, company_id: str) -> dict[str, list[dict[str, Any]]]:
+def _catalogs(client: Any, company_id: str) -> dict[str, Any]:
     identities = _paged_rows(
         client,
         "reference_material_pricing_identities",
@@ -105,15 +111,53 @@ def _catalogs(client: Any, company_id: str) -> dict[str, list[dict[str, Any]]]:
         "market_material_pricing_identity_prices",
         filters={"status": "active"},
     )
+    all_reference_materials = _paged_rows(
+        client, "reference_materials", filters={"active": True}
+    )
+    catalog_reference_materials = [
+        row for row in all_reference_materials
+        if (row.get("specifications") or {}).get("catalog_version")
+        == "israel_global_catalog_v1"
+    ] or all_reference_materials
+    pricing_identity_members = _paged_rows(
+        client, "reference_material_pricing_identity_members", filters={}
+    )
+    identity_attributes = {
+        str(row.get("pricing_identity_id") or ""): dict(row.get("price_attributes") or {})
+        for row in identities
+    }
+    identity_ids_by_material: dict[str, set[str]] = {}
+    for row in pricing_identity_members:
+        material_id = str(row.get("material_id") or "")
+        identity_id = str(row.get("pricing_identity_id") or "")
+        if material_id and identity_id:
+            identity_ids_by_material.setdefault(material_id, set()).add(identity_id)
+    reference_materials = []
+    for row in catalog_reference_materials:
+        material_id = str(row.get("material_id") or "")
+        linked_ids = identity_ids_by_material.get(material_id) or set()
+        specifications = dict(row.get("specifications") or {})
+        if len(linked_ids) == 1:
+            for key, value in identity_attributes.get(next(iter(linked_ids)), {}).items():
+                if value not in (None, "", []) and key not in specifications:
+                    specifications[key] = value
+        reference_materials.append({**row, "specifications": specifications})
+    reference_aliases = _paged_rows(
+        client,
+        "reference_material_aliases",
+        filters={"market_code": "IL", "active": True},
+    )
     return {
         "items": _rows(client, "company_material_items", company_id=company_id),
         "offers": _rows(client, "company_material_offers", company_id=company_id),
         "identities": identities,
         "prices": prices,
-        "reference_materials": _paged_rows(client, "reference_materials", filters={"active": True}),
-        "pricing_identity_members": _paged_rows(
-            client, "reference_material_pricing_identity_members", filters={}
+        "reference_materials": reference_materials,
+        "reference_aliases": reference_aliases,
+        "material_identity_index": build_material_identity_index(
+            reference_materials, reference_aliases, "IL"
         ),
+        "pricing_identity_members": pricing_identity_members,
     }
 
 
@@ -170,7 +214,9 @@ def _material_rows_and_costs(
             pricing_identities=catalogs["identities"],
             pricing_identity_prices=catalogs["prices"],
             reference_materials=catalogs.get("reference_materials") or [],
+            reference_aliases=catalogs.get("reference_aliases") or [],
             pricing_identity_members=catalogs.get("pricing_identity_members") or [],
+            material_identity_index=catalogs.get("material_identity_index"),
             as_of=date.today(),
         )
         unit_cost: float | None = None
@@ -184,6 +230,18 @@ def _material_rows_and_costs(
             source_ref = f"israel-pricing:{resolution.pricing_identity_price_id}"
         cost = round(quantity * unit_cost, 2) if unit_cost is not None and quantity > 0 else None
         reason_codes = [] if cost is not None else ["material_price_unresolved"]
+        source_name = material.get("source_name") or material.get("family")
+        displayed_name = (
+            resolution.resolved_material_name
+            if resolution.thickness_policy and resolution.resolved_material_name
+            else source_name
+        )
+        normalization_note = None
+        if resolution.thickness_policy:
+            normalization_note = (
+                f"Requested {resolution.requested_thickness_mm} mm; priced as "
+                f"{resolution.priced_thickness_mm} mm by sheet-thickness policy"
+            )
         cost_lines.append({
             "line_id": line_id, "section": "material",
             "status": "resolved" if cost is not None else "review_required",
@@ -193,17 +251,111 @@ def _material_rows_and_costs(
         db_rows.append({
             "estimate_id": facts["estimate_id"], "object_id": facts["object_id"],
             "line_id": line_id, "company_id": facts["company_id"], "section": "material",
-            "group_name": "Materials", "item_name": material.get("source_name") or material.get("family"),
+            "group_name": "Materials", "item_name": displayed_name,
             "catalog_match_query": material.get("source_name"), "unit": unit,
             "unit_cost": unit_cost, "quantity": quantity or None, "cost": cost,
             "source": "estimation_v2", "sort_order": index * 10,
             "needs_price": cost is None, "needs_review": cost is None,
             "confidence": None,
+            "notes": normalization_note,
             "raw_agent_json": _json_safe({
                 "facts": dict(material), "resolution": resolution.__dict__,
             }),
         })
     return db_rows, cost_lines
+
+
+def _manufacturing_input(facts: Mapping[str, Any]) -> dict[str, Any]:
+    materials = {
+        str(row.get("requirement_id") or ""): row
+        for row in facts.get("materials") or []
+        if isinstance(row, Mapping)
+    }
+    features: list[dict[str, Any]] = []
+    for feature in facts.get("manufacturing_features") or []:
+        if not isinstance(feature, Mapping):
+            continue
+        material = materials.get(str(feature.get("material_requirement_id") or ""), {})
+        specification = material.get("specification") or {}
+        features.append({
+            "process": feature.get("process"),
+            "material_family": material.get("family"),
+            "thickness_mm": specification.get("thickness_mm"),
+            **dict(feature.get("measurements") or {}),
+            **dict(feature.get("flags") or {}),
+            "evidence_pages": ", ".join(str(value) for value in feature.get("evidence_refs") or []),
+            "notes": "",
+        })
+    return {
+        "estimate_id": facts["estimate_id"],
+        "object_id": facts["object_id"],
+        "company_id": facts["company_id"],
+        "manufacturing": features,
+    }
+
+
+def _manufacturing_rows_and_costs(
+    *,
+    facts: Mapping[str, Any],
+    production_context: Mapping[str, Any],
+    parameter_rows: Sequence[Mapping[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    if not facts.get("manufacturing_features"):
+        return [], []
+    try:
+        rows = build_manufacturing_cost_lines(
+            estimation_result=_manufacturing_input(facts),
+            production_context=production_context,
+            parameter_rows=parameter_rows,
+        )
+    except (ManufacturingEstimationError, ManufacturingParameterError, ValueError):
+        return [], [{
+            "line_id": f"{facts['object_id']}_machinery_unresolved",
+            "section": "machinery", "status": "review_required",
+            "amount": None, "currency": "ILS",
+            "source_ref": "manufacturing-engine:review",
+            "reason_codes": ["machinery_cost_unresolved"],
+        }]
+    if not rows:
+        return [], [{
+            "line_id": f"{facts['object_id']}_machinery_unresolved",
+            "section": "machinery", "status": "review_required",
+            "amount": None, "currency": "ILS",
+            "source_ref": "manufacturing-engine:no-route",
+            "reason_codes": ["machinery_cost_unresolved"],
+        }]
+    costs = [{
+        "line_id": f"{facts['object_id']}_machinery_{index:04d}",
+        "section": "machinery", "status": "resolved",
+        "amount": _number(row.get("cost")), "currency": "ILS",
+        "source_ref": f"manufacturing-engine:{(row.get('raw_agent_json') or {}).get('calculator')}",
+        "reason_codes": [],
+    } for index, row in enumerate(rows, start=1)]
+    return rows, costs
+
+
+def _facts_without_manufacturing_labor(facts: Mapping[str, Any]) -> dict[str, Any]:
+    processes = {
+        str(row.get("process") or "")
+        for row in facts.get("manufacturing_features") or []
+        if isinstance(row, Mapping)
+    }
+    handled_codes: set[str] = set()
+    if "sheet_laser" in processes:
+        handled_codes.update({"sheet_laser_cutting", "sheet_nesting"})
+    if "cnc_router" in processes:
+        handled_codes.update({
+            "cnc_programming", "sheet_nesting", "cnc_router_profile_cutting",
+            "cnc_vertical_drilling", "cnc_horizontal_drilling", "cnc_grooving",
+            "cnc_pocketing",
+        })
+    return {
+        **facts,
+        "labor_operations": [
+            row for row in facts.get("labor_operations") or []
+            if str(row.get("operation_code") or "") not in handled_codes
+        ],
+    }
 
 
 def _purchased_component_rows_and_costs(
@@ -334,6 +486,11 @@ def build_estimation_v2_context(client: Any, company_id: str) -> dict[str, Any]:
         "overhead_monthly": overhead_monthly,
         "employees": _rows(client, "company_employees", company_id=company_id),
         "production_context": build_company_production_context(company_id, client=client),
+        "manufacturing_parameters": _paged_rows(
+            client,
+            "manufacturing_cost_parameters",
+            filters={"country_code": "IL", "status": "active"},
+        ),
     }
 
 
@@ -368,6 +525,10 @@ def publish_estimation_v2_object(
             object_id=object_id,
             lines=_safe_db_lines([*material_rows, *purchased_rows]),
         )
+        update_rfq_object_estimate_totals(
+            client, estimate_id=estimate_id, object_id=object_id,
+            self_cost_ex_vat=None, vat_amount=None, self_cost_total=None,
+        )
         update_rfq_object_estimate_progress(
             client, estimate_id=estimate_id, object_id=object_id,
             status="review_required", progress_percent=100,
@@ -391,15 +552,21 @@ def publish_estimation_v2_object(
         progress_percent=70, progress_label="materials_resolved",
     )
     labor_rows, labor_costs, labor_hours, labor_total = _labor_rows_and_costs(
-        client=client, facts=pricing_facts, settings=settings,
+        client=client, facts=_facts_without_manufacturing_labor(pricing_facts), settings=settings,
         employees=shared["employees"], production_context=shared["production_context"],
     )
+    manufacturing_rows, machinery_costs = _manufacturing_rows_and_costs(
+        facts=pricing_facts,
+        production_context=shared["production_context"],
+        parameter_rows=shared.get("manufacturing_parameters") or [],
+    )
     material_total = sum(_number(line.get("cost")) for line in material_rows)
+    manufacturing_total = sum(_number(line.get("cost")) for line in manufacturing_rows)
     overhead_rows = _safe_db_lines(build_overhead_lines(
         estimate_id=estimate_id, object_id=object_id, company_id=str(facts["company_id"]),
         settings=settings, overhead_monthly=overhead_monthly,
         labor_hours_total=labor_hours,
-        subtotal_before_overhead=material_total + labor_total,
+        subtotal_before_overhead=material_total + labor_total + manufacturing_total,
     ))
     overhead_total = sum(_number(line.get("cost")) for line in overhead_rows)
     overhead_costs = [{
@@ -409,13 +576,6 @@ def publish_estimation_v2_object(
         "source_ref": "overhead-engine:company-profile",
         "reason_codes": [] if overhead_rows else ["overhead_review_required"],
     }]
-    machinery_costs = []
-    if facts.get("manufacturing_features"):
-        machinery_costs.append({
-            "line_id": f"{object_id}_machinery_overhead", "section": "machinery",
-            "status": "resolved", "amount": 0, "currency": "ILS",
-            "source_ref": "company-overhead:machinery", "reason_codes": [],
-        })
     composition = compose_object_estimate(
         facts=_public_facts(facts),
         cost_lines=[*material_costs, *purchased_costs, *labor_costs, *machinery_costs, *overhead_costs],
@@ -423,7 +583,10 @@ def publish_estimation_v2_object(
     )
     replace_rfq_estimate_lines_for_object(
         client, estimate_id=estimate_id, object_id=object_id,
-        lines=_safe_db_lines([*material_rows, *purchased_rows, *labor_rows, *overhead_rows]),
+        lines=_safe_db_lines([
+            *material_rows, *purchased_rows, *manufacturing_rows,
+            *labor_rows, *overhead_rows,
+        ]),
     )
     status = "completed" if composition["status"] == "complete" else "review_required"
     if status == "completed":
@@ -433,6 +596,11 @@ def publish_estimation_v2_object(
             client, estimate_id=estimate_id, object_id=object_id,
             self_cost_ex_vat=self_cost, vat_amount=vat,
             self_cost_total=round(self_cost + vat, 2),
+        )
+    else:
+        update_rfq_object_estimate_totals(
+            client, estimate_id=estimate_id, object_id=object_id,
+            self_cost_ex_vat=None, vat_amount=None, self_cost_total=None,
         )
     update_rfq_object_estimate_progress(
         client, estimate_id=estimate_id, object_id=object_id, status=status,

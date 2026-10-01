@@ -168,6 +168,7 @@ def _material_family_matches(material: Mapping[str, Any], family_tokens: set[str
         str(value or "")
         for value in (
             material.get("canonical_name"),
+            specifications.get("material_family"),
             specifications.get("subcategory_en"),
             specifications.get("category_en"),
         )
@@ -189,6 +190,7 @@ def _material_family_corpus_tokens(material: Mapping[str, Any]) -> set[str]:
                 str(value or "")
                 for value in (
                     material.get("canonical_name"),
+                    specifications.get("material_family"),
                     specifications.get("subcategory_en"),
                     specifications.get("category_en"),
                 )

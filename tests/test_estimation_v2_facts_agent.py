@@ -293,6 +293,52 @@ def test_unknown_optional_manufacturing_key_becomes_warning_not_failure():
     assert "unsupported_measure" in warning["message"]
 
 
+def test_laser_subcontractor_route_is_not_blocked_when_manufacturing_inputs_exist():
+    transport = _provider_response()
+    material_id = transport["materials"][0]["requirement_id"]
+    transport["labor_operations"][0]["operation_code"] = "sheet_laser_cutting"
+    transport["manufacturing_features"] = [{
+        "feature_id": "laser-1", "process": "sheet_laser",
+        "material_requirement_id": material_id,
+        "measurement_items": [
+            {"key": "thickness_mm", "value": "5"},
+            {"key": "path_length_m", "value": "12"},
+        ],
+        "flag_items": [],
+        "evidence_refs": transport["materials"][0]["evidence_refs"],
+    }]
+
+    normalized = agent._normalize_provider_result(
+        transport, input_id="input-e01-r1", object_input_revision=1,
+        estimation_input=_input(),
+        production_context={"machines": [{
+            "machine_code": "metal_sheet_laser", "availability_status": "not_in_house",
+        }]},
+    )
+
+    assert normalized["status"] == "ready"
+    assert not any(
+        item["code"] == "machinery_route_unresolved"
+        for item in normalized["review_items"]
+    )
+
+
+def test_machine_operation_without_manufacturing_inputs_requires_review():
+    transport = _provider_response()
+    transport["labor_operations"][0]["operation_code"] = "sheet_laser_cutting"
+
+    normalized = agent._normalize_provider_result(
+        transport, input_id="input-e01-r1", object_input_revision=1,
+        estimation_input=_input(), production_context={},
+    )
+
+    assert normalized["status"] == "review_required"
+    assert any(
+        item["code"] == "manufacturing_feature_unsupported"
+        for item in normalized["review_items"]
+    )
+
+
 def test_agent_rejects_unknown_evidence_reference(monkeypatch):
     changed = _provider_response()
     changed["labor_operations"][0]["evidence_refs"] = ["invented-ref"]

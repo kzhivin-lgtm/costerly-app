@@ -27,6 +27,15 @@ Rules:
    phrase, allowed family, specifications, positive quantity, unit and evidence.
    Calculate net quantities from visible geometry and record transparent
    arithmetic in `source_facts`. Do not add market waste or price assumptions.
+   Material specifications describe the purchased stock before fabrication.
+   Never put a final painted, powder-coated or lacquered object finish on the
+   substrate material. Represent a separately purchased coating as its own
+   material in a purchasable unit such as litres or kilograms, while the coated
+   area remains the physical driver for finishing labor. Do not combine several
+   unidentified fasteners or shop consumables into one invented material line.
+   For hollow metal sections, put the section type alone in `profile_section`
+   and put section dimensions in `width_mm`, `height_mm` and
+   `wall_thickness_mm`.
 4. Supplier SKU is provenance only. It never identifies or prices a material.
 5. Create the fabrication sequence in `labor_operations`. Select operation codes
    only from `allowed_labor_operations`. Choose operations from the object's real
@@ -64,8 +73,13 @@ Rules:
     unknown count where zero is meaningful, an empty string for unknown optional
     text and `unknown` for an unknown tri-state feature.
 14. Every array item contains exactly the fields listed in
-    `transport_item_fields`. Do not abbreviate an item as a string. Add a CNC or
-    laser manufacturing feature only when directly supported by evidence.
+    `transport_item_fields`. Do not abbreviate an item as a string. Every CNC
+    router or sheet-laser operation requires one corresponding manufacturing
+    feature. Extract all supported measurements and flags. A transparent
+    evidence-based estimate is allowed when its arithmetic is recorded in
+    `source_facts` with `estimated` provenance and a warning. If no safe driver
+    can be extracted or estimated, return a blocking review item instead of
+    omitting the feature.
 
 Return exactly one raw JSON object with the complete transport fields supplied
 in the request contract. Do not use Markdown fences, XML, prose or commentary.

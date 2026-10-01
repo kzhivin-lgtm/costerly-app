@@ -2,6 +2,10 @@ from datetime import date
 from decimal import Decimal
 
 from use_cases.estimate_material_resolution import resolve_estimate_material_requirement
+from use_cases.material_identity_resolution import (
+    build_material_identity_index,
+    resolve_material_identity,
+)
 
 
 AS_OF = date(2026, 9, 30)
@@ -31,11 +35,13 @@ def _offer(offer_id: str, material_id: str, **overrides):
     }
 
 
-def _identity(identity_id: str, **attributes):
+def _identity(identity_id: str, *, base_unit="sqm", canonical_name=None, **attributes):
     return {
         "pricing_identity_id": identity_id,
         "market_code": "IL",
         "status": "active",
+        "base_unit": base_unit,
+        "canonical_name": canonical_name or identity_id,
         "price_attributes": attributes,
     }
 
@@ -147,3 +153,168 @@ def test_exact_reference_material_membership_resolves_detailed_price_class_witho
     assert result.authority == "israel_pricing"
     assert result.pricing_identity_id == "primer-class"
     assert result.price_typical == Decimal("100")
+
+
+def test_estimation_uses_reference_alias_then_membership_before_broad_price_matching():
+    result = _resolve(
+        requirement_name="Painted MDF 18 mm",
+        material_family="mdf",
+        specifications={"thickness_mm": 18, "finish": "painted"},
+        reference_materials=({
+            "material_id": "reference-mdf-18",
+            "canonical_name": "Standard MDF, raw, 18 mm",
+            "active": True,
+            "specifications": {"material_family": "mdf", "thickness_mm": 18},
+        },),
+        reference_aliases=({
+            "material_id": "reference-mdf-18", "market_code": "IL",
+            "alias_text": "Painted MDF 18 mm", "exact_identity": True,
+            "active": True,
+        },),
+        pricing_identity_members=({
+            "material_id": "reference-mdf-18", "pricing_identity_id": "mdf-18-class",
+        },),
+        pricing_identities=(
+            _identity("mdf-18-class", material_family="mdf", thickness_mm=18),
+            _identity("broad-mdf-a", material_family="mdf"),
+            _identity("broad-mdf-b", material_family="mdf"),
+        ),
+        pricing_identity_prices=(_price("mdf-18-price", "mdf-18-class"),),
+    )
+
+    assert result.status == "resolved"
+    assert result.pricing_identity_id == "mdf-18-class"
+    assert result.pricing_identity_price_id == "mdf-18-price"
+
+
+def test_estimation_does_not_substitute_an_unlisted_mdf_thickness():
+    result = _resolve(
+        requirement_name="MDF 20 mm",
+        material_family="mdf",
+        specifications={"thickness_mm": 20},
+        reference_materials=(
+            {"material_id": "mdf-19", "canonical_name": "MDF 19 mm", "active": True,
+             "specifications": {"material_family": "mdf", "thickness_mm": 19}},
+            {"material_id": "mdf-22", "canonical_name": "MDF 22 mm", "active": True,
+             "specifications": {"material_family": "mdf", "thickness_mm": 22}},
+        ),
+        reference_aliases=(),
+        pricing_identity_members=(),
+        pricing_identities=(),
+        pricing_identity_prices=(),
+    )
+
+    assert result.status == "needs_review"
+    assert result.reason_codes == ("pricing_identity_not_found",)
+
+
+def test_estimation_index_uses_catalog_material_family_instead_of_cross_family_noise():
+    materials = (
+        {"material_id": "steel", "canonical_name": "Square hollow section 20 mm",
+         "active": True, "specifications": {"material_family": "carbon_steel"}},
+        {"material_id": "plastic", "canonical_name": "Polycarbonate sheet 20 mm",
+         "active": True, "specifications": {"material_family": "polycarbonate"}},
+    )
+    index = build_material_identity_index(materials, (), "IL")
+
+    identity = resolve_material_identity(
+        phrase="металл профиль 20мм",
+        market_code="IL",
+        material_family="carbon_steel",
+        specifications={},
+        materials=materials,
+        reference_aliases=(),
+        material_identity_index=index,
+    )
+
+    assert identity.status == "shortlist"
+    assert [candidate.material_id for candidate in identity.candidates] == ["steel"]
+
+
+def test_missing_sheet_thickness_uses_next_higher_price_class():
+    result = _resolve(
+        requirement_name="MDF 20 mm",
+        material_family="mdf",
+        specifications={"thickness_mm": 20},
+        pricing_identities=(
+            _identity("mdf-19", material_family="mdf", construction="raw", thickness_mm=19),
+            _identity("mdf-22", material_family="mdf", construction="raw", thickness_mm=22),
+        ),
+        pricing_identity_prices=(
+            _price("price-19", "mdf-19"),
+            _price("price-22", "mdf-22", price_typical="140", price_high="160"),
+        ),
+    )
+
+    assert result.status == "resolved"
+    assert result.pricing_identity_id == "mdf-22"
+    assert result.price_typical == Decimal("140")
+    assert result.resolved_material_name == "mdf-22"
+    assert result.requested_thickness_mm == Decimal("20")
+    assert result.priced_thickness_mm == Decimal("22")
+    assert result.thickness_policy == "next_higher_sheet_thickness"
+
+
+def test_missing_sheet_thickness_uses_lower_only_when_no_higher_exists():
+    result = _resolve(
+        requirement_name="MDF 25 mm",
+        material_family="mdf",
+        specifications={"thickness_mm": 25},
+        pricing_identities=(
+            _identity("mdf-19", material_family="mdf", construction="raw", thickness_mm=19),
+            _identity("mdf-22", material_family="mdf", construction="raw", thickness_mm=22),
+        ),
+        pricing_identity_prices=(_price("price-22", "mdf-22"),),
+    )
+
+    assert result.status == "resolved"
+    assert result.pricing_identity_id == "mdf-22"
+    assert result.thickness_policy == "nearest_lower_when_no_higher_sheet_thickness"
+
+
+def test_thickness_fallback_does_not_apply_to_non_sheet_price_units():
+    result = _resolve(
+        requirement_name="Square tube, 2.5 mm wall",
+        material_family="carbon_steel",
+        specifications={"thickness_mm": 2.5},
+        requested_unit="kg",
+        pricing_identities=(
+            _identity("steel-2", base_unit="kg", material_family="carbon_steel", thickness_mm=2),
+            _identity("steel-3", base_unit="kg", material_family="carbon_steel", thickness_mm=3),
+        ),
+        pricing_identity_prices=(
+            _price("steel-price-2", "steel-2", unit="kg"),
+            _price("steel-price-3", "steel-3", unit="kg"),
+        ),
+    )
+
+    assert result.status == "needs_review"
+    assert result.requested_thickness_mm is None
+    assert result.priced_thickness_mm is None
+
+
+def test_incompatible_reference_membership_is_ignored_before_sheet_fallback():
+    result = _resolve(
+        requirement_name="Standard MDF raw 20 mm",
+        material_family="mdf",
+        specifications={"thickness_mm": 20},
+        reference_materials=({
+            "material_id": "bad-reference", "canonical_name": "Standard MDF raw 20 mm",
+            "active": True, "specifications": {"material_family": "mdf", "thickness_mm": 20},
+        },),
+        pricing_identity_members=({
+            "material_id": "bad-reference", "pricing_identity_id": "hdf-20",
+        },),
+        pricing_identities=(
+            _identity("hdf-20", material_family="hdf", construction="raw", thickness_mm=20),
+            _identity("mdf-22", material_family="mdf", construction="raw", thickness_mm=22),
+        ),
+        pricing_identity_prices=(
+            _price("hdf-price", "hdf-20"),
+            _price("mdf-price", "mdf-22"),
+        ),
+    )
+
+    assert result.status == "resolved"
+    assert result.pricing_identity_id == "mdf-22"
+    assert result.thickness_policy == "next_higher_sheet_thickness"

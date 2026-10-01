@@ -33,7 +33,7 @@ from use_cases.estimation_v2_composition import (
 from use_cases.labor_engine import MACHINE_REQUIREMENTS
 
 
-ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v5"
+ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v6"
 ESTIMATION_V2_FACTS_MAX_OUTPUT_TOKENS = 16384
 ESTIMATION_V2_FACTS_TIMEOUT_SECONDS = 180.0
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_object_facts_prompt.md"
@@ -316,6 +316,15 @@ def _normalize_provider_result(
         and row.get("availability_status") == "in_house"
         and row.get("machine_code")
     }
+    manufacturing_processes = {
+        str(row.get("process") or "")
+        for row in manufacturing
+        if isinstance(row, Mapping)
+    }
+    deterministic_machine_processes = {
+        "wood_cnc_router": "cnc_router",
+        "metal_sheet_laser": "sheet_laser",
+    }
     labor_operations = []
     unavailable_operation_machines: list[tuple[int, str]] = []
     for index, raw in enumerate(result.get("labor_operations") or []):
@@ -327,7 +336,12 @@ def _normalize_provider_result(
             raise ValueError(f"labor_operations[{index}].material_requirement_ids must be an array")
         operation_code = str(item.get("operation_code") or "")
         machine_code = MACHINE_REQUIREMENTS.get(operation_code)
-        if machine_code and machine_code not in available_machines:
+        deterministic_process = deterministic_machine_processes.get(machine_code or "")
+        if (
+            machine_code
+            and machine_code not in available_machines
+            and deterministic_process not in manufacturing_processes
+        ):
             unavailable_operation_machines.append((index, machine_code))
         labor_operations.append({
             **item,
@@ -370,6 +384,18 @@ def _normalize_provider_result(
             server_gaps.append(("material_quantity_missing", f"purchased_components[{index}].quantity", "Purchased component quantity is missing"))
     if not labor_operations:
         server_gaps.append(("labor_result_unavailable", "labor_operations", "Production operations are missing"))
+    required_manufacturing_processes = {
+        deterministic_machine_processes[machine_code]
+        for operation in labor_operations
+        if (machine_code := str(operation.get("machine_code") or ""))
+        in deterministic_machine_processes
+    }
+    for process in sorted(required_manufacturing_processes - manufacturing_processes):
+        server_gaps.append((
+            "manufacturing_feature_unsupported",
+            "manufacturing_features",
+            f"A {process} operation requires deterministic manufacturing inputs",
+        ))
     for index, machine_code in unavailable_operation_machines:
         server_gaps.append((
             "machinery_route_unresolved",

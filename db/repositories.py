@@ -522,9 +522,9 @@ def update_rfq_object_estimate_totals(
     *,
     estimate_id: str,
     object_id: str,
-    self_cost_ex_vat: float,
-    vat_amount: float,
-    self_cost_total: float,
+    self_cost_ex_vat: float | None,
+    vat_amount: float | None,
+    self_cost_total: float | None,
 ) -> None:
     """Persist deterministic self-cost totals for one object estimate."""
     client.table("rfq_object_estimates").update(

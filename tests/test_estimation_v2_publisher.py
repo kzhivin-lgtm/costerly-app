@@ -1,4 +1,6 @@
 import pytest
+from decimal import Decimal
+from types import SimpleNamespace
 
 import use_cases.estimation_v2_publisher as publisher
 
@@ -55,6 +57,40 @@ def test_company_offer_price_uses_deterministic_median_and_removes_vat():
     assert source == "company-offer:offer-1"
 
 
+def test_sheet_thickness_normalization_is_visible_and_auditable(monkeypatch):
+    resolution = SimpleNamespace(
+        status="resolved", authority="israel_pricing", price_typical=Decimal("200"),
+        pricing_identity_price_id="price-22", offer_ids=(),
+        thickness_policy="next_higher_sheet_thickness",
+        requested_thickness_mm=Decimal("20"), priced_thickness_mm=Decimal("22"),
+        resolved_material_name="MDF, raw, 22 mm",
+    )
+    monkeypatch.setattr(
+        publisher, "resolve_estimate_material_requirement", lambda **_kwargs: resolution
+    )
+    facts = _ready_facts()
+    facts["estimate_id"] = "estimate-1"
+    facts["materials"][0].update({
+        "source_name": "MDF 20 mm", "quantity": 3, "unit": "sqm",
+    })
+
+    rows, costs = publisher._material_rows_and_costs(
+        facts=facts,
+        catalogs={
+            "items": [], "offers": [], "identities": [], "prices": [],
+            "reference_materials": [], "reference_aliases": [],
+            "pricing_identity_members": [],
+        },
+        vat_percent=18,
+    )
+
+    assert rows[0]["item_name"] == "MDF, raw, 22 mm"
+    assert rows[0]["catalog_match_query"] == "MDF 20 mm"
+    assert "Requested 20 mm" in rows[0]["notes"]
+    assert rows[0]["cost"] == 600
+    assert costs[0]["amount"] == 600
+
+
 def test_role_rate_uses_company_profile_position_mapping():
     rate, matched = publisher._role_rate(
         "wood_machine_operator",
@@ -63,6 +99,41 @@ def test_role_rate_uses_company_profile_position_mapping():
     )
     assert rate == 40
     assert matched == "cnc_operator"
+
+
+def test_manufacturing_features_are_routed_through_existing_cost_engine(monkeypatch):
+    facts = _ready_facts()
+    facts["materials"][0]["specification"] = {"thickness_mm": 5}
+    facts["materials"][0]["family"] = "carbon_steel"
+    facts["manufacturing_features"] = [{
+        "feature_id": "laser-1", "process": "sheet_laser",
+        "material_requirement_id": "m1",
+        "measurements": {"path_length_m": 12},
+        "flags": {"production_file_ready": "yes"},
+        "evidence_refs": ["ref"],
+    }]
+    captured = {}
+
+    def _build(**kwargs):
+        captured.update(kwargs)
+        return [{
+            "line_id": "laser-line", "section": "material", "cost": 450,
+            "raw_agent_json": {"calculator": "sheet_laser_subcontractor"},
+        }]
+
+    monkeypatch.setattr(publisher, "build_manufacturing_cost_lines", _build)
+    rows, costs = publisher._manufacturing_rows_and_costs(
+        facts={**facts, "estimate_id": "estimate-1"},
+        production_context={"machines": []}, parameter_rows=[{"parameter_id": "p1"}],
+    )
+
+    feature = captured["estimation_result"]["manufacturing"][0]
+    assert feature["material_family"] == "carbon_steel"
+    assert feature["thickness_mm"] == 5
+    assert feature["path_length_m"] == 12
+    assert rows[0]["cost"] == 450
+    assert costs[0]["section"] == "machinery"
+    assert costs[0]["amount"] == 450
 
 
 def test_publisher_writes_agent_materials_operations_totals_and_completed_status(monkeypatch):
@@ -113,6 +184,7 @@ def test_publisher_preserves_review_required_without_fake_totals(monkeypatch):
     monkeypatch.setattr(publisher, "_material_rows_and_costs", lambda **_kwargs: ([{"line_id": "m1"}], []))
     monkeypatch.setattr(publisher, "_purchased_component_rows_and_costs", lambda _facts: ([], []))
     monkeypatch.setattr(publisher, "replace_rfq_estimate_lines_for_object", lambda *_args, **kwargs: events.append({"lines": kwargs["lines"]}))
+    monkeypatch.setattr(publisher, "update_rfq_object_estimate_totals", lambda *_args, **kwargs: events.append({"totals": kwargs}))
     monkeypatch.setattr(publisher, "update_rfq_object_estimate_progress", lambda *_args, **kwargs: events.append(kwargs))
 
     result = publisher.publish_estimation_v2_object(
@@ -123,7 +195,10 @@ def test_publisher_preserves_review_required_without_fake_totals(monkeypatch):
 
     assert result["status"] == "review_required"
     assert result["reason_codes"] == ["dimensions_missing"]
-    assert events == [{"lines": [{"line_id": "m1"}]}, {
+    assert events == [{"lines": [{"line_id": "m1"}]}, {"totals": {
+        "estimate_id": "estimate-1", "object_id": "object-1",
+        "self_cost_ex_vat": None, "vat_amount": None, "self_cost_total": None,
+    }}, {
         "estimate_id": "estimate-1", "object_id": "object-1",
         "status": "review_required", "progress_percent": 100,
         "progress_label": "object_facts_review_required",
