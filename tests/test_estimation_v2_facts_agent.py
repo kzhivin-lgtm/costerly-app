@@ -412,3 +412,9 @@ def test_hollow_profile_height_required_by_prompt_is_supported():
     specification = normalized["materials"][0]["specification"]
     assert specification["height_mm"] == 20
     assert specification["wall_thickness_mm"] == 1.5
+
+    validated = agent.validate_object_facts(
+        normalized,
+        allowed_material_families={"carbon_steel"},
+    )
+    assert validated["materials"][0]["specification"]["height_mm"] == 20

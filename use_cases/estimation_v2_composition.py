@@ -97,7 +97,8 @@ _COST_LINE_FIELDS = frozenset({
     "line_id", "section", "status", "amount", "currency", "source_ref", "reason_codes",
 })
 _ALLOWED_SPECIFICATION_FIELDS = frozenset({
-    "thickness_mm", "width_mm", "length_mm", "diameter_mm", "wall_thickness_mm",
+    "thickness_mm", "width_mm", "height_mm", "length_mm", "diameter_mm",
+    "wall_thickness_mm",
     "profile_section", "species", "grade", "alloy", "temper", "finish", "surface",
     "color", "coating", "density_class", "fire_rating", "moisture_resistance",
     "supplier_sku",
