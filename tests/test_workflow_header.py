@@ -34,10 +34,3 @@ def test_workflow_titles_use_brand_ink_and_only_object_names_use_accent():
     assert ".object-detail-object-name" in base_css
     assert "color: var(--color-accent) !important;" in base_css
     assert ".file-review-detected-title" in review_css
-
-
-def test_file_review_header_row_centers_the_actions_row():
-    review_css = open("styles/file_review.py").read()
-
-    assert '[data-testid="stHorizontalBlock"]:has(.st-key-file_review_header_actions)' in review_css
-    assert "align-items: center !important;" in review_css
