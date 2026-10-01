@@ -41,3 +41,4 @@ def test_file_review_header_row_centers_the_actions_row():
 
     assert '[data-testid="stHorizontalBlock"]:has(.st-key-file_review_header_actions)' in review_css
     assert "align-items: center !important;" in review_css
+    assert "grid-template-columns: minmax(0, 1fr) auto !important;" in review_css

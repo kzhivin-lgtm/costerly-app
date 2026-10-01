@@ -48,7 +48,20 @@ def apply_file_review_css() -> None:
         }
 
         .st-key-file_review_header_row [data-testid="stHorizontalBlock"]:has(.st-key-file_review_header_actions) {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
             align-items: center !important;
+        }
+
+        .st-key-file_review_header_row [data-testid="stHorizontalBlock"]:has(.st-key-file_review_header_actions) > [data-testid="stColumn"] {
+            flex: none !important;
+            width: auto !important;
+        }
+
+        .st-key-file_review_header_row [data-testid="stHorizontalBlock"]:has(.st-key-file_review_header_actions) > [data-testid="stColumn"]:first-child [data-testid="stElementContainer"],
+        .st-key-file_review_header_row [data-testid="stHorizontalBlock"]:has(.st-key-file_review_header_actions) > [data-testid="stColumn"]:first-child [data-testid="stMarkdownContainer"] {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
         }
 
         .st-key-file_review_header_actions {
