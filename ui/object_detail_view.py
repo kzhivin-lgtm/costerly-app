@@ -3,6 +3,8 @@ from __future__ import annotations
 import html
 import math
 
+from ui.layout import _workflow_title_html
+
 
 def _escape(value: object) -> str:
     """Return escaped text and a dash for missing table values."""
@@ -270,9 +272,10 @@ def hero_html(data: dict[str, object]) -> str:
         '<div class="post-upload-shell object-detail-shell">'
         '<div class="object-detail-hero">'
         '<div>'
-        '<h1 class="post-upload-title object-detail-title">'
-        '<span>Object:</span><br>'
-        f'<span>{_escape(data["name"])}</span>'
+        '<h1 class="post-upload-title object-detail-title workflow-title">'
+        f'{_workflow_title_html("Object:")}'
+        '<br>'
+        f'<span class="object-detail-object-name">{_escape(data["name"])}</span>'
         '</h1>'
         '<div class="object-detail-info-row">'
         '<span class="object-detail-info-label">QTY:</span>'

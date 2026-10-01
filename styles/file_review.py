@@ -163,7 +163,7 @@ def apply_file_review_css() -> None:
 
         .file-review-detected-title {
             font-family: var(--font-mono) !important;
-            color: var(--color-accent) !important;
+            color: var(--color-accent-dark) !important;
             font-size: var(--post-upload-title-size) !important;
             line-height: var(--post-upload-title-line-height) !important;
             font-weight: 500 !important;

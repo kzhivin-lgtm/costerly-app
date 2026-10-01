@@ -1,10 +1,30 @@
 from __future__ import annotations
 
 import html
+import base64
+from functools import lru_cache
+from pathlib import Path
 
 import streamlit as st
 
 from styles.post_upload import apply_post_upload_css
+
+
+@lru_cache(maxsize=1)
+def _workflow_mark_src() -> str:
+    """Return the brand mark without adding a network request to a header."""
+    mark = Path("assets/brand/costelry_mark_indigo.svg").read_bytes()
+    return "data:image/svg+xml;base64," + base64.b64encode(mark).decode("ascii")
+
+
+def _workflow_title_html(title: str) -> str:
+    """Render a mark that never consumes the title's established origin."""
+    return (
+        '<span class="workflow-title-mark" aria-hidden="true">'
+        f'<img src="{_workflow_mark_src()}" alt="">'
+        '</span>'
+        f'<span class="workflow-title-text">{html.escape(title)}</span>'
+    )
 
 
 def post_upload_header_html(
@@ -30,7 +50,9 @@ def post_upload_header_html(
     return (
         f'<div class="{shell_class}">'
         f'{marker_html}'
-        f'<h1 class="post-upload-title">{html.escape(title)}</h1>'
+        '<h1 class="post-upload-title workflow-title">'
+        f'{_workflow_title_html(title)}'
+        '</h1>'
         f'{subtitle_html}'
         '</div>'
     )

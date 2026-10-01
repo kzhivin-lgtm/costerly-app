@@ -465,8 +465,8 @@ def test_admin_route_is_hidden_and_guarded_in_application_source():
     assert 'st.session_state.get("_platform_access_user_id")' in app_source
     assert "st.session_state._platform_access = platform_access" in app_source
     assert 'show_admin=platform_access is not None' in auth_source
-    assert "if show_projects and show_admin" in header_source
-    assert "elif show_admin:" in header_source
+    assert "if show_admin:" in header_source
+    assert '("Admin", "open_platform_admin", on_admin, False, None)' in header_source
 
 
 def test_company_admin_display_role_remains_non_removable():

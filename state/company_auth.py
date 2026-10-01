@@ -1574,16 +1574,53 @@ def _open_platform_admin() -> None:
     set_screen("admin")
 
 
-def render_account_control(access: CompanyAccess, *, platform_access=None) -> None:
-    if st.session_state.get("screen") in {"account", "admin"}:
+def _open_new_estimate() -> None:
+    """Open Upload without mutating any existing estimate."""
+    from state.session import set_screen
+
+    set_screen("upload")
+
+
+def _open_last_estimate(company_id: str) -> None:
+    """Restore the newest durable estimate owned by this company."""
+    from db.supabase_client import get_supabase_client
+    from state.session import set_screen
+    from use_cases.latest_estimate import load_latest_estimate_route
+
+    route = load_latest_estimate_route(get_supabase_client(), company_id)
+    if route is None:
+        st.session_state.header_last_estimate_error = "No previous estimate is available."
         return
+    st.session_state.current_run_id = route["run_id"]
+    st.session_state.current_estimate_id = route["estimate_id"]
+    st.session_state.current_estimate_run_id = route["run_id"]
+    st.session_state.current_object_id = None
+    set_screen("objects")
+
+
+def render_account_control(access: CompanyAccess, *, platform_access=None) -> None:
+    from db.supabase_client import get_supabase_client
+    from use_cases.latest_estimate import load_latest_estimate_route
+
+    try:
+        latest_route = load_latest_estimate_route(get_supabase_client(), str(access.company_id))
+    except Exception:
+        latest_route = None
+    active_screen = str(st.query_params.get("screen") or st.session_state.get("screen") or "upload")
     render_account_header_controls(
         on_profile=_open_company_account,
         on_sign_out=sign_out,
         on_admin=_open_platform_admin,
+        on_new_estimate=_open_new_estimate,
+        on_last_estimate=lambda: _open_last_estimate(str(access.company_id)),
         show_admin=platform_access is not None,
-        show_projects=st.session_state.get("screen", "upload") == "upload",
+        show_projects=True,
+        show_new_estimate=active_screen != "upload",
+        show_last_estimate=latest_route is not None,
     )
+    last_estimate_error = st.session_state.pop("header_last_estimate_error", None)
+    if last_estimate_error:
+        st.warning(last_estimate_error)
 
 
 def render_company_account(access: CompanyAccess, *, platform_access=None, trace=None) -> None:

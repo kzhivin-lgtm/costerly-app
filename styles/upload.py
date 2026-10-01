@@ -37,7 +37,7 @@ def apply_upload_css() -> None:
             position: static !important;
             top: auto !important;
             right: auto !important;
-            width: 340px !important;
+            width: min(720px, calc(100vw - 32px)) !important;
             /* Streamlit overlaps this ordered wrapper by 16px above the hero. */
             margin: 48px auto 32px !important;
         }

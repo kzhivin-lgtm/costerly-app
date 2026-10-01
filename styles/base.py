@@ -272,25 +272,32 @@ def apply_base_css() -> None:
             top: calc(var(--app-header-top) + 5px);
             right: 28px;
             z-index: 950;
-            width: 260px !important;
+            width: min(720px, calc(100vw - 56px)) !important;
+            opacity: 0.58;
+            transition: opacity 140ms ease;
+        }
+
+        .st-key-costerly_header_controls:hover,
+        .st-key-costerly_header_controls:focus-within {
+            opacity: 1;
         }
 
         .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
             gap: 8px;
-            height: 34px !important;
+            height: 36px !important;
             align-items: center !important;
         }
 
         .st-key-costerly_header_controls [data-testid="stVerticalBlock"] {
             gap: 0 !important;
-            min-height: 34px !important;
+            min-height: 36px !important;
             justify-content: center !important;
         }
 
         .st-key-costerly_header_controls button {
-            height: 34px !important;
-            min-height: 34px !important;
-            max-height: 34px !important;
+            height: 36px !important;
+            min-height: 36px !important;
+            max-height: 36px !important;
             padding: 0 12px !important;
             border-radius: 8px !important;
             font-family: var(--font-sans) !important;
@@ -421,13 +428,41 @@ def apply_base_css() -> None:
 
         .post-upload-title {
             font-family: var(--font-mono) !important;
-            color: var(--color-accent) !important;
+            color: var(--color-accent-dark) !important;
             font-size: var(--post-upload-title-size) !important;
             line-height: var(--post-upload-title-line-height) !important;
             font-weight: 500 !important;
             letter-spacing: -0.02em !important;
             margin: 0 0 var(--post-upload-title-margin-bottom) 0 !important;
             padding: 0 !important;
+        }
+
+        /* The mark is deliberately outside flow: Processing and File Review
+           share a tested title origin, so the first title glyph may not move. */
+        .workflow-title {
+            position: relative;
+            overflow: visible;
+        }
+
+        .workflow-title-mark {
+            position: absolute;
+            right: calc(100% + var(--space-3));
+            top: 0.08em;
+            width: 0.9em;
+            height: 0.9em;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .workflow-title-mark img {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .object-detail-object-name {
+            color: var(--color-accent) !important;
         }
 
         .post-upload-shell:not(:has(.post-upload-subtitle)) .post-upload-title {
@@ -558,7 +593,8 @@ def apply_base_css() -> None:
             .st-key-costerly_header_controls {
                 top: calc(var(--app-header-top) + 8px);
                 right: 14px;
-                width: 224px !important;
+                width: calc(100vw - 28px) !important;
+                overflow-x: auto;
             }
 
             .block-container,

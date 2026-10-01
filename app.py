@@ -394,8 +394,11 @@ def main() -> None:
         with trace.span("server.account_controls_render"):
             render_account_control(access, platform_access=platform_access)
     else:
-        with trace.span("server.app_header_render"):
-            render_app_header()
+        requested_screen = str(st.query_params.get("screen") or "")
+        current_screen = requested_screen or str(st.session_state.get("screen") or "upload")
+        if current_screen == "upload":
+            with trace.span("server.app_header_render"):
+                render_app_header()
 
     with trace.span("server.company_id_resolve"):
         company_id = get_company_id()

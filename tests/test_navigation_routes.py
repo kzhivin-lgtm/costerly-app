@@ -74,6 +74,12 @@ def test_processing_refresh_fails_safe_to_upload():
     assert app._browser_route("processing") == {"screen": "upload"}
 
 
+def test_workflow_routes_do_not_render_the_central_logo_in_auth_disabled_mode():
+    source = Path("app.py").read_text()
+
+    assert 'if current_screen == "upload":' in source
+
+
 def test_profile_route_is_restored_before_account_controls_render():
     source = Path("app.py").read_text()
 

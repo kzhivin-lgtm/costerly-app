@@ -28,60 +28,38 @@ def render_account_header_controls(
     on_profile,
     on_sign_out,
     on_admin=None,
+    on_new_estimate=None,
+    on_last_estimate=None,
     show_admin: bool = False,
     show_projects: bool = False,
+    show_new_estimate: bool = False,
+    show_last_estimate: bool = False,
 ) -> None:
     """Render authenticated actions with navigation applied before the next run."""
     with st.container(key="costerly_header_controls"):
-        if show_projects and show_admin:
-            projects, admin, profile, sign_out_control = st.columns(4)
-            with projects:
+        actions: list[tuple[str, str, object, bool, str | None]] = []
+        if show_admin:
+            actions.append(("Admin", "open_platform_admin", on_admin, False, None))
+        if show_projects:
+            actions.append(("Projects", "open_projects_placeholder", None, True, "Project history is coming next."))
+        if show_new_estimate:
+            actions.append(("New Estimate", "header_new_estimate", on_new_estimate, False, None))
+        if show_last_estimate:
+            actions.append(("Last Estimate", "header_last_estimate", on_last_estimate, False, None))
+        actions.extend(
+            [
+                ("Profile", "open_company_account", on_profile, False, None),
+                ("Sign out", "company_sign_out", on_sign_out, False, None),
+            ]
+        )
+        columns = st.columns(len(actions))
+        for column, (label, key, callback, disabled, help_text) in zip(columns, actions):
+            with column:
                 st.button(
-                    "Projects",
-                    key="open_projects_placeholder",
+                    label,
+                    key=key,
                     use_container_width=True,
-                    disabled=True,
-                    help="Project history is coming next.",
+                    on_click=callback,
+                    disabled=disabled,
+                    help=help_text,
                 )
-            with admin:
-                st.button(
-                    "Admin",
-                    key="open_platform_admin",
-                    use_container_width=True,
-                    on_click=on_admin,
-                )
-        elif show_projects:
-            projects, profile, sign_out_control = st.columns(3)
-            with projects:
-                st.button(
-                    "Projects",
-                    key="open_projects_placeholder",
-                    use_container_width=True,
-                    disabled=True,
-                    help="Project history is coming next.",
-                )
-        elif show_admin:
-            admin, profile, sign_out_control = st.columns(3)
-            with admin:
-                st.button(
-                    "Admin",
-                    key="open_platform_admin",
-                    use_container_width=True,
-                    on_click=on_admin,
-                )
-        else:
-            profile, sign_out_control = st.columns(2)
-        with profile:
-            st.button(
-                "Profile",
-                key="open_company_account",
-                use_container_width=True,
-                on_click=on_profile,
-            )
-        with sign_out_control:
-            st.button(
-                "Sign out",
-                key="company_sign_out",
-                use_container_width=True,
-                on_click=on_sign_out,
-            )

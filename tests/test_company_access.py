@@ -1095,6 +1095,8 @@ def _render_upload_header_controls_test():
         on_profile=open_profile,
         on_sign_out=lambda: None,
         show_projects=True,
+        show_new_estimate=False,
+        show_last_estimate=True,
     )
 
 
@@ -1102,10 +1104,12 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     app = AppTest.from_function(_render_upload_header_controls_test).run()
 
     assert not app.exception
-    assert [button.label for button in app.button] == ["Projects", "Profile", "Sign out"]
+    assert [button.label for button in app.button] == [
+        "Projects", "Last Estimate", "Profile", "Sign out"
+    ]
     assert app.button[0].disabled is True
 
-    app.button[1].click().run()
+    app.button[2].click().run()
     assert app.session_state["header_profile_opened"] is True
 
     css = (Path(__file__).parents[1] / "styles/upload.py").read_text()
@@ -1113,7 +1117,7 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert "order: 10 !important;" in css
     assert "order: 20 !important;" in css
     assert "order: 30 !important;" in css
-    assert "width: 340px !important;" in css
+    assert "width: min(720px, calc(100vw - 32px)) !important;" in css
     assert "margin: 48px auto 32px !important;" in css
     assert "margin-top: 23px;" in css
     assert "height: 36px !important;" in css
@@ -1126,12 +1130,12 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
 def test_upload_to_profile_navigation_runs_before_render_without_explicit_rerun():
     header_source = Path("ui/app_header.py").read_text()
     auth_source = Path("state/company_auth.py").read_text()
-    button_source = header_source.split('"Profile"', 1)[1].split(")", 1)[0]
     control_source = auth_source.split("def render_account_control", 1)[1].split(
         "def render_company_account", 1
     )[0]
 
-    assert "on_click=on_profile" in button_source
+    assert '("Profile", "open_company_account", on_profile, False, None)' in header_source
+    assert "on_click=callback" in header_source
     assert "on_profile=_open_company_account" in control_source
     assert "st.rerun" not in control_source
 
@@ -1173,9 +1177,10 @@ def test_company_profile_has_seven_tabs_and_owner_only_controls(monkeypatch, rol
     assert [tab.label for tab in app.get("tab")] == [
         "Overhead Expenses", "Labor Costs", "Machinery", "Price Lists", "Contacts", "Bank Details", "Users",
     ]
-    assert any(button.label == "Projects" and button.disabled for button in app.button)
-    assert any(button.label == "New Estimate" for button in app.button)
-    assert any(button.label == "Sign out" for button in app.button)
+    assert not any(
+        button.label in {"Projects", "New Estimate", "Last Estimate", "Sign out"}
+        for button in app.button
+    )
     assert not any(
         button.label in {"Save Contacts", "Save Bank Details"}
         for button in app.button
@@ -3038,13 +3043,13 @@ def test_only_company_metrics_save_bridge_is_fragment_scoped():
     assert "@st.fragment\ndef _render_metrics(" not in source
 
 
-def test_profile_to_upload_navigation_runs_before_render():
-    source = Path("screens/company_profile.py").read_text()
-    button_source = source.split('"New Estimate"', 1)[1].split(")", 1)[0]
+def test_header_new_estimate_navigation_runs_before_render():
+    source = Path("state/company_auth.py").read_text()
+    header_source = Path("ui/app_header.py").read_text()
 
-    assert 'key="profile_to_upload"' in button_source
-    assert "on_click=_open_upload_screen" in button_source
-    assert "st.rerun" not in button_source
+    assert 'set_screen("upload")' in source
+    assert '("New Estimate", "header_new_estimate", on_new_estimate, False, None)' in header_source
+    assert "st.rerun" not in source.split("def _open_new_estimate", 1)[1].split("def _open_last_estimate", 1)[0]
 
 
 def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
@@ -3336,11 +3341,14 @@ def test_empty_price_catalog_uses_complete_card_geometry():
 
 
 def test_company_profile_header_keeps_all_action_labels_visible():
-    source = (Path(__file__).parents[1] / "screens/company_profile.py").read_text()
+    source = (Path(__file__).parents[1] / "ui/app_header.py").read_text()
+    css = (Path(__file__).parents[1] / "styles/base.py").read_text()
 
-    assert "st.columns([3, 2.4])" in source
-    assert "st.columns([0.8, 0.9, 1.35, 1.15])" in source
-    assert "st.columns([0.9, 1.35, 1.15])" in source
+    assert '("Admin", "open_platform_admin", on_admin, False, None)' in source
+    assert '("Projects", "open_projects_placeholder", None, True' in source
+    assert '("New Estimate", "header_new_estimate", on_new_estimate, False, None)' in source
+    assert '("Last Estimate", "header_last_estimate", on_last_estimate, False, None)' in source
+    assert "width: min(720px, calc(100vw - 56px)) !important;" in css
 
 
 def test_labor_card_spacing_and_disabled_select_placeholder_contract():

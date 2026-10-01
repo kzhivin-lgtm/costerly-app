@@ -342,39 +342,11 @@ def render_platform_admin_screen(access, platform_access: PlatformAccess) -> Non
     if fresh != platform_access:
         raise PermissionError("Platform Admin access changed. Please refresh.")
 
-    header_left, header_right = st.columns([3.6, 2])
-    with header_left:
-        st.markdown(
-            f'<div class="platform-admin-heading"><div class="platform-admin-mark">{_brand_mark()}</div>'
-            "<h1>Admin</h1></div>",
-            unsafe_allow_html=True,
-        )
-    with header_right:
-        with st.container(key="platform_admin_actions"):
-            profile, estimate, sign_out_control = st.columns(3)
-            with profile:
-                st.button(
-                    "Profile",
-                    key="admin_to_profile",
-                    use_container_width=True,
-                    on_click=_open_profile,
-                )
-            with estimate:
-                st.button(
-                    "New Estimate",
-                    key="admin_to_upload",
-                    use_container_width=True,
-                    on_click=_open_estimate,
-                )
-            with sign_out_control:
-                from state.company_auth import sign_out
-
-                st.button(
-                    "Sign out",
-                    key="company_sign_out",
-                    use_container_width=True,
-                    on_click=sign_out,
-                )
+    st.markdown(
+        f'<div class="platform-admin-heading"><div class="platform-admin-mark">{_brand_mark()}</div>'
+        "<h1>Admin</h1></div>",
+        unsafe_allow_html=True,
+    )
 
     current_view = str(st.session_state.get("platform_admin_view") or "companies")
     if current_view not in ADMIN_VIEWS:

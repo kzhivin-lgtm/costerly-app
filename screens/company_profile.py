@@ -4253,55 +4253,11 @@ def render_company_profile(access: CompanyAccess, *, platform_access=None, trace
     )
     finish_phase("server.company_profile_styles", "p_styles_ms")
 
-    header_left, header_right = st.columns([3, 2.4])
-    with header_left:
-        st.markdown(
-            f'<div class="company-profile-heading"><div class="company-profile-mark">{_brand_mark()}</div>'
-            '<h1>Company profile</h1></div>',
-            unsafe_allow_html=True,
-        )
-    with header_right:
-        with st.container(key="company_profile_actions"):
-            action_columns = (
-                st.columns([0.8, 0.9, 1.35, 1.15])
-                if platform_access is not None
-                else st.columns([0.9, 1.35, 1.15])
-            )
-            if platform_access is not None:
-                admin_action, projects_action, estimate_action, sign_out_action = action_columns
-                with admin_action:
-                    st.button(
-                        "Admin",
-                        key="profile_to_admin",
-                        use_container_width=True,
-                        on_click=_open_platform_admin_screen,
-                    )
-            else:
-                projects_action, estimate_action, sign_out_action = action_columns
-            with projects_action:
-                st.button(
-                    "Projects",
-                    key="profile_projects_placeholder",
-                    use_container_width=True,
-                    disabled=True,
-                    help="Project history is coming next.",
-                )
-            with estimate_action:
-                st.button(
-                    "New Estimate",
-                    key="profile_to_upload",
-                    use_container_width=True,
-                    on_click=_open_upload_screen,
-                )
-            with sign_out_action:
-                from state.company_auth import sign_out
-
-                st.button(
-                    "Sign out",
-                    key="company_sign_out",
-                    use_container_width=True,
-                    on_click=sign_out,
-                )
+    st.markdown(
+        f'<div class="company-profile-heading"><div class="company-profile-mark">{_brand_mark()}</div>'
+        '<h1>Company profile</h1></div>',
+        unsafe_allow_html=True,
+    )
     finish_phase("server.company_profile_header", "p_header_ms")
 
     expenses_tab, labor_tab, machinery_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
