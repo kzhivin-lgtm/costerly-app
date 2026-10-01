@@ -11,6 +11,21 @@ from use_cases.estimation_evidence import EvidenceArtifact
 EVIDENCE_BUCKET = "rfq-estimation-evidence"
 
 
+def download_evidence_artifact(*, client: Any, storage_ref: str) -> bytes:
+    """Download one private evidence artifact from its immutable storage ref."""
+    prefix = f"storage://{EVIDENCE_BUCKET}/"
+    ref = str(storage_ref or "").strip()
+    if not ref.startswith(prefix):
+        raise ValueError("evidence storage_ref must use the private evidence bucket")
+    object_path = ref[len(prefix):]
+    if not object_path or object_path.startswith("/") or ".." in object_path.split("/"):
+        raise ValueError("evidence storage_ref has an invalid object path")
+    payload = client.storage.from_(EVIDENCE_BUCKET).download(object_path)
+    if not isinstance(payload, (bytes, bytearray)) or not payload:
+        raise RuntimeError("private evidence artifact download returned no bytes")
+    return bytes(payload)
+
+
 def persist_preview_artifact(*, client: Any, company_id: str, run_id: str, object_id: str, page_number: int, webp_bytes: bytes) -> EvidenceArtifact:
     if not all((company_id, run_id, object_id, page_number > 0, webp_bytes)):
         raise ValueError("preview identity and bytes are required")

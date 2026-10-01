@@ -5,6 +5,42 @@ from use_cases.estimation_evidence import (
     build_estimation_input_v2,
     resolve_anchor_bbox,
 )
+from use_cases.estimation_artifacts import download_evidence_artifact
+
+
+class _StorageBucket:
+    def __init__(self):
+        self.path = None
+
+    def download(self, path):
+        self.path = path
+        return b"preview-bytes"
+
+
+class _Storage:
+    def __init__(self, bucket):
+        self.bucket = bucket
+
+    def from_(self, name):
+        assert name == "rfq-estimation-evidence"
+        return self.bucket
+
+
+class _StorageClient:
+    def __init__(self, bucket):
+        self.storage = _Storage(bucket)
+
+
+def test_private_preview_download_parses_storage_ref_without_exposing_a_public_url():
+    bucket = _StorageBucket()
+
+    payload = download_evidence_artifact(
+        client=_StorageClient(bucket),
+        storage_ref="storage://rfq-estimation-evidence/company/run/object/preview.webp",
+    )
+
+    assert payload == b"preview-bytes"
+    assert bucket.path == "company/run/object/preview.webp"
 
 
 RUN = {"run_id": "run-1", "company_id": "company-1", "file_name": "quote.pdf"}

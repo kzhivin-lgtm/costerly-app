@@ -52,6 +52,8 @@ BASELINES: dict[str, OperationBaseline] = {
     "metal_polishing": OperationBaseline(8, 28, "grinder_polisher", 25),
     "powder_coating_preparation": OperationBaseline(8, 3.5, "powder_coating_operator", 25),
     "powder_coating_application": OperationBaseline(10, 2.5, "powder_coating_operator", 25),
+    "wet_coating_preparation": OperationBaseline(8, 3.5, "painter_finisher", 25),
+    "wet_coating_application": OperationBaseline(10, 2.5, "painter_finisher", 25),
     "sheet_metal_bending": OperationBaseline(12, 0.08, "press_brake_operator", 70),
 }
 
@@ -294,6 +296,88 @@ def _estimate_sheet_metal_box(
     return {"object_id": object_fact.get("object_id"), "status": "estimated", "labor_lines": lines, "purchased_components": purchased, "review_items": []}
 
 
+def _estimate_open_shelving_unit(
+    object_fact: Mapping[str, Any], company_context: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Mixed MDF and welded-steel shelving route with auditable geometry."""
+    dimensions = object_fact.get("dimensions_mm")
+    features = object_fact.get("features") or {}
+    if not isinstance(dimensions, Mapping) or not isinstance(features, Mapping):
+        return _review("missing_open_shelving_facts")
+    try:
+        width = _number(dimensions.get("width"), "dimensions_mm.width", minimum=1)
+        depth = _number(dimensions.get("depth"), "dimensions_mm.depth", minimum=1)
+        height = _number(dimensions.get("height"), "dimensions_mm.height", minimum=1)
+        quantity = _integer(object_fact.get("quantity"), "quantity", minimum=1)
+        shelves = _integer(features.get("shelf_count"), "features.shelf_count", minimum=1)
+        section = _number(features.get("profile_section_mm", 20), "features.profile_section_mm", minimum=1)
+    except LaborEngineError as error:
+        return _review(str(error))
+    if width > 2000 or depth > 1200 or height > 4000:
+        return _review("open_shelving_dimensions_outside_supported_envelope")
+
+    families = {
+        str(row.get("family") or "")
+        for row in (object_fact.get("materials") or [])
+        if isinstance(row, Mapping)
+    }
+    if "mdf" not in families or "carbon_steel" not in families:
+        return _review("missing_open_shelving_materials")
+    machines = _machine_set(company_context)
+    required = {"metal_profile_saw", "wood_panel_saw", "wood_edge_bander", "finish_wet_spray_booth"}
+    if missing := sorted(required - machines):
+        return _review("missing_open_shelving_route:" + ",".join(missing))
+
+    profile_cut_count = (4 * shelves + 4) * quantity
+    welded_joint_count = (4 * shelves + 4) * quantity
+    weld_length_m = welded_joint_count * 4 * section / 1000
+    panel_count = shelves * quantity
+    panel_cut_sequences = (2 * shelves + 1) * quantity
+    edge_length_m = shelves * 2 * (width + depth) / 1000 * quantity
+    net_profile_m = (2 * height + shelves * 2 * (width + depth)) / 1000 * quantity
+    coating_surface_sqm = (
+        4 * section / 1000 * net_profile_m
+        + (2 * width * height / 1_000_000 if features.get("back_panel") else 0)
+    )
+    provenance = [
+        "template:open_shelving_unit",
+        "connection:metal_welded",
+        "derived:two_uprights_plus_rectangular_shelf_frames",
+    ]
+    lines = [
+        _line("metal_profile_cutting", profile_cut_count, route="in_house_machine", provenance=provenance,
+              context=company_context, batch_key="carbon_steel:20x20"),
+        _line("metal_assembly", quantity, route="in_house_manual", provenance=provenance,
+              context=company_context, batch_key="open_shelving_frame"),
+        _line("mig_mag_welding", weld_length_m, route="in_house_manual", provenance=provenance,
+              context=company_context, batch_key="weld:carbon_steel"),
+        _line("metal_grinding", weld_length_m, route="in_house_manual", provenance=provenance,
+              context=company_context, batch_key="weld:carbon_steel"),
+        _line("panel_material_handling", panel_count, route="in_house_manual", provenance=provenance,
+              context=company_context, batch_key="mdf:20"),
+        _line("panel_saw_cutting", panel_cut_sequences, route="in_house_machine", provenance=provenance,
+              context=company_context, batch_key="mdf:20"),
+        _line("edge_banding", edge_length_m, route="in_house_machine", provenance=provenance,
+              context=company_context, batch_key="mdf:20"),
+        _line("wet_coating_preparation", coating_surface_sqm, route="in_house_machine", provenance=provenance,
+              context=company_context, batch_key="wet_coating:metal"),
+        _line("wet_coating_application", coating_surface_sqm, route="in_house_machine", provenance=provenance,
+              context=company_context, batch_key="wet_coating:metal"),
+    ]
+    # This operation uses the existing generic installation baseline for
+    # workshop attachment of the perforated back. It is not site installation.
+    if features.get("back_panel"):
+        lines.append(_line("hardware_installation", 8 * quantity, route="in_house_manual", provenance=provenance,
+                           context=company_context, batch_key="perforated_back"))
+    _common_workshop_closeout(
+        lines, module_count=quantity, context=company_context, provenance=provenance
+    )
+    return {
+        "object_id": object_fact.get("object_id"), "status": "estimated",
+        "labor_lines": lines, "purchased_components": [], "review_items": [],
+    }
+
+
 def estimate_labor(
     object_fact: Mapping[str, Any],
     company_context: Mapping[str, Any],
@@ -301,6 +385,8 @@ def estimate_labor(
     """Return an explainable Labor Engine result for supported panel templates."""
 
     template = object_fact.get("template_code")
+    if template == "open_shelving_unit":
+        return _estimate_open_shelving_unit(object_fact, company_context)
     if template == "metal_table_frame":
         return _estimate_metal_table_frame(object_fact, company_context)
     if template == "sheet_metal_box":

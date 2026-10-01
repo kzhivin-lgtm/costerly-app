@@ -14,6 +14,7 @@ from db.repositories import (
     insert_agent_usage_event_returning_id,
     insert_estimation_v2_fact_result,
 )
+from use_cases.estimation_artifacts import download_evidence_artifact
 
 
 def run_estimation_v2_facts_batch(
@@ -60,6 +61,10 @@ def run_estimation_v2_facts_batch(
                 object_input_revision=int(revision),
                 estimation_input=payload,
                 allowed_material_families=families,
+                preview_bytes=download_evidence_artifact(
+                    client=client,
+                    storage_ref=str((payload.get("evidence") or {}).get("primary_preview_ref") or ""),
+                ),
             )
             usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])
             created.append(insert_estimation_v2_fact_result(

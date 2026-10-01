@@ -132,6 +132,7 @@ def test_e01_agent_uses_only_bounded_json_and_returns_validated_facts(monkeypatc
         object_input_revision=1,
         estimation_input=_input(),
         allowed_material_families={"birch_plywood"},
+        preview_bytes=b"preview",
     )
 
     assert result["facts"]["template"] == FIXTURE["facts"]["template"]
@@ -139,9 +140,12 @@ def test_e01_agent_uses_only_bounded_json_and_returns_validated_facts(monkeypatc
     assert result["facts"]["materials"] == FIXTURE["facts"]["materials"]
     assert result["facts"]["source_facts"][0]["value"] == "1200"
     assert captured["temperature"] == 0
-    assert captured["messages"][0]["content"][0]["type"] == "text"
-    assert len(captured["messages"][0]["content"]) == 1
-    request = json.loads(captured["messages"][0]["content"][0]["text"].split("\n", 1)[1])
+    assert captured["messages"][0]["content"][0]["type"] == "image"
+    assert captured["messages"][0]["content"][0]["source"]["media_type"] == "image/webp"
+    assert len(captured["messages"][0]["content"]) == 2
+    request = json.loads(captured["messages"][0]["content"][1]["text"].split("\n", 1)[1])
+    assert "dimensions" not in request["estimation_input"]["object"]
+    assert "notes" not in request["estimation_input"]["object"]
     assert request["transport_contract"]["allowed_provenance"] == [
         "assumed_template", "derived", "explicit",
     ]
@@ -149,8 +153,9 @@ def test_e01_agent_uses_only_bounded_json_and_returns_validated_facts(monkeypatc
         "feature_id", "process", "material_requirement_id", "measurements",
         "flags", "evidence_refs",
     ]
-    assert "original document is not available" in captured["system"].lower()
+    assert "preview image is attached" in captured["system"].lower()
     assert result["usage_event"]["raw_usage"]["source_document_attached"] is False
+    assert result["usage_event"]["raw_usage"]["source_preview_attached"] is True
     assert result["usage_event"]["raw_usage"]["ocr_rerun"] is False
 
 
@@ -171,6 +176,7 @@ def test_agent_rejects_server_owned_identity_in_provider_transport(monkeypatch):
             object_input_revision=1,
             estimation_input=_input(),
             allowed_material_families={"birch_plywood"},
+            preview_bytes=b"preview",
         )
     except ValueError as exc:
         assert "facts transport fields are invalid" in str(exc)
@@ -196,6 +202,7 @@ def test_agent_rejects_evidence_reference_not_present_in_frozen_input(monkeypatc
             object_input_revision=1,
             estimation_input=_input(),
             allowed_material_families={"birch_plywood"},
+            preview_bytes=b"preview",
         )
     except ValueError as exc:
         assert "invented evidence refs" in str(exc)
@@ -220,6 +227,7 @@ def test_agent_treats_omitted_optional_specification_items_as_empty(monkeypatch)
         object_input_revision=1,
         estimation_input=_input(),
         allowed_material_families={"birch_plywood"},
+        preview_bytes=b"preview",
     )
 
     assert result["facts"]["materials"][0]["specification"] == {}
@@ -237,6 +245,42 @@ def test_rectangular_profile_section_requires_explicit_weld_face():
         assert "explicit weld face" in str(exc)
     else:
         raise AssertionError("rectangular profile must not silently select one face")
+
+
+def test_numeric_string_confidence_is_normalized_at_provider_boundary():
+    assert agent._confidence_number("95", "template_confidence") == 95
+
+
+def test_server_downgrades_provider_ready_when_required_material_quantity_is_missing():
+    transport = _provider_response(status="ready")
+    transport["materials"][0]["quantity"] = 0
+    transport["review_items"] = [{
+        "code": "material_quantity_missing", "severity": "blocking",
+        "path": "materials[0].quantity", "message": "Quantity is missing",
+        "evidence_refs": FIXTURE["facts"]["template"]["evidence_refs"],
+    }]
+
+    normalized = agent._normalize_provider_result(
+        transport, input_id="input-e01-r1", object_input_revision=1,
+        estimation_input=_input(),
+    )
+
+    assert normalized["status"] == "review_required"
+
+
+def test_server_adds_blocking_review_item_when_provider_omits_it_for_a_required_gap():
+    transport = _provider_response(status="ready")
+    transport["materials"][0]["quantity"] = 0
+    transport["review_items"] = []
+
+    normalized = agent._normalize_provider_result(
+        transport, input_id="input-e01-r1", object_input_revision=1,
+        estimation_input=_input(),
+    )
+
+    assert normalized["status"] == "review_required"
+    assert normalized["review_items"][0]["code"] == "material_quantity_missing"
+    assert normalized["review_items"][0]["severity"] == "blocking"
 
 
 def test_unknown_purchased_component_quantity_normalizes_to_none():

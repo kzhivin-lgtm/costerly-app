@@ -122,6 +122,41 @@ def _company_offer_ids(
     return tuple(sorted(set(result)))
 
 
+def _reference_pricing_identity(
+    *,
+    requirement_name: str,
+    reference_materials: Sequence[Mapping[str, Any]],
+    pricing_identity_members: Sequence[Mapping[str, Any]],
+) -> PricingIdentityResolution | None:
+    """Resolve an exact canonical reference material through catalog membership."""
+    requested = normalize_material_phrase(requirement_name)
+    if not requested:
+        return None
+    matches = [
+        row for row in reference_materials
+        if row.get("active") is not False
+        and normalize_material_phrase(row.get("canonical_name")) == requested
+    ]
+    if len(matches) != 1:
+        return None
+    material_id = str(matches[0].get("material_id") or "")
+    identity_ids = {
+        str(row.get("pricing_identity_id") or "")
+        for row in pricing_identity_members
+        if str(row.get("material_id") or "") == material_id
+        and str(row.get("pricing_identity_id") or "")
+    }
+    if len(identity_ids) != 1:
+        return PricingIdentityResolution(
+            status="needs_review",
+            reason_codes=("pricing_identity_requires_review",),
+        )
+    return PricingIdentityResolution(
+        status="resolved",
+        selected_pricing_identity_id=next(iter(identity_ids)),
+    )
+
+
 def _resolve_israel_price(
     *,
     identity: PricingIdentityResolution,
@@ -190,6 +225,8 @@ def resolve_estimate_material_requirement(
     company_offers: Sequence[Mapping[str, Any]],
     pricing_identities: Sequence[Mapping[str, Any]],
     pricing_identity_prices: Sequence[Mapping[str, Any]],
+    reference_materials: Sequence[Mapping[str, Any]] = (),
+    pricing_identity_members: Sequence[Mapping[str, Any]] = (),
     market_code: str = "IL",
     currency: str = "ILS",
     price_scope: str = "material_only",
@@ -240,7 +277,11 @@ def resolve_estimate_material_requirement(
             currency=resolved_currency,
             price_scope=price_scope,
         )
-    identity = resolve_material_pricing_identity(
+    identity = _reference_pricing_identity(
+        requirement_name=requirement_name,
+        reference_materials=reference_materials,
+        pricing_identity_members=pricing_identity_members,
+    ) or resolve_material_pricing_identity(
         material_family=material_family,
         specifications=facts,
         market_code=market_code,

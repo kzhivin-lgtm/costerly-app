@@ -128,6 +128,7 @@ def test_shadow_batch_persists_validated_facts_and_usage(monkeypatch):
     calls = []
     monkeypatch.setattr(shadow, "fetch_active_israel_material_families", lambda _client: {"birch_plywood"})
     monkeypatch.setattr(shadow, "fetch_estimation_v2_fact_result", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(shadow, "download_evidence_artifact", lambda **_kwargs: b"preview")
     monkeypatch.setattr(
         shadow,
         "run_estimation_v2_facts_agent",
@@ -174,6 +175,7 @@ def test_shadow_batch_reuses_exact_agent_version_without_model_call(monkeypatch)
 def test_shadow_batch_is_fail_isolated_per_object(monkeypatch):
     monkeypatch.setattr(shadow, "fetch_active_israel_material_families", lambda _client: {"mdf"})
     monkeypatch.setattr(shadow, "fetch_estimation_v2_fact_result", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(shadow, "download_evidence_artifact", lambda **_kwargs: b"preview")
     monkeypatch.setattr(
         shadow,
         "run_estimation_v2_facts_agent",

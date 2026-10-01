@@ -125,3 +125,25 @@ def test_e16_supplier_sku_is_not_a_company_matching_input():
     assert result.authority is None
     assert result.company_material_id is None
     assert result.reason_codes == ("pricing_identity_not_found",)
+
+
+def test_exact_reference_material_membership_resolves_detailed_price_class_without_sku():
+    result = _resolve(
+        requirement_name="Epoxy metal primer",
+        material_family="metal_coatings",
+        specifications={"supplier_sku": "must-not-matter"},
+        requested_unit="l",
+        reference_materials=({
+            "material_id": "reference-primer", "canonical_name": "Epoxy metal primer", "active": True,
+        },),
+        pricing_identity_members=({
+            "material_id": "reference-primer", "pricing_identity_id": "primer-class",
+        },),
+        pricing_identities=(_identity("primer-class", material_family="metal_coatings"),),
+        pricing_identity_prices=(_price("primer-price", "primer-class", unit="l"),),
+    )
+
+    assert result.status == "resolved"
+    assert result.authority == "israel_pricing"
+    assert result.pricing_identity_id == "primer-class"
+    assert result.price_typical == Decimal("100")

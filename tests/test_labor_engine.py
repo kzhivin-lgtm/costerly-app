@@ -178,3 +178,26 @@ def test_installation_scope_never_changes_self_cost_labor_trace():
         "vehicle_loading", "delivery_trip", "site_protection", "cabinet_installation",
         "site_anchoring", "final_adjustment", "site_cleanup",
     } & set(BASELINES)
+
+
+def test_open_shelving_unit_runs_mixed_material_workshop_route_without_delivery_or_site_installation():
+    result = estimate_labor(
+        {
+            "object_id": "shelf-01", "quantity": 1, "template_code": "open_shelving_unit",
+            "dimensions_mm": {"width": 450, "depth": 510, "height": 2695},
+            "materials": [{"family": "carbon_steel"}, {"family": "mdf"}],
+            "features": {"shelf_count": 5, "back_panel": True, "profile_section_mm": 20},
+        },
+        _context("metal_profile_saw", "wood_panel_saw", "wood_edge_bander", "finish_wet_spray_booth"),
+    )
+
+    assert result["status"] == "estimated"
+    assert {
+        "metal_profile_cutting", "mig_mag_welding", "metal_grinding",
+        "panel_saw_cutting", "edge_banding", "hardware_installation",
+        "quality_inspection", "protective_packaging",
+    } <= _codes(result)
+    welding = next(line for line in result["labor_lines"] if line["operation_code"] == "mig_mag_welding")
+    assert welding["input_drivers"]["quantity"] == pytest.approx(1.92)
+    assert welding["role_allocations"][0]["hours"] < 0.5
+    assert not {"delivery_trip", "cabinet_installation", "site_cleanup"} & _codes(result)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from datetime import UTC, datetime
 import json
 from pathlib import Path
@@ -7,7 +8,7 @@ import re
 from typing import Any, AbstractSet, Mapping
 
 from agents.anthropic_adapter import (
-    DEFAULT_CLAUDE_AGENT_MODEL,
+    DEFAULT_CLAUDE_FALLBACK_MODEL,
     build_agent_usage_event,
     create_claude_message,
     extract_text_from_claude_response,
@@ -33,7 +34,7 @@ from use_cases.estimation_v2_composition import (
 )
 
 
-ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v2"
+ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v4"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_object_facts_prompt.md"
 
 
@@ -62,6 +63,16 @@ def _validate_input(payload: Mapping[str, Any]) -> tuple[Mapping[str, Any], Mapp
     if not preview.startswith("storage://rfq-estimation-evidence/"):
         raise ValueError("estimation_input_v2 requires a private preview reference")
     return object_payload, evidence
+
+
+def _provider_estimation_input(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Remove unverified Detection interpretations that can contaminate visual facts."""
+    result = dict(payload)
+    object_payload = dict(_required_input(payload, "object"))
+    object_payload.pop("dimensions", None)
+    object_payload.pop("notes", None)
+    result["object"] = object_payload
+    return result
 
 
 def _assert_evidence_refs(result: Mapping[str, Any], evidence: Mapping[str, Any]) -> None:
@@ -104,6 +115,13 @@ def _number_text(value: Any, name: str, *, integer: bool = False) -> int | float
             raise ValueError(f"{name} must contain an integer string")
         return int(number)
     return number
+
+
+def _confidence_number(value: Any, name: str) -> float:
+    number = _number_text(value, name)
+    if not 0 <= number <= 100:
+        raise ValueError(f"{name} must be between 0 and 100")
+    return float(number)
 
 
 def _profile_section_number(value: Any, name: str) -> int | float:
@@ -250,8 +268,54 @@ def _normalize_provider_result(
         })
 
     template_code = result.get("template_code")
+    template_provenance = str(result.get("template_provenance") or "").strip()
+    template_provenance = {
+        "source": "explicit",
+        "source_document": "explicit",
+        "explicit_source": "explicit",
+        "template_assumption": "assumed_template",
+    }.get(template_provenance, template_provenance)
     object_payload = _required_input(estimation_input, "object")
     evidence = _required_input(estimation_input, "evidence")
+    normalized_dimensions = {
+        key: None if value == 0 else value
+        for key, value in zip(("width", "depth", "height"), dimensions)
+    }
+    review_items = list(result.get("review_items") or [])
+    blocking_review = any(
+        isinstance(item, Mapping) and item.get("severity") == "blocking"
+        for item in review_items
+    )
+    server_gaps: list[tuple[str, str, str]] = []
+    if template_code in {None, "unknown"}:
+        server_gaps.append(("construction_template_missing", "template.code", "Construction template is missing"))
+    if any(value is None for value in normalized_dimensions.values()):
+        server_gaps.append(("dimensions_missing", "dimensions_mm", "One or more object dimensions are missing"))
+    if not materials:
+        server_gaps.append(("material_requirement_missing", "materials", "Material requirements are missing"))
+    for index, material in enumerate(materials):
+        if material.get("quantity") is None:
+            server_gaps.append(("material_quantity_missing", f"materials[{index}].quantity", "Material quantity is missing"))
+    for index, component in enumerate(purchased):
+        if component.get("quantity") is None:
+            server_gaps.append(("material_quantity_missing", f"purchased_components[{index}].quantity", "Purchased component quantity is missing"))
+    required_gap = bool(server_gaps)
+    normalized_status = result.get("status")
+    if required_gap and not blocking_review:
+        existing_paths = {
+            str(item.get("path") or "") for item in review_items if isinstance(item, Mapping)
+        }
+        for code, path, message in server_gaps:
+            if path not in existing_paths:
+                review_items.append({
+                    "code": code, "severity": "blocking", "path": path,
+                    "message": message, "evidence_refs": [evidence.get("primary_preview_ref")],
+                })
+        blocking_review = True
+    if blocking_review or required_gap:
+        normalized_status = "review_required"
+    elif normalized_status == "review_required":
+        normalized_status = "ready"
     return {
         "contract_version": OBJECT_FACTS_CONTRACT_VERSION,
         "input_id": input_id,
@@ -261,23 +325,20 @@ def _normalize_provider_result(
         "object_id": object_payload.get("object_id"),
         "object_name": object_payload.get("object_name"),
         "quantity": object_payload.get("quantity"),
-        "status": result.get("status"),
+        "status": normalized_status,
         "template": {
             "code": None if template_code == "unknown" else template_code,
-            "confidence": result.get("template_confidence"),
-            "provenance": result.get("template_provenance"),
+            "confidence": _confidence_number(result.get("template_confidence"), "template_confidence"),
+            "provenance": template_provenance,
             "evidence_refs": result.get("template_evidence_refs"),
         },
-        "dimensions_mm": {
-            key: None if value == 0 else value
-            for key, value in zip(("width", "depth", "height"), dimensions)
-        },
+        "dimensions_mm": normalized_dimensions,
         "materials": materials,
         "features": features,
         "manufacturing_features": manufacturing,
         "purchased_components": purchased,
         "source_facts": result.get("source_facts"),
-        "review_items": result.get("review_items"),
+        "review_items": review_items,
         "primary_preview_ref": evidence.get("primary_preview_ref"),
     }
 
@@ -312,23 +373,26 @@ def run_estimation_v2_facts_agent(
     object_input_revision: int,
     estimation_input: Mapping[str, Any],
     allowed_material_families: AbstractSet[str],
+    preview_bytes: bytes,
     model: str | None = None,
 ) -> dict[str, Any]:
-    """Extract bounded facts from one frozen input without reading the source file."""
+    """Extract bounded facts from one frozen input and its persisted preview."""
     object_payload, evidence = _validate_input(estimation_input)
     resolved_input_id = str(input_id or "").strip()
     if not resolved_input_id:
         raise ValueError("input_id is required")
     if isinstance(object_input_revision, bool) or not isinstance(object_input_revision, int) or object_input_revision < 1:
         raise ValueError("object_input_revision must be a positive integer")
+    if not isinstance(preview_bytes, (bytes, bytearray)) or not preview_bytes:
+        raise ValueError("preview_bytes are required")
     schema = build_estimation_v2_facts_schema(allowed_material_families)
     selected_model = model or get_secret(
-        "CLAUDE_ESTIMATION_V2_FACTS_MODEL", DEFAULT_CLAUDE_AGENT_MODEL
+        "CLAUDE_ESTIMATION_V2_FACTS_MODEL", DEFAULT_CLAUDE_FALLBACK_MODEL
     )
     request = {
         "input_id": resolved_input_id,
         "object_input_revision": object_input_revision,
-        "estimation_input": dict(estimation_input),
+        "estimation_input": _provider_estimation_input(estimation_input),
         "allowed_material_families": sorted(allowed_material_families),
         "transport_contract": {
             "required_fields": sorted(TRANSPORT_FIELDS),
@@ -376,8 +440,16 @@ def run_estimation_v2_facts_agent(
         messages=[{
             "role": "user",
             "content": [{
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/webp",
+                    "data": base64.b64encode(bytes(preview_bytes)).decode("ascii"),
+                },
+            }, {
                 "type": "text",
-                "text": "Extract one bounded object-facts result:\n"
+                "text": "The first content block is the persisted source preview. "
+                "Extract one bounded object-facts result for the named object:\n"
                 + json.dumps(request, ensure_ascii=False, separators=(",", ":")),
             }],
         }],
@@ -431,6 +503,7 @@ def run_estimation_v2_facts_agent(
             "input_contract_version": estimation_input.get("contract_version"),
             "object_input_revision": object_input_revision,
             "source_document_attached": False,
+            "source_preview_attached": True,
             "ocr_rerun": False,
         },
     )
