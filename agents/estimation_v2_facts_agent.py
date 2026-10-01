@@ -166,16 +166,82 @@ def _key_values(
 
 
 def _provider_json_text(response_text: str) -> str:
-    """Accept raw JSON or one exact Markdown JSON fence, never repair content."""
+    """Extract one JSON object while leaving its content untouched."""
     text = str(response_text or "").strip()
-    if not text.startswith("```"):
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if len(lines) < 3 or lines[0].strip().lower() not in {"```", "```json"}:
+            raise ValueError("Claude returned an unsupported Estimation v2 wrapper")
+        if lines[-1].strip() != "```":
+            raise ValueError("Claude returned an unterminated Estimation v2 JSON fence")
+        return "\n".join(lines[1:-1]).strip()
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = None
+    if isinstance(parsed, Mapping):
         return text
-    lines = text.splitlines()
-    if len(lines) < 3 or lines[0].strip().lower() not in {"```", "```json"}:
-        raise ValueError("Claude returned an unsupported Estimation v2 wrapper")
-    if lines[-1].strip() != "```":
-        raise ValueError("Claude returned an unterminated Estimation v2 JSON fence")
-    return "\n".join(lines[1:-1]).strip()
+    decoder = json.JSONDecoder()
+    for position, character in enumerate(text):
+        if character != "{":
+            continue
+        try:
+            value, end = decoder.raw_decode(text[position:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, Mapping):
+            return text[position:position + end]
+    return text
+
+
+def _normalize_evidence_references(
+    facts: dict[str, Any], evidence: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Map provider page labels to the persisted preview and record the substitution."""
+    allowed = {
+        str(block["block_ref"])
+        for block in evidence.get("ocr_blocks") or []
+        if isinstance(block, Mapping) and block.get("block_ref")
+    }
+    allowed.update(
+        str(artifact["storage_ref"])
+        for artifact in evidence.get("artifacts") or []
+        if isinstance(artifact, Mapping) and artifact.get("storage_ref")
+    )
+    preview_ref = str(evidence.get("primary_preview_ref") or "")
+    if preview_ref:
+        allowed.add(preview_ref)
+    replaced: set[str] = set()
+
+    def visit(value: Any) -> None:
+        if isinstance(value, dict):
+            refs = value.get("evidence_refs")
+            if isinstance(refs, list):
+                normalized: list[str] = []
+                for raw_ref in refs:
+                    ref = str(raw_ref)
+                    if ref not in allowed and preview_ref:
+                        replaced.add(ref)
+                        ref = preview_ref
+                    if ref and ref not in normalized:
+                        normalized.append(ref)
+                value["evidence_refs"] = normalized
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    visit(facts)
+    if replaced:
+        facts.setdefault("review_items", []).append({
+            "code": "invalid_evidence_reference", "severity": "warning",
+            "path": "evidence_refs",
+            "message": "Normalized provider page labels to the persisted source preview: "
+            + ", ".join(sorted(replaced)),
+            "evidence_refs": [preview_ref],
+        })
+    return facts
 
 
 def _normalize_provider_result(
@@ -577,14 +643,16 @@ def run_estimation_v2_facts_agent(
         ) from exc
     if not isinstance(raw, Mapping):
         raise ValueError("Estimation v2 facts transport must be an object")
-    validated = validate_object_facts(
-        _normalize_provider_result(
+    normalized = _normalize_provider_result(
             raw,
             input_id=resolved_input_id,
             object_input_revision=object_input_revision,
             estimation_input=estimation_input,
             production_context=production_context,
-        ),
+        )
+    normalized = _normalize_evidence_references(normalized, evidence)
+    validated = validate_object_facts(
+        normalized,
         allowed_material_families=allowed_material_families,
     )
     _assert_bound_identifiers(

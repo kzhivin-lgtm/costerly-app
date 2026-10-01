@@ -218,17 +218,10 @@ def test_agent_accepts_one_exact_json_fence(monkeypatch):
     assert result["facts"]["materials"] == FIXTURE["facts"]["materials"]
 
 
-def test_agent_rejects_commentary_around_json():
-    try:
-        agent._provider_json_text('Result:\n{"status":"ready"}')
-    except ValueError:
-        raise AssertionError("plain non-fenced wrapper reaches JSON parser")
-    try:
-        json.loads(agent._provider_json_text('Result:\n{"status":"ready"}'))
-    except json.JSONDecodeError:
-        pass
-    else:
-        raise AssertionError("commentary around JSON must not be accepted")
+def test_agent_extracts_single_json_object_from_commentary_wrapper():
+    assert json.loads(agent._provider_json_text(
+        'Result:\n{"status":"ready"}\nDone.'
+    )) == {"status": "ready"}
 
 
 def test_sparse_named_manufacturing_fields_are_normalized_without_position():
@@ -339,15 +332,18 @@ def test_machine_operation_without_manufacturing_inputs_requires_review():
     )
 
 
-def test_agent_rejects_unknown_evidence_reference(monkeypatch):
+def test_agent_normalizes_unknown_evidence_reference_with_warning(monkeypatch):
     changed = _provider_response()
     changed["labor_operations"][0]["evidence_refs"] = ["invented-ref"]
-    try:
-        _run(monkeypatch, changed)
-    except ValueError as exc:
-        assert "invented evidence refs" in str(exc)
-    else:
-        raise AssertionError("invented evidence refs must be rejected")
+    result = _run(monkeypatch, changed)
+    assert result["facts"]["labor_operations"][0]["evidence_refs"] == [
+        "storage://rfq-estimation-evidence/company-e01/run-e01/object-e01/r1/preview.webp"
+    ]
+    assert any(
+        item["code"] == "invalid_evidence_reference"
+        and item["severity"] == "warning"
+        for item in result["facts"]["review_items"]
+    )
 
 
 def test_server_adds_blocking_review_when_material_quantity_is_missing():

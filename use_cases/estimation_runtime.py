@@ -79,11 +79,6 @@ def _run_estimation_v2_for_all_objects(
             label="extracting_object_facts",
         )
 
-    facts_result = run_estimation_v2_facts_batch(
-        client=client,
-        inputs=valid_inputs,
-        on_object_start=mark_facts_start,
-    )
     first_payload = valid_inputs[0].get("input_payload") if valid_inputs else None
     company_id = str(first_payload.get("company_id") or "") if isinstance(first_payload, Mapping) else ""
     shared_context = build_estimation_v2_context(client, company_id) if company_id else None
@@ -91,6 +86,11 @@ def _run_estimation_v2_for_all_objects(
     for input_row in valid_inputs:
         object_id = str(input_row["object_id"])
         input_id = str(input_row["input_id"])
+        mark_facts_start(input_row)
+        facts_result = run_estimation_v2_facts_batch(
+            client=client,
+            inputs=[input_row],
+        )
         error = facts_result["failed"].get(input_id)
         if error:
             failed[input_id] = error
