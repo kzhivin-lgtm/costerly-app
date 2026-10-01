@@ -30,6 +30,9 @@ English regardless of the drawing language. Use canonical units only: `m²`,
 `m`, `mm`, `kg`, `l`, `sheet`, `piece`, `cut`, `hole` or another concise
 English physical unit required by an allowed operation. Never return localized
 unit spellings or abbreviations such as `м²`, `м`, `шт`, `л`, `יחידה` or `מטר`.
+Purchased-component `t` is a lowercase snake_case identifier such as
+`glass_door_panel` or `drawer_runner`, never a display phrase. The server also
+normalizes this field before validation.
 
 Do not return source facts, review items, prose, basis, evidence references,
 confidence, provenance, routes, machines or unknown/default fields. The server

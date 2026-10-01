@@ -432,7 +432,7 @@ def test_publisher_writes_agent_materials_operations_totals_and_completed_status
     assert events[2][1]["vat_amount"] == 31.05
 
 
-def test_publisher_preserves_review_required_without_fake_totals(monkeypatch):
+def test_publisher_costs_review_required_facts_with_logged_approximation(monkeypatch):
     facts = {
         "status": "review_required", "company_id": "company-1", "object_id": "object-1",
         "review_items": [{"code": "dimensions_missing", "severity": "blocking"}],
@@ -443,6 +443,12 @@ def test_publisher_preserves_review_required_without_fake_totals(monkeypatch):
     monkeypatch.setattr(publisher, "validate_object_facts", lambda *_args, **_kwargs: facts)
     monkeypatch.setattr(publisher, "_material_rows_and_costs", lambda **_kwargs: ([{"line_id": "m1"}], []))
     monkeypatch.setattr(publisher, "_purchased_component_rows_and_costs", lambda _facts, _catalogs: ([], []))
+    monkeypatch.setattr(publisher, "_labor_rows_and_costs", lambda **_kwargs: ([], [], 1.0, 50.0))
+    monkeypatch.setattr(publisher, "_manufacturing_rows_and_costs", lambda **_kwargs: ([], []))
+    monkeypatch.setattr(publisher, "build_overhead_lines", lambda **_kwargs: [{"line_id": "o1", "cost": 10.0}])
+    monkeypatch.setattr(publisher, "compose_object_estimate", lambda **_kwargs: {
+        "status": "review_required", "self_cost_unit": 60.0,
+    })
     monkeypatch.setattr(publisher, "replace_rfq_estimate_lines_for_object", lambda *_args, **kwargs: events.append({"lines": kwargs["lines"]}))
     monkeypatch.setattr(publisher, "update_rfq_object_estimate_totals", lambda *_args, **kwargs: events.append({"totals": kwargs}))
     monkeypatch.setattr(publisher, "update_rfq_object_estimate_progress", lambda *_args, **kwargs: events.append(kwargs))
@@ -450,19 +456,23 @@ def test_publisher_preserves_review_required_without_fake_totals(monkeypatch):
     result = publisher.publish_estimation_v2_object(
         client=object(), estimate_id="estimate-1",
         input_row={"input_id": "input-1", "object_id": "object-1"},
-        context={"families": {"mdf"}, "catalogs": {}, "settings": {}},
+        context={"families": {"mdf"}, "catalogs": {}, "settings": {},
+                 "overhead_monthly": {}, "employees": [],
+                 "production_context": {}, "manufacturing_parameters": []},
     )
 
     assert result["status"] == "review_required"
-    assert result["reason_codes"] == ["dimensions_missing"]
-    assert [row["line_id"] for row in events[0]["lines"]] == [
+    assert result["self_cost_unit"] == 60.0
+    assert events[0]["status"] == "running"
+    assert [row["line_id"] for row in events[1]["lines"]] == [
         "m1", "object-1_material_policy_consumables", "object-1_material_policy_packaging",
+        "o1",
     ]
-    assert events[1:] == [{"totals": {
+    assert events[2:] == [{"totals": {
         "estimate_id": "estimate-1", "object_id": "object-1",
-        "self_cost_ex_vat": None, "vat_amount": None, "self_cost_total": None,
+        "self_cost_ex_vat": 60.0, "vat_amount": 10.8, "self_cost_total": 70.8,
     }}, {
         "estimate_id": "estimate-1", "object_id": "object-1",
         "status": "review_required", "progress_percent": 100,
-        "progress_label": "object_facts_review_required",
+        "progress_label": "costing_review_required",
     }]

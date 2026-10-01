@@ -258,8 +258,15 @@
           }
 
           const nextPath = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
-          window.history.replaceState(window.history.state, "", nextPath);
+          const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+          if (nextPath !== currentPath) {
+            window.history.pushState({costerlyRoute: true}, "", nextPath);
+          }
         }
+
+        window.addEventListener("popstate", () => {
+          window.location.reload();
+        });
 
         function persistTimeline() {
           if (!timeline.length) return;

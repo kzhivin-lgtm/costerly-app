@@ -53,6 +53,7 @@ ESTIMATION_REASON_CODE_VALUES = frozenset({
     "labor_result_unavailable", "labor_review_required",
     "overhead_result_unavailable", "overhead_review_required",
     "cost_currency_mismatch", "extraction_failed", "deterministic_engine_failed",
+    "model_value_normalized", "approximation_applied",
 })
 
 _FACT_FIELDS = frozenset({

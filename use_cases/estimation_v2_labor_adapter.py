@@ -13,12 +13,10 @@ LABOR_INPUT_CONTRACT_VERSION = "labor_input_v2"
 def build_labor_input(facts: Mapping[str, Any]) -> dict[str, Any]:
     if facts.get("contract_version") != OBJECT_FACTS_CONTRACT_VERSION:
         raise ValueError(f"Labor adapter requires {OBJECT_FACTS_CONTRACT_VERSION}")
-    if facts.get("status") != "ready":
-        raise ValueError("Labor adapter requires ready Object Facts")
     materials = facts.get("materials")
     operations = facts.get("labor_operations")
-    if not isinstance(materials, list) or not materials:
-        raise ValueError("Labor adapter requires material requirements")
+    if not isinstance(materials, list):
+        materials = []
     if not isinstance(operations, list) or not operations:
         raise ValueError("Labor adapter requires a fabrication operation plan")
     return {

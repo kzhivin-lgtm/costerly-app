@@ -4,6 +4,7 @@ import base64
 from datetime import UTC, datetime
 import json
 from pathlib import Path
+import re
 from typing import Any, AbstractSet, Mapping, Sequence
 
 from agents.anthropic_adapter import (
@@ -25,7 +26,7 @@ from use_cases.estimation_v2_composition import (
 from use_cases.labor_engine import BASELINES, MACHINE_REQUIREMENTS
 
 
-ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_page_facts_agent_v14_english_normalized"
+ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_page_facts_agent_v15_nonblocking_approximations"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_page_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 12000
 TIMEOUT_SECONDS = 180.0
@@ -39,6 +40,22 @@ def _number(value: Any, *, positive: bool = False) -> float | None:
     if positive and result <= 0:
         return None
     return result
+
+
+def _stable_identifier(value: Any, default: str) -> str:
+    normalized = re.sub(r"[^a-z0-9_.:-]+", "_", str(value or "").strip().casefold())
+    return normalized.strip("_") or default
+
+
+def _unique_identifier(value: Any, default: str, used: set[str]) -> str:
+    base = _stable_identifier(value, default)
+    candidate = base
+    suffix = 2
+    while candidate in used:
+        candidate = f"{base}_{suffix}"
+        suffix += 1
+    used.add(candidate)
+    return candidate
 
 
 def _sparse(value: Any, allowed: Sequence[str]) -> dict[str, Any]:
@@ -78,17 +95,20 @@ def _expand_object(
     object_payload = payload["object"]
     evidence = payload["evidence"]
     preview = str(evidence["primary_preview_ref"])
+    review_items = []
     materials = []
     material_ids: set[str] = set()
     for index, raw in enumerate(compact.get("m") or [], start=1):
         if not isinstance(raw, Mapping):
             continue
-        requirement_id = str(raw.get("id") or f"m{index}")
+        original_id = str(raw.get("id") or f"m{index}")
         family = str(raw.get("f") or "")
         quantity = _number(raw.get("q"), positive=True)
         if family not in families or quantity is None:
             continue
-        material_ids.add(requirement_id)
+        requirement_id = _unique_identifier(original_id, f"m{index}", material_ids)
+        if requirement_id != original_id:
+            review_items.append({"code": "model_value_normalized", "severity": "warning", "path": f"materials[{index}].requirement_id", "message": f"Normalized {original_id!r} to {requirement_id!r}", "evidence_refs": [preview]})
         materials.append({
             "requirement_id": requirement_id,
             "source_name": str(raw.get("n") or family), "family": family,
@@ -97,6 +117,7 @@ def _expand_object(
             "evidence_refs": [preview],
         })
     operations = []
+    operation_ids: set[str] = set()
     for index, raw in enumerate(compact.get("op") or [], start=1):
         if not isinstance(raw, Mapping):
             continue
@@ -106,8 +127,12 @@ def _expand_object(
             continue
         affected = [str(value) for value in raw.get("m") or [] if str(value) in material_ids]
         machine_code = MACHINE_REQUIREMENTS.get(code)
+        original_id = str(raw.get("id") or f"op{index}")
+        operation_id = _unique_identifier(original_id, f"op{index}", operation_ids)
+        if operation_id != original_id:
+            review_items.append({"code": "model_value_normalized", "severity": "warning", "path": f"labor_operations[{index}].operation_id", "message": f"Normalized {original_id!r} to {operation_id!r}", "evidence_refs": [preview]})
         operations.append({
-            "operation_id": str(raw.get("id") or f"op{index}"),
+            "operation_id": operation_id,
             "operation_code": code,
             "route": "in_house_machine" if machine_code else "in_house_manual",
             "quantity": quantity, "unit": str(raw.get("u") or "unit"),
@@ -118,43 +143,62 @@ def _expand_object(
             "confidence": 50,
         })
     manufacturing = []
+    manufacturing_ids: set[str] = set()
     for index, raw in enumerate(compact.get("mf") or [], start=1):
         if not isinstance(raw, Mapping) or raw.get("p") not in {"cnc_router", "sheet_laser"}:
+            continue
+        material_requirement_id = str(raw.get("m") or "")
+        if material_requirement_id not in material_ids:
+            review_items.append({"code": "model_value_normalized", "severity": "warning", "path": f"manufacturing_features[{index}]", "message": "Skipped manufacturing feature referencing an unknown material", "evidence_refs": [preview]})
             continue
         measurements = {key: None for key in MANUFACTURING_MEASUREMENT_KEYS}
         measurements.update({key: _number(value) for key, value in _sparse(raw.get("v"), MANUFACTURING_MEASUREMENT_KEYS).items()})
         flags = {key: "unknown" for key in MANUFACTURING_FLAG_KEYS}
         flags.update({key: value for key, value in _sparse(raw.get("g"), MANUFACTURING_FLAG_KEYS).items() if value in {"yes", "no", "unknown"}})
         manufacturing.append({
-            "feature_id": str(raw.get("id") or f"mf{index}"), "process": raw["p"],
-            "material_requirement_id": str(raw.get("m") or ""),
+            "feature_id": _unique_identifier(raw.get("id"), f"mf{index}", manufacturing_ids), "process": raw["p"],
+            "material_requirement_id": material_requirement_id,
             "measurements": measurements, "flags": flags, "evidence_refs": [preview],
         })
     purchased = []
+    component_ids: set[str] = set()
     for index, raw in enumerate(compact.get("pc") or [], start=1):
         if not isinstance(raw, Mapping) or _number(raw.get("q"), positive=True) is None:
             continue
+        original_type = str(raw.get("t") or "purchased_component")
+        component_type = _stable_identifier(original_type, "purchased_component")
+        if component_type != original_type:
+            review_items.append({"code": "model_value_normalized", "severity": "warning", "path": f"purchased_components[{index}].component_type", "message": f"Normalized {original_type!r} to {component_type!r}", "evidence_refs": [preview]})
         purchased.append({
-            "component_id": str(raw.get("id") or f"pc{index}"),
-            "component_type": str(raw.get("t") or "purchased_component"),
+            "component_id": _unique_identifier(raw.get("id"), f"pc{index}", component_ids),
+            "component_type": component_type,
             "quantity": _number(raw.get("q"), positive=True), "unit": str(raw.get("u") or "ea"),
             "specification": _sparse(raw.get("s"), PURCHASED_SPECIFICATION_KEYS),
             "evidence_refs": [preview],
         })
     dimensions = list(compact.get("d") or [])
     dimensions += [0] * (3 - len(dimensions))
-    review_items = []
     if not materials:
         review_items.append({"code": "material_requirement_missing", "severity": "blocking", "path": "materials", "message": "Compact planner returned no valid material", "evidence_refs": [preview]})
     if not operations:
-        review_items.append({"code": "labor_result_unavailable", "severity": "blocking", "path": "labor_operations", "message": "Compact planner returned no valid operation", "evidence_refs": [preview]})
+        quantity = _number(object_payload.get("quantity"), positive=True) or 1
+        for index, code in enumerate(("estimate_review", "shop_drawing", "quality_inspection", "protective_packaging"), start=1):
+            operations.append({
+                "operation_id": f"fallback_op{index}", "operation_code": code,
+                "route": "in_house_manual", "quantity": quantity, "unit": "object",
+                "batch_key": f"{code}:object", "machine_code": None,
+                "material_requirement_ids": [],
+                "basis": "Universal fallback because the planner returned no valid fabrication operation",
+                "provenance": "estimated", "evidence_refs": [preview], "confidence": 20,
+            })
+        review_items.append({"code": "approximation_applied", "severity": "blocking", "path": "labor_operations", "message": "Applied universal review, drawing, inspection and packaging labor fallback", "evidence_refs": [preview]})
     facts = {
         "contract_version": OBJECT_FACTS_CONTRACT_VERSION,
         "input_id": str(row["input_id"]), "object_input_revision": int(row.get("object_input_revision") or 1),
         "run_id": payload["run_id"], "company_id": payload["company_id"],
         "object_id": object_payload["object_id"], "object_name": object_payload["object_name"],
         "quantity": object_payload.get("quantity") or 1,
-        "status": "review_required" if review_items else "ready",
+        "status": "review_required" if any(item["severity"] == "blocking" for item in review_items) else "ready",
         "dimensions_mm": {key: (_number(value, positive=True) if value else None) for key, value in zip(("width", "depth", "height"), dimensions[:3])},
         "materials": materials, "features": _features(compact.get("x")),
         "manufacturing_features": manufacturing, "purchased_components": purchased,
@@ -229,7 +273,7 @@ def run_estimation_v2_page_facts_agent(
         input_id = str(row["input_id"])
         object_id = str(row["input_payload"]["object"]["object_id"])
         try:
-            facts_by_input[input_id] = _expand_object(compact_by_id[object_id], row, allowed_material_families)
+            facts_by_input[input_id] = _expand_object(compact_by_id.get(object_id) or {}, row, allowed_material_families)
             facts = facts_by_input[input_id]
             object_diagnostics.append({
                 "input_id": input_id, "object_id": object_id, "status": "validated",

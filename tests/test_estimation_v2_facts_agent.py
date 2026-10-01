@@ -483,3 +483,42 @@ def test_page_agent_sends_one_labeled_preview_per_object(monkeypatch):
     assert labels == [first["object"]["object_id"], "object-2"]
     assert len(images) == 2
     assert images[0]["source"]["data"] != images[1]["source"]["data"]
+
+
+def test_page_agent_normalizes_purchased_component_phrase_to_stable_identifier():
+    assert page_agent._stable_identifier("Glass door panel", "purchased_component") == "glass_door_panel"
+    assert page_agent._stable_identifier("Drawer runner", "purchased_component") == "drawer_runner"
+
+
+def test_page_agent_builds_logged_fallback_when_object_payload_is_missing():
+    facts = page_agent._expand_object(
+        {},
+        {"input_id": "input-1", "object_input_revision": 1, "input_payload": _input()},
+        {"birch_plywood"},
+    )
+
+    assert facts["status"] == "review_required"
+    assert [row["operation_code"] for row in facts["labor_operations"]] == [
+        "estimate_review", "shop_drawing", "quality_inspection", "protective_packaging",
+    ]
+    assert {row["code"] for row in facts["review_items"]} == {
+        "material_requirement_missing", "approximation_applied",
+    }
+
+
+def test_page_agent_logs_purchased_component_normalization():
+    compact = {
+        "m": [{"id": "m 1", "n": "Birch plywood", "f": "birch_plywood", "q": 1, "u": "m²", "s": {}}],
+        "op": [{"id": "op 1", "c": "carcass_assembly", "q": 1, "u": "object", "m": ["m_1"]}],
+        "pc": [{"id": "door 1", "t": "Glass door panel", "q": 1, "u": "piece", "s": {}}],
+        "d": [1200, 560, 720], "x": {}, "mf": [],
+    }
+    facts = page_agent._expand_object(
+        compact,
+        {"input_id": "input-1", "object_input_revision": 1, "input_payload": _input()},
+        {"birch_plywood"},
+    )
+
+    assert facts["purchased_components"][0]["component_type"] == "glass_door_panel"
+    assert facts["purchased_components"][0]["component_id"] == "door_1"
+    assert any(row["code"] == "model_value_normalized" for row in facts["review_items"])

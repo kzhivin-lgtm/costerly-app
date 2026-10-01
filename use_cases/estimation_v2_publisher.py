@@ -837,42 +837,6 @@ def publish_estimation_v2_object(
     families = set(shared["families"])
     validate_object_facts(facts, allowed_material_families=families)
 
-    if facts.get("status") != "ready":
-        review_facts = {**facts, "estimate_id": estimate_id}
-        review_settings = dict(shared.get("settings") or {})
-        material_rows, _material_costs = _material_rows_and_costs(
-            facts=review_facts,
-            catalogs=shared.get("catalogs") or {"items": [], "offers": [], "identities": [], "prices": []},
-            vat_percent=_number(review_settings.get("vat_percent"), 18),
-        )
-        consumable_rows, _consumable_costs = _material_policy_rows_and_costs(
-            facts=review_facts,
-            primary_material_total=sum(_number(row.get("cost")) for row in material_rows),
-        )
-        material_rows.extend(consumable_rows)
-        purchased_rows, _purchased_costs = _purchased_component_rows_and_costs(
-            review_facts, shared.get("catalogs") or {}
-        )
-        replace_rfq_estimate_lines_for_object(
-            client,
-            estimate_id=estimate_id,
-            object_id=object_id,
-            lines=_safe_db_lines([*material_rows, *purchased_rows]),
-        )
-        update_rfq_object_estimate_totals(
-            client, estimate_id=estimate_id, object_id=object_id,
-            self_cost_ex_vat=None, vat_amount=None, self_cost_total=None,
-        )
-        update_rfq_object_estimate_progress(
-            client, estimate_id=estimate_id, object_id=object_id,
-            status="review_required", progress_percent=100,
-            progress_label="object_facts_review_required",
-        )
-        return {"object_id": object_id, "status": "review_required", "reason_codes": [
-            str(item.get("code")) for item in facts.get("review_items") or []
-            if item.get("severity") == "blocking"
-        ]}
-
     settings = dict(shared["settings"])
     overhead_monthly = dict(shared["overhead_monthly"])
     vat_percent = _number(settings.get("vat_percent"), 18)

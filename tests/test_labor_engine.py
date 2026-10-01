@@ -118,15 +118,15 @@ def test_estimation_ready_facts_adapt_without_object_classification():
     assert _codes(result) == ["panel_saw_cutting", "carcass_assembly"]
 
 
-def test_labor_adapter_rejects_unready_facts():
+def test_labor_adapter_accepts_review_facts_for_approximate_costing():
     facts = json.loads(
         Path("tests/fixtures/estimation_v2/e01_complete_object.json").read_text()
     )["facts"]
     facts = copy.deepcopy(facts)
     facts["status"] = "review_required"
 
-    with pytest.raises(ValueError, match="requires ready"):
-        build_labor_input(facts)
+    labor_input = build_labor_input(facts)
+    assert labor_input["labor_operations"] == facts["labor_operations"]
 
 
 def test_delivery_and_site_installation_are_not_labor_baselines():
