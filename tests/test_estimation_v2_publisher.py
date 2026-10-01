@@ -206,6 +206,45 @@ def test_square_tube_defaults_to_1_5_mm_and_uses_only_square_tube_kg_price():
     assert price == pytest.approx(10.7446)
 
 
+def test_profile_section_dimensions_infer_square_tube_when_name_is_generic():
+    geometry = publisher._steel_profile_geometry({
+        "family": "carbon_steel", "source_name": "metal profile",
+        "specification": {"profile_section": "20x20"},
+    })
+
+    assert geometry["material_form"] == "square tube"
+    assert geometry["wall_thickness_mm"] == 1.5
+
+
+def test_perforated_metal_sheet_is_normalized_from_coating_to_carbon_steel():
+    material = publisher._material_for_pricing({
+        "family": "metal_coatings",
+        "source_name": "перфорированный металлический лист",
+        "unit": "m²",
+    })
+
+    assert material["family"] == "carbon_steel"
+    assert material["pricing_normalization"] == "perforated_metal_sheet_is_carbon_steel"
+
+    price, rule, details = publisher._fallback_material_unit_cost(
+        {**material, "specification": {"thickness_mm": 5}},
+        {
+            "identities": [{"pricing_identity_id": "sheet", "price_attributes": {
+                "material_family": "carbon_steel", "detail_material_id": "mat-sheet",
+            }}],
+            "prices": [{"pricing_identity_id": "sheet", "unit": "kg", "price_typical": 10}],
+            "reference_materials": [{
+                "material_id": "mat-sheet", "canonical_name": "Carbon steel sheet",
+            }],
+            "baselines": [],
+        },
+    )
+
+    assert rule == "steel_sheet_area_to_weight"
+    assert details["kg_per_m2"] == 39.25
+    assert price == 431.75
+
+
 def test_angle_defaults_to_1_5_mm_but_explicit_wall_is_preserved():
     defaulted = publisher._steel_profile_geometry({
         "family": "carbon_steel", "source_name": "Steel angle 30x30", "specification": {},

@@ -541,7 +541,8 @@ def compose_object_estimate(
         if validated["quantity"] is None
         else _decimal(validated["quantity"], "facts.quantity")
     )
-    self_cost_total = resolved_total if complete else None
+    publishable_estimate = not failed and len(currencies) == 1 and resolved_total > 0
+    self_cost_total = resolved_total if publishable_estimate else None
     self_cost_unit = (
         self_cost_total / quantity
         if self_cost_total is not None and quantity is not None

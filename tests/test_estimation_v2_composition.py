@@ -57,7 +57,7 @@ def test_object_facts_reject_prices_hours_and_other_deterministic_outputs():
             )
 
 
-def test_missing_labor_result_keeps_self_cost_incomplete_with_exact_reason():
+def test_missing_labor_result_publishes_provisional_self_cost_with_exact_reason():
     fixture = _fixture()
     cost_lines = [line for line in fixture["cost_lines"] if line["section"] != "labor"]
 
@@ -70,12 +70,12 @@ def test_missing_labor_result_keeps_self_cost_incomplete_with_exact_reason():
     assert result["status"] == "review_required"
     assert result["reason_codes"] == ["labor_result_unavailable"]
     assert result["resolved_cost_subtotal"] == 615.0
-    assert result["self_cost_unit"] is None
-    assert result["self_cost_total"] is None
-    assert result["selling_price_unit_suggestion"] is None
+    assert result["self_cost_unit"] == 615.0
+    assert result["self_cost_total"] == 615.0
+    assert result["selling_price_unit_suggestion"] == 799.5
 
 
-def test_e06_unresolved_material_price_stays_visible_but_blocks_self_cost():
+def test_e06_unresolved_material_price_stays_visible_with_provisional_self_cost():
     fixture = _fixture()
     lines = copy.deepcopy(fixture["cost_lines"])
     material = next(line for line in lines if line["section"] == "material")
@@ -92,7 +92,7 @@ def test_e06_unresolved_material_price_stays_visible_but_blocks_self_cost():
     assert result["status"] == "review_required"
     assert result["reason_codes"] == ["material_price_unresolved"]
     assert result["resolved_cost_subtotal"] == 975.0
-    assert result["self_cost_total"] is None
+    assert result["self_cost_total"] == 975.0
     assert any(line["section"] == "material" for line in result["cost_lines"])
 
 

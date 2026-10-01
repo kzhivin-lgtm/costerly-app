@@ -243,6 +243,21 @@ _PROFILE_DIMENSIONS = re.compile(
 )
 
 
+def _material_for_pricing(material: Mapping[str, Any]) -> dict[str, Any]:
+    """Correct narrow, auditable extraction-family mistakes before resolution."""
+    normalized = dict(material)
+    name = str(material.get("source_name") or "").casefold()
+    family = str(material.get("family") or "").casefold()
+    is_perforated_sheet = (
+        any(token in name for token in ("perforat", "перфор", "מחורר"))
+        and any(token in name for token in ("sheet", "лист", "פח"))
+    )
+    if family == "metal_coatings" and is_perforated_sheet:
+        normalized["family"] = "carbon_steel"
+        normalized["pricing_normalization"] = "perforated_metal_sheet_is_carbon_steel"
+    return normalized
+
+
 def _steel_profile_geometry(material: Mapping[str, Any]) -> dict[str, Any] | None:
     if str(material.get("family") or "").casefold() != "carbon_steel":
         return None
@@ -258,8 +273,6 @@ def _steel_profile_geometry(material: Mapping[str, Any]) -> dict[str, Any] | Non
         if any(token in corpus for token in tokens):
             shape = candidate
             break
-    if shape is None:
-        return None
     match = _PROFILE_DIMENSIONS.search(corpus.replace(",", "."))
     width = _number(specification.get("width_mm"))
     height = _number(specification.get("height_mm"), width)
@@ -271,6 +284,8 @@ def _steel_profile_geometry(material: Mapping[str, Any]) -> dict[str, Any] | Non
     if shape == "round tube":
         width = _number(specification.get("diameter_mm")) or width
         height = width
+    if shape is None and width > 0 and height > 0:
+        shape = "square tube" if width == height else "rectangular tube"
     if width <= 0 or height <= 0:
         return None
     return {
@@ -285,6 +300,7 @@ def _fallback_material_unit_cost(
 ) -> tuple[float | None, str, dict[str, Any]]:
     family = str(material.get("family") or "")
     unit = str(material.get("unit") or "")
+    unit_key = unit.casefold().replace("²", "2")
     specification = dict(material.get("specification") or {})
     direct = _price_samples(catalogs, family=family, target_unit=unit)
     if direct:
@@ -301,14 +317,14 @@ def _fallback_material_unit_cost(
         if kg_prices:
             kg_price = float(median(kg_prices))
             thickness = _number(specification.get("thickness_mm"))
-            if unit.casefold() in {"m2", "sqm"} and thickness > 0:
+            if unit_key in {"m2", "sqm"} and thickness > 0:
                 kg_per_unit = thickness * 7.85
                 return (
                     round(kg_price * kg_per_unit * 1.10, 4),
                     "steel_sheet_area_to_weight",
                     {"kg_per_m2": kg_per_unit, "kg_price": kg_price, "reserve_percent": 10},
                 )
-            if unit.casefold() in {"m", "lm"} and profile:
+            if unit_key in {"m", "lm"} and profile:
                 width = profile["width_mm"]
                 height = profile["height_mm"]
                 wall = profile["wall_thickness_mm"]
@@ -328,7 +344,7 @@ def _fallback_material_unit_cost(
                     {**profile, "kg_per_m": kg_per_unit, "kg_price": kg_price, "reserve_percent": 10},
                 )
 
-    if unit.casefold() in {"m2", "sqm"} and family_key in {"metal_coatings", "wood_coatings"}:
+    if unit_key in {"m2", "sqm"} and family_key in {"metal_coatings", "wood_coatings"}:
         purchase_unit = "kg" if family_key == "metal_coatings" else "l"
         purchase_prices = _price_samples(catalogs, family=family, target_unit=purchase_unit)
         if purchase_prices:
@@ -384,6 +400,7 @@ def _material_rows_and_costs(
     db_rows: list[dict[str, Any]] = []
     cost_lines: list[dict[str, Any]] = []
     for index, material in enumerate(facts.get("materials") or [], start=1):
+        material = _material_for_pricing(material)
         if str(material.get("family") or "").casefold() in _ROUTINE_CONSUMABLE_FAMILIES:
             continue
         line_id = f"{facts['object_id']}_material_{index:04d}"
@@ -879,7 +896,7 @@ def publish_estimation_v2_object(
         ]),
     )
     status = "completed" if composition["status"] == "complete" else "review_required"
-    if status == "completed":
+    if composition.get("self_cost_unit") is not None:
         self_cost = _number(composition["self_cost_unit"])
         vat = round(self_cost * vat_percent / 100, 2)
         update_rfq_object_estimate_totals(
