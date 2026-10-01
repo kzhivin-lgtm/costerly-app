@@ -169,7 +169,7 @@ def _catalogs(client: Any, company_id: str) -> dict[str, Any]:
 
 
 _LAST_RESORT_UNIT_COSTS = {
-    "ea": 25.0, "pcs": 25.0, "piece": 25.0, "kg": 50.0,
+    "ea": 25.0, "pcs": 2.5, "piece": 25.0, "kg": 50.0,
     "l": 100.0, "litre": 100.0, "m": 25.0, "lm": 25.0,
     "m2": 100.0, "sqm": 100.0, "sheet": 25.0,
     "roll": 25.0, "lot": 75.0, "project": 75.0,
@@ -230,6 +230,19 @@ def _fallback_material_unit_cost(
         return value, "family_high_median", {"sample_count": len(direct), "reserve_percent": 5}
 
     family_key = family.casefold()
+    family_unit_allowances = {
+        ("abrasives", "sheet"): 5.0,
+        ("abrasives", "m2"): 10.0,
+        ("abrasives", "sqm"): 10.0,
+        ("counted_furniture_connectors", "pcs"): 2.5,
+        ("bulk_fasteners", "lot"): 75.0,
+        ("shop_consumables_and_tool_wear", "lot"): 75.0,
+    }
+    family_allowance = family_unit_allowances.get((family_key, unit.casefold()))
+    if family_allowance is not None:
+        return family_allowance, "family_unit_allowance", {
+            "family": family_key, "unit": unit, "reserve_basis": "mvp_conservative_allowance",
+        }
     if family_key == "carbon_steel":
         kg_prices = _price_samples(catalogs, family=family, target_unit="kg")
         if kg_prices:
@@ -268,10 +281,6 @@ def _fallback_material_unit_cost(
                  "purchase_unit_price": price, "reserve_percent": 10},
             )
 
-    global_samples = _price_samples(catalogs, family=None, target_unit=unit)
-    if global_samples:
-        value = round(float(median(global_samples)) * 1.15, 4)
-        return value, "market_unit_high_median", {"sample_count": len(global_samples), "reserve_percent": 15}
     value = _LAST_RESORT_UNIT_COSTS.get(unit.casefold(), 75.0)
     return value, "last_resort_unit_allowance", {"unit": unit, "reserve_basis": "mvp_default"}
 

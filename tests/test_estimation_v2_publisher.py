@@ -143,6 +143,19 @@ def test_unresolved_material_gets_audited_nonblocking_fallback(monkeypatch):
     assert costs[0]["amount"] == 200
 
 
+def test_family_allowances_prevent_cross_family_unit_prices():
+    catalogs = {"identities": [], "prices": [], "baselines": [], "reference_materials": []}
+    abrasive, abrasive_rule, _ = publisher._fallback_material_unit_cost(
+        {"family": "abrasives", "unit": "sheet", "specification": {}}, catalogs
+    )
+    fastener, fastener_rule, _ = publisher._fallback_material_unit_cost(
+        {"family": "counted_furniture_connectors", "unit": "pcs", "specification": {}}, catalogs
+    )
+
+    assert (abrasive, abrasive_rule) == (5, "family_unit_allowance")
+    assert (fastener, fastener_rule) == (2.5, "family_unit_allowance")
+
+
 def test_manufacturing_features_are_routed_through_existing_cost_engine(monkeypatch):
     facts = _ready_facts()
     facts["materials"][0]["specification"] = {"thickness_mm": 5}
