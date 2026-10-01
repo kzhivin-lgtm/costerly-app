@@ -19,7 +19,7 @@ from db.repositories import (
     update_rfq_object_estimate_progress,
     update_rfq_object_estimate_totals,
 )
-from agents.estimation_v2_facts_agent import ESTIMATION_V2_FACTS_AGENT_VERSION
+from agents.estimation_v2_page_facts_agent import ESTIMATION_V2_FACTS_AGENT_VERSION
 from use_cases.estimate_material_resolution import resolve_estimate_material_requirement
 from use_cases.estimation_v2_composition import compose_object_estimate, validate_object_facts
 from use_cases.estimation_v2_labor_adapter import build_labor_input

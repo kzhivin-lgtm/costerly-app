@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import use_cases.estimation_v2_facts_shadow as shadow
-from agents.estimation_v2_facts_agent import ESTIMATION_V2_FACTS_AGENT_VERSION
+from agents.estimation_v2_page_facts_agent import ESTIMATION_V2_FACTS_AGENT_VERSION
 from db.repositories import (
     fetch_active_israel_material_families,
     insert_estimation_v2_fact_result,
@@ -145,9 +145,10 @@ def test_shadow_batch_persists_validated_facts_and_usage(monkeypatch):
     monkeypatch.setattr(shadow, "download_evidence_artifact", lambda **_kwargs: b"preview")
     monkeypatch.setattr(
         shadow,
-        "run_estimation_v2_facts_agent",
+        "run_estimation_v2_page_facts_agent",
         lambda **kwargs: {
-            "facts": {"contract_version": "estimation_object_facts_v2", "status": "review_required"},
+            "facts_by_input": {"input-1": {"contract_version": "estimation_object_facts_v2", "status": "review_required"}},
+            "failed": {},
             "usage_event": {"agent_name": "estimation_v2_facts"},
         },
     )
@@ -173,7 +174,7 @@ def test_shadow_batch_reuses_exact_agent_version_without_model_call(monkeypatch)
     monkeypatch.setattr(shadow, "fetch_estimation_v2_fact_result", lambda *_args, **_kwargs: {"fact_result_id": "facts-1"})
     monkeypatch.setattr(
         shadow,
-        "run_estimation_v2_facts_agent",
+        "run_estimation_v2_page_facts_agent",
         lambda **_kwargs: (_ for _ in ()).throw(AssertionError("model must not run")),
     )
 
@@ -192,7 +193,7 @@ def test_shadow_batch_is_fail_isolated_per_object(monkeypatch):
     monkeypatch.setattr(shadow, "download_evidence_artifact", lambda **_kwargs: b"preview")
     monkeypatch.setattr(
         shadow,
-        "run_estimation_v2_facts_agent",
+        "run_estimation_v2_page_facts_agent",
         lambda **kwargs: (_ for _ in ()).throw(ValueError("unsafe evidence")),
     )
 
