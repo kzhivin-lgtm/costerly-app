@@ -3358,6 +3358,8 @@ def test_shared_header_keeps_action_labels_visible_without_clipping():
     assert "right: max(28px, calc((100vw - var(--post-upload-width)) / 2));" in css
     assert "flex: 0 0 auto !important;" in css
     assert "font-size: 10px !important;" in css
+    assert "flex: 0 0 14px;" in css
+    assert "height: 14px !important;" in css
 
 
 def test_labor_card_spacing_and_disabled_select_placeholder_contract():

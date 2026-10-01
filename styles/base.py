@@ -329,19 +329,27 @@ def apply_base_css() -> None:
 
         .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button p {
             font-size: 0 !important;
-            display: inline-flex !important;
+            display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            height: 14px !important;
+            margin: 0 !important;
             line-height: 1 !important;
+        }
+
+        .stApp .st-key-costerly_header_controls [data-testid="stColumn"]:last-child div[data-testid="stButton"] button {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
 
         .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button p::before {
             content: "";
-            display: inline-block;
+            display: block;
+            flex: 0 0 14px;
             width: 14px;
             height: 14px;
             margin-right: 0;
-            vertical-align: middle;
             background: currentColor;
             -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4H5.8A1.8 1.8 0 0 0 4 5.8v12.4A1.8 1.8 0 0 0 5.8 20H10'/%3E%3Cpath d='M14 8l4 4-4 4'/%3E%3Cpath d='M8 12h10'/%3E%3C/svg%3E") center / contain no-repeat;
             mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4H5.8A1.8 1.8 0 0 0 4 5.8v12.4A1.8 1.8 0 0 0 5.8 20H10'/%3E%3Cpath d='M14 8l4 4-4 4'/%3E%3Cpath d='M8 12h10'/%3E%3C/svg%3E") center / contain no-repeat;
