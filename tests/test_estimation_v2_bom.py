@@ -57,3 +57,13 @@ def test_open_shelving_accepts_sonnet_russian_profile_and_20x20mm_transport():
 
     assert result is not None
     assert result["facts"]["materials"][0]["family"] == "carbon_steel"
+
+
+def test_open_shelving_accepts_source_misspelling_for_perforated_sheet():
+    facts = _facts()
+    facts["materials"][2]["source_name"] = "перфарированный металл. лист 5мм"
+
+    result = derive_supported_bom(facts)
+
+    assert result is not None
+    assert result["facts"]["materials"][2]["quantity"] > 0

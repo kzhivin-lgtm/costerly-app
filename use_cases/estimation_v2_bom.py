@@ -71,7 +71,7 @@ def _open_shelving_unit(facts: Mapping[str, Any]) -> dict[str, Any]:
                             for token in ("profile", "профил"))), None)
     perforated = next((row for row in source_materials if row.get("family") in {"carbon_steel", "galvanized_steel"}
                        and any(token in str(row.get("source_name") or "").casefold()
-                               for token in ("perfor", "перфор"))), None)
+                               for token in ("perfor", "перфор", "перфар"))), None)
     if mdf is None or profile is None or perforated is None:
         raise EstimationV2BomError("open shelving requires MDF, metal profile and perforated sheet facts")
 
