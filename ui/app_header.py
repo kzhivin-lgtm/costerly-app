@@ -35,10 +35,9 @@ def render_account_header_controls(
     show_new_estimate: bool = False,
     show_last_estimate: bool = False,
     show_profile: bool = True,
-    container_key: str = "costerly_header_controls",
 ) -> None:
     """Render authenticated actions with navigation applied before the next run."""
-    with st.container(key=container_key):
+    with st.container(key="costerly_header_controls"):
         actions: list[tuple[str, str, object, bool, str | None]] = []
         if show_admin:
             actions.append(("Admin", "open_platform_admin", on_admin, False, None))

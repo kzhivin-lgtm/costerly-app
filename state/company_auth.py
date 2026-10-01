@@ -1598,12 +1598,7 @@ def _open_last_estimate(company_id: str) -> None:
     set_screen("objects")
 
 
-def render_account_control(
-    access: CompanyAccess,
-    *,
-    platform_access=None,
-    container_key: str = "costerly_header_controls",
-) -> None:
+def render_account_control(access: CompanyAccess, *, platform_access=None) -> None:
     from db.supabase_client import get_supabase_client
     from use_cases.latest_estimate import load_latest_estimate_route
 
@@ -1624,7 +1619,6 @@ def render_account_control(
         show_new_estimate=active_screen not in {"upload", "processing"},
         show_last_estimate=latest_route is not None and active_screen not in workflow_screens,
         show_profile=active_screen != "account",
-        container_key=container_key,
     )
     last_estimate_error = st.session_state.pop("header_last_estimate_error", None)
     if last_estimate_error:
