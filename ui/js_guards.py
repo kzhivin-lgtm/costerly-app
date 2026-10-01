@@ -22,6 +22,9 @@ def install_workflow_header_alignment_guard() -> None:
             let titleObserver = null;
             let actionsObserver = null;
             let mutationObserver = null;
+            let currentActions = null;
+            let appliedOffset = 0;
+            let appliedTransform = "";
 
             function targets() {
                 return {
@@ -35,13 +38,21 @@ def install_workflow_header_alignment_guard() -> None:
                 const { title, actions } = targets();
                 if (!title || !actions) return;
 
+                if (actions !== currentActions || actions.style.transform !== appliedTransform) {
+                    currentActions = actions;
+                    appliedOffset = 0;
+                }
+
                 const titleRect = title.getBoundingClientRect();
                 const actionsRect = actions.getBoundingClientRect();
                 if (!titleRect.height || !actionsRect.height) return;
 
-                const offset = (titleRect.top + titleRect.height / 2)
-                    - (actionsRect.top + actionsRect.height / 2);
-                actions.style.transform = `translateY(${Math.round(offset * 100) / 100}px)`;
+                const titleCenter = titleRect.top + titleRect.height / 2;
+                const actionsBaseCenter = actionsRect.top + actionsRect.height / 2 - appliedOffset;
+                const offset = titleCenter - actionsBaseCenter;
+                appliedTransform = `translateY(${Math.round(offset * 100) / 100}px)`;
+                actions.style.transform = appliedTransform;
+                appliedOffset = offset;
                 actions.dataset.workflowHeaderAligned = "true";
             }
 

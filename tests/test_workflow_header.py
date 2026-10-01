@@ -42,6 +42,8 @@ def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_ev
     assert "def install_workflow_header_alignment_guard" in source
     assert 'parentDoc.querySelector("h1.workflow-title")' in source
     assert "getBoundingClientRect()" in source
+    assert "actionsBaseCenter" in source
+    assert "- appliedOffset" in source
     assert "translateY(${Math.round(offset * 100) / 100}px)" in source
     assert 'addEventListener("scroll"' not in source.split(
         "def install_workflow_header_alignment_guard", 1
