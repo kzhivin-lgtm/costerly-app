@@ -36,6 +36,8 @@ from use_cases.labor_engine import MACHINE_REQUIREMENTS
 
 
 ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_object_facts_agent_v5"
+ESTIMATION_V2_FACTS_MAX_OUTPUT_TOKENS = 16384
+ESTIMATION_V2_FACTS_TIMEOUT_SECONDS = 180.0
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_object_facts_prompt.md"
 
 
@@ -461,9 +463,12 @@ def run_estimation_v2_facts_agent(
     }
     started_at = datetime.now(UTC).isoformat()
     response = create_claude_message(
-        get_anthropic_client().with_options(timeout=120.0, max_retries=0),
+        get_anthropic_client().with_options(
+            timeout=ESTIMATION_V2_FACTS_TIMEOUT_SECONDS,
+            max_retries=0,
+        ),
         model=selected_model,
-        max_tokens=8192,
+        max_tokens=ESTIMATION_V2_FACTS_MAX_OUTPUT_TOKENS,
         temperature=0,
         system=PROMPT_PATH.read_text(encoding="utf-8").strip(),
         messages=[{
@@ -490,13 +495,33 @@ def run_estimation_v2_facts_agent(
         },
     )
     finished_at = datetime.now(UTC).isoformat()
+    stop_reason = str(getattr(response, "stop_reason", "") or "unknown")
+    response_text = extract_text_from_claude_response(response)
+    if stop_reason == "max_tokens":
+        raise RuntimeError(
+            "Claude truncated Estimation v2 facts at the output token limit "
+            f"({ESTIMATION_V2_FACTS_MAX_OUTPUT_TOKENS}); result was not published"
+        )
     try:
-        envelope = json.loads(extract_text_from_claude_response(response))
-        if not isinstance(envelope, dict) or set(envelope) != {"facts_json"}:
-            raise ValueError("Estimation v2 facts envelope is invalid")
-        raw = json.loads(envelope["facts_json"])
+        envelope = json.loads(response_text)
     except json.JSONDecodeError as exc:
-        raise RuntimeError("Claude returned invalid Estimation v2 facts JSON") from exc
+        raise RuntimeError(
+            "Claude returned invalid Estimation v2 envelope JSON "
+            f"(stop_reason={stop_reason}, output_chars={len(response_text)})"
+        ) from exc
+    if not isinstance(envelope, dict) or set(envelope) != {"facts_json"}:
+        raise ValueError("Estimation v2 facts envelope is invalid")
+    facts_text = envelope["facts_json"]
+    if not isinstance(facts_text, str):
+        raise ValueError("Estimation v2 facts_json must be a string")
+    try:
+        raw = json.loads(facts_text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(
+            "Claude returned invalid Estimation v2 inner facts JSON "
+            f"(stop_reason={stop_reason}, facts_chars={len(facts_text)}, "
+            f"error_position={exc.pos})"
+        ) from exc
     if not isinstance(raw, Mapping):
         raise ValueError("Estimation v2 facts transport must be an object")
     validated = validate_object_facts(
@@ -535,6 +560,8 @@ def run_estimation_v2_facts_agent(
             "source_document_attached": False,
             "source_preview_attached": True,
             "ocr_rerun": False,
+            "stop_reason": stop_reason,
+            "max_output_tokens": ESTIMATION_V2_FACTS_MAX_OUTPUT_TOKENS,
         },
     )
     return {"facts": validated, "usage_event": usage_event}

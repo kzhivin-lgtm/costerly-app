@@ -86,6 +86,7 @@ class _Client:
 
 class _Response:
     usage = None
+    stop_reason = "end_turn"
 
 
 def _run(monkeypatch, transport=None):
@@ -160,7 +161,42 @@ def test_agent_returns_materials_and_agent_created_operations(monkeypatch):
     assert result["facts"]["labor_operations"][0]["route"] == "in_house_machine"
     assert result["facts"]["labor_operations"][0]["machine_code"] == "wood_panel_saw"
     assert captured["messages"][0]["content"][0]["type"] == "image"
-    assert client_options == {"timeout": 120.0, "max_retries": 0}
+    assert client_options == {"timeout": 180.0, "max_retries": 0}
+    assert captured["max_tokens"] == 16384
+
+
+def test_agent_reports_output_token_truncation_before_json_parsing(monkeypatch):
+    class _TruncatedResponse:
+        usage = None
+        stop_reason = "max_tokens"
+
+    monkeypatch.setattr(agent, "get_anthropic_client", lambda: _Client())
+    monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
+    monkeypatch.setattr(
+        agent,
+        "create_claude_message",
+        lambda *_args, **_kwargs: _TruncatedResponse(),
+    )
+    monkeypatch.setattr(
+        agent,
+        "extract_text_from_claude_response",
+        lambda _response: '{"facts_json":"truncated',
+    )
+
+    try:
+        agent.run_estimation_v2_facts_agent(
+            input_id="input-e01-r1",
+            object_input_revision=1,
+            estimation_input=_input(),
+            allowed_material_families={"birch_plywood"},
+            preview_bytes=b"preview",
+            production_context={},
+        )
+    except RuntimeError as exc:
+        assert "truncated" in str(exc)
+        assert "result was not published" in str(exc)
+    else:
+        raise AssertionError("max_tokens response must be rejected before parsing")
 
 
 def test_agent_rejects_unknown_evidence_reference(monkeypatch):
