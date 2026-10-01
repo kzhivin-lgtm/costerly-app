@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ui.layout import post_upload_header_html, render_workflow_header
+from ui.layout import post_upload_header_html
 from ui.object_detail_view import hero_html
 
 
@@ -36,8 +36,9 @@ def test_workflow_titles_use_brand_ink_and_only_object_names_use_accent():
     assert ".file-review-detected-title" in review_css
 
 
-def test_workflow_header_accepts_one_shared_actions_renderer():
-    import inspect
+def test_file_review_header_row_centers_the_actions_row():
+    review_css = open("styles/file_review.py").read()
 
-    signature = inspect.signature(render_workflow_header)
-    assert "render_actions" in signature.parameters
+    assert '[data-testid="stHorizontalBlock"]:has(.st-key-file_review_header_actions)' in review_css
+    assert "align-items: center !important;" in review_css
+    assert "grid-template-columns: minmax(0, 1fr) auto !important;" in review_css

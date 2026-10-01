@@ -2,14 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-from collections.abc import Callable
 
 import streamlit as st
 
 from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
 from ui.js_guards import install_object_detail_input_guard
-from ui.layout import render_workflow_header
 from use_cases.estimation import (
     apply_object_detail_line_edit,
     apply_object_detail_snapshot,
@@ -26,11 +24,7 @@ class ObjectDetailContext:
     run_id: str
 
 
-def render_object_detail_screen(
-    company_id: str,
-    *,
-    render_header_actions: Callable[[], None] | None = None,
-) -> None:
+def render_object_detail_screen(company_id: str) -> None:
     """Render one object estimate detail screen from persisted estimate data."""
     apply_object_detail_css()
     context = _current_object_detail_context()
@@ -46,7 +40,7 @@ def render_object_detail_screen(
     if data is None:
         return
 
-    _render_object_detail(data, context, render_header_actions=render_header_actions)
+    _render_object_detail(data, context)
     _install_object_detail_runtime(context)
 
 
@@ -106,15 +100,9 @@ def _load_object_detail_or_render_error(context: ObjectDetailContext) -> dict[st
         return None
 
 
-def _render_object_detail(
-    data: dict[str, object],
-    context: ObjectDetailContext,
-    *,
-    render_header_actions: Callable[[], None] | None = None,
-) -> None:
-    render_workflow_header("Object:", render_actions=render_header_actions)
+def _render_object_detail(data: dict[str, object], context: ObjectDetailContext) -> None:
     st.markdown(
-        object_detail_view.hero_html(data, include_title=render_header_actions is None),
+        object_detail_view.hero_html(data),
         unsafe_allow_html=True,
     )
 

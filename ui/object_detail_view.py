@@ -258,7 +258,7 @@ def _footer_html(run_id: object, estimate_id: object, object_id: object) -> str:
     )
 
 
-def hero_html(data: dict[str, object], *, include_title: bool = True) -> str:
+def hero_html(data: dict[str, object]) -> str:
     """Render Object Detail hero/header block."""
     preview_url = str(data.get("preview_url") or "")
     preview = (
@@ -268,21 +268,16 @@ def hero_html(data: dict[str, object], *, include_title: bool = True) -> str:
         if preview_url
         else f'<div class="object-detail-preview-placeholder">{_escape(data["preview_label"])}</div>'
     )
-    title_html = (
+    return (
+        '<div class="post-upload-shell object-detail-shell">'
+        '<div class="object-detail-hero">'
+        '<div>'
         '<h1 class="post-upload-title object-detail-title workflow-title">'
         f'{_workflow_title_html("Object:")}'
         '<br>'
         f'<span class="object-detail-object-name">{_escape(data["name"])}</span>'
         '</h1>'
-        if include_title
-        else f'<div class="object-detail-object-name-heading">{_escape(data["name"])}</div>'
-    )
-    return (
-        '<div class="post-upload-shell object-detail-shell">'
-        '<div class="object-detail-hero">'
-        '<div>'
-        + title_html
-        + '<div class="object-detail-info-row">'
+        '<div class="object-detail-info-row">'
         '<span class="object-detail-info-label">QTY:</span>'
         f'<span class="object-detail-info-value">{_quantity(data["quantity"])}</span>'
         '<span>·</span>'
