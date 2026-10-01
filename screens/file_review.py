@@ -3,6 +3,7 @@ from __future__ import annotations
 from concurrent.futures import Future
 from datetime import UTC, datetime
 import html
+from collections.abc import Callable
 
 import streamlit as st
 
@@ -485,7 +486,11 @@ def _install_continue_transition_guard() -> None:
     )
 
 
-def render_file_review_screen(company_id: str) -> None:
+def render_file_review_screen(
+    company_id: str,
+    *,
+    render_header_actions: Callable[[], None] | None = None,
+) -> None:
     """Render File Review from the persisted detection result when available."""
     apply_file_review_css()
 
@@ -508,15 +513,26 @@ def render_file_review_screen(company_id: str) -> None:
         _render_load_error(exc)
         return
 
+    if render_header_actions is None:
+        st.markdown(
+            post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID),
+            unsafe_allow_html=True,
+        )
+    else:
+        with st.container(key="file_review_header_row"):
+            title_column, actions_column = st.columns((1, 1), gap="small")
+            with title_column:
+                st.markdown(
+                    post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID),
+                    unsafe_allow_html=True,
+                )
+            with actions_column:
+                render_header_actions()
+
     st.markdown(
-        (
-            '<div class="file-review-title-card-shell">'
-            + post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID)
-            + _build_review_card_html(
-                data["run"],
-                st.session_state.get("current_agent_timings") or data.get("timings"),
-            )
-            + "</div>"
+        _build_review_card_html(
+            data["run"],
+            st.session_state.get("current_agent_timings") or data.get("timings"),
         ),
         unsafe_allow_html=True,
     )

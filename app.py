@@ -137,6 +137,7 @@ def _render_screen(
     access=None,
     platform_access=None,
     trace=None,
+    render_header_actions=None,
 ) -> None:
     if screen == "upload":
         from screens.upload import render_upload_screen
@@ -149,7 +150,7 @@ def _render_screen(
     elif screen == "file_review":
         from screens.file_review import render_file_review_screen
 
-        render_file_review_screen(company_id)
+        render_file_review_screen(company_id, render_header_actions=render_header_actions)
     elif screen == "objects":
         from screens.objects import render_objects_screen
 
@@ -401,8 +402,9 @@ def main() -> None:
         if active_product_screen == "upload":
             with trace.span("server.app_header_render"):
                 render_app_header()
-        with trace.span("server.account_controls_render"):
-            render_account_control(access, platform_access=platform_access)
+        if active_product_screen != "file_review":
+            with trace.span("server.account_controls_render"):
+                render_account_control(access, platform_access=platform_access)
     else:
         requested_screen = str(st.query_params.get("screen") or "")
         current_screen = requested_screen or str(st.session_state.get("screen") or "upload")
@@ -507,6 +509,13 @@ def main() -> None:
         st.session_state._last_screen_for_scroll = screen
 
     trace.set_screen(screen)
+    render_header_actions = None
+    if auth_enabled and screen == "file_review" and access is not None:
+        render_header_actions = lambda: render_account_control(
+            access,
+            platform_access=platform_access,
+            container_key="file_review_header_actions",
+        )
     with trace.span("server.screen_render", route=screen):
         _render_screen(
             screen,
@@ -514,6 +523,7 @@ def main() -> None:
             access=access,
             platform_access=platform_access,
             trace=trace,
+            render_header_actions=render_header_actions,
         )
 
     _signal_ready(trace, screen)
