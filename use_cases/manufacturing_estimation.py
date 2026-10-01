@@ -64,6 +64,13 @@ def _tri(value: Any) -> bool | None:
     return None
 
 
+def _count(value: Any) -> int | Any:
+    """Normalize integral JSON numbers before strict routing validation."""
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
 def _availability(context: Mapping[str, Any], machine_code: str) -> bool | None:
     for machine in context.get("machines") or []:
         if machine.get("machine_code") != machine_code:
@@ -244,10 +251,10 @@ def build_manufacturing_cost_lines(
             decision = route_wood_panel_work(
                 WoodPanelWork(
                     process_required=True,
-                    part_count=feature.get("part_count"),
+                    part_count=_count(feature.get("part_count")),
                     rectangular_parts_only=_tri(feature.get("rectangular_parts_only")),
                     single_face_processing=_tri(feature.get("single_face_processing")),
-                    hole_count=feature.get("hole_count"),
+                    hole_count=_count(feature.get("hole_count")),
                     standard_operations_only=_tri(feature.get("standard_operations_only")),
                     has_freeform_contours=_tri(feature.get("has_freeform_contours")),
                     has_internal_cutouts=_tri(feature.get("has_internal_cutouts")),
@@ -269,9 +276,9 @@ def build_manufacturing_cost_lines(
             decision = route_sheet_metal_work(
                 SheetMetalWork(
                     process_required=True,
-                    part_count=feature.get("part_count"),
+                    part_count=_count(feature.get("part_count")),
                     straight_edge_to_edge_cuts_only=_tri(feature.get("straight_edge_to_edge_cuts_only")),
-                    cut_count=feature.get("hole_count"),
+                    cut_count=_count(feature.get("hole_count")),
                     rough_finish_acceptable=_tri(feature.get("rough_finish_acceptable")),
                     material_and_thickness_supported=_tri(feature.get("material_and_thickness_supported")),
                     basic_in_house_cutting_explicitly_confirmed=False,

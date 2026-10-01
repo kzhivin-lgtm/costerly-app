@@ -175,3 +175,18 @@ def test_in_house_manufacturing_remains_labor_not_a_purchased_component():
     assert lines[0]["price_scope"] is None
     assert lines[0]["raw_agent_json"]["economic_classification"] == "in_house_manufacturing"
     assert lines[0]["raw_agent_json"]["price_scope"] is None
+
+
+def test_integral_float_counts_from_json_are_accepted_by_routing():
+    result = _result()
+    result["manufacturing"][0].update({"part_count": 2.0, "hole_count": 4.0})
+    context = _context(3)
+    context["machines"][1]["availability_status"] = "in_house"
+
+    lines = build_manufacturing_cost_lines(
+        estimation_result=result,
+        production_context=context,
+        parameter_rows=_rows(),
+    )
+
+    assert lines == []
