@@ -1117,7 +1117,8 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert "order: 10 !important;" in css
     assert "order: 20 !important;" in css
     assert "order: 30 !important;" in css
-    assert "width: min(640px, calc(100vw - 32px)) !important;" in css
+    assert "width: fit-content !important;" in css
+    assert "max-width: calc(100vw - 32px);" in css
     assert "margin: 48px auto 32px !important;" in css
     assert "margin-top: 23px;" in css
     assert "left: 50vw;" in css
@@ -3354,8 +3355,9 @@ def test_shared_header_keeps_action_labels_visible_without_clipping():
     assert '("Projects", "open_projects_placeholder", None, True' in source
     assert '("New Estimate", "header_new_estimate", on_new_estimate, False, None)' in source
     assert '("Last Estimate", "header_last_estimate", on_last_estimate, False, None)' in source
-    assert "width: min(640px, calc(100vw - 56px)) !important;" in css
-    assert "font-size: 11px !important;" in css
+    assert "right: max(28px, calc((100vw - var(--post-upload-width)) / 2));" in css
+    assert "flex: 0 0 auto !important;" in css
+    assert "font-size: 10px !important;" in css
 
 
 def test_labor_card_spacing_and_disabled_select_placeholder_contract():

@@ -269,10 +269,11 @@ def apply_base_css() -> None:
 
         .st-key-costerly_header_controls {
             position: fixed !important;
-            top: calc(var(--app-header-top) + 5px);
-            right: 28px;
+            top: calc(var(--app-header-top) + 15px);
+            right: max(28px, calc((100vw - var(--post-upload-width)) / 2));
             z-index: 950;
-            width: min(640px, calc(100vw - 56px)) !important;
+            width: fit-content !important;
+            max-width: calc(100vw - 56px);
             opacity: 0.58;
             transition: opacity 140ms ease;
         }
@@ -283,25 +284,33 @@ def apply_base_css() -> None:
         }
 
         .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
-            gap: 8px;
-            height: 32px !important;
+            width: fit-content !important;
+            gap: 6px;
+            height: 30px !important;
             align-items: center !important;
+        }
+
+        .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            min-width: 0 !important;
         }
 
         .st-key-costerly_header_controls [data-testid="stVerticalBlock"] {
             gap: 0 !important;
-            min-height: 32px !important;
+            min-height: 30px !important;
             justify-content: center !important;
         }
 
         .st-key-costerly_header_controls button {
-            height: 32px !important;
-            min-height: 32px !important;
-            max-height: 32px !important;
-            padding: 0 9px !important;
+            width: auto !important;
+            height: 30px !important;
+            min-height: 30px !important;
+            max-height: 30px !important;
+            padding: 0 7px !important;
             border-radius: 8px !important;
             font-family: var(--font-sans) !important;
-            font-size: 11px !important;
+            font-size: 10px !important;
             font-weight: 700 !important;
             text-transform: none !important;
             background: rgba(255, 255, 255, 0.92) !important;
@@ -313,8 +322,8 @@ def apply_base_css() -> None:
         }
 
         .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button {
-            width: 32px !important;
-            min-width: 32px !important;
+            width: 30px !important;
+            min-width: 30px !important;
             padding: 0 !important;
         }
 
@@ -598,12 +607,13 @@ def apply_base_css() -> None:
         /* This must follow the global button contract above. The shared
            header is intentionally compact on every non-Processing screen. */
         .stApp .st-key-costerly_header_controls div[data-testid="stButton"] button {
-            height: 32px !important;
-            min-height: 32px !important;
-            max-height: 32px !important;
-            padding: 0 9px !important;
+            width: auto !important;
+            height: 30px !important;
+            min-height: 30px !important;
+            max-height: 30px !important;
+            padding: 0 7px !important;
             font-family: var(--font-sans) !important;
-            font-size: 11px !important;
+            font-size: 10px !important;
             font-weight: 700 !important;
             text-transform: none !important;
         }
