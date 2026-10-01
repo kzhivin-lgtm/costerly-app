@@ -186,6 +186,51 @@ def test_agent_reports_output_token_truncation_before_json_parsing(monkeypatch):
         raise AssertionError("max_tokens response must be rejected before parsing")
 
 
+def test_agent_accepts_one_exact_json_fence(monkeypatch):
+    transport = _provider_response()
+    monkeypatch.setattr(agent, "get_anthropic_client", lambda: _Client())
+    monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
+    monkeypatch.setattr(
+        agent,
+        "create_claude_message",
+        lambda *_args, **_kwargs: _Response(),
+    )
+    monkeypatch.setattr(
+        agent,
+        "extract_text_from_claude_response",
+        lambda _response: "```json\n" + json.dumps(transport) + "\n```",
+    )
+
+    result = agent.run_estimation_v2_facts_agent(
+        input_id="input-e01-r1",
+        object_input_revision=1,
+        estimation_input=_input(),
+        allowed_material_families={"birch_plywood"},
+        preview_bytes=b"preview",
+        production_context={
+            "machines": [{
+                "machine_code": "wood_panel_saw",
+                "availability_status": "in_house",
+            }]
+        },
+    )
+
+    assert result["facts"]["materials"] == FIXTURE["facts"]["materials"]
+
+
+def test_agent_rejects_commentary_around_json():
+    try:
+        agent._provider_json_text('Result:\n{"status":"ready"}')
+    except ValueError:
+        raise AssertionError("plain non-fenced wrapper reaches JSON parser")
+    try:
+        json.loads(agent._provider_json_text('Result:\n{"status":"ready"}'))
+    except json.JSONDecodeError:
+        pass
+    else:
+        raise AssertionError("commentary around JSON must not be accepted")
+
+
 def test_sparse_named_manufacturing_fields_are_normalized_without_position():
     transport = _provider_response()
     material_id = transport["materials"][0]["requirement_id"]

@@ -165,6 +165,19 @@ def _key_values(
     return result
 
 
+def _provider_json_text(response_text: str) -> str:
+    """Accept raw JSON or one exact Markdown JSON fence, never repair content."""
+    text = str(response_text or "").strip()
+    if not text.startswith("```"):
+        return text
+    lines = text.splitlines()
+    if len(lines) < 3 or lines[0].strip().lower() not in {"```", "```json"}:
+        raise ValueError("Claude returned an unsupported Estimation v2 wrapper")
+    if lines[-1].strip() != "```":
+        raise ValueError("Claude returned an unterminated Estimation v2 JSON fence")
+    return "\n".join(lines[1:-1]).strip()
+
+
 def _normalize_provider_result(
     result: Mapping[str, Any],
     *,
@@ -528,7 +541,7 @@ def run_estimation_v2_facts_agent(
             f"({ESTIMATION_V2_FACTS_MAX_OUTPUT_TOKENS}); result was not published"
         )
     try:
-        raw = json.loads(response_text)
+        raw = json.loads(_provider_json_text(response_text))
     except json.JSONDecodeError as exc:
         raise RuntimeError(
             "Claude returned invalid Estimation v2 transport JSON "
