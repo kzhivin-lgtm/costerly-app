@@ -1348,6 +1348,14 @@ def install_object_detail_input_guard(
             }
 
             function updateSummaries() {
+                const materialRows = sectionRows("material");
+                const primaryMaterialCost = materialRows.reduce((total, row) => {
+                    return row.dataset.policyPercent ? total : total + rowCost(row);
+                }, 0);
+                for (const row of materialRows) {
+                    if (!row.dataset.policyPercent) continue;
+                    setRowCost(row, primaryMaterialCost * readNumber(row.dataset.policyPercent) / 100);
+                }
                 const materialCost = sumRows("material", rowCost);
                 const materialVatPct = percentFromLabel(metricLabel("material", "vat_18"), 18);
                 setMetric("material", "cost", materialCost, formatMoney);

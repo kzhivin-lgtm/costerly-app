@@ -220,11 +220,11 @@ def test_angle_defaults_to_1_5_mm_but_explicit_wall_is_preserved():
     assert explicit["wall_thickness_policy"] == "explicit"
 
 
-def test_consumables_are_five_percent_of_primary_material_cost():
+def test_locked_material_policy_rows_include_consumables_and_packaging():
     facts = _ready_facts()
     facts["estimate_id"] = "estimate-1"
 
-    rows, costs = publisher._consumables_rows_and_costs(
+    rows, costs = publisher._material_policy_rows_and_costs(
         facts=facts, primary_material_total=500,
     )
 
@@ -233,6 +233,11 @@ def test_consumables_are_five_percent_of_primary_material_cost():
     assert rows[0]["raw_agent_json"]["percent"] == 5
     assert costs[0]["amount"] == 25
     assert costs[0]["status"] == "resolved"
+    assert rows[1]["item_name"] == "Packaging"
+    assert rows[1]["cost"] == 5
+    assert rows[1]["raw_agent_json"]["percent"] == 1
+    assert all(row["source"] == "pricing_policy" for row in rows)
+    assert all(row["raw_agent_json"]["locked"] is True for row in rows)
 
 
 def test_routine_consumables_are_not_priced_as_separate_material_rows(monkeypatch):
@@ -350,7 +355,10 @@ def test_publisher_preserves_review_required_without_fake_totals(monkeypatch):
 
     assert result["status"] == "review_required"
     assert result["reason_codes"] == ["dimensions_missing"]
-    assert events == [{"lines": [{"line_id": "m1"}]}, {"totals": {
+    assert [row["line_id"] for row in events[0]["lines"]] == [
+        "m1", "object-1_material_policy_consumables", "object-1_material_policy_packaging",
+    ]
+    assert events[1:] == [{"totals": {
         "estimate_id": "estimate-1", "object_id": "object-1",
         "self_cost_ex_vat": None, "vat_amount": None, "self_cost_total": None,
     }}, {

@@ -94,6 +94,15 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
             _input_html(row.get("allocation"), "text", "allocation_basis"),
             f'<span class="object-detail-row-cost">{_money(row.get("cost"))}</span>',
         ]
+    if row.get("locked"):
+        percent = _number_text(row.get("policy_percent"))
+        return [
+            _escape(row.get("item")),
+            _escape(row.get("unit")),
+            _escape(f"{percent}%" if percent else ""),
+            _escape("—"),
+            f'<span class="object-detail-row-cost">{_money(row.get("cost"))}</span>',
+        ]
     return [
         _escape(row.get("item")),
         _escape(row.get("unit")),
@@ -144,10 +153,12 @@ def _table_html(section: dict[str, object]) -> str:
 
         for row in group_rows:
             values = _row_values(section, row)
+            policy_percent = row.get("policy_percent") if row.get("locked") else ""
             body_parts.append(
                 '<div class="object-detail-table-row" '
                 f'data-line-id="{_escape(row.get("line_id"))}" '
-                f'data-section="{_escape(section_key)}">'
+                f'data-section="{_escape(section_key)}" '
+                f'data-policy-percent="{_escape(policy_percent)}">'
                 + "".join(f'<div class="object-detail-table-cell">{value}</div>' for value in values)
                 + "</div>"
             )

@@ -57,9 +57,13 @@ _ROUTINE_CONSUMABLE_FAMILIES = frozenset({
     "bulk_fasteners",
     "counted_furniture_connectors",
     "installation_consumables",
+    "packaging_materials",
     "shop_consumables_and_tool_wear",
 })
-_CONSUMABLES_PERCENT = 5.0
+_MATERIAL_POLICY_PERCENTAGES = (
+    ("consumables", "Consumables", 5.0),
+    ("packaging", "Packaging", 1.0),
+)
 
 
 def _rows(client: Any, table: str, *, company_id: str | None = None) -> list[dict[str, Any]]:
@@ -457,33 +461,36 @@ def _material_rows_and_costs(
     return db_rows, cost_lines
 
 
-def _consumables_rows_and_costs(
+def _material_policy_rows_and_costs(
     *, facts: Mapping[str, Any], primary_material_total: float,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Apply the temporary Pricing Policy allowance for routine consumables."""
-    amount = round(max(primary_material_total, 0) * _CONSUMABLES_PERCENT / 100, 2)
-    line_id = f"{facts['object_id']}_material_consumables"
-    db_row = {
-        "estimate_id": facts["estimate_id"], "object_id": facts["object_id"],
-        "line_id": line_id, "company_id": facts["company_id"], "section": "material",
-        "group_name": "Materials", "item_name": "Consumables",
-        "catalog_match_query": None, "unit": "%", "unit_cost": amount,
-        "quantity": 1, "cost": amount, "source": "pricing_policy",
-        "sort_order": 490, "needs_price": False, "needs_review": False,
-        "confidence": 100,
-        "notes": f"{_CONSUMABLES_PERCENT:g}% of primary material cost",
-        "raw_agent_json": {
-            "policy": "consumables_percent_of_primary_materials",
-            "percent": _CONSUMABLES_PERCENT,
-            "primary_material_total": round(max(primary_material_total, 0), 2),
-        },
-    }
-    cost_line = {
-        "line_id": f"{line_id}_cost", "section": "material", "status": "resolved",
-        "amount": amount, "currency": "ILS", "source_ref": "pricing-policy:consumables:5-percent",
-        "reason_codes": [],
-    }
-    return [db_row], [cost_line]
+    """Apply locked material-cost formulas from the temporary Pricing Policy."""
+    base = round(max(primary_material_total, 0), 2)
+    db_rows: list[dict[str, Any]] = []
+    cost_lines: list[dict[str, Any]] = []
+    for offset, (policy, label, percent) in enumerate(_MATERIAL_POLICY_PERCENTAGES):
+        amount = round(base * percent / 100, 2)
+        line_id = f"{facts['object_id']}_material_policy_{policy}"
+        db_rows.append({
+            "estimate_id": facts["estimate_id"], "object_id": facts["object_id"],
+            "line_id": line_id, "company_id": facts["company_id"], "section": "material",
+            "group_name": "Materials", "item_name": label,
+            "catalog_match_query": None, "unit": "% of materials", "unit_cost": percent,
+            "quantity": 1, "cost": amount, "source": "pricing_policy",
+            "sort_order": 900 + offset * 10, "needs_price": False, "needs_review": False,
+            "confidence": 100, "notes": f"{percent:g}% of primary material cost",
+            "raw_agent_json": {
+                "policy": f"{policy}_percent_of_primary_materials",
+                "percent": percent, "primary_material_total": base, "locked": True,
+            },
+        })
+        cost_lines.append({
+            "line_id": f"{line_id}_cost", "section": "material", "status": "resolved",
+            "amount": amount, "currency": "ILS",
+            "source_ref": f"pricing-policy:{policy}:{percent:g}-percent",
+            "reason_codes": [],
+        })
+    return db_rows, cost_lines
 
 
 def _manufacturing_input(facts: Mapping[str, Any]) -> dict[str, Any]:
@@ -786,12 +793,11 @@ def publish_estimation_v2_object(
             catalogs=shared.get("catalogs") or {"items": [], "offers": [], "identities": [], "prices": []},
             vat_percent=_number(review_settings.get("vat_percent"), 18),
         )
-        if material_rows and all(row.get("cost") is not None for row in material_rows):
-            consumable_rows, _consumable_costs = _consumables_rows_and_costs(
-                facts=review_facts,
-                primary_material_total=sum(_number(row.get("cost")) for row in material_rows),
-            )
-            material_rows.extend(consumable_rows)
+        consumable_rows, _consumable_costs = _material_policy_rows_and_costs(
+            facts=review_facts,
+            primary_material_total=sum(_number(row.get("cost")) for row in material_rows),
+        )
+        material_rows.extend(consumable_rows)
         purchased_rows, _purchased_costs = _purchased_component_rows_and_costs(
             review_facts, shared.get("catalogs") or {}
         )
@@ -822,13 +828,12 @@ def publish_estimation_v2_object(
     material_rows, material_costs = _material_rows_and_costs(
         facts=pricing_facts, catalogs=shared["catalogs"], vat_percent=vat_percent
     )
-    if material_rows and all(row.get("cost") is not None for row in material_rows):
-        consumable_rows, consumable_costs = _consumables_rows_and_costs(
-            facts=pricing_facts,
-            primary_material_total=sum(_number(row.get("cost")) for row in material_rows),
-        )
-        material_rows.extend(consumable_rows)
-        material_costs.extend(consumable_costs)
+    consumable_rows, consumable_costs = _material_policy_rows_and_costs(
+        facts=pricing_facts,
+        primary_material_total=sum(_number(row.get("cost")) for row in material_rows),
+    )
+    material_rows.extend(consumable_rows)
+    material_costs.extend(consumable_costs)
     purchased_rows, purchased_costs = _purchased_component_rows_and_costs(
         pricing_facts, shared["catalogs"]
     )

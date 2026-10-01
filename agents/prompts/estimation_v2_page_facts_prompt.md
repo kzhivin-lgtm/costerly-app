@@ -30,9 +30,13 @@ adds them deterministically and validates all families, operation codes and
 relationships.
 
 Quantities must be close, practical fabrication estimates derived from the
-visible geometry and annotations. Include consumables, fasteners and coatings
-when normally required even if the architect did not specify them. Work bought
-as a finished component belongs in `pc` and must not also appear in `op`.
+visible geometry and annotations. Never return routine consumables or packaging
+as materials or purchased components. Exclude common adhesive, sealant, filler,
+screws, dowels, bulk fasteners, abrasives, shop supplies, tool wear, wrapping,
+cardboard, protective film and other packing materials. The server adds locked
+percentage allowances for these categories. Coatings and significant installed
+hardware remain explicit materials. Work bought as a finished component belongs
+in `pc` and must not also appear in `op`.
 
 The preview can contain multiple views. Do not treat repeated views as separate
 objects. `locator_hints_only` contains Detection dimensions, description and

@@ -308,6 +308,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
     for _, line in lines_df.iterrows():
         item = line.to_dict()
         if item.get("section") == "material":
+            raw_agent_json = item.get("raw_agent_json") or {}
             material_rows.append(
                 {
                     "group": item.get("group_name"),
@@ -317,6 +318,11 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                     "unit_cost": item.get("unit_cost"),
                     "qty": item.get("quantity"),
                     "cost": item.get("cost"),
+                    "locked": item.get("source") == "pricing_policy",
+                    "policy_percent": (
+                        raw_agent_json.get("percent")
+                        if isinstance(raw_agent_json, dict) else None
+                    ),
                 }
             )
         elif item.get("section") == "labor":
@@ -536,6 +542,8 @@ def apply_object_detail_line_edit(
 
     line = matching.iloc[0].to_dict()
     section = str(line.get("section") or "")
+    if str(line.get("source") or "") == "pricing_policy":
+        return
     updates: dict[str, Any] = {"updated_at": datetime.now(UTC).isoformat()}
 
     if field == "allocation_basis":
@@ -621,6 +629,8 @@ def apply_object_detail_snapshot(
             continue
 
         section = str(line.get("section") or "")
+        if str(line.get("source") or "") == "pricing_policy":
+            continue
         updates: dict[str, Any] = {"updated_at": datetime.now(UTC).isoformat()}
         next_values = dict(line)
 
@@ -715,6 +725,29 @@ def _recalculate_object_estimate_totals(
         estimate_id=estimate_id,
         object_id=object_id,
     )
+    primary_material_total = sum(
+        _number(row.get("cost"), 0)
+        for _, item in lines_df.iterrows()
+        if (row := item.to_dict()).get("section") == "material"
+        and row.get("source") != "pricing_policy"
+    )
+    for _, item in lines_df.iterrows():
+        row = item.to_dict()
+        if row.get("section") != "material" or row.get("source") != "pricing_policy":
+            continue
+        raw_agent_json = row.get("raw_agent_json") or {}
+        percent = _number(
+            raw_agent_json.get("percent") if isinstance(raw_agent_json, dict) else None,
+            0,
+        )
+        amount = round(primary_material_total * percent / 100, 2)
+        update_rfq_estimate_line(
+            client,
+            estimate_id=estimate_id,
+            line_id=str(row.get("line_id") or ""),
+            values={"cost": amount, "updated_at": datetime.now(UTC).isoformat()},
+        )
+        lines_df.loc[lines_df["line_id"] == row.get("line_id"), "cost"] = amount
     material_total = 0.0
     labor_base_total = 0.0
     manufacturing_total = 0.0
