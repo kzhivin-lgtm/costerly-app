@@ -274,15 +274,17 @@ def main() -> None:
             st.error(f"Company access is unavailable: {exc}")
             _signal_ready(trace, "company_access_error")
             return
-        with trace.span("server.app_header_render"):
-            render_app_header()
         if st.session_state.get("auth_recovery_mode"):
+            with trace.span("server.app_header_render"):
+                render_app_header()
             trace.set_screen("password_recovery")
             with trace.span("server.password_recovery_render"):
                 render_password_reset()
             _signal_ready(trace, "password_recovery")
             return
         if access is None:
+            with trace.span("server.app_header_render"):
+                render_app_header()
             trace.set_screen("login")
             with trace.span("server.login_render"):
                 render_login_or_signup(invitation)
@@ -313,6 +315,8 @@ def main() -> None:
                 _signal_ready(trace, "company_setup_error")
                 return
         if access.company_id is None:
+            with trace.span("server.app_header_render"):
+                render_app_header()
             trace.set_screen("company_setup")
             with trace.span("server.company_setup_render"):
                 render_company_setup(access, invitation)
@@ -341,6 +345,8 @@ def main() -> None:
                 _signal_ready(trace, "legal_documents_error")
                 return
             if needs_terms:
+                with trace.span("server.app_header_render"):
+                    render_app_header()
                 trace.set_screen("terms_acceptance")
                 with trace.span("server.terms_acceptance_render"):
                     render_terms_acceptance(access)
@@ -391,6 +397,10 @@ def main() -> None:
                     status="error",
                     metadata={"error_type": type(exc).__name__},
                 )
+        active_product_screen = str(st.query_params.get("screen") or st.session_state.get("screen") or "upload")
+        if active_product_screen == "upload":
+            with trace.span("server.app_header_render"):
+                render_app_header()
         with trace.span("server.account_controls_render"):
             render_account_control(access, platform_access=platform_access)
     else:

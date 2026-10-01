@@ -15,8 +15,7 @@ def apply_platform_admin_css() -> None:
         }
 
         .stApp:has(.platform-admin-active) .costerly-app-header,
-        .stApp:has(.platform-admin-active) [data-testid="stElementContainer"]:has(.costerly-app-header),
-        .stApp:has(.platform-admin-active) .st-key-costerly_header_controls {
+        .stApp:has(.platform-admin-active) [data-testid="stElementContainer"]:has(.costerly-app-header) {
             display: none !important;
         }
 

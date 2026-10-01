@@ -272,7 +272,7 @@ def apply_base_css() -> None:
             top: calc(var(--app-header-top) + 5px);
             right: 28px;
             z-index: 950;
-            width: min(720px, calc(100vw - 56px)) !important;
+            width: min(640px, calc(100vw - 56px)) !important;
             opacity: 0.58;
             transition: opacity 140ms ease;
         }
@@ -284,24 +284,24 @@ def apply_base_css() -> None:
 
         .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
             gap: 8px;
-            height: 36px !important;
+            height: 32px !important;
             align-items: center !important;
         }
 
         .st-key-costerly_header_controls [data-testid="stVerticalBlock"] {
             gap: 0 !important;
-            min-height: 36px !important;
+            min-height: 32px !important;
             justify-content: center !important;
         }
 
         .st-key-costerly_header_controls button {
-            height: 36px !important;
-            min-height: 36px !important;
-            max-height: 36px !important;
-            padding: 0 12px !important;
+            height: 32px !important;
+            min-height: 32px !important;
+            max-height: 32px !important;
+            padding: 0 9px !important;
             border-radius: 8px !important;
             font-family: var(--font-sans) !important;
-            font-size: 12px !important;
+            font-size: 11px !important;
             font-weight: 700 !important;
             text-transform: none !important;
             background: rgba(255, 255, 255, 0.92) !important;
@@ -312,12 +312,22 @@ def apply_base_css() -> None:
             white-space: nowrap !important;
         }
 
+        .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button {
+            width: 32px !important;
+            min-width: 32px !important;
+            padding: 0 !important;
+        }
+
+        .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button p {
+            font-size: 0 !important;
+        }
+
         .st-key-costerly_header_controls [data-testid="stColumn"]:last-child button p::before {
             content: "";
             display: inline-block;
             width: 14px;
             height: 14px;
-            margin-right: 6px;
+            margin-right: 0;
             vertical-align: -2px;
             background: currentColor;
             -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4H5.8A1.8 1.8 0 0 0 4 5.8v12.4A1.8 1.8 0 0 0 5.8 20H10'/%3E%3Cpath d='M14 8l4 4-4 4'/%3E%3Cpath d='M8 12h10'/%3E%3C/svg%3E") center / contain no-repeat;
@@ -445,12 +455,19 @@ def apply_base_css() -> None:
             color: var(--color-accent-dark) !important;
         }
 
+        .workflow-title-primary {
+            position: relative;
+            display: inline-block;
+            padding-left: 1.38em;
+        }
+
         .workflow-title-mark {
             position: absolute;
-            right: calc(100% + var(--space-3));
-            top: 0.08em;
-            width: 0.9em;
-            height: 0.9em;
+            left: 0;
+            top: 50%;
+            width: 1.12em;
+            height: 1.12em;
+            transform: translateY(-50%);
             display: inline-flex;
             align-items: center;
             justify-content: center;

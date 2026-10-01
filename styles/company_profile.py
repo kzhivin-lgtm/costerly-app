@@ -16,8 +16,7 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) .costerly-app-header,
-        .stApp:has(.company-profile-active) [data-testid="stElementContainer"]:has(.costerly-app-header),
-        .stApp:has(.company-profile-active) .st-key-costerly_header_controls {
+        .stApp:has(.company-profile-active) [data-testid="stElementContainer"]:has(.costerly-app-header) {
             display: none !important;
         }
 

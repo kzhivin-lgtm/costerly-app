@@ -1607,6 +1607,7 @@ def render_account_control(access: CompanyAccess, *, platform_access=None) -> No
     except Exception:
         latest_route = None
     active_screen = str(st.query_params.get("screen") or st.session_state.get("screen") or "upload")
+    workflow_screens = {"file_review", "objects", "object_detail"}
     render_account_header_controls(
         on_profile=_open_company_account,
         on_sign_out=sign_out,
@@ -1615,8 +1616,9 @@ def render_account_control(access: CompanyAccess, *, platform_access=None) -> No
         on_last_estimate=lambda: _open_last_estimate(str(access.company_id)),
         show_admin=platform_access is not None,
         show_projects=True,
-        show_new_estimate=active_screen != "upload",
-        show_last_estimate=latest_route is not None,
+        show_new_estimate=active_screen not in {"upload", "processing"},
+        show_last_estimate=latest_route is not None and active_screen not in workflow_screens,
+        show_profile=active_screen != "account",
     )
     last_estimate_error = st.session_state.pop("header_last_estimate_error", None)
     if last_estimate_error:

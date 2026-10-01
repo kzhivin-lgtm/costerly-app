@@ -1105,9 +1105,9 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
 
     assert not app.exception
     assert [button.label for button in app.button] == [
-        "Projects", "Last Estimate", "Profile", "Sign out"
+        "Last Estimate", "Projects", "Profile", "Sign out"
     ]
-    assert app.button[0].disabled is True
+    assert app.button[1].disabled is True
 
     app.button[2].click().run()
     assert app.session_state["header_profile_opened"] is True
@@ -1117,11 +1117,11 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert "order: 10 !important;" in css
     assert "order: 20 !important;" in css
     assert "order: 30 !important;" in css
-    assert "width: min(720px, calc(100vw - 32px)) !important;" in css
+    assert "width: min(640px, calc(100vw - 32px)) !important;" in css
     assert "margin: 48px auto 32px !important;" in css
     assert "margin-top: 23px;" in css
-    assert "height: 36px !important;" in css
-    assert "padding: 0 10px !important;" in css
+    assert "height: 32px !important;" in css
+    assert "padding: 0 9px !important;" in css
     assert '[data-testid="stVerticalBlock"]:has(> [data-testid="stLayoutWrapper"] .st-key-costerly_header_controls)' in css
     assert "gap: 0 !important;" in css
     assert "font-size: 24px;" in css
@@ -3340,7 +3340,7 @@ def test_empty_price_catalog_uses_complete_card_geometry():
     assert "box-shadow: 0 0 0 1px var(--color-border-soft)" not in source_library_rule
 
 
-def test_company_profile_header_keeps_all_action_labels_visible():
+def test_shared_header_keeps_action_labels_visible_without_clipping():
     source = (Path(__file__).parents[1] / "ui/app_header.py").read_text()
     css = (Path(__file__).parents[1] / "styles/base.py").read_text()
 
@@ -3348,7 +3348,8 @@ def test_company_profile_header_keeps_all_action_labels_visible():
     assert '("Projects", "open_projects_placeholder", None, True' in source
     assert '("New Estimate", "header_new_estimate", on_new_estimate, False, None)' in source
     assert '("Last Estimate", "header_last_estimate", on_last_estimate, False, None)' in source
-    assert "width: min(720px, calc(100vw - 56px)) !important;" in css
+    assert "width: min(640px, calc(100vw - 56px)) !important;" in css
+    assert "font-size: 11px !important;" in css
 
 
 def test_labor_card_spacing_and_disabled_select_placeholder_contract():
