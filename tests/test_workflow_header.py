@@ -34,3 +34,15 @@ def test_workflow_titles_use_brand_ink_and_only_object_names_use_accent():
     assert ".object-detail-object-name" in base_css
     assert "color: var(--color-accent) !important;" in base_css
     assert ".file-review-detected-title" in review_css
+
+
+def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_events():
+    source = open("ui/js_guards.py").read()
+
+    assert "def install_workflow_header_alignment_guard" in source
+    assert 'parentDoc.querySelector("h1.workflow-title")' in source
+    assert "getBoundingClientRect()" in source
+    assert "translateY(${Math.round(offset * 100) / 100}px)" in source
+    assert 'addEventListener("scroll"' not in source.split(
+        "def install_workflow_header_alignment_guard", 1
+    )[1].split("def install_company_metrics_input_guard", 1)[0]

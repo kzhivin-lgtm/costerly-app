@@ -7,7 +7,10 @@ import streamlit as st
 
 from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
-from ui.js_guards import install_object_detail_input_guard
+from ui.js_guards import (
+    install_object_detail_input_guard,
+    install_workflow_header_alignment_guard,
+)
 from use_cases.estimation import (
     apply_object_detail_line_edit,
     apply_object_detail_snapshot,
@@ -42,6 +45,7 @@ def render_object_detail_screen(company_id: str) -> None:
 
     _render_object_detail(data, context)
     _install_object_detail_runtime(context)
+    install_workflow_header_alignment_guard()
 
 
 def _current_object_detail_context() -> ObjectDetailContext | None:

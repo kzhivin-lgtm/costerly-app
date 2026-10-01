@@ -11,6 +11,7 @@ from ui.js_guards import (
     install_objects_price_input_guard,
     install_objects_progress_sync,
     install_post_upload_transition_guard,
+    install_workflow_header_alignment_guard,
 )
 from ui import objects_pricing
 from ui.layout import render_post_upload_header
@@ -310,6 +311,7 @@ def render_objects_screen(company_id: str) -> None:
     data = _data_with_progress(screen_state.data, estimate_id)
     _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id)
     _render_objects_actions()
+    install_workflow_header_alignment_guard()
 
     supabase_url, supabase_anon_key, supabase_access_token = _objects_progress_sync_config()
     _install_objects_runtimes(

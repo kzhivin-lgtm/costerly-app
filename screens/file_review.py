@@ -7,7 +7,10 @@ import html
 import streamlit as st
 
 from styles.file_review import apply_file_review_css
-from ui.js_guards import install_post_upload_transition_guard
+from ui.js_guards import (
+    install_post_upload_transition_guard,
+    install_workflow_header_alignment_guard,
+)
 from ui.layout import post_upload_header_html, render_post_upload_header
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
@@ -521,6 +524,7 @@ def render_file_review_screen(company_id: str) -> None:
         unsafe_allow_html=True,
     )
     _install_continue_transition_guard()
+    install_workflow_header_alignment_guard()
 
     _sync_object_edit_state(run_id, data["objects"])
 
