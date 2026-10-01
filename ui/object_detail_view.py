@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import math
 
 
 def _escape(value: object) -> str:
@@ -24,9 +25,10 @@ def _money(value: object) -> str:
 
 def _quantity(value: object) -> str:
     try:
-        return str(int(float(value)))
+        number = float(value)
     except (TypeError, ValueError):
         return _escape(value)
+    return str(int(number)) if math.isfinite(number) else "—"
 
 
 def _number_text(value: object) -> str:
@@ -36,6 +38,8 @@ def _number_text(value: object) -> str:
         number = float(value)
     except (TypeError, ValueError):
         return str(value)
+    if not math.isfinite(number):
+        return ""
     if number == int(number):
         return str(int(number))
     return f"{number:.2f}".rstrip("0").rstrip(".")
@@ -115,10 +119,24 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
 def _group_summary_value(column: str, group_rows: list[dict[str, object]]) -> str:
     if column in {"Qty", "Hours"}:
         key = "qty" if column == "Qty" else "hours"
-        return _number_text(sum(float(row.get(key) or 0) for row in group_rows))
+        values = []
+        for row in group_rows:
+            try:
+                number = float(row.get(key) or 0)
+            except (TypeError, ValueError):
+                number = 0
+            values.append(number if math.isfinite(number) else 0)
+        return _number_text(sum(values))
     if column in {"Cost", "Monthly cost"}:
         key = "monthly_cost" if column == "Monthly cost" else "cost"
-        return _money(sum(float(row.get(key) or 0) for row in group_rows))
+        values = []
+        for row in group_rows:
+            try:
+                number = float(row.get(key) or 0)
+            except (TypeError, ValueError):
+                number = 0
+            values.append(number if math.isfinite(number) else 0)
+        return _money(sum(values))
     return ""
 
 
