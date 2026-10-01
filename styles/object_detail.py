@@ -25,6 +25,18 @@ def apply_object_detail_css() -> None:
             overflow-wrap: anywhere;
         }
 
+        .object-detail-object-name-heading {
+            max-width: 760px;
+            margin: 0 0 28px 0;
+            color: var(--color-accent);
+            font-family: var(--font-mono);
+            font-size: var(--post-upload-title-size);
+            line-height: var(--post-upload-title-line-height);
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            overflow-wrap: anywhere;
+        }
+
         .object-detail-info-row {
             display: flex;
             align-items: baseline;

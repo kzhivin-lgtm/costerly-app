@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import base64
+from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
 
@@ -83,3 +84,40 @@ def render_post_upload_header(
         ),
         unsafe_allow_html=True,
     )
+
+
+def render_workflow_header(
+    title: str,
+    subtitle: str | None = None,
+    *,
+    class_name: str | None = None,
+    marker_id: str | None = None,
+    render_actions: Callable[[], None] | None = None,
+) -> None:
+    """Render a workflow title and its actions in one vertically aligned row."""
+    if render_actions is None:
+        render_post_upload_header(
+            title,
+            subtitle,
+            class_name=class_name,
+            marker_id=marker_id,
+        )
+        return
+
+    apply_post_upload_css()
+    with st.container(key="workflow_header_row"):
+        title_column, actions_column = st.columns(
+            (1, 1), gap="small", vertical_alignment="center"
+        )
+        with title_column:
+            st.markdown(
+                post_upload_header_html(
+                    title,
+                    subtitle,
+                    class_name=class_name,
+                    marker_id=marker_id,
+                ),
+                unsafe_allow_html=True,
+            )
+        with actions_column:
+            render_actions()

@@ -154,11 +154,11 @@ def _render_screen(
     elif screen == "objects":
         from screens.objects import render_objects_screen
 
-        render_objects_screen(company_id)
+        render_objects_screen(company_id, render_header_actions=render_header_actions)
     elif screen == "object_detail":
         from screens.object_detail import render_object_detail_screen
 
-        render_object_detail_screen(company_id)
+        render_object_detail_screen(company_id, render_header_actions=render_header_actions)
     elif screen == "account":
         if access is None or access.company_id != company_id:
             raise PermissionError("Company access changed. Please sign in again.")
@@ -402,7 +402,7 @@ def main() -> None:
         if active_product_screen == "upload":
             with trace.span("server.app_header_render"):
                 render_app_header()
-        if active_product_screen != "file_review":
+        if active_product_screen not in {"file_review", "objects", "object_detail"}:
             with trace.span("server.account_controls_render"):
                 render_account_control(access, platform_access=platform_access)
     else:
@@ -510,11 +510,11 @@ def main() -> None:
 
     trace.set_screen(screen)
     render_header_actions = None
-    if auth_enabled and screen == "file_review" and access is not None:
+    if auth_enabled and screen in {"file_review", "objects", "object_detail"} and access is not None:
         render_header_actions = lambda: render_account_control(
             access,
             platform_access=platform_access,
-            container_key="file_review_header_actions",
+            container_key="workflow_header_actions",
         )
     with trace.span("server.screen_render", route=screen):
         _render_screen(

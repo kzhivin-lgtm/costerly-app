@@ -13,7 +13,9 @@ from ui.js_guards import (
     install_post_upload_transition_guard,
 )
 from ui import objects_pricing
-from ui.layout import render_post_upload_header
+from collections.abc import Callable
+
+from ui.layout import render_workflow_header
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
     OBJECTS_MARKER_ID,
@@ -285,7 +287,11 @@ def _install_objects_runtimes(
         )
 
 
-def render_objects_screen(company_id: str) -> None:
+def render_objects_screen(
+    company_id: str,
+    *,
+    render_header_actions: Callable[[], None] | None = None,
+) -> None:
     """Render the object pricing review screen from persisted estimate data."""
     apply_objects_css()
     _consume_estimation_future()
@@ -295,11 +301,12 @@ def render_objects_screen(company_id: str) -> None:
     _mark_objects_cache_dirty_when_estimation_runs(estimate_id)
     screen_state = _current_objects_state(estimate_id)
 
-    render_post_upload_header(
+    render_workflow_header(
         "Objects Estimation",
         "Review objects → Set sale price → Generate proposal",
         class_name="objects-estimation-header",
         marker_id=OBJECTS_MARKER_ID,
+        render_actions=render_header_actions,
     )
     _render_objects_messages(
         estimate_id=estimate_id,

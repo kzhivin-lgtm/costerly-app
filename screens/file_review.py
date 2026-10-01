@@ -9,7 +9,7 @@ import streamlit as st
 
 from styles.file_review import apply_file_review_css
 from ui.js_guards import install_post_upload_transition_guard
-from ui.layout import post_upload_header_html, render_post_upload_header
+from ui.layout import render_post_upload_header, render_workflow_header
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
     OBJECTS_MARKER_ID,
@@ -513,21 +513,11 @@ def render_file_review_screen(
         _render_load_error(exc)
         return
 
-    if render_header_actions is None:
-        st.markdown(
-            post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID),
-            unsafe_allow_html=True,
-        )
-    else:
-        with st.container(key="file_review_header_row"):
-            title_column, actions_column = st.columns((1, 1), gap="small")
-            with title_column:
-                st.markdown(
-                    post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID),
-                    unsafe_allow_html=True,
-                )
-            with actions_column:
-                render_header_actions()
+    render_workflow_header(
+        "File Review",
+        marker_id=FILE_REVIEW_MARKER_ID,
+        render_actions=render_header_actions,
+    )
 
     st.markdown(
         _build_review_card_html(

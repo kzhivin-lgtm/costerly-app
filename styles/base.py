@@ -278,6 +278,66 @@ def apply_base_css() -> None:
             transition: opacity 140ms ease;
         }
 
+        .st-key-workflow_header_actions {
+            width: fit-content !important;
+            margin-left: auto !important;
+        }
+
+        .st-key-workflow_header_actions [data-testid="stHorizontalBlock"] {
+            width: fit-content !important;
+            height: 30px !important;
+            gap: 6px;
+            align-items: center !important;
+        }
+
+        .st-key-workflow_header_actions [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+            flex: 0 0 auto !important;
+            width: auto !important;
+            min-width: 0 !important;
+        }
+
+        .st-key-workflow_header_actions [data-testid="stButton"] button {
+            width: auto !important;
+            height: 30px !important;
+            min-height: 30px !important;
+            max-height: 30px !important;
+            padding: 0 7px !important;
+            font-family: var(--font-sans) !important;
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            text-transform: none !important;
+        }
+
+        .st-key-workflow_header_actions [data-testid="stColumn"]:last-child button {
+            width: 30px !important;
+            min-width: 30px !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .st-key-workflow_header_actions [data-testid="stColumn"]:last-child button p {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 14px !important;
+            height: 14px !important;
+            margin: 0 !important;
+            font-size: 0 !important;
+        }
+
+        .st-key-workflow_header_actions [data-testid="stColumn"]:last-child button p::before {
+            content: "";
+            display: block;
+            flex: 0 0 14px;
+            width: 14px;
+            height: 14px;
+            background: currentColor;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4H5.8A1.8 1.8 0 0 0 4 5.8v12.4A1.8 1.8 0 0 0 5.8 20H10'/%3E%3Cpath d='M14 8l4 4-4 4'/%3E%3Cpath d='M8 12h10'/%3E%3C/svg%3E") center / contain no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 4H5.8A1.8 1.8 0 0 0 4 5.8v12.4A1.8 1.8 0 0 0 5.8 20H10'/%3E%3Cpath d='M14 8l4 4-4 4'/%3E%3C/svg%3E") center / contain no-repeat;
+        }
+
         .st-key-costerly_header_controls:hover,
         .st-key-costerly_header_controls:focus-within {
             opacity: 1;
