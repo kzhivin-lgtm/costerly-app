@@ -248,18 +248,52 @@ def _material_for_pricing(material: Mapping[str, Any]) -> dict[str, Any]:
     normalized = dict(material)
     name = str(material.get("source_name") or "").casefold()
     family = str(material.get("family") or "").casefold()
-    is_perforated_sheet = (
-        any(token in name for token in ("perforat", "перфор", "מחורר"))
-        and any(token in name for token in ("sheet", "лист", "פח"))
-    )
+    is_perforated_sheet = any(token in name for token in ("perforat", "перфор", "מחורר"))
     if family == "metal_coatings" and is_perforated_sheet:
         normalized["family"] = "carbon_steel"
         normalized["pricing_normalization"] = "perforated_metal_sheet_is_carbon_steel"
+        family = "carbon_steel"
+    raw_unit = str(material.get("unit") or "").strip().casefold()
+    unit_aliases = {"м": "m", "м2": "m2", "м²": "m²", "л": "l", "шт": "piece"}
+    normalized_unit = unit_aliases.get(raw_unit, str(material.get("unit") or ""))
+    sheet_families = {
+        "mdf", "plywood", "particleboard", "melamine", "hdf", "osb",
+    }
+    specification = dict(material.get("specification") or {})
+    if normalized_unit == "piece" and family in sheet_families:
+        width = _number(specification.get("width_mm"))
+        height = _number(specification.get("height_mm"))
+        if width > 0 and height > 0:
+            normalized["quantity"] = round(
+                _number(material.get("quantity"), 1) * width * height / 1_000_000,
+                4,
+            )
+            normalized_unit = "m²"
+            normalized["pricing_normalization"] = "sheet_piece_dimensions_to_area"
+        else:
+            normalized_unit = "sheet"
+    if normalized_unit != material.get("unit"):
+        normalized["source_unit"] = material.get("unit")
+        normalized["unit"] = normalized_unit
     return normalized
 
 
+def _english_material_name(material: Mapping[str, Any]) -> str:
+    source_name = str(material.get("source_name") or "").strip()
+    if source_name and source_name.isascii():
+        return source_name
+    family = str(material.get("family") or "material").replace("_", " ").title()
+    specification = dict(material.get("specification") or {})
+    detail = specification.get("profile_section")
+    if not detail and _number(specification.get("thickness_mm")) > 0:
+        detail = f"{_number(specification.get('thickness_mm')):g} mm"
+    return f"{family}, {detail}" if detail else family
+
+
 def _steel_profile_geometry(material: Mapping[str, Any]) -> dict[str, Any] | None:
-    if str(material.get("family") or "").casefold() != "carbon_steel":
+    if str(material.get("family") or "").casefold() not in {
+        "carbon_steel", "galvanized_steel", "aluminium",
+    }:
         return None
     specification = dict(material.get("specification") or {})
     corpus = " ".join((str(material.get("source_name") or ""), str(specification.get("profile_section") or ""))).casefold()
@@ -300,7 +334,7 @@ def _fallback_material_unit_cost(
 ) -> tuple[float | None, str, dict[str, Any]]:
     family = str(material.get("family") or "")
     unit = str(material.get("unit") or "")
-    unit_key = unit.casefold().replace("²", "2")
+    unit_key = unit.casefold().replace("²", "2").replace("м", "m")
     specification = dict(material.get("specification") or {})
     direct = _price_samples(catalogs, family=family, target_unit=unit)
     if direct:
@@ -308,7 +342,7 @@ def _fallback_material_unit_cost(
         return value, "family_high_median", {"sample_count": len(direct), "reserve_percent": 5}
 
     family_key = family.casefold()
-    if family_key == "carbon_steel":
+    if family_key in {"carbon_steel", "galvanized_steel", "aluminium"}:
         profile = _steel_profile_geometry(material)
         kg_prices = _price_samples(
             catalogs, family=family, target_unit="kg",
@@ -316,9 +350,10 @@ def _fallback_material_unit_cost(
         )
         if kg_prices:
             kg_price = float(median(kg_prices))
+            density_factor = 2.70 if family_key == "aluminium" else 7.85
             thickness = _number(specification.get("thickness_mm"))
             if unit_key in {"m2", "sqm"} and thickness > 0:
-                kg_per_unit = thickness * 7.85
+                kg_per_unit = thickness * density_factor
                 return (
                     round(kg_price * kg_per_unit * 1.10, 4),
                     "steel_sheet_area_to_weight",
@@ -337,7 +372,7 @@ def _fallback_material_unit_cost(
                     inner_width = max(width - 2 * wall, 0)
                     inner_height = max(height - 2 * wall, 0)
                     section_area = width * height - inner_width * inner_height
-                kg_per_unit = section_area * 0.00785
+                kg_per_unit = section_area * density_factor / 1000
                 return (
                     round(kg_price * kg_per_unit * 1.10, 4),
                     "steel_profile_length_to_weight",
@@ -444,7 +479,7 @@ def _material_rows_and_costs(
         displayed_name = (
             resolution.resolved_material_name
             if resolution.thickness_policy and resolution.resolved_material_name
-            else source_name
+            else _english_material_name(material)
         )
         normalization_note = None
         if resolution.thickness_policy:

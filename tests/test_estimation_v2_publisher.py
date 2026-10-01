@@ -245,6 +245,67 @@ def test_perforated_metal_sheet_is_normalized_from_coating_to_carbon_steel():
     assert price == 431.75
 
 
+@pytest.mark.parametrize(
+    ("family", "source_unit", "expected_unit"),
+    (
+        ("mdf", "м²", "m²"),
+        ("mdf", "шт", "sheet"),
+        ("carbon_steel", "м", "m"),
+        ("wood_coatings", "л", "l"),
+    ),
+)
+def test_extracted_cyrillic_units_are_normalized_for_pricing(
+    family, source_unit, expected_unit,
+):
+    material = publisher._material_for_pricing({
+        "family": family, "source_name": "material", "unit": source_unit,
+    })
+
+    assert material["unit"] == expected_unit
+    assert material["source_unit"] == source_unit
+
+
+def test_sheet_piece_quantity_with_dimensions_is_converted_to_area():
+    material = publisher._material_for_pricing({
+        "family": "plywood", "source_name": "door panel", "unit": "шт",
+        "quantity": 2, "specification": {"width_mm": 880, "height_mm": 630},
+    })
+
+    assert material["unit"] == "m²"
+    assert material["quantity"] == pytest.approx(1.1088)
+    assert material["pricing_normalization"] == "sheet_piece_dimensions_to_area"
+
+
+def test_localized_material_name_is_rendered_in_english_from_canonical_family():
+    assert publisher._english_material_name({
+        "family": "galvanized_steel", "source_name": "металлический каркас",
+        "specification": {"profile_section": "20x20 mm"},
+    }) == "Galvanized Steel, 20x20 mm"
+
+
+def test_aluminium_profile_uses_aluminium_density_and_family_price():
+    catalogs = {
+        "identities": [{"pricing_identity_id": "al-profile", "price_attributes": {
+            "material_family": "aluminium", "detail_material_id": "al-square",
+        }}],
+        "prices": [{"pricing_identity_id": "al-profile", "unit": "kg", "price_typical": 100}],
+        "reference_materials": [{
+            "material_id": "al-square", "canonical_name": "Aluminium square tube",
+        }],
+        "baselines": [],
+    }
+
+    price, rule, details = publisher._fallback_material_unit_cost(
+        {"family": "aluminium", "source_name": "square profile", "unit": "m",
+         "specification": {"profile_section": "20x20"}},
+        catalogs,
+    )
+
+    assert rule == "steel_profile_length_to_weight"
+    assert details["kg_per_m"] == pytest.approx(0.2997)
+    assert price == pytest.approx(32.967)
+
+
 def test_angle_defaults_to_1_5_mm_but_explicit_wall_is_preserved():
     defaulted = publisher._steel_profile_geometry({
         "family": "carbon_steel", "source_name": "Steel angle 30x30", "specification": {},

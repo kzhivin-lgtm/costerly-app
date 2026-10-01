@@ -21,6 +21,13 @@ _UNIT_ALIASES = {
     "metre": "lm",
     "m2": "sqm",
     "m²": "sqm",
+    "м2": "sqm",
+    "м²": "sqm",
+    "м": "lm",
+    "шт": "ea",
+    "штука": "ea",
+    "штуки": "ea",
+    "л": "l",
     "liter": "l",
     "litre": "l",
 }

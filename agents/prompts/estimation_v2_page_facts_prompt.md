@@ -24,6 +24,13 @@ Each object contains only these keys:
   operation ID, allowed operation code, positive physical quantity, driver unit
   and affected material requirement IDs.
 
+The source document may use any language. Normalize every output value to
+English. In particular, `n`, purchased-component types and all units must be
+English regardless of the drawing language. Use canonical units only: `m²`,
+`m`, `mm`, `kg`, `l`, `sheet`, `piece`, `cut`, `hole` or another concise
+English physical unit required by an allowed operation. Never return localized
+unit spellings or abbreviations such as `м²`, `м`, `шт`, `л`, `יחידה` or `מטר`.
+
 Do not return source facts, review items, prose, basis, evidence references,
 confidence, provenance, routes, machines or unknown/default fields. The server
 adds them deterministically and validates all families, operation codes and
