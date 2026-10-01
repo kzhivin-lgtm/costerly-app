@@ -1716,7 +1716,7 @@ def install_objects_progress_sync(
                 const cell = row.querySelector('[data-action-cell="true"]');
                 if (!cell) return;
 
-                if (status === "completed") {
+                if (status === "completed" || status === "review_required") {
                     if (
                         cell.querySelector(".objects-pricing-review-button--done")
                         || String(cell.textContent || "").trim().toLowerCase() === "done"
@@ -1919,6 +1919,11 @@ def install_objects_progress_sync(
 
                 if (status === "failed") {
                     cell.textContent = "failed";
+                    return;
+                }
+
+                if (status === "review_required") {
+                    cell.textContent = "review";
                     return;
                 }
 

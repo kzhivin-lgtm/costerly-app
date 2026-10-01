@@ -467,7 +467,7 @@ def process_uploaded_rfq(
     try:
         ocr_event_id = insert_agent_usage_event_returning_id(client, ocr_event)
     except Exception as exc:
-        print(f"[Estimation v2 shadow] Could not persist OCR handoff event: {exc}")
+        print(f"[Estimation v2] Could not persist OCR handoff event: {exc}")
     original = None
     try:
         original = original_future.result()

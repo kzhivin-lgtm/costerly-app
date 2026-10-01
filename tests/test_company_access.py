@@ -17,7 +17,7 @@ from db.company_access import assert_company_owner, assert_estimate_owned, asser
 from state import company_auth
 from screens import company_profile
 from ui import company_metrics_view
-from use_cases import machinery, pricing
+from use_cases import machinery, overhead_engine
 from use_cases.invite_links import (
     DEFAULT_PUBLIC_APP_URL,
     create_one_company_link,
@@ -2970,7 +2970,7 @@ def test_other_spendings_flows_from_company_metrics_to_object_detail_pricing():
         "Other Spendings",
         (("other_spendings_cost", "Other spendings"),),
     )
-    assert pricing._monthly_overhead_map()[-1] == (
+    assert overhead_engine._monthly_overhead_map()[-1] == (
         "other_spendings_cost",
         "Other spendings",
         "Other spendings",

@@ -143,7 +143,7 @@ def test_shadow_batch_persists_validated_facts_and_usage(monkeypatch):
         return "facts-1"
 
     monkeypatch.setattr(shadow, "insert_estimation_v2_fact_result", _insert)
-    result = shadow.run_estimation_v2_facts_shadow_batch(
+    result = shadow.run_estimation_v2_facts_batch(
         client=object(),
         inputs=[{"input_id": "input-1", "object_input_revision": 1, "input_payload": {"x": 1}}],
     )
@@ -162,7 +162,7 @@ def test_shadow_batch_reuses_exact_agent_version_without_model_call(monkeypatch)
         lambda **_kwargs: (_ for _ in ()).throw(AssertionError("model must not run")),
     )
 
-    result = shadow.run_estimation_v2_facts_shadow_batch(
+    result = shadow.run_estimation_v2_facts_batch(
         client=object(),
         inputs=[{"input_id": "input-1", "object_input_revision": 1, "input_payload": {"x": 1}}],
     )
@@ -180,7 +180,7 @@ def test_shadow_batch_is_fail_isolated_per_object(monkeypatch):
         lambda **kwargs: (_ for _ in ()).throw(ValueError("unsafe evidence")),
     )
 
-    result = shadow.run_estimation_v2_facts_shadow_batch(
+    result = shadow.run_estimation_v2_facts_batch(
         client=object(),
         inputs=[{"input_id": "input-1", "object_input_revision": 1, "input_payload": {"x": 1}}],
     )

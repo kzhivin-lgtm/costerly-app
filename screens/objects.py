@@ -43,7 +43,7 @@ def _empty_objects_data() -> dict[str, object]:
 
 def _consume_estimation_future() -> None:
     """Store the background estimation result once the worker is done."""
-    future = st.session_state.get("estimation_first_object_future")
+    future = st.session_state.get("estimation_batch_future")
     if not isinstance(future, Future) or not future.done():
         return
 
@@ -56,7 +56,7 @@ def _consume_estimation_future() -> None:
     except Exception as exc:
         st.session_state.last_estimation_error = str(exc)
     finally:
-        st.session_state.estimation_first_object_future = None
+        st.session_state.estimation_batch_future = None
 
 
 def _objects_progress_sync_config() -> tuple[str | None, str | None, str | None]:
@@ -155,7 +155,7 @@ def _project_cost_rows_for_seed(rows: list[dict[str, object]]) -> list[dict[str,
 
 def _mark_objects_cache_dirty_when_estimation_runs(estimate_id: str | None) -> None:
     """Force a refresh while the background estimation worker can still change rows."""
-    estimation_running = isinstance(st.session_state.get("estimation_first_object_future"), Future)
+    estimation_running = isinstance(st.session_state.get("estimation_batch_future"), Future)
     if estimation_running and estimate_id:
         st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
 

@@ -26,18 +26,6 @@ def fetch_table(
     return pd.DataFrame(response.data or [])
 
 
-def fetch_company_data(client: Client, company_id: str) -> dict[str, pd.DataFrame]:
-    return {
-        "labor": fetch_table(client, "labor", filters={"company_id": company_id}),
-        "materials": fetch_table(client, "materials", filters={"company_id": company_id}),
-        "works": fetch_table(client, "works", order_by="sort_order", filters={"company_id": company_id}),
-        "company_machines": fetch_table(client, "company_machines", order_by="industry", filters={"company_id": company_id}),
-        "overhead_settings": fetch_table(client, "overhead_settings", filters={"company_id": company_id}),
-        "overhead_monthly": fetch_table(client, "overhead_monthly", filters={"company_id": company_id}),
-        "work_drivers": fetch_table(client, "work_drivers", order_by="sort_order"),
-    }
-
-
 def fetch_company_overhead_settings(client: Client, company_id: str) -> pd.DataFrame:
     return fetch_table(client, "overhead_settings", filters={"company_id": company_id})
 
@@ -133,11 +121,12 @@ def insert_estimation_object_input(
     ocr_event_id: str,
     input_payload: dict,
     artifacts: list[dict],
+    object_input_revision: int = 1,
 ) -> str:
-    """Insert immutable revision one, then its already-uploaded evidence refs."""
+    """Insert one immutable object revision and its evidence refs."""
     response = client.table("rfq_estimation_object_inputs").insert({
         "run_id": run_id, "company_id": company_id, "object_id": object_id,
-        "object_input_revision": 1, "original_file_ref": original_file_ref,
+        "object_input_revision": object_input_revision, "original_file_ref": original_file_ref,
         "original_content_sha256": original_content_sha256,
         "original_mime_type": original_mime_type,
         "original_size_bytes": original_size_bytes, "ocr_event_id": ocr_event_id,
@@ -154,6 +143,25 @@ def insert_estimation_object_input(
         for row in artifacts
     ]).execute()
     return input_id
+
+
+def next_estimation_object_input_revision(
+    client: Client,
+    *,
+    run_id: str,
+    object_id: str,
+) -> int:
+    response = (
+        client.table("rfq_estimation_object_inputs")
+        .select("object_input_revision")
+        .eq("run_id", run_id)
+        .eq("object_id", object_id)
+        .order("object_input_revision", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return int(rows[0].get("object_input_revision") or 0) + 1 if rows else 1
 
 
 def fetch_estimation_v2_fact_result(

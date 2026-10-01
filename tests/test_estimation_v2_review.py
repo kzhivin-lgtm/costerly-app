@@ -13,6 +13,22 @@ def test_pending_object_without_v2_facts_stays_disabled():
     assert "aria-disabled" in markup
 
 
+def test_review_required_object_is_openable_without_fake_self_cost():
+    row = {
+        "status": "review_required",
+        "object_key": "object-1",
+        "self_cost_unit": "review_required",
+    }
+
+    assert objects_pricing._self_cost_unit_html(row) == "review"
+    markup = objects_pricing._review_action_html(
+        row,
+        estimate_id="estimate-1",
+        run_id="run-1",
+    )
+    assert ">Review</a>" in markup
+
+
 def test_object_detail_uses_v2_materials_without_inventing_costs():
     rows = _material_rows_from_v2_facts({
         "materials": [{

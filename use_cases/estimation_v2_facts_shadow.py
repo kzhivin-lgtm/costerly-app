@@ -1,8 +1,8 @@
-"""Fail-isolated Estimation v2 Object Facts shadow coordinator."""
+"""Fail-isolated Estimation v2 Object Facts coordinator."""
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from agents.estimation_v2_facts_agent import (
     ESTIMATION_V2_FACTS_AGENT_VERSION,
@@ -16,10 +16,11 @@ from db.repositories import (
 )
 
 
-def run_estimation_v2_facts_shadow_batch(
+def run_estimation_v2_facts_batch(
     *,
     client: Any,
     inputs: Sequence[Mapping[str, Any]],
+    on_object_start: Callable[[Mapping[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Extract and persist facts without affecting the active estimate workflow."""
     families = fetch_active_israel_material_families(client)
@@ -37,11 +38,13 @@ def run_estimation_v2_facts_shadow_batch(
     reused: list[str] = []
     failed: dict[str, str] = {}
     for row in inputs:
+        if on_object_start is not None:
+            on_object_start(row)
         input_id = str(row.get("input_id") or "").strip()
         payload = row.get("input_payload")
         revision = row.get("object_input_revision", 1)
         if not input_id or not isinstance(payload, Mapping):
-            failed[input_id or "unknown"] = "invalid_shadow_input"
+            failed[input_id or "unknown"] = "invalid_estimation_input"
             continue
         try:
             existing = fetch_estimation_v2_fact_result(

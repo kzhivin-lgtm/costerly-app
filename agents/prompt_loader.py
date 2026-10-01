@@ -6,7 +6,6 @@ import re
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 DETECTION_PROMPT_PATH = PROMPTS_DIR / "detection_agent_prompt.md"
-ESTIMATION_PROMPT_PATH = PROMPTS_DIR / "estimation_agent_prompt.md"
 PRICE_SOURCE_PROMPT_PATH = PROMPTS_DIR / "price_source_agent_prompt.md"
 
 
@@ -113,20 +112,6 @@ Do not return separate objects for fabric, track, suspension, brackets, anchors,
         "11. The handoff is sufficient for Estimation without performing estimation.\n"
         "12. All required schema fields are present, no extra fields or nulls exist, and status is valid.",
     )
-    return prompt
-
-
-def load_estimation_agent_prompt() -> str:
-    if not ESTIMATION_PROMPT_PATH.exists():
-        raise FileNotFoundError(
-            f"Estimation prompt not found: {ESTIMATION_PROMPT_PATH}"
-        )
-
-    prompt = ESTIMATION_PROMPT_PATH.read_text(encoding="utf-8").strip()
-
-    if not prompt:
-        raise ValueError(f"Estimation prompt is empty: {ESTIMATION_PROMPT_PATH}")
-
     return prompt
 
 

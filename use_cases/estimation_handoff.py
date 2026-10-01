@@ -1,4 +1,4 @@
-"""Shadow Detection-to-Estimation v2 handoff after File Review edits."""
+"""Detection-to-Estimation v2 handoff after File Review edits."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from agents.detection_page_images import render_detection_pdf_pages
-from db.repositories import insert_estimation_object_input
+from db.repositories import insert_estimation_object_input, next_estimation_object_input_revision
 from use_cases.estimation_artifacts import persist_preview_artifact
 from use_cases.estimation_evidence import build_estimation_input_v2, resolve_anchor_bbox
 from use_cases.estimation_originals import StoredOriginal
@@ -22,13 +22,13 @@ def _render_pages(file_name: str, file_bytes: bytes) -> list[bytes]:
     return []
 
 
-def persist_estimation_v2_shadow_inputs(
+def persist_estimation_v2_inputs(
     *, client: Any, run: Mapping[str, Any], objects: Sequence[Mapping[str, Any]],
     ignored_object_ids: set[str], file_name: str, file_bytes: bytes,
     ocr_event_id: str, ocr_package: Mapping[str, Any], original: StoredOriginal,
     versions: Mapping[str, str],
 ) -> dict[str, Any]:
-    """Persist valid object revisions; skip unsafe objects without breaking legacy flow."""
+    """Persist one immutable input revision for each estimable object."""
     pages = _render_pages(file_name, file_bytes)
     ocr_pages = {int(row["page_number"]): row for row in ocr_package.get("pages") or [] if row.get("page_number")}
     created: list[str] = []
@@ -99,19 +99,24 @@ def persist_estimation_v2_shadow_inputs(
         )
         labels = {int(ref["page_number"]): str(ref.get("source_label") or ref["page_number"])
                   for ref in item.get("evidence_page_refs") or []}
+        revision = next_estimation_object_input_revision(
+            client, run_id=str(run["run_id"]), object_id=object_id
+        )
         input_id = insert_estimation_object_input(
             client, run_id=str(run["run_id"]), company_id=str(run["company_id"]),
             object_id=object_id, original_file_ref=original.storage_ref,
             original_content_sha256=original.content_sha256,
             original_mime_type=original.mime_type, original_size_bytes=original.size_bytes,
             ocr_event_id=ocr_event_id, input_payload=payload,
+            object_input_revision=revision,
             artifacts=[{"page_number": page_number, "source_label": labels.get(page_number, str(page_number)),
                         "artifact_kind": artifact.artifact_kind, "storage_ref": artifact.storage_ref}],
         )
         created.append(input_id)
         created_inputs.append({
             "input_id": input_id,
-            "object_input_revision": 1,
+            "object_id": object_id,
+            "object_input_revision": revision,
             "input_payload": payload,
         })
     return {

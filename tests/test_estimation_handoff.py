@@ -2,7 +2,7 @@ from io import BytesIO
 
 from PIL import Image
 
-from use_cases.estimation_handoff import persist_estimation_v2_shadow_inputs
+from use_cases.estimation_handoff import persist_estimation_v2_inputs
 from use_cases.estimation_originals import describe_estimation_original
 
 
@@ -11,9 +11,14 @@ class _Response:
 
 
 class _Query:
-    def __init__(self, client, table): self.client, self.table, self.value = client, table, None
+    def __init__(self, client, table): self.client, self.table, self.value, self.reading = client, table, None, False
+    def select(self, _value): self.reading = True; return self
+    def eq(self, *_args): return self
+    def order(self, *_args, **_kwargs): return self
+    def limit(self, *_args): return self
     def insert(self, value): self.value = value; return self
     def execute(self):
+        if self.reading: return _Response([])
         self.client.rows[self.table] = self.value
         if self.table == "rfq_estimation_object_inputs":
             return _Response([{"input_id": "input-1"}])
@@ -43,7 +48,7 @@ def _image_bytes():
 def test_shadow_handoff_persists_preview_input_and_artifact():
     source = _image_bytes()
     client = _Client()
-    result = persist_estimation_v2_shadow_inputs(
+    result = persist_estimation_v2_inputs(
         client=client,
         run={"run_id": "run-1", "company_id": "company-1", "file_name": "drawing.png"},
         objects=[{
@@ -65,6 +70,7 @@ def test_shadow_handoff_persists_preview_input_and_artifact():
     assert result["skipped"] == {}
     assert result["created_inputs"] == [{
         "input_id": "input-1",
+        "object_id": "object-1",
         "object_input_revision": 1,
         "input_payload": client.rows["rfq_estimation_object_inputs"]["input_payload"],
     }]
@@ -76,7 +82,7 @@ def test_shadow_handoff_persists_preview_input_and_artifact():
 def test_shadow_handoff_uses_source_page_when_image_only_ocr_cannot_resolve_anchor():
     source = _image_bytes()
     client = _Client()
-    result = persist_estimation_v2_shadow_inputs(
+    result = persist_estimation_v2_inputs(
         client=client,
         run={"run_id": "run-1", "company_id": "company-1", "file_name": "drawing.png"},
         objects=[{

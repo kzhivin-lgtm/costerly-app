@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from agents.anthropic_adapter import (
-    DEFAULT_CLAUDE_ESTIMATION_MODEL,
+    DEFAULT_CLAUDE_AGENT_MODEL,
     build_agent_usage_event,
     build_uploaded_file_content_block,
     create_claude_message_streamed,
@@ -68,7 +68,7 @@ def run_price_source_agent(
 
     selected_model = model or get_secret(
         "CLAUDE_PRICE_SOURCE_MODEL",
-        DEFAULT_CLAUDE_ESTIMATION_MODEL,
+        DEFAULT_CLAUDE_AGENT_MODEL,
     )
     response, diagnostics = create_claude_message_streamed(
         get_anthropic_client(),

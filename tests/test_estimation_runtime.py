@@ -1,18 +1,6 @@
 import use_cases.estimation_runtime as runtime
 
 
-def test_estimation_v2_facts_shadow_is_enabled_by_default_after_acceptance(monkeypatch):
-    monkeypatch.setattr(runtime, "get_secret", lambda _name, default: default)
-
-    assert runtime._estimation_v2_facts_shadow_enabled() is True
-
-
-def test_estimation_v2_facts_shadow_has_explicit_false_rollback(monkeypatch):
-    monkeypatch.setattr(runtime, "get_secret", lambda _name, _default: "false")
-
-    assert runtime._estimation_v2_facts_shadow_enabled() is False
-
-
 def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
     events = []
     future = object()
@@ -60,15 +48,8 @@ def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
     }
 
 
-def test_v2_facts_replace_legacy_estimation_when_enabled(monkeypatch):
+def test_v2_publisher_replaces_legacy_estimation_for_all_objects(monkeypatch):
     events = []
-
-    class FactsExecutor:
-        def submit(self, fn, inputs):
-            events.append(("facts_queued", fn, inputs))
-
-    monkeypatch.setattr(runtime, "_ESTIMATION_V2_FACTS_EXECUTOR", FactsExecutor())
-    monkeypatch.setattr(runtime, "_estimation_v2_facts_shadow_enabled", lambda: True)
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
     monkeypatch.setattr(runtime, "fetch_rfq_detected_objects", lambda _client, _run_id: _Frame([{}]))
@@ -79,18 +60,19 @@ def test_v2_facts_replace_legacy_estimation_when_enabled(monkeypatch):
     )
     monkeypatch.setattr(
         runtime,
-        "persist_estimation_v2_shadow_inputs",
+        "persist_estimation_v2_inputs",
         lambda **_kwargs: {
             "created_inputs": [{"input_id": "input-1", "input_payload": {}}]
         },
     )
     monkeypatch.setattr(runtime, "describe_estimation_original", lambda **_kwargs: object())
-
-    def fail_legacy(**_kwargs):
-        events.append(("legacy_started",))
-        raise RuntimeError("legacy failed")
-
-    monkeypatch.setattr(runtime, "estimate_all_objects_for_run", fail_legacy)
+    monkeypatch.setattr(
+        runtime,
+        "_run_estimation_v2_for_all_objects",
+        lambda **kwargs: events.append(("v2_run", kwargs["created_inputs"])) or {
+            "processed_input_ids": ["input-1"], "failed": {}
+        },
+    )
 
     result = runtime._run_estimation_job(
         estimate_id="estimate-1",
@@ -102,8 +84,27 @@ def test_v2_facts_replace_legacy_estimation_when_enabled(monkeypatch):
         shell={"estimate_id": "estimate-1"},
     )
 
-    assert [event[0] for event in events] == ["facts_queued"]
-    assert result["estimation"]["status"] == "v2_facts_queued"
+    assert [event[0] for event in events] == ["v2_run"]
+    assert result["estimation"]["status"] == "completed"
+    assert result["estimation"]["estimated_objects"] == 1
+    assert result["estimation_version"] == "v2"
+
+
+def test_all_ignored_objects_finish_as_empty_v2_estimate(monkeypatch):
+    monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
+    monkeypatch.setattr(runtime, "fetch_rfq_detected_objects", lambda _client, _run_id: _Frame([]))
+    monkeypatch.setattr(runtime, "fetch_latest_ocr_result", lambda _client, _run_id: None)
+
+    result = runtime._run_estimation_job(
+        estimate_id="estimate-1", run_id="run-1", company_id="company-1",
+        file_name="drawing.pdf", file_bytes=b"pdf", ignored_object_ids={"object-1"},
+        shell={"estimate_id": "estimate-1", "object_count": 0},
+    )
+
+    assert result["estimation"] == {
+        "status": "no_objects", "estimated_objects": 0, "failed_objects": {}
+    }
 
 
 class _Row:

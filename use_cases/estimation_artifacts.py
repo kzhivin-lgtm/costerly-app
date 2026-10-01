@@ -17,7 +17,9 @@ def persist_preview_artifact(*, client: Any, company_id: str, run_id: str, objec
     digest = sha256(webp_bytes).hexdigest()
     path = f"{company_id}/{run_id}/{object_id}/{digest}.webp"
     client.storage.from_(EVIDENCE_BUCKET).upload(
-        path, webp_bytes, file_options={"content-type": "image/webp", "upsert": "false"}
+        # Content-addressed paths are immutable by definition. Upsert makes a
+        # repeated File Review revision idempotent when the crop did not change.
+        path, webp_bytes, file_options={"content-type": "image/webp", "upsert": "true"}
     )
     return EvidenceArtifact(
         storage_ref=f"storage://{EVIDENCE_BUCKET}/{path}",

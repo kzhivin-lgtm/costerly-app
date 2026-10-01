@@ -617,7 +617,7 @@ def _prepare_objects_estimation_seed(
 
 def _estimation_job_active() -> bool:
     """Return whether the background estimation worker is still running."""
-    current_future = st.session_state.get("estimation_first_object_future")
+    current_future = st.session_state.get("estimation_batch_future")
     return isinstance(current_future, Future) and not current_future.done()
 
 
@@ -657,9 +657,9 @@ def _submit_objects_estimation_job(
         st.session_state.last_estimation_result = None
         st.session_state.last_estimation_error = None
 
-    _mark_first_object_estimation_started(estimate_id)
+    _mark_estimation_batch_started(estimate_id)
     try:
-        st.session_state.estimation_first_object_future = submit_estimation_job(
+        st.session_state.estimation_batch_future = submit_estimation_job(
             estimate_id=estimate_id,
             run_id=run_id,
             company_id=company_id,
@@ -720,7 +720,7 @@ def _continue_to_objects_estimation(
     st.rerun()
 
 
-def _mark_first_object_estimation_started(estimate_id: str) -> None:
+def _mark_estimation_batch_started(estimate_id: str) -> None:
     """Seed the first visible row so the next screen does not flash all pending."""
     seed_rows = st.session_state.get("objects_estimation_seed_rows")
     if not seed_rows:

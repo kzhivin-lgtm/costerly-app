@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from agents.anthropic_adapter import (
-    DEFAULT_CLAUDE_ESTIMATION_MODEL,
+    DEFAULT_CLAUDE_AGENT_MODEL,
     create_claude_message,
     extract_text_from_claude_response,
     get_anthropic_client,
@@ -35,7 +35,7 @@ def run_material_identity_agent(
         if len(row.get("candidates") or []) > 5:
             raise ValueError("material identity shortlist exceeds five candidates")
     selected_model = model or get_secret(
-        "CLAUDE_MATERIAL_IDENTITY_MODEL", DEFAULT_CLAUDE_ESTIMATION_MODEL
+        "CLAUDE_MATERIAL_IDENTITY_MODEL", DEFAULT_CLAUDE_AGENT_MODEL
     )
     response = create_claude_message(
         get_anthropic_client().with_options(timeout=45.0, max_retries=0),

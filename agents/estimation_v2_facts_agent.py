@@ -7,7 +7,7 @@ import re
 from typing import Any, AbstractSet, Mapping
 
 from agents.anthropic_adapter import (
-    DEFAULT_CLAUDE_ESTIMATION_MODEL,
+    DEFAULT_CLAUDE_AGENT_MODEL,
     build_agent_usage_event,
     create_claude_message,
     extract_text_from_claude_response,
@@ -323,7 +323,7 @@ def run_estimation_v2_facts_agent(
         raise ValueError("object_input_revision must be a positive integer")
     schema = build_estimation_v2_facts_schema(allowed_material_families)
     selected_model = model or get_secret(
-        "CLAUDE_ESTIMATION_V2_FACTS_MODEL", DEFAULT_CLAUDE_ESTIMATION_MODEL
+        "CLAUDE_ESTIMATION_V2_FACTS_MODEL", DEFAULT_CLAUDE_AGENT_MODEL
     )
     request = {
         "input_id": resolved_input_id,

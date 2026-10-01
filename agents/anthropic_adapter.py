@@ -17,24 +17,18 @@ from config import calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
-    load_estimation_agent_prompt,
 )
 from agents.schemas.detection_schema import (
     DETECTION_RESULT_JSON_SCHEMA,
     validate_detection_result,
 )
-from agents.schemas.estimation_schema import (
-    ESTIMATION_RESULT_JSON_SCHEMA,
-    validate_estimation_result,
-)
 
 
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
-DEFAULT_CLAUDE_ESTIMATION_MODEL = "claude-haiku-4-5-20251001"
+DEFAULT_CLAUDE_AGENT_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
 DETECTION_PROMPT_VERSION = "detection_v3_2_6_3_estimation_evidence"
 DETECTION_NO_NAMING_PROMPT_VERSION = "detection_v3_2_6_3_estimation_evidence"
-ESTIMATION_PROMPT_VERSION = "estimation_v2_manufacturing_features"
 
 
 def get_secret(name: str, default: str | None = None) -> str | None:
@@ -379,45 +373,6 @@ def build_detection_system_content(
     if cache_enabled:
         block["cache_control"] = {"type": "ephemeral"}
     return [block]
-
-
-def build_estimation_user_text(
-    *,
-    file_name: str,
-    company_id: str,
-    estimate_id: str,
-    run_id: str,
-    detected_object: dict[str, Any],
-) -> str:
-    prompt = load_estimation_agent_prompt()
-
-    return f"""
-You are running the RFQ Estimation Agent for a custom fabrication estimate system.
-
-Company ID:
-{company_id}
-
-Estimate ID:
-{estimate_id}
-
-Run ID:
-{run_id}
-
-Uploaded file name:
-{file_name}
-
-Detected object to estimate:
-{json.dumps(detected_object, ensure_ascii=False, indent=2, default=str)}
-
-Task:
-Analyze the attached RFQ / drawing package again, but estimate ONLY this one detected object.
-Return ONLY the structured JSON object required by the schema.
-
-Use the estimation prompt below as the business logic contract.
-
-ESTIMATION PROMPT:
-{prompt}
-""".strip()
 
 
 def encode_pdf_bytes(file_bytes: bytes) -> str:
@@ -934,87 +889,3 @@ def run_anthropic_detection_agent_from_path(
         file_bytes=path.read_bytes(),
         ocr_package=None,
     )
-
-
-def run_anthropic_estimation_agent(
-    *,
-    file_name: str,
-    company_id: str,
-    file_bytes: bytes,
-    estimate_id: str,
-    run_id: str,
-    detected_object: dict[str, Any],
-    model: str | None = None,
-) -> dict[str, Any]:
-    """Run the real Claude-backed Estimation Agent for one detected object."""
-    selected_model = model or get_secret(
-        "CLAUDE_ESTIMATION_MODEL",
-        DEFAULT_CLAUDE_ESTIMATION_MODEL,
-    )
-
-    if not selected_model:
-        selected_model = DEFAULT_CLAUDE_ESTIMATION_MODEL
-
-    object_id = str(detected_object.get("object_id") or "")
-    object_name = str(detected_object.get("object_name") or "Untitled object")
-
-    client = get_anthropic_client()
-    user_text = build_estimation_user_text(
-        file_name=file_name,
-        company_id=company_id,
-        estimate_id=estimate_id,
-        run_id=run_id,
-        detected_object=detected_object,
-    )
-    claude_schema = strip_schema_for_claude(ESTIMATION_RESULT_JSON_SCHEMA)
-
-    started_at = _utc_now_iso()
-    response = create_claude_message(
-        client,
-        model=selected_model,
-        max_tokens=8192,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    build_uploaded_file_content_block(file_name, file_bytes),
-                    {
-                        "type": "text",
-                        "text": user_text,
-                    },
-                ],
-            }
-        ],
-        output_config={
-            "format": {
-                "type": "json_schema",
-                "schema": claude_schema,
-            }
-        },
-    )
-    finished_at = _utc_now_iso()
-    raw_text = extract_text_from_claude_response(response)
-
-    try:
-        result = json.loads(raw_text)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            f"Claude returned invalid estimation JSON. Raw response starts with: {raw_text[:500]}"
-        ) from exc
-
-    validated = validate_estimation_result(result)
-    validated["_agent_usage"] = build_agent_usage_event(
-        agent_name="estimation",
-        operation="object_estimation",
-        company_id=company_id,
-        run_id=run_id,
-        file_name=file_name,
-        object_id=object_id,
-        object_name=object_name,
-        model=selected_model,
-        prompt_version=ESTIMATION_PROMPT_VERSION,
-        response=response,
-        started_at=started_at,
-        finished_at=finished_at,
-    )
-    return validated

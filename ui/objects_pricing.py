@@ -176,7 +176,7 @@ def _review_action_html(
     run_id: str | None,
 ) -> str:
     status = _row_status(row)
-    if status == "completed":
+    if status in {"completed", "review_required"}:
         action_label = "Done" if row.get("reviewed") else "Review"
         action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
         object_id = quote(str(row.get("object_key") or ""))
@@ -188,7 +188,7 @@ def _review_action_html(
             f'target="_self">{action_label}</a>'
         )
 
-    action_label = "Estimating" if status == "running" else "Pending"
+    action_label = "Estimating" if status == "running" else "Failed" if status == "failed" else "Pending"
     return (
         '<span class="objects-pricing-review-button objects-pricing-review-button--disabled" '
         'aria-disabled="true">'
@@ -253,6 +253,8 @@ def _smooth_progress_percent(row: dict[str, object]) -> int:
 
 
 def _self_cost_unit_html(row: dict[str, object]) -> str:
+    if _row_status(row) == "review_required":
+        return "review"
     if _row_status(row) != "running":
         return _money(row.get("self_cost_unit"))
 
