@@ -28,6 +28,7 @@ def test_workflow_titles_use_brand_ink_and_only_object_names_use_accent():
     base_css = open("styles/base.py").read()
     review_css = open("styles/file_review.py").read()
 
+    assert ".workflow-title" in base_css
     assert "color: var(--color-accent-dark) !important;" in base_css
     assert ".object-detail-object-name" in base_css
     assert "color: var(--color-accent) !important;" in base_css

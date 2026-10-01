@@ -428,7 +428,7 @@ def apply_base_css() -> None:
 
         .post-upload-title {
             font-family: var(--font-mono) !important;
-            color: var(--color-accent-dark) !important;
+            color: var(--color-accent) !important;
             font-size: var(--post-upload-title-size) !important;
             line-height: var(--post-upload-title-line-height) !important;
             font-weight: 500 !important;
@@ -442,6 +442,7 @@ def apply_base_css() -> None:
         .workflow-title {
             position: relative;
             overflow: visible;
+            color: var(--color-accent-dark) !important;
         }
 
         .workflow-title-mark {
