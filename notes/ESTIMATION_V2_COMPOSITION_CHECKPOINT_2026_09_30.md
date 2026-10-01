@@ -79,12 +79,11 @@ Each supplied OCR block now has a deterministic evidence reference in the form
 `ocr:{ocr_event_id}:p{page}:b{source_index}`. The extractor rejects citations
 outside the supplied OCR blocks and private evidence artifacts.
 
-Anthropic rejected the complete nested JSON grammar because of unsupported
-keywords and grammar-size limits. The provider boundary therefore uses one
-strict `facts_json` string field. The decoded compact transport is still
-checked for exact fields, normalized, validated against the full internal
-contract, checked against the versioned material-family set and checked for
-invented evidence references before it can leave the agent boundary.
+The provider boundary uses a compact structured-output schema for the actual
+transport object. The returned object is still checked for exact fields,
+normalized, validated against the full internal contract, checked against the
+versioned material-family set and checked for invented evidence references
+before it can leave the agent boundary.
 
 Server-owned versions, identifiers, object name, approved quantity and preview
 reference are never copied from model output. They are bound deterministically

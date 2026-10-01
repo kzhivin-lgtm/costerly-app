@@ -512,23 +512,11 @@ def run_estimation_v2_facts_agent(
             f"({ESTIMATION_V2_FACTS_MAX_OUTPUT_TOKENS}); result was not published"
         )
     try:
-        envelope = json.loads(response_text)
+        raw = json.loads(response_text)
     except json.JSONDecodeError as exc:
         raise RuntimeError(
-            "Claude returned invalid Estimation v2 envelope JSON "
-            f"(stop_reason={stop_reason}, output_chars={len(response_text)})"
-        ) from exc
-    if not isinstance(envelope, dict) or set(envelope) != {"facts_json"}:
-        raise ValueError("Estimation v2 facts envelope is invalid")
-    facts_text = envelope["facts_json"]
-    if not isinstance(facts_text, str):
-        raise ValueError("Estimation v2 facts_json must be a string")
-    try:
-        raw = json.loads(facts_text)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(
-            "Claude returned invalid Estimation v2 inner facts JSON "
-            f"(stop_reason={stop_reason}, facts_chars={len(facts_text)}, "
+            "Claude returned invalid Estimation v2 transport JSON "
+            f"(stop_reason={stop_reason}, output_chars={len(response_text)}, "
             f"error_position={exc.pos})"
         ) from exc
     if not isinstance(raw, Mapping):

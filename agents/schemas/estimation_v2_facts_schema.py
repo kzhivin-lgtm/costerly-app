@@ -1,7 +1,12 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import Any, Iterable
+
+from use_cases.estimation_v2_composition import (
+    ESTIMATION_REASON_CODE_VALUES,
+    LABOR_OPERATION_VALUES,
+    PROVENANCE_VALUES,
+)
 
 
 SPECIFICATION_KEYS = (
@@ -37,19 +42,94 @@ TRANSPORT_FIELDS = frozenset({
 })
 
 
-# Anthropic rejects the complete nested grammar as too large. The outer schema
-# remains strict and tiny. facts_json is parsed, normalized and validated
-# against the full internal contract before it can leave the agent boundary.
-ESTIMATION_V2_FACTS_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["facts_json"],
-    "properties": {"facts_json": {"type": "string"}},
-}
+def _strict_object(properties: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": list(properties),
+        "properties": properties,
+    }
+
+
+def _string_array() -> dict[str, Any]:
+    return {"type": "array", "items": {"type": "string"}}
+
+
+def _key_value_items(keys: Iterable[str], *, values: dict[str, Any] | None = None) -> dict[str, Any]:
+    return {
+        "type": "array",
+        "items": _strict_object({
+            "key": {"type": "string", "enum": sorted(set(keys))},
+            "value": values or {"type": "string"},
+        }),
+    }
 
 
 def build_estimation_v2_facts_schema(allowed_material_families: Iterable[str]) -> dict[str, Any]:
-    families = {str(value).strip() for value in allowed_material_families if str(value).strip()}
+    families = sorted({str(value).strip() for value in allowed_material_families if str(value).strip()})
     if not families:
         raise ValueError("allowed_material_families must not be empty")
-    return deepcopy(ESTIMATION_V2_FACTS_SCHEMA)
+    material = _strict_object({
+        "requirement_id": {"type": "string"},
+        "source_name": {"type": "string"},
+        "family": {"type": "string", "enum": families},
+        "specification_items": _key_value_items(SPECIFICATION_KEYS),
+        "quantity": {"type": "number"},
+        "unit": {"type": "string"},
+        "evidence_refs": _string_array(),
+    })
+    manufacturing_feature = _strict_object({
+        "feature_id": {"type": "string"},
+        "process": {"type": "string", "enum": ["cnc_router", "sheet_laser"]},
+        "material_requirement_id": {"type": "string"},
+        "measurement_items": _key_value_items(MANUFACTURING_MEASUREMENT_KEYS),
+        "flag_items": _key_value_items(
+            MANUFACTURING_FLAG_KEYS,
+            values={"type": "string", "enum": ["yes", "no", "unknown"]},
+        ),
+        "evidence_refs": _string_array(),
+    })
+    purchased_component = _strict_object({
+        "component_id": {"type": "string"},
+        "component_type": {"type": "string"},
+        "quantity": {"type": "number"},
+        "unit": {"type": "string"},
+        "specification_items": _key_value_items(PURCHASED_SPECIFICATION_KEYS),
+        "evidence_refs": _string_array(),
+    })
+    source_fact = _strict_object({
+        "path": {"type": "string"},
+        "value": {"type": "string"},
+        "provenance": {"type": "string", "enum": sorted(PROVENANCE_VALUES)},
+        "evidence_refs": _string_array(),
+    })
+    review_item = _strict_object({
+        "code": {"type": "string", "enum": sorted(ESTIMATION_REASON_CODE_VALUES)},
+        "severity": {"type": "string", "enum": ["blocking", "warning"]},
+        "path": {"type": "string"},
+        "message": {"type": "string"},
+        "evidence_refs": _string_array(),
+    })
+    labor_operation = _strict_object({
+        "operation_id": {"type": "string"},
+        "operation_code": {"type": "string", "enum": sorted(LABOR_OPERATION_VALUES)},
+        "quantity": {"type": "number"},
+        "unit": {"type": "string"},
+        "batch_key": {"type": "string"},
+        "material_requirement_ids": _string_array(),
+        "basis": {"type": "string"},
+        "provenance": {"type": "string", "enum": sorted(PROVENANCE_VALUES)},
+        "evidence_refs": _string_array(),
+        "confidence": {"type": "number"},
+    })
+    return _strict_object({
+        "status": {"type": "string", "enum": ["ready", "review_required", "failed"]},
+        "dimensions_mm": {"type": "array", "items": {"type": "number"}},
+        "materials": {"type": "array", "items": material},
+        "features": _key_value_items(FEATURE_KEYS),
+        "manufacturing_features": {"type": "array", "items": manufacturing_feature},
+        "purchased_components": {"type": "array", "items": purchased_component},
+        "source_facts": {"type": "array", "items": source_fact},
+        "review_items": {"type": "array", "items": review_item},
+        "labor_operations": {"type": "array", "items": labor_operation},
+    })

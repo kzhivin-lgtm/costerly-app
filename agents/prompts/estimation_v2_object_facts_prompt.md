@@ -21,7 +21,7 @@ Rules:
    annotations. Detection dimensions and notes are omitted because they are not
    trusted fabrication facts.
 2. Server-owned identifiers, versions, object name, quantity and preview ref are
-   bound after extraction. Do not return them in `facts_json`.
+   bound after extraction. Do not return them.
 3. Decompose the actual object into material requirements. Each material line
    describes one purchase-relevant material occurrence with a literal source
    phrase, allowed family, specifications, positive quantity, unit and evidence.
@@ -67,6 +67,5 @@ Rules:
     `transport_item_fields`. Do not abbreviate an item as a string. Add a CNC or
     laser manufacturing feature only when directly supported by evidence.
 
-The provider schema has one field, `facts_json`. Its value must be a JSON string
-containing the complete transport object with exactly the fields in the supplied
-request contract and no commentary.
+Return the complete transport object required by the provider schema and no
+commentary.
