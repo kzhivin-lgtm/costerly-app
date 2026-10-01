@@ -47,7 +47,7 @@ def apply_file_review_css() -> None:
             margin-bottom: var(--post-upload-heading-gap) !important;
         }
 
-        .st-key-file_review_header_row > [data-testid="stHorizontalBlock"] {
+        .st-key-file_review_header_row [data-testid="stHorizontalBlock"]:has(.st-key-file_review_header_actions) {
             align-items: center !important;
         }
 
