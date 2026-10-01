@@ -14,7 +14,6 @@ from agents.anthropic_adapter import (
     extract_text_from_claude_response,
     get_anthropic_client,
     get_secret,
-    strip_schema_for_claude,
 )
 from agents.schemas.estimation_v2_facts_schema import (
     FEATURE_KEYS,
@@ -23,7 +22,6 @@ from agents.schemas.estimation_v2_facts_schema import (
     PURCHASED_SPECIFICATION_KEYS,
     SPECIFICATION_KEYS,
     TRANSPORT_FIELDS,
-    build_estimation_v2_facts_schema,
 )
 from use_cases.estimation_v2_composition import (
     ESTIMATION_REASON_CODE_VALUES,
@@ -447,7 +445,8 @@ def run_estimation_v2_facts_agent(
         raise ValueError("object_input_revision must be a positive integer")
     if not isinstance(preview_bytes, (bytes, bytearray)) or not preview_bytes:
         raise ValueError("preview_bytes are required")
-    schema = build_estimation_v2_facts_schema(allowed_material_families)
+    if not {str(value).strip() for value in allowed_material_families if str(value).strip()}:
+        raise ValueError("allowed_material_families must not be empty")
     selected_model = model or get_secret(
         "CLAUDE_ESTIMATION_V2_FACTS_MODEL", DEFAULT_CLAUDE_FALLBACK_MODEL
     )
@@ -519,12 +518,6 @@ def run_estimation_v2_facts_agent(
                 + json.dumps(request, ensure_ascii=False, separators=(",", ":")),
             }],
         }],
-        output_config={
-            "format": {
-                "type": "json_schema",
-                "schema": strip_schema_for_claude(schema),
-            }
-        },
     )
     finished_at = datetime.now(UTC).isoformat()
     stop_reason = str(getattr(response, "stop_reason", "") or "unknown")

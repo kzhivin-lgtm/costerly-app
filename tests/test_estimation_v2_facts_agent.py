@@ -2,8 +2,6 @@ import json
 from pathlib import Path
 
 import agents.estimation_v2_facts_agent as agent
-from agents.anthropic_adapter import strip_schema_for_claude
-from agents.schemas.estimation_v2_facts_schema import build_estimation_v2_facts_schema
 
 
 FIXTURE = json.loads(
@@ -108,21 +106,6 @@ def _run(monkeypatch, transport=None):
     )
 
 
-def test_provider_schema_structures_transport_and_binds_catalog():
-    schema = build_estimation_v2_facts_schema({"birch_plywood", "mdf"})
-    assert schema["type"] == "object"
-    assert schema["additionalProperties"] is False
-    assert set(schema["required"]) == set(agent.TRANSPORT_FIELDS)
-    assert "facts_json" not in schema["properties"]
-    material = schema["properties"]["materials"]["items"]
-    assert material["properties"]["family"] == {"type": "string"}
-    assert material["additionalProperties"] is False
-    operation = schema["properties"]["labor_operations"]["items"]
-    assert operation["properties"]["operation_code"] == {"type": "string"}
-    provider_schema = strip_schema_for_claude(schema)
-    assert "anyOf" not in json.dumps(provider_schema)
-
-
 def test_agent_returns_materials_and_agent_created_operations(monkeypatch):
     captured = {}
     client_options = {}
@@ -166,8 +149,7 @@ def test_agent_returns_materials_and_agent_created_operations(monkeypatch):
     assert captured["messages"][0]["content"][0]["type"] == "image"
     assert client_options == {"timeout": 180.0, "max_retries": 0}
     assert captured["max_tokens"] == 16384
-    output_schema = captured["output_config"]["format"]["schema"]
-    assert "facts_json" not in output_schema["properties"]
+    assert "output_config" not in captured
 
 
 def test_agent_reports_output_token_truncation_before_json_parsing(monkeypatch):

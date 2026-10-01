@@ -67,5 +67,7 @@ Rules:
     `transport_item_fields`. Do not abbreviate an item as a string. Add a CNC or
     laser manufacturing feature only when directly supported by evidence.
 
-Return the complete transport object required by the provider schema and no
-commentary.
+Return exactly one raw JSON object with the complete transport fields supplied
+in the request contract. Do not use Markdown fences, XML, prose or commentary.
+The server rejects the entire response before persistence if JSON parsing,
+field validation, catalog validation or evidence validation fails.
