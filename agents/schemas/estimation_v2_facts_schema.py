@@ -8,7 +8,7 @@ SPECIFICATION_KEYS = (
 )
 FEATURE_KEYS = (
     "shelf_count", "door_count", "drawer_count", "toe_kick", "back_panel",
-    "plumbing_cutout", "installation_scope", "finish", "visible_finish",
+    "plumbing_cutout", "finish", "visible_finish",
     "profile_section_mm", "coating", "open_face", "bend_count", "anchor_count",
 )
 MANUFACTURING_MEASUREMENT_KEYS = (

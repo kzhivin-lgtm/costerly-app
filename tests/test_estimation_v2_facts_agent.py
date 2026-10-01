@@ -418,3 +418,36 @@ def test_hollow_profile_height_required_by_prompt_is_supported():
         allowed_material_families={"carbon_steel"},
     )
     assert validated["materials"][0]["specification"]["height_mm"] == 20
+
+
+def test_agent_transport_does_not_offer_installation_scope_as_cost_fact(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(agent, "get_anthropic_client", lambda: _Client())
+    monkeypatch.setattr(agent, "get_secret", lambda *_args: "test-model")
+
+    def _create(_client, **kwargs):
+        captured.update(kwargs)
+        return _Response()
+
+    monkeypatch.setattr(agent, "create_claude_message", _create)
+    monkeypatch.setattr(
+        agent,
+        "extract_text_from_claude_response",
+        lambda _response: json.dumps(_provider_response()),
+    )
+    agent.run_estimation_v2_facts_agent(
+        input_id="input-e01-r1",
+        object_input_revision=1,
+        estimation_input=_input(),
+        allowed_material_families={"birch_plywood"},
+        preview_bytes=b"preview",
+        production_context={
+            "machines": [{
+                "machine_code": "wood_panel_saw",
+                "availability_status": "in_house",
+            }]
+        },
+    )
+
+    request = json.loads(captured["messages"][0]["content"][1]["text"].split("\n", 1)[1])
+    assert "installation_scope" not in request["transport_contract"]["feature_keys"]

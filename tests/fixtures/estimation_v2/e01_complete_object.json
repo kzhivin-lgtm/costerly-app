@@ -25,8 +25,7 @@
     "features": {
       "shelf_count": 2,
       "door_count": 0,
-      "drawer_count": 0,
-      "installation_scope": "included"
+      "drawer_count": 0
     },
     "manufacturing_features": [],
     "purchased_components": [],

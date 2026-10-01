@@ -105,7 +105,7 @@ _ALLOWED_SPECIFICATION_FIELDS = frozenset({
 })
 _ALLOWED_FEATURE_FIELDS = frozenset({
     "shelf_count", "door_count", "drawer_count", "toe_kick", "back_panel",
-    "plumbing_cutout", "installation_scope", "finish", "visible_finish",
+    "plumbing_cutout", "finish", "visible_finish",
     "profile_section_mm", "coating", "open_face", "bend_count", "anchor_count",
 })
 _FORBIDDEN_EXTRACTION_KEYS = frozenset({
@@ -270,9 +270,6 @@ def validate_object_facts(
         elif key in {"toe_kick", "back_panel", "plumbing_cutout", "open_face"}:
             if not isinstance(value, bool):
                 raise EstimationV2ContractError(f"{name} must be boolean")
-        elif key == "installation_scope":
-            if value not in {"included", "delivery_only", "excluded", "unknown"}:
-                raise EstimationV2ContractError(f"{name} is unsupported")
         else:
             _text(value, name)
 
