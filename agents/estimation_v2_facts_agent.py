@@ -142,7 +142,13 @@ def _profile_section_number(value: Any, name: str) -> int | float:
     return _number_text(value, name)
 
 
-def _key_values(items: Any, *, allowed: tuple[str, ...], name: str) -> dict[str, str]:
+def _key_values(
+    items: Any,
+    *,
+    allowed: tuple[str, ...],
+    name: str,
+    ignored_unknown_keys: list[str] | None = None,
+) -> dict[str, str]:
     if not isinstance(items, list):
         raise ValueError(f"{name} must be an array")
     result: dict[str, str] = {}
@@ -150,8 +156,13 @@ def _key_values(items: Any, *, allowed: tuple[str, ...], name: str) -> dict[str,
         if not isinstance(item, Mapping) or set(item) != {"key", "value"}:
             raise ValueError(f"{name} entries must contain key and value")
         key = str(item["key"])
-        if key not in allowed or key in result:
-            raise ValueError(f"{name} contains an unsupported or duplicate key")
+        if key not in allowed:
+            if ignored_unknown_keys is not None:
+                ignored_unknown_keys.append(f"{name}.{key}")
+                continue
+            raise ValueError(f"{name} contains unsupported key: {key}")
+        if key in result:
+            raise ValueError(f"{name} contains duplicate key: {key}")
         result[key] = str(item["value"])
     return result
 
@@ -221,6 +232,7 @@ def _normalize_provider_result(
             features[key] = value
 
     manufacturing = []
+    ignored_manufacturing_keys: list[str] = []
     for index, raw in enumerate(result.get("manufacturing_features") or []):
         if not isinstance(raw, Mapping):
             raise ValueError(f"manufacturing_features[{index}] must be an object")
@@ -229,11 +241,13 @@ def _normalize_provider_result(
             item.pop("measurement_items", []),
             allowed=MANUFACTURING_MEASUREMENT_KEYS,
             name=f"manufacturing_features[{index}].measurement_items",
+            ignored_unknown_keys=ignored_manufacturing_keys,
         )
         flag_values = _key_values(
             item.pop("flag_items", []),
             allowed=MANUFACTURING_FLAG_KEYS,
             name=f"manufacturing_features[{index}].flag_items",
+            ignored_unknown_keys=ignored_manufacturing_keys,
         )
         measurements = {key: None for key in MANUFACTURING_MEASUREMENT_KEYS}
         for key, value in measurement_values.items():
@@ -321,6 +335,15 @@ def _normalize_provider_result(
         for key, value in zip(("width", "depth", "height"), dimensions)
     }
     review_items = list(result.get("review_items") or [])
+    if ignored_manufacturing_keys:
+        review_items.append({
+            "code": "manufacturing_feature_unsupported",
+            "severity": "warning",
+            "path": "manufacturing_features",
+            "message": "Ignored unsupported optional manufacturing keys: "
+            + ", ".join(sorted(set(ignored_manufacturing_keys))),
+            "evidence_refs": [evidence.get("primary_preview_ref")],
+        })
     blocking_review = any(
         isinstance(item, Mapping) and item.get("severity") == "blocking"
         for item in review_items

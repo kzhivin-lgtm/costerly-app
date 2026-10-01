@@ -2,13 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from use_cases.estimation_v2_composition import (
-    ESTIMATION_REASON_CODE_VALUES,
-    LABOR_OPERATION_VALUES,
-    PROVENANCE_VALUES,
-)
-
-
 SPECIFICATION_KEYS = (
     "thickness_mm", "width_mm", "length_mm", "diameter_mm", "wall_thickness_mm",
     "profile_section", "species", "grade", "alloy", "temper", "finish", "surface",
@@ -55,11 +48,11 @@ def _string_array() -> dict[str, Any]:
     return {"type": "array", "items": {"type": "string"}}
 
 
-def _key_value_items(keys: Iterable[str], *, values: dict[str, Any] | None = None) -> dict[str, Any]:
+def _key_value_items(*, values: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "type": "array",
         "items": _strict_object({
-            "key": {"type": "string", "enum": sorted(set(keys))},
+            "key": {"type": "string"},
             "value": values or {"type": "string"},
         }),
     }
@@ -72,8 +65,8 @@ def build_estimation_v2_facts_schema(allowed_material_families: Iterable[str]) -
     material = _strict_object({
         "requirement_id": {"type": "string"},
         "source_name": {"type": "string"},
-        "family": {"type": "string", "enum": families},
-        "specification_items": _key_value_items(SPECIFICATION_KEYS),
+        "family": {"type": "string"},
+        "specification_items": _key_value_items(),
         "quantity": {"type": "number"},
         "unit": {"type": "string"},
         "evidence_refs": _string_array(),
@@ -82,9 +75,8 @@ def build_estimation_v2_facts_schema(allowed_material_families: Iterable[str]) -
         "feature_id": {"type": "string"},
         "process": {"type": "string", "enum": ["cnc_router", "sheet_laser"]},
         "material_requirement_id": {"type": "string"},
-        "measurement_items": _key_value_items(MANUFACTURING_MEASUREMENT_KEYS),
+        "measurement_items": _key_value_items(),
         "flag_items": _key_value_items(
-            MANUFACTURING_FLAG_KEYS,
             values={"type": "string", "enum": ["yes", "no", "unknown"]},
         ),
         "evidence_refs": _string_array(),
@@ -94,17 +86,17 @@ def build_estimation_v2_facts_schema(allowed_material_families: Iterable[str]) -
         "component_type": {"type": "string"},
         "quantity": {"type": "number"},
         "unit": {"type": "string"},
-        "specification_items": _key_value_items(PURCHASED_SPECIFICATION_KEYS),
+        "specification_items": _key_value_items(),
         "evidence_refs": _string_array(),
     })
     source_fact = _strict_object({
         "path": {"type": "string"},
         "value": {"type": "string"},
-        "provenance": {"type": "string", "enum": sorted(PROVENANCE_VALUES)},
+        "provenance": {"type": "string"},
         "evidence_refs": _string_array(),
     })
     review_item = _strict_object({
-        "code": {"type": "string", "enum": sorted(ESTIMATION_REASON_CODE_VALUES)},
+        "code": {"type": "string"},
         "severity": {"type": "string", "enum": ["blocking", "warning"]},
         "path": {"type": "string"},
         "message": {"type": "string"},
@@ -112,13 +104,13 @@ def build_estimation_v2_facts_schema(allowed_material_families: Iterable[str]) -
     })
     labor_operation = _strict_object({
         "operation_id": {"type": "string"},
-        "operation_code": {"type": "string", "enum": sorted(LABOR_OPERATION_VALUES)},
+        "operation_code": {"type": "string"},
         "quantity": {"type": "number"},
         "unit": {"type": "string"},
         "batch_key": {"type": "string"},
         "material_requirement_ids": _string_array(),
         "basis": {"type": "string"},
-        "provenance": {"type": "string", "enum": sorted(PROVENANCE_VALUES)},
+        "provenance": {"type": "string"},
         "evidence_refs": _string_array(),
         "confidence": {"type": "number"},
     })
@@ -126,7 +118,7 @@ def build_estimation_v2_facts_schema(allowed_material_families: Iterable[str]) -
         "status": {"type": "string", "enum": ["ready", "review_required", "failed"]},
         "dimensions_mm": {"type": "array", "items": {"type": "number"}},
         "materials": {"type": "array", "items": material},
-        "features": _key_value_items(FEATURE_KEYS),
+        "features": _key_value_items(),
         "manufacturing_features": {"type": "array", "items": manufacturing_feature},
         "purchased_components": {"type": "array", "items": purchased_component},
         "source_facts": {"type": "array", "items": source_fact},
