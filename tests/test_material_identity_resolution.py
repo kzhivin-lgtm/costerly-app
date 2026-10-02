@@ -64,24 +64,26 @@ def test_phrase_and_sku_normalization_are_deterministic():
     assert normalize_supplier_sku(" AB-12 / 34 ") == "ab1234"
 
 
-def test_exact_supplier_sku_is_first_route():
+def test_supplier_sku_never_resolves_an_identity_by_itself():
     result = _resolve(
         phrase="anything",
-        supplier_name="Supplier A",
-        supplier_sku="AB-123",
-        market_offers=(
-            {
-                "material_id": PLYWOOD_ID,
-                "market_code": "IL",
-                "supplier_name": "Supplier A",
-                "supplier_sku": "AB123",
-            },
-        ),
+        supplier_id="supplier-a",
+    )
+
+    assert result.status == "new_identity_or_needs_review"
+    assert result.route == "no_compatible_identity"
+    assert result.selected_material_id is None
+
+
+def test_supplier_sku_cannot_override_material_evidence():
+    result = _resolve(
+        phrase="MDF 18 mm",
+        supplier_id="supplier-a",
     )
 
     assert result.status == "resolved"
-    assert result.route == "exact_supplier_sku"
-    assert result.selected_material_id == PLYWOOD_ID
+    assert result.route == "exact_market_alias"
+    assert result.selected_material_id == MDF_ID
 
 
 def test_confirmed_company_alias_precedes_market_alias():

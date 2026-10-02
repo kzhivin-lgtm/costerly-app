@@ -181,12 +181,6 @@ def _load_global_resolution_index(
             .eq("market_code", market_code)
             .eq("active", True)
         ),
-        "market_offers": _select_all(
-            client.table("market_material_offers")
-            .select("material_id,market_code,supplier_name,supplier_sku,status")
-            .eq("market_code", market_code)
-            .neq("status", "archived")
-        ),
         "pricing_identities": pricing_identities,
         "pricing_identity_index": build_material_pricing_identity_index(pricing_identities),
     }
@@ -517,10 +511,7 @@ def resolve_price_source_material_identities(
                 materials=index["materials"],
                 reference_aliases=index["reference_aliases"],
                 company_aliases=index["company_aliases"],
-                market_offers=index["market_offers"],
-                supplier_name=supplier_name,
                 supplier_id=supplier_id,
-                supplier_sku=str(row.get("raw_sku") or "") or None,
                 specifications=extracted_specifications,
                 material_family=material_family or None,
                 candidate_departments=PRICE_SOURCE_REFERENCE_DEPARTMENTS.get(

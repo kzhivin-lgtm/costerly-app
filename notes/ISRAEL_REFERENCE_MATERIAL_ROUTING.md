@@ -12,7 +12,7 @@ The agent must never receive or scan the full material or alias catalog.
 ## Routing order
 
 1. Normalize whitespace and deterministic units in application code.
-2. Resolve an exact company SKU or confirmed company alias.
+2. Resolve a confirmed company alias.
 3. Query the indexed Israel alias key with a hard maximum of five results.
 4. If one exact compatible identity remains, return it without an agent call.
 5. On an alias miss, extract only family and technical attributes once for the
@@ -65,10 +65,12 @@ one deterministic parser. They are not multiplied across every identity.
 
 ## Price selection after identity resolution
 
-1. Exact company SKU or company item linked to the resolved identity.
-2. Exact compatible company material identity.
-3. Active Israel market baseline for the same identity and price scope.
-4. Candidate market evidence for review only.
+1. Exact compatible company material identity.
+2. Active Israel market baseline for the same identity and price scope.
+3. Candidate market evidence for review only.
+
+Supplier SKU remains source provenance only. It cannot select an identity,
+rank candidates or choose a price.
 
 The resolver selects identity only. It does not choose prices, calculate units,
 average retailers or decide whether an incompatible substitute is acceptable.

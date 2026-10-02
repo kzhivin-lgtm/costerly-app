@@ -352,10 +352,26 @@ code derived from normalized supplier, source kind, stable file name or URL
 path, and document type. `source_revision` increments inside that family and
 `previous_source_id` links retained revisions. Byte-identical uploads stop on
 `source_sha256` before the agent. Changed inputs run extraction, then compare
-rows by supplier SKU or normalized material identity. Only new and changed
-offers are written; unchanged offers remain active and absent rows are retained.
-Family metadata is stored in `processing_summary` and is intentionally hidden
-from the compact user interface.
+commercial source rows using source metadata such as supplier SKU or the
+normalized private material identity. This comparison correlates revisions of
+one supplier source only. It never establishes a reference material identity,
+pricing class, candidate rank, review outcome, or selected price. Only new and
+changed offers are written; unchanged offers remain active and absent rows are
+retained. Family metadata is stored in `processing_summary` and is intentionally
+hidden from the compact user interface.
+
+Material Identity Resolver contract (3.15.3 and 3.15.4)
+
+The shared resolver identifies materials through confirmed company aliases,
+exact Israel reference aliases, compatible hard technical attributes, and a
+compatibility-filtered shortlist of at most five candidates. Hard conflicts
+exclude a candidate. Supplier SKU is untrusted source metadata and provenance.
+It is stored for audit and may correlate rows within revisions of one source,
+but it is never passed to the identity resolver and cannot resolve, rank, or
+disambiguate a material, create a shortlist, trigger or suppress review, select
+a pricing identity, or choose a price. Price Source and Estimation use this same
+identity boundary. The resolver owns identity only; deterministic pricing code
+owns company-price precedence, Israel fallback, unit conversion, and arithmetic.
 
 Estimation Agent Runtime v1
 `estimate_one_object()` is the application-layer entrypoint for one object.

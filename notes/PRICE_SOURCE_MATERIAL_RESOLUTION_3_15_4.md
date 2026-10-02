@@ -31,8 +31,9 @@ material items, or company material offers.
 ## Candidate behavior
 
 1. Price Source creates or reuses the private company material and price offer.
-2. The shared resolver checks supplier SKU, confirmed company alias, exact
-   Israel alias, hard attributes, then a department-bounded shortlist.
+2. The shared resolver checks confirmed company alias, exact Israel alias,
+   hard attributes, then a department-bounded shortlist. Supplier SKU remains
+   source provenance only.
 3. Exact resolution links both the Price Source row and the company material to
    `reference_material_id`.
 4. A shortlist or new identity remains usable in the company catalog and enters
@@ -44,7 +45,8 @@ material items, or company material offers.
    `retry_required` in the source summary for a later no-OCR retry.
 
 Broad Price Source categories narrow only shortlist candidates. They do not
-block stronger exact SKU, company alias, or market alias evidence.
+block stronger company alias or market alias evidence. Supplier SKU cannot
+select, rank or disambiguate an identity.
 
 ## Verification
 

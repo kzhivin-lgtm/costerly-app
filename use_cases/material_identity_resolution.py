@@ -270,10 +270,7 @@ def resolve_material_identity(
     materials: Sequence[Mapping[str, Any]],
     reference_aliases: Sequence[Mapping[str, Any]],
     company_aliases: Sequence[Mapping[str, Any]] = (),
-    market_offers: Sequence[Mapping[str, Any]] = (),
-    supplier_name: str | None = None,
     supplier_id: str | None = None,
-    supplier_sku: str | None = None,
     category_code: str | None = None,
     specifications: Mapping[str, Any] | None = None,
     material_family: str | None = None,
@@ -344,27 +341,6 @@ def resolve_material_identity(
             ):
                 return False
         return True
-
-    normalized_sku = normalize_supplier_sku(supplier_sku)
-    normalized_supplier = normalize_material_phrase(supplier_name)
-    if normalized_sku and normalized_supplier:
-        sku_rows = [
-            row
-            for row in market_offers
-            if str(row.get("market_code") or "") == market
-            and normalize_supplier_sku(row.get("supplier_sku")) == normalized_sku
-            and normalize_material_phrase(row.get("supplier_name")) == normalized_supplier
-            and exact_compatible(str(row.get("material_id") or ""))
-        ]
-        sku_ids = _unique_material_ids(sku_rows)
-        if len(sku_ids) == 1:
-            return MaterialIdentityResolution(
-                status="resolved",
-                route="exact_supplier_sku",
-                normalized_phrase=normalized_phrase,
-                selected_material_id=sku_ids[0],
-                candidates=(_candidate(sku_ids[0], score="100", route="exact_supplier_sku"),),
-            )
 
     company_rows = [
         row

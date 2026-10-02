@@ -23,15 +23,17 @@ Source does not yet populate `reference_material_id`.
 
 The resolver applies this order:
 
-1. exact supplier name plus supplier SKU;
-2. confirmed company alias;
-3. exact Israel reference alias;
-4. unique compatible hard attributes;
-5. a compatibility-filtered shortlist of at most five;
-6. `new_identity_or_needs_review`.
+1. confirmed company alias;
+2. exact Israel reference alias;
+3. unique compatible hard attributes;
+4. a compatibility-filtered shortlist of at most five;
+5. `new_identity_or_needs_review`.
+
+Supplier SKU is retained as source provenance only. It cannot resolve, rank, or
+disambiguate a material identity, even inside one supplier.
 
 Hard specification conflicts cannot be overridden by phrase similarity. Alias
-or SKU collisions never select an arbitrary identity. English, Hebrew, Russian,
+collisions never select an arbitrary identity. English, Hebrew, Russian,
 common unit spellings, multiplication signs, decimal commas, punctuation, and
 supplier SKU separators are normalized deterministically.
 
@@ -55,9 +57,11 @@ The candidate was tested against the deployed 280 materials, 851 aliases, and
 320 observed offers:
 
 - 797 of 797 unique exact alias routes selected the correct material;
-- 201 of 201 unique supplier-SKU routes selected the correct material;
-- three alias keys and two supplier-SKU keys collide;
+- three alias keys collide;
 - collision false resolutions: zero.
+
+The historical supplier-SKU benchmark is superseded. SKU is no longer an
+identity route and must not be used as a current acceptance denominator.
 
 ## Next action
 
