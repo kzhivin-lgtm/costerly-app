@@ -289,6 +289,14 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "const loginTargetReady =" in wrapper
     assert "metadata.auth_css_ready === true" in wrapper
     assert 'source: "target_app_ready"' in wrapper
+    login_target_ready_source = wrapper.split("const loginTargetReady =", 1)[1].split(
+        "} else if (!maskedInternalTransitions.has(pendingTransition.name))", 1
+    )[0]
+    assert 'pendingTransition.name === "profile_to_sign_out"' in login_target_ready_source
+    assert 'pendingTransition.name === "upload_to_sign_out"' in login_target_ready_source
+    assert "pendingTransitions.splice(transitionIndex, 1);" in login_target_ready_source
+    assert "window.clearTimeout(pendingTransition.timeoutId);" in login_target_ready_source
+    assert 'revealInternalTransition("target_app_ready");' in login_target_ready_source
     assert 'mark("browser.internal_transition_timeout"' in wrapper
     internal_timeout_source = wrapper.split("function concealInternalTransition", 1)[1].split(
         "function revealInternalTransition", 1

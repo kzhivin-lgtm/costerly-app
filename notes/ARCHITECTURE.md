@@ -174,12 +174,18 @@ applied. The current contract checks the auth marker and brand plus the form's
 20 px radius and 30 px padding, then waits two animation frames before emitting
 `app-ready`. A bounded fail-open prevents the wrapper from remaining masked if
 the Auth CSS contract changes unexpectedly, and telemetry records whether the
-style check succeeded and how long it waited. During masked Sign Out, Upload to
-Profile, and Profile to Upload transitions, the transition observer applies a
+style check succeeded and how long it waited. During masked Upload to Profile
+and Profile to Upload transitions, the transition observer applies a
 screen-specific computed-style contract and lets the wrapper reveal the completed
 target immediately, without waiting for a newly mounted Streamlit component to
-relay the later general `app-ready` event. The general event remains the final
-server-run and telemetry boundary.
+relay the later general `app-ready` event. Sign Out is a separately protected
+contract: the wrapper may reveal Login only after Login's target `app-ready`
+reports `auth_css_ready: true`. It must then clear the pending transition, record
+`browser.transition_styled` with `source: "target_app_ready"`, and reveal
+immediately. It must never wait for a `transition-styled` message from the
+source iframe, because that iframe can be destroyed by the Streamlit rerun before
+it emits the message. Any change to this rule requires the dedicated repeated
+production Sign Out matrix and an explicit replacement readiness contract.
 
 Interface scenario contract boundary
 Every interactive screen is specified through an owner-approved scenario
