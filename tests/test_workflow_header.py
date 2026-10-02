@@ -53,7 +53,7 @@ def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_ev
     assert "scheduleAlign();" not in mutation_body
     assert 'addEventListener("scroll"' not in source.split(
         "def install_workflow_header_alignment_guard", 1
-    )[1].split("def install_company_metrics_input_guard", 1)[0]
+    )[1].split("def install_service_header_fixed_guard", 1)[0]
 
 
 def test_service_header_controls_are_fixed_without_a_stale_workflow_transform():
@@ -62,3 +62,15 @@ def test_service_header_controls_are_fixed_without_a_stale_workflow_transform():
     assert ".stApp:has(.company-profile-active) .st-key-costerly_header_controls" in source
     assert ".stApp:has(.platform-admin-active) .st-key-costerly_header_controls" in source
     assert "transform: none !important;" in source
+
+
+def test_service_header_guard_tracks_streamlit_main_scroll_root_without_upload():
+    source = open("ui/js_guards.py").read()
+    guard = source.split("def install_service_header_fixed_guard", 1)[1].split(
+        "def install_company_metrics_input_guard", 1
+    )[0]
+
+    assert "section[data-testid=\"stMain\"]" in guard
+    assert '"file_review", "objects", "object_detail", "account", "admin"' in guard
+    assert '"upload"' not in guard
+    assert "data-costerly-service-fixed" in open("styles/base.py").read()

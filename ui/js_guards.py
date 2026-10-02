@@ -113,6 +113,65 @@ def install_workflow_header_alignment_guard() -> None:
     )
 
 
+def install_service_header_fixed_guard() -> None:
+    """Keep authenticated controls fixed inside Streamlit's real scroll root."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const win = window.parent;
+            const doc = win.document;
+            const KEY = "__costerlyServiceHeaderFixedCleanup";
+            const SCREENS = new Set(["file_review", "objects", "object_detail", "account", "admin"]);
+            if (win[KEY]) win[KEY]();
+            let frame = null;
+            let actions = null;
+
+            function screen() {
+                return String(doc.querySelector("[data-costerly-screen]")?.dataset.costerlyScreen || "");
+            }
+            function scrollTop() {
+                const main = doc.querySelector('section[data-testid="stMain"]');
+                return Math.max(main?.scrollTop || 0, win.scrollY || 0, doc.documentElement.scrollTop || 0);
+            }
+            function update() {
+                frame = null;
+                const next = doc.querySelector(".st-key-costerly_header_controls");
+                if (!next || !SCREENS.has(screen())) return;
+                if (next !== actions) {
+                    actions = next;
+                    actions.style.setProperty("--costerly-controls-rest-top", `${actions.getBoundingClientRect().top}px`);
+                }
+                if (scrollTop() > 0) actions.dataset.costerlyServiceFixed = "true";
+                else {
+                    delete actions.dataset.costerlyServiceFixed;
+                    actions.style.setProperty("--costerly-controls-rest-top", `${actions.getBoundingClientRect().top}px`);
+                }
+            }
+            function schedule() {
+                if (frame === null) frame = win.requestAnimationFrame(update);
+            }
+
+            doc.addEventListener("scroll", schedule, {capture: true, passive: true});
+            win.addEventListener("resize", schedule, {passive: true});
+            const observer = new win.MutationObserver(schedule);
+            observer.observe(doc.body, {childList: true, subtree: true});
+            schedule();
+            win[KEY] = () => {
+                if (frame !== null) win.cancelAnimationFrame(frame);
+                doc.removeEventListener("scroll", schedule, true);
+                win.removeEventListener("resize", schedule);
+                observer.disconnect();
+                win[KEY] = null;
+            };
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def install_company_metrics_input_guard() -> None:
     """Bridge the shared Object Detail-style Metrics table to Save Metrics."""
     components.html(

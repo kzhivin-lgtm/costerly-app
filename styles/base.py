@@ -292,6 +292,12 @@ def apply_base_css() -> None:
             transform: none !important;
         }
 
+        .st-key-costerly_header_controls[data-costerly-service-fixed="true"] {
+            position: fixed !important;
+            top: var(--costerly-controls-rest-top) !important;
+            transform: none !important;
+        }
+
         .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
             width: fit-content !important;
             gap: 6px;

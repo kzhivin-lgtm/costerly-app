@@ -39,6 +39,7 @@ from use_cases.email_addresses import (
     is_valid_email_address,
 )
 from ui.app_header import render_account_header_controls
+from ui.js_guards import install_service_header_fixed_guard
 from ui.browser_session import (
     browser_session_exchange,
     clear_recovery_browser_route,
@@ -1622,6 +1623,8 @@ def render_account_control(access: CompanyAccess, *, platform_access=None) -> No
         show_last_estimate=latest_route is not None and active_screen not in workflow_screens,
         show_profile=active_screen != "account",
     )
+    if active_screen in {"file_review", "objects", "object_detail", "account", "admin"}:
+        install_service_header_fixed_guard()
     last_estimate_error = st.session_state.pop("header_last_estimate_error", None)
     if last_estimate_error:
         st.warning(last_estimate_error)
