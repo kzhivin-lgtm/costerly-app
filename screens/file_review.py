@@ -351,12 +351,16 @@ def _apply_completed_naming(run_id: str) -> None:
         timings["naming_seconds"] = float(result.get("naming_seconds") or 0)
 
 
-@st.fragment(run_every=0.5)
-def _poll_deferred_naming() -> None:
-    """Refresh File Review once background Naming has completed."""
+def _collect_completed_naming() -> bool:
+    """Collect completed Naming only during an ordinary app rerun.
+
+    A timed Streamlit fragment creates an independent rerun while the user can
+    be navigating to Objects or Upload. Keep the agent asynchronous, but fold
+    its result into the next normal File Review render instead.
+    """
     future = st.session_state.get("current_naming_future")
     if not isinstance(future, Future) or not future.done():
-        return
+        return False
     try:
         st.session_state.current_naming_result = future.result()
     except Exception as exc:
@@ -365,7 +369,7 @@ def _poll_deferred_naming() -> None:
             "error": str(exc),
         }
     st.session_state.current_naming_future = None
-    st.rerun()
+    return True
 
 
 def _file_review_edits_changed(
@@ -494,8 +498,8 @@ def render_file_review_screen(company_id: str) -> None:
         _render_missing_run_state()
         return
 
+    _collect_completed_naming()
     _apply_completed_naming(run_id)
-    _poll_deferred_naming()
 
     try:
         data = _load_file_review_screen_data(run_id)

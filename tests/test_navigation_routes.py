@@ -227,6 +227,18 @@ def test_file_review_ignores_an_empty_transient_name_commit(monkeypatch):
     assert st.session_state.file_review_object_edits["object-1"]["name"] == "Curtain track system"
 
 
+def test_file_review_collects_completed_naming_without_a_timed_fragment():
+    st.session_state.clear()
+    future = Future()
+    future.set_result({"status": "succeeded", "names": {}})
+    st.session_state.current_naming_future = future
+
+    assert file_review._collect_completed_naming() is True
+    assert st.session_state.current_naming_future is None
+    assert st.session_state.current_naming_result == {"status": "succeeded", "names": {}}
+    assert "@st.fragment(run_every=0.5)" not in Path("screens/file_review.py").read_text()
+
+
 def test_file_review_back_to_upload_is_never_disabled_after_an_input_event():
     source = Path("screens/file_review.py").read_text()
 
