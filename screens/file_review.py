@@ -3,6 +3,7 @@ from __future__ import annotations
 from concurrent.futures import Future
 from datetime import UTC, datetime
 import html
+import time
 
 import streamlit as st
 
@@ -684,6 +685,23 @@ def _continue_to_objects_estimation(
     objects: list[dict[str, object]],
 ) -> None:
     """Prepare estimate state and move from File Review to Objects Estimation."""
+    action_started_at = time.perf_counter()
+    phase_durations_ms: dict[str, float] = {}
+    action_status = "ok"
+    action_error_code: str | None = None
+
+    def record_action() -> None:
+        payload: dict[str, object] = {
+            "action": "continue_to_objects",
+            "status": action_status,
+            "duration_ms": (time.perf_counter() - action_started_at) * 1000,
+            "phase_durations_ms": phase_durations_ms,
+        }
+        if action_error_code:
+            payload["error_code"] = action_error_code
+        st.session_state._runtime_completed_action = payload
+
+    phase_started_at = time.perf_counter()
     object_edits = _object_edits_snapshot()
     edits_changed = _file_review_edits_changed(objects, object_edits)
     ignored_object_ids = _ignored_object_ids(object_edits)
@@ -692,9 +710,13 @@ def _continue_to_objects_estimation(
         object_edits=object_edits,
         ignored_object_ids=ignored_object_ids,
     )
+    phase_durations_ms["continue_seed_prepare_ms"] = (
+        time.perf_counter() - phase_started_at
+    ) * 1000
 
     current_estimate_matches_run = _current_estimate_matches_run(run_id)
     if not edits_changed and not current_estimate_matches_run:
+        phase_started_at = time.perf_counter()
         try:
             from db.supabase_client import get_supabase_client
 
@@ -705,6 +727,9 @@ def _continue_to_objects_estimation(
             )
         except Exception:
             persisted_route = None
+        phase_durations_ms["continue_estimate_lookup_ms"] = (
+            time.perf_counter() - phase_started_at
+        ) * 1000
         if persisted_route:
             st.session_state.current_estimate_id = persisted_route["estimate_id"]
             st.session_state.current_estimate_run_id = persisted_route["run_id"]
@@ -716,6 +741,7 @@ def _continue_to_objects_estimation(
     )
 
     if should_submit_estimation:
+        phase_started_at = time.perf_counter()
         submitted = _submit_objects_estimation_job(
             company_id=company_id,
             run_id=run_id,
@@ -724,12 +750,19 @@ def _continue_to_objects_estimation(
             ignored_object_ids=ignored_object_ids,
             create_shell=create_shell,
         )
+        phase_durations_ms["continue_estimation_submit_ms"] = (
+            time.perf_counter() - phase_started_at
+        ) * 1000
         if not submitted:
+            action_status = "error"
+            action_error_code = "estimation_submit_failed"
+            record_action()
             return
     elif current_estimate_matches_run:
         _mark_objects_estimation_cache_dirty(st.session_state.get("current_estimate_id"))
 
     st.session_state.screen = "objects"
+    record_action()
 
 
 def _mark_estimation_batch_started(estimate_id: str) -> None:

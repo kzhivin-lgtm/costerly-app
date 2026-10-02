@@ -139,6 +139,39 @@ def test_completed_action_is_emitted_once_without_sensitive_values(monkeypatch):
     assert trace.summary()["completed_action_status"] == "ok"
 
 
+def test_completed_action_emits_safe_phase_durations(monkeypatch):
+    captured = []
+    monkeypatch.setattr(runtime, "_enqueue", captured.append)
+    state = {
+        "_runtime_completed_action": {
+            "action": "continue_to_objects",
+            "status": "ok",
+            "duration_ms": 321.4567,
+            "phase_durations_ms": {
+                "continue_seed_prepare_ms": 1.2,
+                "continue_estimate_lookup_ms": 345.6789,
+                "ignored": "not-a-number",
+            },
+        }
+    }
+    trace = runtime.RuntimeTrace(
+        trace_id="10000000-0000-4000-8000-000000000001",
+        session_id="10000000-0000-4000-8000-000000000002",
+        run_id="10000000-0000-4000-8000-000000000003",
+        screen="objects",
+        started_at=time.perf_counter(),
+    )
+
+    runtime.emit_completed_action(state, trace)
+
+    assert captured[0]["metadata"] == {
+        "action": "continue_to_objects",
+        "continue_seed_prepare_ms": 1.2,
+        "continue_estimate_lookup_ms": 345.679,
+    }
+    assert trace.summary()["continue_estimate_lookup_ms"] == 345.679
+
+
 def test_completed_action_emits_only_safe_provider_error_classification(monkeypatch):
     captured = []
     monkeypatch.setattr(runtime, "_enqueue", captured.append)

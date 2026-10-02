@@ -284,6 +284,15 @@ def emit_completed_action(session_state: Any, trace: RuntimeTrace) -> None:
         value = completed.get(key)
         if value:
             metadata[key] = str(value)[:120]
+    phase_durations = completed.get("phase_durations_ms")
+    if isinstance(phase_durations, Mapping):
+        safe_durations = {
+            _safe_name(key, "phase_ms"): round(max(0.0, float(value)), 3)
+            for key, value in phase_durations.items()
+            if isinstance(value, (int, float))
+        }
+        metadata.update(safe_durations)
+        trace.annotate(**safe_durations)
     trace.annotate(completed_action=action, completed_action_status=status)
     trace.event(
         "server.action_completed",
