@@ -20,6 +20,7 @@ from ui.screen_transition import (
 from use_cases.estimation import build_estimate_id
 from use_cases.estimation_progress import set_object_progress
 from use_cases.estimation_runtime import submit_estimation_job
+from use_cases.latest_estimate import load_latest_estimate_route_for_run
 from use_cases.rfq_processing import (
     load_file_review_data,
     save_file_review_object_name,
@@ -700,6 +701,22 @@ def _continue_to_objects_estimation(
     )
 
     current_estimate_matches_run = _current_estimate_matches_run(run_id)
+    if not edits_changed and not current_estimate_matches_run:
+        try:
+            from db.supabase_client import get_supabase_client
+
+            persisted_route = load_latest_estimate_route_for_run(
+                get_supabase_client(),
+                company_id,
+                run_id,
+            )
+        except Exception:
+            persisted_route = None
+        if persisted_route:
+            st.session_state.current_estimate_id = persisted_route["estimate_id"]
+            st.session_state.current_estimate_run_id = persisted_route["run_id"]
+            st.session_state.current_object_id = None
+            current_estimate_matches_run = True
     create_shell = bool(edits_changed or not current_estimate_matches_run)
     should_submit_estimation = create_shell or (
         _estimation_job_active() and not current_estimate_matches_run

@@ -54,6 +54,18 @@ def test_file_review_route_preserves_run_context():
     }
 
 
+def test_file_review_route_keeps_the_active_estimate_for_refresh_recovery():
+    st.session_state.clear()
+    st.session_state.current_run_id = "run-123"
+    st.session_state.current_estimate_id = "estimate-456"
+
+    assert app._browser_route("file_review") == {
+        "screen": "file_review",
+        "run_id": "run-123",
+        "estimate_id": "estimate-456",
+    }
+
+
 def test_object_detail_route_preserves_complete_context():
     st.session_state.clear()
     st.session_state.current_run_id = "run-123"

@@ -26,3 +26,30 @@ def load_latest_estimate_route(client, company_id: str) -> dict[str, str] | None
     if not estimate_id or not run_id:
         return None
     return {"estimate_id": estimate_id, "run_id": run_id}
+
+
+def load_latest_estimate_route_for_run(
+    client,
+    company_id: str,
+    run_id: str,
+) -> dict[str, str] | None:
+    """Return the newest durable estimate for one already-authorized RFQ run."""
+    rows = (
+        client.table("rfq_estimates")
+        .select("estimate_id,run_id")
+        .eq("company_id", str(company_id))
+        .eq("run_id", str(run_id))
+        .order("updated_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not rows:
+        return None
+    row = rows[0]
+    estimate_id = str(row.get("estimate_id") or "")
+    persisted_run_id = str(row.get("run_id") or "")
+    if not estimate_id or persisted_run_id != str(run_id):
+        return None
+    return {"estimate_id": estimate_id, "run_id": persisted_run_id}

@@ -248,7 +248,7 @@
             if (runId) {
               nextUrl.searchParams.set("screen", screen);
               nextUrl.searchParams.set("run_id", runId);
-              if (screen !== "file_review" && estimateId) {
+              if (estimateId) {
                 nextUrl.searchParams.set("estimate_id", estimateId);
                 if (screen === "object_detail" && objectId) {
                   nextUrl.searchParams.set("object_id", objectId);

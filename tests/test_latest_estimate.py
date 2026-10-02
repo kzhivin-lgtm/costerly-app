@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from use_cases.latest_estimate import load_latest_estimate_route
+from use_cases.latest_estimate import (
+    load_latest_estimate_route,
+    load_latest_estimate_route_for_run,
+)
 
 
 class _Query:
@@ -52,3 +55,22 @@ def test_latest_estimate_route_is_company_scoped_and_newest_first():
 def test_latest_estimate_route_returns_none_for_missing_or_incomplete_row():
     assert load_latest_estimate_route(_Client([]), "company-1") is None
     assert load_latest_estimate_route(_Client([{"estimate_id": "estimate-2"}]), "company-1") is None
+
+
+def test_latest_estimate_route_for_run_is_scoped_to_the_active_rfq():
+    client = _Client([{"estimate_id": "estimate-2", "run_id": "run-2"}])
+
+    assert load_latest_estimate_route_for_run(client, "company-1", "run-2") == {
+        "estimate_id": "estimate-2",
+        "run_id": "run-2",
+    }
+    assert ("eq", "company_id", "company-1") in client.query.calls
+    assert ("eq", "run_id", "run-2") in client.query.calls
+
+
+def test_latest_estimate_route_for_run_rejects_a_row_from_another_run():
+    assert load_latest_estimate_route_for_run(
+        _Client([{"estimate_id": "estimate-2", "run_id": "run-other"}]),
+        "company-1",
+        "run-2",
+    ) is None

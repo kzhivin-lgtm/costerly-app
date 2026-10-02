@@ -97,7 +97,13 @@ def _browser_route(screen: str) -> dict[str, str]:
 
     if screen == "file_review":
         run_id = str(st.session_state.get("current_run_id") or "")
-        return {"screen": screen, "run_id": run_id} if run_id else {"screen": "upload"}
+        estimate_id = str(st.session_state.get("current_estimate_id") or "")
+        if not run_id:
+            return {"screen": "upload"}
+        route = {"screen": screen, "run_id": run_id}
+        if estimate_id:
+            route["estimate_id"] = estimate_id
+        return route
 
     if screen in {"objects", "object_detail"}:
         run_id = str(st.session_state.get("current_run_id") or "")
