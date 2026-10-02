@@ -21,8 +21,9 @@ The app should not follow Streamlit native dark mode yet.
 Company Profile UI and persistence contract
 Company Profile owns its local page heading and navigation actions. The shared
 full Costerly AI logo and global Profile action are not rendered on that screen.
-The page uses seven peer tabs: Overhead Expenses, Labor Costs, Machinery, Price
-Lists, Contacts, Bank Details, and Users. Overhead Expenses is first. Contacts
+The page uses eight peer tabs: Overhead Expenses, Labor Costs, Pricing,
+Machinery, Price Lists, Contacts, Bank Details, and Users. Overhead Expenses is
+first. Contacts
 and Bank Details submit independently.
 Their save handlers send partial company updates, so a field hidden from the UI
 is not converted to null. In particular, the retained VAT file number and
@@ -72,6 +73,18 @@ for project and object pricing totals instead of a hard-coded 18 percent rate.
 Overhead Expenses and deterministic Object Detail allocation. The versioned
 `2026_09_18_other_spendings_overhead.sql` migration has been applied to the live
 Supabase schema.
+Pricing owns the company percentage policy stored in `overhead_settings`:
+VAT, warranty reserve, management buffer, consumables, packaging, paint
+consumables, default sale markup, delivery, and installation. Moving VAT and
+the two reserves out of Overhead Expenses changes their editing surface only,
+not their stored columns or arithmetic meaning. Consumables and packaging are
+locked material allowances based on primary material cost. Paint consumables
+are a separate locked allowance based only on explicit wood- or metal-coating
+material cost, and remain zero when no coating material exists. Warranty and
+management remain self-cost overhead. Default markup applies to object self
+cost excluding VAT. Delivery and installation apply to the objects' sale-price
+subtotal, then VAT applies to the resulting project price. A user's persisted
+object or project price override remains authoritative over a later suggestion.
 Labor Costs stores owner-only worker compensation in `company_employees`, never
 in the Estimation `labor` catalog. The first contract uses one informal Worker
 name, controlled Department and Position values, and either Avg Monthly Bruto or

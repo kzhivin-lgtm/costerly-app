@@ -91,10 +91,16 @@ PROFILE_COLUMNS = (
 PROFILE_FIELDS = tuple(
     field for field in PROFILE_COLUMNS.split(",") if field not in {"company_id", "logo_url"}
 )
-METRIC_SETTING_FIELDS = (
+PRICING_SETTING_FIELDS = (
     "vat_percent",
     "warranty_reserve_percent",
     "management_buffer_percent",
+    "consumables_percent",
+    "packaging_percent",
+    "paint_consumables_percent",
+    "sale_price_markup_percent",
+    "delivery_percent",
+    "installation_percent",
 )
 METRIC_SETTING_INSERT_DEFAULTS = {
     "vat_percent": 18,
@@ -109,6 +115,9 @@ METRIC_SETTING_INSERT_DEFAULTS = {
     "sale_price_markup_percent": 30,
     "delivery_percent": 3,
     "installation_percent": 10,
+    "consumables_percent": 5,
+    "packaging_percent": 1,
+    "paint_consumables_percent": 10,
 }
 METRIC_GROUPS = (
     (
@@ -1076,7 +1085,7 @@ def _load_company_metrics_by_id(company_id: str) -> tuple[dict, dict]:
     client = get_supabase_client()
     settings_rows = (
         client.table("overhead_settings")
-        .select("company_id," + ",".join(METRIC_SETTING_FIELDS))
+        .select("company_id," + ",".join(PRICING_SETTING_FIELDS))
         .eq("company_id", company_id)
         .limit(1)
         .execute()
@@ -1155,35 +1164,12 @@ def save_company_metrics(
     client = get_supabase_client()
     assert_company_owner(client, fresh.user_id, fresh.company_id)
 
-    settings_payload = {"company_id": fresh.company_id}
-    for field in METRIC_SETTING_FIELDS:
-        value = float(settings_values.get(field) or 0)
-        if value < 0 or value > 100:
-            raise ValueError("VAT and reserve percentages must be between 0 and 100.")
-        settings_payload[field] = int(round(value))
-
     monthly_payload = {"company_id": fresh.company_id}
     for field in METRIC_MONTHLY_FIELDS:
         value = float(monthly_values.get(field) or 0)
         if value < 0:
             raise ValueError("Monthly overhead costs cannot be negative.")
         monthly_payload[field] = int(round(value))
-
-    settings_update = {key: value for key, value in settings_payload.items() if key != "company_id"}
-    settings_rows = (
-        client.table("overhead_settings")
-        .update(settings_update)
-        .eq("company_id", fresh.company_id)
-        .execute()
-    ).data or []
-    if not settings_rows:
-        client.table("overhead_settings").insert(
-            {
-                "company_id": fresh.company_id,
-                **METRIC_SETTING_INSERT_DEFAULTS,
-                **settings_update,
-            }
-        ).execute()
 
     monthly_update = {key: value for key, value in monthly_payload.items() if key != "company_id"}
     monthly_rows = (
@@ -1194,6 +1180,32 @@ def save_company_metrics(
     ).data or []
     if not monthly_rows:
         client.table("overhead_monthly").insert(monthly_payload).execute()
+    _load_company_metrics_by_id.clear()
+
+
+def save_company_pricing(access: CompanyAccess, values: dict[str, object]) -> None:
+    fresh = _current_access(access)
+    client = get_supabase_client()
+    assert_company_owner(client, fresh.user_id, fresh.company_id)
+    payload: dict[str, int | float] = {}
+    for field in PRICING_SETTING_FIELDS:
+        value = float(values.get(field) or 0)
+        if value < 0 or value > 100:
+            raise ValueError("Pricing percentages must be between 0 and 100.")
+        normalized = round(value, 2)
+        payload[field] = int(normalized) if normalized.is_integer() else normalized
+    rows = (
+        client.table("overhead_settings")
+        .update(payload)
+        .eq("company_id", fresh.company_id)
+        .execute()
+    ).data or []
+    if not rows:
+        client.table("overhead_settings").insert({
+            "company_id": fresh.company_id,
+            **METRIC_SETTING_INSERT_DEFAULTS,
+            **payload,
+        }).execute()
     _load_company_metrics_by_id.clear()
 
 
@@ -3265,15 +3277,10 @@ def _consume_company_metrics_snapshot(
         return None
     st.session_state["_company_metrics_consumed_nonce"] = nonce
 
-    settings_values = snapshot.get("settings")
     monthly_values = snapshot.get("monthly")
-    if not isinstance(settings_values, dict) or not isinstance(monthly_values, dict):
+    if not isinstance(monthly_values, dict):
         raise ValueError("Overhead expenses payload is invalid.")
-    save_company_metrics(
-        access,
-        settings_values,
-        monthly_values,
-    )
+    save_company_metrics(access, {}, monthly_values)
     return "Overhead expenses saved"
 
 
@@ -3282,7 +3289,7 @@ def _render_metrics_save(access: CompanyAccess) -> None:
     save_message = None
     try:
         with st.container(key="company_metrics_bridge_host"):
-            raw_snapshot = company_metrics_bridge(key="company_metrics_bridge")
+            raw_snapshot = company_metrics_bridge(key="company_metrics_bridge", mode="metrics")
         save_message = _consume_company_metrics_snapshot(access, raw_snapshot)
     except ValueError as exc:
         st.error(str(exc))
@@ -3306,11 +3313,7 @@ def _render_metrics(access: CompanyAccess) -> None:
 
     editable = access.role == "owner"
     with st.container(key="company_metrics_card", border=True):
-        vat_key = "profile_metric_vat_percent"
-        _ensure_metric_text_state(
-            vat_key, _metric_percent_text(settings.get("vat_percent"))
-        )
-        vat_percent = min(100.0, _metric_amount(st.session_state[vat_key]))
+        vat_percent = min(100.0, _metric_amount(settings.get("vat_percent", 18)))
 
         st.markdown(
             company_metrics_view.table_html(
@@ -3322,50 +3325,84 @@ def _render_metrics(access: CompanyAccess) -> None:
             unsafe_allow_html=True,
         )
 
-        with st.container(key="company_metrics_settings"):
-            vat_column, warranty_column, management_column = st.columns(3)
-        with vat_column:
-            vat_raw = st.text_input(
-                "Ma'am / VAT rate",
-                key=vat_key,
-                on_change=_normalize_metric_percent,
-                args=(vat_key,),
-                disabled=not editable,
-            )
-            vat_percent = min(100.0, _metric_amount(vat_raw))
-        with warranty_column:
-            warranty_key = "profile_metric_warranty_reserve_percent"
-            _ensure_metric_text_state(
-                warranty_key,
-                _metric_percent_text(settings.get("warranty_reserve_percent")),
-            )
-            warranty_raw = st.text_input(
-                "Warranty reserve",
-                key=warranty_key,
-                on_change=_normalize_metric_percent,
-                args=(warranty_key,),
-                disabled=not editable,
-            )
-            warranty_percent = min(100.0, _metric_amount(warranty_raw))
-        with management_column:
-            management_key = "profile_metric_management_buffer_percent"
-            _ensure_metric_text_state(
-                management_key,
-                _metric_percent_text(settings.get("management_buffer_percent")),
-            )
-            management_raw = st.text_input(
-                "Management buffer",
-                key=management_key,
-                on_change=_normalize_metric_percent,
-                args=(management_key,),
-                disabled=not editable,
-            )
-            management_percent = min(100.0, _metric_amount(management_raw))
-
         if editable:
             st.markdown(company_metrics_view.save_action_html(), unsafe_allow_html=True)
             install_company_metrics_input_guard()
             _render_metrics_save(access)
+
+
+def _consume_company_pricing_snapshot(access: CompanyAccess, raw_snapshot: str | None) -> str | None:
+    if not raw_snapshot:
+        return None
+    snapshot = json.loads(str(raw_snapshot))
+    nonce = snapshot.get("nonce") if isinstance(snapshot, dict) else None
+    if not isinstance(nonce, str) or not nonce:
+        raise ValueError("Pricing payload is invalid.")
+    if nonce == st.session_state.get("_company_pricing_consumed_nonce"):
+        return None
+    st.session_state["_company_pricing_consumed_nonce"] = nonce
+    values = snapshot.get("settings")
+    if not isinstance(values, dict):
+        raise ValueError("Pricing payload is invalid.")
+    save_company_pricing(access, values)
+    return "Pricing saved"
+
+
+@st.fragment
+def _render_pricing_save(access: CompanyAccess) -> None:
+    try:
+        with st.container(key="company_pricing_bridge_host"):
+            raw_snapshot = company_metrics_bridge(key="company_pricing_bridge", mode="pricing")
+        message = _consume_company_pricing_snapshot(access, raw_snapshot)
+    except ValueError as exc:
+        st.error(str(exc))
+    except PermissionError:
+        st.error("Only the company owner can save pricing settings.")
+    except Exception:
+        logger.exception("Company pricing save failed")
+        st.error("Pricing was not saved. Try again in a moment.")
+        return
+    if message:
+        st.success(message)
+
+
+def _render_pricing(access: CompanyAccess) -> None:
+    try:
+        settings, _monthly = load_company_metrics(access)
+    except Exception:
+        st.error("Pricing is unavailable right now. Try again in a moment.")
+        return
+    editable = access.role == "owner"
+    fields = (
+        ("vat_percent", "Ma'am / VAT rate", 18),
+        ("warranty_reserve_percent", "Warranty reserve", 5),
+        ("management_buffer_percent", "Management buffer", 5),
+        ("consumables_percent", "Consumables", 5),
+        ("packaging_percent", "Packaging", 1),
+        ("paint_consumables_percent", "Paint consumables", 10),
+        ("sale_price_markup_percent", "Default sale markup", 30),
+        ("delivery_percent", "Delivery", 3),
+        ("installation_percent", "Installation", 10),
+    )
+    with st.container(key="company_pricing_card", border=True):
+        with st.container(key="company_pricing_settings"):
+            for start in range(0, len(fields), 3):
+                columns = st.columns(3)
+                for column, (field, label, default) in zip(columns, fields[start:start + 3]):
+                    key = f"profile_pricing_{field}"
+                    _ensure_metric_text_state(key, _metric_percent_text(settings.get(field, default)))
+                    with column:
+                        st.text_input(
+                            label, key=key, on_change=_normalize_metric_percent,
+                            args=(key,), disabled=not editable,
+                        )
+        if editable:
+            st.markdown(
+                company_metrics_view.save_action_html(label="SAVE PRICING", action="pricing"),
+                unsafe_allow_html=True,
+            )
+            install_company_metrics_input_guard()
+            _render_pricing_save(access)
 
 
 def _render_users(access: CompanyAccess) -> None:
@@ -4260,10 +4297,11 @@ def render_company_profile(access: CompanyAccess, *, platform_access=None, trace
     )
     finish_phase("server.company_profile_header", "p_header_ms")
 
-    expenses_tab, labor_tab, machinery_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
+    expenses_tab, labor_tab, pricing_tab, machinery_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
         [
             "Overhead Expenses",
             "Labor Costs",
+            "Pricing",
             "Machinery",
             "Price Lists",
             "Contacts",
@@ -4289,6 +4327,9 @@ def render_company_profile(access: CompanyAccess, *, platform_access=None, trace
             else:
                 with trace.span("server.labor_costs_render"):
                     _render_labor_costs(access, trace=trace)
+    elif pricing_tab.open:
+        with pricing_tab:
+            _render_pricing(access)
     elif machinery_tab.open:
         with machinery_tab:
             if trace is None:

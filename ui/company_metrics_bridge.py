@@ -11,7 +11,7 @@ _COMPONENT = components.declare_component(
 )
 
 
-def company_metrics_bridge(*, key: str) -> str | None:
-    """Return a Metrics snapshot without navigating or replacing the page."""
-    value = _COMPONENT(key=key, default=None)
+def company_metrics_bridge(*, key: str, mode: str = "metrics") -> str | None:
+    """Return a company-settings snapshot without replacing the page."""
+    value = _COMPONENT(key=key, default=None, mode=mode)
     return value if isinstance(value, str) else None
