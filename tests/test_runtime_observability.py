@@ -246,10 +246,13 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert '"processing_to_file_review"' in wrapper
     assert '"file_review_to_objects"' in wrapper
     assert '"objects_to_file_review"' in wrapper
+    assert '"back_to_upload"' in wrapper
+    assert '"last_estimate"' in wrapper
     masked_transitions = wrapper.split("const maskedInternalTransitions = new Set([", 1)[1].split("]);", 1)[0]
     assert '"sign_in"' not in masked_transitions
     assert "maskedInternalTransitions.has(pendingTransition.name)" in wrapper
-    assert 'revealInternalTransition("app_ready")' in wrapper
+    assert "pendingTransition.readyReported = true" in wrapper
+    assert "if (!maskedInternalTransitions.has(pendingTransition.name))" in wrapper
     assert 'mark("browser.internal_transition_timeout"' in wrapper
     internal_timeout_source = wrapper.split("function concealInternalTransition", 1)[1].split(
         "function revealInternalTransition", 1
@@ -326,6 +329,8 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'type: "costerly:transition-styled"' in ready_signal
     assert "new MutationObserver(reportIfVisible)" in ready_signal
     assert "const styledTargetReady = () =>" in ready_signal
+    assert "function reportFileReviewStyled(transitionId)" in ready_signal
+    assert "reportFileReviewStyled(transitionId);" in ready_signal
     assert 'transition === "upload_to_profile"' in ready_signal
     assert 'transition === "profile_to_upload"' in ready_signal
     assert 'transition === "upload_to_admin"' in ready_signal
@@ -364,6 +369,11 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "passive: true" in ready_signal
     assert 'control.closest(".st-key-profile_to_upload")' in ready_signal
     assert 'label === "continue to upload" || label === "upload"' in ready_signal
+    assert 'transition === "back_to_upload"' in ready_signal
+    assert 'transition === "last_estimate"' in ready_signal
+    assert 'return ".file-review-card"' in ready_signal
+    assert 'const table = parentDocument.querySelector(".objects-pricing-table")' in ready_signal
+    assert 'headerControls.querySelectorAll("button").length >= 2' in ready_signal
     observer_source = ready_signal.split("function installTransitionObserver()", 1)[1].split(
         "function postReady()", 1
     )[0]

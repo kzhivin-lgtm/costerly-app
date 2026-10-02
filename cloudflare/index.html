@@ -182,6 +182,9 @@
           "processing_to_file_review",
           "file_review_to_objects",
           "objects_to_file_review",
+          "back_to_upload",
+          "new_estimate",
+          "last_estimate",
         ]);
         const startupPhases = new Set([
           "auth_component_script",
@@ -450,10 +453,12 @@
             event.data.type === "costerly:transition-styled" &&
             typeof event.data.transitionId === "string"
           ) {
-            const pendingTransition = pendingTransitions.find(
+            const transitionIndex = pendingTransitions.findIndex(
               (item) => item.id === event.data.transitionId
             );
-            if (!pendingTransition) return;
+            if (transitionIndex < 0) return;
+            const pendingTransition = pendingTransitions.splice(transitionIndex, 1)[0];
+            window.clearTimeout(pendingTransition.timeoutId);
             mark("browser.transition_styled", {
               duration_ms: performance.now() - pendingTransition.startedAt,
               metadata: {
@@ -591,23 +596,26 @@
               return (expectedScreens[item.name] || []).includes(screen);
             });
             if (transitionIndex >= 0) {
-              const pendingTransition = pendingTransitions.splice(transitionIndex, 1)[0];
-              window.clearTimeout(pendingTransition.timeoutId);
-              mark("browser.transition_ready", {
-                screen,
-                status: failedSignIn ? "error" : "ok",
-                duration_ms: performance.now() - pendingTransition.startedAt,
-                metadata: {
-                  transition: pendingTransition.name,
-                  transition_id: pendingTransition.id,
-                  source_screen: pendingTransition.sourceScreen,
-                  target_screen: pendingTransition.targetScreen,
-                  python_runs: pendingTransition.pythonRuns,
-                  ...metadata,
-                },
-              });
-              if (maskedInternalTransitions.has(pendingTransition.name)) {
-                revealInternalTransition("app_ready");
+              const pendingTransition = pendingTransitions[transitionIndex];
+              if (!pendingTransition.readyReported) {
+                pendingTransition.readyReported = true;
+                mark("browser.transition_ready", {
+                  screen,
+                  status: failedSignIn ? "error" : "ok",
+                  duration_ms: performance.now() - pendingTransition.startedAt,
+                  metadata: {
+                    transition: pendingTransition.name,
+                    transition_id: pendingTransition.id,
+                    source_screen: pendingTransition.sourceScreen,
+                    target_screen: pendingTransition.targetScreen,
+                    python_runs: pendingTransition.pythonRuns,
+                    ...metadata,
+                  },
+                });
+              }
+              if (!maskedInternalTransitions.has(pendingTransition.name)) {
+                pendingTransitions.splice(transitionIndex, 1);
+                window.clearTimeout(pendingTransition.timeoutId);
               }
             } else {
               mark("browser.app_ready_received", {screen, metadata});

@@ -452,6 +452,19 @@ def signal_app_ready_to_embed(
                 if (transition === "sign_in") {
                     return ".upload-screen-active, .company-profile-active, .company-setup-active";
                 }
+                if (transition === "new_estimate" || transition === "back_to_upload") {
+                    return ".upload-screen-active";
+                }
+                if (
+                    transition === "last_estimate" ||
+                    transition === "processing_to_file_review" ||
+                    transition === "objects_to_file_review"
+                ) {
+                    return ".file-review-card";
+                }
+                if (transition === "file_review_to_objects") {
+                    return ".objects-estimation-header";
+                }
                 if (transition === "upload_to_profile") return ".company-profile-active";
                 if (transition === "profile_to_upload") return ".upload-screen-active";
                 if (transition === "upload_to_admin" || transition === "profile_to_admin") {
@@ -481,8 +494,44 @@ def signal_app_ready_to_embed(
                     transition === "admin_to_profile" ||
                     transition === "admin_to_upload" ||
                     transition === "profile_to_sign_out" ||
-                    transition === "upload_to_sign_out";
+                    transition === "upload_to_sign_out" ||
+                    transition === "new_estimate" ||
+                    transition === "back_to_upload" ||
+                    transition === "last_estimate" ||
+                    transition === "processing_to_file_review" ||
+                    transition === "file_review_to_objects" ||
+                    transition === "objects_to_file_review";
                 const styledTargetReady = () => {
+                    const headerControls = parentDocument.querySelector(
+                        ".st-key-costerly_header_controls"
+                    );
+                    const controlsReady = () => Boolean(
+                        headerControls && headerControls.querySelectorAll("button").length >= 2
+                    );
+                    if (
+                        transition === "new_estimate" ||
+                        transition === "back_to_upload"
+                    ) {
+                        const hero = parentDocument.querySelector(".upload-screen__hero");
+                        const dropzone = parentDocument.querySelector(
+                            'section[data-testid="stFileUploaderDropzone"]'
+                        );
+                        return Boolean(hero && dropzone && controlsReady());
+                    }
+                    if (
+                        transition === "last_estimate" ||
+                        transition === "processing_to_file_review" ||
+                        transition === "objects_to_file_review"
+                    ) {
+                        const card = parentDocument.querySelector(".file-review-card");
+                        const title = parentDocument.querySelector(".file-review-detected-title");
+                        return Boolean(card && title && controlsReady());
+                    }
+                    if (transition === "file_review_to_objects") {
+                        const header = parentDocument.querySelector(".objects-estimation-header");
+                        const table = parentDocument.querySelector(".objects-pricing-table");
+                        return Boolean(header && table && controlsReady());
+                    }
                     if (
                         transition === "upload_to_profile" ||
                         transition === "admin_to_profile"
@@ -2536,6 +2585,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const PROGRESS_PHASE_STARTED_AT_KEY = '__costerlyProcessingProgressPhaseStartedAt';
                 const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionId';
                 const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionId';
+                const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserver';
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
@@ -2781,6 +2831,58 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     }, '*');
                 }
 
+                function reportFileReviewStyled(transitionId) {
+                    const existing = window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY];
+                    if (existing && existing.transitionId === transitionId) return;
+                    if (existing && existing.stop) existing.stop();
+
+                    let observer = null;
+                    let frameRequest = null;
+                    let reported = false;
+                    const controlsReady = () => {
+                        const controls = document.querySelector('.st-key-costerly_header_controls');
+                        return Boolean(controls && controls.querySelectorAll('button').length >= 2);
+                    };
+                    const fileReviewReady = () => Boolean(
+                        document.querySelector('.file-review-card') &&
+                        document.querySelector('.file-review-detected-title') &&
+                        controlsReady()
+                    );
+                    const stop = () => {
+                        if (observer) observer.disconnect();
+                        if (frameRequest !== null) window.cancelAnimationFrame(frameRequest);
+                        if (window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] &&
+                            window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY].transitionId === transitionId) {
+                            window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] = null;
+                        }
+                    };
+                    const report = () => {
+                        if (reported) return true;
+                        if (!fileReviewReady()) {
+                            if (frameRequest === null) {
+                                frameRequest = window.requestAnimationFrame(() => {
+                                    frameRequest = null;
+                                    report();
+                                });
+                            }
+                            return false;
+                        }
+                        reported = true;
+                        window.top.postMessage({
+                            type: 'costerly:transition-styled',
+                            transition: 'processing_to_file_review',
+                            transitionId,
+                        }, '*');
+                        stop();
+                        return true;
+                    };
+                    window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] = { transitionId, stop };
+                    observer = new MutationObserver(report);
+                    observer.observe(document.documentElement, { childList: true, subtree: true });
+                    report();
+                    window.setTimeout(stop, 15000);
+                }
+
                 function startWatcher() {
                     if (watcher) return;
 
@@ -2895,12 +2997,13 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         reportProcessingVisible();
                         const stage = activeProcessingStage();
                         if (stage && stage.dataset.processingComplete === 'true') {
-                            startTransition(
+                            const transitionId = startTransition(
                                 'processing_to_file_review',
                                 'processing',
                                 'file_review',
                                 PROCESSING_COMPLETE_TRANSITION_ID_KEY,
                             );
+                            reportFileReviewStyled(transitionId);
                         }
                         removeShell();
                     }
