@@ -1148,7 +1148,7 @@ def test_upload_to_profile_navigation_runs_before_render_without_explicit_rerun(
 
 
 @pytest.mark.parametrize("role", ["owner", "member"])
-def test_company_profile_has_seven_tabs_and_owner_only_controls(monkeypatch, role):
+def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, role):
     calls = {"profile": 0, "members": 0, "metrics": 0, "employees": 0}
 
     def load_profile(_access):
@@ -1182,7 +1182,7 @@ def test_company_profile_has_seven_tabs_and_owner_only_controls(monkeypatch, rol
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "Overhead Expenses", "Labor Costs", "Machinery", "Price Lists", "Contacts", "Bank Details", "Users",
+        "Overhead Expenses", "Labor Costs", "Pricing", "Machinery", "Price Lists", "Contacts", "Bank Details", "Users",
     ]
     assert not any(
         button.label in {"Projects", "New Estimate", "Last Estimate", "Sign out"}
@@ -1196,15 +1196,16 @@ def test_company_profile_has_seven_tabs_and_owner_only_controls(monkeypatch, rol
     metrics_markup = "".join(item.value for item in app.markdown)
     assert ('data-company-metrics-save="true"' in metrics_markup) is (role == "owner")
     assert "Project Reserves" not in metrics_markup
-    if role == "owner":
-        labels = [field.label for field in app.text_input]
-        assert labels[:3] == [
-            "Ma'am / VAT rate",
-            "Warranty reserve",
-            "Management buffer",
-        ]
-    else:
-        assert all(field.disabled for field in app.text_input)
+    assert not app.text_input
+
+    app.session_state["company_profile_tab"] = "Pricing"
+    app.run()
+    assert [field.label for field in app.text_input] == [
+        "Ma'am / VAT rate", "Warranty reserve", "Management buffer",
+        "Consumables", "Packaging", "Paint consumables",
+        "Default sale markup", "Delivery", "Installation",
+    ]
+    assert all(field.disabled is (role != "owner") for field in app.text_input)
 
     app.session_state["company_profile_tab"] = "Labor Costs"
     app.run()
@@ -1226,7 +1227,7 @@ def test_company_profile_has_seven_tabs_and_owner_only_controls(monkeypatch, rol
     assert calls == {
         "profile": 1,
         "members": 0,
-        "metrics": 1,
+        "metrics": 2,
         "employees": 1 if role == "owner" else 0,
     }
     if role == "owner":
@@ -1241,7 +1242,7 @@ def test_company_profile_has_seven_tabs_and_owner_only_controls(monkeypatch, rol
     assert calls == {
         "profile": 2,
         "members": 0,
-        "metrics": 1,
+        "metrics": 2,
         "employees": 1 if role == "owner" else 0,
     }
     if role == "owner":
@@ -1265,7 +1266,7 @@ def test_company_profile_has_seven_tabs_and_owner_only_controls(monkeypatch, rol
     assert calls == {
         "profile": 2,
         "members": 1,
-        "metrics": 1,
+        "metrics": 2,
         "employees": 1 if role == "owner" else 0,
     }
     assert not app.subheader
@@ -3031,7 +3032,7 @@ def test_company_profile_tabs_support_stateful_streamlit_dom():
 def test_company_metrics_bridge_does_not_navigate_parent_page():
     source = Path("ui/company_metrics_bridge_component/index.html").read_text()
     assert "streamlit:setComponentValue" in source
-    assert "data-company-metrics-save" in source
+    assert "data-company-settings-save" in source
     assert "location.search" not in source
     assert "location.href" not in source
 
@@ -3110,7 +3111,7 @@ def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
     assert writes[-1]["swift"] == "TESTILIT"
 
 
-def test_save_company_metrics_updates_only_visible_metric_fields(monkeypatch):
+def test_save_company_metrics_updates_only_monthly_fields(monkeypatch):
     access = company_auth.CompanyAccess(
         "user-1", "owner@example.com", "company-a", "owner", "token"
     )
@@ -3149,18 +3150,13 @@ def test_save_company_metrics_updates_only_visible_metric_fields(monkeypatch):
         monthly,
     )
 
-    assert set(writes["overhead_settings"]) == {
-        "vat_percent",
-        "warranty_reserve_percent",
-        "management_buffer_percent",
-    }
-    assert "delivery_percent" not in writes["overhead_settings"]
+    assert "overhead_settings" not in writes
     assert set(writes["overhead_monthly"]) == {
         *company_profile.METRIC_MONTHLY_FIELDS,
     }
 
 
-def test_new_company_metrics_row_includes_required_legacy_defaults(monkeypatch):
+def test_new_company_pricing_row_includes_required_defaults(monkeypatch):
     access = company_auth.CompanyAccess(
         "user-1", "owner@example.com", "company-new", "owner", "token"
     )
@@ -3192,15 +3188,10 @@ def test_new_company_metrics_row_includes_required_legacy_defaults(monkeypatch):
     monkeypatch.setattr(company_profile, "get_supabase_client", lambda: Client())
     monkeypatch.setattr(company_profile, "assert_company_owner", lambda *_args: None)
 
-    company_profile.save_company_metrics(
-        access,
-        {
-            "vat_percent": 18,
-            "warranty_reserve_percent": 7,
-            "management_buffer_percent": 6,
-        },
-        {field: 0 for field in company_profile.METRIC_MONTHLY_FIELDS},
-    )
+    values = {field: 0 for field in company_profile.PRICING_SETTING_FIELDS}
+    values.update({"vat_percent": 18, "warranty_reserve_percent": 7,
+                   "management_buffer_percent": 6})
+    company_profile.save_company_pricing(access, values)
 
     settings_insert = next(
         values for operation, table, values in writes
@@ -3209,9 +3200,7 @@ def test_new_company_metrics_row_includes_required_legacy_defaults(monkeypatch):
     assert settings_insert == {
         "company_id": "company-new",
         **company_profile.METRIC_SETTING_INSERT_DEFAULTS,
-        "vat_percent": 18,
-        "warranty_reserve_percent": 7,
-        "management_buffer_percent": 6,
+        **values,
     }
 
 
@@ -3265,7 +3254,7 @@ def test_company_metrics_save_monthly_costs_as_whole_shekels(monkeypatch):
 
     company_profile.save_company_metrics(
         access,
-        {field: 0 for field in company_profile.METRIC_SETTING_FIELDS},
+        {},
         {field: 1234.6 for field in company_profile.METRIC_MONTHLY_FIELDS},
     )
 

@@ -110,6 +110,15 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     except Exception:
         overrides_df = None
     sale_price_overrides = _pricing_overrides_by_object(overrides_df)
+    settings: dict[str, Any] = {}
+    if not objects_df.empty:
+        company_id = str(objects_df.iloc[0].get("company_id") or "")
+        if company_id:
+            settings = _first_row(fetch_company_overhead_settings(client, company_id))
+    vat_percent = _number(settings.get("vat_percent"), 18)
+    markup_percent = _number(settings.get("sale_price_markup_percent"), 30)
+    delivery_percent = _number(settings.get("delivery_percent"), 3)
+    installation_percent = _number(settings.get("installation_percent"), 10)
     facts_by_object: dict[str, dict] = {}
     if not objects_df.empty:
         run_id = str(objects_df.iloc[0].get("run_id") or "")
@@ -137,7 +146,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         status = str(row.get("status") or "pending")
         self_cost = row.get("self_cost_ex_vat")
         priced = status in {"completed", "review_required"} and self_cost is not None
-        sale_price_unit = _suggested_sale_price(self_cost) if priced else None
+        sale_price_unit = _suggested_sale_price(self_cost, markup_percent) if priced else None
         sale_price_overridden = priced and row.get("object_id") in sale_price_overrides
         if sale_price_overridden:
             sale_price_unit = sale_price_overrides[row.get("object_id")]
@@ -155,23 +164,19 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "sale_price_unit": sale_price_unit,
                 "sale_price_total": _line_total(sale_price_unit, row.get("quantity")),
                 "sale_price_overridden": sale_price_overridden,
-                "suggestion": "suggested: SC + 30%",
+                "suggestion": f"suggested: SC + {_format_number(markup_percent)}%",
                 "reviewed": bool(row.get("approved")),
                 "details_available": bool(facts_result),
                 "facts_status": facts_result.get("status"),
             }
         )
 
-    vat_percent = 18.0
-    if not objects_df.empty:
-        company_id = str(objects_df.iloc[0].get("company_id") or "")
-        if company_id:
-            settings = _first_row(fetch_company_overhead_settings(client, company_id))
-            vat_percent = _number(settings.get("vat_percent"), 18)
     project_costs, summary = _objects_project_pricing(
         rows,
         sale_price_overrides,
         vat_percent=vat_percent,
+        delivery_percent=delivery_percent,
+        installation_percent=installation_percent,
     )
     return {
         "rows": rows,
@@ -180,13 +185,13 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     }
 
 
-def _suggested_sale_price(self_cost: Any) -> float | None:
-    """Return MVP suggested sale price: self cost plus 30%."""
+def _suggested_sale_price(self_cost: Any, markup_percent: float = 30) -> float | None:
+    """Return the company-configured suggested sale price."""
     if self_cost is None or self_cost == "":
         return None
     if isinstance(self_cost, float) and self_cost != self_cost:
         return None
-    return round(_number(self_cost, 0) * 1.3, 2)
+    return round(_number(self_cost, 0) * (1 + _number(markup_percent, 30) / 100), 2)
 
 
 def _line_total(unit_price: Any, quantity: Any) -> float | None:
@@ -215,6 +220,8 @@ def _objects_project_pricing(
     sale_price_overrides: dict[str, float] | None = None,
     *,
     vat_percent: float = 18,
+    delivery_percent: float = 3,
+    installation_percent: float = 10,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Calculate project-level suggested costs after all objects are priced."""
     sale_price_overrides = sale_price_overrides or {}
@@ -226,8 +233,8 @@ def _objects_project_pricing(
     )
     objects_subtotal = sum(_number(row.get("sale_price_total"), 0) for row in object_rows)
 
-    delivery_suggested = round(objects_subtotal * 0.03, 2) if all_priced else None
-    installation_suggested = round(objects_subtotal * 0.10, 2) if all_priced else None
+    delivery_suggested = round(objects_subtotal * delivery_percent / 100, 2) if all_priced else None
+    installation_suggested = round(objects_subtotal * installation_percent / 100, 2) if all_priced else None
     delivery = sale_price_overrides.get("delivery", delivery_suggested)
     installation = sale_price_overrides.get("installation", installation_suggested)
     project_price = (
@@ -253,7 +260,8 @@ def _objects_project_pricing(
                 "sale_price_unit": delivery,
                 "sale_price_total": None,
                 "sale_price_overridden": "delivery" in sale_price_overrides,
-                "suggestion": "" if "delivery" in sale_price_overrides else "suggested: 3% of objects subtotal",
+                "percent": delivery_percent,
+                "suggestion": "" if "delivery" in sale_price_overrides else f"suggested: {_format_number(delivery_percent)}% of objects subtotal",
                 "reviewed": False,
             },
             {
@@ -265,11 +273,12 @@ def _objects_project_pricing(
                 "sale_price_unit": installation,
                 "sale_price_total": None,
                 "sale_price_overridden": "installation" in sale_price_overrides,
-                "suggestion": "" if "installation" in sale_price_overrides else "suggested: 10% of objects subtotal",
+                "percent": installation_percent,
+                "suggestion": "" if "installation" in sale_price_overrides else f"suggested: {_format_number(installation_percent)}% of objects subtotal",
                 "reviewed": False,
             },
         ],
-        {"project_price": project_price, "vat": vat, "total": total},
+        {"project_price": project_price, "vat": vat, "total": total, "vat_percent": vat_percent},
     )
 
 
@@ -734,6 +743,15 @@ def _recalculate_object_estimate_totals(
         if (row := item.to_dict()).get("section") == "material"
         and row.get("source") != "pricing_policy"
     )
+    coating_material_total = sum(
+        _number(row.get("cost"), 0)
+        for _, item in lines_df.iterrows()
+        if (row := item.to_dict()).get("section") == "material"
+        and row.get("source") != "pricing_policy"
+        and isinstance(row.get("raw_agent_json"), dict)
+        and str((row.get("raw_agent_json") or {}).get("facts", {}).get("family") or "")
+        in {"wood_coatings", "metal_coatings"}
+    )
     for _, item in lines_df.iterrows():
         row = item.to_dict()
         if row.get("section") != "material" or row.get("source") != "pricing_policy":
@@ -743,7 +761,9 @@ def _recalculate_object_estimate_totals(
             raw_agent_json.get("percent") if isinstance(raw_agent_json, dict) else None,
             0,
         )
-        amount = round(primary_material_total * percent / 100, 2)
+        basis = raw_agent_json.get("basis") if isinstance(raw_agent_json, dict) else None
+        base = coating_material_total if basis == "coatings" else primary_material_total
+        amount = round(base * percent / 100, 2)
         update_rfq_estimate_line(
             client,
             estimate_id=estimate_id,

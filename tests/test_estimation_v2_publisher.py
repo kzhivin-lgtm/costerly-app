@@ -320,22 +320,27 @@ def test_angle_defaults_to_1_5_mm_but_explicit_wall_is_preserved():
     assert explicit["wall_thickness_policy"] == "explicit"
 
 
-def test_locked_material_policy_rows_include_consumables_and_packaging():
+def test_locked_material_policy_rows_use_company_percentages_and_coating_basis():
     facts = _ready_facts()
     facts["estimate_id"] = "estimate-1"
 
     rows, costs = publisher._material_policy_rows_and_costs(
-        facts=facts, primary_material_total=500,
+        facts=facts, primary_material_total=500, coating_material_total=80,
+        settings={"consumables_percent": 6, "packaging_percent": 2,
+                  "paint_consumables_percent": 10},
     )
 
     assert rows[0]["item_name"] == "Consumables"
-    assert rows[0]["cost"] == 25
-    assert rows[0]["raw_agent_json"]["percent"] == 5
-    assert costs[0]["amount"] == 25
+    assert rows[0]["cost"] == 30
+    assert rows[0]["raw_agent_json"]["percent"] == 6
+    assert costs[0]["amount"] == 30
     assert costs[0]["status"] == "resolved"
     assert rows[1]["item_name"] == "Packaging"
-    assert rows[1]["cost"] == 5
-    assert rows[1]["raw_agent_json"]["percent"] == 1
+    assert rows[1]["cost"] == 10
+    assert rows[1]["raw_agent_json"]["percent"] == 2
+    assert rows[2]["item_name"] == "Paint consumables"
+    assert rows[2]["cost"] == 8
+    assert rows[2]["raw_agent_json"]["basis"] == "coatings"
     assert all(row["source"] == "pricing_policy" for row in rows)
     assert all(row["raw_agent_json"]["locked"] is True for row in rows)
 
@@ -466,6 +471,7 @@ def test_publisher_costs_review_required_facts_with_logged_approximation(monkeyp
     assert events[0]["status"] == "running"
     assert [row["line_id"] for row in events[1]["lines"]] == [
         "m1", "object-1_material_policy_consumables", "object-1_material_policy_packaging",
+        "object-1_material_policy_paint_consumables",
         "o1",
     ]
     assert events[2:] == [{"totals": {

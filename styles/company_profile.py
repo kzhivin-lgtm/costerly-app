@@ -2307,6 +2307,10 @@ def apply_company_profile_css() -> None:
             margin-top: 34px;
         }
 
+        .stApp:has(.company-profile-active) .st-key-company_pricing_settings {
+            margin-top: 0;
+        }
+
         .company-metrics-save {
             width: 100%;
             min-height: 60px;
