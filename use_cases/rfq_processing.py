@@ -45,6 +45,7 @@ from db.repositories import (
     insert_agent_usage_events,
     update_rfq_detected_object,
     update_rfq_detected_object_name_if_unchanged,
+    update_rfq_run,
     upsert_rfq_detection_result,
 )
 from db.supabase_client import get_supabase_client
@@ -603,6 +604,52 @@ def apply_file_review_edits(
             )
 
     return ignored_object_ids
+
+
+_FILE_REVIEW_RUN_FIELDS = {
+    "project_name": "project_name",
+    "partner": "design_partner",
+    "client": "client",
+}
+
+
+def save_file_review_run_metadata(
+    *,
+    run_id: str,
+    values: dict[str, Any],
+    company_id: str | None = None,
+) -> dict[str, str]:
+    """Persist editable File Review project metadata without creating catalogs."""
+    normalized: dict[str, str] = {}
+    update_values: dict[str, str] = {}
+    for field, column in _FILE_REVIEW_RUN_FIELDS.items():
+        if field not in values:
+            continue
+        value = str(values.get(field) or "").strip()
+        if not value:
+            raise ValueError(f"{field.replace('_', ' ').title()} cannot be empty.")
+        if len(value) > 240:
+            raise ValueError(f"{field.replace('_', ' ').title()} is too long.")
+        normalized[field] = value
+        update_values[column] = value
+
+    if not update_values:
+        raise ValueError("No editable File Review metadata was provided.")
+
+    client = get_supabase_client()
+    from state.company_auth import company_auth_enabled
+    if company_auth_enabled():
+        owner_company_id = company_id or get_company_id()
+        if not owner_company_id:
+            raise PermissionError("Company ID is required for RFQ metadata edits.")
+        assert_run_owned(client, str(run_id), str(owner_company_id))
+
+    update_rfq_run(
+        client,
+        run_id=str(run_id),
+        values=update_values,
+    )
+    return normalized
 
 
 def save_file_review_object_name(

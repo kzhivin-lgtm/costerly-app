@@ -30,6 +30,7 @@ from use_cases.rfq_processing import (
     _run_deferred_naming,
     _run_optional_ocr,
     save_file_review_object_name,
+    save_file_review_run_metadata,
 )
 from db.repositories import insert_agent_usage_events
 
@@ -559,3 +560,57 @@ def test_file_review_name_is_trimmed_and_saved_immediately(monkeypatch):
             },
         )
     ]
+
+
+def test_file_review_project_metadata_is_trimmed_and_saved_without_catalog_writes(monkeypatch):
+    updates = []
+    client = object()
+    monkeypatch.setattr("use_cases.rfq_processing.get_supabase_client", lambda: client)
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.update_rfq_run",
+        lambda actual_client, **kwargs: updates.append((actual_client, kwargs)),
+    )
+
+    saved = save_file_review_run_metadata(
+        run_id="run-001",
+        values={
+            "project_name": "  Restaurant Olen  ",
+            "partner": "  Bureau Yolochka  ",
+            "client": "  Restaurant Group LLC  ",
+        },
+    )
+
+    assert saved == {
+        "project_name": "Restaurant Olen",
+        "partner": "Bureau Yolochka",
+        "client": "Restaurant Group LLC",
+    }
+    assert updates == [
+        (
+            client,
+            {
+                "run_id": "run-001",
+                "values": {
+                    "project_name": "Restaurant Olen",
+                    "design_partner": "Bureau Yolochka",
+                    "client": "Restaurant Group LLC",
+                },
+            },
+        )
+    ]
+
+
+def test_file_review_project_metadata_rejects_unknown_fields_and_empty_values(monkeypatch):
+    monkeypatch.setattr("use_cases.rfq_processing.get_supabase_client", lambda: object())
+
+    with pytest.raises(ValueError, match="Project Name cannot be empty"):
+        save_file_review_run_metadata(
+            run_id="run-001",
+            values={"project_name": "  ", "untrusted": "ignored"},
+        )
+
+    with pytest.raises(ValueError, match="No editable"):
+        save_file_review_run_metadata(
+            run_id="run-001",
+            values={"untrusted": "ignored"},
+        )

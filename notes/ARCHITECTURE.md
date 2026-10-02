@@ -269,6 +269,36 @@ quantities, external W × H × D dimensions, materials, evidence pages, and shor
 actionable notes. Sheet and room titles are context, never object names. Detection
 prepares the Estimation handoff but does not create BOM, labor, or pricing output.
 
+Partner, Client, Project and Version contract
+Partner, Client and Project are three distinct product concepts. Partner is the
+direct commercial or design intermediary working with the Costerly company.
+Client is the end customer for whom the Project is delivered. A direct customer
+may act as Partner in one Project and Client in another.
+
+The persistence model must not place external Partners or Clients in
+`companies`, because that table represents Costerly tenant accounts and owns
+authorization boundaries. External organizations belong to one company-scoped
+counterparty directory. Project relationships assign separate Partner and
+Client roles, allowing one organization to occupy either role without duplicate
+identity records. A Project has its own identity and display name. Project
+Address is not part of the current MVP and, if added later, is optional metadata
+rather than identity.
+
+Detection provides editable Project, Partner and Client suggestions on File
+Review. The user may select existing company-scoped records or enter new names.
+Objects remain individual fabricated items and are never used as Project
+records. File Review edits persist immediately in the RFQ draft. Continue to
+Objects freezes the selected metadata for that estimate cycle but does not
+create new permanent catalog records. Existing selections may retain their
+stable IDs; newly typed names remain draft text. Final Approval transactionally
+resolves or creates the Partner, Client and Project, assigns the two separate
+counterparty roles, closes the mutable RFQ, creates an immutable Project
+calculation version, and generates and stores its Client Proposal PDF. An
+abandoned RFQ therefore does not pollute the permanent counterparty or Project
+catalog. Download is an optional later action and does not control finalization.
+The PDF renderer reads the approved deterministic snapshot and never
+recalculates pricing.
+
 Estimation Target Flow
 confirmed detected objects
         ↓
