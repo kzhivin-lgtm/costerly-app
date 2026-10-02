@@ -36,7 +36,7 @@ def test_workflow_titles_use_brand_ink_and_only_object_names_use_accent():
     assert ".file-review-detected-title" in review_css
 
 
-def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_events():
+def test_workflow_header_alignment_guard_preserves_title_axis_until_pinned():
     source = open("ui/js_guards.py").read()
 
     assert "def install_workflow_header_alignment_guard" in source
@@ -45,6 +45,21 @@ def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_ev
     assert "actionsBaseCenter" in source
     assert "- appliedOffset" in source
     assert "translateY(${Math.round(offset * 100) / 100}px)" in source
-    assert 'addEventListener("scroll"' not in source.split(
+    alignment_source = source.split(
         "def install_workflow_header_alignment_guard", 1
-    )[1].split("def install_company_metrics_input_guard", 1)[0]
+    )[1].split("def install_service_header_scroll_guard", 1)[0]
+    assert 'actions.dataset.costerlyHeaderPinned === "true"' in alignment_source
+
+
+def test_service_header_scroll_guard_pins_only_service_screens():
+    source = open("ui/js_guards.py").read()
+    guard_source = source.split("def install_service_header_scroll_guard", 1)[1].split(
+        "def install_company_metrics_input_guard", 1
+    )[0]
+
+    assert '"file_review", "objects", "object_detail"' in guard_source
+    assert '"account", "admin"' not in guard_source
+    assert 'scrollOffset() > 0' in guard_source
+    assert 'actions.dataset.costerlyHeaderPinned = "true"' in guard_source
+    assert "delete actions.dataset.costerlyHeaderPinned" in guard_source
+    assert 'parentDoc.addEventListener("scroll", scheduleUpdate' in guard_source
