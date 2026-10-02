@@ -3027,6 +3027,7 @@ def test_company_profile_tabs_support_stateful_streamlit_dom():
     assert '[role="tab"][data-selected] p' in css
     assert '[role="tabpanel"]:has(.st-key-company_metrics_card)' in css
     assert '> [data-testid="stVerticalBlock"]' in css
+    assert "padding: 0 23px;" in css
 
 
 def test_company_metrics_bridge_does_not_navigate_parent_page():
