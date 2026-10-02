@@ -286,6 +286,9 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "maskedInternalTransitions.has(pendingTransition.name)" in wrapper
     assert "pendingTransition.readyReported = true" in wrapper
     assert "if (!maskedInternalTransitions.has(pendingTransition.name))" in wrapper
+    assert "const loginTargetReady =" in wrapper
+    assert "metadata.auth_css_ready === true" in wrapper
+    assert 'source: "target_app_ready"' in wrapper
     assert 'mark("browser.internal_transition_timeout"' in wrapper
     internal_timeout_source = wrapper.split("function concealInternalTransition", 1)[1].split(
         "function revealInternalTransition", 1
