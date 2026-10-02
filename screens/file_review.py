@@ -15,8 +15,6 @@ from ui.js_guards import (
 from ui.layout import post_upload_header_html, render_post_upload_header
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
-    OBJECTS_MARKER_ID,
-    post_upload_transition_shell_html,
 )
 from use_cases.estimation import build_estimate_id
 from use_cases.estimation_progress import set_object_progress
@@ -473,23 +471,6 @@ def _render_missing_run_state() -> None:
     _back_to_upload_button()
 
 
-def _install_continue_transition_guard() -> None:
-    """Mask the Streamlit rerun while File Review moves to Objects Estimation."""
-    install_post_upload_transition_guard(
-        [
-            {
-                "label": "CONTINUE TO OBJECTS ESTIMATION",
-                "targetMarkerId": OBJECTS_MARKER_ID,
-                "shellHtml": post_upload_transition_shell_html(
-                    title="Objects Estimation",
-                    subtitle="Review objects → Set sale price → Generate proposal",
-                ),
-            }
-        ],
-        current_marker_id=FILE_REVIEW_MARKER_ID,
-    )
-
-
 def render_file_review_screen(company_id: str) -> None:
     """Render File Review from the persisted detection result when available."""
     apply_file_review_css()
@@ -525,7 +506,10 @@ def render_file_review_screen(company_id: str) -> None:
         ),
         unsafe_allow_html=True,
     )
-    _install_continue_transition_guard()
+    # Clear shells emitted by older builds. New workflow navigation is covered
+    # by the outer wrapper mask, so an iframe-local shell cannot outlive its
+    # target screen and trap the user under a gray layer.
+    install_post_upload_transition_guard([], current_marker_id=FILE_REVIEW_MARKER_ID)
     install_workflow_header_alignment_guard()
 
     _sync_object_edit_state(run_id, data["objects"])
