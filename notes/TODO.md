@@ -52,6 +52,12 @@ linked notes.
   Partner, Client or Project catalog table is created. Full suite: 862 passed.
 - Remaining verification: authenticated production render, one edit by Enter,
   one edit by blur, refresh, Last Estimation recovery and Continue to Objects.
+- Production regression repair in progress: the 2026-10-02 metadata deployment
+  also activated the previously rejected service-header scroll guard. Production
+  telemetry then recorded repeated 15-second transition timeouts even after the
+  destination emitted `app-ready`. The isolated candidate removes only that
+  guard and must pass the protected authenticated production transition matrix
+  before 3.15.19 can be accepted.
 
 ### 3.15.20 Final Approval and Client Proposal PDF
 
@@ -210,6 +216,8 @@ linked notes.
   Upload and Auth are out of scope.
 - Do not repeat approaches rejected in
   `notes/HEADER_CONTROLS_SCROLL_FAILED_ATTEMPTS_2026_10_02.md`.
+- The rejected generic service-header scroll guard was removed again during
+  3.15.19 transition regression repair. Do not restore it as a workaround.
 
 ## Pricing and Company Profile
 

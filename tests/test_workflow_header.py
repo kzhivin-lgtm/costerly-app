@@ -36,7 +36,7 @@ def test_workflow_titles_use_brand_ink_and_only_object_names_use_accent():
     assert ".file-review-detected-title" in review_css
 
 
-def test_workflow_header_alignment_guard_preserves_title_axis_until_pinned():
+def test_workflow_header_alignment_guard_preserves_title_axis():
     source = open("ui/js_guards.py").read()
 
     assert "def install_workflow_header_alignment_guard" in source
@@ -47,19 +47,15 @@ def test_workflow_header_alignment_guard_preserves_title_axis_until_pinned():
     assert "translateY(${Math.round(offset * 100) / 100}px)" in source
     alignment_source = source.split(
         "def install_workflow_header_alignment_guard", 1
-    )[1].split("def install_service_header_scroll_guard", 1)[0]
-    assert 'actions.dataset.costerlyHeaderPinned === "true"' in alignment_source
+    )[1].split("def install_company_metrics_input_guard", 1)[0]
+    assert "costerlyHeaderPinned" not in alignment_source
 
 
-def test_service_header_scroll_guard_pins_only_service_screens():
+def test_rejected_service_header_scroll_guard_remains_removed():
     source = open("ui/js_guards.py").read()
-    guard_source = source.split("def install_service_header_scroll_guard", 1)[1].split(
-        "def install_company_metrics_input_guard", 1
-    )[0]
+    auth_source = open("state/company_auth.py").read()
 
-    assert '"file_review", "objects", "object_detail"' in guard_source
-    assert '"account", "admin"' not in guard_source
-    assert 'scrollOffset() > 0' in guard_source
-    assert 'actions.dataset.costerlyHeaderPinned = "true"' in guard_source
-    assert "delete actions.dataset.costerlyHeaderPinned" in guard_source
-    assert 'parentDoc.addEventListener("scroll", scheduleUpdate' in guard_source
+    assert "install_service_header_scroll_guard" not in source
+    assert "install_service_header_scroll_guard" not in auth_source
+    assert "__costerlyServiceHeaderScrollCleanup" not in source
+    assert "costerlyHeaderPinned" not in source
