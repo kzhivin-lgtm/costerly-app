@@ -121,19 +121,25 @@
           /^\/confirm\/?$/.test(window.location.pathname) ||
           ["signup", "email"].includes(recoveryFragment.get("type"));
         const pathInvite = window.location.pathname.match(/^\/(?:start|join)\/([A-Za-z0-9_-]{43})\/?$/);
+        const workflowPath = window.location.pathname.match(/^\/([reo])\/([A-Za-z0-9_-]{10,32})\/?$/);
         const inviteToken = pathInvite
           ? pathInvite[1]
           : new URLSearchParams(window.location.search).get("invite");
         const startupProbe = new URLSearchParams(window.location.search).get("startup_probe");
         const appUrl = new URL(frame.dataset.src);
         const appOrigin = appUrl.origin;
-        const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id"];
+        const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id", "route_token"];
         const outerParams = new URLSearchParams(window.location.search);
         appUrl.searchParams.set("obs_trace", traceId);
         routeKeys.forEach((key) => {
           const value = outerParams.get(key);
           if (value) appUrl.searchParams.set(key, value);
         });
+        if (workflowPath) {
+          const pathScreen = {r: "file_review", e: "objects", o: "object_detail"}[workflowPath[1]];
+          appUrl.searchParams.set("screen", pathScreen);
+          appUrl.searchParams.set("route_token", workflowPath[2]);
+        }
         if (inviteToken && /^[A-Za-z0-9_-]{43}$/.test(inviteToken)) {
           appUrl.searchParams.set("invite", inviteToken);
         }
@@ -223,6 +229,12 @@
           const nextUrl = new URL(window.location.href);
           routeKeys.forEach((key) => nextUrl.searchParams.delete(key));
 
+          // A workflow path must not survive navigation to Profile, Upload or
+          // Admin. It would otherwise be reinterpreted after a browser refresh.
+          if (/^\/[reo]\/[A-Za-z0-9_-]{10,32}\/?$/.test(nextUrl.pathname)) {
+            nextUrl.pathname = "/";
+          }
+
           const requestedScreen = safeRouteValue(route && route.screen);
           const screen = requestedScreen || safeRouteValue(renderedScreen);
           if (screen === "account") {
@@ -242,10 +254,19 @@
               nextUrl.searchParams.set("profile_tab", profileTab);
             }
           } else if (["file_review", "objects", "object_detail"].includes(screen)) {
-            const runId = safeRouteValue(route && route.run_id);
-            const estimateId = safeRouteValue(route && route.estimate_id);
-            const objectId = safeRouteValue(route && route.object_id);
-            if (runId) {
+            const routeToken = safeRouteValue(route && route.route_token);
+            if (routeToken) {
+              const routePrefix = {
+                file_review: "r",
+                objects: "e",
+                object_detail: "o",
+              }[screen];
+              nextUrl.pathname = `/${routePrefix}/${routeToken}`;
+            } else {
+              const runId = safeRouteValue(route && route.run_id);
+              const estimateId = safeRouteValue(route && route.estimate_id);
+              const objectId = safeRouteValue(route && route.object_id);
+              if (!runId) return;
               nextUrl.searchParams.set("screen", screen);
               nextUrl.searchParams.set("run_id", runId);
               if (estimateId) {

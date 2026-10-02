@@ -36,6 +36,11 @@ from state.legal_consent import (
 )
 from db.company_access import assert_estimate_owned, assert_run_owned
 from db.supabase_client import get_supabase_client
+from db.workflow_routes import (
+    ensure_workflow_route_token,
+    resolve_workflow_route_token,
+    workflow_route_key,
+)
 from styles.base import apply_base_css
 from ui.js_guards import scroll_parent_to_top, signal_app_ready_to_embed
 from ui.app_header import render_app_header
@@ -76,7 +81,54 @@ _PROFILE_TAB_ROUTES = {
 }
 
 
-def _browser_route(screen: str) -> dict[str, str]:
+def _workflow_route_token(
+    *,
+    company_id: str,
+    scope: str,
+    run_id: str,
+    estimate_id: str | None = None,
+    object_id: str | None = None,
+) -> str:
+    """Return a cached route token, allocating it once per Python session."""
+    route_key = workflow_route_key(
+        scope=scope,
+        run_id=run_id,
+        estimate_id=estimate_id,
+        object_id=object_id,
+    )
+    cached = st.session_state.setdefault("workflow_route_tokens", {}).get(route_key)
+    if cached:
+        return str(cached)
+    token = ensure_workflow_route_token(
+        get_supabase_client(),
+        company_id=company_id,
+        scope=scope,
+        run_id=run_id,
+        estimate_id=estimate_id,
+        object_id=object_id,
+    )
+    st.session_state.workflow_route_tokens[route_key] = token
+    return token
+
+
+def _remember_workflow_route_token(
+    *,
+    route_token: str,
+    scope: str,
+    run_id: str,
+    estimate_id: str | None = None,
+    object_id: str | None = None,
+) -> None:
+    route_key = workflow_route_key(
+        scope=scope,
+        run_id=run_id,
+        estimate_id=estimate_id,
+        object_id=object_id,
+    )
+    st.session_state.setdefault("workflow_route_tokens", {})[route_key] = route_token
+
+
+def _browser_route(screen: str, *, company_id: str | None = None) -> dict[str, str]:
     """Return the safe, durable browser route for the rendered screen."""
     if screen == "account":
         selected_tab = str(
@@ -100,6 +152,20 @@ def _browser_route(screen: str) -> dict[str, str]:
         estimate_id = str(st.session_state.get("current_estimate_id") or "")
         if not run_id:
             return {"screen": "upload"}
+        if company_id:
+            try:
+                return {
+                    "screen": screen,
+                    "route_token": _workflow_route_token(
+                        company_id=company_id,
+                        scope="run",
+                        run_id=run_id,
+                    ),
+                }
+            except Exception:
+                # Deployment order is intentionally safe: legacy durable URLs
+                # continue to work until the route-token migration is present.
+                pass
         route = {"screen": screen, "run_id": run_id}
         if estimate_id:
             route["estimate_id"] = estimate_id
@@ -110,9 +176,32 @@ def _browser_route(screen: str) -> dict[str, str]:
         estimate_id = str(st.session_state.get("current_estimate_id") or "")
         if not run_id or not estimate_id:
             return {"screen": "upload"}
+        object_id = str(st.session_state.get("current_object_id") or "")
+        if company_id:
+            try:
+                if screen == "objects":
+                    scope = "estimate"
+                    token_kwargs = {}
+                elif object_id:
+                    scope = "object"
+                    token_kwargs = {"object_id": object_id}
+                else:
+                    return {"screen": "objects", "run_id": run_id, "estimate_id": estimate_id}
+                return {
+                    "screen": screen,
+                    "route_token": _workflow_route_token(
+                        company_id=company_id,
+                        scope=scope,
+                        run_id=run_id,
+                        estimate_id=estimate_id,
+                        **token_kwargs,
+                    ),
+                }
+            except Exception:
+                # See the File Review compatibility fallback above.
+                pass
         route = {"screen": screen, "run_id": run_id, "estimate_id": estimate_id}
         if screen == "object_detail":
-            object_id = str(st.session_state.get("current_object_id") or "")
             if not object_id:
                 return {"screen": "objects", "run_id": run_id, "estimate_id": estimate_id}
             route["object_id"] = object_id
@@ -123,7 +212,7 @@ def _browser_route(screen: str) -> dict[str, str]:
     return {"screen": "upload"}
 
 
-def _signal_ready(trace, screen: str) -> None:
+def _signal_ready(trace, screen: str, *, company_id: str | None = None) -> None:
     trace.set_screen(screen)
     trace.annotate(server_build_version=trace.build_version)
     trace.event("server.app_ready_component_enqueued")
@@ -135,7 +224,7 @@ def _signal_ready(trace, screen: str) -> None:
         trace_id=trace.trace_id,
         run_id=trace.run_id,
         metrics=trace.summary(),
-        route=_browser_route(screen),
+        route=_browser_route(screen, company_id=company_id),
     )
     trace.event("server.run_complete")
 
@@ -429,6 +518,36 @@ def main() -> None:
         requested_run_id = st.query_params.get("run_id")
         requested_estimate_id = st.query_params.get("estimate_id")
         requested_object_id = st.query_params.get("object_id")
+        requested_route_token = str(st.query_params.get("route_token") or "")
+        if requested_route_token:
+            expected_scope = {
+                "file_review": "run",
+                "objects": "estimate",
+                "object_detail": "object",
+            }[str(requested_screen)]
+            try:
+                resolved_route = resolve_workflow_route_token(
+                    get_supabase_client(),
+                    route_token=requested_route_token,
+                    company_id=company_id,
+                    expected_scope=expected_scope,
+                )
+            except (PermissionError, ValueError):
+                st.query_params.clear()
+                st.session_state.screen = "upload"
+                st.error("This workflow link is not available to your company.")
+                _signal_ready(trace, "company_access_error")
+                return
+            requested_run_id = resolved_route["run_id"]
+            requested_estimate_id = resolved_route.get("estimate_id")
+            requested_object_id = resolved_route.get("object_id")
+            _remember_workflow_route_token(
+                route_token=requested_route_token,
+                scope=expected_scope,
+                run_id=requested_run_id,
+                estimate_id=requested_estimate_id,
+                object_id=requested_object_id,
+            )
         if auth_enabled:
             try:
                 client = get_supabase_client()
@@ -526,7 +645,7 @@ def main() -> None:
             trace=trace,
         )
 
-    _signal_ready(trace, screen)
+    _signal_ready(trace, screen, company_id=company_id)
 
 
 if __name__ == "__main__":

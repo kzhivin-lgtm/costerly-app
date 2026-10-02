@@ -2,3 +2,6 @@
 /join/*   /index.html  200
 /recover  /index.html  200
 /confirm  /index.html  200
+/r/*      /index.html  200
+/e/*      /index.html  200
+/o/*      /index.html  200

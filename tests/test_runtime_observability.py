@@ -213,12 +213,14 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert '"staging.costerly.ai": "https://core.costerly.ai/?embed=true"' in wrapper
     assert "const appOrigin = appUrl.origin" in wrapper
     assert 'appUrl.searchParams.set("obs_trace", traceId)' in wrapper
-    assert 'const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id"]' in wrapper
+    assert 'const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id", "route_token"]' in wrapper
     assert "appUrl.searchParams.set(key, value)" in wrapper
     assert "function syncOuterRoute(route, renderedScreen)" in wrapper
     assert "window.history.pushState({costerlyRoute: true}" in wrapper
     assert 'window.addEventListener("popstate"' in wrapper
     assert "syncOuterRoute(event.data.route || {}, screen)" in wrapper
+    assert 'const workflowPath = window.location.pathname.match(/^\\/([reo])\\/([A-Za-z0-9_-]{10,32})\\/?$/);' in wrapper
+    assert 'nextUrl.pathname = `/${routePrefix}/${routeToken}`;' in wrapper
     assert "navigator.sendBeacon" in wrapper
     assert 'event.data.traceId === traceId' in wrapper
     assert "event.origin === appOrigin" in wrapper
