@@ -36,7 +36,7 @@ def test_workflow_titles_use_brand_ink_and_only_object_names_use_accent():
     assert ".file-review-detected-title" in review_css
 
 
-def test_workflow_header_alignment_guard_uses_title_position_for_workflow_sticky_state():
+def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_events():
     source = open("ui/js_guards.py").read()
 
     assert "def install_workflow_header_alignment_guard" in source
@@ -45,11 +45,6 @@ def test_workflow_header_alignment_guard_uses_title_position_for_workflow_sticky
     assert "actionsBaseCenter" in source
     assert "- appliedOffset" in source
     assert "translateY(${Math.round(offset * 100) / 100}px)" in source
-    guard_source = source.split(
+    assert 'addEventListener("scroll"' not in source.split(
         "def install_workflow_header_alignment_guard", 1
     )[1].split("def install_company_metrics_input_guard", 1)[0]
-    assert "restingTitleTop" in guard_source
-    assert "titleRect.top < restingTitleTop - 1" in guard_source
-    assert 'actions.dataset.workflowHeaderPinned = "true"' in guard_source
-    assert "delete actions.dataset.workflowHeaderPinned" in guard_source
-    assert 'parentDoc.addEventListener("scroll", scheduleAlign' in guard_source
