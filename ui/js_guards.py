@@ -23,8 +23,10 @@ def install_workflow_header_alignment_guard() -> None:
             let actionsObserver = null;
             let mutationObserver = null;
             let currentActions = null;
+            let currentTitle = null;
             let appliedOffset = 0;
             let appliedTransform = "";
+            let restingTitleTop = null;
 
             function targets() {
                 return {
@@ -38,14 +40,30 @@ def install_workflow_header_alignment_guard() -> None:
                 const { title, actions } = targets();
                 if (!title || !actions) return;
 
+                if (title !== currentTitle) {
+                    currentTitle = title;
+                    restingTitleTop = null;
+                }
+
+                const titleRect = title.getBoundingClientRect();
+                if (!titleRect.height) return;
+                if (restingTitleTop === null) restingTitleTop = titleRect.top;
+                const pinned = titleRect.top < restingTitleTop - 1;
+                if (pinned) {
+                    actions.dataset.workflowHeaderPinned = "true";
+                    return;
+                }
+                if (actions.dataset.workflowHeaderPinned === "true") {
+                    delete actions.dataset.workflowHeaderPinned;
+                }
+
                 if (actions !== currentActions || actions.style.transform !== appliedTransform) {
                     currentActions = actions;
                     appliedOffset = 0;
                 }
 
-                const titleRect = title.getBoundingClientRect();
                 const actionsRect = actions.getBoundingClientRect();
-                if (!titleRect.height || !actionsRect.height) return;
+                if (!actionsRect.height) return;
 
                 const titleCenter = titleRect.top + titleRect.height / 2;
                 const actionsBaseCenter = actionsRect.top + actionsRect.height / 2 - appliedOffset;
@@ -80,6 +98,10 @@ def install_workflow_header_alignment_guard() -> None:
 
             observeTargets();
             parentWindow.addEventListener("resize", scheduleAlign, { passive: true });
+            parentDoc.addEventListener("scroll", scheduleAlign, {
+                capture: true,
+                passive: true,
+            });
             parentWindow.setTimeout(scheduleAlign, 100);
             parentWindow.setTimeout(scheduleAlign, 350);
 
@@ -89,6 +111,7 @@ def install_workflow_header_alignment_guard() -> None:
                 actionsObserver?.disconnect();
                 mutationObserver?.disconnect();
                 parentWindow.removeEventListener("resize", scheduleAlign);
+                parentDoc.removeEventListener("scroll", scheduleAlign, true);
                 parentWindow[CLEANUP_KEY] = null;
             };
         })();

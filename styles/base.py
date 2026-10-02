@@ -120,6 +120,7 @@ def apply_base_css() -> None:
             --app-header-top: clamp(72px, 10vh, 104px);
             --app-header-width: min(323px, 70vw);
             --app-content-top: clamp(132px, 14vh, 158px);
+            --workflow-header-sticky-top: 16px;
 
             /* Shared button tokens */
             --button-height-md: 44px;
@@ -281,6 +282,11 @@ def apply_base_css() -> None:
         .st-key-costerly_header_controls:hover,
         .st-key-costerly_header_controls:focus-within {
             opacity: 1;
+        }
+
+        .st-key-costerly_header_controls[data-workflow-header-pinned="true"] {
+            top: var(--workflow-header-sticky-top) !important;
+            transform: none !important;
         }
 
         .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
