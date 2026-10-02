@@ -2,14 +2,183 @@
 
 Current owner-approved execution order:
 
-ACTIVE, 3.15.7 Labor reference-model foundation: checkpoint recorded in
+COMPLETED IMPLEMENTATION CHECKPOINT, 3.15.17 Company Pricing Policy: the
+Profile Pricing tab is live after Labor Costs and persists nine company-level
+percentages in `overhead_settings`: VAT, warranty reserve, management buffer,
+consumables, packaging, paint consumables, default sale markup, delivery and
+installation. Estimation and Objects consume the persisted policy. The default
+values are 18%, 5%, 5%, 5%, 1%, 10%, 30%, 3% and 10% respectively. The
+production migration and default rows were verified. Commits: `053c66d` and
+`89dbde2`. Real authenticated production acceptance of every edited value
+remains pending.
+
+COMPLETED IMPLEMENTATION CHECKPOINT, 3.15.18 Machinery session draft: owner
+changes remain local to the current Streamlit session across Profile-tab
+navigation, and Supabase is updated only by the single bottom Save action.
+The initial persisted snapshot is cached, Save writes only changed routes, and
+failed validation or persistence retains the draft. Commit: `722b6c6`. Real
+authenticated production interaction acceptance remains pending.
+
+DEFERRED, 3.15.16 Header controls scroll stability: unresolved. On File Review,
+Objects, Object Detail, Company Profile and Platform Admin, keep the shared
+controls at their accepted resting viewport position while content scrolls.
+Upload and authentication are explicitly out of scope. Do not repeat the
+rejected CSS, pin-to-top, DOM-geometry or assumed-scroll-root approaches listed
+in `notes/HEADER_CONTROLS_SCROLL_FAILED_ATTEMPTS_2026_10_02.md`. Resume only
+after inspecting computed production DOM geometry during real scrolling.
+
+P0 NEXT, 3.15.9 Active RFQ navigation recovery: browser Back from Object
+Detail or Objects must never strand an active RFQ on Upload. Preserve a
+durable route to the current File Review, Objects and Object Detail state,
+including refresh and browser history. Add an Upload-screen recovery action
+for the latest active RFQ as a separate acceptance state. Production evidence
+on 2026-10-01: browser Back from Object Detail returned to Upload while the
+persisted run and estimate still existed.
+
+PENDING, 3.15.10 Review Required improvement workspace: build a separate
+internal tool for resolving material, labor, machinery, conversion and other
+estimation mismatches without blocking or zeroing the customer estimate. Each
+case must preserve the original fact, applied fallback rule, source, confidence,
+cost impact and final resolution. Accepted resolutions must improve the shared
+resolver or deterministic policy for subsequent estimates.
+
+P0 NEXT AFTER ESTIMATION RUNTIME STABILITY, 3.15.11 Israel Price List taxonomy
+and pricing-identity normalization: formalize every material family using its
+own price-bearing attributes instead of flattening catalog names into generic
+family, construction and thickness classes. Preserve category and subcategory
+boundaries; explicitly model product class, performance class, construction or
+facing, number of faced sides, grade, form, dimensions, thickness and other
+family-specific attributes where they affect compatibility or price. Begin with
+an MDF/HDF pilot covering standard, moisture-resistant, fire-retardant, raw,
+PET-faced, acrylic-faced, lacquered, veneer-faced and HPL-faced boards. Prove
+that incompatible subcategories cannot share a pricing identity, then extend
+the verified method family by family across the Israel Price List. This task is
+high priority because incorrect identity aggregation can materially distort
+self cost, but it must not delay the current objective of completing every
+Estimation object without runtime failure.
+
+PENDING QUALITY FOLLOW-UP, 3.15.12 Coatings and consumables separation: keep
+routine shop consumables under the existing percentage policy, but do not hide
+paint, lacquer, powder coating or another material coating inside that
+allowance. When a finish is required, represent its coating system and
+application basis explicitly. Define family-specific consumption, coverage,
+waste, coat-count and purchase-unit conversions before accepting coating cost
+quality. The observed production cycle proves that a generic percentage or an
+unexplained square-metre material row is not sufficient acceptance evidence.
+
+PENDING QUALITY FOLLOW-UP, 3.15.13 Labor Engine review: later inspect the
+engine's operation coverage, physical drivers, routing, formulas, baselines,
+company-rate selection, aggregation and displayed totals across metal, wood
+and mixed objects. Do not retain the current production cycle, any stated hour
+range or any canonical object as a benchmark. This is a fresh functional and
+quality review of the universal Labor Engine, not calibration to one object.
+
+PENDING, 3.15.14 Active RFQ cancellation and Project finalization: an RFQ
+estimation is one explicit user cycle. Continue to Objects starts it once and
+it must continue across Upload, Profile, File Review, Objects and Object Detail
+navigation until it reaches client PDF generation. Starting a different file
+from Upload is the sole cancellation boundary for an unfinished cycle: cancel
+the running or queued job, prevent further provider calls and publication for
+the superseded run, and retain an auditable cancelled outcome without creating
+a Project. A successfully generated client PDF finalizes the contract, creates
+the durable Project record for the future Projects screen, and becomes the
+entry point for later recalculation. Acceptance must cover queued and running
+jobs, repeated navigation, a new upload during each job phase, no orphan
+provider work, no Project before PDF, and reopening a finalized Project.
+
+ACTIVE, 3.15.8 Estimation v2 replacement: start from the bounded extraction and
+deterministic composition contract in
+`notes/ESTIMATION_V2_CONTRACT_3_15_8.md`. Material-resolution checkpoint:
+`notes/ESTIMATION_V2_MATERIAL_RESOLUTION_CHECKPOINT_2026_09_30.md`. The legacy Estimation Agent is not an
+architectural input. Preserve only accepted product boundaries: asynchronous
+File Review to Objects routing, independently reviewable objects, editable
+Object Detail, source-derived preview, deterministic self cost, temporary
+`self cost + 30%` selling-price suggestion, and project-level 3% delivery plus
+10% installation suggestions. First checkpoint: approve the Detection handoff,
+reason-code and status enums, then implement frozen fixtures E01-E16 before SQL
+or runtime replacement.
+
+Current runtime-stability acceptance for 3.15.8: normalize model-authored
+purchased-component labels such as `Glass door panel` and `Drawer runner` into
+stable identifiers before contract validation, retain the original semantic
+meaning, and keep validation and publication isolated per object. A price or
+resolver-quality warning may produce an editable provisional estimate, but it
+must not fail another object or abort the page batch. Verify with the two known
+production failure payloads, the focused facts/publisher tests, the full suite,
+and one production File Review to Objects cycle in which every non-ignored
+object reaches editable Object Detail without a runtime `failed` state.
+Domain uncertainty, malformed optional model values, missing dimensions,
+missing catalog matches, unavailable exact rates and unsupported optional
+features must never become a terminal object failure. Normalize or omit invalid
+optional values, apply the closest bounded deterministic approximation, continue
+with all remaining sections, and persist every assumption in Object Facts
+review items, cost-line reason codes and line-level `raw_agent_json`. Reserve
+terminal `failed` only for a technical inability to execute or persist the
+cycle, such as unavailable source evidence, provider failure without parseable
+output, database failure or a corrupt mandatory handoff identity.
+
+Owner-approved Pricing Policy contract, implemented in 3.15.17: nine
+company-level settings live in the Profile Pricing section. They are VAT,
+warranty reserve, management buffer, consumables at 5% of primary material
+cost, packaging at 1% of primary material cost, paint consumables at 10% of
+explicit coating material cost, default selling-price markup at 30% over self
+cost, delivery at 3% of the project objects' selling-price subtotal, and
+installation at 10% of the same selling-price subtotal. Consumables and
+packaging are locked final rows in
+every object's Materials section. Small routine consumables such as common adhesive,
+screws, dowels and abrasives, plus wrapping and other packing materials, must be
+represented by these formulas, not separately priced catalog rows. A specifically identified, materially
+significant product remains an explicit material to avoid hiding real cost.
+Do not double-count an explicit material inside the 5% allowance. Store and
+calculate self cost excluding VAT, then apply VAT through the existing tax
+calculation; displayed VAT-inclusive amounts preserve the same 5% ratio. Paint
+consumables remain zero when no explicit wood- or metal-coating material exists.
+
+Within 3.15.8, sheet-material thickness normalization is owner-approved: keep
+the resolved family and construction, use an exact available thickness when it
+exists, otherwise select the next greater available price thickness, and use
+the nearest lower thickness only when no greater option exists. Never create a
+synthetic thickness and never ask the company user to choose. This rule is
+limited to sheet price classes. Equivalent normalization for profiles, solid
+stock, fasteners and other non-sheet materials is pending design. P0 catalog
+follow-up: audit `reference_material_pricing_identity_members`; production
+currently contains incompatible links such as Standard MDF raw 22 mm pointing
+to an HDF raw 22 mm price identity. Runtime resolution must reject a membership
+whose material family conflicts with the extracted family.
+
+P0 BACKLOG WITHIN 3.15.8, resolver policy audit: inspect every Estimation and
+Price Source resolution rule before treating its output as a verified price.
+For each material family, define the identity attributes that must keep matching
+inside the same material form and category, the permitted unit conversions,
+rounding or nearest-available rules, and the evidence retained in diagnostics.
+Remove or explicitly replace generic fixed-price material fallbacks such as the
+current `m = ILS 25`, `m2 = ILS 100`, `kg = ILS 50`, `sheet = ILS 25` and
+`lot = ILS 75`; they are not catalog evidence and must not be presented as a
+resolved market price. Concrete production defect: a carbon-steel 20 x 20 mm
+square hollow profile without wall thickness matched 42 carbon-steel price
+identities because their price attributes retain only `material_family` and an
+opaque `detail_material_id`, so square tube, sheet, plate, bar, channel and
+other forms received equal resolver scores. The later generic `m = ILS 25`
+fallback produced the inflated price. Owner-approved profile rule: for furniture
+hollow profiles with wall thickness absent, use 1.5 mm; parse the stated section
+dimensions, keep resolution within the same square, rectangular or round profile
+form, and calculate length price through the matched profile price or a supported
+weight conversion. Log the default and conversion rather than opening a customer
+review or crossing into another material form. Audit the generated pricing
+identity data because the required form and grade facts currently exist in the
+reference material name/global canonical id but are absent from `price_attributes`.
+
+PENDING AT CHECKPOINT, 3.15.7 Labor reference-model foundation: checkpoint
+recorded in
 `notes/LABOR_FOUNDATION_3_15_7_CHECKPOINT_2026_09_30.md`. Time baselines,
 roles, drivers, source links, confidence markers, material-specific metal
-routes, formulas, construction templates, crew rules, golden scenarios, and
-the Labor Engine contract are prepared. Deterministic implementation is active:
-five templates are implemented and 40 targeted tests pass. Next: complete the
-remaining approved templates, batch aggregation and all ten golden scenarios.
-The Estimation Agent replacement remains a later task. Full continuation is in
+routes, formulas, universal operation drivers, crew rules, acceptance scenarios, and
+the Labor Engine contract are prepared. The checkpoint includes deterministic
+implementation:
+the operation-based engine is implemented and 40 targeted tests pass. Remaining
+work is production validation, batch aggregation and real-document scenarios.
+Estimation v2 is now the active task by owner direction. Full Labor
+continuation is in
 `notes/MATERIALS_LABOR_NEXT_CHAT_HANDOFF_2026_09_30.md`. This priority does not
 cancel 3.15.4 through 3.15.6; they remain pending at their recorded checkpoints.
 
@@ -108,10 +277,11 @@ cause from the local screenshot alone.
   recall, automatic links, review routes, latency, and immutable audit together.
 
 - 3.15.3 Material Resolution Core: completed, P0. The deterministic candidate
-  resolves exact supplier SKU, company alias, market alias, hard attributes,
-  then a maximum-five shortlist. The production read-only benchmark returned
-  797/797 correct unique alias matches and 201/201 correct unique supplier-SKU
-  matches, with zero false resolutions across five collision keys. The additive
+  resolves company alias, market alias, hard attributes, then a maximum-five
+  shortlist. The production read-only benchmark returned 797/797 correct unique
+  alias matches, with zero false resolutions across five collision keys.
+  Supplier SKU is source provenance only and cannot resolve, rank, or
+  disambiguate identity. The additive
   schema migration is applied to production. The active resolver is
   `material_identity_v1`; all four protected tables were verified through the
   service role before 3.15.4 began.
@@ -163,7 +333,7 @@ cause from the local screenshot alone.
   (1) define the shared reference, company, source-offer, and identity-candidate
   cards; (2) unify category, specification, unit, alias, scope, provenance, and
   confidence vocabularies; (3) add the candidate lifecycle and immutable review
-  audit; (4) route Price Source through exact SKU, company alias, Israel alias,
+  audit; (4) route Price Source through company alias, Israel alias,
   hard filters, and a maximum-five shortlist; (5) link matched company items to
   `reference_material_id` while keeping unmatched usable items private; (6) add
   a separate eligibility gate for anonymized market observations; (7) make

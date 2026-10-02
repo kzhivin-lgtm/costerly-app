@@ -85,6 +85,7 @@ management remain self-cost overhead. Default markup applies to object self
 cost excluding VAT. Delivery and installation apply to the objects' sale-price
 subtotal, then VAT applies to the resulting project price. A user's persisted
 object or project price override remains authoritative over a later suggestion.
+This contract was implemented in 3.15.17 by commits `053c66d` and `89dbde2`.
 Labor Costs stores owner-only worker compensation in `company_employees`, never
 in the Estimation `labor` catalog. The first contract uses one informal Worker
 name, controlled Department and Position values, and either Avg Monthly Bruto or
@@ -120,6 +121,7 @@ within the current Streamlit session. The first Machinery render reads the
 persisted machinery, suppliers, and services once; later draft reruns reuse that
 snapshot. Save writes only changed routes, refreshes the snapshot after success,
 and keeps the draft available when validation or persistence fails.
+This contract was implemented in 3.15.18 by commit `722b6c6`.
 The `2026_09_24_machinery_foundation.sql` migration was applied to the live
 Supabase schema on 24.09. The seeded catalog contains 26 active capabilities;
 company-specific Machinery tables begin empty. Anonymous access is revoked.
