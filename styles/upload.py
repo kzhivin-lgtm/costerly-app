@@ -36,7 +36,7 @@ def apply_upload_css() -> None:
         }
 
         .stApp:has(.upload-screen-active) .st-key-costerly_header_controls {
-            position: fixed !important;
+            position: static !important;
             top: auto !important;
             right: auto !important;
             width: fit-content !important;

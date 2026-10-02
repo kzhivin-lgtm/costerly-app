@@ -1120,7 +1120,6 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert "width: fit-content !important;" in css
     assert "max-width: calc(100vw - 32px);" in css
     assert "margin: 48px auto 32px !important;" in css
-    assert ".stApp:has(.upload-screen-active) .st-key-costerly_header_controls {\n            position: fixed !important;" in css
     assert "margin-top: 23px;" in css
     assert "left: 50vw;" in css
     assert "width: 100vw !important;" in css
