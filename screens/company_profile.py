@@ -650,6 +650,11 @@ def _render_owner_machinery(
     services: list[dict],
     supplier_names: dict[str, str],
 ) -> None:
+    draft_state_key = f"company_machinery_draft:{access.company_id}"
+    stored_drafts = st.session_state.get(draft_state_key)
+    if not isinstance(stored_drafts, dict):
+        stored_drafts = {}
+    drafts: list[dict[str, object]] = []
     for industry, title in INDUSTRY_LABELS.items():
         with st.container(key=f"company_machinery_group_{industry}", border=True):
             st.markdown(
@@ -663,7 +668,20 @@ def _render_owner_machinery(
             for spec in (
                 item for item in PROFILE_MACHINE_SPECS if item.industry == industry
             ):
-                saved = machine_rows.get(spec.code, {})
+                persisted = machine_rows.get(spec.code, {})
+                persisted_status = str(persisted.get("availability_status") or "")
+                stored_draft = stored_drafts.get(spec.code)
+                saved = dict(persisted)
+                if isinstance(stored_draft, dict):
+                    draft_availability = str(stored_draft.get("availability") or "Not answered")
+                    saved["availability_status"] = {
+                        "Yes": "in_house", "No": "not_in_house",
+                    }.get(draft_availability, "")
+                    saved["capabilities"] = dict(stored_draft.get("capabilities") or {})
+                    saved["pricing_method"] = str(stored_draft.get("pricing_method") or "unknown")
+                    saved["pricing"] = dict(stored_draft.get("pricing") or {})
+                    if stored_draft.get("estimate_level") is not None:
+                        saved["pricing"][CNC_ESTIMATE_LEVEL_KEY] = stored_draft.get("estimate_level")
                 saved_status = str(saved.get("availability_status") or "")
                 initial = {
                     "in_house": "Yes",
@@ -673,8 +691,6 @@ def _render_owner_machinery(
                 detail_open_key = f"{row_key}_detail_open"
                 previous_availability_key = f"{row_key}_previous_availability"
                 availability_widget_key = f"{row_key}_availability"
-                availability_reset_key = f"{row_key}_availability_reset"
-                availability_error_key = f"{row_key}_availability_error"
                 availability_only = (
                     not spec.fields
                     and spec.code not in PROFILE_COSTING_MACHINE_CODES
@@ -684,10 +700,6 @@ def _render_owner_machinery(
                     st.session_state[detail_open_key] = False
                 if previous_availability_key not in st.session_state:
                     st.session_state[previous_availability_key] = initial
-                if availability_reset_key in st.session_state:
-                    st.session_state[availability_widget_key] = st.session_state.pop(
-                        availability_reset_key
-                    )
                 with st.container(key=f"{row_key}_row"):
                     name_column, answer_column, toggle_column = st.columns(
                         [1.45, 1, 0.13], gap="small"
@@ -745,51 +757,38 @@ def _render_owner_machinery(
                             st.session_state[detail_open_key] = not st.session_state[
                                 detail_open_key
                             ]
-                if availability_error_key in st.session_state:
-                    st.error(st.session_state.pop(availability_error_key))
-                save_availability_directly = (
-                    availability_only
-                    or (
-                        availability == "No"
-                        and spec.code not in SUBCONTRACTOR_MACHINE_CODES
-                    )
-                )
-                if save_availability_directly and availability_changed:
-                    previous_availability = st.session_state[previous_availability_key]
-                    try:
-                        if availability == "Not answered":
-                            deactivate_company_machinery(
-                                access,
-                                machine_code=spec.code,
-                            )
-                        else:
-                            save_company_machinery(
-                                access,
-                                machine_code=spec.code,
-                                availability_status=(
-                                    "in_house" if availability == "Yes"
-                                    else "not_in_house"
-                                ),
-                                accepts_external_work=False,
-                            )
-                        deactivate_supplier_services(access, machine_code=spec.code)
-                        st.session_state[previous_availability_key] = availability
-                        st.rerun()
-                    except (MachineryError, PermissionError) as exc:
-                        st.session_state[availability_reset_key] = previous_availability
-                        st.session_state[availability_error_key] = str(exc)
-                        st.rerun()
-                    except Exception:
-                        st.session_state[availability_reset_key] = previous_availability
-                        st.session_state[availability_error_key] = (
-                            "Machinery settings could not be saved. Try again"
-                        )
-                        st.rerun()
                 if availability_changed:
                     st.session_state[detail_open_key] = (
                         availability != "Not answered"
                     )
                     st.session_state[previous_availability_key] = availability
+                matching_services = [
+                    service for service in services
+                    if service.get("machine_code") == spec.code
+                ]
+                current_supplier_name = (
+                    supplier_names.get(str(matching_services[0].get("supplier_id")), "")
+                    if matching_services else ""
+                )
+                if isinstance(stored_draft, dict):
+                    current_supplier_name = str(
+                        stored_draft.get("subcontractor_name") or ""
+                    )
+                draft = {
+                    "machine_code": spec.code,
+                    "availability": availability,
+                    "saved_status": persisted_status,
+                    "capabilities": dict(saved.get("capabilities") or {}),
+                    "pricing_method": str(saved.get("pricing_method") or "unknown"),
+                    "pricing": dict(saved.get("pricing") or {}),
+                    "estimate_level": (
+                        (saved.get("pricing") or {}).get(CNC_ESTIMATE_LEVEL_KEY)
+                        if spec.code == "wood_cnc_router" else None
+                    ),
+                    "subcontractor_name": current_supplier_name,
+                    "original_supplier_name": current_supplier_name,
+                    "confirm_change": saved_status != "in_house" or availability != "No",
+                }
                 if (
                     availability_only
                     or (
@@ -797,11 +796,13 @@ def _render_owner_machinery(
                         and spec.code not in SUBCONTRACTOR_MACHINE_CODES
                     )
                 ):
+                    drafts.append(draft)
                     continue
                 if (
                     availability == "Not answered"
                     or not st.session_state[detail_open_key]
                 ):
+                    drafts.append(draft)
                     continue
 
                 with st.container(key=f"{row_key}_detail"):
@@ -928,21 +929,16 @@ def _render_owner_machinery(
                                     method_column=detail_row[2],
                                 )
                     else:
-                        matching_services = [
-                            service for service in services
-                            if service.get("machine_code") == spec.code
-                        ]
-                        current_supplier_name = (
-                            supplier_names.get(
-                                str(matching_services[0].get("supplier_id")), ""
-                            ) if matching_services else ""
-                        )
                         detail_columns = st.columns(3)
                         if saved_status == "in_house":
                             with detail_columns[0]:
                                 confirm_change = st.checkbox(
                                     "Confirm this is no longer in-house",
                                     key=f"{row_key}_confirm_change",
+                                    value=bool(
+                                        isinstance(stored_draft, dict)
+                                        and stored_draft.get("confirm_change")
+                                    ),
                                 )
                             supplier_column = detail_columns[1]
                         else:
@@ -1002,63 +998,120 @@ def _render_owner_machinery(
                                 route="not_in_house",
                                 column=detail_columns[1],
                             )
-                    submitted = st.button(
-                        "Save",
-                        key=f"{row_key}_save",
-                        use_container_width=True,
-                    )
-                if not submitted:
+                draft.update({
+                    "capabilities": capabilities,
+                    "pricing_method": pricing_method,
+                    "pricing": pricing,
+                    "estimate_level": estimate_level,
+                    "subcontractor_name": subcontractor_name,
+                    "confirm_change": confirm_change,
+                })
+                drafts.append(draft)
+
+    st.session_state[draft_state_key] = {
+        str(draft["machine_code"]): dict(draft) for draft in drafts
+    }
+    if not st.button(
+        "Save",
+        key="company_machinery_save_all",
+        type="primary",
+        use_container_width=True,
+    ):
+        return
+    try:
+        for draft in drafts:
+            machine_code = str(draft["machine_code"])
+            availability = str(draft["availability"])
+            if (
+                draft.get("saved_status") == "in_house"
+                and availability == "No"
+                and not draft.get("confirm_change")
+            ):
+                raise MachineryError(
+                    "Confirm that this capability is no longer available in-house"
+                )
+            if availability == "Not answered":
+                if not draft.get("saved_status"):
                     continue
-                try:
-                    if saved_status == "in_house" and availability == "No" and not confirm_change:
-                        raise MachineryError(
-                            "Confirm that this capability is no longer available in-house"
-                        )
-                    status = "in_house" if availability == "Yes" else "not_in_house"
-                    supplier_id = ""
-                    if status == "not_in_house" and subcontractor_name.strip():
-                        supplier = create_or_get_supplier(access, subcontractor_name)
-                        supplier_id = str(supplier["supplier_id"])
-                    save_company_machinery(
-                        access,
-                        machine_code=spec.code,
-                        availability_status=status,
-                        capabilities=capabilities,
-                        pricing_method=pricing_method,
-                        pricing=pricing,
-                        accepts_external_work=False,
-                        estimate_level=estimate_level,
+                deactivate_company_machinery(access, machine_code=machine_code)
+                deactivate_supplier_services(access, machine_code=machine_code)
+                continue
+            status = "in_house" if availability == "Yes" else "not_in_house"
+            desired_pricing = dict(draft.get("pricing") or {})
+            if draft.get("estimate_level") is not None:
+                desired_pricing[CNC_ESTIMATE_LEVEL_KEY] = draft.get("estimate_level")
+            if status == draft.get("saved_status"):
+                if status == "in_house" and (
+                    dict(draft.get("capabilities") or {})
+                    == dict(machine_rows.get(machine_code, {}).get("capabilities") or {})
+                    and str(draft.get("pricing_method") or "unknown")
+                    == str(machine_rows.get(machine_code, {}).get("pricing_method") or "unknown")
+                    and desired_pricing
+                    == dict(machine_rows.get(machine_code, {}).get("pricing") or {})
+                ):
+                    continue
+                if status == "not_in_house" and (
+                    str(draft.get("subcontractor_name") or "").strip()
+                    == str(draft.get("original_supplier_name") or "").strip()
+                    and draft.get("estimate_level")
+                    == (machine_rows.get(machine_code, {}).get("pricing") or {}).get(
+                        CNC_ESTIMATE_LEVEL_KEY
                     )
-                    deactivate_supplier_services(access, machine_code=spec.code)
-                    if status == "not_in_house" and supplier_id:
-                        save_supplier_service(
-                            access,
-                            supplier_id=supplier_id,
-                            machine_code=spec.code,
-                            pricing_method="quote_only",
-                        )
-                    st.session_state[detail_open_key] = False
-                    st.session_state[previous_availability_key] = availability
-                    st.success("Saved")
-                    st.rerun(scope="fragment")
-                except (MachineryError, PermissionError) as exc:
-                    st.error(str(exc))
-                except Exception:
-                    st.error(
-                        "Machinery settings could not be saved. Check the values and try again"
-                    )
+                ):
+                    continue
+            supplier_id = ""
+            subcontractor_name = str(draft.get("subcontractor_name") or "").strip()
+            if status == "not_in_house" and subcontractor_name:
+                supplier = create_or_get_supplier(access, subcontractor_name)
+                supplier_id = str(supplier["supplier_id"])
+            save_company_machinery(
+                access,
+                machine_code=machine_code,
+                availability_status=status,
+                capabilities=dict(draft.get("capabilities") or {}),
+                pricing_method=str(draft.get("pricing_method") or "unknown"),
+                pricing=dict(draft.get("pricing") or {}),
+                accepts_external_work=False,
+                estimate_level=draft.get("estimate_level"),
+            )
+            deactivate_supplier_services(access, machine_code=machine_code)
+            if status == "not_in_house" and supplier_id:
+                save_supplier_service(
+                    access,
+                    supplier_id=supplier_id,
+                    machine_code=machine_code,
+                    pricing_method="quote_only",
+                )
+        st.session_state.pop(f"company_machinery_snapshot:{access.company_id}", None)
+        st.session_state.pop(draft_state_key, None)
+        st.success("Machinery saved")
+        st.rerun(scope="fragment")
+    except (MachineryError, PermissionError) as exc:
+        st.error(str(exc))
+    except Exception:
+        logger.exception("Company machinery batch save failed")
+        st.error("Machinery settings could not be saved. Check the values and try again")
 
 
 @st.fragment
 def _render_machinery(access: CompanyAccess) -> None:
     st.markdown('<div class="company-machinery-active"></div>', unsafe_allow_html=True)
-    try:
-        rows = list_company_machinery(access)
-        suppliers = list_company_suppliers(access)
-        services = list_supplier_services(access)
-    except Exception:
-        st.error("Machinery settings are unavailable right now. Try again after the database update")
-        return
+    snapshot_key = f"company_machinery_snapshot:{access.company_id}"
+    snapshot = st.session_state.get(snapshot_key)
+    if not isinstance(snapshot, dict):
+        try:
+            snapshot = {
+                "rows": list_company_machinery(access),
+                "suppliers": list_company_suppliers(access),
+                "services": list_supplier_services(access),
+            }
+            st.session_state[snapshot_key] = snapshot
+        except Exception:
+            st.error("Machinery settings are unavailable right now. Try again after the database update")
+            return
+    rows = list(snapshot.get("rows") or [])
+    suppliers = list(snapshot.get("suppliers") or [])
+    services = list(snapshot.get("services") or [])
     machine_rows = {str(row.get("machine_code")): row for row in rows}
     supplier_names = {str(row.get("supplier_id")): str(row.get("supplier_name") or "Supplier") for row in suppliers}
     if access.role != "owner":

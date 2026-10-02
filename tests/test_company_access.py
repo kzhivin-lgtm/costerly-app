@@ -1310,12 +1310,46 @@ def test_machinery_tab_empty_state_is_role_safe(monkeypatch, role):
         groups = app.get("button_group")
         assert len(groups) == len(company_profile.PROFILE_MACHINE_SPECS)
         assert all(item.value == "Not answered" for item in groups)
-        assert not any(button.label == "Save" for button in app.button)
+        assert any(button.label == "Save" for button in app.button)
     else:
         assert "Machinery has not been configured yet" in " ".join(
             item.value for item in app.info
         )
         assert not any(button.label == "Save" for button in app.button)
+
+
+def test_machinery_draft_persists_across_tabs_without_database_writes(monkeypatch):
+    reads = {"machinery": 0, "suppliers": 0, "services": 0}
+    writes = []
+
+    def read(key):
+        reads[key] += 1
+        return []
+
+    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: read("machinery"))
+    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: read("suppliers"))
+    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: read("services"))
+    monkeypatch.setattr(company_profile, "save_company_machinery", lambda *_args, **kwargs: writes.append(kwargs))
+    monkeypatch.setattr(company_profile, "load_company_metrics", lambda _access: ({"vat_percent": 18}, {}))
+
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+    app.get("button_group")[1].set_value("Yes")
+    app.run()
+
+    assert writes == []
+    assert reads == {"machinery": 1, "suppliers": 1, "services": 1}
+
+    app.session_state["company_profile_tab"] = "Pricing"
+    app.run()
+    app.session_state["company_profile_tab"] = "Machinery"
+    app.run()
+
+    assert app.get("button_group")[1].value == "Yes"
+    assert writes == []
+    assert reads == {"machinery": 1, "suppliers": 1, "services": 1}
 
 
 def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch):
@@ -2176,7 +2210,7 @@ def test_saved_machinery_row_is_collapsed_with_summary_and_can_reopen(monkeypatc
     app.session_state["company_profile_tab"] = "Machinery"
     app.run()
 
-    assert not any(button.label == "Save" for button in app.button)
+    assert any(button.label == "Save" for button in app.button)
     markup = " ".join(item.value for item in app.markdown)
     assert "In-house · 2.5 × 1.3 m" in markup
 
@@ -2217,7 +2251,8 @@ def test_internal_support_capability_does_not_ask_for_subcontractor(monkeypatch)
     assert "Regular subcontractor (optional)" not in [
         field.label for field in app.text_input
     ]
-    assert not any(button.label == "Save" for button in app.button)
+    next(button for button in app.button if button.label == "Save").click()
+    app.run()
     assert saved_rows[-1]["machine_code"] == "wood_solid_preparation"
     assert saved_rows[-1]["availability_status"] == "not_in_house"
 
@@ -2245,7 +2280,8 @@ def test_detailed_internal_capability_saves_no_without_details(monkeypatch):
     app.get("button_group")[3].set_value("No")
     app.run()
 
-    assert not any(button.label == "Save" for button in app.button)
+    next(button for button in app.button if button.label == "Save").click()
+    app.run()
     assert not any(button.label in {"⌄", "⌃"} for button in app.button)
     assert saved_rows[-1]["machine_code"] == "wood_veneer_press"
     assert saved_rows[-1]["availability_status"] == "not_in_house"
@@ -2308,7 +2344,8 @@ def test_availability_only_machine_asks_no_detail_questions(monkeypatch):
     app.get("button_group")[1].set_value("Yes")
     app.run()
 
-    assert not any(button.label == "Save" for button in app.button)
+    next(button for button in app.button if button.label == "Save").click()
+    app.run()
     assert not app.text_input
     assert not app.selectbox
     assert not app.checkbox
