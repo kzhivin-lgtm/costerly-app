@@ -7,7 +7,10 @@ import streamlit as st
 
 from config import get_optional_secret
 from styles.objects import apply_objects_css
-from ui.js_guards import install_objects_price_input_guard
+from ui.js_guards import (
+    install_objects_price_input_guard,
+    install_workflow_header_alignment_guard,
+)
 from ui import objects_pricing
 from ui.layout import render_post_upload_header
 from ui.screen_transition import (
@@ -300,6 +303,7 @@ def render_objects_screen(company_id: str) -> None:
     data = _data_with_progress(screen_state.data, estimate_id)
     _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id)
     _render_objects_actions()
+    install_workflow_header_alignment_guard()
 
     supabase_url, supabase_anon_key, supabase_access_token = _objects_price_input_config()
     _install_objects_price_input_runtime(
