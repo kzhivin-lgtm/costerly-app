@@ -57,6 +57,14 @@ exception. It does not weaken the protected workflow transitions.
   auth-CSS readiness, timeout clearing, telemetry source, and immediate reveal.
 - Owner accepted the live production result.
 
+## Recovery archive
+
+Backup `v3.15.15_sign_out_transition_production_checkpoint` was created after
+the documentation and regression-test commit. Archive:
+`backups/v3.15.15_sign_out_transition_production_checkpoint/costerly-app_v3.15.15_sign_out_transition_production_checkpoint_2026-10-02.zip`.
+It is 3,430,572 bytes with SHA-256
+`9ac4b1f3f41cd04b225cb6e22494747f134916575ea4d363128324edf52fe867`.
+
 ## Protected behavior
 
 - Login is never revealed merely because its DOM exists. Its auth computed-style
