@@ -37,7 +37,6 @@ def install_workflow_header_alignment_guard() -> None:
                 frameId = null;
                 const { title, actions } = targets();
                 if (!title || !actions) return;
-                if (actions.dataset.costerlyHeaderPinned === "true") return;
 
                 if (actions !== currentActions || actions.style.transform !== appliedTransform) {
                     currentActions = actions;
@@ -98,84 +97,6 @@ def install_workflow_header_alignment_guard() -> None:
         height=0,
         width=0,
     )
-
-
-def install_service_header_scroll_guard() -> None:
-    """Pin service actions only while a service screen is scrolled."""
-    with st.sidebar:
-        components.html(
-            """
-            <script>
-            (() => {
-                const parentWindow = window.parent;
-                const parentDoc = parentWindow.document;
-                const CLEANUP_KEY = "__costerlyServiceHeaderScrollCleanup";
-                const SERVICE_SCREENS = new Set([
-                    "file_review", "objects", "object_detail",
-                ]);
-
-                if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
-
-                let frameId = null;
-
-                function activeScreen() {
-                    return String(
-                        parentDoc.querySelector("[data-costerly-screen]")?.dataset
-                            .costerlyScreen || ""
-                    );
-                }
-
-                function scrollOffset() {
-                    return Math.max(
-                        parentWindow.scrollY || 0,
-                        parentDoc.documentElement.scrollTop || 0,
-                        parentDoc.body.scrollTop || 0,
-                    );
-                }
-
-                function update() {
-                    frameId = null;
-                    const actions = parentDoc.querySelector(
-                        ".st-key-costerly_header_controls"
-                    );
-                    if (!actions) return;
-                    const pinned = SERVICE_SCREENS.has(activeScreen()) && scrollOffset() > 0;
-                    if (pinned) {
-                        actions.dataset.costerlyHeaderPinned = "true";
-                        return;
-                    }
-                    if (actions.dataset.costerlyHeaderPinned === "true") {
-                        delete actions.dataset.costerlyHeaderPinned;
-                        parentWindow.dispatchEvent(new parentWindow.Event("resize"));
-                    }
-                }
-
-                function scheduleUpdate() {
-                    if (frameId !== null) return;
-                    frameId = parentWindow.requestAnimationFrame(update);
-                }
-
-                parentWindow.addEventListener("scroll", scheduleUpdate, {passive: true});
-                parentDoc.addEventListener("scroll", scheduleUpdate, {
-                    capture: true,
-                    passive: true,
-                });
-                parentWindow.addEventListener("resize", scheduleUpdate, {passive: true});
-                scheduleUpdate();
-
-                parentWindow[CLEANUP_KEY] = () => {
-                    if (frameId !== null) parentWindow.cancelAnimationFrame(frameId);
-                    parentWindow.removeEventListener("scroll", scheduleUpdate);
-                    parentDoc.removeEventListener("scroll", scheduleUpdate, true);
-                    parentWindow.removeEventListener("resize", scheduleUpdate);
-                    parentWindow[CLEANUP_KEY] = null;
-                };
-            })();
-            </script>
-            """,
-            height=0,
-            width=0,
-        )
 
 
 def install_company_metrics_input_guard() -> None:

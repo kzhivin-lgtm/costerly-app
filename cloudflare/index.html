@@ -185,7 +185,6 @@
           "back_to_upload",
           "new_estimate",
           "last_estimate",
-          "sign_in",
         ]);
         const startupPhases = new Set([
           "auth_component_script",
@@ -364,46 +363,6 @@
             mark("browser.internal_transition_timeout", {status: "timeout"});
             persistTimeline();
           }
-        }
-
-        function signInTargetStyled(screen) {
-          const controls = document.querySelector(".st-key-costerly_header_controls");
-          const controlsReady = Boolean(
-            controls && controls.querySelectorAll("button").length >= 2
-          );
-          if (screen === "upload") {
-            const hero = document.querySelector(".upload-screen__hero");
-            const dropzone = document.querySelector(
-              'section[data-testid="stFileUploaderDropzone"]'
-            );
-            if (!hero || !dropzone || !controlsReady) return false;
-            const dropzoneStyle = window.getComputedStyle(dropzone);
-            return dropzoneStyle.borderTopLeftRadius === "20px" &&
-              dropzoneStyle.display === "flex";
-          }
-          if (screen === "account") {
-            const heading = document.querySelector(".company-profile-heading");
-            const tabs = document.querySelector(
-              '.st-key-company_profile_tab [role="tablist"]'
-            );
-            if (!heading || !tabs || !controlsReady) return false;
-            const headingStyle = window.getComputedStyle(heading);
-            const tabsStyle = window.getComputedStyle(tabs);
-            return headingStyle.display === "flex" &&
-              headingStyle.minHeight === "56px" &&
-              tabsStyle.borderTopLeftRadius === "14px";
-          }
-          if (screen === "company_setup") {
-            const marker = document.querySelector(".auth-screen-active");
-            const brand = document.querySelector(".auth-brand");
-            const form = document.querySelector('div[data-testid="stForm"]');
-            if (!marker || !brand || !form) return false;
-            const style = window.getComputedStyle(form);
-            return style.borderTopLeftRadius === "20px" &&
-              style.paddingTop === "30px" &&
-              style.paddingRight === "30px";
-          }
-          return false;
         }
 
         mark("browser.wrapper_start", {metadata: navigationMetadata()});
@@ -661,10 +620,7 @@
                   pendingTransition.name === "profile_to_sign_out" ||
                   pendingTransition.name === "upload_to_sign_out"
                 );
-              const signInTargetReady =
-                pendingTransition.name === "sign_in" && signInTargetStyled(screen);
-              const signInFailed = pendingTransition.name === "sign_in" && failedSignIn;
-              if (loginTargetReady || signInTargetReady || signInFailed) {
+              if (loginTargetReady) {
                 pendingTransitions.splice(transitionIndex, 1);
                 window.clearTimeout(pendingTransition.timeoutId);
                 mark("browser.transition_styled", {
@@ -672,16 +628,10 @@
                   metadata: {
                     transition: pendingTransition.name,
                     transition_id: pendingTransition.id,
-                    source: loginTargetReady || signInTargetReady
-                      ? "target_app_ready"
-                      : "sign_in_error",
+                    source: "target_app_ready",
                   },
                 });
-                revealInternalTransition(
-                  loginTargetReady || signInTargetReady
-                    ? "target_app_ready"
-                    : "sign_in_error"
-                );
+                revealInternalTransition("target_app_ready");
               } else if (!maskedInternalTransitions.has(pendingTransition.name)) {
                 pendingTransitions.splice(transitionIndex, 1);
                 window.clearTimeout(pendingTransition.timeoutId);
