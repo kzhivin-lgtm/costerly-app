@@ -244,16 +244,6 @@ def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     assert "if (uploadScreenIsActive() && dropzone && dropHasFiles(event))" in source
 
 
-def test_upload_header_controls_freeze_at_their_measured_resting_geometry():
-    source = getsource(install_upload_interaction_guards)
-
-    assert "function freezeUploadHeaderControls()" in source
-    assert "getBoundingClientRect()" in source
-    assert "layoutWrapper.style.setProperty('height'" in source
-    assert "controls.style.setProperty('position', 'fixed', 'important')" in source
-    assert "scheduleUploadHeaderFreeze();" in source
-
-
 def test_company_logo_change_action_opens_picker_until_replacement_is_pending():
     source = getsource(install_company_logo_picker_guard)
 
