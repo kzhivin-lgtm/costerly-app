@@ -23,8 +23,6 @@ def install_workflow_header_alignment_guard() -> None:
             let actionsObserver = null;
             let mutationObserver = null;
             let currentActions = null;
-            let observedTitle = null;
-            let observedActions = null;
             let appliedOffset = 0;
             let appliedTransform = "";
 
@@ -39,6 +37,7 @@ def install_workflow_header_alignment_guard() -> None:
                 frameId = null;
                 const { title, actions } = targets();
                 if (!title || !actions) return;
+                if (actions.dataset.costerlyHeaderPinned === "true") return;
 
                 if (actions !== currentActions || actions.style.transform !== appliedTransform) {
                     currentActions = actions;
@@ -66,15 +65,6 @@ def install_workflow_header_alignment_guard() -> None:
             function observeTargets() {
                 const { title, actions } = targets();
                 if (!title || !actions) return false;
-
-                if (title === observedTitle && actions === observedActions) {
-                    return true;
-                }
-
-                titleObserver?.disconnect();
-                actionsObserver?.disconnect();
-                observedTitle = title;
-                observedActions = actions;
                 titleObserver = new parentWindow.ResizeObserver(scheduleAlign);
                 actionsObserver = new parentWindow.ResizeObserver(scheduleAlign);
                 titleObserver.observe(title);
@@ -84,11 +74,8 @@ def install_workflow_header_alignment_guard() -> None:
             }
 
             mutationObserver = new parentWindow.MutationObserver(() => {
-                // Streamlit mutates unrelated page content while the user
-                // scrolls. Re-align only when the actual title or controls are
-                // replaced, otherwise the fixed controls would follow the
-                // scrolling title.
-                observeTargets();
+                if (!titleObserver && observeTargets()) return;
+                scheduleAlign();
             });
             mutationObserver.observe(parentDoc.body, { childList: true, subtree: true });
 
@@ -113,63 +100,82 @@ def install_workflow_header_alignment_guard() -> None:
     )
 
 
-def install_service_header_fixed_guard() -> None:
-    """Keep authenticated controls fixed inside Streamlit's real scroll root."""
-    components.html(
-        """
-        <script>
-        (() => {
-            const win = window.parent;
-            const doc = win.document;
-            const KEY = "__costerlyServiceHeaderFixedCleanup";
-            const SCREENS = new Set(["file_review", "objects", "object_detail", "account", "admin"]);
-            if (win[KEY]) win[KEY]();
-            let frame = null;
-            let actions = null;
+def install_service_header_scroll_guard() -> None:
+    """Pin service actions only while a service screen is scrolled."""
+    with st.sidebar:
+        components.html(
+            """
+            <script>
+            (() => {
+                const parentWindow = window.parent;
+                const parentDoc = parentWindow.document;
+                const CLEANUP_KEY = "__costerlyServiceHeaderScrollCleanup";
+                const SERVICE_SCREENS = new Set([
+                    "file_review", "objects", "object_detail",
+                ]);
 
-            function screen() {
-                return String(doc.querySelector("[data-costerly-screen]")?.dataset.costerlyScreen || "");
-            }
-            function scrollTop() {
-                const main = doc.querySelector('section[data-testid="stMain"]');
-                return Math.max(main?.scrollTop || 0, win.scrollY || 0, doc.documentElement.scrollTop || 0);
-            }
-            function update() {
-                frame = null;
-                const next = doc.querySelector(".st-key-costerly_header_controls");
-                if (!next || !SCREENS.has(screen())) return;
-                if (next !== actions) {
-                    actions = next;
-                    actions.style.setProperty("--costerly-controls-rest-top", `${actions.getBoundingClientRect().top}px`);
-                }
-                if (scrollTop() > 0) actions.dataset.costerlyServiceFixed = "true";
-                else {
-                    delete actions.dataset.costerlyServiceFixed;
-                    actions.style.setProperty("--costerly-controls-rest-top", `${actions.getBoundingClientRect().top}px`);
-                }
-            }
-            function schedule() {
-                if (frame === null) frame = win.requestAnimationFrame(update);
-            }
+                if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
-            doc.addEventListener("scroll", schedule, {capture: true, passive: true});
-            win.addEventListener("resize", schedule, {passive: true});
-            const observer = new win.MutationObserver(schedule);
-            observer.observe(doc.body, {childList: true, subtree: true});
-            schedule();
-            win[KEY] = () => {
-                if (frame !== null) win.cancelAnimationFrame(frame);
-                doc.removeEventListener("scroll", schedule, true);
-                win.removeEventListener("resize", schedule);
-                observer.disconnect();
-                win[KEY] = null;
-            };
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
+                let frameId = null;
+
+                function activeScreen() {
+                    return String(
+                        parentDoc.querySelector("[data-costerly-screen]")?.dataset
+                            .costerlyScreen || ""
+                    );
+                }
+
+                function scrollOffset() {
+                    return Math.max(
+                        parentWindow.scrollY || 0,
+                        parentDoc.documentElement.scrollTop || 0,
+                        parentDoc.body.scrollTop || 0,
+                    );
+                }
+
+                function update() {
+                    frameId = null;
+                    const actions = parentDoc.querySelector(
+                        ".st-key-costerly_header_controls"
+                    );
+                    if (!actions) return;
+                    const pinned = SERVICE_SCREENS.has(activeScreen()) && scrollOffset() > 0;
+                    if (pinned) {
+                        actions.dataset.costerlyHeaderPinned = "true";
+                        return;
+                    }
+                    if (actions.dataset.costerlyHeaderPinned === "true") {
+                        delete actions.dataset.costerlyHeaderPinned;
+                        parentWindow.dispatchEvent(new parentWindow.Event("resize"));
+                    }
+                }
+
+                function scheduleUpdate() {
+                    if (frameId !== null) return;
+                    frameId = parentWindow.requestAnimationFrame(update);
+                }
+
+                parentWindow.addEventListener("scroll", scheduleUpdate, {passive: true});
+                parentDoc.addEventListener("scroll", scheduleUpdate, {
+                    capture: true,
+                    passive: true,
+                });
+                parentWindow.addEventListener("resize", scheduleUpdate, {passive: true});
+                scheduleUpdate();
+
+                parentWindow[CLEANUP_KEY] = () => {
+                    if (frameId !== null) parentWindow.cancelAnimationFrame(frameId);
+                    parentWindow.removeEventListener("scroll", scheduleUpdate);
+                    parentDoc.removeEventListener("scroll", scheduleUpdate, true);
+                    parentWindow.removeEventListener("resize", scheduleUpdate);
+                    parentWindow[CLEANUP_KEY] = null;
+                };
+            })();
+            </script>
+            """,
+            height=0,
+            width=0,
+        )
 
 
 def install_company_metrics_input_guard() -> None:

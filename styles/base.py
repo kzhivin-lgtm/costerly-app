@@ -120,6 +120,7 @@ def apply_base_css() -> None:
             --app-header-top: clamp(72px, 10vh, 104px);
             --app-header-width: min(323px, 70vw);
             --app-content-top: clamp(132px, 14vh, 158px);
+            --service-header-sticky-top: 16px;
 
             /* Shared button tokens */
             --button-height-md: 44px;
@@ -283,18 +284,10 @@ def apply_base_css() -> None:
             opacity: 1;
         }
 
-        /* Service screens keep the shared controls at their established
-           viewport position. This also clears a workflow alignment transform
-           when Streamlit reuses the controls node during navigation. */
-        .stApp:has(.company-profile-active) .st-key-costerly_header_controls,
-        .stApp:has(.platform-admin-active) .st-key-costerly_header_controls {
-            position: fixed !important;
-            transform: none !important;
-        }
-
-        .st-key-costerly_header_controls[data-costerly-service-fixed="true"] {
-            position: fixed !important;
-            top: var(--costerly-controls-rest-top) !important;
+        /* Applied only by the service-header scroll guard. Upload keeps its
+           central composition and workflow titles keep their resting axis. */
+        .st-key-costerly_header_controls[data-costerly-header-pinned="true"] {
+            top: var(--service-header-sticky-top) !important;
             transform: none !important;
         }
 
