@@ -6,6 +6,7 @@ import html
 
 import streamlit as st
 
+from state.session import set_screen
 from styles.file_review import apply_file_review_css
 from ui.js_guards import (
     install_post_upload_transition_guard,
@@ -552,23 +553,33 @@ def render_file_review_screen(company_id: str) -> None:
     input_commit_pending = bool(
         st.session_state.pop("file_review_input_commit_pending", False)
     )
-    if (
-        col_back.button("BACK TO UPLOAD", type="secondary", use_container_width=True)
-        and not input_commit_pending
-    ):
-        st.session_state.screen = "upload"
-        st.rerun()
+    if input_commit_pending:
+        col_back.button(
+            "BACK TO UPLOAD",
+            type="secondary",
+            use_container_width=True,
+            disabled=True,
+        )
+    else:
+        col_back.button(
+            "BACK TO UPLOAD",
+            type="secondary",
+            use_container_width=True,
+            on_click=set_screen,
+            args=("upload",),
+        )
 
-    if col_next.button(
+    col_next.button(
         "CONTINUE TO OBJECTS ESTIMATION",
         type="primary",
         use_container_width=True,
-    ):
-        _continue_to_objects_estimation(
-            company_id=company_id,
-            run_id=run_id,
-            objects=data["objects"],
-        )
+        on_click=_continue_to_objects_estimation,
+        kwargs={
+            "company_id": company_id,
+            "run_id": run_id,
+            "objects": data["objects"],
+        },
+    )
 
 
 def _object_edits_snapshot() -> dict[str, dict[str, object]]:
@@ -732,13 +743,11 @@ def _continue_to_objects_estimation(
             create_shell=create_shell,
         )
         if not submitted:
-            st.rerun()
             return
     elif current_estimate_matches_run:
         _mark_objects_estimation_cache_dirty(st.session_state.get("current_estimate_id"))
 
     st.session_state.screen = "objects"
-    st.rerun()
 
 
 def _mark_estimation_batch_started(estimate_id: str) -> None:

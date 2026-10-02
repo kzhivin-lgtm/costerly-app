@@ -144,3 +144,14 @@ def test_widget_navigation_never_adds_a_second_explicit_rerun():
                 violations.append(f"{path.relative_to(root)}:{node.lineno}")
 
     assert violations == []
+
+
+def test_file_review_navigation_uses_widget_callbacks_not_a_second_rerun():
+    source = Path("screens/file_review.py").read_text()
+    continue_source = source.split("def _continue_to_objects_estimation", 1)[1].split(
+        "def _mark_estimation_batch_started", 1
+    )[0]
+
+    assert "on_click=_continue_to_objects_estimation" in source
+    assert "on_click=set_screen" in source
+    assert "st.rerun()" not in continue_source
