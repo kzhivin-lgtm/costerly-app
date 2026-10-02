@@ -283,6 +283,15 @@ def apply_base_css() -> None:
             opacity: 1;
         }
 
+        /* Service screens keep the shared controls at their established
+           viewport position. This also clears a workflow alignment transform
+           when Streamlit reuses the controls node during navigation. */
+        .stApp:has(.company-profile-active) .st-key-costerly_header_controls,
+        .stApp:has(.platform-admin-active) .st-key-costerly_header_controls {
+            position: fixed !important;
+            transform: none !important;
+        }
+
         .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
             width: fit-content !important;
             gap: 6px;

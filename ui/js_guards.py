@@ -23,6 +23,8 @@ def install_workflow_header_alignment_guard() -> None:
             let actionsObserver = null;
             let mutationObserver = null;
             let currentActions = null;
+            let observedTitle = null;
+            let observedActions = null;
             let appliedOffset = 0;
             let appliedTransform = "";
 
@@ -64,6 +66,15 @@ def install_workflow_header_alignment_guard() -> None:
             function observeTargets() {
                 const { title, actions } = targets();
                 if (!title || !actions) return false;
+
+                if (title === observedTitle && actions === observedActions) {
+                    return true;
+                }
+
+                titleObserver?.disconnect();
+                actionsObserver?.disconnect();
+                observedTitle = title;
+                observedActions = actions;
                 titleObserver = new parentWindow.ResizeObserver(scheduleAlign);
                 actionsObserver = new parentWindow.ResizeObserver(scheduleAlign);
                 titleObserver.observe(title);
@@ -73,8 +84,11 @@ def install_workflow_header_alignment_guard() -> None:
             }
 
             mutationObserver = new parentWindow.MutationObserver(() => {
-                if (!titleObserver && observeTargets()) return;
-                scheduleAlign();
+                // Streamlit mutates unrelated page content while the user
+                // scrolls. Re-align only when the actual title or controls are
+                // replaced, otherwise the fixed controls would follow the
+                // scrolling title.
+                observeTargets();
             });
             mutationObserver.observe(parentDoc.body, { childList: true, subtree: true });
 

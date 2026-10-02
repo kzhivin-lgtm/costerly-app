@@ -45,6 +45,20 @@ def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_ev
     assert "actionsBaseCenter" in source
     assert "- appliedOffset" in source
     assert "translateY(${Math.round(offset * 100) / 100}px)" in source
+    assert "title === observedTitle && actions === observedActions" in source
+    assert "mutationObserver = new parentWindow.MutationObserver(() => {" in source
+    mutation_body = source.split(
+        "mutationObserver = new parentWindow.MutationObserver(() => {", 1
+    )[1].split("});", 1)[0]
+    assert "scheduleAlign();" not in mutation_body
     assert 'addEventListener("scroll"' not in source.split(
         "def install_workflow_header_alignment_guard", 1
     )[1].split("def install_company_metrics_input_guard", 1)[0]
+
+
+def test_service_header_controls_are_fixed_without_a_stale_workflow_transform():
+    source = open("styles/base.py").read()
+
+    assert ".stApp:has(.company-profile-active) .st-key-costerly_header_controls" in source
+    assert ".stApp:has(.platform-admin-active) .st-key-costerly_header_controls" in source
+    assert "transform: none !important;" in source
