@@ -10,15 +10,12 @@ from styles.objects import apply_objects_css
 from ui.js_guards import (
     install_objects_price_input_guard,
     install_objects_progress_sync,
-    install_post_upload_transition_guard,
     install_workflow_header_alignment_guard,
 )
 from ui import objects_pricing
 from ui.layout import render_post_upload_header
 from ui.screen_transition import (
-    FILE_REVIEW_MARKER_ID,
     OBJECTS_MARKER_ID,
-    post_upload_transition_shell_html,
 )
 from use_cases.estimation import load_objects_estimation_data
 from use_cases.estimation_progress import get_estimate_progress
@@ -170,6 +167,21 @@ def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
     if not estimate_id:
         return ObjectsScreenState(data=_empty_objects_data())
 
+    # The File Review callback already creates these rows before the background
+    # worker begins. Render them immediately instead of blocking navigation on
+    # several Supabase reads while the estimate is still actively changing.
+    seed_rows = st.session_state.get("objects_estimation_seed_rows") or []
+    future = st.session_state.get("estimation_batch_future")
+    if seed_rows and isinstance(future, Future) and not future.done():
+        rows = [dict(row) for row in seed_rows]
+        return ObjectsScreenState(
+            data={
+                "rows": rows,
+                "project_costs": _project_cost_rows_for_seed(rows),
+                "summary": {"project_price": None, "vat": None, "total": None},
+            }
+        )
+
     try:
         data, cache_warning = _load_objects_screen_data(estimate_id)
         return ObjectsScreenState(data=data, cache_warning=cache_warning)
@@ -246,20 +258,6 @@ def _render_objects_actions() -> None:
         st.session_state.screen = "objects"
 
 
-def _install_objects_transition_guard() -> None:
-    """Mask the Streamlit rerun while returning to File Review."""
-    install_post_upload_transition_guard(
-        [
-            {
-                "label": "BACK TO FILE REVIEW",
-                "targetMarkerId": FILE_REVIEW_MARKER_ID,
-                "shellHtml": post_upload_transition_shell_html(title="File Review"),
-            }
-        ],
-        current_marker_id=OBJECTS_MARKER_ID,
-    )
-
-
 def _install_objects_runtimes(
     *,
     estimate_id: str | None,
@@ -275,7 +273,6 @@ def _install_objects_runtimes(
             supabase_anon_key=supabase_anon_key,
             supabase_access_token=supabase_access_token,
         )
-    _install_objects_transition_guard()
     if estimate_id and supabase_url and supabase_anon_key:
         install_objects_progress_sync(
             supabase_url=supabase_url,
