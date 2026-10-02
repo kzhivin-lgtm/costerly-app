@@ -2586,9 +2586,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionId';
                 const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionId';
                 const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserver';
+                const UPLOAD_HEADER_CONTROLS_SELECTOR = '.st-key-costerly_header_controls';
+                const UPLOAD_HEADER_CONTROLS_FIXED_ATTR = 'data-costerly-upload-controls-fixed';
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
+                let uploadHeaderFreezeFrame = null;
 
                 if (window[INSTALLED_FLAG]) {
                     return;
@@ -2602,6 +2605,45 @@ def install_upload_interaction_guards(shell_html: str) -> None:
 
                 function uploadScreenIsActive() {
                     return Boolean(document.querySelector('.upload-screen-active'));
+                }
+
+                // Upload deliberately lays controls out in the centered page flow.
+                // Once that flow has its final geometry, freeze the controls at that
+                // exact measured rectangle, rather than approximating a top offset.
+                function freezeUploadHeaderControls() {
+                    uploadHeaderFreezeFrame = null;
+                    if (!uploadScreenIsActive()) return;
+
+                    const controls = document.querySelector(UPLOAD_HEADER_CONTROLS_SELECTOR);
+                    if (!controls || controls.getAttribute(UPLOAD_HEADER_CONTROLS_FIXED_ATTR) === 'true') {
+                        return;
+                    }
+
+                    const layoutWrapper = controls.closest('[data-testid="stLayoutWrapper"]');
+                    if (!layoutWrapper) return;
+
+                    const controlsRect = controls.getBoundingClientRect();
+                    const wrapperRect = layoutWrapper.getBoundingClientRect();
+                    if (!controlsRect.width || !controlsRect.height || !wrapperRect.height) return;
+
+                    // Preserve the original flow footprint before controls leave it.
+                    layoutWrapper.style.setProperty('height', `${wrapperRect.height}px`, 'important');
+                    layoutWrapper.style.setProperty('min-height', `${wrapperRect.height}px`, 'important');
+                    controls.style.setProperty('position', 'fixed', 'important');
+                    controls.style.setProperty('top', `${controlsRect.top}px`, 'important');
+                    controls.style.setProperty('left', `${controlsRect.left}px`, 'important');
+                    controls.style.setProperty('right', 'auto', 'important');
+                    controls.style.setProperty('width', `${controlsRect.width}px`, 'important');
+                    controls.style.setProperty('margin', '0', 'important');
+                    controls.style.setProperty('transform', 'none', 'important');
+                    controls.setAttribute(UPLOAD_HEADER_CONTROLS_FIXED_ATTR, 'true');
+                }
+
+                function scheduleUploadHeaderFreeze() {
+                    if (!uploadScreenIsActive() || uploadHeaderFreezeFrame !== null) return;
+                    uploadHeaderFreezeFrame = window.requestAnimationFrame(() => {
+                        uploadHeaderFreezeFrame = window.requestAnimationFrame(freezeUploadHeaderControls);
+                    });
                 }
 
                 function dragHasFiles(event) {
@@ -2980,6 +3022,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
 
                 const observer = new MutationObserver(() => {
                     bindInputs();
+                    scheduleUploadHeaderFreeze();
                     if (!uploadScreenIsActive() && !realProcessingIsActive()) {
                         clearDragover();
                     }
@@ -3016,6 +3059,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
 
                 bindGlobalListeners();
                 bindInputs();
+                scheduleUploadHeaderFreeze();
                 startWatcher();
             }.toString() + ")();";
 
