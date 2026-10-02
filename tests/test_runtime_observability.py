@@ -251,6 +251,10 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "maskedInternalTransitions.has(pendingTransition.name)" in wrapper
     assert 'revealInternalTransition("app_ready")' in wrapper
     assert 'mark("browser.internal_transition_timeout"' in wrapper
+    internal_timeout_source = wrapper.split("function concealInternalTransition", 1)[1].split(
+        "function revealInternalTransition", 1
+    )[0]
+    assert "10000" in internal_timeout_source
     assert 'window.setTimeout(() => mask.remove()' not in wrapper
     assert "iframe.is-transitioning" in wrapper
     assert ".app-loading-mask.is-transitioning" in wrapper

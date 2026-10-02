@@ -94,6 +94,15 @@ def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
     previous_name = str(edit.get("name") or "")
     submitted_name = str(st.session_state.get(widget_key) or "").strip()
 
+    # A Streamlit widget can briefly report an empty value while its previous
+    # screen is unmounted. Empty is never a valid user edit, so retain the
+    # canonical File Review value instead of sending a destructive save.
+    if not submitted_name:
+        st.session_state[widget_key] = previous_name
+        st.session_state.file_review_name_save_error = None
+        st.session_state.screen = "file_review"
+        return
+
     try:
         saved_name = save_file_review_object_name(
             run_id=run_id,
@@ -114,9 +123,7 @@ def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
                     break
         st.session_state.file_review_name_save_error = None
 
-    # An input commit must never be interpreted as page navigation.
     st.session_state.screen = "file_review"
-    st.session_state.file_review_input_commit_pending = True
 
 
 def _timing_html(timings: dict[str, object] | None) -> str:
@@ -230,8 +237,12 @@ def _render_object_card(item: dict[str, object]) -> None:
         )
 
         name_widget_key = f"{edit_key}.name"
-        if name_widget_key not in st.session_state:
-            st.session_state[name_widget_key] = str(edit.get("name") or "")
+        canonical_name = str(edit.get("name") or "")
+        current_widget_name = str(st.session_state.get(name_widget_key) or "")
+        if name_widget_key not in st.session_state or (
+            canonical_name and not current_widget_name.strip()
+        ):
+            st.session_state[name_widget_key] = canonical_name
         edit["name"] = col_name.text_input(
             "Object name",
             key=name_widget_key,
@@ -528,24 +539,13 @@ def render_file_review_screen(company_id: str) -> None:
 
     col_back, col_next = st.columns(2, gap="small")
 
-    input_commit_pending = bool(
-        st.session_state.pop("file_review_input_commit_pending", False)
+    col_back.button(
+        "BACK TO UPLOAD",
+        type="secondary",
+        use_container_width=True,
+        on_click=set_screen,
+        args=("upload",),
     )
-    if input_commit_pending:
-        col_back.button(
-            "BACK TO UPLOAD",
-            type="secondary",
-            use_container_width=True,
-            disabled=True,
-        )
-    else:
-        col_back.button(
-            "BACK TO UPLOAD",
-            type="secondary",
-            use_container_width=True,
-            on_click=set_screen,
-            args=("upload",),
-        )
 
     col_next.button(
         "CONTINUE TO OBJECTS ESTIMATION",

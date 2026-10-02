@@ -7,7 +7,7 @@ from pathlib import Path
 import streamlit as st
 
 import app
-from screens import objects
+from screens import file_review, objects
 
 
 def test_profile_route_preserves_selected_tab():
@@ -206,3 +206,28 @@ def test_objects_screen_does_not_install_the_react_mutating_live_progress_runtim
 
     assert "install_objects_progress_sync" not in source
     assert "latest persisted progress snapshot" in source
+
+
+def test_file_review_ignores_an_empty_transient_name_commit(monkeypatch):
+    st.session_state.clear()
+    widget_key = "file_review_object_edits.object-1.name"
+    st.session_state.file_review_object_edits = {"object-1": {"name": "Curtain track system"}}
+    st.session_state[widget_key] = ""
+    saved = []
+    monkeypatch.setattr(
+        file_review,
+        "save_file_review_object_name",
+        lambda **kwargs: saved.append(kwargs),
+    )
+
+    file_review._commit_object_name("run-1", "object-1", widget_key)
+
+    assert saved == []
+    assert st.session_state[widget_key] == "Curtain track system"
+    assert st.session_state.file_review_object_edits["object-1"]["name"] == "Curtain track system"
+
+
+def test_file_review_back_to_upload_is_never_disabled_after_an_input_event():
+    source = Path("screens/file_review.py").read_text()
+
+    assert '"BACK TO UPLOAD",\n            type="secondary",\n            use_container_width=True,\n            disabled=True' not in source
