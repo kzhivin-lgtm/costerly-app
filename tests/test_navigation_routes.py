@@ -190,3 +190,12 @@ def test_active_estimation_opens_seeded_objects_without_waiting_for_supabase(mon
 def test_workflow_screens_do_not_install_react_mutating_transition_shells():
     assert "install_post_upload_transition_guard" not in Path("screens/file_review.py").read_text()
     assert "install_post_upload_transition_guard" not in Path("screens/objects.py").read_text()
+
+
+def test_objects_runtime_stops_dom_writers_before_workflow_navigation():
+    source = Path("ui/js_guards.py").read_text()
+
+    assert 'const NAVIGATION_CLEANUP_KEY = "__costerlyObjectsNavigationCleanup"' in source
+    assert 'parentDoc.addEventListener("pointerdown", stopForWorkflowNavigation, true)' in source
+    assert 'parentWindow[PRICE_INPUT_CLEANUP_KEY]();' in source
+    assert 'observer.observe(parentDoc.documentElement, { childList: true, subtree: true })' in source

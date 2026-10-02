@@ -1741,6 +1741,8 @@ def install_objects_progress_sync(
             const STATE_KEY = "__costerlyObjectsProgressState";
             const MANUAL_PRICES_KEY = "__costerlyObjectsManualSalePrices";
             const STOP_KEY = "__costerlyStopObjectsProgressRuntime";
+            const NAVIGATION_CLEANUP_KEY = "__costerlyObjectsNavigationCleanup";
+            const PRICE_INPUT_CLEANUP_KEY = "__costerlyObjectsPriceInputGuardCleanup";
             const OBJECTS_MARKER_ID = "costerly-objects-screen-active";
             const TRANSITION_SHELL_ID = "costerly-post-upload-transition-shell";
             const SUPABASE_URL = __SUPABASE_URL__;
@@ -1808,6 +1810,43 @@ def install_objects_progress_sync(
                 if (parentWindow[STATE_KEY]) {
                     parentWindow[STATE_KEY].active = false;
                 }
+            }
+
+            function stopForWorkflowNavigation(event) {
+                const target = event.target;
+                if (!target || !target.closest) return;
+                const backButton = target.closest("button");
+                const reviewLink = target.closest("a.objects-pricing-review-button");
+                const isBackToFileReview = backButton
+                    && String(backButton.textContent || "").trim() === "BACK TO FILE REVIEW";
+                if (!isBackToFileReview && !reviewLink) return;
+
+                // Streamlit starts reconciling the page immediately after this
+                // event. Stop every Objects-owned DOM writer before React owns
+                // the next tree, rather than waiting for the next polling tick.
+                stopRuntime();
+                if (parentWindow[PRICE_INPUT_CLEANUP_KEY]) {
+                    parentWindow[PRICE_INPUT_CLEANUP_KEY]();
+                }
+            }
+
+            function installNavigationCleanup() {
+                if (parentWindow[NAVIGATION_CLEANUP_KEY]) {
+                    parentWindow[NAVIGATION_CLEANUP_KEY]();
+                }
+
+                const observer = new MutationObserver(() => {
+                    if (!parentDoc.getElementById(OBJECTS_MARKER_ID)) {
+                        stopRuntime();
+                    }
+                });
+                parentDoc.addEventListener("pointerdown", stopForWorkflowNavigation, true);
+                observer.observe(parentDoc.documentElement, { childList: true, subtree: true });
+                parentWindow[NAVIGATION_CLEANUP_KEY] = () => {
+                    parentDoc.removeEventListener("pointerdown", stopForWorkflowNavigation, true);
+                    observer.disconnect();
+                    parentWindow[NAVIGATION_CLEANUP_KEY] = null;
+                };
             }
 
             function rowForObject(objectId) {
@@ -2252,6 +2291,7 @@ def install_objects_progress_sync(
                 objects: {}
             };
 
+            installNavigationCleanup();
             renderAll();
             syncProgress();
             parentWindow[TIMER_KEY] = parentWindow.setInterval(tick, TICK_MS);
