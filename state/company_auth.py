@@ -1582,7 +1582,7 @@ def _open_new_estimate() -> None:
 
 
 def _open_last_estimate(company_id: str) -> None:
-    """Restore the newest durable estimate owned by this company."""
+    """Restore the newest durable estimate at its File Review entry point."""
     from db.supabase_client import get_supabase_client
     from state.session import set_screen
     from use_cases.latest_estimate import load_latest_estimate_route
@@ -1595,7 +1595,9 @@ def _open_last_estimate(company_id: str) -> None:
     st.session_state.current_estimate_id = route["estimate_id"]
     st.session_state.current_estimate_run_id = route["run_id"]
     st.session_state.current_object_id = None
-    set_screen("objects")
+    # File Review is the one consistent entry point. Its Continue action starts
+    # unfinished work or reopens an already durable Objects estimate.
+    set_screen("file_review")
 
 
 def render_account_control(access: CompanyAccess, *, platform_access=None) -> None:

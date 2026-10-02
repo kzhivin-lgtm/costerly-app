@@ -3059,6 +3059,14 @@ def test_header_new_estimate_navigation_runs_before_render():
     assert "st.rerun" not in source.split("def _open_new_estimate", 1)[1].split("def _open_last_estimate", 1)[0]
 
 
+def test_last_estimate_always_reopens_through_file_review():
+    source = Path("state/company_auth.py").read_text()
+    callback_source = source.split("def _open_last_estimate", 1)[1].split("def render_account_control", 1)[0]
+
+    assert 'set_screen("file_review")' in callback_source
+    assert 'set_screen("objects")' not in callback_source
+
+
 def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
     profile = {
         "company_name": "Workshop",

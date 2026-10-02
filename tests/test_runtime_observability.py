@@ -310,6 +310,7 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'control.closest(".object-detail-footer-button--secondary")' in ready_signal
     assert 'control.closest(".st-key-header_last_estimate")' in ready_signal
     assert 'file_review_to_objects: "objects"' in ready_signal
+    assert 'last_estimate: "file_review"' in ready_signal
     assert 'objects_to_file_review: "file_review"' in ready_signal
     assert "'upload_to_processing'" in ready_signal
     assert "'processing_to_file_review'" in ready_signal

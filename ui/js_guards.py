@@ -426,7 +426,7 @@ def signal_app_ready_to_embed(
             function targetScreenFor(transition) {
                 return {
                     new_estimate: "upload",
-                    last_estimate: "objects",
+                    last_estimate: "file_review",
                     open_profile: "account",
                     open_admin: "admin",
                     sign_out: "login",
