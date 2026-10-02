@@ -326,12 +326,6 @@ def signal_app_ready_to_embed(
         <script>
         (() => {
             const transitionHandlerKey = "__costerlyRuntimeTransitionHandlerV1";
-            const workflowTransitionKey = "__costerlyPendingWorkflowTransitionV1";
-            const workflowTransitions = new Set([
-                "new_estimate", "last_estimate", "back_to_upload",
-                "processing_to_file_review", "file_review_to_objects",
-                "objects_to_file_review",
-            ]);
             const message = {
                 type: "costerly:app-ready",
                 screen: __SCREEN__,
@@ -625,10 +619,6 @@ def signal_app_ready_to_embed(
                         transition,
                         transitionId,
                     }, "*");
-                    const pending = window.parent[workflowTransitionKey];
-                    if (pending && pending.transitionId === transitionId) {
-                        delete window.parent[workflowTransitionKey];
-                    }
                     if (observer) observer.disconnect();
                     return true;
                 };
@@ -644,17 +634,6 @@ def signal_app_ready_to_embed(
                         window.parent.cancelAnimationFrame(frameRequest);
                     }
                 }, 15000);
-            }
-
-            // Streamlit discards the component iframe that saw the click during
-            // the rerun. The target render therefore acknowledges its own DOM.
-            function acknowledgePendingWorkflowTransition() {
-                try {
-                    const pending = window.parent[workflowTransitionKey];
-                    if (!pending || !workflowTransitions.has(pending.transition)) return;
-                    if (pending.targetScreen !== message.screen) return;
-                    observeTargetScreen(pending.transition, pending.transitionId);
-                } catch (_) {}
             }
 
             function installTransitionObserver() {
@@ -678,16 +657,7 @@ def signal_app_ready_to_embed(
                             sourceScreen: currentScreen(),
                             targetScreen: targetScreenFor(transition),
                         }, "*");
-                        if (workflowTransitions.has(transition)) {
-                            parentWindow[workflowTransitionKey] = {
-                                transition,
-                                transitionId,
-                                targetScreen: targetScreenFor(transition),
-                                startedAt: Date.now(),
-                            };
-                        } else {
-                            observeTargetScreen(transition, transitionId);
-                        }
+                        observeTargetScreen(transition, transitionId);
                     };
                     parentWindow[transitionHandlerKey] = handler;
                     parentDocument.addEventListener("click", handler, {
@@ -803,7 +773,6 @@ def signal_app_ready_to_embed(
             }
 
             installTransitionObserver();
-            acknowledgePendingWorkflowTransition();
             releaseAuthShellWhenStable();
             announceWhenStyled();
         })();
@@ -2616,7 +2585,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const PROGRESS_PHASE_STARTED_AT_KEY = '__costerlyProcessingProgressPhaseStartedAt';
                 const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionId';
                 const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionId';
-                const WORKFLOW_TRANSITION_KEY = '__costerlyPendingWorkflowTransitionV1';
+                const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserver';
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
@@ -2848,14 +2817,6 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         sourceScreen,
                         targetScreen,
                     }, '*');
-                    if (name === 'processing_to_file_review') {
-                        window[WORKFLOW_TRANSITION_KEY] = {
-                            transition: name,
-                            transitionId,
-                            targetScreen,
-                            startedAt: Date.now(),
-                        };
-                    }
                     return transitionId;
                 }
 
@@ -2868,6 +2829,58 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         transitionId,
                         screen: 'processing',
                     }, '*');
+                }
+
+                function reportFileReviewStyled(transitionId) {
+                    const existing = window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY];
+                    if (existing && existing.transitionId === transitionId) return;
+                    if (existing && existing.stop) existing.stop();
+
+                    let observer = null;
+                    let frameRequest = null;
+                    let reported = false;
+                    const controlsReady = () => {
+                        const controls = document.querySelector('.st-key-costerly_header_controls');
+                        return Boolean(controls && controls.querySelectorAll('button').length >= 2);
+                    };
+                    const fileReviewReady = () => Boolean(
+                        document.querySelector('.file-review-card') &&
+                        document.querySelector('.file-review-detected-title') &&
+                        controlsReady()
+                    );
+                    const stop = () => {
+                        if (observer) observer.disconnect();
+                        if (frameRequest !== null) window.cancelAnimationFrame(frameRequest);
+                        if (window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] &&
+                            window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY].transitionId === transitionId) {
+                            window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] = null;
+                        }
+                    };
+                    const report = () => {
+                        if (reported) return true;
+                        if (!fileReviewReady()) {
+                            if (frameRequest === null) {
+                                frameRequest = window.requestAnimationFrame(() => {
+                                    frameRequest = null;
+                                    report();
+                                });
+                            }
+                            return false;
+                        }
+                        reported = true;
+                        window.top.postMessage({
+                            type: 'costerly:transition-styled',
+                            transition: 'processing_to_file_review',
+                            transitionId,
+                        }, '*');
+                        stop();
+                        return true;
+                    };
+                    window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] = { transitionId, stop };
+                    observer = new MutationObserver(report);
+                    observer.observe(document.documentElement, { childList: true, subtree: true });
+                    report();
+                    window.setTimeout(stop, 15000);
                 }
 
                 function startWatcher() {
@@ -2984,12 +2997,13 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         reportProcessingVisible();
                         const stage = activeProcessingStage();
                         if (stage && stage.dataset.processingComplete === 'true') {
-                            startTransition(
+                            const transitionId = startTransition(
                                 'processing_to_file_review',
                                 'processing',
                                 'file_review',
                                 PROCESSING_COMPLETE_TRANSITION_ID_KEY,
                             );
+                            reportFileReviewStyled(transitionId);
                         }
                         removeShell();
                     }

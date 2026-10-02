@@ -362,11 +362,8 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'type: "costerly:transition-styled"' in ready_signal
     assert "new MutationObserver(reportIfVisible)" in ready_signal
     assert "const styledTargetReady = () =>" in ready_signal
-    assert 'const workflowTransitionKey = "__costerlyPendingWorkflowTransitionV1";' in ready_signal
-    assert "function acknowledgePendingWorkflowTransition()" in ready_signal
-    assert "parentWindow[workflowTransitionKey] = {" in ready_signal
-    assert "if (name === 'processing_to_file_review')" in ready_signal
-    assert "window[WORKFLOW_TRANSITION_KEY] = {" in ready_signal
+    assert "function reportFileReviewStyled(transitionId)" in ready_signal
+    assert "reportFileReviewStyled(transitionId);" in ready_signal
     assert 'transition === "upload_to_profile"' in ready_signal
     assert 'transition === "profile_to_upload"' in ready_signal
     assert 'transition === "upload_to_admin"' in ready_signal
