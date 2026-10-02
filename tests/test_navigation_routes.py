@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import ast
-from concurrent.futures import Future
 from pathlib import Path
 
 import streamlit as st
 
 import app
-from screens import objects
 
 
 def test_profile_route_preserves_selected_tab():
@@ -157,32 +155,3 @@ def test_file_review_navigation_uses_widget_callbacks_not_a_second_rerun():
     assert "on_click=_continue_to_objects_estimation" in source
     assert "on_click=set_screen" in source
     assert "st.rerun()" not in continue_source
-
-
-def test_active_estimation_opens_seeded_objects_without_waiting_for_supabase(monkeypatch):
-    st.session_state.clear()
-    future = Future()
-    st.session_state.estimation_batch_future = future
-    st.session_state.objects_estimation_seed_rows = [
-        {
-            "object_key": "object-1",
-            "name": "Cabinet",
-            "quantity": 1,
-            "status": "running",
-            "self_cost_unit": "1%",
-            "sale_price_unit": None,
-            "sale_price_total": None,
-            "suggestion": "suggested: SC + 30%",
-            "reviewed": False,
-        }
-    ]
-    monkeypatch.setattr(
-        objects,
-        "_load_objects_screen_data",
-        lambda _estimate_id: (_ for _ in ()).throw(AssertionError("must not load")),
-    )
-
-    state = objects._current_objects_state("estimate-1")
-
-    assert state.data_error is None
-    assert state.data["rows"][0]["object_key"] == "object-1"

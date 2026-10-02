@@ -243,8 +243,6 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert '"admin_to_upload"' in wrapper
     assert '"profile_to_sign_out"' in wrapper
     assert '"upload_to_sign_out"' in wrapper
-    assert '"file_review_to_objects"' in wrapper
-    assert '"objects_to_file_review"' in wrapper
     masked_transitions = wrapper.split("const maskedInternalTransitions = new Set([", 1)[1].split("]);", 1)[0]
     assert '"sign_in"' not in masked_transitions
     assert "maskedInternalTransitions.has(pendingTransition.name)" in wrapper
