@@ -15,6 +15,7 @@ from observability.runtime import (
     new_runtime_trace,
 )
 from state.session import init_state, get_company_id
+from ui.screen_transition import screen_transition_marker_html
 from state.company_auth import (
     company_auth_enabled,
     current_company_access,
@@ -120,6 +121,9 @@ def _signal_ready(trace, screen: str) -> None:
     trace.set_screen(screen)
     trace.annotate(server_build_version=trace.build_version)
     trace.event("server.app_ready_component_enqueued")
+    # Keep a stable, invisible source-screen marker in the Streamlit DOM.  It
+    # is consumed by browser timing instrumentation only and has no CSS role.
+    st.markdown(screen_transition_marker_html(screen), unsafe_allow_html=True)
     signal_app_ready_to_embed(
         screen,
         trace_id=trace.trace_id,

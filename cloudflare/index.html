@@ -383,9 +383,12 @@
             const pendingTransition = {
               id: String(event.data.transitionId || crypto.randomUUID()),
               name: event.data.transition,
+              sourceScreen: safeRouteValue(event.data.sourceScreen),
+              targetScreen: safeRouteValue(event.data.targetScreen),
               startedAt: performance.now(),
               visible: false,
               pythonRuns: 0,
+              timeoutId: null,
             };
             pendingTransitions.push(pendingTransition);
             concealInternalTransition(pendingTransition.name);
@@ -393,8 +396,27 @@
               metadata: {
                 transition: pendingTransition.name,
                 transition_id: pendingTransition.id,
+                source_screen: pendingTransition.sourceScreen,
+                target_screen: pendingTransition.targetScreen,
               },
             });
+            pendingTransition.timeoutId = window.setTimeout(() => {
+              const index = pendingTransitions.indexOf(pendingTransition);
+              if (index < 0) return;
+              pendingTransitions.splice(index, 1);
+              mark("browser.transition_timeout", {
+                status: "timeout",
+                duration_ms: performance.now() - pendingTransition.startedAt,
+                metadata: {
+                  transition: pendingTransition.name,
+                  transition_id: pendingTransition.id,
+                  source_screen: pendingTransition.sourceScreen,
+                  target_screen: pendingTransition.targetScreen,
+                  python_runs: pendingTransition.pythonRuns,
+                },
+              });
+              if (ready) persistTimeline();
+            }, 15000);
             if (ready) persistTimeline();
             return;
           }
@@ -418,6 +440,34 @@
             if (maskedInternalTransitions.has(pendingTransition.name)) {
               revealInternalTransition("target_styled");
             }
+            if (ready) persistTimeline();
+            return;
+          }
+          if (
+            event.origin === appOrigin &&
+            event.data &&
+            event.data.type === "costerly:transition-stage" &&
+            typeof event.data.transitionId === "string"
+          ) {
+            const transitionIndex = pendingTransitions.findIndex((item) =>
+              item.id === event.data.transitionId &&
+              item.targetScreen === String(event.data.screen || "")
+            );
+            if (transitionIndex < 0) return;
+            const pendingTransition = pendingTransitions.splice(transitionIndex, 1)[0];
+            window.clearTimeout(pendingTransition.timeoutId);
+            mark("browser.transition_ready", {
+              screen: String(event.data.screen || "unknown"),
+              duration_ms: performance.now() - pendingTransition.startedAt,
+              metadata: {
+                transition: pendingTransition.name,
+                transition_id: pendingTransition.id,
+                source_screen: pendingTransition.sourceScreen,
+                target_screen: pendingTransition.targetScreen,
+                readiness: "stage_marker",
+                python_runs: pendingTransition.pythonRuns,
+              },
+            });
             if (ready) persistTimeline();
             return;
           }
@@ -511,13 +561,14 @@
               screen === "login" &&
               metadata.completed_action === "auth_sign_in" &&
               metadata.completed_action_status === "error";
-            const transitionIndex = pendingTransitions.findIndex((item) =>
-              failedSignIn
-                ? item.name === "sign_in"
-                : (expectedScreens[item.name] || []).includes(screen)
-            );
+            const transitionIndex = pendingTransitions.findIndex((item) => {
+              if (failedSignIn) return item.name === "sign_in";
+              if (item.targetScreen) return item.targetScreen === screen;
+              return (expectedScreens[item.name] || []).includes(screen);
+            });
             if (transitionIndex >= 0) {
               const pendingTransition = pendingTransitions.splice(transitionIndex, 1)[0];
+              window.clearTimeout(pendingTransition.timeoutId);
               mark("browser.transition_ready", {
                 screen,
                 status: failedSignIn ? "error" : "ok",
@@ -525,6 +576,8 @@
                 metadata: {
                   transition: pendingTransition.name,
                   transition_id: pendingTransition.id,
+                  source_screen: pendingTransition.sourceScreen,
+                  target_screen: pendingTransition.targetScreen,
                   python_runs: pendingTransition.pythonRuns,
                   ...metadata,
                 },

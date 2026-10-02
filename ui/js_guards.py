@@ -336,23 +336,66 @@ def signal_app_ready_to_embed(
                 sentAt: Date.now()
             };
 
-            function transitionName(button) {
-                if (button.closest(".st-key-profile_to_upload")) {
+            function currentScreen() {
+                const marker = window.parent.document.querySelector("[data-costerly-screen]");
+                return marker ? String(marker.dataset.costerlyScreen || "") : "";
+            }
+
+            function transitionName(control) {
+                if (control.getAttribute("role") === "tab") {
+                    return "profile_tab_change";
+                }
+                if (control.closest(".objects-pricing-review-button")) {
+                    return "objects_to_object_detail";
+                }
+                if (control.closest(".object-detail-footer-button--secondary")) {
+                    return "object_detail_to_objects";
+                }
+                if (control.closest(".object-detail-footer-button--primary")) {
+                    return "object_detail_approve_to_objects";
+                }
+                if (control.closest(".st-key-header_new_estimate")) {
+                    if (currentScreen() === "account") return "profile_to_upload";
+                    if (currentScreen() === "admin") return "admin_to_upload";
+                    return "new_estimate";
+                }
+                if (control.closest(".st-key-header_last_estimate")) {
+                    return "last_estimate";
+                }
+                if (control.closest(".st-key-open_company_account")) {
+                    if (currentScreen() === "upload") return "upload_to_profile";
+                    if (currentScreen() === "admin") return "admin_to_profile";
+                    return "open_profile";
+                }
+                if (control.closest(".st-key-open_platform_admin")) {
+                    if (currentScreen() === "upload") return "upload_to_admin";
+                    if (currentScreen() === "account") return "profile_to_admin";
+                    return "open_admin";
+                }
+                if (control.closest(".st-key-company_sign_out")) {
+                    if (currentScreen() === "account") return "profile_to_sign_out";
+                    if (currentScreen() === "upload") return "upload_to_sign_out";
+                    return "sign_out";
+                }
+                if (control.closest(".st-key-profile_to_upload")) {
                     return "profile_to_upload";
                 }
-                if (button.closest(".st-key-profile_to_admin")) {
+                if (control.closest(".st-key-profile_to_admin")) {
                     return "profile_to_admin";
                 }
-                if (button.closest(".st-key-admin_to_profile")) {
+                if (control.closest(".st-key-admin_to_profile")) {
                     return "admin_to_profile";
                 }
-                if (button.closest(".st-key-admin_to_upload")) {
+                if (control.closest(".st-key-admin_to_upload")) {
                     return "admin_to_upload";
                 }
-                const label = String(button.innerText || button.textContent || "")
+                const label = String(control.innerText || control.textContent || "")
                     .trim()
                     .toLowerCase();
                 if (label === "sign in") return "sign_in";
+                if (label === "back to upload") return "back_to_upload";
+                if (label === "continue to objects estimation") return "file_review_to_objects";
+                if (label === "back to file review") return "objects_to_file_review";
                 if (label === "admin") {
                     return window.parent.document.querySelector(".company-profile-active")
                         ? "profile_to_admin"
@@ -378,6 +421,31 @@ def signal_app_ready_to_embed(
                 if (label === "create account") return "registration_submit";
                 if (label === "continue") return "company_setup_submit";
                 return null;
+            }
+
+            function targetScreenFor(transition) {
+                return {
+                    new_estimate: "upload",
+                    last_estimate: "objects",
+                    open_profile: "account",
+                    open_admin: "admin",
+                    sign_out: "login",
+                    back_to_upload: "upload",
+                    file_review_to_objects: "objects",
+                    objects_to_file_review: "file_review",
+                    objects_to_object_detail: "object_detail",
+                    object_detail_to_objects: "objects",
+                    object_detail_approve_to_objects: "objects",
+                    profile_tab_change: "account",
+                    upload_to_profile: "account",
+                    profile_to_upload: "upload",
+                    upload_to_admin: "admin",
+                    profile_to_admin: "admin",
+                    admin_to_profile: "account",
+                    admin_to_upload: "upload",
+                    profile_to_sign_out: "login",
+                    upload_to_sign_out: "login",
+                }[transition] || "";
             }
 
             function targetSelector(transition) {
@@ -526,17 +594,19 @@ def signal_app_ready_to_embed(
                     const previous = parentWindow[transitionHandlerKey];
                     if (previous) parentDocument.removeEventListener("click", previous, false);
                     const handler = (event) => {
-                        const button = event.target && event.target.closest
-                            ? event.target.closest("button")
+                        const control = event.target && event.target.closest
+                            ? event.target.closest("button, a, [role='tab']")
                             : null;
-                        if (!button) return;
-                        const transition = transitionName(button);
+                        if (!control) return;
+                        const transition = transitionName(control);
                         if (!transition) return;
                         const transitionId = crypto.randomUUID();
                         window.top.postMessage({
                             type: "costerly:transition-click",
                             transition,
                             transitionId,
+                            sourceScreen: currentScreen(),
+                            targetScreen: targetScreenFor(transition),
                         }, "*");
                         observeTargetScreen(transition, transitionId);
                     };
@@ -2424,6 +2494,8 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const LAST_ELAPSED_SECONDS_KEY = '__costerlyLastProcessingElapsedSeconds';
                 const PROGRESS_PHASE_KEY = '__costerlyProcessingProgressPhase';
                 const PROGRESS_PHASE_STARTED_AT_KEY = '__costerlyProcessingProgressPhaseStartedAt';
+                const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionId';
+                const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionId';
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
@@ -2644,6 +2716,31 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     }
                 }
 
+                function startTransition(name, sourceScreen, targetScreen, key) {
+                    if (window[key]) return window[key];
+                    const transitionId = crypto.randomUUID();
+                    window[key] = transitionId;
+                    window.top.postMessage({
+                        type: 'costerly:transition-click',
+                        transition: name,
+                        transitionId,
+                        sourceScreen,
+                        targetScreen,
+                    }, '*');
+                    return transitionId;
+                }
+
+                function reportProcessingVisible() {
+                    const transitionId = window[PROCESSING_TRANSITION_ID_KEY];
+                    if (!transitionId) return;
+                    window.top.postMessage({
+                        type: 'costerly:transition-stage',
+                        transition: 'upload_to_processing',
+                        transitionId,
+                        screen: 'processing',
+                    }, '*');
+                }
+
                 function startWatcher() {
                     if (watcher) return;
 
@@ -2673,6 +2770,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     shell.dataset.source = source || 'unknown';
                     document.documentElement.classList.add(SHELL_ACTIVE_CLASS);
                     document.body.classList.add(SHELL_ACTIVE_CLASS);
+                    startTransition(
+                        'upload_to_processing',
+                        'upload',
+                        'processing',
+                        PROCESSING_TRANSITION_ID_KEY,
+                    );
                     startElapsed();
 
                     startWatcher();
@@ -2748,7 +2851,19 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     if (fileReviewIsActive() && window[LAST_ELAPSED_SECONDS_KEY]) {
                         applyFinalElapsed(Number(window[LAST_ELAPSED_SECONDS_KEY]));
                     }
-                    if (realProcessingIsActive()) removeShell();
+                    if (realProcessingIsActive()) {
+                        reportProcessingVisible();
+                        const stage = activeProcessingStage();
+                        if (stage && stage.dataset.processingComplete === 'true') {
+                            startTransition(
+                                'processing_to_file_review',
+                                'processing',
+                                'file_review',
+                                PROCESSING_COMPLETE_TRANSITION_ID_KEY,
+                            );
+                        }
+                        removeShell();
+                    }
                 });
 
                 const observerRoot = document.body || document.documentElement;

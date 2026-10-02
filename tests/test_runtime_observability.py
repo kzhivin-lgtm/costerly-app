@@ -225,9 +225,13 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "visibility: hidden" not in wrapper
     assert "readyRunIds" in wrapper
     assert 'event.data.type === "costerly:transition-click"' in wrapper
+    assert "sourceScreen: safeRouteValue(event.data.sourceScreen)" in wrapper
+    assert "targetScreen: safeRouteValue(event.data.targetScreen)" in wrapper
     assert 'event.data.type === "costerly:transition-visible"' in wrapper
+    assert 'event.data.type === "costerly:transition-stage"' in wrapper
     assert 'mark("browser.transition_visible"' in wrapper
     assert 'mark("browser.transition_ready"' in wrapper
+    assert 'mark("browser.transition_timeout"' in wrapper
     assert 'concealInternalTransition(pendingTransition.name)' in wrapper
     assert '"upload_to_profile"' in wrapper
     assert '"profile_to_upload"' in wrapper
@@ -280,6 +284,7 @@ def test_streamlit_ready_message_carries_server_build_version():
     app_source = (ROOT / "app.py").read_text()
 
     assert "trace.annotate(server_build_version=trace.build_version)" in app_source
+    assert "st.markdown(screen_transition_marker_html(screen), unsafe_allow_html=True)" in app_source
     assert "        build_version=trace.build_version,\n" not in app_source
     assert "build_version: str" not in source
 
@@ -299,6 +304,14 @@ def test_auth_component_reports_safe_iframe_startup_phases():
 
     ready_signal = (ROOT / "ui/js_guards.py").read_text()
     assert 'type: "costerly:transition-click"' in ready_signal
+    assert 'control.closest(".objects-pricing-review-button")' in ready_signal
+    assert 'control.closest(".object-detail-footer-button--secondary")' in ready_signal
+    assert 'control.closest(".st-key-header_last_estimate")' in ready_signal
+    assert 'file_review_to_objects: "objects"' in ready_signal
+    assert 'objects_to_file_review: "file_review"' in ready_signal
+    assert "'upload_to_processing'" in ready_signal
+    assert "'processing_to_file_review'" in ready_signal
+    assert "type: 'costerly:transition-stage'" in ready_signal
     assert 'type: "costerly:transition-visible"' in ready_signal
     assert 'type: "costerly:transition-styled"' in ready_signal
     assert "new MutationObserver(reportIfVisible)" in ready_signal
@@ -339,7 +352,7 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'parentDocument.addEventListener("click", handler, {' in ready_signal
     assert "capture: false" in ready_signal
     assert "passive: true" in ready_signal
-    assert 'button.closest(".st-key-profile_to_upload")' in ready_signal
+    assert 'control.closest(".st-key-profile_to_upload")' in ready_signal
     assert 'label === "continue to upload" || label === "upload"' in ready_signal
     observer_source = ready_signal.split("function installTransitionObserver()", 1)[1].split(
         "function postReady()", 1
