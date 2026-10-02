@@ -9,7 +9,6 @@ from config import get_optional_secret
 from styles.objects import apply_objects_css
 from ui.js_guards import (
     install_objects_price_input_guard,
-    install_objects_progress_sync,
     install_workflow_header_alignment_guard,
 )
 from ui import objects_pricing
@@ -57,7 +56,7 @@ def _consume_estimation_future() -> None:
         st.session_state.estimation_batch_future = None
 
 
-def _objects_progress_sync_config() -> tuple[str | None, str | None, str | None]:
+def _objects_price_input_config() -> tuple[str | None, str | None, str | None]:
     return (
         get_optional_secret("SUPABASE_URL"),
         get_optional_secret("SUPABASE_ANON_KEY"),
@@ -258,14 +257,14 @@ def _render_objects_actions() -> None:
         st.session_state.screen = "objects"
 
 
-def _install_objects_runtimes(
+def _install_objects_price_input_runtime(
     *,
     estimate_id: str | None,
     supabase_url: str | None,
     supabase_anon_key: str | None,
     supabase_access_token: str | None = None,
 ) -> None:
-    """Install client-side editing/progress runtimes for the current estimate."""
+    """Install the React-safe client-side price editor for the current estimate."""
     if estimate_id:
         install_objects_price_input_guard(
             estimate_id=str(estimate_id),
@@ -273,14 +272,10 @@ def _install_objects_runtimes(
             supabase_anon_key=supabase_anon_key,
             supabase_access_token=supabase_access_token,
         )
-    if estimate_id and supabase_url and supabase_anon_key:
-        install_objects_progress_sync(
-            supabase_url=supabase_url,
-            supabase_anon_key=supabase_anon_key,
-            supabase_access_token=supabase_access_token,
-            estimate_id=str(estimate_id),
-            interval_ms=1500,
-        )
+    # Do not install the former live progress poller here. It replaced children
+    # inside Streamlit's React-owned table with innerHTML, which can race React
+    # reconciliation during workflow navigation (removeChild NotFoundError).
+    # Each Objects entry renders the latest persisted progress snapshot instead.
 
 
 def render_objects_screen(company_id: str) -> None:
@@ -310,8 +305,8 @@ def render_objects_screen(company_id: str) -> None:
     _render_objects_actions()
     install_workflow_header_alignment_guard()
 
-    supabase_url, supabase_anon_key, supabase_access_token = _objects_progress_sync_config()
-    _install_objects_runtimes(
+    supabase_url, supabase_anon_key, supabase_access_token = _objects_price_input_config()
+    _install_objects_price_input_runtime(
         estimate_id=estimate_id,
         supabase_url=supabase_url,
         supabase_anon_key=supabase_anon_key,
