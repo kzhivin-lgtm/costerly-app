@@ -55,8 +55,10 @@ linked notes.
 - Production regression repair in progress: the 2026-10-02 metadata deployment
   also activated the previously rejected service-header scroll guard. Production
   telemetry then recorded repeated 15-second transition timeouts even after the
-  destination emitted `app-ready`. The isolated candidate removes only that
-  guard and must pass the protected authenticated production transition matrix
+  destination emitted `app-ready`. The recovery candidate restores the
+  protected auth, Cloudflare and session files to `d3e83bd`, removes the
+  rejected guard, and preserves the later File Review, Pricing and Machinery
+  product work. It must pass the authenticated production transition matrix
   before 3.15.19 can be accepted.
 
 ### 3.15.20 Final Approval and Client Proposal PDF

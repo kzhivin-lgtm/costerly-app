@@ -282,25 +282,13 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert '"back_to_upload"' in wrapper
     assert '"last_estimate"' in wrapper
     masked_transitions = wrapper.split("const maskedInternalTransitions = new Set([", 1)[1].split("]);", 1)[0]
-    assert '"sign_in"' in masked_transitions
+    assert '"sign_in"' not in masked_transitions
     assert "maskedInternalTransitions.has(pendingTransition.name)" in wrapper
     assert "pendingTransition.readyReported = true" in wrapper
     assert "if (!maskedInternalTransitions.has(pendingTransition.name))" in wrapper
     assert "const loginTargetReady =" in wrapper
     assert "metadata.auth_css_ready === true" in wrapper
-    assert '"target_app_ready"' in wrapper
-    login_target_ready_source = wrapper.split("const loginTargetReady =", 1)[1].split(
-        "} else if (!maskedInternalTransitions.has(pendingTransition.name))", 1
-    )[0]
-    assert 'pendingTransition.name === "profile_to_sign_out"' in login_target_ready_source
-    assert 'pendingTransition.name === "upload_to_sign_out"' in login_target_ready_source
-    assert "pendingTransitions.splice(transitionIndex, 1);" in login_target_ready_source
-    assert "window.clearTimeout(pendingTransition.timeoutId);" in login_target_ready_source
-    assert "revealInternalTransition(" in login_target_ready_source
-    assert "function signInTargetStyled(screen)" in wrapper
-    assert 'pendingTransition.name === "sign_in" && signInTargetStyled(screen)' in wrapper
-    assert 'pendingTransition.name === "sign_in" && failedSignIn' in wrapper
-    assert '"sign_in_error"' in wrapper
+    assert 'source: "target_app_ready"' in wrapper
     assert 'mark("browser.internal_transition_timeout"' in wrapper
     internal_timeout_source = wrapper.split("function concealInternalTransition", 1)[1].split(
         "function revealInternalTransition", 1
