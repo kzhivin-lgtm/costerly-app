@@ -353,17 +353,20 @@ def apply_objects_css() -> None:
 
         .objects-pricing-summary-price {
             grid-column: 2 / 5;
+            grid-row: 1;
             width: 162px;
         }
 
         .objects-pricing-summary-vat {
             grid-column: 2 / 6;
+            grid-row: 1;
             justify-self: center;
             z-index: 1;
         }
 
         .objects-pricing-summary-total {
             grid-column: 6;
+            grid-row: 1;
         }
 
         .objects-pricing-summary-title {
