@@ -99,7 +99,12 @@ def install_workflow_header_alignment_guard(
                 if (!titleObserver && observeTargets()) return;
                 scheduleAlign();
             });
-            mutationObserver.observe(parentDoc.body, { childList: true, subtree: true });
+            mutationObserver.observe(parentDoc.body, {
+                attributes: true,
+                attributeFilter: ["data-stale"],
+                childList: true,
+                subtree: true,
+            });
 
             observeTargets();
             parentWindow.addEventListener("resize", scheduleAlign, { passive: true });
@@ -1642,12 +1647,26 @@ def install_object_detail_input_guard(
                 }
             }
 
+            function detailRoot() {
+                const footers = Array.from(parentDoc.querySelectorAll(
+                    ".object-detail-footer-actions"
+                ));
+                const footer = footers.reverse().find((node) => {
+                    if (!node.isConnected || node.closest('[data-stale="true"]')) return false;
+                    const rect = node.getBoundingClientRect();
+                    return rect.width > 0 && rect.height > 0;
+                });
+                return footer
+                    ? footer.closest('[data-testid="stElementContainer"]') || parentDoc
+                    : parentDoc;
+            }
+
             function sectionNode(section) {
-                return parentDoc.querySelector(`.object-detail-section[data-section="${CSS.escape(String(section || ""))}"]`);
+                return detailRoot().querySelector(`.object-detail-section[data-section="${CSS.escape(String(section || ""))}"]`);
             }
 
             function sectionRows(section) {
-                return Array.from(parentDoc.querySelectorAll(
+                return Array.from(detailRoot().querySelectorAll(
                     `.object-detail-table-row[data-section="${CSS.escape(String(section || ""))}"]`
                 ));
             }
@@ -1694,7 +1713,7 @@ def install_object_detail_input_guard(
             }
 
             function setFinal(field, value) {
-                const node = parentDoc.querySelector(`.object-detail-final-value[data-final="${CSS.escape(field)}"]`);
+                const node = detailRoot().querySelector(`.object-detail-final-value[data-final="${CSS.escape(field)}"]`);
                 if (node) node.textContent = formatMoney(value);
             }
 
@@ -1777,7 +1796,7 @@ def install_object_detail_input_guard(
             }
 
             function seedInputBaselines() {
-                for (const input of parentDoc.querySelectorAll(".object-detail-cell-input[data-field]")) {
+                for (const input of detailRoot().querySelectorAll(".object-detail-cell-input[data-field]")) {
                     input.dataset.originalValue = normalizeInputValue(input);
                 }
             }
@@ -1864,7 +1883,7 @@ def install_object_detail_input_guard(
             }
 
             function snapshotEdits() {
-                return Array.from(parentDoc.querySelectorAll(".object-detail-table-row")).flatMap((row) => {
+                return Array.from(detailRoot().querySelectorAll(".object-detail-table-row")).flatMap((row) => {
                     const lineId = row.dataset.lineId || "";
                     if (!lineId) return [];
                     return Array.from(row.querySelectorAll(".object-detail-cell-input[data-field]")).map((input) => ({

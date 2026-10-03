@@ -110,6 +110,14 @@ Estimate evidence completed in 864 ms with a 22 ms screen render. Treat this as
 a likely File Review/Supabase I/O outlier, not a transition-wrapper diagnosis.
 If it repeats, add scoped timing around File Review data loading and then a
 bounded timeout/recovery based on that evidence.
+ACTIVE, 3.15.23 Object Detail DOM isolation follow-up: production acceptance
+found that the navigation rail can still disappear on entry to Object Detail
+and that editing a material price can update stale DOM or collapse the visible
+calculation to zero. The narrow repair observes `data-stale` attribute changes
+for header alignment and scopes all Object Detail calculation, summary, and
+snapshot queries to the current visible detail container. Acceptance requires
+live row, section, and final-total recalculation plus persisted values after
+blur, with the navigation rail visible on entry and return.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background

@@ -45,6 +45,7 @@ def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_ev
     assert "querySelectorAll(selector)" in source
     assert "element.closest('[data-stale=\"true\"]')" in source
     assert 'actions.style.removeProperty("transform")' in source
+    assert 'attributeFilter: ["data-stale"]' in source
     assert "getBoundingClientRect()" in source
     assert "actionsBaseCenter" in source
     assert "- appliedOffset" in source
