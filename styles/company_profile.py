@@ -391,11 +391,11 @@ def apply_company_profile_css() -> None:
         [data-testid="stButtonGroup"] button:nth-child(2) {
             position: relative;
             z-index: 1;
-            border-color: #33814A !important;
-            background: #C5E9CF !important;
-            color: #174D27 !important;
+            border-color: #789681 !important;
+            background: #DCE9DF !important;
+            color: #425B49 !important;
             font-weight: 700 !important;
-            box-shadow: inset 0 0 0 2px #33814A !important;
+            box-shadow: inset 0 0 0 1px #789681 !important;
         }
 
         .stApp:has(.company-machinery-active)
@@ -403,11 +403,11 @@ def apply_company_profile_css() -> None:
         [data-testid="stButtonGroup"] button:nth-child(3) {
             position: relative;
             z-index: 1;
-            border-color: #A9384D !important;
-            background: #F3C4CD !important;
-            color: #6F1425 !important;
+            border-color: #9A7880 !important;
+            background: #EBDCDF !important;
+            color: #684B52 !important;
             font-weight: 700 !important;
-            box-shadow: inset 0 0 0 2px #A9384D !important;
+            box-shadow: inset 0 0 0 1px #9A7880 !important;
         }
 
         .stApp:has(.company-machinery-active)

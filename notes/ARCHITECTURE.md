@@ -116,6 +116,13 @@ capabilities, pricing semantics, ownership, and constructs a bounded production
 snapshot. That private snapshot is not passed to an external model without an
 explicit data-transfer decision. Deterministic application code remains the
 owner of feasibility checks and price arithmetic.
+Machinery editing uses one session-scoped draft and one owner-only Save action.
+Changing availability, capability, costing, estimate-level, or subcontractor
+controls does not write to Supabase. The draft survives Profile-tab navigation
+within the current Streamlit session. The first Machinery render reads the
+persisted machinery, suppliers, and services once; later draft reruns reuse that
+snapshot. Save writes only changed routes, refreshes the snapshot after success,
+and keeps the draft available when validation or persistence fails.
 The `2026_09_24_machinery_foundation.sql` migration was applied to the live
 Supabase schema on 24.09. The seeded catalog contains 26 active capabilities;
 company-specific Machinery tables begin empty. Anonymous access is revoked.
