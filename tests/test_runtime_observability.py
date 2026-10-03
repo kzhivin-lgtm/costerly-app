@@ -431,6 +431,8 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'parentWindow.setTimeout(reset, 250);' in ready_signal
     assert 'footer.closest(\'[data-testid="stElementContainer"]\')' in ready_signal
     assert 'detailRoot().querySelectorAll(".object-detail-table-row")' in ready_signal
+    assert 'fieldNumber(row, "unit_cost") * fieldNumber(row, "quantity")' in ready_signal
+    assert "const materialCost = primaryMaterialCost + policyMaterialCost;" in ready_signal
     telemetry_source = component.split("function startupPhase", 1)[1].split(
         "function storeResumeCookie", 1
     )[0]

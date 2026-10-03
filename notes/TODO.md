@@ -118,6 +118,11 @@ for header alignment and scopes all Object Detail calculation, summary, and
 snapshot queries to the current visible detail container. Acceptance requires
 live row, section, and final-total recalculation plus persisted values after
 blur, with the navigation rail visible on entry and return.
+The first DOM-isolation candidate did not repair material recalculation: any
+material edit still collapsed the whole Materials section to zero. The next
+candidate removes formatted row-cost text as a calculation input and rebuilds
+every material line deterministically from `unit_cost * quantity`, followed by
+the locked policy percentages and section totals.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background
