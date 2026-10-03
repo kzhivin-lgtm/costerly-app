@@ -2378,6 +2378,8 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert "machinery-selected-{availability_class}" in source
     assert ":has(.machinery-selected-yes)" in css
     assert ":has(.machinery-selected-no)" in css
+    assert "button:nth-of-type(2)" in css
+    assert "button:nth-of-type(3)" in css
     assert "#DCE9DF" in css
     assert "#EBDCDF" in css
     assert "costerly-checkbox-checked" in base_css
@@ -2404,6 +2406,14 @@ def test_machinery_uses_grouped_full_width_table_contract():
     assert 'st.columns([2, 1])' in source
     assert 'help="Close details"' not in source
     assert 'grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr) minmax(36px, 0.13fr);' in css
+
+
+def test_machinery_save_is_the_confirmation_for_removing_in_house_capability():
+    source = (Path(__file__).parents[1] / "screens/company_profile.py").read_text()
+
+    assert "Confirm this is no longer in-house" not in source
+    assert "company_machinery_notice:" in source
+    assert '"Machinery saved"' in source
 
 
 def test_machinery_costing_method_labels_are_short_and_preserve_rate_semantics():

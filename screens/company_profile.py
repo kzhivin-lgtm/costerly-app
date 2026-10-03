@@ -787,7 +787,6 @@ def _render_owner_machinery(
                     ),
                     "subcontractor_name": current_supplier_name,
                     "original_supplier_name": current_supplier_name,
-                    "confirm_change": saved_status != "in_house" or availability != "No",
                 }
                 if (
                     availability_only
@@ -811,7 +810,6 @@ def _render_owner_machinery(
                     pricing: dict[str, object] = {}
                     estimate_level = None
                     subcontractor_name = ""
-                    confirm_change = False
                     if availability == "Yes":
                         technical_fields = [
                             field for field in spec.fields
@@ -930,19 +928,7 @@ def _render_owner_machinery(
                                 )
                     else:
                         detail_columns = st.columns(3)
-                        if saved_status == "in_house":
-                            with detail_columns[0]:
-                                confirm_change = st.checkbox(
-                                    "Confirm this is no longer in-house",
-                                    key=f"{row_key}_confirm_change",
-                                    value=bool(
-                                        isinstance(stored_draft, dict)
-                                        and stored_draft.get("confirm_change")
-                                    ),
-                                )
-                            supplier_column = detail_columns[1]
-                        else:
-                            supplier_column = detail_columns[0]
+                        supplier_column = detail_columns[0]
                         if spec.code in SUBCONTRACTOR_MACHINE_CODES:
                             with supplier_column:
                                 no_supplier = "__no_supplier__"
@@ -1004,7 +990,6 @@ def _render_owner_machinery(
                     "pricing": pricing,
                     "estimate_level": estimate_level,
                     "subcontractor_name": subcontractor_name,
-                    "confirm_change": confirm_change,
                 })
                 drafts.append(draft)
 
@@ -1022,14 +1007,6 @@ def _render_owner_machinery(
         for draft in drafts:
             machine_code = str(draft["machine_code"])
             availability = str(draft["availability"])
-            if (
-                draft.get("saved_status") == "in_house"
-                and availability == "No"
-                and not draft.get("confirm_change")
-            ):
-                raise MachineryError(
-                    "Confirm that this capability is no longer available in-house"
-                )
             if availability == "Not answered":
                 if not draft.get("saved_status"):
                     continue
@@ -1084,7 +1061,9 @@ def _render_owner_machinery(
                 )
         st.session_state.pop(f"company_machinery_snapshot:{access.company_id}", None)
         st.session_state.pop(draft_state_key, None)
-        st.success("Machinery saved")
+        st.session_state[f"company_machinery_notice:{access.company_id}"] = (
+            "Machinery saved"
+        )
         st.rerun(scope="fragment")
     except (MachineryError, PermissionError) as exc:
         st.error(str(exc))
@@ -1096,6 +1075,11 @@ def _render_owner_machinery(
 @st.fragment
 def _render_machinery(access: CompanyAccess) -> None:
     st.markdown('<div class="company-machinery-active"></div>', unsafe_allow_html=True)
+    notice = st.session_state.pop(
+        f"company_machinery_notice:{access.company_id}", None
+    )
+    if notice:
+        st.success(str(notice))
     snapshot_key = f"company_machinery_snapshot:{access.company_id}"
     snapshot = st.session_state.get(snapshot_key)
     if not isinstance(snapshot, dict):

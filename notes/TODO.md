@@ -39,6 +39,9 @@ to Supabase only through one bottom Save action. Preserve the approved machinery
 capability subset and existing domain model. Production acceptance must confirm
 draft retention, one-save persistence, failure retention, member read-only
 behavior, and the softer selected Yes/No colors.
+The owner rejected the additional checkbox for changing a persisted in-house
+capability to No: the explicit bottom Save action is the confirmation. Save must
+not partially persist earlier rows and then stop on that removed UI barrier.
 
 ACTIVE, 3.15.17 Pricing Cost restoration on the accepted `d3e83bd`
 performance baseline. The Pricing persistence and deterministic calculation

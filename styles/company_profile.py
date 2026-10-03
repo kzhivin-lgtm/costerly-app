@@ -388,7 +388,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]:has(.machinery-selected-yes)
-        [data-testid="stButtonGroup"] button:nth-child(2) {
+        [data-testid="stButtonGroup"] button:nth-of-type(2) {
             position: relative;
             z-index: 1;
             border-color: #789681 !important;
@@ -400,7 +400,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-machinery-active)
         [class*="st-key-machinery_"][class*="_row"]:has(.machinery-selected-no)
-        [data-testid="stButtonGroup"] button:nth-child(3) {
+        [data-testid="stButtonGroup"] button:nth-of-type(3) {
             position: relative;
             z-index: 1;
             border-color: #9A7880 !important;
