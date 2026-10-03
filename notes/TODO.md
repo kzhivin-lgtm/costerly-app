@@ -67,6 +67,12 @@ the durable company-scoped object route token so an expired Streamlit session
 restores Object Detail instead of falling through to Upload. Acceptance covers
 edits from both new inputs, cross-screen persistence, reapproval behavior, and
 the expired-session Review scenario in authenticated production.
+Object Detail follows its existing approval boundary: table edits and item
+quantity remain a page-local draft until Approve Estimate persists one snapshot.
+Back to Objects must ask before discarding a changed draft. Objects quantity is
+an independent immediate-save field. Both quantity controls clear their current
+value on focus so the first typed digit replaces, rather than appends to, the
+displayed value. The Objects quantity input shares the Sale price input axis.
 
 ACTIVE, PARTIAL OWNER-ACCEPTED CHECKPOINT, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the

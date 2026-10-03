@@ -6,6 +6,7 @@ import streamlit as st
 from screens import objects
 from ui import object_detail_view, objects_pricing
 from use_cases.estimation import (
+    apply_object_detail_snapshot,
     _estimation_preview_url,
     _material_rows_from_v2_facts,
     _objects_project_pricing,
@@ -112,6 +113,42 @@ def test_quantity_bridge_submits_on_blur_without_direct_database_write():
     assert 'streamlit:setComponentValue' in source
     assert 'focusout' in source
     assert '/rest/v1/' not in source
+
+
+def test_object_detail_quantity_uses_the_approve_snapshot_not_the_objects_bridge():
+    detail_source = Path("screens/object_detail.py").read_text()
+    runtime_source = Path("ui/js_guards.py").read_text()
+
+    assert "object_detail_quantity_bridge" not in detail_source
+    assert 'line_id: "__object__"' in runtime_source
+    assert 'field: "object_quantity"' in runtime_source
+    assert 'parentWindow.confirm("You have unsaved changes. Leave without saving them?")' in runtime_source
+
+
+def test_object_detail_quantity_snapshot_persists_only_at_approval(monkeypatch):
+    updates = []
+    monkeypatch.setattr(
+        "use_cases.estimation.update_object_quantity",
+        lambda **kwargs: updates.append(kwargs),
+    )
+
+    apply_object_detail_snapshot(
+        estimate_id="estimate-1",
+        run_id="run-1",
+        object_id="object-1",
+        edits=[{
+            "line_id": "__object__",
+            "field": "object_quantity",
+            "value": "5",
+        }],
+    )
+
+    assert updates == [{
+        "estimate_id": "estimate-1",
+        "run_id": "run-1",
+        "object_id": "object-1",
+        "quantity": 5.0,
+    }]
 
 
 def test_review_required_object_displays_persisted_approximate_self_cost():

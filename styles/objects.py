@@ -126,8 +126,8 @@ def apply_objects_css() -> None:
         .objects-pricing-quantity-input {
             width: 54px;
             min-width: 54px;
-            min-height: 36px;
-            margin: var(--objects-row-main-offset) auto 0 auto;
+            min-height: 42px;
+            margin: calc(var(--objects-row-main-offset) + 6px) auto 0 auto;
             border: 1px solid rgba(42, 31, 44, 0.16);
             border-radius: 8px;
             background: #FFFFFF;

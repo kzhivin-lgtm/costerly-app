@@ -7,7 +7,6 @@ import streamlit as st
 
 from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
-from ui.object_quantity_bridge import object_quantity_bridge
 from ui.js_guards import (
     install_object_detail_input_guard,
     install_workflow_header_alignment_guard,
@@ -17,7 +16,6 @@ from use_cases.estimation import (
     apply_object_detail_snapshot,
     approve_object_estimate,
     load_object_detail_data,
-    update_object_quantity,
 )
 
 
@@ -47,7 +45,6 @@ def render_object_detail_screen(company_id: str) -> None:
 
     _render_object_detail(data, context)
     _install_object_detail_runtime(context)
-    _consume_object_detail_quantity_edit(context)
     install_workflow_header_alignment_guard("h1.object-detail-title")
 
 
@@ -151,35 +148,6 @@ def _install_object_detail_runtime(context: ObjectDetailContext) -> None:
     )
 
 
-def _consume_object_detail_quantity_edit(context: ObjectDetailContext) -> None:
-    """Persist the Object Detail quantity field to the shared canonical record."""
-    raw_value = object_quantity_bridge(key="object_detail_quantity_bridge")
-    if not raw_value:
-        return
-    try:
-        payload = json.loads(raw_value)
-    except (TypeError, json.JSONDecodeError):
-        return
-    nonce = str(payload.get("nonce") or "")
-    if not nonce or st.session_state.get("last_object_quantity_nonce") == nonce:
-        return
-    if (
-        str(payload.get("estimate_id") or "") != context.estimate_id
-        or str(payload.get("object_id") or "") != context.object_id
-    ):
-        return
-    update_object_quantity(
-        estimate_id=context.estimate_id,
-        run_id=context.run_id,
-        object_id=context.object_id,
-        quantity=float(payload.get("quantity")),
-    )
-    st.session_state.last_object_quantity_nonce = nonce
-    _mark_objects_estimation_dirty(context.estimate_id)
-    st.session_state.setdefault("approved_object_keys", set()).discard(context.object_id)
-    st.rerun()
-
-
 def _consume_pending_object_detail_edit() -> bool:
     pending = st.session_state.pop("object_detail_pending_edit", None)
     if not pending:
@@ -210,6 +178,7 @@ def _consume_pending_object_detail_snapshot() -> bool:
     apply_object_detail_snapshot(
         estimate_id=estimate_id,
         object_id=object_id,
+        run_id=str(st.session_state.get("current_run_id") or ""),
         edits=edits if isinstance(edits, list) else [],
     )
     _mark_objects_estimation_dirty(estimate_id)

@@ -662,6 +662,7 @@ def apply_object_detail_snapshot(
     *,
     estimate_id: str,
     object_id: str,
+    run_id: str | None = None,
     edits: list[Any],
 ) -> None:
     """Persist the current Object Detail table snapshot and recalculate once."""
@@ -674,15 +675,29 @@ def apply_object_detail_snapshot(
         "allocation_basis",
     }
     edits_by_line: dict[str, dict[str, Any]] = {}
+    object_quantity: Any = None
     for edit in edits:
         if not isinstance(edit, dict):
             continue
         line_id = str(edit.get("line_id") or "")
         field = str(edit.get("field") or "")
+        if line_id == "__object__" and field == "object_quantity":
+            object_quantity = edit.get("value")
+            continue
         if not line_id or field not in allowed_fields:
             continue
         edits_by_line.setdefault(line_id, {})[field] = edit.get("value")
 
+    if not edits_by_line and object_quantity is None:
+        return
+
+    if object_quantity is not None:
+        update_object_quantity(
+            estimate_id=estimate_id,
+            run_id=str(run_id or ""),
+            object_id=object_id,
+            quantity=_number_from_edit(object_quantity),
+        )
     if not edits_by_line:
         return
 

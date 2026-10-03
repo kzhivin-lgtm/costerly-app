@@ -1578,7 +1578,7 @@ def install_object_detail_input_guard(
     estimate_id: str,
     object_id: str,
 ) -> None:
-    """Install blur-save behavior for Object Detail HTML inputs."""
+    """Install staged Object Detail editing and approve/discard behavior."""
     run_id_json = json.dumps(run_id)
     estimate_id_json = json.dumps(estimate_id)
     object_id_json = json.dumps(object_id)
@@ -1607,6 +1607,14 @@ def install_object_detail_input_guard(
                 const field = input.dataset.field || "";
                 if (!lineId || !field) return null;
                 return { input, lineId, field };
+            }
+
+            function objectQuantityInput(target = null) {
+                if (target && target.closest) {
+                    const direct = target.closest(".object-detail-quantity-input[data-object-quantity-input]");
+                    if (direct) return direct;
+                }
+                return parentDoc.querySelector(".object-detail-quantity-input[data-object-quantity-input]");
             }
 
             function cleanMoney(value) {
@@ -1785,9 +1793,17 @@ def install_object_detail_input_guard(
                 for (const input of parentDoc.querySelectorAll(".object-detail-cell-input[data-field]")) {
                     input.dataset.originalValue = normalizeInputValue(input);
                 }
+                const quantity = objectQuantityInput();
+                if (quantity) quantity.dataset.originalValue = cleanNumber(quantity.textContent) || "1";
             }
 
             function handleFocus(event) {
+                const quantity = objectQuantityInput(event.target);
+                if (quantity) {
+                    quantity.dataset.editStartValue = cleanNumber(quantity.textContent) || quantity.dataset.originalValue || "1";
+                    quantity.textContent = "";
+                    return;
+                }
                 const ctx = inputContext(event);
                 if (!ctx) return;
                 ctx.input.dataset.editStartValue = normalizeInputValue(ctx.input);
@@ -1797,6 +1813,20 @@ def install_object_detail_input_guard(
             }
 
             function handleKeydown(event) {
+                const quantity = objectQuantityInput(event.target);
+                if (quantity) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        quantity.blur();
+                        return;
+                    }
+                    const allowed = new Set([
+                        "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End", "Tab", "Escape", ".",
+                    ]);
+                    if (event.metaKey || event.ctrlKey || event.altKey || allowed.has(event.key)) return;
+                    if (!/^[0-9]$/.test(event.key)) event.preventDefault();
+                    return;
+                }
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
                 if (event.key === "Enter") {
@@ -1813,6 +1843,11 @@ def install_object_detail_input_guard(
             }
 
             function handleBeforeInput(event) {
+                const quantity = objectQuantityInput(event.target);
+                if (quantity) {
+                    if (event.data && /[^0-9.]/.test(event.data)) event.preventDefault();
+                    return;
+                }
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
                 if (event.data && /[^0-9.]/.test(event.data)) event.preventDefault();
@@ -1834,15 +1869,17 @@ def install_object_detail_input_guard(
             }
 
             function handleBlur(event) {
-                const ctx = inputContext(event);
-                if (!ctx) return;
-                if (parentWindow[SUBMITTING_KEY]) return;
-                if (ctx.input.dataset.skipNextBlurSave === "true") {
-                    delete ctx.input.dataset.skipNextBlurSave;
+                const quantity = objectQuantityInput(event.target);
+                if (quantity) {
+                    const nextValue = cleanNumber(quantity.textContent);
+                    quantity.textContent = formatNumber(readNumber(
+                        nextValue || quantity.dataset.editStartValue || quantity.dataset.originalValue || "1"
+                    ));
                     return;
                 }
+                const ctx = inputContext(event);
+                if (!ctx) return;
                 const nextValue = normalizeInputValue(ctx.input);
-                const startValue = ctx.input.dataset.editStartValue || "";
                 if (!ctx.input.classList.contains("object-detail-cell-input--text")) {
                     if (ctx.input.classList.contains("object-detail-cell-input--percent")) {
                         setEditableValue(ctx.input, `${formatNumber(readNumber(nextValue))}%`);
@@ -1852,18 +1889,7 @@ def install_object_detail_input_guard(
                         setEditableValue(ctx.input, formatMoney(nextValue));
                     }
                 }
-                if (nextValue === startValue) return;
-
-                const params = new URLSearchParams();
-                params.set("screen", "object_detail");
-                if (RUN_ID) params.set("run_id", RUN_ID);
-                params.set("estimate_id", ESTIMATE_ID);
-                params.set("object_id", OBJECT_ID);
-                params.set("od_edit_line", ctx.lineId);
-                params.set("od_edit_field", ctx.field);
-                params.set("od_edit_value", nextValue);
-                params.set("od_edit_nonce", String(Date.now()));
-                parentWindow.location.search = `?${params.toString()}`;
+                updateCalculations(ctx.input.closest(".object-detail-table-row"));
             }
 
             function findApproveButton(target) {
@@ -1873,7 +1899,7 @@ def install_object_detail_input_guard(
             }
 
             function snapshotEdits() {
-                return Array.from(parentDoc.querySelectorAll(".object-detail-table-row")).flatMap((row) => {
+                const edits = Array.from(parentDoc.querySelectorAll(".object-detail-table-row")).flatMap((row) => {
                     const lineId = row.dataset.lineId || "";
                     if (!lineId) return [];
                     return Array.from(row.querySelectorAll(".object-detail-cell-input[data-field]")).map((input) => ({
@@ -1883,6 +1909,34 @@ def install_object_detail_input_guard(
                         originalValue: input.dataset.originalValue ?? normalizeInputValue(input),
                     })).filter((edit) => edit.field && edit.value !== edit.originalValue);
                 });
+                const quantity = objectQuantityInput();
+                if (quantity) {
+                    const value = cleanNumber(quantity.textContent)
+                        || quantity.dataset.editStartValue
+                        || quantity.dataset.originalValue
+                        || "1";
+                    const originalValue = quantity.dataset.originalValue || value;
+                    if (value !== originalValue) {
+                        edits.push({
+                            line_id: "__object__",
+                            field: "object_quantity",
+                            value,
+                            originalValue,
+                        });
+                    }
+                }
+                return edits;
+            }
+
+            function confirmDiscard(event) {
+                const back = event.target && event.target.closest
+                    ? event.target.closest('[data-streamlit-bridge-key="object_detail_back_bridge"]')
+                    : null;
+                if (!back || !snapshotEdits().length) return;
+                if (parentWindow.confirm("You have unsaved changes. Leave without saving them?")) return;
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
             }
 
             function approveSnapshotHref() {
@@ -1926,6 +1980,7 @@ def install_object_detail_input_guard(
             parentDoc.addEventListener("mousedown", prepareApproveSnapshot, true);
             parentDoc.addEventListener("click", prepareApproveSnapshot, true);
             parentDoc.addEventListener("focusout", handleBlur, true);
+            parentDoc.addEventListener("click", confirmDiscard, true);
 
             parentWindow[HANDLER_KEY] = () => {
                 parentDoc.removeEventListener("focusin", handleFocus, true);
@@ -1937,6 +1992,7 @@ def install_object_detail_input_guard(
                 parentDoc.removeEventListener("mousedown", prepareApproveSnapshot, true);
                 parentDoc.removeEventListener("click", prepareApproveSnapshot, true);
                 parentDoc.removeEventListener("focusout", handleBlur, true);
+                parentDoc.removeEventListener("click", confirmDiscard, true);
                 parentWindow[HANDLER_KEY] = null;
             };
             seedInputBaselines();

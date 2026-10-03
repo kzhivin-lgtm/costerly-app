@@ -21,7 +21,11 @@
         function submit(node) {
           const row = node.closest("[data-object-key]");
           const quantity = quantityValue(node);
-          if (!row || quantity == null) return;
+          if (!row) return;
+          if (quantity == null) {
+            node.textContent = node.dataset.savedQuantity || "1";
+            return;
+          }
           const previous = Number(node.dataset.savedQuantity || "");
           if (Number.isFinite(previous) && previous === quantity) return;
           node.dataset.savedQuantity = String(quantity);
@@ -40,18 +44,14 @@
           if (parentWindow[cleanupKey]) parentWindow[cleanupKey]();
 
           function onFocus(event) {
-            const node = event.target.closest && event.target.closest("[data-object-quantity-input]");
+            const node = event.target.closest && event.target.closest(".objects-pricing-quantity-input[data-object-quantity-input]");
             if (!node) return;
             node.dataset.savedQuantity = String(quantityValue(node) || "");
-            const range = parentDoc.createRange();
-            range.selectNodeContents(node);
-            const selection = parentWindow.getSelection();
-            selection.removeAllRanges();
-            selection.addRange(range);
+            node.textContent = "";
           }
 
           function onKeydown(event) {
-            const node = event.target.closest && event.target.closest("[data-object-quantity-input]");
+            const node = event.target.closest && event.target.closest(".objects-pricing-quantity-input[data-object-quantity-input]");
             if (!node) return;
             if (event.key === "Enter") {
               event.preventDefault();
@@ -60,7 +60,7 @@
           }
 
           function onBlur(event) {
-            const node = event.target.closest && event.target.closest("[data-object-quantity-input]");
+            const node = event.target.closest && event.target.closest(".objects-pricing-quantity-input[data-object-quantity-input]");
             if (node) submit(node);
           }
 

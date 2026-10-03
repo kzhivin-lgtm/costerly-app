@@ -440,11 +440,14 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     )[0]
     assert 'updateRowCost(ctx.input.closest(".object-detail-table-row"))' in handle_input
     assert "updateSummaries" not in handle_input
-    assert "updateCalculations" not in handle_blur
-    assert "parentWindow.location.search" in handle_blur
+    assert "updateCalculations" in handle_blur
+    assert "parentWindow.location.search" not in handle_blur
     assert 'if (event.key === "Enter")' in object_detail_guard
     assert "ctx.input.blur()" in object_detail_guard
     assert 'if (snapshot.edits.length)' in object_detail_guard
+    assert 'field: "object_quantity"' in object_detail_guard
+    assert "You have unsaved changes" in object_detail_guard
+    assert "confirmDiscard" in object_detail_guard
     assert '"object_detail_approve_bridge"' in object_detail_guard
     telemetry_source = component.split("function startupPhase", 1)[1].split(
         "function storeResumeCookie", 1
