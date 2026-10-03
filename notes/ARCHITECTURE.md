@@ -473,15 +473,31 @@ hold either role or both without duplicate records. Each Project belongs to one
 Partner and may reference one Client. Each Final Approval creates an immutable
 Project Version linked to the existing RFQ run and estimate. File Review values
 remain draft metadata and must not create permanent Organizations or Projects.
-Organizations are created or matched only during Final Approval. The Projects
-interface follows Partner to Project to Version; opening a Version restores its
-durable Objects estimate. Manual organization creation is outside the MVP.
+Organizations are created or matched only during Final Approval. The production
+interface is titled Partners and stays on one page: native Partner disclosures
+contain Project rows with Client, approval time, total, and PDF. It has no
+Partner, Project, or Version detail routes in the MVP. Manual organization
+creation is outside the MVP.
 Final Approval is available only after every Object has a terminal priced result
 and explicit approval. One database transaction assigns organization roles,
 creates or matches the Project, and creates the next Project Version. The
 Version stores an immutable JSON snapshot in addition to references to the RFQ
 run and estimate. Repeating Final Approval for the same estimate returns the
-existing Version. PDF generation is independent and may be added later.
+existing Version.
+
+Client Proposal PDF v1
+Final Approval remains on Objects, changes to a pale green Approved state, and
+publishes a deterministic A4 PDF without an AI call. The generator reads the
+immutable approved snapshot and includes populated Company Contacts, optional
+company logo, Project, Partner, optional Client, Object quantities and sale
+prices, Delivery, Installation, VAT, and final totals. Self cost is never
+included. Empty Contact values are omitted. The PDF is stored in the private
+`project-proposals` Supabase bucket and exposed through one-hour signed URLs.
+The external filename is `Project_Partner_YYYY-MM-DD.pdf`; the immutable storage
+path retains company, Project, and Version identifiers. Objects shows Client
+Proposal / Download PDF and the reserved Project Summary / Download XLS action
+below Installation. XLS remains disabled until the project materials purchasing
+export is implemented. Partners shows the latest Version PDF for each Project.
 
 Legal Consent and Verified Registration v1
 The feature is cross-system and active by default after the private-playground

@@ -1,24 +1,22 @@
 # TODO
 
-ACTIVE, 3.16.1 Projects foundation: Partner is the required top-level entity.
+COMPLETED AND OWNER-ACCEPTED, 3.16.1 Partners workspace foundation: Partner is the required top-level entity.
 Organizations use one company-scoped identity with Partner and Client roles;
 one organization may hold both roles. A Project belongs to one Partner and may
 reference one Client. Finalized estimates become immutable Project Versions.
-The first implementation adds the schema, enables the Projects route, and
-provides Partner to Project to Version navigation. Permanent records are not
-created before Final Approval. Remaining: apply the additive migration,
-production acceptance, then implement Final Approval as task 3.16.2.
-The owner clarified the MVP interface: one Projects page, full shared header
-navigation, native expandable Partner rows, and nested Project rows showing
-Project, Client, calculation date/time, total, and PDF. No Partner, Project, or
-Version detail routes belong in this stage.
+The production interface is one Partners page with shared header navigation,
+native expandable Partner rows, and nested Project rows showing Project,
+Client, calculation date/time, total, and PDF. The current-page Projects action
+is omitted. No Partner, Project, or Version detail routes belong in this stage.
+Permanent records are not created before Final Approval.
 
-ACTIVE, 3.16.2 Final Approval: replace Generate Proposal with one Final
+COMPLETED AND OWNER-ACCEPTED, 3.16.2 Final Approval: replace Generate Proposal with one Final
 Approval action available only after every object is priced and approved. The
 action atomically matches or creates Partner and optional Client roles, matches
 or creates the Project, assigns the next version number, and stores an immutable
 JSON snapshot of Objects, project costs, and totals. Repeated approval of the
-same estimate is idempotent. PDF generation and download remain a later task.
+same estimate is idempotent. Final Approval remains on Objects and changes to a
+pale green Approved state.
 
 PENDING, 3.16.3 Processing handoff polish: after the current File Review
 transition regression is removed, evaluate holding the completed Processing
@@ -28,7 +26,7 @@ target visible, and target styled boundaries first. Do not add a fixed delay
 unless it improves the real production transition without increasing total
 time unnecessarily.
 
-ACTIVE, 3.16.4 Client Proposal PDF: Final Approval generates a private PDF from
+COMPLETED AND OWNER-ACCEPTED, 3.16.4 Client Proposal PDF: Final Approval generates a private PDF from
 the immutable approved snapshot. The header uses only populated Company
 Contacts and the company logo. The commercial body contains Project, Partner,
 optional Client, Objects with quantity and sale prices, Delivery, Installation,
@@ -51,6 +49,12 @@ rightmost axis, and VAT occupies the column between them.
 VAT is centered between the unchanged Project Price and Project Total grid
 lines. Proposal downloads use Project_Partner_YYYY-MM-DD.pdf as the external
 filename while private storage paths remain immutable internal identifiers.
+
+PENDING, 3.16.5 Project Summary XLS: generate a project-wide purchasing list
+containing all materials assigned across approved Objects. The disabled
+Project Summary / Download XLS control is the reserved UI entry point. Define
+aggregation, duplicate-material merging, units, quantities, source prices, and
+supplier fields before implementation.
 
 ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the
