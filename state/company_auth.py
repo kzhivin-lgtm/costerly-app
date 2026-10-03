@@ -1600,14 +1600,12 @@ def _open_last_estimate(company_id: str) -> None:
     set_screen("file_review")
 
 
-def render_account_control(access: CompanyAccess, *, platform_access=None) -> None:
-    from db.supabase_client import get_supabase_client
-    from use_cases.latest_estimate import load_latest_estimate_route
-
-    try:
-        latest_route = load_latest_estimate_route(get_supabase_client(), str(access.company_id))
-    except Exception:
-        latest_route = None
+def render_account_control(
+    access: CompanyAccess,
+    *,
+    platform_access=None,
+    latest_route: dict[str, str] | None = None,
+) -> None:
     active_screen = str(st.query_params.get("screen") or st.session_state.get("screen") or "upload")
     workflow_screens = {"file_review", "objects", "object_detail"}
     render_account_header_controls(

@@ -1,14 +1,22 @@
 # TODO
 
-PROPOSED, P0 authenticated full-reload optimization: production telemetry shows
-that a hard reload frequently takes 6-8 seconds and can reach the wrapper's
-8-second fallback. Preserve the accepted Fast Resume and `app-ready` readiness
-contract. First add spans for legal acceptance, platform access, product-session
-recording, latest-estimate lookup, and the browser delivery gap. Then replace
-the sequential authenticated bootstrap reads with one guarded bootstrap RPC,
-make activity recording non-blocking, and cache or defer the header's latest
-estimate lookup. Treat the separate server-ready to browser-received delay as a
+ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
+shows that a hard reload frequently takes 6-8 seconds and can reach the
+wrapper's 8-second fallback. Preserve the accepted Fast Resume and `app-ready`
+readiness contract. The first candidate removes the legal release lookup from
+authenticated Fast Resume and repeated session reruns, records product activity
+off the render path, and performs the first Platform Admin and Last Estimate
+lookups concurrently. Sign In still performs the required Terms gate. Do not
+add a polling fragment or a second full-page rerun merely to activate header
+controls. Treat the separate server-ready to browser-received delay as a
 distinct Streamlit transport/render investigation, not as proof of slow Python.
+
+PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
+block initial rendering on the legal release lookup. Add a later background
+version check and a blocking in-product modal that requires the current Terms
+checkbox before the user continues. Preserve immutable acceptance evidence and
+document that enforcement of a newly published version is delayed until that
+background check runs.
 
 COMPLETED AND OWNER-ACCEPTED, 3.15.22 Objects Estimation live result refresh:
 replace the removed

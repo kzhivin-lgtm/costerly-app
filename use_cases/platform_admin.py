@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from typing import Any
@@ -15,6 +16,9 @@ MANUFACTURING_CALCULATORS = {
     "sheet_laser_in_house",
     "sheet_laser_subcontractor",
 }
+_PRODUCT_SESSION_EXECUTOR = ThreadPoolExecutor(
+    max_workers=1, thread_name_prefix="product-session"
+)
 
 
 @dataclass(frozen=True)
@@ -134,6 +138,23 @@ def record_authenticated_session(
             "p_metadata": {},
         },
     ).execute()
+
+
+def record_authenticated_session_in_background(
+    client: Any,
+    *,
+    company_id: str,
+    user_id: str,
+    session_id: str,
+) -> None:
+    """Record product activity without holding the first authenticated render."""
+    _PRODUCT_SESSION_EXECUTOR.submit(
+        record_authenticated_session,
+        client,
+        company_id=company_id,
+        user_id=user_id,
+        session_id=session_id,
+    )
 
 
 def company_file_fingerprint(company_id: str, file_bytes: bytes) -> str:

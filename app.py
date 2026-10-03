@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from importlib.metadata import PackageNotFoundError, version as package_version
 import platform
 import time
@@ -44,7 +45,11 @@ from db.workflow_routes import (
 from styles.base import apply_base_css
 from ui.js_guards import scroll_parent_to_top, signal_app_ready_to_embed
 from ui.app_header import render_app_header
-from use_cases.platform_admin import load_platform_access, record_authenticated_session
+from use_cases.latest_estimate import load_latest_estimate_route
+from use_cases.platform_admin import (
+    load_platform_access,
+    record_authenticated_session_in_background,
+)
 
 
 def _installed_version(distribution: str) -> str:
@@ -433,7 +438,13 @@ def main() -> None:
             for route_key in ("screen", "profile_tab"):
                 if route_key in st.query_params:
                     del st.query_params[route_key]
-        if legal_consent_enabled():
+        legal_check_key = f"_terms_acceptance_checked:{access.user_id}"
+        skip_legal_refresh_check = (
+            st.session_state.get("_fast_resume_outcome") == "restored"
+        )
+        if legal_consent_enabled() and not (
+            st.session_state.get(legal_check_key) or skip_legal_refresh_check
+        ):
             try:
                 needs_terms = terms_acceptance_required(
                     get_supabase_client(),
@@ -451,15 +462,33 @@ def main() -> None:
                     render_terms_acceptance(access)
                 _signal_ready(trace, "terms_acceptance")
                 return
+            st.session_state[legal_check_key] = True
+        elif skip_legal_refresh_check:
+            st.session_state[legal_check_key] = True
         platform_user_id = str(access.user_id)
-        if st.session_state.get("_platform_access_user_id") == platform_user_id:
+        platform_cached = (
+            st.session_state.get("_platform_access_user_id") == platform_user_id
+        )
+        latest_route = None
+        if platform_cached:
             platform_access = st.session_state.get("_platform_access")
-        else:
             try:
-                platform_access = load_platform_access(
-                    get_supabase_client(),
-                    platform_user_id,
+                latest_route = load_latest_estimate_route(
+                    get_supabase_client(), str(access.company_id)
                 )
+            except Exception:
+                latest_route = None
+        else:
+            client = get_supabase_client()
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                platform_future = executor.submit(
+                    load_platform_access, client, platform_user_id
+                )
+                latest_future = executor.submit(
+                    load_latest_estimate_route, client, str(access.company_id)
+                )
+            try:
+                platform_access = platform_future.result()
             except Exception as exc:
                 trace.event(
                     "server.platform_access_unavailable",
@@ -470,6 +499,10 @@ def main() -> None:
             else:
                 st.session_state._platform_access_user_id = platform_user_id
                 st.session_state._platform_access = platform_access
+            try:
+                latest_route = latest_future.result()
+            except Exception:
+                latest_route = None
         if requested_screen == "admin":
             if platform_access is None:
                 st.query_params.clear()
@@ -482,26 +515,23 @@ def main() -> None:
                 del st.query_params["screen"]
         activity_key = f"{access.company_id}:{trace.session_id}"
         if st.session_state.get("_product_session_key") != activity_key:
-            try:
-                record_authenticated_session(
-                    get_supabase_client(),
-                    company_id=str(access.company_id),
-                    user_id=str(access.user_id),
-                    session_id=trace.session_id,
-                )
-                st.session_state._product_session_key = activity_key
-            except Exception as exc:
-                trace.event(
-                    "server.product_activity_unavailable",
-                    status="error",
-                    metadata={"error_type": type(exc).__name__},
-                )
+            record_authenticated_session_in_background(
+                get_supabase_client(),
+                company_id=str(access.company_id),
+                user_id=str(access.user_id),
+                session_id=trace.session_id,
+            )
+            st.session_state._product_session_key = activity_key
         active_product_screen = str(st.query_params.get("screen") or st.session_state.get("screen") or "upload")
         if active_product_screen == "upload":
             with trace.span("server.app_header_render"):
                 render_app_header()
         with trace.span("server.account_controls_render"):
-            render_account_control(access, platform_access=platform_access)
+            render_account_control(
+                access,
+                platform_access=platform_access,
+                latest_route=latest_route,
+            )
     else:
         requested_screen = str(st.query_params.get("screen") or "")
         current_screen = requested_screen or str(st.session_state.get("screen") or "upload")

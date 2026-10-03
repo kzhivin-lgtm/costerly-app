@@ -461,9 +461,7 @@ def test_confirmation_and_permanent_privacy_routes_are_wired():
 def test_updated_terms_gate_precedes_application_controls():
     app_source = (ROOT / "app.py").read_text()
     gate_position = app_source.index("needs_terms = terms_acceptance_required(")
-    controls_position = app_source.index(
-        "render_account_control(access, platform_access=platform_access)"
-    )
+    controls_position = app_source.index("render_account_control(")
     assert gate_position < controls_position
 
     auth_source = (ROOT / "state/company_auth.py").read_text()
