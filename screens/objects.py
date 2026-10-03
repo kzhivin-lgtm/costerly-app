@@ -428,11 +428,11 @@ def render_objects_screen(company_id: str) -> None:
         class_name="objects-estimation-header",
         marker_id=OBJECTS_MARKER_ID,
     )
+    screen_state = _current_objects_state(estimate_id)
     if estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future):
         _render_live_objects_content(estimate_id=str(estimate_id), run_id=run_id)
     else:
         st.session_state.pop("objects_live_poll_estimate_id", None)
-        screen_state = _current_objects_state(estimate_id)
         _render_objects_table_content(
             estimate_id=estimate_id,
             run_id=run_id,

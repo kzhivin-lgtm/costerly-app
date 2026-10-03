@@ -347,3 +347,13 @@ def test_projects_workspace_loads_three_collections_concurrently():
 
     assert "ThreadPoolExecutor(max_workers=3)" in source
     assert source.count("executor.submit(") == 3
+
+
+def test_objects_initializes_action_state_before_live_fragment_branch():
+    source = Path("screens/objects.py").read_text()
+    state_index = source.index("screen_state = _current_objects_state(estimate_id)")
+    live_index = source.index(
+        'if estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future):'
+    )
+
+    assert state_index < live_index
