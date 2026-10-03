@@ -344,28 +344,32 @@ def apply_objects_css() -> None:
         }
 
         .objects-pricing-summary {
+            --objects-summary-price-axis: calc(100% - 658px);
+            --objects-summary-total-axis: calc(74.712644% + 34.896552px);
             display: grid;
-            grid-template-columns: minmax(250px, 1.35fr) 58px 116px 162px 128px 122px;
-            column-gap: 18px;
+            grid-template-columns: 1.25fr 1fr 1fr 1.1fr;
+            column-gap: 46px;
+            position: relative;
             padding: 34px 0 38px 0;
             border-top: 1px solid rgba(42, 31, 44, 0.14);
         }
 
         .objects-pricing-summary-price {
-            grid-column: 2 / 5;
-            grid-row: 1;
+            position: absolute;
+            top: 34px;
+            left: var(--objects-summary-price-axis);
             width: 162px;
         }
 
         .objects-pricing-summary-vat {
-            grid-column: 2 / 6;
-            grid-row: 1;
-            justify-self: center;
+            position: absolute;
+            top: 34px;
+            left: calc(87.356322% - 311.551724px);
             z-index: 1;
         }
 
         .objects-pricing-summary-total {
-            grid-column: 6;
+            grid-column: 4;
             grid-row: 1;
         }
 

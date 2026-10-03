@@ -167,8 +167,11 @@ def test_approved_objects_show_pdf_and_future_xls_download_row():
     assert ".objects-pricing-summary-price" in css
     assert ".objects-pricing-summary-vat" in css
     assert ".objects-pricing-summary-total" in css
-    assert "grid-column: 2 / 6" in css
-    assert css.count("grid-row: 1") >= 3
+    assert "--objects-summary-price-axis: calc(100% - 658px)" in css
+    assert "--objects-summary-total-axis: calc(74.712644% + 34.896552px)" in css
+    assert "left: calc(87.356322% - 311.551724px)" in css
+    assert ".objects-pricing-summary-total" in css
+    assert "grid-column: 4" in css
 
 
 def test_completed_estimation_future_clears_stale_process_progress():
