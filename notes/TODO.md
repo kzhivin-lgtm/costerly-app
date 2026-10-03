@@ -128,6 +128,11 @@ the same zero-collapse. Stop the duplicate browser calculator. The accepted
 recovery path saves the edited field on blur and lets the existing server
 transaction recalculate lines, policy percentages, section totals, VAT, and
 self cost before the refreshed Object Detail is shown.
+ACTIVE: production evidence showed no line `updated_at` after an edit that had
+not left the contenteditable field. Restore only current-row live Cost feedback
+(`unit_cost * quantity`, or the equivalent Labor row formula), while blur or
+Enter remains the single persistence and authoritative server-recalculation
+boundary. Do not restore browser-wide section or final-total calculation.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background

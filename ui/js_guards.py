@@ -1799,9 +1799,14 @@ def install_object_detail_input_guard(
             function handleKeydown(event) {
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    ctx.input.blur();
+                    return;
+                }
                 const allowedKeys = new Set([
                     "Backspace", "Delete", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
-                    "Home", "End", "Tab", "Enter", "Escape", ".",
+                    "Home", "End", "Tab", "Escape", ".",
                 ]);
                 if (event.metaKey || event.ctrlKey || event.altKey || allowedKeys.has(event.key)) return;
                 if (!/^[0-9]$/.test(event.key)) event.preventDefault();
@@ -1816,6 +1821,7 @@ def install_object_detail_input_guard(
             function handleInput(event) {
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
+                updateRowCost(ctx.input.closest(".object-detail-table-row"));
             }
 
             function handlePaste(event) {
