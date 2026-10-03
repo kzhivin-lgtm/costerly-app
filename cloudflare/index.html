@@ -642,6 +642,18 @@
                   },
                 });
                 revealInternalTransition("target_app_ready");
+              } else if (maskedInternalTransitions.has(pendingTransition.name)) {
+                pendingTransitions.splice(transitionIndex, 1);
+                window.clearTimeout(pendingTransition.timeoutId);
+                mark("browser.transition_styled", {
+                  duration_ms: performance.now() - pendingTransition.startedAt,
+                  metadata: {
+                    transition: pendingTransition.name,
+                    transition_id: pendingTransition.id,
+                    source: "target_app_ready",
+                  },
+                });
+                revealInternalTransition("target_app_ready");
               } else if (!maskedInternalTransitions.has(pendingTransition.name)) {
                 pendingTransitions.splice(transitionIndex, 1);
                 window.clearTimeout(pendingTransition.timeoutId);

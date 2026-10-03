@@ -407,7 +407,7 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "costerly-auth-sign-in-shell" not in post_ready_source
     assert 'parentDocument.addEventListener("click", handler, {' in ready_signal
     assert "capture: false" in ready_signal
-    assert "passive: true" in ready_signal
+    assert "passive: false" in ready_signal
     assert 'control.closest(".st-key-profile_to_upload")' in ready_signal
     assert 'label === "continue to upload" || label === "upload"' in ready_signal
     assert 'transition === "back_to_upload"' in ready_signal
@@ -422,7 +422,9 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     observer_source = ready_signal.split("function installTransitionObserver()", 1)[1].split(
         "function postReady()", 1
     )[0]
-    assert "preventDefault" not in observer_source
+    assert "if (bridgeButton) event.preventDefault();" in observer_source
+    assert "if (bridgeButton) bridgeButton.click();" in observer_source
+    assert 'String(control.dataset.streamlitBridgeKey || "")' in observer_source
     telemetry_source = component.split("function startupPhase", 1)[1].split(
         "function storeResumeCookie", 1
     )[0]

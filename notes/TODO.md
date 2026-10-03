@@ -73,6 +73,15 @@ destination opening at the top. Current production evidence isolates three
 defects: Last Estimate repeats an already completed latest-estimate lookup,
 Object Detail transitions lack target-ready closure and masking, and first-load
 Partners/workflow routes retain transport or data-load outliers above 4 seconds.
+The approved repair sequence is: close masked internal transitions from the
+destination `app-ready` event, then keep ordinary Objects to Object Detail and
+Back navigation inside the live Streamlit session. Object Detail approval keeps
+its snapshot-bearing reload until editable-line persistence is redesigned, but
+must preserve the wrapper trace so the destination can close the transition.
+Production acceptance must also verify the authenticated navigation controls on
+File Review. Server telemetry confirms that `account_controls_render` ran, but
+the owner observed the control rail missing visually, so DOM visibility remains
+unknown and is not closed by server-side render evidence.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background

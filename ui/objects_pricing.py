@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 import html
 import math
 from urllib.parse import quote
+import hashlib
 
 
 def _escape(value: object) -> str:
@@ -170,6 +171,12 @@ def _project_cost_row_html(
     )
 
 
+def object_detail_navigation_key(object_id: object) -> str:
+    """Return a DOM-safe stable key for the native Object Detail bridge."""
+    digest = hashlib.sha256(str(object_id or "").encode("utf-8")).hexdigest()[:16]
+    return f"object_detail_nav_{digest}"
+
+
 def _review_action_html(
     row: dict[str, object],
     *,
@@ -181,10 +188,13 @@ def _review_action_html(
         action_label = "Done" if row.get("reviewed") else "Review"
         action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
         object_id = quote(str(row.get("object_key") or ""))
+        navigation_key = object_detail_navigation_key(row.get("object_key"))
         estimate_param = quote(str(estimate_id or ""))
         run_param = quote(str(run_id or ""))
         return (
             f'<a class="objects-pricing-review-button{action_class}" '
+            f'data-streamlit-bridge-key="{navigation_key}" '
+            f'data-object-id="{_escape(row.get("object_key"))}" '
             f'href="?screen=object_detail&run_id={run_param}&estimate_id={estimate_param}&object_id={object_id}" '
             f'target="_self">{action_label}</a>'
         )

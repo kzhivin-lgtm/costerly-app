@@ -313,6 +313,10 @@ def apply_object_detail_css() -> None:
             margin-top: 34px;
         }
 
+        .st-key-object_detail_navigation_bridges {
+            display: none !important;
+        }
+
         .object-detail-footer-button {
             min-height: var(--button-height-lg);
             border-radius: var(--button-radius);

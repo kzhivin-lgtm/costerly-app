@@ -291,6 +291,29 @@ def _render_pricing_table(
     )
 
 
+def _open_object_detail(object_id: str) -> None:
+    st.session_state.current_object_id = str(object_id)
+    st.session_state.screen = "object_detail"
+
+
+def _render_object_detail_navigation_bridges(data: dict[str, object]) -> None:
+    """Keep HTML table actions on the current Streamlit session."""
+    with st.container(key="object_detail_navigation_bridges"):
+        for row in data.get("rows") or []:
+            object_id = str(row.get("object_key") or "")
+            if not object_id or str(row.get("status") or "") not in {
+                "completed",
+                "review_required",
+            }:
+                continue
+            st.button(
+                f"Open Object Detail {object_id}",
+                key=objects_pricing.object_detail_navigation_key(object_id),
+                on_click=_open_object_detail,
+                args=(object_id,),
+            )
+
+
 def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) -> None:
     """Freeze the estimate and keep its proposal available on Objects."""
     try:
@@ -475,6 +498,7 @@ def render_objects_screen(company_id: str) -> None:
     # are installed once per full render and cannot flicker or be replaced by a
     # progress-only refresh.
     action_data = _data_with_progress(screen_state.data, estimate_id)
+    _render_object_detail_navigation_bridges(action_data)
     _render_objects_actions(
         company_id=company_id,
         run_id=run_id,

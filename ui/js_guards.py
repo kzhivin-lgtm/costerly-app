@@ -742,6 +742,17 @@ def signal_app_ready_to_embed(
                         if (!control) return;
                         const transition = transitionName(control);
                         if (!transition) return;
+                        const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
+                        const objectId = String(control.dataset.objectId || "");
+                        const bridgeButton = bridgeKey
+                            ? parentDocument.querySelector(`.st-key-${CSS.escape(bridgeKey)} button`)
+                            : objectId
+                                ? Array.from(parentDocument.querySelectorAll(
+                                    ".st-key-object_detail_navigation_bridges button"
+                                )).find((button) => String(button.textContent || "").trim()
+                                    === `Open Object Detail ${objectId}`)
+                                : null;
+                        if (bridgeButton) event.preventDefault();
                         parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
                         parentDocument.documentElement.scrollTop = 0;
                         parentDocument.body.scrollTop = 0;
@@ -754,11 +765,12 @@ def signal_app_ready_to_embed(
                             targetScreen: targetScreenFor(transition),
                         }, "*");
                         observeTargetScreen(transition, transitionId);
+                        if (bridgeButton) bridgeButton.click();
                     };
                     parentWindow[transitionHandlerKey] = handler;
                     parentDocument.addEventListener("click", handler, {
                         capture: false,
-                        passive: true,
+                        passive: false,
                     });
                 } catch (_) {}
             }
@@ -1819,6 +1831,8 @@ def install_object_detail_input_guard(
                 params.set("od_snapshot", JSON.stringify(edits));
                 params.set("od_approve_after", "1");
                 params.set("od_edit_nonce", String(Date.now()));
+                const traceId = new URLSearchParams(parentWindow.location.search).get("obs_trace");
+                if (traceId) params.set("obs_trace", traceId);
                 return { href: `?${params.toString()}`, edits };
             }
 
@@ -2083,7 +2097,7 @@ def install_objects_progress_sync(
                         return;
                     }
                     cell.innerHTML = (
-                        `<a class="objects-pricing-review-button" href="${reviewHref(row, objectId)}" target="_self">Review</a>`
+                        `<a class="objects-pricing-review-button" data-object-id="${escapeHtml(objectId)}" href="${reviewHref(row, objectId)}" target="_self">Review</a>`
                     );
                     return;
                 }

@@ -247,7 +247,9 @@ def _footer_html(run_id: object, estimate_id: object, object_id: object) -> str:
     )
     return (
         '<div class="object-detail-footer-actions">'
-        f'<a class="object-detail-footer-button object-detail-footer-button--secondary" href="?{back_params}" target="_self">'
+        f'<a class="object-detail-footer-button object-detail-footer-button--secondary" '
+        'data-streamlit-bridge-key="object_detail_back_bridge" '
+        f'href="?{back_params}" target="_self">'
         'BACK TO OBJECTS'
         '</a>'
         f'<a class="object-detail-footer-button object-detail-footer-button--primary" href="?{approve_params}" '

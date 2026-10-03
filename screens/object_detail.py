@@ -109,7 +109,6 @@ def _render_object_detail(data: dict[str, object], context: ObjectDetailContext)
         object_detail_view.hero_html(data),
         unsafe_allow_html=True,
     )
-
     st.markdown(
         object_detail_view.detail_html(
             data,
@@ -119,6 +118,17 @@ def _render_object_detail(data: dict[str, object], context: ObjectDetailContext)
         ),
         unsafe_allow_html=True,
     )
+    with st.container(key="object_detail_navigation_bridges"):
+        st.button(
+            "Back to Objects",
+            key="object_detail_back_bridge",
+            on_click=_return_to_objects,
+        )
+
+
+def _return_to_objects() -> None:
+    st.session_state.current_object_id = None
+    st.session_state.screen = "objects"
 
 
 def _install_object_detail_runtime(context: ObjectDetailContext) -> None:

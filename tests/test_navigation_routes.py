@@ -98,6 +98,20 @@ def test_object_detail_route_preserves_complete_context():
     }
 
 
+def test_object_detail_table_navigation_uses_native_streamlit_bridges():
+    objects_source = Path("screens/objects.py").read_text()
+    detail_source = Path("screens/object_detail.py").read_text()
+    pricing_source = Path("ui/objects_pricing.py").read_text()
+    detail_view_source = Path("ui/object_detail_view.py").read_text()
+
+    assert 'key=objects_pricing.object_detail_navigation_key(object_id)' in objects_source
+    assert 'st.session_state.screen = "object_detail"' in objects_source
+    assert 'key="object_detail_back_bridge"' in detail_source
+    assert 'st.session_state.screen = "objects"' in detail_source
+    assert 'data-streamlit-bridge-key="{navigation_key}"' in pricing_source
+    assert 'data-streamlit-bridge-key="object_detail_back_bridge"' in detail_view_source
+
+
 def test_processing_refresh_fails_safe_to_upload():
     st.session_state.clear()
 

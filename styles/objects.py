@@ -268,6 +268,10 @@ def apply_objects_css() -> None:
             padding-top: calc(var(--objects-row-main-offset) + 4px);
         }
 
+        .st-key-object_detail_navigation_bridges {
+            display: none !important;
+        }
+
         .objects-pricing-download-button {
             min-height: 36px;
             border: 0;
