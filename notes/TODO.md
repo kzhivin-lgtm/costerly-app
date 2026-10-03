@@ -92,6 +92,16 @@ with a deterministic regression test. Changed-draft approval also writes the
 recalculated totals and approved state together, removing the redundant second
 authorization/read/write approval pass.
 
+ACTIVE, P0, 3.15.25 Processing to File Review handoff latency: the first File
+Review render must reuse the exact validated Detection payload already persisted
+by Processing instead of repeating ownership, run, detected-object, and usage
+reads. Refresh and restored sessions continue loading Supabase. The complete
+marker must not begin a deliberately extended gray interval; remove the 250 ms
+post-marker sleep while preserving the existing Cloudflare target readiness.
+Production acceptance requires a fresh upload with the gray interval measured
+from `processing_to_file_review` click to styled File Review, no broken frame,
+and unchanged File Review content.
+
 ACTIVE, PARTIAL OWNER-ACCEPTED CHECKPOINT, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the
 wrapper's 8-second fallback. Preserve the accepted Fast Resume and `app-ready`

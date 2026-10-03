@@ -533,6 +533,30 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
     }
 
 
+def build_file_review_data(
+    detection_result: dict[str, Any],
+    *,
+    timings: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Adapt the just-persisted Detection result for first File Review render.
+
+    Processing already owns this validated payload. Reusing it avoids an
+    immediate ownership lookup plus three sequential reads of the same run.
+    Later renders and restored sessions continue to use load_file_review_data().
+    """
+    run = detection_result.get("rfq_run") or {}
+    objects = detection_result.get("detected_objects") or []
+    return {
+        "run": _normalize_run(run if isinstance(run, dict) else {}),
+        "objects": [
+            _normalize_object(item)
+            for item in objects
+            if isinstance(item, dict)
+        ],
+        "timings": dict(timings or {}),
+    }
+
+
 def _latest_runtime_timings(usage_df: pd.DataFrame) -> dict[str, float] | None:
     if usage_df.empty:
         return None

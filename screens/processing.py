@@ -7,7 +7,7 @@ import streamlit as st
 
 from ui.js_guards import clear_upload_processing_shell
 from ui.processing_stage import PROCESSING_MARKER_ID, processing_stage_html
-from use_cases.rfq_processing import process_uploaded_rfq
+from use_cases.rfq_processing import build_file_review_data, process_uploaded_rfq
 
 
 def expected_detection_seconds(page_count: int | None) -> float:
@@ -116,12 +116,21 @@ def render_processing_screen(company_id: str) -> None:
         st.session_state.screen = "file_review"
         st.rerun()
 
-    # Let the user see a genuine completed lap before the review screen replaces
-    # the processing stage. The browser-owned timer remains authoritative.
-    render_stage(1.0, complete=True, processing_phase="complete")
-    time.sleep(0.25)
+    # Seed the first File Review from the exact validated payload that Processing
+    # has just persisted. Refresh and restored sessions still reload Supabase.
+    run_id = result["run_id"]
+    st.session_state.setdefault("file_review_data_cache", {})[run_id] = (
+        build_file_review_data(
+            result["detection_result"],
+            timings=result.get("timings"),
+        )
+    )
 
-    st.session_state.current_run_id = result["run_id"]
+    # The complete marker starts transition masking. Do not sleep after it or
+    # deliberately extend the gray interval before the File Review rerun.
+    render_stage(1.0, complete=True, processing_phase="complete")
+
+    st.session_state.current_run_id = run_id
     st.session_state.current_ocr_package = result.get("ocr_package")
     st.session_state.current_agent_timings = result.get("timings")
     st.session_state.current_naming_future = result.get("naming_future")
