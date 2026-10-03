@@ -131,13 +131,21 @@ not left the contenteditable field. Restore only current-row live Cost feedback
 (`unit_cost * quantity`, or the equivalent Labor row formula), while blur or
 Enter remains the single persistence and authoritative server-recalculation
 boundary. Do not restore browser-wide section or final-total calculation.
-VERIFICATION PENDING, 3.15.23 Approve transition: production trace
+DEFERRED, P2, 3.15.23 Approve transition optimization: production trace
 `28dac1ea-5c35-40aa-9109-8246a22c2078` showed direct-link Approve creating a
 new iframe/server session while the original transition reached its 15-second
 timeout with zero Python runs. Reuse the accepted Streamlit bridge when the
 Object Detail snapshot is clean. Retain the direct snapshot route only when
 unsaved edits must be persisted atomically with approval. Code `89dda51` is
-deployed and fully tested; one fresh authenticated production timing remains.
+deployed and fully tested. Two clean production bridge cycles reached visible
+Objects in 2.38 and 2.42 seconds and styled readiness in 3.41 and 3.44 seconds,
+instead of the previous 15-second timeout. About 1.85 seconds consistently
+passes before the destination Python run begins. When resumed, instrument
+`_approve_current_object_and_return`, `approve_object_estimate`, deterministic
+recalculation, and the approved-state write separately. If evidence confirms a
+redundant full recalculation for a clean persisted snapshot, skip only that
+duplicate work while retaining the atomic snapshot fallback. Trigger: owner
+resumes transition-performance work.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background
