@@ -10,17 +10,17 @@ make activity recording non-blocking, and cache or defer the header's latest
 estimate lookup. Treat the separate server-ready to browser-received delay as a
 distinct Streamlit transport/render investigation, not as proof of slow Python.
 
-ACTIVE, 3.15.22 Objects Estimation live result refresh: replace the removed
+COMPLETED AND OWNER-ACCEPTED, 3.15.22 Objects Estimation live result refresh:
+replace the removed
 React-DOM progress writer with a server-side Streamlit fragment that polls the
 persisted per-object rows while the Estimation future is active. Preserve the
 fast seeded first render, stop polling on terminal completion, and do not change
 Cloudflare, authentication, workflow routing, or transition readiness. Local
 candidate now also clears stale process-local progress, suppresses Streamlit's
 stale-fragment dimming, and keeps Delivery, Installation, and Project Summary
-visible with blank values until every object has a terminal priced result. Authenticated
-production acceptance remains pending: confirm progressive per-object updates
-without flashing, terminal-only project values, Object Detail navigation, and
-unchanged transition timings.
+visible with blank values until every object has a terminal priced result.
+Production acceptance and the 861-test suite passed at `8b18fc3`. Full record:
+`notes/OBJECTS_LIVE_ESTIMATION_CHECKPOINT_3_15_22_2026_10_03.md`.
 
 Current owner-approved execution order:
 
