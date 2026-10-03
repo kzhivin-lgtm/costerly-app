@@ -193,6 +193,21 @@ def _current_objects_state(estimate_id: str | None) -> ObjectsScreenState:
         )
 
 
+def _persisted_objects_state(estimate_id: str | None) -> ObjectsScreenState:
+    """Load the latest persisted rows while the background worker is active."""
+    if not estimate_id:
+        return ObjectsScreenState(data=_empty_objects_data())
+    st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(estimate_id)
+    try:
+        data, cache_warning = _load_objects_screen_data(estimate_id)
+        return ObjectsScreenState(data=data, cache_warning=cache_warning)
+    except Exception as exc:
+        return ObjectsScreenState(
+            data=_empty_objects_data(),
+            data_error=f"Could not load Objects Estimation: {exc}",
+        )
+
+
 def _render_objects_messages(
     *,
     estimate_id: str | None,
@@ -280,6 +295,48 @@ def _install_objects_price_input_runtime(
     # Each Objects entry renders the latest persisted progress snapshot instead.
 
 
+def _render_objects_table_content(
+    *,
+    estimate_id: str | None,
+    run_id: str | None,
+    screen_state: ObjectsScreenState,
+) -> None:
+    """Render the messages and pricing table that may change during Estimation."""
+    _render_objects_messages(
+        estimate_id=estimate_id,
+        data_error=screen_state.data_error,
+        cache_warning=screen_state.cache_warning,
+    )
+    data = _data_with_progress(screen_state.data, estimate_id)
+    _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id)
+
+
+@st.fragment(run_every=1.5)
+def _render_live_objects_content(*, estimate_id: str, run_id: str | None) -> None:
+    """Safely refresh persisted Estimation rows without mutating React-owned DOM."""
+    future_before = st.session_state.get("estimation_batch_future")
+    _consume_estimation_future()
+    if isinstance(future_before, Future) and not isinstance(
+        st.session_state.get("estimation_batch_future"), Future
+    ):
+        st.session_state.pop("objects_live_poll_estimate_id", None)
+        st.rerun()
+
+    # The first fragment render stays on the already prepared seed rows so the
+    # Objects transition is not delayed by an extra Supabase read. Timed
+    # fragment reruns then replace the seed with persisted per-object results.
+    if st.session_state.get("objects_live_poll_estimate_id") != estimate_id:
+        st.session_state.objects_live_poll_estimate_id = estimate_id
+        screen_state = _current_objects_state(estimate_id)
+    else:
+        screen_state = _persisted_objects_state(estimate_id)
+    _render_objects_table_content(
+        estimate_id=estimate_id,
+        run_id=run_id,
+        screen_state=screen_state,
+    )
+
+
 def render_objects_screen(company_id: str) -> None:
     """Render the object pricing review screen from persisted estimate data."""
     apply_objects_css()
@@ -288,7 +345,6 @@ def render_objects_screen(company_id: str) -> None:
     estimate_id = st.session_state.get("current_estimate_id")
     run_id = st.session_state.get("current_run_id")
     _mark_objects_cache_dirty_when_estimation_runs(estimate_id)
-    screen_state = _current_objects_state(estimate_id)
 
     render_post_upload_header(
         "Objects Estimation",
@@ -296,17 +352,22 @@ def render_objects_screen(company_id: str) -> None:
         class_name="objects-estimation-header",
         marker_id=OBJECTS_MARKER_ID,
     )
-    _render_objects_messages(
-        estimate_id=estimate_id,
-        data_error=screen_state.data_error,
-        cache_warning=screen_state.cache_warning,
-    )
+    if estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future):
+        _render_live_objects_content(estimate_id=str(estimate_id), run_id=run_id)
+    else:
+        st.session_state.pop("objects_live_poll_estimate_id", None)
+        screen_state = _current_objects_state(estimate_id)
+        _render_objects_table_content(
+            estimate_id=estimate_id,
+            run_id=run_id,
+            screen_state=screen_state,
+        )
 
-    data = _data_with_progress(screen_state.data, estimate_id)
-    _render_pricing_table(data, estimate_id=estimate_id, run_id=run_id)
+    # Actions and JavaScript runtimes remain outside the timed fragment. They
+    # are installed once per full render and cannot flicker or be replaced by a
+    # progress-only refresh.
     _render_objects_actions()
     install_workflow_header_alignment_guard()
-
     supabase_url, supabase_anon_key, supabase_access_token = _objects_price_input_config()
     _install_objects_price_input_runtime(
         estimate_id=estimate_id,

@@ -208,6 +208,22 @@ def test_objects_screen_does_not_install_the_react_mutating_live_progress_runtim
     assert "latest persisted progress snapshot" in source
 
 
+def test_objects_screen_refreshes_active_estimation_in_a_server_fragment():
+    source = Path("screens/objects.py").read_text()
+
+    assert "@st.fragment(run_every=1.5)" in source
+    assert "def _render_live_objects_content" in source
+    assert "_persisted_objects_state(estimate_id)" in source
+    assert 'st.session_state.pop("objects_live_poll_estimate_id", None)' in source
+
+    fragment_source = source.split("def _render_live_objects_content", 1)[1].split(
+        "def render_objects_screen", 1
+    )[0]
+    assert "_render_objects_table_content" in fragment_source
+    assert "_render_objects_actions" not in fragment_source
+    assert "_install_objects_price_input_runtime" not in fragment_source
+
+
 def test_file_review_ignores_an_empty_transient_name_commit(monkeypatch):
     st.session_state.clear()
     widget_key = "file_review_object_edits.object-1.name"

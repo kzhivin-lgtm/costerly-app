@@ -1,5 +1,24 @@
 # TODO
 
+PROPOSED, P0 authenticated full-reload optimization: production telemetry shows
+that a hard reload frequently takes 6-8 seconds and can reach the wrapper's
+8-second fallback. Preserve the accepted Fast Resume and `app-ready` readiness
+contract. First add spans for legal acceptance, platform access, product-session
+recording, latest-estimate lookup, and the browser delivery gap. Then replace
+the sequential authenticated bootstrap reads with one guarded bootstrap RPC,
+make activity recording non-blocking, and cache or defer the header's latest
+estimate lookup. Treat the separate server-ready to browser-received delay as a
+distinct Streamlit transport/render investigation, not as proof of slow Python.
+
+ACTIVE, 3.15.22 Objects Estimation live result refresh: replace the removed
+React-DOM progress writer with a server-side Streamlit fragment that polls the
+persisted per-object rows while the Estimation future is active. Preserve the
+fast seeded first render, stop polling on terminal completion, and do not change
+Cloudflare, authentication, workflow routing, or transition readiness. Local
+candidate is implemented; 857 tests and `git diff --check` pass. Authenticated
+production acceptance remains pending: confirm progressive per-object updates,
+terminal totals, Object Detail navigation, and unchanged transition timings.
+
 Current owner-approved execution order:
 
 ACTIVE, 3.15.17 Pricing Cost restoration on the accepted `d3e83bd`
