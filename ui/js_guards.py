@@ -1647,26 +1647,12 @@ def install_object_detail_input_guard(
                 }
             }
 
-            function detailRoot() {
-                const footers = Array.from(parentDoc.querySelectorAll(
-                    ".object-detail-footer-actions"
-                ));
-                const footer = footers.reverse().find((node) => {
-                    if (!node.isConnected || node.closest('[data-stale="true"]')) return false;
-                    const rect = node.getBoundingClientRect();
-                    return rect.width > 0 && rect.height > 0;
-                });
-                return footer
-                    ? footer.closest('[data-testid="stElementContainer"]') || parentDoc
-                    : parentDoc;
-            }
-
             function sectionNode(section) {
-                return detailRoot().querySelector(`.object-detail-section[data-section="${CSS.escape(String(section || ""))}"]`);
+                return parentDoc.querySelector(`.object-detail-section[data-section="${CSS.escape(String(section || ""))}"]`);
             }
 
             function sectionRows(section) {
-                return Array.from(detailRoot().querySelectorAll(
+                return Array.from(parentDoc.querySelectorAll(
                     `.object-detail-table-row[data-section="${CSS.escape(String(section || ""))}"]`
                 ));
             }
@@ -1713,7 +1699,7 @@ def install_object_detail_input_guard(
             }
 
             function setFinal(field, value) {
-                const node = detailRoot().querySelector(`.object-detail-final-value[data-final="${CSS.escape(field)}"]`);
+                const node = parentDoc.querySelector(`.object-detail-final-value[data-final="${CSS.escape(field)}"]`);
                 if (node) node.textContent = formatMoney(value);
             }
 
@@ -1749,19 +1735,13 @@ def install_object_detail_input_guard(
             function updateSummaries() {
                 const materialRows = sectionRows("material");
                 const primaryMaterialCost = materialRows.reduce((total, row) => {
-                    if (row.dataset.policyPercent) return total;
-                    const cost = fieldNumber(row, "unit_cost") * fieldNumber(row, "quantity");
-                    setRowCost(row, cost);
-                    return total + cost;
+                    return row.dataset.policyPercent ? total : total + rowCost(row);
                 }, 0);
-                let policyMaterialCost = 0;
                 for (const row of materialRows) {
                     if (!row.dataset.policyPercent) continue;
-                    const cost = primaryMaterialCost * readNumber(row.dataset.policyPercent) / 100;
-                    setRowCost(row, cost);
-                    policyMaterialCost += cost;
+                    setRowCost(row, primaryMaterialCost * readNumber(row.dataset.policyPercent) / 100);
                 }
-                const materialCost = primaryMaterialCost + policyMaterialCost;
+                const materialCost = sumRows("material", rowCost);
                 const materialVatPct = percentFromLabel(metricLabel("material", "vat_18"), 18);
                 setMetric("material", "cost", materialCost, formatMoney);
                 setMetric("material", "vat_18", materialCost * materialVatPct / 100, formatMoney);
@@ -1802,7 +1782,7 @@ def install_object_detail_input_guard(
             }
 
             function seedInputBaselines() {
-                for (const input of detailRoot().querySelectorAll(".object-detail-cell-input[data-field]")) {
+                for (const input of parentDoc.querySelectorAll(".object-detail-cell-input[data-field]")) {
                     input.dataset.originalValue = normalizeInputValue(input);
                 }
             }
@@ -1836,7 +1816,6 @@ def install_object_detail_input_guard(
             function handleInput(event) {
                 const ctx = inputContext(event);
                 if (!ctx || ctx.input.classList.contains("object-detail-cell-input--text")) return;
-                updateCalculations(ctx.input.closest(".object-detail-table-row"));
             }
 
             function handlePaste(event) {
@@ -1867,7 +1846,6 @@ def install_object_detail_input_guard(
                         setEditableValue(ctx.input, formatMoney(nextValue));
                     }
                 }
-                updateCalculations(ctx.input.closest(".object-detail-table-row"));
                 if (nextValue === startValue) return;
 
                 const params = new URLSearchParams();
@@ -1889,7 +1867,7 @@ def install_object_detail_input_guard(
             }
 
             function snapshotEdits() {
-                return Array.from(detailRoot().querySelectorAll(".object-detail-table-row")).flatMap((row) => {
+                return Array.from(parentDoc.querySelectorAll(".object-detail-table-row")).flatMap((row) => {
                     const lineId = row.dataset.lineId || "";
                     if (!lineId) return [];
                     return Array.from(row.querySelectorAll(".object-detail-cell-input[data-field]")).map((input) => ({
