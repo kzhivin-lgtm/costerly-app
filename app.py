@@ -435,11 +435,10 @@ def main() -> None:
                     del st.query_params[route_key]
         if legal_consent_enabled():
             try:
-                with trace.span("server.auth.terms_acceptance_lookup"):
-                    needs_terms = terms_acceptance_required(
-                        get_supabase_client(),
-                        access.user_id,
-                    )
+                needs_terms = terms_acceptance_required(
+                    get_supabase_client(),
+                    access.user_id,
+                )
             except Exception:
                 st.error("Legal documents are temporarily unavailable")
                 _signal_ready(trace, "legal_documents_error")
@@ -457,11 +456,10 @@ def main() -> None:
             platform_access = st.session_state.get("_platform_access")
         else:
             try:
-                with trace.span("server.auth.platform_access_lookup"):
-                    platform_access = load_platform_access(
-                        get_supabase_client(),
-                        platform_user_id,
-                    )
+                platform_access = load_platform_access(
+                    get_supabase_client(),
+                    platform_user_id,
+                )
             except Exception as exc:
                 trace.event(
                     "server.platform_access_unavailable",
@@ -485,13 +483,12 @@ def main() -> None:
         activity_key = f"{access.company_id}:{trace.session_id}"
         if st.session_state.get("_product_session_key") != activity_key:
             try:
-                with trace.span("server.auth.product_session_record"):
-                    record_authenticated_session(
-                        get_supabase_client(),
-                        company_id=str(access.company_id),
-                        user_id=str(access.user_id),
-                        session_id=trace.session_id,
-                    )
+                record_authenticated_session(
+                    get_supabase_client(),
+                    company_id=str(access.company_id),
+                    user_id=str(access.user_id),
+                    session_id=trace.session_id,
+                )
                 st.session_state._product_session_key = activity_key
             except Exception as exc:
                 trace.event(
@@ -504,7 +501,7 @@ def main() -> None:
             with trace.span("server.app_header_render"):
                 render_app_header()
         with trace.span("server.account_controls_render"):
-            render_account_control(access, platform_access=platform_access, trace=trace)
+            render_account_control(access, platform_access=platform_access)
     else:
         requested_screen = str(st.query_params.get("screen") or "")
         current_screen = requested_screen or str(st.session_state.get("screen") or "upload")

@@ -115,7 +115,7 @@ def test_profile_route_is_restored_before_account_controls_render():
 
     restore_position = source.index('if requested_screen == "account":')
     controls_position = source.index(
-        "render_account_control(access, platform_access=platform_access, trace=trace)"
+        "render_account_control(access, platform_access=platform_access)"
     )
 
     assert restore_position < controls_position

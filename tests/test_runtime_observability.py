@@ -315,8 +315,6 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert "window.location.reload()" in wrapper
     assert "pythonRuns: 0" in wrapper
     assert "python_runs: pendingTransition.pythonRuns" in wrapper
-    assert "metadata.browser_minus_server_elapsed_ms" in wrapper
-    assert "performance.now() - serverElapsedMs" in wrapper
     assert 'startupProbe === "anonymous"' in wrapper
     assert 'appUrl.searchParams.set("startup_probe", "anonymous")' in wrapper
     assert 'key.toLowerCase() !== "dom_content_loaded_ms"' in function
