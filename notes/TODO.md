@@ -32,16 +32,25 @@ Production acceptance and the 861-test suite passed at `8b18fc3`. Full record:
 
 Current owner-approved execution order:
 
-ACTIVE, 3.15.18 Machinery session draft restoration: restore the previously
+COMPLETED AND OWNER-ACCEPTED, 3.15.18 Machinery session draft restoration:
+restore the previously
 accepted `722b6c6` interaction contract on the current performance baseline.
 Machinery changes remain in the Streamlit session across Profile tabs and write
 to Supabase only through one bottom Save action. Preserve the approved machinery
 capability subset and existing domain model. Production acceptance must confirm
 draft retention, one-save persistence, failure retention, member read-only
-behavior, and the softer selected Yes/No colors.
+behavior, and the softer selected Yes/No colors. Production acceptance passed
+at `1e1edaa`; full record:
+`notes/MACHINERY_SAVE_AND_INITIAL_LOAD_CHECKPOINT_2026_10_03.md`.
 The owner rejected the additional checkbox for changing a persisted in-house
 capability to No: the explicit bottom Save action is the confirmation. Save must
 not partially persist earlier rows and then stop on that removed UI barrier.
+
+PROPOSED, P1 Machinery atomic batch persistence and Save visual polish: replace
+the sequential multi-row persistence loop with one transactional RPC so a
+transport or database error cannot leave a partial Save. Remove the single
+fragment flash observed after an otherwise successful Save while preserving the
+accepted session draft, success notice, and one-action contract.
 
 ACTIVE, 3.15.17 Pricing Cost restoration on the accepted `d3e83bd`
 performance baseline. The Pricing persistence and deterministic calculation

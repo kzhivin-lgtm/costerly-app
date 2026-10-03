@@ -1,5 +1,10 @@
 # Done Log
 
+3.15.18 Machinery session-draft Save accepted in production at `1e1edaa`: one
+bottom Save persists the session draft, selected Yes/No states are visible, the
+redundant removal-confirmation checkbox is gone, and the database update was
+owner-verified; 863 tests passed, завершена 03.10
+
 App skeleton, завершена 22.06 18:54
 Local backups ignored by git, завершена 22.06 19:13
 Brand assets and Cloudflare wrapper added, завершена 22.06 22:03

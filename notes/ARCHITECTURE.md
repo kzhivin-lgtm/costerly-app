@@ -122,7 +122,11 @@ controls does not write to Supabase. The draft survives Profile-tab navigation
 within the current Streamlit session. The first Machinery render reads the
 persisted machinery, suppliers, and services once; later draft reruns reuse that
 snapshot. Save writes only changed routes, refreshes the snapshot after success,
-and keeps the draft available when validation or persistence fails.
+and keeps the draft available when validation or persistence fails. The explicit
+Save action is also the confirmation when an existing in-house capability is
+changed to No; there is no second checkbox. Persistence is currently a
+sequential changed-route loop, not an atomic database transaction, so atomic
+batch persistence remains a recorded follow-up.
 The `2026_09_24_machinery_foundation.sql` migration was applied to the live
 Supabase schema on 24.09. The seeded catalog contains 26 active capabilities;
 company-specific Machinery tables begin empty. Anonymous access is revoked.
