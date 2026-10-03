@@ -126,7 +126,12 @@ def apply_objects_css() -> None:
         .objects-pricing-quantity-input {
             width: 54px;
             min-width: 54px;
+            height: 42px;
             min-height: 42px;
+            box-sizing: border-box;
+            padding: 0;
+            line-height: 40px;
+            text-align: center;
             margin: calc(var(--objects-row-main-offset) + 6px) auto 0 auto;
             border: 1px solid rgba(42, 31, 44, 0.16);
             border-radius: 8px;
@@ -137,6 +142,21 @@ def apply_objects_css() -> None:
         .objects-pricing-quantity-input:focus {
             border-color: rgba(128, 73, 198, 0.72);
             box-shadow: 0 0 0 2px rgba(128, 73, 198, 0.10);
+        }
+
+        .objects-quantity-saving-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483000;
+            pointer-events: none;
+            background: rgba(244, 242, 244, 0.42);
+            opacity: 0;
+            transition: opacity 80ms linear;
+        }
+
+        .objects-quantity-saving-overlay.is-visible {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .objects-progress-status {

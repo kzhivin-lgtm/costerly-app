@@ -76,9 +76,16 @@ value on focus so the first typed digit replaces, rather than appends to, the
 displayed value. The Objects quantity input shares the Sale price input axis.
 The native browser confirmation is not accepted UI. Use the Costerly-styled
 discard modal. Changed-draft approval must submit through the live Streamlit
-session, not the cold query-string snapshot reload; retain the full-reload URL
-only as a fail-safe fallback. Production acceptance must compare both changed
-and unchanged Approve timing and confirm grouped money formatting after blur.
+session, not the cold query-string snapshot reload. The component-rerun draft
+bridge was rejected after two production failures because it exposed an
+intermediate Object Detail render. The replacement stores the draft through the
+authenticated `save_rfq_object_detail_draft` RPC and then triggers exactly one
+native Approve callback; Objects quantity uses the authenticated
+`save_rfq_object_quantity` RPC and updates the current DOM without a Streamlit
+rerun. The additive migration was applied on 03.10.2026. Production acceptance
+must compare both changed and unchanged Approve timing, confirm that quantity
+save dims immediately, and confirm grouped money formatting and Materials totals
+after editing any material row.
 
 ACTIVE, PARTIAL OWNER-ACCEPTED CHECKPOINT, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the

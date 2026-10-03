@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
-
 import streamlit as st
 
+from config import get_optional_secret
+from db.repositories import delete_rfq_object_detail_draft, fetch_rfq_object_detail_draft
+from db.supabase_client import get_supabase_client
 from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
-from ui.object_detail_draft_bridge import object_detail_draft_bridge
 from ui.js_guards import (
     install_object_detail_input_guard,
     install_workflow_header_alignment_guard,
@@ -18,6 +19,7 @@ from use_cases.estimation import (
     approve_object_estimate,
     load_object_detail_data,
 )
+from state.company_auth import company_auth_enabled
 
 
 @dataclass(frozen=True)
@@ -35,9 +37,6 @@ def render_object_detail_screen(company_id: str) -> None:
         apply_object_detail_css()
         _render_missing_object_detail_context()
         return
-
-    if _consume_object_detail_draft(context):
-        st.rerun()
 
     apply_object_detail_css()
     _consume_pending_object_detail_changes()
@@ -136,6 +135,7 @@ def _render_object_detail(data: dict[str, object], context: ObjectDetailContext)
             kwargs={
                 "estimate_id": context.estimate_id,
                 "object_id": context.object_id,
+                "run_id": context.run_id,
             },
         )
 
@@ -150,38 +150,12 @@ def _install_object_detail_runtime(context: ObjectDetailContext) -> None:
         run_id=context.run_id,
         estimate_id=context.estimate_id,
         object_id=context.object_id,
+        supabase_url=get_optional_secret("SUPABASE_URL"),
+        supabase_anon_key=get_optional_secret("SUPABASE_ANON_KEY"),
+        supabase_access_token=(
+            st.session_state.get("auth_access_token") if company_auth_enabled() else None
+        ),
     )
-
-
-def _consume_object_detail_draft(context: ObjectDetailContext) -> bool:
-    """Persist and approve a staged draft while retaining the live session."""
-    with st.sidebar:
-        raw_value = object_detail_draft_bridge(key="object_detail_draft_bridge")
-    if not raw_value:
-        return False
-    try:
-        payload = json.loads(raw_value)
-    except (TypeError, json.JSONDecodeError):
-        return False
-    nonce = str(payload.get("nonce") or "")
-    if not nonce or st.session_state.get("last_object_detail_draft_nonce") == nonce:
-        return False
-    edits = payload.get("edits")
-    if not isinstance(edits, list) or not edits:
-        return False
-    apply_object_detail_snapshot(
-        estimate_id=context.estimate_id,
-        object_id=context.object_id,
-        run_id=context.run_id,
-        edits=edits,
-    )
-    st.session_state.last_object_detail_draft_nonce = nonce
-    _approve_current_object_and_return(
-        estimate_id=context.estimate_id,
-        object_id=context.object_id,
-        recalculate=False,
-    )
-    return True
 
 
 def _consume_pending_object_detail_edit() -> bool:
@@ -225,9 +199,33 @@ def _approve_current_object_and_return(
     *,
     estimate_id: str,
     object_id: str,
+    run_id: str | None = None,
     object_key: str | None = None,
     recalculate: bool = True,
 ) -> None:
+    user_id = str(st.session_state.get("auth_user_id") or "")
+    if user_id:
+        client = get_supabase_client()
+        edits = fetch_rfq_object_detail_draft(
+            client,
+            user_id=user_id,
+            estimate_id=estimate_id,
+            object_id=object_id,
+        )
+        if edits:
+            apply_object_detail_snapshot(
+                estimate_id=estimate_id,
+                object_id=object_id,
+                run_id=str(run_id or st.session_state.get("current_run_id") or ""),
+                edits=edits,
+            )
+            delete_rfq_object_detail_draft(
+                client,
+                user_id=user_id,
+                estimate_id=estimate_id,
+                object_id=object_id,
+            )
+            recalculate = False
     approve_object_estimate(
         estimate_id=estimate_id,
         object_id=object_id,

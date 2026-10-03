@@ -106,13 +106,17 @@ def test_quantity_update_writes_canonical_and_mirror_and_clears_approval(monkeyp
     }]
 
 
-def test_quantity_bridge_submits_on_blur_without_direct_database_write():
-    source = Path("ui/object_quantity_bridge_component/index.html").read_text()
+def test_quantity_blur_saves_through_authenticated_rpc_without_rerun():
+    source = Path("ui/js_guards.py").read_text()
+    guard = source.split("def install_objects_price_input_guard", 1)[1].split(
+        "def install_object_detail_input_guard", 1
+    )[0]
 
-    assert 'data-object-quantity-input' in source
-    assert 'streamlit:setComponentValue' in source
-    assert 'focusout' in source
-    assert '/rest/v1/' not in source
+    assert 'data-object-quantity-input' in guard
+    assert 'focusout' in guard
+    assert '/rest/v1/rpc/save_rfq_object_quantity' in guard
+    assert 'overlay.classList.add("is-visible")' in guard
+    assert 'streamlit:setComponentValue' not in guard
 
 
 def test_object_detail_quantity_uses_the_approve_snapshot_not_the_objects_bridge():
@@ -129,14 +133,18 @@ def test_object_detail_quantity_uses_the_approve_snapshot_not_the_objects_bridge
     )[1].split("def install_objects_live_progress", 1)[0]
 
 
-def test_object_detail_draft_bridge_keeps_changed_approval_in_live_session():
-    source = Path("ui/object_detail_draft_bridge_component/index.html").read_text()
+def test_object_detail_draft_uses_authenticated_rpc_then_native_bridge():
+    source = Path("ui/js_guards.py").read_text()
+    guard = source.split("def install_object_detail_input_guard", 1)[1].split(
+        "def install_objects_live_progress", 1
+    )[0]
 
-    assert "__costerlyObjectDetailDraft" in source
-    assert 'streamlit:setComponentValue' in source
-    assert "event.stopImmediatePropagation()" in source
-    assert "parentWindow.location" not in source
-    assert "/rest/v1/" not in source
+    assert "/rest/v1/rpc/save_rfq_object_detail_draft" in guard
+    assert "Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`" in guard
+    assert 'button.textContent = "SAVING..."' in guard
+    assert 'button.setAttribute("data-streamlit-bridge-key", "object_detail_approve_bridge")' in guard
+    assert "button.click()" in guard
+    assert "streamlit:setComponentValue" not in guard
 
 
 def test_quantity_event_detection_does_not_capture_other_detail_inputs():
@@ -148,6 +156,17 @@ def test_quantity_event_detection_does_not_capture_other_detail_inputs():
     assert "if (target !== undefined && target !== null)" in guard
     assert "return direct || null;" in guard
     assert "return parentDoc.querySelector" in guard
+
+
+def test_objects_quantity_uses_direct_rpc_without_streamlit_rerun():
+    source = Path("ui/js_guards.py").read_text()
+    guard = source.split("def install_objects_price_input_guard", 1)[1].split(
+        "def install_object_detail_input_guard", 1
+    )[0]
+
+    assert "/rest/v1/rpc/save_rfq_object_quantity" in guard
+    assert 'overlay.classList.add("is-visible")' in guard
+    assert "streamlit:setComponentValue" not in guard
 
 
 def test_object_detail_quantity_snapshot_persists_only_at_approval(monkeypatch):

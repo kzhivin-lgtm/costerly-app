@@ -444,7 +444,9 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "parentWindow.location.search" not in handle_blur
     assert 'if (event.key === "Enter")' in object_detail_guard
     assert "ctx.input.blur()" in object_detail_guard
-    assert 'if (snapshot.edits.length)' in object_detail_guard
+    assert "const edits = snapshotEdits();" in object_detail_guard
+    assert "if (!edits.length) return;" in object_detail_guard
+    assert "/rest/v1/rpc/save_rfq_object_detail_draft" in object_detail_guard
     assert 'field: "object_quantity"' in object_detail_guard
     assert "object-detail-discard-modal" in object_detail_guard
     assert "Are you sure you want to leave without saving?" in object_detail_guard

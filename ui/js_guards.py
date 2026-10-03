@@ -1288,6 +1288,67 @@ def install_objects_price_input_guard(
                 return { input, row };
             }
 
+            function quantityContext(event) {
+                const target = event.target;
+                if (!target || !target.closest) return null;
+                const input = target.closest(".objects-pricing-quantity-input[data-object-quantity-input]");
+                if (!input) return null;
+                const row = input.closest(".objects-pricing-row");
+                if (!row || row.dataset.estimateId !== String(ESTIMATE_ID || "")) return null;
+                return { input, row };
+            }
+
+            function quantityValue(input) {
+                const parsed = Number(String(input ? input.textContent : "").replace(/[^0-9.]/g, ""));
+                return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+            }
+
+            function savingOverlay() {
+                let overlay = parentDoc.querySelector(".objects-quantity-saving-overlay");
+                if (!overlay) {
+                    overlay = parentDoc.createElement("div");
+                    overlay.className = "objects-quantity-saving-overlay";
+                    overlay.setAttribute("aria-hidden", "true");
+                    parentDoc.body.appendChild(overlay);
+                }
+                return overlay;
+            }
+
+            async function persistQuantity(ctx, quantity) {
+                const overlay = savingOverlay();
+                overlay.classList.add("is-visible");
+                try {
+                    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_ACCESS_TOKEN) {
+                        throw new Error("Authenticated quantity persistence is unavailable");
+                    }
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/save_rfq_object_quantity`, {
+                        method: "POST",
+                        headers: {
+                            apikey: SUPABASE_ANON_KEY,
+                            Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`,
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            p_estimate_id: ESTIMATE_ID,
+                            p_run_id: ctx.row.dataset.runId || "",
+                            p_object_id: ctx.row.dataset.objectKey || "",
+                            p_quantity: quantity,
+                        }),
+                    });
+                    if (!response.ok) throw new Error(`Quantity save failed (${response.status})`);
+                    ctx.input.dataset.savedQuantity = String(quantity);
+                    updateLineTotal(ctx.row);
+                    updateProjectPricing();
+                } catch (error) {
+                    ctx.input.textContent = ctx.input.dataset.savedQuantity || "1";
+                    if (parentWindow.console && parentWindow.console.error) {
+                        parentWindow.console.error("Could not persist object quantity", error);
+                    }
+                } finally {
+                    overlay.classList.remove("is-visible");
+                }
+            }
+
             function isDisabled(input) {
                 return input.getAttribute("aria-disabled") === "true" || input.disabled === true;
             }
@@ -1463,6 +1524,12 @@ def install_objects_price_input_guard(
             }
 
             function handleFocus(event) {
+                const quantity = quantityContext(event);
+                if (quantity) {
+                    quantity.input.dataset.savedQuantity = String(quantityValue(quantity.input) || 1);
+                    quantity.input.textContent = "";
+                    return;
+                }
                 const ctx = context(event);
                 if (!ctx || isDisabled(ctx.input)) return;
                 const digits = inputDigits(saleInputValue(ctx.input));
@@ -1479,6 +1546,18 @@ def install_objects_price_input_guard(
             }
 
             function handleKeydown(event) {
+                const quantity = quantityContext(event);
+                if (quantity) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        quantity.input.blur();
+                        return;
+                    }
+                    const allowed = new Set(["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End", "Tab", "."]);
+                    if (event.metaKey || event.ctrlKey || event.altKey || allowed.has(event.key)) return;
+                    if (!/^[0-9]$/.test(event.key)) event.preventDefault();
+                    return;
+                }
                 const ctx = context(event);
                 if (!ctx) return;
                 if (isDisabled(ctx.input)) {
@@ -1494,12 +1573,24 @@ def install_objects_price_input_guard(
             }
 
             function handleBeforeInput(event) {
+                const quantity = quantityContext(event);
+                if (quantity) {
+                    if (event.data && /[^0-9.]/.test(event.data)) event.preventDefault();
+                    return;
+                }
                 const ctx = context(event);
                 if (!ctx) return;
                 if (isDisabled(ctx.input) || (event.data && /[^0-9]/.test(event.data))) event.preventDefault();
             }
 
             function handlePaste(event) {
+                const quantity = quantityContext(event);
+                if (quantity) {
+                    event.preventDefault();
+                    const text = event.clipboardData ? event.clipboardData.getData("text") : "";
+                    parentDoc.execCommand("insertText", false, String(text).replace(/[^0-9.]/g, ""));
+                    return;
+                }
                 const ctx = context(event);
                 if (!ctx || isDisabled(ctx.input)) return;
                 event.preventDefault();
@@ -1518,6 +1609,19 @@ def install_objects_price_input_guard(
             }
 
             function handleBlur(event) {
+                const quantity = quantityContext(event);
+                if (quantity) {
+                    const value = quantityValue(quantity.input);
+                    if (value == null) {
+                        quantity.input.textContent = quantity.input.dataset.savedQuantity || "1";
+                        return;
+                    }
+                    quantity.input.textContent = String(Math.round(value * 1000) / 1000);
+                    if (String(value) !== String(quantity.input.dataset.savedQuantity || "")) {
+                        persistQuantity(quantity, value);
+                    }
+                    return;
+                }
                 const ctx = context(event);
                 if (!ctx || isDisabled(ctx.input)) return;
                 const digits = sanitizeActive(ctx.input);
@@ -1558,6 +1662,8 @@ def install_objects_price_input_guard(
                 parentDoc.removeEventListener("paste", handlePaste, true);
                 parentDoc.removeEventListener("input", handleInput, true);
                 parentDoc.removeEventListener("focusout", handleBlur, true);
+                const overlay = parentDoc.querySelector(".objects-quantity-saving-overlay");
+                if (overlay) overlay.remove();
                 parentWindow[HANDLER_KEY] = null;
             };
             seedManualPricesFromDom();
@@ -1577,11 +1683,17 @@ def install_object_detail_input_guard(
     run_id: str,
     estimate_id: str,
     object_id: str,
+    supabase_url: str | None = None,
+    supabase_anon_key: str | None = None,
+    supabase_access_token: str | None = None,
 ) -> None:
     """Install staged Object Detail editing and approve/discard behavior."""
     run_id_json = json.dumps(run_id)
     estimate_id_json = json.dumps(estimate_id)
     object_id_json = json.dumps(object_id)
+    supabase_url_json = json.dumps(supabase_url.rstrip("/")) if supabase_url else "null"
+    supabase_anon_key_json = json.dumps(supabase_anon_key) if supabase_anon_key else "null"
+    supabase_access_token_json = json.dumps(supabase_access_token) if supabase_access_token else "null"
     components.html(
         """
         <script>
@@ -1591,6 +1703,9 @@ def install_object_detail_input_guard(
             const RUN_ID = __RUN_ID__;
             const ESTIMATE_ID = __ESTIMATE_ID__;
             const OBJECT_ID = __OBJECT_ID__;
+            const SUPABASE_URL = __SUPABASE_URL__;
+            const SUPABASE_ANON_KEY = __SUPABASE_ANON_KEY__;
+            const SUPABASE_ACCESS_TOKEN = __SUPABASE_ACCESS_TOKEN__;
             const HANDLER_KEY = "__costerlyObjectDetailInputGuardCleanup";
             const SUBMITTING_KEY = "__costerlyObjectDetailSubmittingSnapshot";
 
@@ -1968,35 +2083,64 @@ def install_object_detail_input_guard(
                 parentDoc.body.appendChild(modal);
             }
 
-            function approveSnapshotHref() {
-                const edits = snapshotEdits();
-
-                const params = new URLSearchParams();
-                params.set("screen", "object_detail");
-                if (RUN_ID) params.set("run_id", RUN_ID);
-                params.set("estimate_id", ESTIMATE_ID);
-                params.set("object_id", OBJECT_ID);
-                params.set("od_snapshot", JSON.stringify(edits));
-                params.set("od_approve_after", "1");
-                params.set("od_edit_nonce", String(Date.now()));
-                const traceId = new URLSearchParams(parentWindow.location.search).get("obs_trace");
-                if (traceId) params.set("obs_trace", traceId);
-                return { href: `?${params.toString()}`, edits };
+            function markCurrentValuesSaved() {
+                for (const input of parentDoc.querySelectorAll(".object-detail-cell-input[data-field]")) {
+                    input.dataset.originalValue = normalizeInputValue(input);
+                }
+                const quantity = objectQuantityInput();
+                if (quantity) quantity.dataset.originalValue = cleanNumber(quantity.textContent) || "1";
             }
 
-            function prepareApproveSnapshot(event) {
+            async function prepareApproveSnapshot(event) {
                 const button = findApproveButton(event.target);
-                if (!button) return;
-                const snapshot = approveSnapshotHref();
-                button.setAttribute("href", snapshot.href);
-                if (snapshot.edits.length) {
-                    button.removeAttribute("data-streamlit-bridge-key");
-                    parentWindow[SUBMITTING_KEY] = true;
-                } else {
-                    button.setAttribute(
-                        "data-streamlit-bridge-key",
-                        "object_detail_approve_bridge"
-                    );
+                if (!button || parentWindow[SUBMITTING_KEY]) return;
+                const edits = snapshotEdits();
+                if (!edits.length) return;
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                parentWindow[SUBMITTING_KEY] = true;
+                button.setAttribute("aria-disabled", "true");
+                button.textContent = "SAVING...";
+                window.top.postMessage({
+                    type: "costerly:transition-click",
+                    transition: "object_detail_to_objects",
+                    transitionId: crypto.randomUUID(),
+                    sourceScreen: "object_detail",
+                    targetScreen: "objects",
+                }, "*");
+                try {
+                    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_ACCESS_TOKEN) {
+                        throw new Error("Authenticated draft persistence is unavailable");
+                    }
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/save_rfq_object_detail_draft`, {
+                        method: "POST",
+                        headers: {
+                            apikey: SUPABASE_ANON_KEY,
+                            Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}`,
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            p_estimate_id: ESTIMATE_ID,
+                            p_run_id: RUN_ID,
+                            p_object_id: OBJECT_ID,
+                            p_edits: edits,
+                        }),
+                    });
+                    if (!response.ok) throw new Error(`Draft save failed (${response.status})`);
+                    markCurrentValuesSaved();
+                    parentWindow[SUBMITTING_KEY] = false;
+                    button.removeAttribute("aria-disabled");
+                    button.textContent = "APPROVE ESTIMATE";
+                    button.setAttribute("data-streamlit-bridge-key", "object_detail_approve_bridge");
+                    button.click();
+                } catch (error) {
+                    parentWindow[SUBMITTING_KEY] = false;
+                    button.removeAttribute("aria-disabled");
+                    button.textContent = "APPROVE ESTIMATE";
+                    if (parentWindow.console && parentWindow.console.error) {
+                        parentWindow.console.error("Could not save Object Detail draft", error);
+                    }
                 }
             }
 
@@ -2005,8 +2149,6 @@ def install_object_detail_input_guard(
             parentDoc.addEventListener("beforeinput", handleBeforeInput, true);
             parentDoc.addEventListener("paste", handlePaste, true);
             parentDoc.addEventListener("input", handleInput, true);
-            parentDoc.addEventListener("pointerdown", prepareApproveSnapshot, true);
-            parentDoc.addEventListener("mousedown", prepareApproveSnapshot, true);
             parentDoc.addEventListener("click", prepareApproveSnapshot, true);
             parentDoc.addEventListener("focusout", handleBlur, true);
             parentDoc.addEventListener("click", confirmDiscard, true);
@@ -2021,8 +2163,6 @@ def install_object_detail_input_guard(
                 parentDoc.removeEventListener("beforeinput", handleBeforeInput, true);
                 parentDoc.removeEventListener("paste", handlePaste, true);
                 parentDoc.removeEventListener("input", handleInput, true);
-                parentDoc.removeEventListener("pointerdown", prepareApproveSnapshot, true);
-                parentDoc.removeEventListener("mousedown", prepareApproveSnapshot, true);
                 parentDoc.removeEventListener("click", prepareApproveSnapshot, true);
                 parentDoc.removeEventListener("focusout", handleBlur, true);
                 parentDoc.removeEventListener("click", confirmDiscard, true);
@@ -2038,7 +2178,10 @@ def install_object_detail_input_guard(
         """
         .replace("__RUN_ID__", run_id_json)
         .replace("__ESTIMATE_ID__", estimate_id_json)
-        .replace("__OBJECT_ID__", object_id_json),
+        .replace("__OBJECT_ID__", object_id_json)
+        .replace("__SUPABASE_URL__", supabase_url_json)
+        .replace("__SUPABASE_ANON_KEY__", supabase_anon_key_json)
+        .replace("__SUPABASE_ACCESS_TOKEN__", supabase_access_token_json),
         height=0,
     )
 

@@ -599,6 +599,48 @@ def update_rfq_object_estimate_quantity(
     ).execute()
 
 
+def fetch_rfq_object_detail_draft(
+    client: Client,
+    *,
+    user_id: str,
+    estimate_id: str,
+    object_id: str,
+) -> list[dict]:
+    """Return one authenticated user's staged Object Detail draft."""
+    response = (
+        client.table("rfq_object_detail_drafts")
+        .select("edits")
+        .eq("user_id", user_id)
+        .eq("estimate_id", estimate_id)
+        .eq("object_id", object_id)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    if not rows:
+        return []
+    edits = rows[0].get("edits") or []
+    return edits if isinstance(edits, list) else []
+
+
+def delete_rfq_object_detail_draft(
+    client: Client,
+    *,
+    user_id: str,
+    estimate_id: str,
+    object_id: str,
+) -> None:
+    """Delete a staged draft only after authoritative persistence succeeds."""
+    (
+        client.table("rfq_object_detail_drafts")
+        .delete()
+        .eq("user_id", user_id)
+        .eq("estimate_id", estimate_id)
+        .eq("object_id", object_id)
+        .execute()
+    )
+
+
 def update_rfq_object_estimate_status(
     client: Client,
     *,

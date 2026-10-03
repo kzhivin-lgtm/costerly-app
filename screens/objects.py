@@ -13,12 +13,11 @@ from ui.js_guards import (
     install_workflow_header_alignment_guard,
 )
 from ui import objects_pricing
-from ui.object_quantity_bridge import object_quantity_bridge
 from ui.layout import render_post_upload_header
 from ui.screen_transition import (
     OBJECTS_MARKER_ID,
 )
-from use_cases.estimation import load_objects_estimation_data, update_object_quantity
+from use_cases.estimation import load_objects_estimation_data
 from use_cases.final_approval import final_approval
 from use_cases.estimation_progress import clear_estimate_progress, get_estimate_progress
 from use_cases.proposal_pdf import load_estimate_proposal_url
@@ -353,34 +352,6 @@ def _data_with_object_routes(
     return {**data, "rows": rows}
 
 
-def _consume_object_quantity_edit(*, estimate_id: str | None) -> None:
-    """Persist an Objects quantity edit and refresh authoritative totals."""
-    raw_value = object_quantity_bridge(key="objects_quantity_bridge")
-    if not raw_value:
-        return
-    try:
-        payload = json.loads(raw_value)
-    except (TypeError, json.JSONDecodeError):
-        return
-    nonce = str(payload.get("nonce") or "")
-    if not nonce or st.session_state.get("last_object_quantity_nonce") == nonce:
-        return
-    if str(payload.get("estimate_id") or "") != str(estimate_id or ""):
-        return
-    update_object_quantity(
-        estimate_id=str(payload.get("estimate_id") or ""),
-        run_id=str(payload.get("run_id") or ""),
-        object_id=str(payload.get("object_id") or ""),
-        quantity=float(payload.get("quantity")),
-    )
-    st.session_state.last_object_quantity_nonce = nonce
-    st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(str(estimate_id))
-    st.session_state.setdefault("approved_object_keys", set()).discard(
-        str(payload.get("object_id") or "")
-    )
-    st.rerun()
-
-
 def _open_object_detail(object_id: str) -> None:
     st.session_state.current_object_id = str(object_id)
     st.session_state.screen = "object_detail"
@@ -617,4 +588,3 @@ def render_objects_screen(company_id: str) -> None:
         supabase_anon_key=supabase_anon_key,
         supabase_access_token=supabase_access_token,
     )
-    _consume_object_quantity_edit(estimate_id=estimate_id)

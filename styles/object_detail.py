@@ -56,7 +56,10 @@ def apply_object_detail_css() -> None:
 
         .object-detail-quantity-input {
             min-width: 48px;
+            min-height: 32px;
+            box-sizing: border-box;
             padding: 5px 9px;
+            line-height: 20px;
             border: 1px solid rgba(42, 31, 44, 0.16);
             border-radius: 8px;
             background: #FFFFFF;
