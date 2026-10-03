@@ -56,6 +56,18 @@ Project Summary / Download XLS control is the reserved UI entry point. Define
 aggregation, duplicate-material merging, units, quantities, source prices, and
 supplier fields before implementation.
 
+ACTIVE, P0, 3.15.24 canonical object quantity and durable Object Detail route:
+make item quantity editable on File Review, Objects, and Object Detail. All
+three screens must read and write `rfq_detected_objects.quantity`; the estimate
+row remains a synchronized compatibility mirror. A change must preserve unit
+self cost, recalculate commercial line and project totals, clear that object's
+approval, and become visible on every screen without rerunning Estimation.
+Objects Review keeps the fast live-session bridge, but its normal link must use
+the durable company-scoped object route token so an expired Streamlit session
+restores Object Detail instead of falling through to Upload. Acceptance covers
+edits from both new inputs, cross-screen persistence, reapproval behavior, and
+the expired-session Review scenario in authenticated production.
+
 ACTIVE, PARTIAL OWNER-ACCEPTED CHECKPOINT, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the
 wrapper's 8-second fallback. Preserve the accepted Fast Resume and `app-ready`

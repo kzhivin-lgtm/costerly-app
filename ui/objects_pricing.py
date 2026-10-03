@@ -14,6 +14,11 @@ def _escape(value: object) -> str:
     return html.escape(str(value))
 
 
+def _attribute(value: object) -> str:
+    """Escape an HTML attribute without substituting a visible empty-state dash."""
+    return html.escape(str(value or ""), quote=True)
+
+
 def _money(value: object) -> str:
     """Format pricing values for the objects estimate table."""
     if value is None or value == "":
@@ -125,12 +130,16 @@ def _row_html(
         '<div class="objects-pricing-row" '
         f'data-object-key="{object_key}" '
         f'data-estimate-id="{estimate_key}" '
-        f'data-run-id="{run_key}">'
+        f'data-run-id="{run_key}" '
+        f'data-object-route-token="{_attribute(row.get("route_token"))}" '
+        f'data-navigation-key="{_attribute(object_detail_navigation_key(row.get("object_key")))}">'
         '<div>'
         f'<div class="objects-pricing-name">{_escape(row.get("name"))}</div>'
         f'{_row_materials_html(row.get("materials"))}'
         '</div>'
-        f'<div class="objects-pricing-number">{_quantity(row.get("quantity"))}</div>'
+        '<div class="objects-pricing-number objects-pricing-quantity-input" '
+        'data-object-quantity-input="true" contenteditable="true" inputmode="decimal" '
+        f'tabindex="0">{_quantity(row.get("quantity"))}</div>'
         f'<div class="objects-pricing-price objects-pricing-self-cost-cell">{self_cost_html}</div>'
         '<div class="objects-pricing-sale-cell">'
         f'{_sale_input_html(row.get("sale_price_unit"), overridden=bool(row.get("sale_price_overridden")))}'
@@ -189,13 +198,19 @@ def _review_action_html(
         action_class = " objects-pricing-review-button--done" if row.get("reviewed") else ""
         object_id = quote(str(row.get("object_key") or ""))
         navigation_key = object_detail_navigation_key(row.get("object_key"))
+        route_token = quote(str(row.get("route_token") or ""))
         estimate_param = quote(str(estimate_id or ""))
         run_param = quote(str(run_id or ""))
+        href = (
+            f"?screen=object_detail&route_token={route_token}"
+            if route_token
+            else f"?screen=object_detail&run_id={run_param}&estimate_id={estimate_param}&object_id={object_id}"
+        )
         return (
             f'<a class="objects-pricing-review-button{action_class}" '
             f'data-streamlit-bridge-key="{navigation_key}" '
             f'data-object-id="{_escape(row.get("object_key"))}" '
-            f'href="?screen=object_detail&run_id={run_param}&estimate_id={estimate_param}&object_id={object_id}" '
+            f'href="{href}" '
             f'target="_self">{action_label}</a>'
         )
 

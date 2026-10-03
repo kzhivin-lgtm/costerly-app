@@ -575,6 +575,30 @@ def update_rfq_object_estimate_approved(
     ).execute()
 
 
+def update_rfq_object_estimate_quantity(
+    client: Client,
+    *,
+    estimate_id: str,
+    object_id: str,
+    quantity: float,
+    approved: bool = False,
+) -> None:
+    """Mirror canonical object quantity into an estimate and reset approval."""
+    client.table("rfq_object_estimates").update(
+        {
+            "quantity": quantity,
+            "approved": approved,
+            "updated_at": datetime.now(UTC).isoformat(),
+        },
+    ).eq(
+        "estimate_id",
+        estimate_id,
+    ).eq(
+        "object_id",
+        object_id,
+    ).execute()
+
+
 def update_rfq_object_estimate_status(
     client: Client,
     *,

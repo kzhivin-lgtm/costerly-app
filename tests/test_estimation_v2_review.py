@@ -10,6 +10,7 @@ from use_cases.estimation import (
     _material_rows_from_v2_facts,
     _objects_project_pricing,
     _suggested_sale_price,
+    update_object_quantity,
 )
 from use_cases.estimation_progress import get_estimate_progress, set_object_progress
 
@@ -39,6 +40,78 @@ def test_review_required_object_is_openable_without_fake_self_cost():
         run_id="run-1",
     )
     assert ">Review</a>" in markup
+
+
+def test_review_uses_durable_route_and_quantity_is_editable():
+    row = {
+        "status": "completed",
+        "object_key": "object-1",
+        "quantity": 3,
+        "route_token": "durable-token",
+    }
+
+    markup = objects_pricing.pricing_table_html(
+        rows=[row],
+        project_costs=[],
+        summary={"project_price": None, "vat": None, "total": None},
+        estimate_id="estimate-1",
+        run_id="run-1",
+    )
+
+    assert 'href="?screen=object_detail&amp;route_token=durable-token"' not in markup
+    assert 'href="?screen=object_detail&route_token=durable-token"' in markup
+    assert 'data-object-quantity-input="true"' in markup
+    assert '>3</div>' in markup
+
+
+def test_quantity_update_writes_canonical_and_mirror_and_clears_approval(monkeypatch):
+    import pandas as pd
+
+    detected_updates = []
+    estimate_updates = []
+    monkeypatch.setattr("use_cases.estimation.get_supabase_client", lambda: object())
+    monkeypatch.setattr("use_cases.estimation.company_auth_enabled", lambda: False)
+    monkeypatch.setattr(
+        "use_cases.estimation.fetch_rfq_object_estimates",
+        lambda _client, _estimate_id: pd.DataFrame([
+            {"run_id": "run-1", "object_id": "object-1"}
+        ]),
+    )
+    monkeypatch.setattr(
+        "use_cases.estimation.update_rfq_object_estimate_quantity",
+        lambda _client, **kwargs: estimate_updates.append(kwargs),
+    )
+    monkeypatch.setattr(
+        "use_cases.estimation.update_rfq_detected_object",
+        lambda _client, **kwargs: detected_updates.append(kwargs),
+    )
+
+    assert update_object_quantity(
+        estimate_id="estimate-1",
+        run_id="run-1",
+        object_id="object-1",
+        quantity=4,
+    ) == 4
+    assert estimate_updates == [{
+        "estimate_id": "estimate-1",
+        "object_id": "object-1",
+        "quantity": 4.0,
+        "approved": False,
+    }]
+    assert detected_updates == [{
+        "run_id": "run-1",
+        "object_id": "object-1",
+        "values": {"quantity": 4.0},
+    }]
+
+
+def test_quantity_bridge_submits_on_blur_without_direct_database_write():
+    source = Path("ui/object_quantity_bridge_component/index.html").read_text()
+
+    assert 'data-object-quantity-input' in source
+    assert 'streamlit:setComponentValue' in source
+    assert 'focusout' in source
+    assert '/rest/v1/' not in source
 
 
 def test_review_required_object_displays_persisted_approximate_self_cost():

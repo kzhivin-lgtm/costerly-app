@@ -123,6 +123,22 @@ def apply_objects_css() -> None:
             margin-top: var(--objects-row-main-offset);
         }
 
+        .objects-pricing-quantity-input {
+            width: 54px;
+            min-width: 54px;
+            min-height: 36px;
+            margin: var(--objects-row-main-offset) auto 0 auto;
+            border: 1px solid rgba(42, 31, 44, 0.16);
+            border-radius: 8px;
+            background: #FFFFFF;
+            outline: none;
+        }
+
+        .objects-pricing-quantity-input:focus {
+            border-color: rgba(128, 73, 198, 0.72);
+            box-shadow: 0 0 0 2px rgba(128, 73, 198, 0.10);
+        }
+
         .objects-progress-status {
             display: inline-flex;
             align-items: center;

@@ -2104,6 +2104,8 @@ def install_objects_progress_sync(
             }
 
             function reviewHref(row, objectId) {
+                const routeToken = encodeURIComponent(row.dataset.objectRouteToken || "");
+                if (routeToken) return `?screen=object_detail&route_token=${routeToken}`;
                 const estimateId = encodeURIComponent(row.dataset.estimateId || ESTIMATE_ID || "");
                 const runId = encodeURIComponent(row.dataset.runId || "");
                 const objectParam = encodeURIComponent(String(objectId || ""));
@@ -2170,7 +2172,7 @@ def install_objects_progress_sync(
                         return;
                     }
                     cell.innerHTML = (
-                        `<a class="objects-pricing-review-button" data-object-id="${escapeHtml(objectId)}" href="${reviewHref(row, objectId)}" target="_self">Review</a>`
+                        `<a class="objects-pricing-review-button" data-streamlit-bridge-key="${escapeHtml(row.dataset.navigationKey || "")}" data-object-id="${escapeHtml(objectId)}" href="${reviewHref(row, objectId)}" target="_self">Review</a>`
                     );
                     return;
                 }

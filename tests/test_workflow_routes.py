@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from db.workflow_routes import (
+    ensure_object_workflow_route_tokens,
     ensure_workflow_route_token,
     resolve_workflow_route_token,
     workflow_route_key,
@@ -15,7 +16,8 @@ class _RoutesQuery:
     def __init__(self, rows: list[dict[str, object]]):
         self.rows = rows
         self.filters: dict[str, str] = {}
-        self.insert_payload: dict[str, object] | None = None
+        self.insert_payload: object | None = None
+        self.in_filters: dict[str, list[str]] = {}
 
     def select(self, _columns: str):
         return self
@@ -27,18 +29,24 @@ class _RoutesQuery:
     def limit(self, _value: int):
         return self
 
-    def insert(self, payload: dict[str, object]):
-        self.insert_payload = dict(payload)
+    def in_(self, key: str, values: list[str]):
+        self.in_filters[key] = [str(value) for value in values]
+        return self
+
+    def insert(self, payload):
+        self.insert_payload = payload
         return self
 
     def execute(self):
         if self.insert_payload is not None:
-            self.rows.append(self.insert_payload)
-            return SimpleNamespace(data=[self.insert_payload])
+            payloads = self.insert_payload if isinstance(self.insert_payload, list) else [self.insert_payload]
+            self.rows.extend(dict(payload) for payload in payloads)
+            return SimpleNamespace(data=payloads)
         matched = [
             row
             for row in self.rows
             if all(str(row.get(key) or "") == value for key, value in self.filters.items())
+            and all(str(row.get(key) or "") in values for key, values in self.in_filters.items())
         ]
         return SimpleNamespace(data=matched)
 
@@ -115,3 +123,23 @@ def test_short_route_rejects_the_wrong_screen_scope(monkeypatch):
             company_id="company-1",
             expected_scope="estimate",
         )
+
+
+def test_object_routes_are_allocated_in_one_batch(monkeypatch):
+    client = _RoutesClient()
+    tokens = iter(["object-token-1", "object-token-2"])
+    monkeypatch.setattr("db.workflow_routes.secrets.token_urlsafe", lambda _bytes: next(tokens))
+
+    result = ensure_object_workflow_route_tokens(
+        client,
+        company_id="company-1",
+        run_id="run-1",
+        estimate_id="estimate-1",
+        object_ids=["object-1", "object-2"],
+    )
+
+    assert result == {
+        "object-1": "object-token-1",
+        "object-2": "object-token-2",
+    }
+    assert len(client.rows) == 2

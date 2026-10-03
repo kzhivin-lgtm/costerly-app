@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import Future
 from dataclasses import dataclass
+import json
 
 import streamlit as st
 
@@ -12,15 +13,17 @@ from ui.js_guards import (
     install_workflow_header_alignment_guard,
 )
 from ui import objects_pricing
+from ui.object_quantity_bridge import object_quantity_bridge
 from ui.layout import render_post_upload_header
 from ui.screen_transition import (
     OBJECTS_MARKER_ID,
 )
-from use_cases.estimation import load_objects_estimation_data
+from use_cases.estimation import load_objects_estimation_data, update_object_quantity
 from use_cases.final_approval import final_approval
 from use_cases.estimation_progress import clear_estimate_progress, get_estimate_progress
 from use_cases.proposal_pdf import load_estimate_proposal_url
 from db.supabase_client import get_supabase_client
+from db.workflow_routes import ensure_object_workflow_route_tokens, workflow_route_key
 from state.company_auth import company_auth_enabled
 
 
@@ -291,6 +294,93 @@ def _render_pricing_table(
     )
 
 
+def _data_with_object_routes(
+    data: dict[str, object],
+    *,
+    company_id: str,
+    run_id: str | None,
+    estimate_id: str | None,
+) -> dict[str, object]:
+    """Attach durable Object Detail fallbacks without changing visible row data."""
+    if not run_id or not estimate_id:
+        return data
+    cache = st.session_state.setdefault("workflow_route_tokens", {})
+    client = get_supabase_client()
+    object_ids = [
+        str(row.get("object_key") or "")
+        for row in data.get("rows") or []
+        if str(row.get("object_key") or "")
+        and str(row.get("status") or "") in {"completed", "review_required"}
+    ]
+    missing_ids = [
+        object_id
+        for object_id in object_ids
+        if workflow_route_key(
+            scope="object",
+            run_id=str(run_id),
+            estimate_id=str(estimate_id),
+            object_id=object_id,
+        ) not in cache
+    ]
+    if missing_ids:
+        created = ensure_object_workflow_route_tokens(
+            client,
+            company_id=company_id,
+            run_id=str(run_id),
+            estimate_id=str(estimate_id),
+            object_ids=missing_ids,
+        )
+        for object_id, token in created.items():
+            cache[workflow_route_key(
+                scope="object",
+                run_id=str(run_id),
+                estimate_id=str(estimate_id),
+                object_id=object_id,
+            )] = token
+    rows = []
+    for source in data.get("rows") or []:
+        row = dict(source)
+        object_id = str(row.get("object_key") or "")
+        if object_id and str(row.get("status") or "") in {"completed", "review_required"}:
+            route_key = workflow_route_key(
+                scope="object",
+                run_id=str(run_id),
+                estimate_id=str(estimate_id),
+                object_id=object_id,
+            )
+            row["route_token"] = cache.get(route_key)
+        rows.append(row)
+    return {**data, "rows": rows}
+
+
+def _consume_object_quantity_edit(*, estimate_id: str | None) -> None:
+    """Persist an Objects quantity edit and refresh authoritative totals."""
+    raw_value = object_quantity_bridge(key="objects_quantity_bridge")
+    if not raw_value:
+        return
+    try:
+        payload = json.loads(raw_value)
+    except (TypeError, json.JSONDecodeError):
+        return
+    nonce = str(payload.get("nonce") or "")
+    if not nonce or st.session_state.get("last_object_quantity_nonce") == nonce:
+        return
+    if str(payload.get("estimate_id") or "") != str(estimate_id or ""):
+        return
+    update_object_quantity(
+        estimate_id=str(payload.get("estimate_id") or ""),
+        run_id=str(payload.get("run_id") or ""),
+        object_id=str(payload.get("object_id") or ""),
+        quantity=float(payload.get("quantity")),
+    )
+    st.session_state.last_object_quantity_nonce = nonce
+    st.session_state.setdefault("objects_estimation_cache_dirty", set()).add(str(estimate_id))
+    st.session_state.setdefault("approved_object_keys", set()).discard(
+        str(payload.get("object_id") or "")
+    )
+    st.rerun()
+
+
 def _open_object_detail(object_id: str) -> None:
     st.session_state.current_object_id = str(object_id)
     st.session_state.screen = "object_detail"
@@ -482,6 +572,16 @@ def render_objects_screen(company_id: str) -> None:
         marker_id=OBJECTS_MARKER_ID,
     )
     screen_state = _current_objects_state(estimate_id)
+    screen_state = ObjectsScreenState(
+        data=_data_with_object_routes(
+            screen_state.data,
+            company_id=company_id,
+            run_id=run_id,
+            estimate_id=estimate_id,
+        ),
+        data_error=screen_state.data_error,
+        cache_warning=screen_state.cache_warning,
+    )
     if _final_approval_ready(screen_state.data):
         _load_existing_proposal_url(company_id=company_id, estimate_id=estimate_id)
     if estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future):
@@ -517,3 +617,4 @@ def render_objects_screen(company_id: str) -> None:
         supabase_anon_key=supabase_anon_key,
         supabase_access_token=supabase_access_token,
     )
+    _consume_object_quantity_edit(estimate_id=estimate_id)

@@ -54,6 +54,21 @@ def apply_object_detail_css() -> None:
             color: var(--color-accent);
         }
 
+        .object-detail-quantity-input {
+            min-width: 48px;
+            padding: 5px 9px;
+            border: 1px solid rgba(42, 31, 44, 0.16);
+            border-radius: 8px;
+            background: #FFFFFF;
+            text-align: center;
+            outline: none;
+        }
+
+        .object-detail-quantity-input:focus {
+            border-color: rgba(128, 73, 198, 0.72);
+            box-shadow: 0 0 0 2px rgba(128, 73, 198, 0.10);
+        }
+
         .object-detail-preview-placeholder {
             width: 260px;
             min-height: 178px;

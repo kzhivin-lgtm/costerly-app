@@ -12,7 +12,9 @@ from db.repositories import (
     fetch_rfq_detected_objects,
     fetch_rfq_run,
     update_rfq_estimate_line,
+    update_rfq_detected_object,
     update_rfq_object_estimate_approved,
+    update_rfq_object_estimate_quantity,
     update_rfq_object_estimate_progress,
     update_rfq_object_estimate_totals,
     upsert_rfq_estimate_shell,
@@ -120,9 +122,15 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     delivery_percent = _number(settings.get("delivery_percent"), 3)
     installation_percent = _number(settings.get("installation_percent"), 10)
     facts_by_object: dict[str, dict] = {}
+    canonical_quantities: dict[str, float] = {}
     if not objects_df.empty:
         run_id = str(objects_df.iloc[0].get("run_id") or "")
         if run_id:
+            detected_df = read_with_retry(lambda: fetch_rfq_detected_objects(client, run_id))
+            canonical_quantities = {
+                str(item.get("object_id") or ""): _number(item.get("quantity"), 1)
+                for _, item in detected_df.iterrows()
+            }
             try:
                 facts_by_object = fetch_latest_estimation_v2_facts_by_object(
                     client,
@@ -135,6 +143,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     for _, item in objects_df.iterrows():
         row = item.to_dict()
         object_id = str(row.get("object_id") or "")
+        quantity = canonical_quantities.get(object_id, _number(row.get("quantity"), 1))
         facts_result = facts_by_object.get(object_id) or {}
         facts_payload = facts_result.get("facts_payload") or {}
         materials = facts_payload.get("materials") or []
@@ -155,14 +164,14 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
                 "object_key": row.get("object_id"),
                 "name": row.get("object_name"),
                 "materials": ", ".join(material_names),
-                "quantity": row.get("quantity"),
+                "quantity": quantity,
                 "self_cost_unit": self_cost if self_cost is not None else status,
                 "status": status,
                 "progress_percent": row.get("progress_percent"),
                 "progress_label": row.get("progress_label"),
                 "progress_updated_at": row.get("progress_updated_at"),
                 "sale_price_unit": sale_price_unit,
-                "sale_price_total": _line_total(sale_price_unit, row.get("quantity")),
+                "sale_price_total": _line_total(sale_price_unit, quantity),
                 "sale_price_overridden": sale_price_overridden,
                 "suggestion": f"suggested: SC + {_format_number(markup_percent)}%",
                 "reviewed": bool(row.get("approved")),
@@ -298,6 +307,17 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         raise RuntimeError(f"Object estimate not found: {estimate_id}/{object_id}")
 
     object_row = matching.iloc[0].to_dict()
+    canonical_quantity = _number(object_row.get("quantity"), 1)
+    run_id = str(object_row.get("run_id") or "")
+    if run_id:
+        detected_df = fetch_rfq_detected_objects(client, run_id)
+        detected_matching = (
+            detected_df[detected_df["object_id"] == object_id]
+            if not detected_df.empty and "object_id" in detected_df.columns
+            else detected_df.iloc[0:0]
+        )
+        if not detected_matching.empty:
+            canonical_quantity = _number(detected_matching.iloc[0].get("quantity"), 1)
     facts_result = {}
     try:
         facts_result = fetch_latest_estimation_v2_facts_by_object(
@@ -400,8 +420,10 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
 
     return {
         "object_key": object_id,
+        "run_id": str(object_row.get("run_id") or ""),
+        "estimate_id": estimate_id,
         "name": object_row.get("object_name"),
-        "quantity": object_row.get("quantity"),
+        "quantity": canonical_quantity,
         "approved": bool(object_row.get("approved")),
         "confidence": round(sum(operation_confidences) / len(operation_confidences))
         if operation_confidences else "—",
@@ -519,6 +541,47 @@ def approve_object_estimate(
         object_id=object_id,
         approved=True,
     )
+
+
+def update_object_quantity(
+    *,
+    estimate_id: str,
+    run_id: str,
+    object_id: str,
+    quantity: float,
+) -> float:
+    """Persist one canonical item quantity and keep the estimate mirror aligned."""
+    normalized = round(float(quantity), 3)
+    if normalized <= 0 or normalized > 1_000_000:
+        raise ValueError("Quantity must be greater than zero.")
+
+    client = get_supabase_client()
+    _assert_screen_estimate_access(client, estimate_id)
+    if company_auth_enabled():
+        assert_run_owned(client, run_id, get_company_id())
+
+    objects_df = fetch_rfq_object_estimates(client, estimate_id)
+    matching = objects_df[
+        (objects_df["object_id"] == object_id)
+        & (objects_df["run_id"] == run_id)
+    ]
+    if matching.empty:
+        raise PermissionError("Object is not part of this estimate.")
+
+    update_rfq_object_estimate_quantity(
+        client,
+        estimate_id=estimate_id,
+        object_id=object_id,
+        quantity=normalized,
+        approved=False,
+    )
+    update_rfq_detected_object(
+        client,
+        run_id=run_id,
+        object_id=object_id,
+        values={"quantity": normalized},
+    )
+    return normalized
 
 
 def apply_object_detail_line_edit(

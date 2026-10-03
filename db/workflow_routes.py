@@ -91,6 +91,76 @@ def ensure_workflow_route_token(
     raise RuntimeError("Could not allocate a workflow route token.")
 
 
+def ensure_object_workflow_route_tokens(
+    client: Any,
+    *,
+    company_id: str,
+    run_id: str,
+    estimate_id: str,
+    object_ids: list[str],
+) -> dict[str, str]:
+    """Return durable object routes with one batched read and at most one insert."""
+    unique_ids = list(dict.fromkeys(str(value) for value in object_ids if value))
+    if not unique_ids:
+        return {}
+    keys = {
+        object_id: workflow_route_key(
+            scope="object",
+            run_id=run_id,
+            estimate_id=estimate_id,
+            object_id=object_id,
+        )
+        for object_id in unique_ids
+    }
+    existing_rows = (
+        client.table("rfq_workflow_routes")
+        .select("route_key,route_token")
+        .in_("route_key", list(keys.values()))
+        .execute()
+        .data
+        or []
+    )
+    tokens_by_key = {
+        str(row.get("route_key") or ""): str(row.get("route_token") or "")
+        for row in existing_rows
+    }
+    missing = [object_id for object_id, key in keys.items() if not tokens_by_key.get(key)]
+    if missing:
+        payloads = [
+            {
+                "route_key": keys[object_id],
+                "route_token": secrets.token_urlsafe(9),
+                "company_id": str(company_id),
+                "scope": "object",
+                "run_id": str(run_id),
+                "estimate_id": str(estimate_id),
+                "object_id": object_id,
+            }
+            for object_id in missing
+        ]
+        try:
+            client.table("rfq_workflow_routes").insert(payloads).execute()
+            tokens_by_key.update({row["route_key"]: row["route_token"] for row in payloads})
+        except Exception:
+            # A concurrent screen may have inserted the same route keys.
+            refreshed = (
+                client.table("rfq_workflow_routes")
+                .select("route_key,route_token")
+                .in_("route_key", list(keys.values()))
+                .execute()
+                .data
+                or []
+            )
+            tokens_by_key = {
+                str(row.get("route_key") or ""): str(row.get("route_token") or "")
+                for row in refreshed
+            }
+    result = {object_id: tokens_by_key.get(key, "") for object_id, key in keys.items()}
+    if any(not token for token in result.values()):
+        raise RuntimeError("Could not allocate all object workflow route tokens.")
+    return result
+
+
 def resolve_workflow_route_token(
     client: Any,
     *,

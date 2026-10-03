@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /></head>
+  <body>
+    <script>
+      (() => {
+        const parentWindow = window.parent;
+        const parentDoc = parentWindow.document;
+        const cleanupKey = "__costerlyObjectQuantityBridgeCleanup";
+
+        function send(type, payload = {}) {
+          parentWindow.postMessage({isStreamlitMessage: true, type, ...payload}, "*");
+        }
+
+        function quantityValue(node) {
+          const cleaned = String(node ? node.textContent : "").replace(/[^0-9.]/g, "");
+          const number = Number(cleaned);
+          return Number.isFinite(number) && number > 0 ? number : null;
+        }
+
+        function submit(node) {
+          const row = node.closest("[data-object-key]");
+          const quantity = quantityValue(node);
+          if (!row || quantity == null) return;
+          const previous = Number(node.dataset.savedQuantity || "");
+          if (Number.isFinite(previous) && previous === quantity) return;
+          node.dataset.savedQuantity = String(quantity);
+          send("streamlit:setComponentValue", {
+            value: JSON.stringify({
+              nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+              run_id: row.dataset.runId || "",
+              estimate_id: row.dataset.estimateId || "",
+              object_id: row.dataset.objectKey || "",
+              quantity,
+            }),
+          });
+        }
+
+        function install() {
+          if (parentWindow[cleanupKey]) parentWindow[cleanupKey]();
+
+          function onFocus(event) {
+            const node = event.target.closest && event.target.closest("[data-object-quantity-input]");
+            if (!node) return;
+            node.dataset.savedQuantity = String(quantityValue(node) || "");
+            const range = parentDoc.createRange();
+            range.selectNodeContents(node);
+            const selection = parentWindow.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+
+          function onKeydown(event) {
+            const node = event.target.closest && event.target.closest("[data-object-quantity-input]");
+            if (!node) return;
+            if (event.key === "Enter") {
+              event.preventDefault();
+              node.blur();
+            }
+          }
+
+          function onBlur(event) {
+            const node = event.target.closest && event.target.closest("[data-object-quantity-input]");
+            if (node) submit(node);
+          }
+
+          parentDoc.addEventListener("focusin", onFocus, true);
+          parentDoc.addEventListener("keydown", onKeydown, true);
+          parentDoc.addEventListener("focusout", onBlur, true);
+          parentWindow[cleanupKey] = () => {
+            parentDoc.removeEventListener("focusin", onFocus, true);
+            parentDoc.removeEventListener("keydown", onKeydown, true);
+            parentDoc.removeEventListener("focusout", onBlur, true);
+            parentWindow[cleanupKey] = null;
+          };
+        }
+
+        window.addEventListener("message", (event) => {
+          if ((event.data || {}).type !== "streamlit:render") return;
+          install();
+          send("streamlit:setFrameHeight", {height: 0});
+        });
+        send("streamlit:componentReady", {apiVersion: 1});
+        send("streamlit:setFrameHeight", {height: 0});
+      })();
+    </script>
+  </body>
+</html>
