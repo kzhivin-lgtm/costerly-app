@@ -56,7 +56,7 @@ Project Summary / Download XLS control is the reserved UI entry point. Define
 aggregation, duplicate-material merging, units, quantities, source prices, and
 supplier fields before implementation.
 
-ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
+ACTIVE, PARTIAL OWNER-ACCEPTED CHECKPOINT, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the
 wrapper's 8-second fallback. Preserve the accepted Fast Resume and `app-ready`
 readiness contract. The first candidate removes the legal release lookup from
@@ -82,6 +82,11 @@ Production acceptance must also verify the authenticated navigation controls on
 File Review. Server telemetry confirms that `account_controls_render` ran, but
 the owner observed the control rail missing visually, so DOM visibility remains
 unknown and is not closed by server-side render evidence.
+Production checkpoint `a789638` is owner-accepted for the current transition
+speed only. The owner reports that transitions are now sufficiently fast to
+preserve as a baseline. This is not task completion: the File Review
+authenticated navigation rail is still missing and must be restored without
+regressing the accepted transition speed or scroll-to-top behavior.
 The first native Object Detail bridge candidate did not intercept production
 links reliably: Object Detail still opened under a new trace and caused three
 15-second wrapper timeouts. The second and final bridge attempt must resolve
