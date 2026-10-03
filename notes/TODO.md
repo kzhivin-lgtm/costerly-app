@@ -110,14 +110,12 @@ Estimate evidence completed in 864 ms with a 22 ms screen render. Treat this as
 a likely File Review/Supabase I/O outlier, not a transition-wrapper diagnosis.
 If it repeats, add scoped timing around File Review data loading and then a
 bounded timeout/recovery based on that evidence.
-ACTIVE, 3.15.23 Object Detail DOM isolation follow-up: production acceptance
-found that the navigation rail can still disappear on entry to Object Detail
-and that editing a material price can update stale DOM or collapse the visible
-calculation to zero. The narrow repair observes `data-stale` attribute changes
-for header alignment and scopes all Object Detail calculation, summary, and
-snapshot queries to the current visible detail container. Acceptance requires
-live row, section, and final-total recalculation plus persisted values after
-blur, with the navigation rail visible on entry and return.
+COMPLETED AND OWNER-ACCEPTED, 3.15.23 Object Detail edit recovery: the
+navigation rail remains protected by the accepted stale-state observer, and
+material edits no longer collapse the full Materials section to zero. Browser
+feedback is intentionally limited to the active row Cost. Enter or blur saves
+the edit, and the server remains authoritative for policy rows, section totals,
+VAT, and final self cost.
 The first DOM-isolation candidate did not repair material recalculation: any
 material edit still collapsed the whole Materials section to zero. The next
 candidate removes formatted row-cost text as a calculation input and rebuilds
@@ -128,17 +126,18 @@ the same zero-collapse. Stop the duplicate browser calculator. The accepted
 recovery path saves the edited field on blur and lets the existing server
 transaction recalculate lines, policy percentages, section totals, VAT, and
 self cost before the refreshed Object Detail is shown.
-ACTIVE: production evidence showed no line `updated_at` after an edit that had
+RESOLVED: production evidence showed no line `updated_at` after an edit that had
 not left the contenteditable field. Restore only current-row live Cost feedback
 (`unit_cost * quantity`, or the equivalent Labor row formula), while blur or
 Enter remains the single persistence and authoritative server-recalculation
 boundary. Do not restore browser-wide section or final-total calculation.
-ACTIVE, 3.15.23 Approve transition: production trace
+VERIFICATION PENDING, 3.15.23 Approve transition: production trace
 `28dac1ea-5c35-40aa-9109-8246a22c2078` showed direct-link Approve creating a
 new iframe/server session while the original transition reached its 15-second
 timeout with zero Python runs. Reuse the accepted Streamlit bridge when the
 Object Detail snapshot is clean. Retain the direct snapshot route only when
-unsaved edits must be persisted atomically with approval.
+unsaved edits must be persisted atomically with approval. Code `89dda51` is
+deployed and fully tested; one fresh authenticated production timing remains.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background

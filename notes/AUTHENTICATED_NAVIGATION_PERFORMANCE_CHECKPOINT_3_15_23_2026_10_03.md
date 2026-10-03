@@ -7,6 +7,12 @@ of 3.15.23.
 
 Accepted production code: `7c81a5a`.
 
+Object Detail editing and the Approve path later extend this baseline at
+`89dda51`; see
+`OBJECT_DETAIL_EDIT_AND_APPROVE_CHECKPOINT_3_15_23_2026_10_03.md`. The original
+navigation checkpoint remains the rollback evidence for the broader transition
+and navigation-rail work.
+
 The owner confirmed that the current transitions are sufficiently fast to
 preserve as the new baseline, destinations open at the top, and the
 authenticated navigation rail survives transitions among File Review, Objects,

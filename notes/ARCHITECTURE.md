@@ -283,6 +283,15 @@ Objects Estimation and Object Detail render persisted estimate state
 Rule
 The Estimation Agent proposes line items and quantities. It does not own final arithmetic totals; deterministic engine code owns multiplication, VAT, totals, delivery, installation, and proposal math.
 
+Object Detail edit ownership
+The browser provides immediate feedback only for the active editable row. It
+does not own section totals, pricing-policy rows, VAT, or final self cost.
+Enter or blur persists the edited field, then the deterministic server engine
+recalculates the full object from stored estimate lines. A clean Approve uses
+the internal Streamlit navigation bridge. If the user clicks Approve with
+unsaved fields, the snapshot route persists those edits atomically before
+approval and remains the correctness-first fallback.
+
 Estimation Agent Contract v1
 The Estimation Agent runs per object. It may return material composition, material quantities, labor work types, and labor hours.
 It must not return material unit costs, labor rates, overhead rows, VAT, self-cost totals, sale prices, or final proposal totals.
