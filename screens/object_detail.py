@@ -30,12 +30,16 @@ class ObjectDetailContext:
 
 def render_object_detail_screen(company_id: str) -> None:
     """Render one object estimate detail screen from persisted estimate data."""
-    apply_object_detail_css()
     context = _current_object_detail_context()
     if context is None:
+        apply_object_detail_css()
         _render_missing_object_detail_context()
         return
 
+    if _consume_object_detail_draft(context):
+        st.rerun()
+
+    apply_object_detail_css()
     _consume_pending_object_detail_changes()
     if _approve_after_pending_changes(context):
         st.rerun()
@@ -46,8 +50,6 @@ def render_object_detail_screen(company_id: str) -> None:
 
     _render_object_detail(data, context)
     _install_object_detail_runtime(context)
-    if _consume_object_detail_draft(context):
-        st.rerun()
     install_workflow_header_alignment_guard("h1.object-detail-title")
 
 
@@ -153,7 +155,8 @@ def _install_object_detail_runtime(context: ObjectDetailContext) -> None:
 
 def _consume_object_detail_draft(context: ObjectDetailContext) -> bool:
     """Persist and approve a staged draft while retaining the live session."""
-    raw_value = object_detail_draft_bridge(key="object_detail_draft_bridge")
+    with st.sidebar:
+        raw_value = object_detail_draft_bridge(key="object_detail_draft_bridge")
     if not raw_value:
         return False
     try:

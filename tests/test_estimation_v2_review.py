@@ -139,6 +139,17 @@ def test_object_detail_draft_bridge_keeps_changed_approval_in_live_session():
     assert "/rest/v1/" not in source
 
 
+def test_quantity_event_detection_does_not_capture_other_detail_inputs():
+    source = Path("ui/js_guards.py").read_text()
+    guard = source.split("def install_object_detail_input_guard", 1)[1].split(
+        "def install_objects_live_progress", 1
+    )[0]
+
+    assert "if (target !== undefined && target !== null)" in guard
+    assert "return direct || null;" in guard
+    assert "return parentDoc.querySelector" in guard
+
+
 def test_object_detail_quantity_snapshot_persists_only_at_approval(monkeypatch):
     updates = []
     monkeypatch.setattr(

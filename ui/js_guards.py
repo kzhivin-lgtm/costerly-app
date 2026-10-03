@@ -1609,10 +1609,11 @@ def install_object_detail_input_guard(
                 return { input, lineId, field };
             }
 
-            function objectQuantityInput(target = null) {
-                if (target && target.closest) {
+            function objectQuantityInput(target) {
+                if (target !== undefined && target !== null) {
+                    if (!target.closest) return null;
                     const direct = target.closest(".object-detail-quantity-input[data-object-quantity-input]");
-                    if (direct) return direct;
+                    return direct || null;
                 }
                 return parentDoc.querySelector(".object-detail-quantity-input[data-object-quantity-input]");
             }
