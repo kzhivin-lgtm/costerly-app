@@ -169,6 +169,29 @@ def test_objects_quantity_uses_direct_rpc_without_streamlit_rerun():
     assert "streamlit:setComponentValue" not in guard
 
 
+def test_regular_material_rows_are_not_marked_as_pricing_policy_rows():
+    from ui.object_detail_view import _table_html
+
+    rendered = _table_html({
+        "key": "material",
+        "title": "Material cost",
+        "columns": ["Item", "Unit", "Unit cost", "Qty", "Cost"],
+        "rows": [{
+            "line_id": "material-1",
+            "group": "Boards",
+            "item": "MDF",
+            "unit": "m2",
+            "unit_cost": 100,
+            "qty": 2,
+            "cost": 200,
+            "locked": False,
+        }],
+    })
+
+    assert 'data-policy-percent=""' in rendered
+    assert 'data-policy-percent="—"' not in rendered
+
+
 def test_object_detail_quantity_snapshot_persists_only_at_approval(monkeypatch):
     updates = []
     monkeypatch.setattr(

@@ -85,7 +85,12 @@ native Approve callback; Objects quantity uses the authenticated
 rerun. The additive migration was applied on 03.10.2026. Production acceptance
 must compare both changed and unchanged Approve timing, confirm that quantity
 save dims immediately, and confirm grouped money formatting and Materials totals
-after editing any material row.
+after editing any material row. The zeroed-Materials regression was traced to
+ordinary rows rendering `data-policy-percent="—"`; the client calculator treated
+every row as a pricing-policy row. Ordinary rows now render an empty attribute,
+with a deterministic regression test. Changed-draft approval also writes the
+recalculated totals and approved state together, removing the redundant second
+authorization/read/write approval pass.
 
 ACTIVE, PARTIAL OWNER-ACCEPTED CHECKPOINT, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the

@@ -174,11 +174,12 @@ def _table_html(section: dict[str, object]) -> str:
         for row in group_rows:
             values = _row_values(section, row)
             policy_percent = row.get("policy_percent") if row.get("locked") else ""
+            policy_percent_attr = html.escape(str(policy_percent or ""), quote=True)
             body_parts.append(
                 '<div class="object-detail-table-row" '
                 f'data-line-id="{_escape(row.get("line_id"))}" '
                 f'data-section="{_escape(section_key)}" '
-                f'data-policy-percent="{_escape(policy_percent)}">'
+                f'data-policy-percent="{policy_percent_attr}">'
                 + "".join(f'<div class="object-detail-table-cell">{value}</div>' for value in values)
                 + "</div>"
             )

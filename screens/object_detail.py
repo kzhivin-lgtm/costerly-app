@@ -218,6 +218,7 @@ def _approve_current_object_and_return(
                 object_id=object_id,
                 run_id=str(run_id or st.session_state.get("current_run_id") or ""),
                 edits=edits,
+                approve=True,
             )
             delete_rfq_object_detail_draft(
                 client,
@@ -226,6 +227,11 @@ def _approve_current_object_and_return(
                 object_id=object_id,
             )
             recalculate = False
+            _mark_objects_estimation_dirty(estimate_id)
+            approved_object_keys = st.session_state.setdefault("approved_object_keys", set())
+            approved_object_keys.add(object_key or object_id)
+            st.session_state.screen = "objects"
+            return
     approve_object_estimate(
         estimate_id=estimate_id,
         object_id=object_id,

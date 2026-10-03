@@ -535,16 +535,18 @@ def update_rfq_object_estimate_totals(
     self_cost_ex_vat: float | None,
     vat_amount: float | None,
     self_cost_total: float | None,
+    approved: bool | None = None,
 ) -> None:
     """Persist deterministic self-cost totals for one object estimate."""
-    client.table("rfq_object_estimates").update(
-        {
-            "self_cost_ex_vat": self_cost_ex_vat,
-            "vat_amount": vat_amount,
-            "self_cost_total": self_cost_total,
-            "updated_at": datetime.now(UTC).isoformat(),
-        },
-    ).eq(
+    values = {
+        "self_cost_ex_vat": self_cost_ex_vat,
+        "vat_amount": vat_amount,
+        "self_cost_total": self_cost_total,
+        "updated_at": datetime.now(UTC).isoformat(),
+    }
+    if approved is not None:
+        values["approved"] = approved
+    client.table("rfq_object_estimates").update(values).eq(
         "estimate_id",
         estimate_id,
     ).eq(

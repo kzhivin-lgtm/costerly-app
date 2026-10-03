@@ -648,6 +648,7 @@ def apply_object_detail_snapshot(
     object_id: str,
     run_id: str | None = None,
     edits: list[Any],
+    approve: bool = False,
 ) -> None:
     """Persist the current Object Detail table snapshot and recalculate once."""
     allowed_fields = {
@@ -753,6 +754,7 @@ def apply_object_detail_snapshot(
         client,
         estimate_id=estimate_id,
         object_id=object_id,
+        approved=True if approve else None,
     )
 
 
@@ -783,6 +785,7 @@ def _recalculate_object_estimate_totals(
     *,
     estimate_id: str,
     object_id: str,
+    approved: bool | None = None,
 ) -> None:
     objects_df = fetch_rfq_object_estimates(client, estimate_id)
     matching = objects_df[objects_df["object_id"] == object_id]
@@ -864,6 +867,7 @@ def _recalculate_object_estimate_totals(
         self_cost_ex_vat=self_cost_ex_vat,
         vat_amount=vat_amount,
         self_cost_total=round(self_cost_ex_vat + vat_amount, 2),
+        approved=approved,
     )
 
 
