@@ -126,9 +126,12 @@ def render_processing_screen(company_id: str) -> None:
         )
     )
 
-    # The complete marker starts transition masking. Do not sleep after it or
-    # deliberately extend the gray interval before the File Review rerun.
+    # Give the existing 80 ms browser watcher one bounded handshake window to
+    # observe the complete marker and install transition masking before rerun.
+    # The former 250 ms delay was unnecessarily visible; 120 ms preserves the
+    # no-fragment contract while the cached File Review keeps the handoff fast.
     render_stage(1.0, complete=True, processing_phase="complete")
+    time.sleep(0.12)
 
     st.session_state.current_run_id = run_id
     st.session_state.current_ocr_package = result.get("ocr_package")

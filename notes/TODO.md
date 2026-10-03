@@ -96,8 +96,10 @@ ACTIVE, P0, 3.15.25 Processing to File Review handoff latency: the first File
 Review render must reuse the exact validated Detection payload already persisted
 by Processing instead of repeating ownership, run, detected-object, and usage
 reads. Refresh and restored sessions continue loading Supabase. The complete
-marker must not begin a deliberately extended gray interval; remove the 250 ms
-post-marker sleep while preserving the existing Cloudflare target readiness.
+marker must not begin a deliberately extended gray interval. The zero-delay
+candidate was rejected because the browser observer missed the marker and
+exposed intermediate Streamlit DOM. Use only the bounded 120 ms handshake needed
+by the existing 80 ms watcher, while preserving Cloudflare target readiness.
 Production acceptance requires a fresh upload with the gray interval measured
 from `processing_to_file_review` click to styled File Review, no broken frame,
 and unchanged File Review content.
