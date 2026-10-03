@@ -370,14 +370,21 @@ def _pricing_table_html(
         estimate_id=estimate_id,
         run_id=run_id,
     )
+    project_pricing_ready = summary.get("project_pricing_ready")
+    if project_pricing_ready is None:
+        project_pricing_ready = bool(project_costs) and all(
+            summary.get(field) is not None for field in ("project_price", "vat", "total")
+        )
+    project_pricing_html = (
+        f'{project_cost_rows}{_summary_html(summary)}' if project_pricing_ready else ""
+    )
 
     return (
         f'<div class="objects-pricing-card" data-vat-percent="{_number(summary.get("vat_percent"), 18)}">'
         f'{_pricing_table_header_html()}'
         '<div class="objects-pricing-table">'
         f'{object_rows}'
-        f'{project_cost_rows}'
-        f'{_summary_html(summary)}'
+        f'{project_pricing_html}'
         '</div>'
         '</div>'
     )

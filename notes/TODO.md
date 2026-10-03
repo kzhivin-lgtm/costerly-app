@@ -15,9 +15,12 @@ React-DOM progress writer with a server-side Streamlit fragment that polls the
 persisted per-object rows while the Estimation future is active. Preserve the
 fast seeded first render, stop polling on terminal completion, and do not change
 Cloudflare, authentication, workflow routing, or transition readiness. Local
-candidate is implemented; 857 tests and `git diff --check` pass. Authenticated
-production acceptance remains pending: confirm progressive per-object updates,
-terminal totals, Object Detail navigation, and unchanged transition timings.
+candidate now also clears stale process-local progress, suppresses Streamlit's
+stale-fragment dimming, and withholds Delivery, Installation, and Project
+Summary until every object has a terminal priced result. Authenticated
+production acceptance remains pending: confirm progressive per-object updates
+without flashing, terminal-only project totals, Object Detail navigation, and
+unchanged transition timings.
 
 Current owner-approved execution order:
 

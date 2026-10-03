@@ -34,6 +34,14 @@ def apply_objects_css() -> None:
             margin-bottom: 0 !important;
         }
 
+        .stApp:has(.objects-estimation-header)
+        .st-key-objects_live_pricing[data-stale="true"],
+        .stApp:has(.objects-estimation-header)
+        .st-key-objects_live_pricing [data-testid="stElementContainer"][data-stale="true"] {
+            opacity: 1 !important;
+            transition: none !important;
+        }
+
         .objects-pricing-table {
             width: 100%;
             border-top: 1px solid rgba(42, 31, 44, 0.14);

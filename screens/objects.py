@@ -17,7 +17,7 @@ from ui.screen_transition import (
     OBJECTS_MARKER_ID,
 )
 from use_cases.estimation import load_objects_estimation_data
-from use_cases.estimation_progress import get_estimate_progress
+from use_cases.estimation_progress import clear_estimate_progress, get_estimate_progress
 from state.company_auth import company_auth_enabled
 
 
@@ -53,6 +53,7 @@ def _consume_estimation_future() -> None:
     except Exception as exc:
         st.session_state.last_estimation_error = str(exc)
     finally:
+        clear_estimate_progress(st.session_state.get("current_estimate_id"))
         st.session_state.estimation_batch_future = None
 
 
@@ -111,8 +112,27 @@ def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dic
         if status == "running":
             row["self_cost_unit"] = f"{objects_pricing.smooth_progress_percent(row)}%"
 
+    estimation_running = isinstance(st.session_state.get("estimation_batch_future"), Future)
+    all_objects_terminal = bool(rows) and all(
+        objects_pricing.row_status(row) in {"completed", "review_required"}
+        and row.get("sale_price_total") is not None
+        for row in rows
+    )
+    summary = dict(data.get("summary") or {})
+    if estimation_running or not all_objects_terminal:
+        summary.update(
+            {
+                "project_price": None,
+                "vat": None,
+                "total": None,
+                "project_pricing_ready": False,
+            }
+        )
+        return {**data, "rows": rows, "project_costs": [], "summary": summary}
+
+    summary["project_pricing_ready"] = True
     project_costs = data.get("project_costs") or _project_cost_rows_for_seed(rows)
-    return {**data, "rows": rows, "project_costs": project_costs}
+    return {**data, "rows": rows, "project_costs": project_costs, "summary": summary}
 
 
 def _project_cost_rows_for_seed(rows: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -330,11 +350,12 @@ def _render_live_objects_content(*, estimate_id: str, run_id: str | None) -> Non
         screen_state = _current_objects_state(estimate_id)
     else:
         screen_state = _persisted_objects_state(estimate_id)
-    _render_objects_table_content(
-        estimate_id=estimate_id,
-        run_id=run_id,
-        screen_state=screen_state,
-    )
+    with st.container(key="objects_live_pricing"):
+        _render_objects_table_content(
+            estimate_id=estimate_id,
+            run_id=run_id,
+            screen_state=screen_state,
+        )
 
 
 def render_objects_screen(company_id: str) -> None:

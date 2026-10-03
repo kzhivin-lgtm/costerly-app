@@ -214,6 +214,7 @@ def test_objects_screen_refreshes_active_estimation_in_a_server_fragment():
     assert "@st.fragment(run_every=1.5)" in source
     assert "def _render_live_objects_content" in source
     assert "_persisted_objects_state(estimate_id)" in source
+    assert 'st.container(key="objects_live_pricing")' in source
     assert 'st.session_state.pop("objects_live_poll_estimate_id", None)' in source
 
     fragment_source = source.split("def _render_live_objects_content", 1)[1].split(
@@ -222,6 +223,15 @@ def test_objects_screen_refreshes_active_estimation_in_a_server_fragment():
     assert "_render_objects_table_content" in fragment_source
     assert "_render_objects_actions" not in fragment_source
     assert "_install_objects_price_input_runtime" not in fragment_source
+
+
+def test_objects_live_fragment_does_not_dim_stale_table_content():
+    source = Path("styles/objects.py").read_text()
+
+    assert '.st-key-objects_live_pricing[data-stale="true"]' in source
+    assert '.st-key-objects_live_pricing [data-testid="stElementContainer"][data-stale="true"]' in source
+    assert "opacity: 1 !important" in source
+    assert "transition: none !important" in source
 
 
 def test_file_review_ignores_an_empty_transient_name_commit(monkeypatch):
