@@ -345,10 +345,24 @@ def apply_objects_css() -> None:
 
         .objects-pricing-summary {
             display: grid;
-            grid-template-columns: 1.25fr 1fr 1fr 1.1fr;
-            column-gap: 46px;
+            grid-template-columns: minmax(250px, 1.35fr) 58px 116px 162px 128px 122px;
+            column-gap: 18px;
             padding: 34px 0 38px 0;
             border-top: 1px solid rgba(42, 31, 44, 0.14);
+        }
+
+        .objects-pricing-summary-price {
+            grid-column: 2 / 5;
+            width: 162px;
+        }
+
+        .objects-pricing-summary-vat {
+            grid-column: 5;
+            justify-self: center;
+        }
+
+        .objects-pricing-summary-total {
+            grid-column: 6;
         }
 
         .objects-pricing-summary-title {

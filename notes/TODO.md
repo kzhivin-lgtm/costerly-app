@@ -46,6 +46,8 @@ The approved Objects layout stacks each download action below its title. Client
 Proposal stays in the first Objects column; Project Summary starts exactly at
 the Installation input axis. The duplicate Project Summary label in the totals
 footer is removed, and the Approved action uses a pale green completed state.
+Project Price shares the exact Project Summary axis, Project Total retains the
+rightmost axis, and VAT occupies the column between them.
 
 ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the

@@ -164,6 +164,9 @@ def test_approved_objects_show_pdf_and_future_xls_download_row():
     assert ".objects-pricing-download-block--summary" in css
     assert "grid-column: 2 / 5" in css
     assert "width: 162px" in css
+    assert ".objects-pricing-summary-price" in css
+    assert ".objects-pricing-summary-vat" in css
+    assert ".objects-pricing-summary-total" in css
 
 
 def test_completed_estimation_future_clears_stale_process_progress():
