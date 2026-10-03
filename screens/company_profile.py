@@ -91,16 +91,10 @@ PROFILE_COLUMNS = (
 PROFILE_FIELDS = tuple(
     field for field in PROFILE_COLUMNS.split(",") if field not in {"company_id", "logo_url"}
 )
-PRICING_SETTING_FIELDS = (
+METRIC_SETTING_FIELDS = (
     "vat_percent",
     "warranty_reserve_percent",
     "management_buffer_percent",
-    "consumables_percent",
-    "packaging_percent",
-    "paint_consumables_percent",
-    "sale_price_markup_percent",
-    "delivery_percent",
-    "installation_percent",
 )
 METRIC_SETTING_INSERT_DEFAULTS = {
     "vat_percent": 18,
@@ -115,9 +109,6 @@ METRIC_SETTING_INSERT_DEFAULTS = {
     "sale_price_markup_percent": 30,
     "delivery_percent": 3,
     "installation_percent": 10,
-    "consumables_percent": 5,
-    "packaging_percent": 1,
-    "paint_consumables_percent": 10,
 }
 METRIC_GROUPS = (
     (
@@ -650,11 +641,6 @@ def _render_owner_machinery(
     services: list[dict],
     supplier_names: dict[str, str],
 ) -> None:
-    draft_state_key = f"company_machinery_draft:{access.company_id}"
-    stored_drafts = st.session_state.get(draft_state_key)
-    if not isinstance(stored_drafts, dict):
-        stored_drafts = {}
-    drafts: list[dict[str, object]] = []
     for industry, title in INDUSTRY_LABELS.items():
         with st.container(key=f"company_machinery_group_{industry}", border=True):
             st.markdown(
@@ -668,20 +654,7 @@ def _render_owner_machinery(
             for spec in (
                 item for item in PROFILE_MACHINE_SPECS if item.industry == industry
             ):
-                persisted = machine_rows.get(spec.code, {})
-                persisted_status = str(persisted.get("availability_status") or "")
-                stored_draft = stored_drafts.get(spec.code)
-                saved = dict(persisted)
-                if isinstance(stored_draft, dict):
-                    draft_availability = str(stored_draft.get("availability") or "Not answered")
-                    saved["availability_status"] = {
-                        "Yes": "in_house", "No": "not_in_house",
-                    }.get(draft_availability, "")
-                    saved["capabilities"] = dict(stored_draft.get("capabilities") or {})
-                    saved["pricing_method"] = str(stored_draft.get("pricing_method") or "unknown")
-                    saved["pricing"] = dict(stored_draft.get("pricing") or {})
-                    if stored_draft.get("estimate_level") is not None:
-                        saved["pricing"][CNC_ESTIMATE_LEVEL_KEY] = stored_draft.get("estimate_level")
+                saved = machine_rows.get(spec.code, {})
                 saved_status = str(saved.get("availability_status") or "")
                 initial = {
                     "in_house": "Yes",
@@ -691,6 +664,8 @@ def _render_owner_machinery(
                 detail_open_key = f"{row_key}_detail_open"
                 previous_availability_key = f"{row_key}_previous_availability"
                 availability_widget_key = f"{row_key}_availability"
+                availability_reset_key = f"{row_key}_availability_reset"
+                availability_error_key = f"{row_key}_availability_error"
                 availability_only = (
                     not spec.fields
                     and spec.code not in PROFILE_COSTING_MACHINE_CODES
@@ -700,6 +675,10 @@ def _render_owner_machinery(
                     st.session_state[detail_open_key] = False
                 if previous_availability_key not in st.session_state:
                     st.session_state[previous_availability_key] = initial
+                if availability_reset_key in st.session_state:
+                    st.session_state[availability_widget_key] = st.session_state.pop(
+                        availability_reset_key
+                    )
                 with st.container(key=f"{row_key}_row"):
                     name_column, answer_column, toggle_column = st.columns(
                         [1.45, 1, 0.13], gap="small"
@@ -757,38 +736,51 @@ def _render_owner_machinery(
                             st.session_state[detail_open_key] = not st.session_state[
                                 detail_open_key
                             ]
+                if availability_error_key in st.session_state:
+                    st.error(st.session_state.pop(availability_error_key))
+                save_availability_directly = (
+                    availability_only
+                    or (
+                        availability == "No"
+                        and spec.code not in SUBCONTRACTOR_MACHINE_CODES
+                    )
+                )
+                if save_availability_directly and availability_changed:
+                    previous_availability = st.session_state[previous_availability_key]
+                    try:
+                        if availability == "Not answered":
+                            deactivate_company_machinery(
+                                access,
+                                machine_code=spec.code,
+                            )
+                        else:
+                            save_company_machinery(
+                                access,
+                                machine_code=spec.code,
+                                availability_status=(
+                                    "in_house" if availability == "Yes"
+                                    else "not_in_house"
+                                ),
+                                accepts_external_work=False,
+                            )
+                        deactivate_supplier_services(access, machine_code=spec.code)
+                        st.session_state[previous_availability_key] = availability
+                        st.rerun()
+                    except (MachineryError, PermissionError) as exc:
+                        st.session_state[availability_reset_key] = previous_availability
+                        st.session_state[availability_error_key] = str(exc)
+                        st.rerun()
+                    except Exception:
+                        st.session_state[availability_reset_key] = previous_availability
+                        st.session_state[availability_error_key] = (
+                            "Machinery settings could not be saved. Try again"
+                        )
+                        st.rerun()
                 if availability_changed:
                     st.session_state[detail_open_key] = (
                         availability != "Not answered"
                     )
                     st.session_state[previous_availability_key] = availability
-                matching_services = [
-                    service for service in services
-                    if service.get("machine_code") == spec.code
-                ]
-                current_supplier_name = (
-                    supplier_names.get(str(matching_services[0].get("supplier_id")), "")
-                    if matching_services else ""
-                )
-                if isinstance(stored_draft, dict):
-                    current_supplier_name = str(
-                        stored_draft.get("subcontractor_name") or ""
-                    )
-                draft = {
-                    "machine_code": spec.code,
-                    "availability": availability,
-                    "saved_status": persisted_status,
-                    "capabilities": dict(saved.get("capabilities") or {}),
-                    "pricing_method": str(saved.get("pricing_method") or "unknown"),
-                    "pricing": dict(saved.get("pricing") or {}),
-                    "estimate_level": (
-                        (saved.get("pricing") or {}).get(CNC_ESTIMATE_LEVEL_KEY)
-                        if spec.code == "wood_cnc_router" else None
-                    ),
-                    "subcontractor_name": current_supplier_name,
-                    "original_supplier_name": current_supplier_name,
-                    "confirm_change": saved_status != "in_house" or availability != "No",
-                }
                 if (
                     availability_only
                     or (
@@ -796,13 +788,11 @@ def _render_owner_machinery(
                         and spec.code not in SUBCONTRACTOR_MACHINE_CODES
                     )
                 ):
-                    drafts.append(draft)
                     continue
                 if (
                     availability == "Not answered"
                     or not st.session_state[detail_open_key]
                 ):
-                    drafts.append(draft)
                     continue
 
                 with st.container(key=f"{row_key}_detail"):
@@ -929,16 +919,21 @@ def _render_owner_machinery(
                                     method_column=detail_row[2],
                                 )
                     else:
+                        matching_services = [
+                            service for service in services
+                            if service.get("machine_code") == spec.code
+                        ]
+                        current_supplier_name = (
+                            supplier_names.get(
+                                str(matching_services[0].get("supplier_id")), ""
+                            ) if matching_services else ""
+                        )
                         detail_columns = st.columns(3)
                         if saved_status == "in_house":
                             with detail_columns[0]:
                                 confirm_change = st.checkbox(
                                     "Confirm this is no longer in-house",
                                     key=f"{row_key}_confirm_change",
-                                    value=bool(
-                                        isinstance(stored_draft, dict)
-                                        and stored_draft.get("confirm_change")
-                                    ),
                                 )
                             supplier_column = detail_columns[1]
                         else:
@@ -998,120 +993,63 @@ def _render_owner_machinery(
                                 route="not_in_house",
                                 column=detail_columns[1],
                             )
-                draft.update({
-                    "capabilities": capabilities,
-                    "pricing_method": pricing_method,
-                    "pricing": pricing,
-                    "estimate_level": estimate_level,
-                    "subcontractor_name": subcontractor_name,
-                    "confirm_change": confirm_change,
-                })
-                drafts.append(draft)
-
-    st.session_state[draft_state_key] = {
-        str(draft["machine_code"]): dict(draft) for draft in drafts
-    }
-    if not st.button(
-        "Save",
-        key="company_machinery_save_all",
-        type="primary",
-        use_container_width=True,
-    ):
-        return
-    try:
-        for draft in drafts:
-            machine_code = str(draft["machine_code"])
-            availability = str(draft["availability"])
-            if (
-                draft.get("saved_status") == "in_house"
-                and availability == "No"
-                and not draft.get("confirm_change")
-            ):
-                raise MachineryError(
-                    "Confirm that this capability is no longer available in-house"
-                )
-            if availability == "Not answered":
-                if not draft.get("saved_status"):
-                    continue
-                deactivate_company_machinery(access, machine_code=machine_code)
-                deactivate_supplier_services(access, machine_code=machine_code)
-                continue
-            status = "in_house" if availability == "Yes" else "not_in_house"
-            desired_pricing = dict(draft.get("pricing") or {})
-            if draft.get("estimate_level") is not None:
-                desired_pricing[CNC_ESTIMATE_LEVEL_KEY] = draft.get("estimate_level")
-            if status == draft.get("saved_status"):
-                if status == "in_house" and (
-                    dict(draft.get("capabilities") or {})
-                    == dict(machine_rows.get(machine_code, {}).get("capabilities") or {})
-                    and str(draft.get("pricing_method") or "unknown")
-                    == str(machine_rows.get(machine_code, {}).get("pricing_method") or "unknown")
-                    and desired_pricing
-                    == dict(machine_rows.get(machine_code, {}).get("pricing") or {})
-                ):
-                    continue
-                if status == "not_in_house" and (
-                    str(draft.get("subcontractor_name") or "").strip()
-                    == str(draft.get("original_supplier_name") or "").strip()
-                    and draft.get("estimate_level")
-                    == (machine_rows.get(machine_code, {}).get("pricing") or {}).get(
-                        CNC_ESTIMATE_LEVEL_KEY
+                    submitted = st.button(
+                        "Save",
+                        key=f"{row_key}_save",
+                        use_container_width=True,
                     )
-                ):
+                if not submitted:
                     continue
-            supplier_id = ""
-            subcontractor_name = str(draft.get("subcontractor_name") or "").strip()
-            if status == "not_in_house" and subcontractor_name:
-                supplier = create_or_get_supplier(access, subcontractor_name)
-                supplier_id = str(supplier["supplier_id"])
-            save_company_machinery(
-                access,
-                machine_code=machine_code,
-                availability_status=status,
-                capabilities=dict(draft.get("capabilities") or {}),
-                pricing_method=str(draft.get("pricing_method") or "unknown"),
-                pricing=dict(draft.get("pricing") or {}),
-                accepts_external_work=False,
-                estimate_level=draft.get("estimate_level"),
-            )
-            deactivate_supplier_services(access, machine_code=machine_code)
-            if status == "not_in_house" and supplier_id:
-                save_supplier_service(
-                    access,
-                    supplier_id=supplier_id,
-                    machine_code=machine_code,
-                    pricing_method="quote_only",
-                )
-        st.session_state.pop(f"company_machinery_snapshot:{access.company_id}", None)
-        st.session_state.pop(draft_state_key, None)
-        st.success("Machinery saved")
-        st.rerun(scope="fragment")
-    except (MachineryError, PermissionError) as exc:
-        st.error(str(exc))
-    except Exception:
-        logger.exception("Company machinery batch save failed")
-        st.error("Machinery settings could not be saved. Check the values and try again")
+                try:
+                    if saved_status == "in_house" and availability == "No" and not confirm_change:
+                        raise MachineryError(
+                            "Confirm that this capability is no longer available in-house"
+                        )
+                    status = "in_house" if availability == "Yes" else "not_in_house"
+                    supplier_id = ""
+                    if status == "not_in_house" and subcontractor_name.strip():
+                        supplier = create_or_get_supplier(access, subcontractor_name)
+                        supplier_id = str(supplier["supplier_id"])
+                    save_company_machinery(
+                        access,
+                        machine_code=spec.code,
+                        availability_status=status,
+                        capabilities=capabilities,
+                        pricing_method=pricing_method,
+                        pricing=pricing,
+                        accepts_external_work=False,
+                        estimate_level=estimate_level,
+                    )
+                    deactivate_supplier_services(access, machine_code=spec.code)
+                    if status == "not_in_house" and supplier_id:
+                        save_supplier_service(
+                            access,
+                            supplier_id=supplier_id,
+                            machine_code=spec.code,
+                            pricing_method="quote_only",
+                        )
+                    st.session_state[detail_open_key] = False
+                    st.session_state[previous_availability_key] = availability
+                    st.success("Saved")
+                    st.rerun(scope="fragment")
+                except (MachineryError, PermissionError) as exc:
+                    st.error(str(exc))
+                except Exception:
+                    st.error(
+                        "Machinery settings could not be saved. Check the values and try again"
+                    )
 
 
 @st.fragment
 def _render_machinery(access: CompanyAccess) -> None:
     st.markdown('<div class="company-machinery-active"></div>', unsafe_allow_html=True)
-    snapshot_key = f"company_machinery_snapshot:{access.company_id}"
-    snapshot = st.session_state.get(snapshot_key)
-    if not isinstance(snapshot, dict):
-        try:
-            snapshot = {
-                "rows": list_company_machinery(access),
-                "suppliers": list_company_suppliers(access),
-                "services": list_supplier_services(access),
-            }
-            st.session_state[snapshot_key] = snapshot
-        except Exception:
-            st.error("Machinery settings are unavailable right now. Try again after the database update")
-            return
-    rows = list(snapshot.get("rows") or [])
-    suppliers = list(snapshot.get("suppliers") or [])
-    services = list(snapshot.get("services") or [])
+    try:
+        rows = list_company_machinery(access)
+        suppliers = list_company_suppliers(access)
+        services = list_supplier_services(access)
+    except Exception:
+        st.error("Machinery settings are unavailable right now. Try again after the database update")
+        return
     machine_rows = {str(row.get("machine_code")): row for row in rows}
     supplier_names = {str(row.get("supplier_id")): str(row.get("supplier_name") or "Supplier") for row in suppliers}
     if access.role != "owner":
@@ -1138,7 +1076,7 @@ def _load_company_metrics_by_id(company_id: str) -> tuple[dict, dict]:
     client = get_supabase_client()
     settings_rows = (
         client.table("overhead_settings")
-        .select("company_id," + ",".join(PRICING_SETTING_FIELDS))
+        .select("company_id," + ",".join(METRIC_SETTING_FIELDS))
         .eq("company_id", company_id)
         .limit(1)
         .execute()
@@ -1217,12 +1155,35 @@ def save_company_metrics(
     client = get_supabase_client()
     assert_company_owner(client, fresh.user_id, fresh.company_id)
 
+    settings_payload = {"company_id": fresh.company_id}
+    for field in METRIC_SETTING_FIELDS:
+        value = float(settings_values.get(field) or 0)
+        if value < 0 or value > 100:
+            raise ValueError("VAT and reserve percentages must be between 0 and 100.")
+        settings_payload[field] = int(round(value))
+
     monthly_payload = {"company_id": fresh.company_id}
     for field in METRIC_MONTHLY_FIELDS:
         value = float(monthly_values.get(field) or 0)
         if value < 0:
             raise ValueError("Monthly overhead costs cannot be negative.")
         monthly_payload[field] = int(round(value))
+
+    settings_update = {key: value for key, value in settings_payload.items() if key != "company_id"}
+    settings_rows = (
+        client.table("overhead_settings")
+        .update(settings_update)
+        .eq("company_id", fresh.company_id)
+        .execute()
+    ).data or []
+    if not settings_rows:
+        client.table("overhead_settings").insert(
+            {
+                "company_id": fresh.company_id,
+                **METRIC_SETTING_INSERT_DEFAULTS,
+                **settings_update,
+            }
+        ).execute()
 
     monthly_update = {key: value for key, value in monthly_payload.items() if key != "company_id"}
     monthly_rows = (
@@ -1233,32 +1194,6 @@ def save_company_metrics(
     ).data or []
     if not monthly_rows:
         client.table("overhead_monthly").insert(monthly_payload).execute()
-    _load_company_metrics_by_id.clear()
-
-
-def save_company_pricing(access: CompanyAccess, values: dict[str, object]) -> None:
-    fresh = _current_access(access)
-    client = get_supabase_client()
-    assert_company_owner(client, fresh.user_id, fresh.company_id)
-    payload: dict[str, int | float] = {}
-    for field in PRICING_SETTING_FIELDS:
-        value = float(values.get(field) or 0)
-        if value < 0 or value > 100:
-            raise ValueError("Pricing percentages must be between 0 and 100.")
-        normalized = round(value, 2)
-        payload[field] = int(normalized) if normalized.is_integer() else normalized
-    rows = (
-        client.table("overhead_settings")
-        .update(payload)
-        .eq("company_id", fresh.company_id)
-        .execute()
-    ).data or []
-    if not rows:
-        client.table("overhead_settings").insert({
-            "company_id": fresh.company_id,
-            **METRIC_SETTING_INSERT_DEFAULTS,
-            **payload,
-        }).execute()
     _load_company_metrics_by_id.clear()
 
 
@@ -3330,10 +3265,15 @@ def _consume_company_metrics_snapshot(
         return None
     st.session_state["_company_metrics_consumed_nonce"] = nonce
 
+    settings_values = snapshot.get("settings")
     monthly_values = snapshot.get("monthly")
-    if not isinstance(monthly_values, dict):
+    if not isinstance(settings_values, dict) or not isinstance(monthly_values, dict):
         raise ValueError("Overhead expenses payload is invalid.")
-    save_company_metrics(access, {}, monthly_values)
+    save_company_metrics(
+        access,
+        settings_values,
+        monthly_values,
+    )
     return "Overhead expenses saved"
 
 
@@ -3342,7 +3282,7 @@ def _render_metrics_save(access: CompanyAccess) -> None:
     save_message = None
     try:
         with st.container(key="company_metrics_bridge_host"):
-            raw_snapshot = company_metrics_bridge(key="company_metrics_bridge", mode="metrics")
+            raw_snapshot = company_metrics_bridge(key="company_metrics_bridge")
         save_message = _consume_company_metrics_snapshot(access, raw_snapshot)
     except ValueError as exc:
         st.error(str(exc))
@@ -3366,7 +3306,11 @@ def _render_metrics(access: CompanyAccess) -> None:
 
     editable = access.role == "owner"
     with st.container(key="company_metrics_card", border=True):
-        vat_percent = min(100.0, _metric_amount(settings.get("vat_percent", 18)))
+        vat_key = "profile_metric_vat_percent"
+        _ensure_metric_text_state(
+            vat_key, _metric_percent_text(settings.get("vat_percent"))
+        )
+        vat_percent = min(100.0, _metric_amount(st.session_state[vat_key]))
 
         st.markdown(
             company_metrics_view.table_html(
@@ -3378,84 +3322,50 @@ def _render_metrics(access: CompanyAccess) -> None:
             unsafe_allow_html=True,
         )
 
+        with st.container(key="company_metrics_settings"):
+            vat_column, warranty_column, management_column = st.columns(3)
+        with vat_column:
+            vat_raw = st.text_input(
+                "Ma'am / VAT rate",
+                key=vat_key,
+                on_change=_normalize_metric_percent,
+                args=(vat_key,),
+                disabled=not editable,
+            )
+            vat_percent = min(100.0, _metric_amount(vat_raw))
+        with warranty_column:
+            warranty_key = "profile_metric_warranty_reserve_percent"
+            _ensure_metric_text_state(
+                warranty_key,
+                _metric_percent_text(settings.get("warranty_reserve_percent")),
+            )
+            warranty_raw = st.text_input(
+                "Warranty reserve",
+                key=warranty_key,
+                on_change=_normalize_metric_percent,
+                args=(warranty_key,),
+                disabled=not editable,
+            )
+            warranty_percent = min(100.0, _metric_amount(warranty_raw))
+        with management_column:
+            management_key = "profile_metric_management_buffer_percent"
+            _ensure_metric_text_state(
+                management_key,
+                _metric_percent_text(settings.get("management_buffer_percent")),
+            )
+            management_raw = st.text_input(
+                "Management buffer",
+                key=management_key,
+                on_change=_normalize_metric_percent,
+                args=(management_key,),
+                disabled=not editable,
+            )
+            management_percent = min(100.0, _metric_amount(management_raw))
+
         if editable:
             st.markdown(company_metrics_view.save_action_html(), unsafe_allow_html=True)
             install_company_metrics_input_guard()
             _render_metrics_save(access)
-
-
-def _consume_company_pricing_snapshot(access: CompanyAccess, raw_snapshot: str | None) -> str | None:
-    if not raw_snapshot:
-        return None
-    snapshot = json.loads(str(raw_snapshot))
-    nonce = snapshot.get("nonce") if isinstance(snapshot, dict) else None
-    if not isinstance(nonce, str) or not nonce:
-        raise ValueError("Pricing payload is invalid.")
-    if nonce == st.session_state.get("_company_pricing_consumed_nonce"):
-        return None
-    st.session_state["_company_pricing_consumed_nonce"] = nonce
-    values = snapshot.get("settings")
-    if not isinstance(values, dict):
-        raise ValueError("Pricing payload is invalid.")
-    save_company_pricing(access, values)
-    return "Pricing saved"
-
-
-@st.fragment
-def _render_pricing_save(access: CompanyAccess) -> None:
-    try:
-        with st.container(key="company_pricing_bridge_host"):
-            raw_snapshot = company_metrics_bridge(key="company_pricing_bridge", mode="pricing")
-        message = _consume_company_pricing_snapshot(access, raw_snapshot)
-    except ValueError as exc:
-        st.error(str(exc))
-    except PermissionError:
-        st.error("Only the company owner can save pricing settings.")
-    except Exception:
-        logger.exception("Company pricing save failed")
-        st.error("Pricing was not saved. Try again in a moment.")
-        return
-    if message:
-        st.success(message)
-
-
-def _render_pricing(access: CompanyAccess) -> None:
-    try:
-        settings, _monthly = load_company_metrics(access)
-    except Exception:
-        st.error("Pricing is unavailable right now. Try again in a moment.")
-        return
-    editable = access.role == "owner"
-    fields = (
-        ("vat_percent", "Ma'am / VAT rate", 18),
-        ("warranty_reserve_percent", "Warranty reserve", 5),
-        ("management_buffer_percent", "Management buffer", 5),
-        ("consumables_percent", "Consumables", 5),
-        ("packaging_percent", "Packaging", 1),
-        ("paint_consumables_percent", "Paint consumables", 10),
-        ("sale_price_markup_percent", "Default sale markup", 30),
-        ("delivery_percent", "Delivery", 3),
-        ("installation_percent", "Installation", 10),
-    )
-    with st.container(key="company_pricing_card", border=True):
-        with st.container(key="company_pricing_settings"):
-            for start in range(0, len(fields), 3):
-                columns = st.columns(3)
-                for column, (field, label, default) in zip(columns, fields[start:start + 3]):
-                    key = f"profile_pricing_{field}"
-                    _ensure_metric_text_state(key, _metric_percent_text(settings.get(field, default)))
-                    with column:
-                        st.text_input(
-                            label, key=key, on_change=_normalize_metric_percent,
-                            args=(key,), disabled=not editable,
-                        )
-        if editable:
-            st.markdown(
-                company_metrics_view.save_action_html(label="SAVE PRICING", action="pricing"),
-                unsafe_allow_html=True,
-            )
-            install_company_metrics_input_guard()
-            _render_pricing_save(access)
 
 
 def _render_users(access: CompanyAccess) -> None:
@@ -4350,11 +4260,10 @@ def render_company_profile(access: CompanyAccess, *, platform_access=None, trace
     )
     finish_phase("server.company_profile_header", "p_header_ms")
 
-    expenses_tab, labor_tab, pricing_tab, machinery_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
+    expenses_tab, labor_tab, machinery_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
         [
             "Overhead Expenses",
             "Labor Costs",
-            "Pricing",
             "Machinery",
             "Price Lists",
             "Contacts",
@@ -4380,9 +4289,6 @@ def render_company_profile(access: CompanyAccess, *, platform_access=None, trace
             else:
                 with trace.span("server.labor_costs_render"):
                     _render_labor_costs(access, trace=trace)
-    elif pricing_tab.open:
-        with pricing_tab:
-            _render_pricing(access)
     elif machinery_tab.open:
         with machinery_tab:
             if trace is None:

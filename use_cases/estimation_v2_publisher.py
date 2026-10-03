@@ -60,10 +60,9 @@ _ROUTINE_CONSUMABLE_FAMILIES = frozenset({
     "packaging_materials",
     "shop_consumables_and_tool_wear",
 })
-_MATERIAL_POLICY_FIELDS = (
-    ("consumables", "Consumables", "consumables_percent", 5.0, "primary_materials"),
-    ("packaging", "Packaging", "packaging_percent", 1.0, "primary_materials"),
-    ("paint_consumables", "Paint consumables", "paint_consumables_percent", 10.0, "coatings"),
+_MATERIAL_POLICY_PERCENTAGES = (
+    ("consumables", "Consumables", 5.0),
+    ("packaging", "Packaging", 1.0),
 )
 
 
@@ -516,18 +515,12 @@ def _material_rows_and_costs(
 
 def _material_policy_rows_and_costs(
     *, facts: Mapping[str, Any], primary_material_total: float,
-    coating_material_total: float = 0,
-    settings: Mapping[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Apply locked material-cost formulas from the company Pricing policy."""
-    settings = settings or {}
-    primary_base = round(max(primary_material_total, 0), 2)
-    coating_base = round(max(coating_material_total, 0), 2)
+    """Apply locked material-cost formulas from the temporary Pricing Policy."""
+    base = round(max(primary_material_total, 0), 2)
     db_rows: list[dict[str, Any]] = []
     cost_lines: list[dict[str, Any]] = []
-    for offset, (policy, label, field, default, basis) in enumerate(_MATERIAL_POLICY_FIELDS):
-        percent = _number(settings.get(field), default)
-        base = coating_base if basis == "coatings" else primary_base
+    for offset, (policy, label, percent) in enumerate(_MATERIAL_POLICY_PERCENTAGES):
         amount = round(base * percent / 100, 2)
         line_id = f"{facts['object_id']}_material_policy_{policy}"
         db_rows.append({
@@ -537,12 +530,10 @@ def _material_policy_rows_and_costs(
             "catalog_match_query": None, "unit": "% of materials", "unit_cost": percent,
             "quantity": 1, "cost": amount, "source": "pricing_policy",
             "sort_order": 900 + offset * 10, "needs_price": False, "needs_review": False,
-            "confidence": 100,
-            "notes": f"{percent:g}% of {'coating' if basis == 'coatings' else 'primary material'} cost",
+            "confidence": 100, "notes": f"{percent:g}% of primary material cost",
             "raw_agent_json": {
-                "policy": f"{policy}_percent_of_{basis}", "basis": basis,
-                "setting_field": field, "percent": percent,
-                "basis_total": base, "locked": True,
+                "policy": f"{policy}_percent_of_primary_materials",
+                "percent": percent, "primary_material_total": base, "locked": True,
             },
         })
         cost_lines.append({
@@ -552,17 +543,6 @@ def _material_policy_rows_and_costs(
             "reason_codes": [],
         })
     return db_rows, cost_lines
-
-
-def _coating_material_total(rows: Sequence[Mapping[str, Any]]) -> float:
-    total = 0.0
-    for row in rows:
-        raw = row.get("raw_agent_json") or {}
-        material = raw.get("facts") if isinstance(raw, Mapping) else {}
-        family = str(material.get("family") or "") if isinstance(material, Mapping) else ""
-        if family in {"wood_coatings", "metal_coatings"}:
-            total += _number(row.get("cost"))
-    return round(total, 2)
 
 
 def _manufacturing_input(facts: Mapping[str, Any]) -> dict[str, Any]:
@@ -867,8 +847,6 @@ def publish_estimation_v2_object(
     consumable_rows, consumable_costs = _material_policy_rows_and_costs(
         facts=pricing_facts,
         primary_material_total=sum(_number(row.get("cost")) for row in material_rows),
-        coating_material_total=_coating_material_total(material_rows),
-        settings=settings,
     )
     material_rows.extend(consumable_rows)
     material_costs.extend(consumable_costs)

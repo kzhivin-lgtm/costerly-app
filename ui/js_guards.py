@@ -37,6 +37,7 @@ def install_workflow_header_alignment_guard() -> None:
                 frameId = null;
                 const { title, actions } = targets();
                 if (!title || !actions) return;
+
                 if (actions !== currentActions || actions.style.transform !== appliedTransform) {
                     currentActions = actions;
                     appliedOffset = 0;
@@ -142,15 +143,9 @@ def install_company_metrics_input_guard() -> None:
             function percentInput(target) {
                 if (!target || !target.matches) return null;
                 return target.matches([
-                    ".st-key-profile_pricing_vat_percent input",
-                    ".st-key-profile_pricing_warranty_reserve_percent input",
-                    ".st-key-profile_pricing_management_buffer_percent input",
-                    ".st-key-profile_pricing_consumables_percent input",
-                    ".st-key-profile_pricing_packaging_percent input",
-                    ".st-key-profile_pricing_paint_consumables_percent input",
-                    ".st-key-profile_pricing_sale_price_markup_percent input",
-                    ".st-key-profile_pricing_delivery_percent input",
-                    ".st-key-profile_pricing_installation_percent input",
+                    ".st-key-profile_metric_vat_percent input",
+                    ".st-key-profile_metric_warranty_reserve_percent input",
+                    ".st-key-profile_metric_management_buffer_percent input",
                 ].join(",")) ? target : null;
             }
 
@@ -241,7 +236,7 @@ def install_company_metrics_input_guard() -> None:
                 const phone = phoneInput(event.target);
                 if (phone) updatePhone(phone);
                 const percent = percentInput(event.target);
-                if (percent && event.target.matches(".st-key-profile_pricing_vat_percent input")) {
+                if (percent && event.target.matches(".st-key-profile_metric_vat_percent input")) {
                     updateAllRows(percent.value);
                 }
             }
@@ -1261,10 +1256,8 @@ def install_objects_price_input_guard(
                 const deliveryRow = rowForObject("delivery");
                 const installationRow = rowForObject("installation");
                 const prices = manualPrices();
-                const deliveryPercent = readMoneyNumber(deliveryRow ? deliveryRow.dataset.percent : "3");
-                const installationPercent = readMoneyNumber(installationRow ? installationRow.dataset.percent : "10");
-                const deliveryDefault = Math.round(subtotal * deliveryPercent) / 100;
-                const installationDefault = Math.round(subtotal * installationPercent) / 100;
+                const deliveryDefault = Math.round(subtotal * 0.03 * 100) / 100;
+                const installationDefault = Math.round(subtotal * 0.10 * 100) / 100;
                 const delivery = Number.isFinite(prices.delivery) ? prices.delivery : deliveryDefault;
                 const installation = Number.isFinite(prices.installation) ? prices.installation : installationDefault;
                 if (deliveryRow && Number.isFinite(prices.delivery)) hideProjectCostSuggestion(deliveryRow);
@@ -1284,9 +1277,7 @@ def install_objects_price_input_guard(
                 }
 
                 const projectPrice = Math.round((subtotal + delivery + installation) * 100) / 100;
-                const card = parentDoc.querySelector(".objects-pricing-card");
-                const vatPercent = readMoneyNumber(card ? card.dataset.vatPercent : "18");
-                const vat = Math.round(projectPrice * vatPercent) / 100;
+                const vat = Math.round(projectPrice * 0.18 * 100) / 100;
                 setSummaryValue("project_price", projectPrice);
                 setSummaryValue("vat", vat);
                 setSummaryValue("total", Math.round((projectPrice + vat) * 100) / 100);

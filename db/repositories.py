@@ -305,16 +305,6 @@ def fetch_rfq_detected_objects(client: Client, run_id: str) -> pd.DataFrame:
     )
 
 
-def update_rfq_run(
-    client: Client,
-    *,
-    run_id: str,
-    values: dict,
-) -> None:
-    """Persist an allowlisted RFQ-run edit after ownership validation upstream."""
-    client.table("rfq_runs").update(values).eq("run_id", run_id).execute()
-
-
 def fetch_agent_usage_events(client: Client, run_id: str) -> pd.DataFrame:
     """Load persisted runtime/cost events for one RFQ run."""
     return fetch_table(

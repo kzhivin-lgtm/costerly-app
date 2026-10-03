@@ -32,12 +32,6 @@ The preceding transition fixes are included in this checkpoint:
 - `4d06044` holds the gray transition layer until the destination screen has
   its required DOM, including header controls.
 
-Sign Out is not covered by the generic workflow readiness rule. The accepted
-Sign Out contract is separately recorded in
-`ESTIMATION_V2_SIGN_OUT_TRANSITION_CHECKPOINT_2026_10_02.md`: Login's own
-`app-ready` with `auth_css_ready: true` is sufficient to reveal the target, and
-the wrapper must not wait for a source-iframe `transition-styled` message.
-
 ## Verification
 
 - Production owner acceptance: repeated authenticated workflow cycle completed

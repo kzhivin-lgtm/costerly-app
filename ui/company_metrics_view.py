@@ -77,10 +77,8 @@ def table_html(
     )
 
 
-def save_action_html(*, label: str = "SAVE OVERHEAD EXPENSES", action: str = "metrics") -> str:
+def save_action_html() -> str:
     return (
         '<button class="company-metrics-save" type="button" '
-        f'data-company-settings-save="{_escape(action)}" '
-        f'data-company-metrics-save="{str(action == "metrics").lower()}">'
-        f'{_escape(label)}</button>'
+        'data-company-metrics-save="true">SAVE OVERHEAD EXPENSES</button>'
     )

@@ -155,7 +155,6 @@ def _project_cost_row_html(
     return (
         '<div class="objects-pricing-row objects-pricing-row--project-cost" '
         f'data-object-key="{object_key}" '
-        f'data-percent="{_number(row.get("percent"), 0)}" '
         f'data-estimate-id="{estimate_key}" '
         f'data-run-id="{run_key}">'
         '<div>'
@@ -301,7 +300,7 @@ def _summary_html(summary: dict[str, object]) -> str:
         f'<div class="objects-pricing-summary-value" data-summary-field="project_price">{_money(summary.get("project_price"))}</div>'
         '</div>'
         '<div>'
-        f'<div class="objects-pricing-summary-title">VAT {_number(summary.get("vat_percent"), 18):g}%</div>'
+        '<div class="objects-pricing-summary-title">VAT 18%</div>'
         f'<div class="objects-pricing-summary-value" data-summary-field="vat">{_money(summary.get("vat"))}</div>'
         '</div>'
         '<div>'
@@ -372,7 +371,7 @@ def _pricing_table_html(
     )
 
     return (
-        f'<div class="objects-pricing-card" data-vat-percent="{_number(summary.get("vat_percent"), 18)}">'
+        '<div class="objects-pricing-card">'
         f'{_pricing_table_header_html()}'
         '<div class="objects-pricing-table">'
         f'{object_rows}'

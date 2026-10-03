@@ -36,7 +36,7 @@ def test_workflow_titles_use_brand_ink_and_only_object_names_use_accent():
     assert ".file-review-detected-title" in review_css
 
 
-def test_workflow_header_alignment_guard_preserves_title_axis():
+def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_events():
     source = open("ui/js_guards.py").read()
 
     assert "def install_workflow_header_alignment_guard" in source
@@ -45,17 +45,6 @@ def test_workflow_header_alignment_guard_preserves_title_axis():
     assert "actionsBaseCenter" in source
     assert "- appliedOffset" in source
     assert "translateY(${Math.round(offset * 100) / 100}px)" in source
-    alignment_source = source.split(
+    assert 'addEventListener("scroll"' not in source.split(
         "def install_workflow_header_alignment_guard", 1
     )[1].split("def install_company_metrics_input_guard", 1)[0]
-    assert "costerlyHeaderPinned" not in alignment_source
-
-
-def test_rejected_service_header_scroll_guard_remains_removed():
-    source = open("ui/js_guards.py").read()
-    auth_source = open("state/company_auth.py").read()
-
-    assert "install_service_header_scroll_guard" not in source
-    assert "install_service_header_scroll_guard" not in auth_source
-    assert "__costerlyServiceHeaderScrollCleanup" not in source
-    assert "costerlyHeaderPinned" not in source

@@ -33,23 +33,7 @@
           return input ? readNumber(input.value) : 0;
         }
 
-        let mode = "metrics";
-
         function snapshot() {
-          if (mode === "pricing") {
-            const settings = {};
-            for (const field of [
-              "vat_percent", "warranty_reserve_percent", "management_buffer_percent",
-              "consumables_percent", "packaging_percent", "paint_consumables_percent",
-              "sale_price_markup_percent", "delivery_percent", "installation_percent",
-            ]) {
-              settings[field] = widgetValue(`profile_pricing_${field}`);
-            }
-            return {
-              nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-              settings,
-            };
-          }
           const monthly = {};
           for (const input of parentDoc.querySelectorAll(
             ".company-metrics-monthly-input[data-field]"
@@ -58,7 +42,15 @@
           }
           return {
             nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-            settings: {},
+            settings: {
+              vat_percent: widgetValue("profile_metric_vat_percent"),
+              warranty_reserve_percent: widgetValue(
+                "profile_metric_warranty_reserve_percent"
+              ),
+              management_buffer_percent: widgetValue(
+                "profile_metric_management_buffer_percent"
+              ),
+            },
             monthly,
           };
         }
@@ -68,9 +60,9 @@
 
           function handleSave(event) {
             const action = event.target && event.target.closest
-              ? event.target.closest("[data-company-settings-save]")
+              ? event.target.closest("[data-company-metrics-save]")
               : null;
-            if (!action || action.dataset.companySettingsSave !== mode) return;
+            if (!action) return;
             event.preventDefault();
             event.stopPropagation();
             send("streamlit:setComponentValue", {
@@ -88,7 +80,6 @@
         window.addEventListener("message", (event) => {
           const message = event.data || {};
           if (message.type !== "streamlit:render") return;
-          mode = message.args && message.args.mode === "pricing" ? "pricing" : "metrics";
           install();
           send("streamlit:setFrameHeight", {height: 0});
         });

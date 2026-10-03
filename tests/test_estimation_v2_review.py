@@ -3,7 +3,6 @@ from use_cases.estimation import (
     _estimation_preview_url,
     _material_rows_from_v2_facts,
     _objects_project_pricing,
-    _suggested_sale_price,
 )
 
 
@@ -54,19 +53,7 @@ def test_project_totals_include_priced_review_required_objects():
 
     assert project_costs[0]["sale_price_unit"] == 39.0
     assert project_costs[1]["sale_price_unit"] == 130.0
-    assert summary == {"project_price": 1469.0, "vat": 264.42, "total": 1733.42, "vat_percent": 18}
-
-
-def test_company_pricing_policy_drives_sale_delivery_installation_and_vat():
-    assert _suggested_sale_price(1000, 25) == 1250
-    project_costs, summary = _objects_project_pricing(
-        [{"object_key": "object-1", "status": "completed", "sale_price_total": 1250}],
-        vat_percent=17, delivery_percent=4, installation_percent=8,
-    )
-    assert [row["sale_price_unit"] for row in project_costs] == [50, 100]
-    assert summary == {
-        "project_price": 1400, "vat": 238, "total": 1638, "vat_percent": 17,
-    }
+    assert summary == {"project_price": 1469.0, "vat": 264.42, "total": 1733.42}
 
 
 def test_object_detail_uses_v2_materials_without_inventing_costs():

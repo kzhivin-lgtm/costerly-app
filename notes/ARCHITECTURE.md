@@ -21,9 +21,8 @@ The app should not follow Streamlit native dark mode yet.
 Company Profile UI and persistence contract
 Company Profile owns its local page heading and navigation actions. The shared
 full Costerly AI logo and global Profile action are not rendered on that screen.
-The page uses eight peer tabs: Overhead Expenses, Labor Costs, Pricing,
-Machinery, Price Lists, Contacts, Bank Details, and Users. Overhead Expenses is
-first. Contacts
+The page uses seven peer tabs: Overhead Expenses, Labor Costs, Machinery, Price
+Lists, Contacts, Bank Details, and Users. Overhead Expenses is first. Contacts
 and Bank Details submit independently.
 Their save handlers send partial company updates, so a field hidden from the UI
 is not converted to null. In particular, the retained VAT file number and
@@ -73,19 +72,6 @@ for project and object pricing totals instead of a hard-coded 18 percent rate.
 Overhead Expenses and deterministic Object Detail allocation. The versioned
 `2026_09_18_other_spendings_overhead.sql` migration has been applied to the live
 Supabase schema.
-Pricing owns the company percentage policy stored in `overhead_settings`:
-VAT, warranty reserve, management buffer, consumables, packaging, paint
-consumables, default sale markup, delivery, and installation. Moving VAT and
-the two reserves out of Overhead Expenses changes their editing surface only,
-not their stored columns or arithmetic meaning. Consumables and packaging are
-locked material allowances based on primary material cost. Paint consumables
-are a separate locked allowance based only on explicit wood- or metal-coating
-material cost, and remain zero when no coating material exists. Warranty and
-management remain self-cost overhead. Default markup applies to object self
-cost excluding VAT. Delivery and installation apply to the objects' sale-price
-subtotal, then VAT applies to the resulting project price. A user's persisted
-object or project price override remains authoritative over a later suggestion.
-This contract was implemented in 3.15.17 by commits `053c66d` and `89dbde2`.
 Labor Costs stores owner-only worker compensation in `company_employees`, never
 in the Estimation `labor` catalog. The first contract uses one informal Worker
 name, controlled Department and Position values, and either Avg Monthly Bruto or
@@ -114,14 +100,6 @@ capabilities, pricing semantics, ownership, and constructs a bounded production
 snapshot. That private snapshot is not passed to an external model without an
 explicit data-transfer decision. Deterministic application code remains the
 owner of feasibility checks and price arithmetic.
-Machinery editing uses one session-scoped draft and one owner-only Save action.
-Changing availability, capability, costing, estimate-level, or subcontractor
-controls does not write to Supabase. The draft survives Profile-tab navigation
-within the current Streamlit session. The first Machinery render reads the
-persisted machinery, suppliers, and services once; later draft reruns reuse that
-snapshot. Save writes only changed routes, refreshes the snapshot after success,
-and keeps the draft available when validation or persistence fails.
-This contract was implemented in 3.15.18 by commit `722b6c6`.
 The `2026_09_24_machinery_foundation.sql` migration was applied to the live
 Supabase schema on 24.09. The seeded catalog contains 26 active capabilities;
 company-specific Machinery tables begin empty. Anonymous access is revoked.
@@ -196,18 +174,12 @@ applied. The current contract checks the auth marker and brand plus the form's
 20 px radius and 30 px padding, then waits two animation frames before emitting
 `app-ready`. A bounded fail-open prevents the wrapper from remaining masked if
 the Auth CSS contract changes unexpectedly, and telemetry records whether the
-style check succeeded and how long it waited. During masked Upload to Profile
-and Profile to Upload transitions, the transition observer applies a
+style check succeeded and how long it waited. During masked Sign Out, Upload to
+Profile, and Profile to Upload transitions, the transition observer applies a
 screen-specific computed-style contract and lets the wrapper reveal the completed
 target immediately, without waiting for a newly mounted Streamlit component to
-relay the later general `app-ready` event. Sign Out is a separately protected
-contract: the wrapper may reveal Login only after Login's target `app-ready`
-reports `auth_css_ready: true`. It must then clear the pending transition, record
-`browser.transition_styled` with `source: "target_app_ready"`, and reveal
-immediately. It must never wait for a `transition-styled` message from the
-source iframe, because that iframe can be destroyed by the Streamlit rerun before
-it emits the message. Any change to this rule requires the dedicated repeated
-production Sign Out matrix and an explicit replacement readiness contract.
+relay the later general `app-ready` event. The general event remains the final
+server-run and telemetry boundary.
 
 Interface scenario contract boundary
 Every interactive screen is specified through an owner-approved scenario
@@ -268,36 +240,6 @@ components, preserves object-level indices, and returns compact names, complete-
 quantities, external W × H × D dimensions, materials, evidence pages, and short
 actionable notes. Sheet and room titles are context, never object names. Detection
 prepares the Estimation handoff but does not create BOM, labor, or pricing output.
-
-Partner, Client, Project and Version contract
-Partner, Client and Project are three distinct product concepts. Partner is the
-direct commercial or design intermediary working with the Costerly company.
-Client is the end customer for whom the Project is delivered. A direct customer
-may act as Partner in one Project and Client in another.
-
-The persistence model must not place external Partners or Clients in
-`companies`, because that table represents Costerly tenant accounts and owns
-authorization boundaries. External organizations belong to one company-scoped
-counterparty directory. Project relationships assign separate Partner and
-Client roles, allowing one organization to occupy either role without duplicate
-identity records. A Project has its own identity and display name. Project
-Address is not part of the current MVP and, if added later, is optional metadata
-rather than identity.
-
-Detection provides editable Project, Partner and Client suggestions on File
-Review. The user may select existing company-scoped records or enter new names.
-Objects remain individual fabricated items and are never used as Project
-records. File Review edits persist immediately in the RFQ draft. Continue to
-Objects freezes the selected metadata for that estimate cycle but does not
-create new permanent catalog records. Existing selections may retain their
-stable IDs; newly typed names remain draft text. Final Approval transactionally
-resolves or creates the Partner, Client and Project, assigns the two separate
-counterparty roles, closes the mutable RFQ, creates an immutable Project
-calculation version, and generates and stores its Client Proposal PDF. An
-abandoned RFQ therefore does not pollute the permanent counterparty or Project
-catalog. Download is an optional later action and does not control finalization.
-The PDF renderer reads the approved deterministic snapshot and never
-recalculates pricing.
 
 Estimation Target Flow
 confirmed detected objects

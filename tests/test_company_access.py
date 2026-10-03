@@ -1148,7 +1148,7 @@ def test_upload_to_profile_navigation_runs_before_render_without_explicit_rerun(
 
 
 @pytest.mark.parametrize("role", ["owner", "member"])
-def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, role):
+def test_company_profile_has_seven_tabs_and_owner_only_controls(monkeypatch, role):
     calls = {"profile": 0, "members": 0, "metrics": 0, "employees": 0}
 
     def load_profile(_access):
@@ -1182,7 +1182,7 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "Overhead Expenses", "Labor Costs", "Pricing", "Machinery", "Price Lists", "Contacts", "Bank Details", "Users",
+        "Overhead Expenses", "Labor Costs", "Machinery", "Price Lists", "Contacts", "Bank Details", "Users",
     ]
     assert not any(
         button.label in {"Projects", "New Estimate", "Last Estimate", "Sign out"}
@@ -1196,16 +1196,15 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
     metrics_markup = "".join(item.value for item in app.markdown)
     assert ('data-company-metrics-save="true"' in metrics_markup) is (role == "owner")
     assert "Project Reserves" not in metrics_markup
-    assert not app.text_input
-
-    app.session_state["company_profile_tab"] = "Pricing"
-    app.run()
-    assert [field.label for field in app.text_input] == [
-        "Ma'am / VAT rate", "Warranty reserve", "Management buffer",
-        "Consumables", "Packaging", "Paint consumables",
-        "Default sale markup", "Delivery", "Installation",
-    ]
-    assert all(field.disabled is (role != "owner") for field in app.text_input)
+    if role == "owner":
+        labels = [field.label for field in app.text_input]
+        assert labels[:3] == [
+            "Ma'am / VAT rate",
+            "Warranty reserve",
+            "Management buffer",
+        ]
+    else:
+        assert all(field.disabled for field in app.text_input)
 
     app.session_state["company_profile_tab"] = "Labor Costs"
     app.run()
@@ -1227,7 +1226,7 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
     assert calls == {
         "profile": 1,
         "members": 0,
-        "metrics": 2,
+        "metrics": 1,
         "employees": 1 if role == "owner" else 0,
     }
     if role == "owner":
@@ -1242,7 +1241,7 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
     assert calls == {
         "profile": 2,
         "members": 0,
-        "metrics": 2,
+        "metrics": 1,
         "employees": 1 if role == "owner" else 0,
     }
     if role == "owner":
@@ -1266,7 +1265,7 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
     assert calls == {
         "profile": 2,
         "members": 1,
-        "metrics": 2,
+        "metrics": 1,
         "employees": 1 if role == "owner" else 0,
     }
     assert not app.subheader
@@ -1310,46 +1309,12 @@ def test_machinery_tab_empty_state_is_role_safe(monkeypatch, role):
         groups = app.get("button_group")
         assert len(groups) == len(company_profile.PROFILE_MACHINE_SPECS)
         assert all(item.value == "Not answered" for item in groups)
-        assert any(button.label == "Save" for button in app.button)
+        assert not any(button.label == "Save" for button in app.button)
     else:
         assert "Machinery has not been configured yet" in " ".join(
             item.value for item in app.info
         )
         assert not any(button.label == "Save" for button in app.button)
-
-
-def test_machinery_draft_persists_across_tabs_without_database_writes(monkeypatch):
-    reads = {"machinery": 0, "suppliers": 0, "services": 0}
-    writes = []
-
-    def read(key):
-        reads[key] += 1
-        return []
-
-    monkeypatch.setattr(company_profile, "list_company_machinery", lambda _access: read("machinery"))
-    monkeypatch.setattr(company_profile, "list_company_suppliers", lambda _access: read("suppliers"))
-    monkeypatch.setattr(company_profile, "list_supplier_services", lambda _access: read("services"))
-    monkeypatch.setattr(company_profile, "save_company_machinery", lambda *_args, **kwargs: writes.append(kwargs))
-    monkeypatch.setattr(company_profile, "load_company_metrics", lambda _access: ({"vat_percent": 18}, {}))
-
-    app = AppTest.from_function(_render_profile_test)
-    app.session_state["test_profile_role"] = "owner"
-    app.session_state["company_profile_tab"] = "Machinery"
-    app.run()
-    app.get("button_group")[1].set_value("Yes")
-    app.run()
-
-    assert writes == []
-    assert reads == {"machinery": 1, "suppliers": 1, "services": 1}
-
-    app.session_state["company_profile_tab"] = "Pricing"
-    app.run()
-    app.session_state["company_profile_tab"] = "Machinery"
-    app.run()
-
-    assert app.get("button_group")[1].value == "Yes"
-    assert writes == []
-    assert reads == {"machinery": 1, "suppliers": 1, "services": 1}
 
 
 def test_machinery_cnc_form_rejects_partial_then_saves_valid_values(monkeypatch):
@@ -2210,7 +2175,7 @@ def test_saved_machinery_row_is_collapsed_with_summary_and_can_reopen(monkeypatc
     app.session_state["company_profile_tab"] = "Machinery"
     app.run()
 
-    assert any(button.label == "Save" for button in app.button)
+    assert not any(button.label == "Save" for button in app.button)
     markup = " ".join(item.value for item in app.markdown)
     assert "In-house · 2.5 × 1.3 m" in markup
 
@@ -2251,8 +2216,7 @@ def test_internal_support_capability_does_not_ask_for_subcontractor(monkeypatch)
     assert "Regular subcontractor (optional)" not in [
         field.label for field in app.text_input
     ]
-    next(button for button in app.button if button.label == "Save").click()
-    app.run()
+    assert not any(button.label == "Save" for button in app.button)
     assert saved_rows[-1]["machine_code"] == "wood_solid_preparation"
     assert saved_rows[-1]["availability_status"] == "not_in_house"
 
@@ -2280,8 +2244,7 @@ def test_detailed_internal_capability_saves_no_without_details(monkeypatch):
     app.get("button_group")[3].set_value("No")
     app.run()
 
-    next(button for button in app.button if button.label == "Save").click()
-    app.run()
+    assert not any(button.label == "Save" for button in app.button)
     assert not any(button.label in {"⌄", "⌃"} for button in app.button)
     assert saved_rows[-1]["machine_code"] == "wood_veneer_press"
     assert saved_rows[-1]["availability_status"] == "not_in_house"
@@ -2344,8 +2307,7 @@ def test_availability_only_machine_asks_no_detail_questions(monkeypatch):
     app.get("button_group")[1].set_value("Yes")
     app.run()
 
-    next(button for button in app.button if button.label == "Save").click()
-    app.run()
+    assert not any(button.label == "Save" for button in app.button)
     assert not app.text_input
     assert not app.selectbox
     assert not app.checkbox
@@ -3064,13 +3026,12 @@ def test_company_profile_tabs_support_stateful_streamlit_dom():
     assert '[role="tab"][data-selected] p' in css
     assert '[role="tabpanel"]:has(.st-key-company_metrics_card)' in css
     assert '> [data-testid="stVerticalBlock"]' in css
-    assert "padding: 0 23px;" in css
 
 
 def test_company_metrics_bridge_does_not_navigate_parent_page():
     source = Path("ui/company_metrics_bridge_component/index.html").read_text()
     assert "streamlit:setComponentValue" in source
-    assert "data-company-settings-save" in source
+    assert "data-company-metrics-save" in source
     assert "location.search" not in source
     assert "location.href" not in source
 
@@ -3149,7 +3110,7 @@ def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
     assert writes[-1]["swift"] == "TESTILIT"
 
 
-def test_save_company_metrics_updates_only_monthly_fields(monkeypatch):
+def test_save_company_metrics_updates_only_visible_metric_fields(monkeypatch):
     access = company_auth.CompanyAccess(
         "user-1", "owner@example.com", "company-a", "owner", "token"
     )
@@ -3188,13 +3149,18 @@ def test_save_company_metrics_updates_only_monthly_fields(monkeypatch):
         monthly,
     )
 
-    assert "overhead_settings" not in writes
+    assert set(writes["overhead_settings"]) == {
+        "vat_percent",
+        "warranty_reserve_percent",
+        "management_buffer_percent",
+    }
+    assert "delivery_percent" not in writes["overhead_settings"]
     assert set(writes["overhead_monthly"]) == {
         *company_profile.METRIC_MONTHLY_FIELDS,
     }
 
 
-def test_new_company_pricing_row_includes_required_defaults(monkeypatch):
+def test_new_company_metrics_row_includes_required_legacy_defaults(monkeypatch):
     access = company_auth.CompanyAccess(
         "user-1", "owner@example.com", "company-new", "owner", "token"
     )
@@ -3226,10 +3192,15 @@ def test_new_company_pricing_row_includes_required_defaults(monkeypatch):
     monkeypatch.setattr(company_profile, "get_supabase_client", lambda: Client())
     monkeypatch.setattr(company_profile, "assert_company_owner", lambda *_args: None)
 
-    values = {field: 0 for field in company_profile.PRICING_SETTING_FIELDS}
-    values.update({"vat_percent": 18, "warranty_reserve_percent": 7,
-                   "management_buffer_percent": 6})
-    company_profile.save_company_pricing(access, values)
+    company_profile.save_company_metrics(
+        access,
+        {
+            "vat_percent": 18,
+            "warranty_reserve_percent": 7,
+            "management_buffer_percent": 6,
+        },
+        {field: 0 for field in company_profile.METRIC_MONTHLY_FIELDS},
+    )
 
     settings_insert = next(
         values for operation, table, values in writes
@@ -3238,7 +3209,9 @@ def test_new_company_pricing_row_includes_required_defaults(monkeypatch):
     assert settings_insert == {
         "company_id": "company-new",
         **company_profile.METRIC_SETTING_INSERT_DEFAULTS,
-        **values,
+        "vat_percent": 18,
+        "warranty_reserve_percent": 7,
+        "management_buffer_percent": 6,
     }
 
 
@@ -3292,7 +3265,7 @@ def test_company_metrics_save_monthly_costs_as_whole_shekels(monkeypatch):
 
     company_profile.save_company_metrics(
         access,
-        {},
+        {field: 0 for field in company_profile.METRIC_SETTING_FIELDS},
         {field: 1234.6 for field in company_profile.METRIC_MONTHLY_FIELDS},
     )
 
