@@ -476,6 +476,12 @@ remain draft metadata and must not create permanent Organizations or Projects.
 Organizations are created or matched only during Final Approval. The Projects
 interface follows Partner to Project to Version; opening a Version restores its
 durable Objects estimate. Manual organization creation is outside the MVP.
+Final Approval is available only after every Object has a terminal priced result
+and explicit approval. One database transaction assigns organization roles,
+creates or matches the Project, and creates the next Project Version. The
+Version stores an immutable JSON snapshot in addition to references to the RFQ
+run and estimate. Repeating Final Approval for the same estimate returns the
+existing Version. PDF generation is independent and may be added later.
 
 Legal Consent and Verified Registration v1
 The feature is cross-system and active by default after the private-playground

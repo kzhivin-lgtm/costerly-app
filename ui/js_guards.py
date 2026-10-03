@@ -360,6 +360,9 @@ def signal_app_ready_to_embed(
                 if (control.closest(".object-detail-footer-button--primary")) {
                     return "object_detail_approve_to_objects";
                 }
+                if (control.closest(".st-key-final_approval")) {
+                    return "objects_to_projects";
+                }
                 if (control.closest(".st-key-header_new_estimate")) {
                     if (currentScreen() === "account") return "profile_to_upload";
                     if (currentScreen() === "admin") return "admin_to_upload";
@@ -465,6 +468,7 @@ def signal_app_ready_to_embed(
                     projects_to_profile: "account",
                     projects_to_admin: "admin",
                     projects_to_sign_out: "login",
+                    objects_to_projects: "projects",
                     profile_to_sign_out: "login",
                     upload_to_sign_out: "login",
                 }[transition] || "";
@@ -497,7 +501,8 @@ def signal_app_ready_to_embed(
                 if (
                     transition === "upload_to_projects" ||
                     transition === "profile_to_projects" ||
-                    transition === "admin_to_projects"
+                    transition === "admin_to_projects" ||
+                    transition === "objects_to_projects"
                 ) return ".projects-screen-active";
                 if (transition === "projects_to_upload") return ".upload-screen-active";
                 if (transition === "projects_to_profile") return ".company-profile-active";
@@ -527,6 +532,7 @@ def signal_app_ready_to_embed(
                     transition === "upload_to_projects" ||
                     transition === "profile_to_projects" ||
                     transition === "admin_to_projects" ||
+                    transition === "objects_to_projects" ||
                     transition === "projects_to_upload" ||
                     transition === "projects_to_profile" ||
                     transition === "projects_to_admin" ||
@@ -621,7 +627,8 @@ def signal_app_ready_to_embed(
                     if (
                         transition === "upload_to_projects" ||
                         transition === "profile_to_projects" ||
-                        transition === "admin_to_projects"
+                        transition === "admin_to_projects" ||
+                        transition === "objects_to_projects"
                     ) {
                         const title = parentDocument.querySelector(".projects-title");
                         const content = parentDocument.querySelector(".projects-empty, .projects-card");

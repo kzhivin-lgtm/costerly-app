@@ -17,6 +17,7 @@ from ui.screen_transition import (
     OBJECTS_MARKER_ID,
 )
 from use_cases.estimation import load_objects_estimation_data
+from use_cases.final_approval import final_approval
 from use_cases.estimation_progress import clear_estimate_progress, get_estimate_progress
 from state.company_auth import company_auth_enabled
 
@@ -283,7 +284,41 @@ def _render_pricing_table(
     )
 
 
-def _render_objects_actions() -> None:
+def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) -> None:
+    """Freeze the estimate and open its durable Project version."""
+    try:
+        result = final_approval(
+            company_id=company_id,
+            run_id=run_id,
+            estimate_id=estimate_id,
+        )
+    except Exception as exc:
+        st.session_state.final_approval_error = str(exc)
+        return
+    st.session_state.final_approval_error = None
+    st.session_state.projects_partner_id = str(result["organization_id"])
+    st.session_state.projects_project_id = str(result["project_id"])
+    st.session_state.screen = "projects"
+
+
+def _final_approval_ready(data: dict[str, object]) -> bool:
+    rows = _rows_with_approved_overlay(list(data.get("rows") or []))
+    summary = dict(data.get("summary") or {})
+    return bool(rows) and summary.get("total") is not None and all(
+        row.get("reviewed")
+        and row.get("sale_price_total") is not None
+        and str(row.get("status") or "") in {"completed", "review_required"}
+        for row in rows
+    )
+
+
+def _render_objects_actions(
+    *,
+    company_id: str,
+    run_id: str | None,
+    estimate_id: str | None,
+    data: dict[str, object],
+) -> None:
     """Render bottom navigation actions for Objects Estimation."""
     from state.session import set_screen
 
@@ -297,8 +332,21 @@ def _render_objects_actions() -> None:
         args=("file_review",),
     )
 
-    if col_generate.button("GENERATE PROPOSAL", type="primary", use_container_width=True):
-        st.session_state.screen = "objects"
+    col_generate.button(
+        "FINAL APPROVAL",
+        key="final_approval",
+        type="primary",
+        use_container_width=True,
+        disabled=not (
+            run_id and estimate_id and _final_approval_ready(data)
+        ),
+        on_click=_complete_final_approval,
+        kwargs={
+            "company_id": company_id,
+            "run_id": str(run_id or ""),
+            "estimate_id": str(estimate_id or ""),
+        },
+    )
 
 
 def _install_objects_price_input_runtime(
@@ -376,7 +424,7 @@ def render_objects_screen(company_id: str) -> None:
 
     render_post_upload_header(
         "Objects Estimation",
-        "Review objects → Set sale price → Generate proposal",
+        "Review objects → Set sale price → Final Approval",
         class_name="objects-estimation-header",
         marker_id=OBJECTS_MARKER_ID,
     )
@@ -394,7 +442,15 @@ def render_objects_screen(company_id: str) -> None:
     # Actions and JavaScript runtimes remain outside the timed fragment. They
     # are installed once per full render and cannot flicker or be replaced by a
     # progress-only refresh.
-    _render_objects_actions()
+    action_data = _data_with_progress(screen_state.data, estimate_id)
+    _render_objects_actions(
+        company_id=company_id,
+        run_id=run_id,
+        estimate_id=estimate_id,
+        data=action_data,
+    )
+    if st.session_state.get("final_approval_error"):
+        st.error(f"Final Approval failed: {st.session_state.final_approval_error}")
     install_workflow_header_alignment_guard()
     supabase_url, supabase_anon_key, supabase_access_token = _objects_price_input_config()
     _install_objects_price_input_runtime(

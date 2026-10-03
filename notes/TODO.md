@@ -9,6 +9,13 @@ provides Partner to Project to Version navigation. Permanent records are not
 created before Final Approval. Remaining: apply the additive migration,
 production acceptance, then implement Final Approval as task 3.16.2.
 
+ACTIVE, 3.16.2 Final Approval: replace Generate Proposal with one Final
+Approval action available only after every object is priced and approved. The
+action atomically matches or creates Partner and optional Client roles, matches
+or creates the Project, assigns the next version number, and stores an immutable
+JSON snapshot of Objects, project costs, and totals. Repeated approval of the
+same estimate is idempotent. PDF generation and download remain a later task.
+
 ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the
 wrapper's 8-second fallback. Preserve the accepted Fast Resume and `app-ready`
