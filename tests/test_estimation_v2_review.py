@@ -63,7 +63,7 @@ def test_project_totals_include_priced_review_required_objects():
     assert summary == {"project_price": 1469.0, "vat": 264.42, "total": 1733.42, "vat_percent": 18}
 
 
-def test_objects_hide_project_pricing_until_every_object_finishes(monkeypatch):
+def test_objects_show_blank_project_pricing_until_every_object_finishes(monkeypatch):
     st.session_state.clear()
     st.session_state.estimation_batch_future = Future()
     monkeypatch.setattr(objects, "get_estimate_progress", lambda _estimate_id: None)
@@ -95,10 +95,13 @@ def test_objects_hide_project_pricing_until_every_object_finishes(monkeypatch):
         run_id="run-1",
     )
 
-    assert visible["project_costs"] == []
+    assert [row["name"] for row in visible["project_costs"]] == ["Delivery", "Installation"]
+    assert all(row["sale_price_unit"] is None for row in visible["project_costs"])
     assert visible["summary"]["project_pricing_ready"] is False
-    assert "Delivery" not in markup
-    assert "Project Summary" not in markup
+    assert "Delivery" in markup
+    assert "Installation" in markup
+    assert "Project Summary" in markup
+    assert markup.count("—") >= 5
 
 
 def test_objects_show_project_pricing_after_every_object_finishes(monkeypatch):

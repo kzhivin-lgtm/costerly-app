@@ -128,18 +128,25 @@ def _data_with_progress(data: dict[str, object], estimate_id: str | None) -> dic
                 "project_pricing_ready": False,
             }
         )
-        return {**data, "rows": rows, "project_costs": [], "summary": summary}
+        return {
+            **data,
+            "rows": rows,
+            "project_costs": _project_cost_rows_for_seed(rows, allow_totals=False),
+            "summary": summary,
+        }
 
     summary["project_pricing_ready"] = True
     project_costs = data.get("project_costs") or _project_cost_rows_for_seed(rows)
     return {**data, "rows": rows, "project_costs": project_costs, "summary": summary}
 
 
-def _project_cost_rows_for_seed(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+def _project_cost_rows_for_seed(
+    rows: list[dict[str, object]], *, allow_totals: bool = True
+) -> list[dict[str, object]]:
     """Build project-level cost rows while estimate results are still loading."""
     if not rows:
         return []
-    all_completed = all(
+    all_completed = allow_totals and all(
         objects_pricing.row_status(row) in {"completed", "review_required"}
         and row.get("sale_price_total") is not None
         for row in rows
