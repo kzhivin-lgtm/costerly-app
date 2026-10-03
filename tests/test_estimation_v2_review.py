@@ -1,4 +1,5 @@
 from concurrent.futures import Future
+from pathlib import Path
 
 import streamlit as st
 
@@ -100,7 +101,8 @@ def test_objects_show_blank_project_pricing_until_every_object_finishes(monkeypa
     assert visible["summary"]["project_pricing_ready"] is False
     assert "Delivery" in markup
     assert "Installation" in markup
-    assert "Project Summary" in markup
+    assert "Project Price" in markup
+    assert "Project Summary" not in markup
     assert markup.count("—") >= 5
 
 
@@ -137,7 +139,8 @@ def test_objects_show_project_pricing_after_every_object_finishes(monkeypatch):
 
     assert visible["summary"]["project_pricing_ready"] is True
     assert "Delivery" in markup
-    assert "Project Summary" in markup
+    assert "Project Price" in markup
+    assert "Project Summary" not in markup
 
 
 def test_approved_objects_show_pdf_and_future_xls_download_row():
@@ -156,6 +159,11 @@ def test_approved_objects_show_pdf_and_future_xls_download_row():
     assert "Download XLS" in markup
     assert 'href="https://signed.example/proposal.pdf"' in markup
     assert 'objects-pricing-download-button--disabled' in markup
+
+    css = Path("styles/objects.py").read_text()
+    assert ".objects-pricing-download-block--summary" in css
+    assert "grid-column: 2 / 5" in css
+    assert "width: 162px" in css
 
 
 def test_completed_estimation_future_clears_stale_process_progress():

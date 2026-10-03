@@ -87,3 +87,8 @@ def test_objects_uses_final_approval_instead_of_generate_proposal():
     assert '"GENERATE PROPOSAL"' not in source
     assert "final_approval(" in source
     assert 'st.session_state.screen = "projects"' not in source
+    assert 'key="final_approval_approved" if proposal_ready else "final_approval"' in source
+
+    css = Path("styles/objects.py").read_text()
+    assert ".st-key-final_approval_approved button:disabled" in css
+    assert "background: rgba(52, 168, 83, 0.12)" in css

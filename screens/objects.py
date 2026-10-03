@@ -361,7 +361,7 @@ def _render_objects_actions(
 
     col_generate.button(
         "APPROVED" if proposal_ready else "FINAL APPROVAL",
-        key="final_approval",
+        key="final_approval_approved" if proposal_ready else "final_approval",
         type="primary",
         use_container_width=True,
         disabled=proposal_ready or not (run_id and estimate_id and _final_approval_ready(data)),

@@ -304,17 +304,27 @@ def apply_objects_css() -> None:
 
         .objects-pricing-downloads {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 28px;
+            grid-template-columns: minmax(250px, 1.35fr) 58px 116px 162px 128px 122px;
+            column-gap: 18px;
             padding: 26px 0;
             border-top: 1px solid rgba(42, 31, 44, 0.14);
         }
 
         .objects-pricing-download-block {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 18px;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: flex-start;
+            gap: 10px;
+        }
+
+        .objects-pricing-download-block--proposal {
+            grid-column: 1;
+        }
+
+        .objects-pricing-download-block--summary {
+            grid-column: 2 / 5;
+            width: 162px;
         }
 
         .objects-pricing-download-title {
@@ -323,6 +333,14 @@ def apply_objects_css() -> None:
             font-weight: 800;
             letter-spacing: -0.02em;
             color: #17131C;
+        }
+
+        .stApp:has(.objects-estimation-header)
+        .st-key-final_approval_approved button:disabled {
+            opacity: 1 !important;
+            background: rgba(52, 168, 83, 0.12) !important;
+            border-color: rgba(52, 168, 83, 0.32) !important;
+            color: #2F8D48 !important;
         }
 
         .objects-pricing-summary {

@@ -42,6 +42,10 @@ That row contains Client Proposal / Download PDF and Project Summary / Download
 XLS. XLS remains disabled until the later consolidated project materials export
 is implemented. The Partners header keeps shared navigation but omits the
 current-page Projects action.
+The approved Objects layout stacks each download action below its title. Client
+Proposal stays in the first Objects column; Project Summary starts exactly at
+the Installation input axis. The duplicate Project Summary label in the totals
+footer is removed, and the Approved action uses a pale green completed state.
 
 ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the

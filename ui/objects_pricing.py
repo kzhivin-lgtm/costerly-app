@@ -290,9 +290,7 @@ def _summary_html(summary: dict[str, object]) -> str:
     """Render project-level price summary."""
     return (
         '<div class="objects-pricing-summary">'
-        '<div>'
-        '<div class="objects-pricing-summary-title">Project Summary</div>'
-        '</div>'
+        '<div aria-hidden="true"></div>'
         '<div>'
         '<div class="objects-pricing-summary-title">Project Price</div>'
         f'<div class="objects-pricing-summary-value" data-summary-field="project_price">{_money(summary.get("project_price"))}</div>'
@@ -315,14 +313,14 @@ def _downloads_html(proposal_pdf_url: str | None) -> str:
     safe_url = html.escape(proposal_pdf_url, quote=True)
     return (
         '<div class="objects-pricing-downloads">'
-        '<div class="objects-pricing-download-block">'
+        '<div class="objects-pricing-download-block objects-pricing-download-block--proposal">'
         '<div class="objects-pricing-download-title">Client Proposal</div>'
         f'<a class="objects-pricing-download-button" href="{safe_url}" target="_blank" '
         'rel="noopener noreferrer" download>'
         '<span class="objects-pricing-download-pill">Download PDF</span>'
         '</a>'
         '</div>'
-        '<div class="objects-pricing-download-block">'
+        '<div class="objects-pricing-download-block objects-pricing-download-block--summary">'
         '<div class="objects-pricing-download-title">Project Summary</div>'
         '<span class="objects-pricing-download-button objects-pricing-download-button--disabled" '
         'aria-disabled="true">'
