@@ -58,8 +58,9 @@ supplier fields before implementation.
 
 ACTIVE, P0, 3.15.24 canonical object quantity and durable Object Detail route:
 make item quantity editable on File Review, Objects, and Object Detail. All
-three screens must read and write `rfq_detected_objects.quantity`; the estimate
-row remains a synchronized compatibility mirror. A change must preserve unit
+three screens share `rfq_detected_objects.quantity` as the canonical record;
+the estimate row is its synchronously updated workflow read model, avoiding an
+extra detected-objects query on every screen render. A change must preserve unit
 self cost, recalculate commercial line and project totals, clear that object's
 approval, and become visible on every screen without rerunning Estimation.
 Objects Review keeps the fast live-session bridge, but its normal link must use
@@ -73,6 +74,11 @@ Back to Objects must ask before discarding a changed draft. Objects quantity is
 an independent immediate-save field. Both quantity controls clear their current
 value on focus so the first typed digit replaces, rather than appends to, the
 displayed value. The Objects quantity input shares the Sale price input axis.
+The native browser confirmation is not accepted UI. Use the Costerly-styled
+discard modal. Changed-draft approval must submit through the live Streamlit
+session, not the cold query-string snapshot reload; retain the full-reload URL
+only as a fail-safe fallback. Production acceptance must compare both changed
+and unchanged Approve timing and confirm grouped money formatting after blur.
 
 ACTIVE, PARTIAL OWNER-ACCEPTED CHECKPOINT, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the

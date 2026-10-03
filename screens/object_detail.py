@@ -7,6 +7,7 @@ import streamlit as st
 
 from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
+from ui.object_detail_draft_bridge import object_detail_draft_bridge
 from ui.js_guards import (
     install_object_detail_input_guard,
     install_workflow_header_alignment_guard,
@@ -45,6 +46,8 @@ def render_object_detail_screen(company_id: str) -> None:
 
     _render_object_detail(data, context)
     _install_object_detail_runtime(context)
+    if _consume_object_detail_draft(context):
+        st.rerun()
     install_workflow_header_alignment_guard("h1.object-detail-title")
 
 
@@ -146,6 +149,36 @@ def _install_object_detail_runtime(context: ObjectDetailContext) -> None:
         estimate_id=context.estimate_id,
         object_id=context.object_id,
     )
+
+
+def _consume_object_detail_draft(context: ObjectDetailContext) -> bool:
+    """Persist and approve a staged draft while retaining the live session."""
+    raw_value = object_detail_draft_bridge(key="object_detail_draft_bridge")
+    if not raw_value:
+        return False
+    try:
+        payload = json.loads(raw_value)
+    except (TypeError, json.JSONDecodeError):
+        return False
+    nonce = str(payload.get("nonce") or "")
+    if not nonce or st.session_state.get("last_object_detail_draft_nonce") == nonce:
+        return False
+    edits = payload.get("edits")
+    if not isinstance(edits, list) or not edits:
+        return False
+    apply_object_detail_snapshot(
+        estimate_id=context.estimate_id,
+        object_id=context.object_id,
+        run_id=context.run_id,
+        edits=edits,
+    )
+    st.session_state.last_object_detail_draft_nonce = nonce
+    _approve_current_object_and_return(
+        estimate_id=context.estimate_id,
+        object_id=context.object_id,
+        recalculate=False,
+    )
+    return True
 
 
 def _consume_pending_object_detail_edit() -> bool:

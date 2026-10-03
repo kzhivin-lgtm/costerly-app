@@ -60,6 +60,9 @@ def apply_object_detail_css() -> None:
             border: 1px solid rgba(42, 31, 44, 0.16);
             border-radius: 8px;
             background: #FFFFFF;
+            color: var(--color-accent) !important;
+            -webkit-text-fill-color: var(--color-accent) !important;
+            caret-color: var(--color-accent);
             text-align: center;
             outline: none;
         }
@@ -67,6 +70,64 @@ def apply_object_detail_css() -> None:
         .object-detail-quantity-input:focus {
             border-color: rgba(128, 73, 198, 0.72);
             box-shadow: 0 0 0 2px rgba(128, 73, 198, 0.10);
+        }
+
+        .object-detail-discard-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(42, 31, 44, 0.28);
+            backdrop-filter: blur(3px);
+        }
+
+        .object-detail-discard-dialog {
+            width: min(520px, calc(100vw - 48px));
+            padding: 30px;
+            border: 1px solid rgba(42, 31, 44, 0.14);
+            border-radius: 16px;
+            background: #FFFFFF;
+            box-shadow: 0 24px 72px rgba(42, 31, 44, 0.22);
+        }
+
+        .object-detail-discard-title {
+            margin: 0 0 10px 0;
+            color: var(--color-text-strong);
+            font-size: 24px;
+            font-weight: 800;
+        }
+
+        .object-detail-discard-copy {
+            margin: 0 0 24px 0;
+            color: rgba(42, 31, 44, 0.66);
+            font-size: 16px;
+            line-height: 1.45;
+        }
+
+        .object-detail-discard-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .object-detail-discard-action {
+            min-height: 48px;
+            border: 1px solid rgba(42, 31, 44, 0.16);
+            border-radius: 10px;
+            background: #FFFFFF;
+            color: var(--color-text-strong);
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .object-detail-discard-action--leave {
+            border-color: rgba(185, 82, 82, 0.30);
+            background: rgba(185, 82, 82, 0.10);
+            color: #9B4545;
         }
 
         .object-detail-preview-placeholder {

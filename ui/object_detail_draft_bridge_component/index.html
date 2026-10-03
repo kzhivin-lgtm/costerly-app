@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8" /></head>
+  <body>
+    <script>
+      (() => {
+        const parentWindow = window.parent;
+        const parentDoc = parentWindow.document;
+        const cleanupKey = "__costerlyObjectDetailDraftBridgeCleanup";
+
+        function send(type, payload = {}) {
+          parentWindow.postMessage({isStreamlitMessage: true, type, ...payload}, "*");
+        }
+
+        function install() {
+          if (parentWindow[cleanupKey]) parentWindow[cleanupKey]();
+
+          function submitDraft(event) {
+            const approve = event.target && event.target.closest
+              ? event.target.closest("[data-object-detail-approve]")
+              : null;
+            if (!approve) return;
+            const draft = parentWindow.__costerlyObjectDetailDraft;
+            const edits = draft && typeof draft.snapshotEdits === "function"
+              ? draft.snapshotEdits()
+              : [];
+            if (!edits.length) return;
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            approve.setAttribute("aria-disabled", "true");
+            approve.textContent = "SAVING...";
+            send("streamlit:setComponentValue", {
+              value: JSON.stringify({
+                nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                edits,
+              }),
+            });
+          }
+
+          parentDoc.addEventListener("click", submitDraft, true);
+          parentWindow[cleanupKey] = () => {
+            parentDoc.removeEventListener("click", submitDraft, true);
+            parentWindow[cleanupKey] = null;
+          };
+        }
+
+        window.addEventListener("message", (event) => {
+          if ((event.data || {}).type !== "streamlit:render") return;
+          install();
+          send("streamlit:setFrameHeight", {height: 0});
+        });
+        send("streamlit:componentReady", {apiVersion: 1});
+        send("streamlit:setFrameHeight", {height: 0});
+      })();
+    </script>
+  </body>
+</html>

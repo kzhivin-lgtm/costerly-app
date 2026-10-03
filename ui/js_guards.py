@@ -1933,10 +1933,38 @@ def install_object_detail_input_guard(
                     ? event.target.closest('[data-streamlit-bridge-key="object_detail_back_bridge"]')
                     : null;
                 if (!back || !snapshotEdits().length) return;
-                if (parentWindow.confirm("You have unsaved changes. Leave without saving them?")) return;
+                if (back.dataset.discardConfirmed === "true") {
+                    delete back.dataset.discardConfirmed;
+                    return;
+                }
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
+                const existing = parentDoc.querySelector(".object-detail-discard-modal");
+                if (existing) existing.remove();
+                const modal = parentDoc.createElement("div");
+                modal.className = "object-detail-discard-modal";
+                modal.innerHTML = (
+                    '<div class="object-detail-discard-dialog" role="dialog" aria-modal="true" '
+                    + 'aria-labelledby="object-detail-discard-title">'
+                    + '<div id="object-detail-discard-title" class="object-detail-discard-title">Unsaved changes</div>'
+                    + '<div class="object-detail-discard-copy">Are you sure you want to leave without saving?</div>'
+                    + '<div class="object-detail-discard-actions">'
+                    + '<button type="button" class="object-detail-discard-action" data-discard-stay>Stay</button>'
+                    + '<button type="button" class="object-detail-discard-action object-detail-discard-action--leave" '
+                    + 'data-discard-leave>Leave without saving</button>'
+                    + '</div></div>'
+                );
+                modal.querySelector("[data-discard-stay]").addEventListener("click", () => modal.remove());
+                modal.querySelector("[data-discard-leave]").addEventListener("click", () => {
+                    modal.remove();
+                    back.dataset.discardConfirmed = "true";
+                    back.click();
+                });
+                modal.addEventListener("click", (modalEvent) => {
+                    if (modalEvent.target === modal) modal.remove();
+                });
+                parentDoc.body.appendChild(modal);
             }
 
             function approveSnapshotHref() {
@@ -1981,6 +2009,10 @@ def install_object_detail_input_guard(
             parentDoc.addEventListener("click", prepareApproveSnapshot, true);
             parentDoc.addEventListener("focusout", handleBlur, true);
             parentDoc.addEventListener("click", confirmDiscard, true);
+            parentWindow.__costerlyObjectDetailDraft = {
+                snapshotEdits,
+                context: {runId: RUN_ID, estimateId: ESTIMATE_ID, objectId: OBJECT_ID},
+            };
 
             parentWindow[HANDLER_KEY] = () => {
                 parentDoc.removeEventListener("focusin", handleFocus, true);
@@ -1993,6 +2025,9 @@ def install_object_detail_input_guard(
                 parentDoc.removeEventListener("click", prepareApproveSnapshot, true);
                 parentDoc.removeEventListener("focusout", handleBlur, true);
                 parentDoc.removeEventListener("click", confirmDiscard, true);
+                const modal = parentDoc.querySelector(".object-detail-discard-modal");
+                if (modal) modal.remove();
+                delete parentWindow.__costerlyObjectDetailDraft;
                 parentWindow[HANDLER_KEY] = null;
             };
             seedInputBaselines();

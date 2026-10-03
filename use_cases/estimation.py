@@ -122,15 +122,9 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     delivery_percent = _number(settings.get("delivery_percent"), 3)
     installation_percent = _number(settings.get("installation_percent"), 10)
     facts_by_object: dict[str, dict] = {}
-    canonical_quantities: dict[str, float] = {}
     if not objects_df.empty:
         run_id = str(objects_df.iloc[0].get("run_id") or "")
         if run_id:
-            detected_df = read_with_retry(lambda: fetch_rfq_detected_objects(client, run_id))
-            canonical_quantities = {
-                str(item.get("object_id") or ""): _number(item.get("quantity"), 1)
-                for _, item in detected_df.iterrows()
-            }
             try:
                 facts_by_object = fetch_latest_estimation_v2_facts_by_object(
                     client,
@@ -143,7 +137,7 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
     for _, item in objects_df.iterrows():
         row = item.to_dict()
         object_id = str(row.get("object_id") or "")
-        quantity = canonical_quantities.get(object_id, _number(row.get("quantity"), 1))
+        quantity = _number(row.get("quantity"), 1)
         facts_result = facts_by_object.get(object_id) or {}
         facts_payload = facts_result.get("facts_payload") or {}
         materials = facts_payload.get("materials") or []
@@ -308,16 +302,6 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
 
     object_row = matching.iloc[0].to_dict()
     canonical_quantity = _number(object_row.get("quantity"), 1)
-    run_id = str(object_row.get("run_id") or "")
-    if run_id:
-        detected_df = fetch_rfq_detected_objects(client, run_id)
-        detected_matching = (
-            detected_df[detected_df["object_id"] == object_id]
-            if not detected_df.empty and "object_id" in detected_df.columns
-            else detected_df.iloc[0:0]
-        )
-        if not detected_matching.empty:
-            canonical_quantity = _number(detected_matching.iloc[0].get("quantity"), 1)
     facts_result = {}
     try:
         facts_result = fetch_latest_estimation_v2_facts_by_object(

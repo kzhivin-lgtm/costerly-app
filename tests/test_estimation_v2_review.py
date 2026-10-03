@@ -122,7 +122,21 @@ def test_object_detail_quantity_uses_the_approve_snapshot_not_the_objects_bridge
     assert "object_detail_quantity_bridge" not in detail_source
     assert 'line_id: "__object__"' in runtime_source
     assert 'field: "object_quantity"' in runtime_source
-    assert 'parentWindow.confirm("You have unsaved changes. Leave without saving them?")' in runtime_source
+    assert "object-detail-discard-modal" in runtime_source
+    assert "Are you sure you want to leave without saving?" in runtime_source
+    assert "parentWindow.confirm" not in runtime_source.split(
+        "def install_object_detail_input_guard", 1
+    )[1].split("def install_objects_live_progress", 1)[0]
+
+
+def test_object_detail_draft_bridge_keeps_changed_approval_in_live_session():
+    source = Path("ui/object_detail_draft_bridge_component/index.html").read_text()
+
+    assert "__costerlyObjectDetailDraft" in source
+    assert 'streamlit:setComponentValue' in source
+    assert "event.stopImmediatePropagation()" in source
+    assert "parentWindow.location" not in source
+    assert "/rest/v1/" not in source
 
 
 def test_object_detail_quantity_snapshot_persists_only_at_approval(monkeypatch):
