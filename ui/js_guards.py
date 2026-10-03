@@ -486,7 +486,7 @@ def signal_app_ready_to_embed(
                     transition === "processing_to_file_review" ||
                     transition === "objects_to_file_review"
                 ) {
-                    return ".file-review-card";
+                    return ".file-review-summary-card-marker";
                 }
                 if (transition === "file_review_to_objects") {
                     return ".objects-estimation-header";
@@ -567,9 +567,16 @@ def signal_app_ready_to_embed(
                         transition === "processing_to_file_review" ||
                         transition === "objects_to_file_review"
                     ) {
-                        const card = parentDocument.querySelector(".file-review-card");
+                        const marker = parentDocument.querySelector(
+                            ".file-review-summary-card-marker"
+                        );
+                        const card = marker && marker.closest(
+                            '[data-testid="stVerticalBlockBorderWrapper"]'
+                        );
                         const title = parentDocument.querySelector(".file-review-detected-title");
-                        return Boolean(card && title && controlsReady());
+                        if (!card || !title || !controlsReady()) return false;
+                        const cardStyle = window.parent.getComputedStyle(card);
+                        return cardStyle.borderTopLeftRadius === "16px";
                     }
                     if (transition === "file_review_to_objects") {
                         const header = parentDocument.querySelector(".objects-estimation-header");

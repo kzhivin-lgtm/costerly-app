@@ -340,6 +340,11 @@ def _render_objects_actions(
         disabled=not (
             run_id and estimate_id and _final_approval_ready(data)
         ),
+        help=(
+            None
+            if run_id and estimate_id and _final_approval_ready(data)
+            else "Review and approve every object before Final Approval"
+        ),
         on_click=_complete_final_approval,
         kwargs={
             "company_id": company_id,

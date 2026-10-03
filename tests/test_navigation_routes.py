@@ -357,3 +357,11 @@ def test_objects_initializes_action_state_before_live_fragment_branch():
     )
 
     assert state_index < live_index
+
+
+def test_file_review_transitions_follow_the_current_editable_summary_marker():
+    source = Path("ui/js_guards.py").read_text()
+
+    assert 'return ".file-review-summary-card-marker"' in source
+    assert 'parentDocument.querySelector(\n                            ".file-review-summary-card-marker"' in source
+    assert 'cardStyle.borderTopLeftRadius === "16px"' in source

@@ -16,6 +16,14 @@ or creates the Project, assigns the next version number, and stores an immutable
 JSON snapshot of Objects, project costs, and totals. Repeated approval of the
 same estimate is idempotent. PDF generation and download remain a later task.
 
+PENDING, 3.16.3 Processing handoff polish: after the current File Review
+transition regression is removed, evaluate holding the completed Processing
+screen slightly longer so the next fully styled File Review replaces it in one
+perceived frame. Measure the existing Detection completion, server render,
+target visible, and target styled boundaries first. Do not add a fixed delay
+unless it improves the real production transition without increasing total
+time unnecessarily.
+
 ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the
 wrapper's 8-second fallback. Preserve the accepted Fast Resume and `app-ready`

@@ -407,7 +407,8 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'label === "continue to upload" || label === "upload"' in ready_signal
     assert 'transition === "back_to_upload"' in ready_signal
     assert 'transition === "last_estimate"' in ready_signal
-    assert 'return ".file-review-card"' in ready_signal
+    assert 'return ".file-review-summary-card-marker"' in ready_signal
+    assert 'cardStyle.borderTopLeftRadius === "16px"' in ready_signal
     assert 'const table = parentDocument.querySelector(".objects-pricing-table")' in ready_signal
     assert 'headerControls.querySelectorAll("button").length >= 2' in ready_signal
     observer_source = ready_signal.split("function installTransitionObserver()", 1)[1].split(
