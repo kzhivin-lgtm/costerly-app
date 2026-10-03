@@ -329,3 +329,21 @@ def test_file_review_back_to_upload_is_never_disabled_after_an_input_event():
     source = Path("screens/file_review.py").read_text()
 
     assert '"BACK TO UPLOAD",\n            type="secondary",\n            use_container_width=True,\n            disabled=True' not in source
+
+
+def test_projects_uses_existing_styled_transition_contract():
+    source = Path("ui/js_guards.py").read_text()
+
+    assert 'currentScreen() === "projects") return "projects_to_upload"' in source
+    assert 'return "upload_to_projects"' in source
+    assert 'projects_to_upload: "upload"' in source
+    assert 'upload_to_projects: "projects"' in source
+    assert 'return ".projects-screen-active"' in source
+    assert 'parentDocument.querySelector(".projects-empty, .projects-card")' in source
+
+
+def test_projects_workspace_loads_three_collections_concurrently():
+    source = Path("use_cases/projects.py").read_text()
+
+    assert "ThreadPoolExecutor(max_workers=3)" in source
+    assert source.count("executor.submit(") == 3
