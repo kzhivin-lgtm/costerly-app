@@ -253,6 +253,7 @@ def _footer_html(run_id: object, estimate_id: object, object_id: object) -> str:
         'BACK TO OBJECTS'
         '</a>'
         f'<a class="object-detail-footer-button object-detail-footer-button--primary" href="?{approve_params}" '
+        'data-streamlit-bridge-key="object_detail_approve_bridge" '
         'target="_self" data-object-detail-approve="true">'
         'APPROVE ESTIMATE'
         '</a>'

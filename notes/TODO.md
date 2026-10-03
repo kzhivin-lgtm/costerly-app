@@ -133,6 +133,12 @@ not left the contenteditable field. Restore only current-row live Cost feedback
 (`unit_cost * quantity`, or the equivalent Labor row formula), while blur or
 Enter remains the single persistence and authoritative server-recalculation
 boundary. Do not restore browser-wide section or final-total calculation.
+ACTIVE, 3.15.23 Approve transition: production trace
+`28dac1ea-5c35-40aa-9109-8246a22c2078` showed direct-link Approve creating a
+new iframe/server session while the original transition reached its 15-second
+timeout with zero Python runs. Reuse the accepted Streamlit bridge when the
+Object Detail snapshot is clean. Retain the direct snapshot route only when
+unsaved edits must be persisted atomically with approval.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background

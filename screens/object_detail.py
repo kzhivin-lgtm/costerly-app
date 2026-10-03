@@ -124,6 +124,15 @@ def _render_object_detail(data: dict[str, object], context: ObjectDetailContext)
             key="object_detail_back_bridge",
             on_click=_return_to_objects,
         )
+        st.button(
+            "Approve Estimate",
+            key="object_detail_approve_bridge",
+            on_click=_approve_current_object_and_return,
+            kwargs={
+                "estimate_id": context.estimate_id,
+                "object_id": context.object_id,
+            },
+        )
 
 
 def _return_to_objects() -> None:

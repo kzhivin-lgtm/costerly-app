@@ -1906,7 +1906,15 @@ def install_object_detail_input_guard(
                 if (!button) return;
                 const snapshot = approveSnapshotHref();
                 button.setAttribute("href", snapshot.href);
-                parentWindow[SUBMITTING_KEY] = true;
+                if (snapshot.edits.length) {
+                    button.removeAttribute("data-streamlit-bridge-key");
+                    parentWindow[SUBMITTING_KEY] = true;
+                } else {
+                    button.setAttribute(
+                        "data-streamlit-bridge-key",
+                        "object_detail_approve_bridge"
+                    );
+                }
             }
 
             parentDoc.addEventListener("focusin", handleFocus, true);

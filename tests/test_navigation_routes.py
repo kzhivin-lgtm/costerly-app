@@ -107,9 +107,11 @@ def test_object_detail_table_navigation_uses_native_streamlit_bridges():
     assert 'key=objects_pricing.object_detail_navigation_key(object_id)' in objects_source
     assert 'st.session_state.screen = "object_detail"' in objects_source
     assert 'key="object_detail_back_bridge"' in detail_source
+    assert 'key="object_detail_approve_bridge"' in detail_source
     assert 'st.session_state.screen = "objects"' in detail_source
     assert 'data-streamlit-bridge-key="{navigation_key}"' in pricing_source
     assert 'data-streamlit-bridge-key="object_detail_back_bridge"' in detail_view_source
+    assert 'data-streamlit-bridge-key="object_detail_approve_bridge"' in detail_view_source
 
 
 def test_processing_refresh_fails_safe_to_upload():
