@@ -357,8 +357,9 @@ def apply_objects_css() -> None:
         }
 
         .objects-pricing-summary-vat {
-            grid-column: 5;
+            grid-column: 2 / 6;
             justify-self: center;
+            z-index: 1;
         }
 
         .objects-pricing-summary-total {

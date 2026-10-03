@@ -167,6 +167,7 @@ def test_approved_objects_show_pdf_and_future_xls_download_row():
     assert ".objects-pricing-summary-price" in css
     assert ".objects-pricing-summary-vat" in css
     assert ".objects-pricing-summary-total" in css
+    assert "grid-column: 2 / 6" in css
 
 
 def test_completed_estimation_future_clears_stale_process_progress():

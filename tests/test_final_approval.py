@@ -56,8 +56,8 @@ def test_final_approval_freezes_fresh_priced_snapshot(monkeypatch):
         lambda **kwargs: "001/project-1/version-1.pdf",
     )
     monkeypatch.setattr(
-        "use_cases.final_approval.proposal_signed_url",
-        lambda *args, **kwargs: "https://signed.example/proposal.pdf",
+        "use_cases.final_approval.load_estimate_proposal_url",
+        lambda **kwargs: "https://signed.example/proposal.pdf",
     )
 
     result = final_approval(company_id="001", run_id="run-1", estimate_id="estimate-1")

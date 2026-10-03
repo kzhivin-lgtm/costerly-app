@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from db.supabase_client import get_supabase_client
-from use_cases.proposal_pdf import proposal_signed_url
+from use_cases.proposal_pdf import proposal_download_name, proposal_signed_url
 
 
 def load_projects_workspace(company_id: str) -> dict[str, list[dict[str, Any]]]:
@@ -56,6 +56,13 @@ def load_projects_workspace(company_id: str) -> dict[str, list[dict[str, Any]]]:
     latest_version_ids = {
         str(version.get("version_id") or "") for version in latest_by_project.values()
     }
+    project_by_id = {
+        str(project.get("project_id") or ""): project for project in projects
+    }
+    organization_by_id = {
+        str(organization.get("organization_id") or ""): organization
+        for organization in organizations
+    }
     for version in versions:
         if str(version.get("version_id") or "") not in latest_version_ids:
             continue
@@ -63,7 +70,19 @@ def load_projects_workspace(company_id: str) -> dict[str, list[dict[str, Any]]]:
         if not object_path:
             continue
         try:
-            version["proposal_pdf_url"] = proposal_signed_url(client, object_path)
+            project = project_by_id.get(str(version.get("project_id") or ""), {})
+            partner = organization_by_id.get(
+                str(project.get("partner_organization_id") or ""), {}
+            )
+            version["proposal_pdf_url"] = proposal_signed_url(
+                client,
+                object_path,
+                download_name=proposal_download_name(
+                    project_name=project.get("name"),
+                    partner_name=partner.get("name"),
+                    approved_at=version.get("approved_at"),
+                ),
+            )
         except Exception:
             version["proposal_pdf_url"] = None
     return {

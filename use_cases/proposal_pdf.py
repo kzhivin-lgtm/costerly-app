@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from io import BytesIO
 import math
+import re
+from datetime import datetime
 from typing import Any
 
 import pymupdf
@@ -260,17 +262,49 @@ def publish_proposal_pdf(
     return object_path
 
 
-def proposal_signed_url(client, object_path: str, *, expires_in: int = 3600) -> str | None:
+def _filename_part(value: object, fallback: str) -> str:
+    cleaned = re.sub(r'[\\/:*?"<>|]+', "-", _clean(value))
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ._-")
+    return cleaned or fallback
+
+
+def proposal_download_name(
+    *, project_name: object, partner_name: object, approved_at: object
+) -> str:
+    date_value = _clean(approved_at)
+    try:
+        date_value = datetime.fromisoformat(date_value.replace("Z", "+00:00")).date().isoformat()
+    except ValueError:
+        date_value = date_value[:10] or datetime.now().date().isoformat()
+    return (
+        f"{_filename_part(project_name, 'Project')}_"
+        f"{_filename_part(partner_name, 'Partner')}_"
+        f"{_filename_part(date_value, 'Date')}.pdf"
+    )
+
+
+def proposal_signed_url(
+    client,
+    object_path: str,
+    *,
+    expires_in: int = 3600,
+    download_name: str | None = None,
+) -> str | None:
     if not object_path:
         return None
-    response = client.storage.from_(PROPOSAL_BUCKET).create_signed_url(object_path, expires_in)
+    options = {"download": download_name} if download_name else None
+    response = client.storage.from_(PROPOSAL_BUCKET).create_signed_url(
+        object_path,
+        expires_in,
+        options=options,
+    )
     return response.get("signedURL") or response.get("signedUrl")
 
 
 def load_estimate_proposal_url(*, client, company_id: str, estimate_id: str) -> str | None:
     rows = (
         client.table("project_versions")
-        .select("proposal_pdf_path")
+        .select("proposal_pdf_path,run_id,approved_at")
         .eq("company_id", company_id)
         .eq("estimate_id", estimate_id)
         .limit(1)
@@ -278,4 +312,23 @@ def load_estimate_proposal_url(*, client, company_id: str, estimate_id: str) -> 
     )
     if not rows:
         return None
-    return proposal_signed_url(client, _clean(rows[0].get("proposal_pdf_path")))
+    version = rows[0]
+    run_rows = (
+        client.table("rfq_runs")
+        .select("project_name,design_partner")
+        .eq("company_id", company_id)
+        .eq("run_id", version.get("run_id"))
+        .limit(1)
+        .execute().data or []
+    )
+    run = run_rows[0] if run_rows else {}
+    download_name = proposal_download_name(
+        project_name=run.get("project_name"),
+        partner_name=run.get("design_partner"),
+        approved_at=version.get("approved_at"),
+    )
+    return proposal_signed_url(
+        client,
+        _clean(version.get("proposal_pdf_path")),
+        download_name=download_name,
+    )

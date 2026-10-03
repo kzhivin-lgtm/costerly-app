@@ -48,6 +48,9 @@ the Installation input axis. The duplicate Project Summary label in the totals
 footer is removed, and the Approved action uses a pale green completed state.
 Project Price shares the exact Project Summary axis, Project Total retains the
 rightmost axis, and VAT occupies the column between them.
+VAT is centered between the unchanged Project Price and Project Total grid
+lines. Proposal downloads use Project_Partner_YYYY-MM-DD.pdf as the external
+filename while private storage paths remain immutable internal identifiers.
 
 ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the
