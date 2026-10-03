@@ -57,6 +57,15 @@ remains active only for measured initial-load and transition outliers. The next
 performance change must start from fresh production telemetry, preserve
 `7c81a5a`, and vary one confirmed cause at a time.
 
+The first observed post-checkpoint Last Estimate outlier reached its File
+Review server run within about 0.50 seconds. Auth plus membership completed in
+237 ms, then the run stopped producing events after company resolution and did
+not finish `server.screen_render` or emit `app-ready`. A prior accepted Last
+Estimate completed in 864 ms with a 22 ms screen render. This is evidence for a
+File Review data-load or Supabase I/O outlier, not evidence that the accepted
+wrapper transition lifecycle regressed. Instrument that load boundary before
+attempting a repair if the symptom repeats.
+
 ## Protected behavior
 
 - the `d3e83bd` Sign Out target-side readiness contract;

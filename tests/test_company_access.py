@@ -2505,6 +2505,16 @@ def test_company_metrics_reuses_object_detail_table_contract():
     assert 'data-company-metrics-total>₪500</span>' in html
 
 
+def test_company_metrics_zero_clears_on_focus_but_formats_on_blur():
+    source = Path("ui/js_guards.py").read_text()
+    guard = source.split("def install_company_metrics_input_guard", 1)[1].split(
+        "def signal_app_ready_to_embed", 1
+    )[0]
+
+    assert 'input.textContent = Number(cleaned) === 0 ? "" : cleaned;' in guard
+    assert "input.textContent = formatMoney(readNumber(input.textContent));" in guard
+
+
 def test_labor_position_list_uses_compact_labels_and_keeps_legacy_display():
     assert company_profile.LABOR_DEPARTMENTS == {
         "management": "Management",

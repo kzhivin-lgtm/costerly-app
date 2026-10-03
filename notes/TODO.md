@@ -103,6 +103,13 @@ Production acceptance confirmed that selecting a visible non-stale title and
 scoping each workflow guard to its screen-specific title repaired File Review,
 Objects, and Object Detail return navigation while preserving fast transitions
 and scroll-to-top.
+The 2026-10-03 Profile to Last Estimate outlier began a File Review server run
+within about 0.50 seconds and completed auth plus membership in 237 ms, but the
+run never completed `server.screen_render` or emitted `app-ready`. Earlier Last
+Estimate evidence completed in 864 ms with a 22 ms screen render. Treat this as
+a likely File Review/Supabase I/O outlier, not a transition-wrapper diagnosis.
+If it repeats, add scoped timing around File Review data loading and then a
+bounded timeout/recovery based on that evidence.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background

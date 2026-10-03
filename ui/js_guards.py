@@ -254,7 +254,10 @@ def install_company_metrics_input_guard() -> None:
 
             function handleFocus(event) {
                 const input = metricsInput(event.target);
-                if (input) input.textContent = cleanNumber(input.textContent);
+                if (input) {
+                    const cleaned = cleanNumber(input.textContent);
+                    input.textContent = Number(cleaned) === 0 ? "" : cleaned;
+                }
                 const percent = percentInput(event.target);
                 if (percent) percent.value = formatPercent(percent.value, false);
             }
