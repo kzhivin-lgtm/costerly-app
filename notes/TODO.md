@@ -93,6 +93,12 @@ links reliably: Object Detail still opened under a new trace and caused three
 the hidden button by both key and label. Target-side scroll reset must run after
 the destination DOM is ready because the earlier pre-render reset was later
 overridden by Streamlit scroll restoration.
+Source inspection identifies the workflow header alignment guard as the narrow
+leading cause of the missing File Review rail: it selected the first workflow
+title in the document and could align the fixed controls to stale Streamlit DOM
+from the departing screen. The repair must select only a connected, visible,
+non-stale title and clear the previous inline transform before aligning the
+current screen.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background

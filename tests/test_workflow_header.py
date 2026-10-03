@@ -40,7 +40,10 @@ def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_ev
     source = open("ui/js_guards.py").read()
 
     assert "def install_workflow_header_alignment_guard" in source
-    assert 'parentDoc.querySelector("h1.workflow-title")' in source
+    assert 'title: activeElement("h1.workflow-title")' in source
+    assert "querySelectorAll(selector)" in source
+    assert "element.closest('[data-stale=\"true\"]')" in source
+    assert 'actions.style.removeProperty("transform")' in source
     assert "getBoundingClientRect()" in source
     assert "actionsBaseCenter" in source
     assert "- appliedOffset" in source

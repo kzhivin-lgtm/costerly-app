@@ -26,10 +26,24 @@ def install_workflow_header_alignment_guard() -> None:
             let appliedOffset = 0;
             let appliedTransform = "";
 
+            function activeElement(selector) {
+                const candidates = Array.from(parentDoc.querySelectorAll(selector));
+                return candidates.reverse().find((element) => {
+                    if (!element.isConnected || element.closest('[data-stale="true"]')) return false;
+                    const style = parentWindow.getComputedStyle(element);
+                    const rect = element.getBoundingClientRect();
+                    return style.display !== "none"
+                        && style.visibility !== "hidden"
+                        && Number.parseFloat(style.opacity || "1") > 0
+                        && rect.width > 0
+                        && rect.height > 0;
+                }) || null;
+            }
+
             function targets() {
                 return {
-                    title: parentDoc.querySelector("h1.workflow-title"),
-                    actions: parentDoc.querySelector(".st-key-costerly_header_controls"),
+                    title: activeElement("h1.workflow-title"),
+                    actions: activeElement(".st-key-costerly_header_controls"),
                 };
             }
 
@@ -64,6 +78,11 @@ def install_workflow_header_alignment_guard() -> None:
             function observeTargets() {
                 const { title, actions } = targets();
                 if (!title || !actions) return false;
+                actions.style.removeProperty("transform");
+                delete actions.dataset.workflowHeaderAligned;
+                currentActions = null;
+                appliedOffset = 0;
+                appliedTransform = "";
                 titleObserver = new parentWindow.ResizeObserver(scheduleAlign);
                 actionsObserver = new parentWindow.ResizeObserver(scheduleAlign);
                 titleObserver.observe(title);
