@@ -339,7 +339,7 @@ def test_projects_uses_existing_styled_transition_contract():
     assert 'projects_to_upload: "upload"' in source
     assert 'upload_to_projects: "projects"' in source
     assert 'return ".projects-screen-active"' in source
-    assert 'parentDocument.querySelector(".projects-empty, .projects-card")' in source
+    assert 'parentDocument.querySelector(".projects-empty, .projects-table-card")' in source
 
 
 def test_projects_workspace_loads_three_collections_concurrently():
@@ -347,6 +347,15 @@ def test_projects_workspace_loads_three_collections_concurrently():
 
     assert "ThreadPoolExecutor(max_workers=3)" in source
     assert source.count("executor.submit(") == 3
+
+
+def test_projects_is_one_page_with_native_partner_disclosure_rows():
+    source = Path("screens/projects.py").read_text()
+
+    assert '<details class="projects-partner">' in source
+    assert "<div>Project</div><div>Client</div><div>Calculation</div><div>Total</div><div>PDF</div>" in source
+    assert "st.button(" not in source
+    assert "set_screen(" not in source
 
 
 def test_objects_initializes_action_state_before_live_fragment_branch():

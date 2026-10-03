@@ -8,6 +8,10 @@ The first implementation adds the schema, enables the Projects route, and
 provides Partner to Project to Version navigation. Permanent records are not
 created before Final Approval. Remaining: apply the additive migration,
 production acceptance, then implement Final Approval as task 3.16.2.
+The owner clarified the MVP interface: one Projects page, full shared header
+navigation, native expandable Partner rows, and nested Project rows showing
+Project, Client, calculation date/time, total, and PDF. No Partner, Project, or
+Version detail routes belong in this stage.
 
 ACTIVE, 3.16.2 Final Approval: replace Generate Proposal with one Final
 Approval action available only after every object is priced and approved. The

@@ -30,7 +30,7 @@ def load_projects_workspace(company_id: str) -> dict[str, list[dict[str, Any]]]:
     def load_versions():
         return (
             client.table("project_versions")
-            .select("version_id,project_id,version_number,run_id,estimate_id,status,approved_at,summary")
+            .select("version_id,project_id,version_number,run_id,estimate_id,status,approved_at,summary,proposal_pdf_path")
             .eq("company_id", company_id)
             .order("version_number", desc=True)
             .execute().data or []

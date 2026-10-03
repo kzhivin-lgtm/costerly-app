@@ -638,7 +638,7 @@ def signal_app_ready_to_embed(
                         transition === "objects_to_projects"
                     ) {
                         const title = parentDocument.querySelector(".projects-title");
-                        const content = parentDocument.querySelector(".projects-empty, .projects-card");
+                        const content = parentDocument.querySelector(".projects-empty, .projects-table-card");
                         if (!title || !content || !controlsReady()) return false;
                         const titleStyle = window.parent.getComputedStyle(title);
                         const contentStyle = window.parent.getComputedStyle(content);
