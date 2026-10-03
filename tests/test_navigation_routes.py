@@ -118,6 +118,13 @@ def test_processing_refresh_fails_safe_to_upload():
     assert app._browser_route("processing") == {"screen": "upload"}
 
 
+def test_screen_change_schedules_target_side_scroll_reset():
+    source = Path("app.py").read_text()
+
+    assert 'st.session_state._reset_scroll_on_ready = True' in source
+    assert 'reset_scroll=bool(st.session_state.pop("_reset_scroll_on_ready", False))' in source
+
+
 def test_workflow_routes_do_not_render_the_central_logo_in_auth_disabled_mode():
     source = Path("app.py").read_text()
 

@@ -82,6 +82,12 @@ Production acceptance must also verify the authenticated navigation controls on
 File Review. Server telemetry confirms that `account_controls_render` ran, but
 the owner observed the control rail missing visually, so DOM visibility remains
 unknown and is not closed by server-side render evidence.
+The first native Object Detail bridge candidate did not intercept production
+links reliably: Object Detail still opened under a new trace and caused three
+15-second wrapper timeouts. The second and final bridge attempt must resolve
+the hidden button by both key and label. Target-side scroll reset must run after
+the destination DOM is ready because the earlier pre-render reset was later
+overridden by Streamlit scroll restoration.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background

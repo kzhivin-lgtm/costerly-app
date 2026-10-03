@@ -233,6 +233,7 @@ def _signal_ready(trace, screen: str, *, company_id: str | None = None) -> None:
         run_id=trace.run_id,
         metrics=trace.summary(),
         route=_browser_route(screen, company_id=company_id),
+        reset_scroll=bool(st.session_state.pop("_reset_scroll_on_ready", False)),
     )
     trace.event("server.run_complete")
 
@@ -693,6 +694,7 @@ def main() -> None:
         is_initial_upload_render = last_screen_for_scroll is None and screen == "upload"
         if not is_initial_upload_render:
             scroll_parent_to_top()
+            st.session_state._reset_scroll_on_ready = True
         st.session_state._last_screen_for_scroll = screen
 
     trace.set_screen(screen)

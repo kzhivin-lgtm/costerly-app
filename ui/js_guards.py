@@ -319,6 +319,7 @@ def signal_app_ready_to_embed(
     run_id: str | None = None,
     metrics: dict[str, object] | None = None,
     route: dict[str, str] | None = None,
+    reset_scroll: bool = False,
 ) -> None:
     """Tell the embedding Cloudflare wrapper that a real Streamlit screen rendered."""
     screen_json = json.dumps(screen)
@@ -326,6 +327,7 @@ def signal_app_ready_to_embed(
     run_id_json = json.dumps(run_id or "")
     metrics_json = json.dumps(metrics or {})
     route_json = json.dumps(route or {})
+    reset_scroll_json = json.dumps(bool(reset_scroll))
 
     components.html(
         """
@@ -341,6 +343,7 @@ def signal_app_ready_to_embed(
                 route: __ROUTE__,
                 sentAt: Date.now()
             };
+            const resetScrollOnReady = __RESET_SCROLL__;
 
             function currentScreen() {
                 const marker = window.parent.document.querySelector("[data-costerly-screen]");
@@ -744,14 +747,21 @@ def signal_app_ready_to_embed(
                         if (!transition) return;
                         const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
                         const objectId = String(control.dataset.objectId || "");
-                        const bridgeButton = bridgeKey
+                        let bridgeButton = bridgeKey
                             ? parentDocument.querySelector(`.st-key-${CSS.escape(bridgeKey)} button`)
-                            : objectId
-                                ? Array.from(parentDocument.querySelectorAll(
-                                    ".st-key-object_detail_navigation_bridges button"
-                                )).find((button) => String(button.textContent || "").trim()
-                                    === `Open Object Detail ${objectId}`)
-                                : null;
+                            : null;
+                        if (!bridgeButton && objectId) {
+                            bridgeButton = Array.from(parentDocument.querySelectorAll(
+                                ".st-key-object_detail_navigation_bridges button"
+                            )).find((button) => String(button.textContent || "").trim()
+                                === `Open Object Detail ${objectId}`) || null;
+                        }
+                        if (!bridgeButton && transition === "object_detail_to_objects") {
+                            bridgeButton = Array.from(parentDocument.querySelectorAll(
+                                ".st-key-object_detail_navigation_bridges button"
+                            )).find((button) => String(button.textContent || "").trim()
+                                === "Back to Objects") || null;
+                        }
                         if (bridgeButton) event.preventDefault();
                         parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
                         parentDocument.documentElement.scrollTop = 0;
@@ -826,6 +836,25 @@ def signal_app_ready_to_embed(
 
             function postReady() {
 
+                if (resetScrollOnReady) {
+                    const parentWindow = window.parent;
+                    const parentDocument = parentWindow.document;
+                    const reset = () => {
+                        parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
+                        parentDocument.documentElement.scrollTop = 0;
+                        parentDocument.body.scrollTop = 0;
+                        parentDocument.querySelectorAll(
+                            'section, main, div, [data-testid="stAppViewContainer"]'
+                        ).forEach((node) => {
+                            if (node.scrollTop) node.scrollTop = 0;
+                        });
+                    };
+                    reset();
+                    parentWindow.requestAnimationFrame(reset);
+                    parentWindow.setTimeout(reset, 50);
+                    parentWindow.setTimeout(reset, 250);
+                }
+
                 try {
                     window.parent.postMessage(message, "*");
                 } catch (error) {}
@@ -889,7 +918,8 @@ def signal_app_ready_to_embed(
         .replace("__TRACE_ID__", trace_id_json)
         .replace("__RUN_ID__", run_id_json)
         .replace("__METRICS__", metrics_json)
-        .replace("__ROUTE__", route_json),
+        .replace("__ROUTE__", route_json)
+        .replace("__RESET_SCROLL__", reset_scroll_json),
         height=0,
         width=0,
     )

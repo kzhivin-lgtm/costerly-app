@@ -425,6 +425,10 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "if (bridgeButton) event.preventDefault();" in observer_source
     assert "if (bridgeButton) bridgeButton.click();" in observer_source
     assert 'String(control.dataset.streamlitBridgeKey || "")' in observer_source
+    assert 'transition === "object_detail_to_objects"' in observer_source
+    assert '=== "Back to Objects"' in observer_source
+    assert "const resetScrollOnReady = __RESET_SCROLL__;" in ready_signal
+    assert 'parentWindow.setTimeout(reset, 250);' in ready_signal
     telemetry_source = component.split("function startupPhase", 1)[1].split(
         "function storeResumeCookie", 1
     )[0]
