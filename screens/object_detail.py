@@ -45,7 +45,7 @@ def render_object_detail_screen(company_id: str) -> None:
 
     _render_object_detail(data, context)
     _install_object_detail_runtime(context)
-    install_workflow_header_alignment_guard()
+    install_workflow_header_alignment_guard("h1.object-detail-title")
 
 
 def _current_object_detail_context() -> ObjectDetailContext | None:

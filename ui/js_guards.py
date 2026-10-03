@@ -6,8 +6,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
-def install_workflow_header_alignment_guard() -> None:
+def install_workflow_header_alignment_guard(
+    title_selector: str = "h1.workflow-title",
+) -> None:
     """Align the fixed workflow actions to the rendered workflow-title center."""
+    title_selector_json = json.dumps(title_selector)
     components.html(
         """
         <script>
@@ -15,6 +18,7 @@ def install_workflow_header_alignment_guard() -> None:
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
             const CLEANUP_KEY = "__costerlyWorkflowHeaderAlignmentCleanup";
+            const titleSelector = __TITLE_SELECTOR__;
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
@@ -42,7 +46,7 @@ def install_workflow_header_alignment_guard() -> None:
 
             function targets() {
                 return {
-                    title: activeElement("h1.workflow-title"),
+                    title: activeElement(titleSelector),
                     actions: activeElement(".st-key-costerly_header_controls"),
                 };
             }
@@ -112,7 +116,7 @@ def install_workflow_header_alignment_guard() -> None:
             };
         })();
         </script>
-        """,
+        """.replace("__TITLE_SELECTOR__", title_selector_json),
         height=0,
         width=0,
     )

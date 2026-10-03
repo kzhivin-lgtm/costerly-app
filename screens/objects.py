@@ -507,7 +507,9 @@ def render_objects_screen(company_id: str) -> None:
     )
     if st.session_state.get("final_approval_error"):
         st.error(f"Final Approval failed: {st.session_state.final_approval_error}")
-    install_workflow_header_alignment_guard()
+    install_workflow_header_alignment_guard(
+        ".objects-estimation-header h1.workflow-title"
+    )
     supabase_url, supabase_anon_key, supabase_access_token = _objects_price_input_config()
     _install_objects_price_input_runtime(
         estimate_id=estimate_id,

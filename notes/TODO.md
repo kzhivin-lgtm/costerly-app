@@ -99,6 +99,11 @@ title in the document and could align the fixed controls to stale Streamlit DOM
 from the departing screen. The repair must select only a connected, visible,
 non-stale title and clear the previous inline transform before aligning the
 current screen.
+Production acceptance confirmed that this repaired File Review and ordinary
+Objects navigation while preserving fast transitions and scroll-to-top. The
+remaining isolated defect occurs only after Object Detail to Objects. The next
+narrow repair scopes each workflow guard to its own screen-specific title so a
+departing Object Detail title cannot position the Objects controls.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background
