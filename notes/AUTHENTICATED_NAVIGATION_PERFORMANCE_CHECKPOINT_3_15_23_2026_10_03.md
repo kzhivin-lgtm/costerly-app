@@ -5,11 +5,12 @@
 This is an owner-accepted intermediate performance checkpoint, not completion
 of 3.15.23.
 
-Accepted production code: `a789638`.
+Accepted production code: `7c81a5a`.
 
 The owner confirmed that the current transitions are sufficiently fast to
-preserve as the new baseline. The remaining visible regression is that the
-authenticated navigation rail is missing on File Review.
+preserve as the new baseline, destinations open at the top, and the
+authenticated navigation rail survives transitions among File Review, Objects,
+and Object Detail.
 
 ## What changed
 
@@ -22,6 +23,9 @@ authenticated navigation rail is missing on File Review.
   position afterward.
 - The latest-estimate lookup is reused instead of being repeated during the
   same render path.
+- The workflow header alignment guard ignores stale Streamlit DOM, clears the
+  preceding screen's inline transform, and aligns against the destination
+  screen's explicit title selector.
 
 ## Production evidence and acceptance
 
@@ -32,33 +36,26 @@ timeouts. The target Object Detail screens themselves rendered in roughly 1.8
 to 3.5 seconds under a new trace, proving that the long visible wait was a
 transition-lifecycle defect rather than only slow screen computation.
 
-After deployment of `a789638`, the owner confirmed that transitions are now
-sufficiently fast. Exact post-fix p50 and p95 figures have not yet been
-collected, so no stronger timing claim is made.
+After deployment of `7c81a5a`, the owner confirmed that transitions are now
+sufficiently fast, scroll-to-top works, and the navigation rail no longer
+disappears, including after Object Detail to Objects. Exact post-fix p50 and
+p95 figures have not yet been collected, so no stronger timing claim is made.
 
 ## Verification
 
-- complete automated suite: 884 passed, 26 dependency warnings;
+- complete automated suite: 885 passed, 26 dependency warnings;
 - Python compilation: passed;
 - `git diff --check`: passed;
 - `app.costerly.ai`: HTTP 200 after deployment;
-- owner production acceptance: current transition speed accepted as the next
-  baseline.
+- owner production acceptance: transition speed, scroll-to-top, and workflow
+  navigation rail accepted as the next baseline.
 
-## Known regression and next repair
+## Remaining performance work
 
-File Review loses the authenticated navigation rail. Server telemetry had
-previously confirmed that `account_controls_render` executed, so the next fix
-must inspect the real rendered DOM and visibility state. It must not change the
-accepted transition lifecycle, routing, authentication, or scroll reset unless
-new evidence proves that one of them causes the missing rail.
-
-Acceptance for the next repair:
-
-1. File Review shows the correct authenticated navigation controls.
-2. File Review to Objects and Objects to File Review retain the accepted speed.
-3. Objects to Object Detail to Objects does not reintroduce a 15-second timeout.
-4. Each destination opens at the top.
+The workflow navigation regression is closed at this checkpoint. Work 3.15.23
+remains active only for measured initial-load and transition outliers. The next
+performance change must start from fresh production telemetry, preserve
+`7c81a5a`, and vary one confirmed cause at a time.
 
 ## Protected behavior
 

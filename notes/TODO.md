@@ -82,11 +82,11 @@ Production acceptance must also verify the authenticated navigation controls on
 File Review. Server telemetry confirms that `account_controls_render` ran, but
 the owner observed the control rail missing visually, so DOM visibility remains
 unknown and is not closed by server-side render evidence.
-Production checkpoint `a789638` is owner-accepted for the current transition
-speed only. The owner reports that transitions are now sufficiently fast to
-preserve as a baseline. This is not task completion: the File Review
-authenticated navigation rail is still missing and must be restored without
-regressing the accepted transition speed or scroll-to-top behavior.
+Production checkpoint `7c81a5a` is owner-accepted for the current transition
+speed, scroll-to-top behavior, and authenticated workflow navigation rail. The
+owner confirmed that the rail now survives File Review, Objects, and Object
+Detail navigation. This remains an intermediate performance checkpoint because
+post-fix p50/p95 and remaining initial-load outliers are not yet closed.
 The first native Object Detail bridge candidate did not intercept production
 links reliably: Object Detail still opened under a new trace and caused three
 15-second wrapper timeouts. The second and final bridge attempt must resolve
@@ -99,11 +99,10 @@ title in the document and could align the fixed controls to stale Streamlit DOM
 from the departing screen. The repair must select only a connected, visible,
 non-stale title and clear the previous inline transform before aligning the
 current screen.
-Production acceptance confirmed that this repaired File Review and ordinary
-Objects navigation while preserving fast transitions and scroll-to-top. The
-remaining isolated defect occurs only after Object Detail to Objects. The next
-narrow repair scopes each workflow guard to its own screen-specific title so a
-departing Object Detail title cannot position the Objects controls.
+Production acceptance confirmed that selecting a visible non-stale title and
+scoping each workflow guard to its screen-specific title repaired File Review,
+Objects, and Object Detail return navigation while preserving fast transitions
+and scroll-to-top.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background
