@@ -3156,6 +3156,7 @@ def test_last_estimate_always_reopens_through_file_review():
 
     assert 'set_screen("file_review")' in callback_source
     assert 'set_screen("objects")' not in callback_source
+    assert "load_latest_estimate_route" not in callback_source
 
 
 def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):

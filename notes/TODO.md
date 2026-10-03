@@ -66,6 +66,13 @@ lookups concurrently. Sign In still performs the required Terms gate. Do not
 add a polling fragment or a second full-page rerun merely to activate header
 controls. Treat the separate server-ready to browser-received delay as a
 distinct Streamlit transport/render investigation, not as proof of slow Python.
+The active transition pass also covers Upload, Profile, Admin, Partners, File
+Review, Objects, and Object Detail navigation. Acceptance requires every normal
+transition to complete within 3-4 seconds, no intermediate broken DOM, and the
+destination opening at the top. Current production evidence isolates three
+defects: Last Estimate repeats an already completed latest-estimate lookup,
+Object Detail transitions lack target-ready closure and masking, and first-load
+Partners/workflow routes retain transport or data-load outliers above 4 seconds.
 
 PROPOSED, P1 background Terms reacceptance: authenticated Fast Resume does not
 block initial rendering on the legal release lookup. Add a later background

@@ -1588,19 +1588,16 @@ def _open_projects() -> None:
     set_screen("projects")
 
 
-def _open_last_estimate(company_id: str) -> None:
+def _open_last_estimate(latest_route: dict[str, str] | None) -> None:
     """Restore the newest durable estimate at its File Review entry point."""
-    from db.supabase_client import get_supabase_client
     from state.session import set_screen
-    from use_cases.latest_estimate import load_latest_estimate_route
 
-    route = load_latest_estimate_route(get_supabase_client(), company_id)
-    if route is None:
+    if latest_route is None:
         st.session_state.header_last_estimate_error = "No previous estimate is available."
         return
-    st.session_state.current_run_id = route["run_id"]
-    st.session_state.current_estimate_id = route["estimate_id"]
-    st.session_state.current_estimate_run_id = route["run_id"]
+    st.session_state.current_run_id = latest_route["run_id"]
+    st.session_state.current_estimate_id = latest_route["estimate_id"]
+    st.session_state.current_estimate_run_id = latest_route["run_id"]
     st.session_state.current_object_id = None
     # File Review is the one consistent entry point. Its Continue action starts
     # unfinished work or reopens an already durable Objects estimate.
@@ -1620,7 +1617,7 @@ def render_account_control(
         on_sign_out=sign_out,
         on_admin=_open_platform_admin,
         on_new_estimate=_open_new_estimate,
-        on_last_estimate=lambda: _open_last_estimate(str(access.company_id)),
+        on_last_estimate=lambda: _open_last_estimate(latest_route),
         on_projects=_open_projects,
         show_admin=platform_access is not None,
         show_projects=active_screen != "projects",

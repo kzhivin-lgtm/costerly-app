@@ -491,6 +491,15 @@ def signal_app_ready_to_embed(
                 if (transition === "file_review_to_objects") {
                     return ".objects-estimation-header";
                 }
+                if (
+                    transition === "object_detail_to_objects" ||
+                    transition === "object_detail_approve_to_objects"
+                ) {
+                    return ".objects-estimation-header";
+                }
+                if (transition === "objects_to_object_detail") {
+                    return ".object-detail-shell";
+                }
                 if (transition === "upload_to_profile") return ".company-profile-active";
                 if (transition === "profile_to_upload") return ".upload-screen-active";
                 if (transition === "upload_to_admin" || transition === "profile_to_admin") {
@@ -544,7 +553,10 @@ def signal_app_ready_to_embed(
                     transition === "last_estimate" ||
                     transition === "processing_to_file_review" ||
                     transition === "file_review_to_objects" ||
-                    transition === "objects_to_file_review";
+                    transition === "objects_to_file_review" ||
+                    transition === "objects_to_object_detail" ||
+                    transition === "object_detail_to_objects" ||
+                    transition === "object_detail_approve_to_objects";
                 const styledTargetReady = () => {
                     const headerControls = parentDocument.querySelector(
                         ".st-key-costerly_header_controls"
@@ -582,6 +594,19 @@ def signal_app_ready_to_embed(
                         const header = parentDocument.querySelector(".objects-estimation-header");
                         const table = parentDocument.querySelector(".objects-pricing-table");
                         return Boolean(header && table && controlsReady());
+                    }
+                    if (
+                        transition === "object_detail_to_objects" ||
+                        transition === "object_detail_approve_to_objects"
+                    ) {
+                        const header = parentDocument.querySelector(".objects-estimation-header");
+                        const table = parentDocument.querySelector(".objects-pricing-table");
+                        return Boolean(header && table && controlsReady());
+                    }
+                    if (transition === "objects_to_object_detail") {
+                        const shell = parentDocument.querySelector(".object-detail-shell");
+                        const title = parentDocument.querySelector(".object-detail-title");
+                        return Boolean(shell && title && controlsReady());
                     }
                     if (
                         transition === "upload_to_profile" ||
@@ -717,6 +742,9 @@ def signal_app_ready_to_embed(
                         if (!control) return;
                         const transition = transitionName(control);
                         if (!transition) return;
+                        parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" });
+                        parentDocument.documentElement.scrollTop = 0;
+                        parentDocument.body.scrollTop = 0;
                         const transitionId = crypto.randomUUID();
                         window.top.postMessage({
                             type: "costerly:transition-click",

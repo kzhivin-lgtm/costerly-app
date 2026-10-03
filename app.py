@@ -477,22 +477,39 @@ def main() -> None:
             st.session_state.get("_platform_access_user_id") == platform_user_id
         )
         latest_route = None
+        latest_route_cache_key = f"_latest_estimate_route:{access.company_id}"
+        current_run_id = st.session_state.get("current_run_id")
+        current_estimate_id = st.session_state.get("current_estimate_id")
+        if current_run_id and current_estimate_id:
+            latest_route = {
+                "run_id": str(current_run_id),
+                "estimate_id": str(current_estimate_id),
+            }
+            st.session_state[latest_route_cache_key] = latest_route
+        elif latest_route_cache_key in st.session_state:
+            latest_route = st.session_state.get(latest_route_cache_key)
         if platform_cached:
             platform_access = st.session_state.get("_platform_access")
-            try:
-                latest_route = load_latest_estimate_route(
-                    get_supabase_client(), str(access.company_id)
-                )
-            except Exception:
-                latest_route = None
+            if latest_route_cache_key not in st.session_state:
+                try:
+                    latest_route = load_latest_estimate_route(
+                        get_supabase_client(), str(access.company_id)
+                    )
+                except Exception:
+                    latest_route = None
+                st.session_state[latest_route_cache_key] = latest_route
         else:
             client = get_supabase_client()
             with ThreadPoolExecutor(max_workers=2) as executor:
                 platform_future = executor.submit(
                     load_platform_access, client, platform_user_id
                 )
-                latest_future = executor.submit(
-                    load_latest_estimate_route, client, str(access.company_id)
+                latest_future = (
+                    executor.submit(
+                        load_latest_estimate_route, client, str(access.company_id)
+                    )
+                    if latest_route_cache_key not in st.session_state
+                    else None
                 )
             try:
                 platform_access = platform_future.result()
@@ -506,10 +523,12 @@ def main() -> None:
             else:
                 st.session_state._platform_access_user_id = platform_user_id
                 st.session_state._platform_access = platform_access
-            try:
-                latest_route = latest_future.result()
-            except Exception:
-                latest_route = None
+            if latest_future is not None:
+                try:
+                    latest_route = latest_future.result()
+                except Exception:
+                    latest_route = None
+                st.session_state[latest_route_cache_key] = latest_route
         if requested_screen == "admin":
             if platform_access is None:
                 st.query_params.clear()

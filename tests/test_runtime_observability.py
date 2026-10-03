@@ -279,6 +279,11 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert '"processing_to_file_review"' in wrapper
     assert '"file_review_to_objects"' in wrapper
     assert '"objects_to_file_review"' in wrapper
+    assert '"objects_to_object_detail"' in wrapper
+    assert '"object_detail_to_objects"' in wrapper
+    assert '"object_detail_approve_to_objects"' in wrapper
+    assert '"upload_to_projects"' in wrapper
+    assert '"projects_to_upload"' in wrapper
     assert '"back_to_upload"' in wrapper
     assert '"last_estimate"' in wrapper
     masked_transitions = wrapper.split("const maskedInternalTransitions = new Set([", 1)[1].split("]);", 1)[0]
@@ -410,6 +415,9 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert 'return ".file-review-summary-card-marker"' in ready_signal
     assert 'cardStyle.borderTopLeftRadius === "16px"' in ready_signal
     assert 'const table = parentDocument.querySelector(".objects-pricing-table")' in ready_signal
+    assert 'return ".object-detail-shell"' in ready_signal
+    assert 'transition === "object_detail_to_objects"' in ready_signal
+    assert 'parentWindow.scrollTo({ top: 0, left: 0, behavior: "auto" })' in ready_signal
     assert 'headerControls.querySelectorAll("button").length >= 2' in ready_signal
     observer_source = ready_signal.split("function installTransitionObserver()", 1)[1].split(
         "function postReady()", 1
