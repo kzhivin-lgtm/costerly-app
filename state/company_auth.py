@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import html
@@ -1600,12 +1601,19 @@ def _open_last_estimate(company_id: str) -> None:
     set_screen("file_review")
 
 
-def render_account_control(access: CompanyAccess, *, platform_access=None) -> None:
+def render_account_control(access: CompanyAccess, *, platform_access=None, trace=None) -> None:
     from db.supabase_client import get_supabase_client
     from use_cases.latest_estimate import load_latest_estimate_route
 
     try:
-        latest_route = load_latest_estimate_route(get_supabase_client(), str(access.company_id))
+        span = (
+            trace.span("server.header.latest_estimate_lookup")
+            if trace is not None else nullcontext()
+        )
+        with span:
+            latest_route = load_latest_estimate_route(
+                get_supabase_client(), str(access.company_id)
+            )
     except Exception:
         latest_route = None
     active_screen = str(st.query_params.get("screen") or st.session_state.get("screen") or "upload")

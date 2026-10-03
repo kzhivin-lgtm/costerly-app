@@ -462,7 +462,7 @@ def test_updated_terms_gate_precedes_application_controls():
     app_source = (ROOT / "app.py").read_text()
     gate_position = app_source.index("needs_terms = terms_acceptance_required(")
     controls_position = app_source.index(
-        "render_account_control(access, platform_access=platform_access)"
+        "render_account_control(access, platform_access=platform_access, trace=trace)"
     )
     assert gate_position < controls_position
 

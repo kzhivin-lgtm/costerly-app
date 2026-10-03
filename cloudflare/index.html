@@ -583,6 +583,13 @@
               server_build_version: serverBuildVersion,
               ...(event.data.metrics || {}),
             };
+            const serverElapsedMs = Number(metadata.server_elapsed_ms);
+            if (Number.isFinite(serverElapsedMs)) {
+              metadata.browser_minus_server_elapsed_ms = Math.max(
+                0,
+                Math.round((performance.now() - serverElapsedMs) * 10) / 10,
+              );
+            }
             pendingTransitions.forEach((item) => {
               item.pythonRuns += 1;
             });

@@ -1,6 +1,6 @@
 # TODO
 
-PROPOSED, P0 authenticated full-reload optimization: production telemetry shows
+ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry shows
 that a hard reload frequently takes 6-8 seconds and can reach the wrapper's
 8-second fallback. Preserve the accepted Fast Resume and `app-ready` readiness
 contract. First add spans for legal acceptance, platform access, product-session
