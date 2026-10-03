@@ -56,7 +56,7 @@ Project Summary / Download XLS control is the reserved UI entry point. Define
 aggregation, duplicate-material merging, units, quantities, source prices, and
 supplier fields before implementation.
 
-ACTIVE, P0, 3.15.24 canonical object quantity and durable Object Detail route:
+ACTIVE, IMPLEMENTATION CHECKPOINT `5f6360f`, P0, 3.15.24 canonical object quantity and durable Object Detail route:
 make item quantity editable on File Review, Objects, and Object Detail. All
 three screens share `rfq_detected_objects.quantity` as the canonical record;
 the estimate row is its synchronously updated workflow read model, avoiding an

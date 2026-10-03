@@ -284,13 +284,20 @@ Rule
 The Estimation Agent proposes line items and quantities. It does not own final arithmetic totals; deterministic engine code owns multiplication, VAT, totals, delivery, installation, and proposal math.
 
 Object Detail edit ownership
-The browser provides immediate feedback only for the active editable row. It
-does not own section totals, pricing-policy rows, VAT, or final self cost.
-Enter or blur persists the edited field, then the deterministic server engine
-recalculates the full object from stored estimate lines. A clean Approve uses
-the internal Streamlit navigation bridge. If the user clicks Approve with
-unsaved fields, the snapshot route persists those edits atomically before
-approval and remains the correctness-first fallback.
+The browser provides immediate row and section feedback but does not own
+persisted pricing-policy rows, VAT, or final self cost. Object Detail line and
+item-quantity edits remain a page-local draft. Approve stores the draft through
+the authenticated `save_rfq_object_detail_draft` RPC, then invokes one native
+Streamlit callback. The deterministic server engine applies the snapshot,
+recalculates the full object, writes totals and approval together, and deletes
+the draft only after success. Back to Objects requires confirmation before a
+changed draft is discarded. The rejected `streamlit:setComponentValue` draft
+component must not be restored because it added an intermediate rerun.
+
+Objects item quantity is the exception to the Object Detail draft boundary. It
+saves immediately through authenticated `save_rfq_object_quantity`, updates
+`rfq_detected_objects.quantity` and the current estimate mirror together, resets
+approval, and updates the current DOM without a Streamlit rerun.
 
 Estimation Agent Contract v1
 The Estimation Agent runs per object. It may return material composition, material quantities, labor work types, and labor hours.

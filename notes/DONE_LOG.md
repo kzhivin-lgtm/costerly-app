@@ -1,5 +1,14 @@
 # Done Log
 
+3.15.24 implementation checkpoint `5f6360f`: synchronized canonical object
+quantity across File Review, Objects, and Object Detail; replaced two rejected
+component-rerun bridges with authenticated Supabase quantity and draft RPCs;
+applied and structurally verified the additive production migration; preserved
+Object Detail drafts until Approve; fixed the Materials-zeroing root cause where
+ordinary rows rendered a truthy policy-percent dash; and combined changed-draft
+totals with approval persistence. 897 tests passed. Final authenticated
+production interaction acceptance remains pending, сохранена 03.10
+
 3.15.18 Machinery session-draft Save accepted in production at `1e1edaa`: one
 bottom Save persists the session draft, selected Yes/No states are visible, the
 redundant removal-confirmation checkbox is gone, and the database update was
