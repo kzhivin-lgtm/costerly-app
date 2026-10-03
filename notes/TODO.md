@@ -32,6 +32,15 @@ Production acceptance and the 861-test suite passed at `8b18fc3`. Full record:
 
 Current owner-approved execution order:
 
+ACTIVE, 3.15.19 File Review editable project metadata: render Project name,
+Partner, and Client as compact inputs using the accepted 52 px Overhead input
+geometry. Persist edits only to the current RFQ run, keep drafts scoped by
+run, and save the final visible values before Continue to Objects. Do not
+create permanent Partner, Client, or Project catalog entities before Final
+Approval. Local implementation and the 868-test suite pass. Remaining
+acceptance: production deployment and owner verification of editing,
+persistence, and unchanged File Review to Objects transitions.
+
 COMPLETED AND OWNER-ACCEPTED, 3.15.18 Machinery session draft restoration:
 restore the previously
 accepted `722b6c6` interaction contract on the current performance baseline.

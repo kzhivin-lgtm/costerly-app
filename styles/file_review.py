@@ -35,6 +35,74 @@ def apply_file_review_css() -> None:
             margin: 0 !important;
         }
 
+        .file-review-title-card-shell-marker,
+        .file-review-summary-card-marker {
+            display: none !important;
+        }
+
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-title-card-shell-marker) {
+            gap: var(--post-upload-heading-gap) !important;
+        }
+
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-title-card-shell-marker)
+            > div[data-testid="stElementContainer"]:has(.file-review-title-card-shell-marker),
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-summary-card-marker)
+            > div[data-testid="stElementContainer"]:has(.file-review-summary-card-marker) {
+            display: none !important;
+        }
+
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-summary-card-marker) {
+            width: 100%;
+            background: var(--color-surface);
+            border: 1px solid rgba(42, 31, 44, 0.14);
+            border-radius: 16px;
+            box-shadow: 0 14px 28px rgba(0, 0, 0, 0.055);
+            padding: 32px 34px 26px 34px;
+            box-sizing: border-box;
+            color: var(--color-text-strong);
+            gap: 14px !important;
+        }
+
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-summary-card-marker)
+            [data-testid="stTextInput"] {
+            margin: 0;
+        }
+
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-summary-card-marker)
+            [data-testid="stTextInputRootElement"],
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-summary-card-marker)
+            [data-testid="stTextInput"] div[data-baseweb="input"] {
+            min-height: 52px !important;
+            border: 1px solid #CEC5D1 !important;
+            border-radius: var(--input-radius) !important;
+            background: var(--input-bg) !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }
+
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-summary-card-marker)
+            [data-testid="stTextInputRootElement"]:focus-within,
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-summary-card-marker)
+            [data-testid="stTextInput"] div[data-baseweb="input"]:focus-within {
+            border-color: var(--input-focus-border) !important;
+            box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
+        }
+
+        :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-summary-card-marker)
+            [data-testid="stTextInput"] input {
+            min-height: 52px !important;
+            color: var(--input-text) !important;
+            background: transparent !important;
+            border: 0 !important;
+            outline: 0 !important;
+            font-family: var(--font-sans) !important;
+            font-size: 16px !important;
+            line-height: 1.2 !important;
+            font-weight: 600 !important;
+            padding: 0 16px !important;
+            box-shadow: none !important;
+        }
+
         .file-review-title-card-shell {
             display: flex;
             flex-direction: column;

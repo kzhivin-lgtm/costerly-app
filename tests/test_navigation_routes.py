@@ -251,6 +251,68 @@ def test_file_review_ignores_an_empty_transient_name_commit(monkeypatch):
     assert st.session_state.file_review_object_edits["object-1"]["name"] == "Curtain track system"
 
 
+def test_file_review_metadata_commit_updates_cache_and_preserves_empty_transient_value(monkeypatch):
+    st.session_state.clear()
+    run_id = "run-1"
+    widget_key = "file_review_run_metadata.partner"
+    st.session_state.file_review_run_metadata = {"partner": "Bureau Yolochka"}
+    st.session_state.file_review_data_cache = {
+        run_id: {"run": {"partner": "Bureau Yolochka"}}
+    }
+    st.session_state[widget_key] = "  Studio Oak  "
+    saved = []
+    monkeypatch.setattr(
+        file_review,
+        "save_file_review_run_metadata",
+        lambda **kwargs: saved.append(kwargs) or {"partner": "Studio Oak"},
+    )
+
+    file_review._commit_run_metadata(run_id, "partner", widget_key)
+
+    assert saved == [{"run_id": run_id, "values": {"partner": "Studio Oak"}}]
+    assert st.session_state.file_review_run_metadata["partner"] == "Studio Oak"
+    assert st.session_state.file_review_data_cache[run_id]["run"]["partner"] == "Studio Oak"
+
+    st.session_state[widget_key] = ""
+    file_review._commit_run_metadata(run_id, "partner", widget_key)
+    assert len(saved) == 1
+    assert st.session_state[widget_key] == "Studio Oak"
+
+
+def test_file_review_renders_all_three_editable_project_fields():
+    source = Path("screens/file_review.py").read_text()
+
+    assert '"project_name": "Project name"' in source
+    assert '"partner": "Partner"' in source
+    assert '"client": "Client"' in source
+    assert "save_file_review_run_metadata" in source
+    assert "continue_metadata_save_ms" in source
+
+
+def test_file_review_metadata_state_does_not_leak_between_runs():
+    st.session_state.clear()
+    st.session_state.file_review_run_metadata_run_id = "run-old"
+    st.session_state["file_review_run_metadata.project_name"] = "Old project"
+    st.session_state["file_review_run_metadata.partner"] = "Old partner"
+    st.session_state["file_review_run_metadata.client"] = "Old client"
+
+    file_review._sync_run_metadata_state(
+        "run-new",
+        {
+            "project_name": "New project",
+            "partner": "New partner",
+            "client": "New client",
+        },
+    )
+
+    assert st.session_state.file_review_run_metadata == {
+        "project_name": "New project",
+        "partner": "New partner",
+        "client": "New client",
+    }
+    assert "file_review_run_metadata.project_name" not in st.session_state
+
+
 def test_file_review_collects_completed_naming_without_a_timed_fragment():
     st.session_state.clear()
     future = Future()

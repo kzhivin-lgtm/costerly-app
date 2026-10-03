@@ -23,7 +23,15 @@ from use_cases.latest_estimate import load_latest_estimate_route_for_run
 from use_cases.rfq_processing import (
     load_file_review_data,
     save_file_review_object_name,
+    save_file_review_run_metadata,
 )
+
+
+_RUN_METADATA_LABELS = {
+    "project_name": "Project name",
+    "partner": "Partner",
+    "client": "Client",
+}
 
 
 def _escape(value: object) -> str:
@@ -86,6 +94,63 @@ def _ensure_object_edit(object_id: str, item: dict[str, object]) -> dict[str, ob
     if object_id not in edits:
         edits[object_id] = _default_object_edit(item)
     return edits[object_id]
+
+
+def _sync_run_metadata_state(run_id: str, run: dict[str, object]) -> None:
+    """Keep editable project metadata scoped to one RFQ run."""
+    if st.session_state.get("file_review_run_metadata_run_id") == run_id:
+        return
+    for field in _RUN_METADATA_LABELS:
+        st.session_state.pop(f"file_review_run_metadata.{field}", None)
+    st.session_state.file_review_run_metadata_run_id = run_id
+    st.session_state.file_review_run_metadata = {
+        field: str(run.get(field) or "unknown").strip() or "unknown"
+        for field in _RUN_METADATA_LABELS
+    }
+    st.session_state.file_review_metadata_save_error = None
+
+
+def _commit_run_metadata(run_id: str, field: str, widget_key: str) -> None:
+    """Persist one Project, Partner, or Client edit on Enter or blur."""
+    edits = st.session_state.setdefault("file_review_run_metadata", {})
+    previous_value = str(edits.get(field) or "unknown")
+    submitted_value = str(st.session_state.get(widget_key) or "").strip()
+    if not submitted_value:
+        st.session_state[widget_key] = previous_value
+        st.session_state.file_review_metadata_save_error = None
+        st.session_state.screen = "file_review"
+        return
+
+    try:
+        saved = save_file_review_run_metadata(
+            run_id=run_id,
+            values={field: submitted_value},
+        )
+    except Exception as exc:
+        st.session_state[widget_key] = previous_value
+        st.session_state.file_review_metadata_save_error = str(exc)
+    else:
+        saved_value = saved[field]
+        edits[field] = saved_value
+        cache = st.session_state.setdefault("file_review_data_cache", {})
+        data = cache.get(run_id)
+        if isinstance(data, dict) and isinstance(data.get("run"), dict):
+            data["run"][field] = saved_value
+        st.session_state.file_review_metadata_save_error = None
+    st.session_state.screen = "file_review"
+
+
+def _run_metadata_snapshot() -> dict[str, str]:
+    """Return the current File Review metadata draft for Continue."""
+    edits = st.session_state.get("file_review_run_metadata") or {}
+    return {
+        field: str(
+            st.session_state.get(f"file_review_run_metadata.{field}")
+            or edits.get(field)
+            or ""
+        ).strip()
+        for field in _RUN_METADATA_LABELS
+    }
 
 
 def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
@@ -155,25 +220,18 @@ def _timing_html(timings: dict[str, object] | None) -> str:
     )
 
 
-def _build_review_card_html(
+def _build_review_card_details_html(
     run: dict[str, object],
     timings: dict[str, object] | None = None,
 ) -> str:
-    """Build the top File Review summary card HTML."""
+    """Build the non-editable remainder of the File Review summary card."""
     missing_html = _list_html(
         run.get("missing_information", []),
         class_name="file-review-missing-list",
     )
 
-    card_html = (
-        '<div class="file-review-card">'
+    return (
         '<div class="file-review-summary-grid">'
-        '<div class="file-review-label">Project name:</div>'
-        f'<div class="file-review-value">{_escape(run.get("project_name"))}</div>'
-        '<div class="file-review-label">Partner:</div>'
-        f'<div class="file-review-value">{_escape(run.get("partner"))}</div>'
-        '<div class="file-review-label">Client:</div>'
-        f'<div class="file-review-value">{_escape(run.get("client"))}</div>'
         '<div class="file-review-label">File quality:</div>'
         f'<div class="file-review-value">{_escape(run.get("file_quality"))}</div>'
         '</div>'
@@ -190,10 +248,48 @@ def _build_review_card_html(
         f'{_metadata_rows_html(run)}'
         '</div>'
         '</details>'
-        '</div>'
     )
 
-    return card_html
+
+def _render_review_card(
+    *,
+    run_id: str,
+    run: dict[str, object],
+    timings: dict[str, object] | None,
+) -> None:
+    """Render editable project metadata inside the established summary card."""
+    with st.container(border=True):
+        st.markdown(
+            '<span class="file-review-summary-card-marker" aria-hidden="true"></span>',
+            unsafe_allow_html=True,
+        )
+        for field, label in _RUN_METADATA_LABELS.items():
+            label_col, input_col = st.columns(
+                [1.8, 6.2], gap="small", vertical_alignment="center"
+            )
+            label_col.markdown(
+                f'<div class="file-review-label">{_escape(label)}:</div>',
+                unsafe_allow_html=True,
+            )
+            widget_key = f"file_review_run_metadata.{field}"
+            canonical_value = str(
+                st.session_state.file_review_run_metadata.get(field) or "unknown"
+            )
+            if widget_key not in st.session_state:
+                st.session_state[widget_key] = canonical_value
+            input_col.text_input(
+                label,
+                key=widget_key,
+                max_chars=240,
+                on_change=_commit_run_metadata,
+                args=(run_id, field, widget_key),
+                label_visibility="collapsed",
+            )
+
+        st.markdown(
+            _build_review_card_details_html(run, timings),
+            unsafe_allow_html=True,
+        )
 
 
 def _render_object_card(item: dict[str, object]) -> None:
@@ -508,18 +604,21 @@ def render_file_review_screen(company_id: str) -> None:
         _render_load_error(exc)
         return
 
-    st.markdown(
-        (
-            '<div class="file-review-title-card-shell">'
-            + post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID)
-            + _build_review_card_html(
-                data["run"],
-                st.session_state.get("current_agent_timings") or data.get("timings"),
-            )
-            + "</div>"
-        ),
-        unsafe_allow_html=True,
-    )
+    _sync_run_metadata_state(run_id, data["run"])
+    with st.container():
+        st.markdown(
+            '<span class="file-review-title-card-shell-marker" aria-hidden="true"></span>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID),
+            unsafe_allow_html=True,
+        )
+        _render_review_card(
+            run_id=run_id,
+            run=data["run"],
+            timings=st.session_state.get("current_agent_timings") or data.get("timings"),
+        )
     install_workflow_header_alignment_guard()
 
     _sync_object_edit_state(run_id, data["objects"])
@@ -527,6 +626,9 @@ def render_file_review_screen(company_id: str) -> None:
     name_save_error = st.session_state.get("file_review_name_save_error")
     if name_save_error:
         st.error(f"Could not save object name: {name_save_error}")
+    metadata_save_error = st.session_state.get("file_review_metadata_save_error")
+    if metadata_save_error:
+        st.error(f"Could not save project details: {metadata_save_error}")
 
     st.markdown(
         (
@@ -700,6 +802,24 @@ def _continue_to_objects_estimation(
         if action_error_code:
             payload["error_code"] = action_error_code
         st.session_state._runtime_completed_action = payload
+
+    phase_started_at = time.perf_counter()
+    try:
+        saved_metadata = save_file_review_run_metadata(
+            run_id=run_id,
+            values=_run_metadata_snapshot(),
+            company_id=company_id,
+        )
+    except Exception as exc:
+        st.session_state.file_review_metadata_save_error = str(exc)
+        action_status = "error"
+        action_error_code = "metadata_save_failed"
+        record_action()
+        return
+    st.session_state.file_review_run_metadata.update(saved_metadata)
+    phase_durations_ms["continue_metadata_save_ms"] = (
+        time.perf_counter() - phase_started_at
+    ) * 1000
 
     phase_started_at = time.perf_counter()
     object_edits = _object_edits_snapshot()
