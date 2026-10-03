@@ -280,6 +280,12 @@ def apply_objects_css() -> None:
             color: var(--color-accent);
         }
 
+        .objects-pricing-download-button--disabled,
+        .objects-pricing-download-button--disabled:hover {
+            pointer-events: none;
+            color: rgba(42, 31, 44, 0.40);
+        }
+
         .objects-pricing-download-pill {
             display: inline-flex;
             align-items: center;
@@ -294,6 +300,29 @@ def apply_objects_css() -> None:
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
+        }
+
+        .objects-pricing-downloads {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            padding: 26px 0;
+            border-top: 1px solid rgba(42, 31, 44, 0.14);
+        }
+
+        .objects-pricing-download-block {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+        }
+
+        .objects-pricing-download-title {
+            font-size: 20px;
+            line-height: 1.2;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #17131C;
         }
 
         .objects-pricing-summary {
@@ -339,6 +368,7 @@ def apply_objects_css() -> None:
             }
 
             .objects-pricing-table,
+            .objects-pricing-downloads,
             .objects-pricing-summary,
             .objects-pricing-actions {
                 min-width: 900px;

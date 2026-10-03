@@ -140,6 +140,24 @@ def test_objects_show_project_pricing_after_every_object_finishes(monkeypatch):
     assert "Project Summary" in markup
 
 
+def test_approved_objects_show_pdf_and_future_xls_download_row():
+    markup = objects_pricing.pricing_table_html(
+        rows=[],
+        project_costs=[],
+        summary={"project_price": 100, "vat": 18, "total": 118},
+        estimate_id="estimate-1",
+        run_id="run-1",
+        proposal_pdf_url="https://signed.example/proposal.pdf",
+    )
+
+    assert "Client Proposal" in markup
+    assert "Download PDF" in markup
+    assert "Project Summary" in markup
+    assert "Download XLS" in markup
+    assert 'href="https://signed.example/proposal.pdf"' in markup
+    assert 'objects-pricing-download-button--disabled' in markup
+
+
 def test_completed_estimation_future_clears_stale_process_progress():
     st.session_state.clear()
     future = Future()

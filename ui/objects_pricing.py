@@ -292,9 +292,6 @@ def _summary_html(summary: dict[str, object]) -> str:
         '<div class="objects-pricing-summary">'
         '<div>'
         '<div class="objects-pricing-summary-title">Project Summary</div>'
-        '<button class="objects-pricing-download-button" type="button">'
-        '<span class="objects-pricing-download-pill">Download XLS</span>'
-        '</button>'
         '</div>'
         '<div>'
         '<div class="objects-pricing-summary-title">Project Price</div>'
@@ -307,6 +304,30 @@ def _summary_html(summary: dict[str, object]) -> str:
         '<div>'
         '<div class="objects-pricing-summary-title">Project Total</div>'
         f'<div class="objects-pricing-summary-value objects-pricing-summary-value--total" data-summary-field="total">{_money(summary.get("total"))}</div>'
+        '</div>'
+        '</div>'
+    )
+
+
+def _downloads_html(proposal_pdf_url: str | None) -> str:
+    if not proposal_pdf_url:
+        return ""
+    safe_url = html.escape(proposal_pdf_url, quote=True)
+    return (
+        '<div class="objects-pricing-downloads">'
+        '<div class="objects-pricing-download-block">'
+        '<div class="objects-pricing-download-title">Client Proposal</div>'
+        f'<a class="objects-pricing-download-button" href="{safe_url}" target="_blank" '
+        'rel="noopener noreferrer" download>'
+        '<span class="objects-pricing-download-pill">Download PDF</span>'
+        '</a>'
+        '</div>'
+        '<div class="objects-pricing-download-block">'
+        '<div class="objects-pricing-download-title">Project Summary</div>'
+        '<span class="objects-pricing-download-button objects-pricing-download-button--disabled" '
+        'aria-disabled="true">'
+        '<span class="objects-pricing-download-pill">Download XLS</span>'
+        '</span>'
         '</div>'
         '</div>'
     )
@@ -354,6 +375,7 @@ def _pricing_table_html(
     summary: dict[str, object],
     estimate_id: str | None,
     run_id: str | None,
+    proposal_pdf_url: str | None = None,
 ) -> str:
     """Build the complete Objects Estimation pricing table HTML."""
     object_rows = _rows_html(
@@ -376,6 +398,7 @@ def _pricing_table_html(
         '<div class="objects-pricing-table">'
         f'{object_rows}'
         f'{project_cost_rows}'
+        f'{_downloads_html(proposal_pdf_url)}'
         f'{_summary_html(summary)}'
         '</div>'
         '</div>'

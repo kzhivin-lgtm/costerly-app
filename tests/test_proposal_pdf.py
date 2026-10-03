@@ -1,6 +1,6 @@
 import pymupdf
 
-from use_cases.proposal_pdf import _contact_lines, build_proposal_pdf
+from use_cases.proposal_pdf import _contact_lines, build_proposal_pdf, proposal_signed_url
 
 
 def _snapshot():
@@ -60,3 +60,23 @@ def test_proposal_supports_non_latin_project_names():
         text = "\n".join(page.get_text() for page in document)
     assert "Ресторан Олень" in text
     assert "Бюро Ёлочка" in text
+
+
+def test_signed_proposal_url_accepts_supabase_response_spelling():
+    class Bucket:
+        def create_signed_url(self, path, expires_in):
+            assert path == "company/project/version.pdf"
+            assert expires_in == 3600
+            return {"signedURL": "https://signed.example/proposal.pdf"}
+
+    class Storage:
+        def from_(self, bucket):
+            assert bucket == "project-proposals"
+            return Bucket()
+
+    class Client:
+        storage = Storage()
+
+    assert proposal_signed_url(Client(), "company/project/version.pdf") == (
+        "https://signed.example/proposal.pdf"
+    )

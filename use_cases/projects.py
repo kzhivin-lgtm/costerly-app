@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from db.supabase_client import get_supabase_client
-from use_cases.proposal_pdf import PROPOSAL_BUCKET
+from use_cases.proposal_pdf import proposal_signed_url
 
 
 def load_projects_workspace(company_id: str) -> dict[str, list[dict[str, Any]]]:
@@ -63,8 +63,7 @@ def load_projects_workspace(company_id: str) -> dict[str, list[dict[str, Any]]]:
         if not object_path:
             continue
         try:
-            signed = client.storage.from_(PROPOSAL_BUCKET).create_signed_url(object_path, 3600)
-            version["proposal_pdf_url"] = signed.get("signedURL") or signed.get("signedUrl")
+            version["proposal_pdf_url"] = proposal_signed_url(client, object_path)
         except Exception:
             version["proposal_pdf_url"] = None
     return {

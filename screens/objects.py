@@ -19,6 +19,8 @@ from ui.screen_transition import (
 from use_cases.estimation import load_objects_estimation_data
 from use_cases.final_approval import final_approval
 from use_cases.estimation_progress import clear_estimate_progress, get_estimate_progress
+from use_cases.proposal_pdf import load_estimate_proposal_url
+from db.supabase_client import get_supabase_client
 from state.company_auth import company_auth_enabled
 
 
@@ -279,13 +281,18 @@ def _render_pricing_table(
             summary=data["summary"],
             estimate_id=estimate_id,
             run_id=run_id,
+            proposal_pdf_url=(
+                st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
+                if estimate_id
+                else None
+            ),
         ),
         unsafe_allow_html=True,
     )
 
 
 def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) -> None:
-    """Freeze the estimate and open its durable Project version."""
+    """Freeze the estimate and keep its proposal available on Objects."""
     try:
         result = final_approval(
             company_id=company_id,
@@ -296,9 +303,26 @@ def _complete_final_approval(*, company_id: str, run_id: str, estimate_id: str) 
         st.session_state.final_approval_error = str(exc)
         return
     st.session_state.final_approval_error = None
-    st.session_state.projects_partner_id = str(result["organization_id"])
-    st.session_state.projects_project_id = str(result["project_id"])
-    st.session_state.screen = "projects"
+    st.session_state.setdefault("proposal_pdf_urls_by_estimate", {})[estimate_id] = result.get(
+        "proposal_pdf_url"
+    )
+
+
+def _load_existing_proposal_url(*, company_id: str, estimate_id: str | None) -> None:
+    if not estimate_id:
+        return
+    cache = st.session_state.setdefault("proposal_pdf_urls_by_estimate", {})
+    estimate_key = str(estimate_id)
+    if estimate_key in cache:
+        return
+    try:
+        cache[estimate_key] = load_estimate_proposal_url(
+            client=get_supabase_client(),
+            company_id=company_id,
+            estimate_id=estimate_key,
+        )
+    except Exception:
+        cache[estimate_key] = None
 
 
 def _final_approval_ready(data: dict[str, object]) -> bool:
@@ -323,6 +347,9 @@ def _render_objects_actions(
     from state.session import set_screen
 
     col_back, col_generate = st.columns(2, gap="small")
+    proposal_ready = bool(
+        st.session_state.get("proposal_pdf_urls_by_estimate", {}).get(str(estimate_id))
+    )
 
     col_back.button(
         "BACK TO FILE REVIEW",
@@ -333,16 +360,14 @@ def _render_objects_actions(
     )
 
     col_generate.button(
-        "FINAL APPROVAL",
+        "APPROVED" if proposal_ready else "FINAL APPROVAL",
         key="final_approval",
         type="primary",
         use_container_width=True,
-        disabled=not (
-            run_id and estimate_id and _final_approval_ready(data)
-        ),
+        disabled=proposal_ready or not (run_id and estimate_id and _final_approval_ready(data)),
         help=(
             None
-            if run_id and estimate_id and _final_approval_ready(data)
+            if proposal_ready or (run_id and estimate_id and _final_approval_ready(data))
             else "Review and approve every object before Final Approval"
         ),
         on_click=_complete_final_approval,
@@ -434,6 +459,8 @@ def render_objects_screen(company_id: str) -> None:
         marker_id=OBJECTS_MARKER_ID,
     )
     screen_state = _current_objects_state(estimate_id)
+    if _final_approval_ready(screen_state.data):
+        _load_existing_proposal_url(company_id=company_id, estimate_id=estimate_id)
     if estimate_id and isinstance(st.session_state.get("estimation_batch_future"), Future):
         _render_live_objects_content(estimate_id=str(estimate_id), run_id=run_id)
     else:

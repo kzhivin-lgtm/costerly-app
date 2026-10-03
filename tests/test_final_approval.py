@@ -55,6 +55,10 @@ def test_final_approval_freezes_fresh_priced_snapshot(monkeypatch):
         "use_cases.final_approval.publish_proposal_pdf",
         lambda **kwargs: "001/project-1/version-1.pdf",
     )
+    monkeypatch.setattr(
+        "use_cases.final_approval.proposal_signed_url",
+        lambda *args, **kwargs: "https://signed.example/proposal.pdf",
+    )
 
     result = final_approval(company_id="001", run_id="run-1", estimate_id="estimate-1")
 
@@ -64,6 +68,7 @@ def test_final_approval_freezes_fresh_priced_snapshot(monkeypatch):
     assert payload["p_snapshot"]["rows"][0]["sale_price_total"] == 130.5
     assert payload["p_snapshot"]["summary"]["total"] == 158.62
     assert result["proposal_pdf_path"] == "001/project-1/version-1.pdf"
+    assert result["proposal_pdf_url"] == "https://signed.example/proposal.pdf"
 
 
 def test_final_approval_rejects_unapproved_object(monkeypatch):
@@ -81,3 +86,4 @@ def test_objects_uses_final_approval_instead_of_generate_proposal():
     assert '"FINAL APPROVAL"' in source
     assert '"GENERATE PROPOSAL"' not in source
     assert "final_approval(" in source
+    assert 'st.session_state.screen = "projects"' not in source

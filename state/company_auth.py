@@ -1623,7 +1623,7 @@ def render_account_control(
         on_last_estimate=lambda: _open_last_estimate(str(access.company_id)),
         on_projects=_open_projects,
         show_admin=platform_access is not None,
-        show_projects=True,
+        show_projects=active_screen != "projects",
         show_new_estimate=active_screen not in {"upload", "processing"},
         show_last_estimate=latest_route is not None and active_screen not in workflow_screens,
         show_profile=active_screen != "account",

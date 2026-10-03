@@ -8,7 +8,7 @@ from typing import Any
 from db.company_access import assert_estimate_owned, assert_run_owned
 from db.supabase_client import get_supabase_client
 from use_cases.estimation import load_objects_estimation_data
-from use_cases.proposal_pdf import publish_proposal_pdf
+from use_cases.proposal_pdf import proposal_signed_url, publish_proposal_pdf
 
 
 def _json_safe(value: Any) -> Any:
@@ -76,5 +76,9 @@ def final_approval(
         version_id=str(result["version_id"]),
         run_id=run_id,
         snapshot=snapshot,
+    )
+    result["proposal_pdf_url"] = proposal_signed_url(
+        client,
+        result["proposal_pdf_path"],
     )
     return result

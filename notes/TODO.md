@@ -36,6 +36,12 @@ VAT, and totals, with no self cost. Partners exposes the latest proposal through
 a short-lived signed PDF link. The private production bucket was provisioned
 and its upload, signed URL, and cleanup cycle verified. Remaining: authenticated
 production acceptance of Final Approval and PDF download.
+The owner refined the completion flow: Final Approval remains on Objects,
+changes to an Approved state, and reveals a download row below Installation.
+That row contains Client Proposal / Download PDF and Project Summary / Download
+XLS. XLS remains disabled until the later consolidated project materials export
+is implemented. The Partners header keeps shared navigation but omits the
+current-page Projects action.
 
 ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the

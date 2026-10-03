@@ -258,3 +258,24 @@ def publish_proposal_pdf(
     if len(response.data or []) != 1:
         raise RuntimeError("The proposal reference was not saved")
     return object_path
+
+
+def proposal_signed_url(client, object_path: str, *, expires_in: int = 3600) -> str | None:
+    if not object_path:
+        return None
+    response = client.storage.from_(PROPOSAL_BUCKET).create_signed_url(object_path, expires_in)
+    return response.get("signedURL") or response.get("signedUrl")
+
+
+def load_estimate_proposal_url(*, client, company_id: str, estimate_id: str) -> str | None:
+    rows = (
+        client.table("project_versions")
+        .select("proposal_pdf_path")
+        .eq("company_id", company_id)
+        .eq("estimate_id", estimate_id)
+        .limit(1)
+        .execute().data or []
+    )
+    if not rows:
+        return None
+    return proposal_signed_url(client, _clean(rows[0].get("proposal_pdf_path")))

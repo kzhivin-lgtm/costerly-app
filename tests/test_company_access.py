@@ -1148,6 +1148,16 @@ def test_upload_to_profile_navigation_runs_before_render_without_explicit_rerun(
     assert "st.rerun" not in control_source
 
 
+def test_projects_header_omits_current_projects_action():
+    source = Path("state/company_auth.py").read_text()
+    control_source = source.split("def render_account_control", 1)[1].split(
+        "def render_company_account", 1
+    )[0]
+
+    assert 'show_projects=active_screen != "projects"' in control_source
+    assert 'show_profile=active_screen != "account"' in control_source
+
+
 @pytest.mark.parametrize("role", ["owner", "member"])
 def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, role):
     calls = {"profile": 0, "members": 0, "metrics": 0, "employees": 0}

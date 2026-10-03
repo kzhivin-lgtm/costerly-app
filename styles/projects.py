@@ -9,6 +9,10 @@ def apply_projects_css() -> None:
         <style>
         .projects-screen-active { display: none; }
         .stApp:has(.projects-screen-active) .costerly-app-header { display: none !important; }
+        .stApp:has(.projects-screen-active) .st-key-costerly_header_controls {
+            display: block !important;
+            visibility: visible !important;
+        }
         .stApp:has(.projects-screen-active) .block-container {
             width: min(1180px, calc(100vw - 48px));
             max-width: 1180px;
