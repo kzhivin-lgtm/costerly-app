@@ -1581,6 +1581,13 @@ def _open_new_estimate() -> None:
     set_screen("upload")
 
 
+def _open_projects() -> None:
+    """Open the company Projects workspace."""
+    from state.session import set_screen
+
+    set_screen("projects")
+
+
 def _open_last_estimate(company_id: str) -> None:
     """Restore the newest durable estimate at its File Review entry point."""
     from db.supabase_client import get_supabase_client
@@ -1614,6 +1621,7 @@ def render_account_control(
         on_admin=_open_platform_admin,
         on_new_estimate=_open_new_estimate,
         on_last_estimate=lambda: _open_last_estimate(str(access.company_id)),
+        on_projects=_open_projects,
         show_admin=platform_access is not None,
         show_projects=True,
         show_new_estimate=active_screen not in {"upload", "processing"},

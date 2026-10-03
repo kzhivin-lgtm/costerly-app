@@ -30,6 +30,7 @@ def render_account_header_controls(
     on_admin=None,
     on_new_estimate=None,
     on_last_estimate=None,
+    on_projects=None,
     show_admin: bool = False,
     show_projects: bool = False,
     show_new_estimate: bool = False,
@@ -46,7 +47,7 @@ def render_account_header_controls(
         if show_last_estimate:
             actions.append(("Last Estimate", "header_last_estimate", on_last_estimate, False, None))
         if show_projects:
-            actions.append(("Projects", "open_projects_placeholder", None, True, "Project history is coming next."))
+            actions.append(("Projects", "open_projects", on_projects, False, None))
         if show_profile:
             actions.append(("Profile", "open_company_account", on_profile, False, None))
         actions.append(("Sign out", "company_sign_out", on_sign_out, False, None))

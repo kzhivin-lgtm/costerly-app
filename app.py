@@ -152,6 +152,9 @@ def _browser_route(screen: str, *, company_id: str | None = None) -> dict[str, s
     if screen == "admin":
         return {"screen": "admin"}
 
+    if screen == "projects":
+        return {"screen": "projects"}
+
     if screen == "file_review":
         run_id = str(st.session_state.get("current_run_id") or "")
         estimate_id = str(st.session_state.get("current_estimate_id") or "")
@@ -262,6 +265,10 @@ def _render_screen(
         from screens.object_detail import render_object_detail_screen
 
         render_object_detail_screen(company_id)
+    elif screen == "projects":
+        from screens.projects import render_projects_screen
+
+        render_projects_screen(company_id)
     elif screen == "account":
         if access is None or access.company_id != company_id:
             raise PermissionError("Company access changed. Please sign in again.")
@@ -511,6 +518,10 @@ def main() -> None:
                 _signal_ready(trace, "platform_access_error")
                 return
             st.session_state.screen = "admin"
+            if "screen" in st.query_params:
+                del st.query_params["screen"]
+        if requested_screen == "projects":
+            st.session_state.screen = "projects"
             if "screen" in st.query_params:
                 del st.query_params["screen"]
         activity_key = f"{access.company_id}:{trace.session_id}"

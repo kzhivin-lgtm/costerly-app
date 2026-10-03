@@ -1,5 +1,14 @@
 # TODO
 
+ACTIVE, 3.16.1 Projects foundation: Partner is the required top-level entity.
+Organizations use one company-scoped identity with Partner and Client roles;
+one organization may hold both roles. A Project belongs to one Partner and may
+reference one Client. Finalized estimates become immutable Project Versions.
+The first implementation adds the schema, enables the Projects route, and
+provides Partner to Project to Version navigation. Permanent records are not
+created before Final Approval. Remaining: apply the additive migration,
+production acceptance, then implement Final Approval as task 3.16.2.
+
 ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the
 wrapper's 8-second fallback. Preserve the accepted Fast Resume and `app-ready`

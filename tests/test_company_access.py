@@ -1094,6 +1094,7 @@ def _render_upload_header_controls_test():
     render_account_header_controls(
         on_profile=open_profile,
         on_sign_out=lambda: None,
+        on_projects=lambda: None,
         show_projects=True,
         show_new_estimate=False,
         show_last_estimate=True,
@@ -1107,7 +1108,7 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert [button.label for button in app.button] == [
         "Last Estimate", "Projects", "Profile", "Sign out"
     ]
-    assert app.button[1].disabled is True
+    assert app.button[1].disabled is False
 
     app.button[2].click().run()
     assert app.session_state["header_profile_opened"] is True
@@ -3428,7 +3429,7 @@ def test_shared_header_keeps_action_labels_visible_without_clipping():
     css = (Path(__file__).parents[1] / "styles/base.py").read_text()
 
     assert '("Admin", "open_platform_admin", on_admin, False, None)' in source
-    assert '("Projects", "open_projects_placeholder", None, True' in source
+    assert '("Projects", "open_projects", on_projects, False, None)' in source
     assert '("New Estimate", "header_new_estimate", on_new_estimate, False, None)' in source
     assert '("Last Estimate", "header_last_estimate", on_last_estimate, False, None)' in source
     assert "right: max(28px, calc((100vw - var(--post-upload-width)) / 2));" in css

@@ -466,6 +466,17 @@ Pricing Runtime v1
 It reads the object's persisted material/labor lines, matches materials to the `materials` catalog, matches labor roles to the `labor` table, fills `unit_cost`, `rate`, and `cost`, then updates object self-cost totals.
 This layer owns arithmetic. The Estimation Agent remains responsible only for composition, quantities, labor hours, and reasoning.
 
+Projects domain v1
+Partner is the required top-level grouping for Projects. Partner and Client are
+roles of one company-scoped Organization identity, so the same organization may
+hold either role or both without duplicate records. Each Project belongs to one
+Partner and may reference one Client. Each Final Approval creates an immutable
+Project Version linked to the existing RFQ run and estimate. File Review values
+remain draft metadata and must not create permanent Organizations or Projects.
+Organizations are created or matched only during Final Approval. The Projects
+interface follows Partner to Project to Version; opening a Version restores its
+durable Objects estimate. Manual organization creation is outside the MVP.
+
 Legal Consent and Verified Registration v1
 The feature is cross-system and active by default after the private-playground
 version 1.0 rollout. `LEGAL_CONSENT_ENABLED=false` remains the server-side
