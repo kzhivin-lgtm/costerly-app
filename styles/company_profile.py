@@ -161,7 +161,7 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active) [data-baseweb="tab"],
         .st-key-company_profile_tab [role="tab"] {
             min-height: 62px;
-            padding: 0 23px;
+            padding: 0 20px;
             border-radius: 10px;
             color: var(--color-text-muted);
             font-size: 18px;

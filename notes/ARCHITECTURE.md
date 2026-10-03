@@ -21,7 +21,7 @@ The app should not follow Streamlit native dark mode yet.
 Company Profile UI and persistence contract
 Company Profile owns its local page heading and navigation actions. The shared
 full Costerly AI logo and global Profile action are not rendered on that screen.
-The page uses eight peer tabs: Overhead Expenses, Labor Costs, Pricing,
+The page uses eight peer tabs: Overhead Expenses, Labor Costs, Pricing Cost,
 Machinery, Price Lists, Contacts, Bank Details, and Users. Overhead Expenses is
 first. Contacts
 and Bank Details submit independently.
@@ -73,7 +73,10 @@ for project and object pricing totals instead of a hard-coded 18 percent rate.
 Overhead Expenses and deterministic Object Detail allocation. The versioned
 `2026_09_18_other_spendings_overhead.sql` migration has been applied to the live
 Supabase schema.
-Pricing owns the company percentage policy stored in `overhead_settings`:
+Pricing Cost owns the company percentage policy stored in `overhead_settings`.
+Its owner editing surface deliberately reuses the Bank Details pattern: one
+white Streamlit form, two columns of inputs, and one full-width Save action.
+Members see the same values read-only. The stored policy contains:
 VAT, warranty reserve, management buffer, consumables, packaging, paint
 consumables, default sale markup, delivery, and installation. Moving VAT and
 the two reserves out of Overhead Expenses changes their editing surface only,

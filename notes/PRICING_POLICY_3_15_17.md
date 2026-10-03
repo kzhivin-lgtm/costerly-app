@@ -8,14 +8,16 @@ Company Profile order:
 
 1. Overhead Expenses
 2. Labor Costs
-3. Pricing
+3. Pricing Cost
 4. Machinery
 5. Price Lists
 6. Contacts
 7. Bank Details
 8. Users
 
-Pricing contains owner-editable percentage inputs with these defaults:
+Pricing Cost uses the established Bank Details form pattern: a white card,
+two-column percentage inputs and one bottom Save action. It contains these
+owner-editable values with defaults:
 
 - VAT: 18%
 - Warranty reserve: 5%

@@ -1182,7 +1182,7 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
     app.run()
     assert not app.exception
     assert [tab.label for tab in app.get("tab")] == [
-        "Overhead Expenses", "Labor Costs", "Pricing", "Machinery", "Price Lists", "Contacts", "Bank Details", "Users",
+        "Overhead Expenses", "Labor Costs", "Pricing Cost", "Machinery", "Price Lists", "Contacts", "Bank Details", "Users",
     ]
     assert not any(
         button.label in {"Projects", "New Estimate", "Last Estimate", "Sign out"}
@@ -1198,7 +1198,7 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
     assert "Project Reserves" not in metrics_markup
     assert not app.text_input
 
-    app.session_state["company_profile_tab"] = "Pricing"
+    app.session_state["company_profile_tab"] = "Pricing Cost"
     app.run()
     assert [field.label for field in app.text_input] == [
         "Ma'am / VAT rate", "Warranty reserve", "Management buffer",
@@ -1206,6 +1206,9 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
         "Default sale markup", "Delivery", "Installation",
     ]
     assert all(field.disabled is (role != "owner") for field in app.text_input)
+    assert any(button.label == "Save Pricing Cost" for button in app.button) is (
+        role == "owner"
+    )
 
     app.session_state["company_profile_tab"] = "Labor Costs"
     app.run()
@@ -2703,6 +2706,34 @@ def test_labor_costs_apply_factor_and_hours_only_to_hourly_workers():
     assert overridden["total_monthly_cost"] == 11_000
 
 
+def test_company_pricing_cost_form_saves_owner_values(monkeypatch):
+    pricing_saves = []
+    monkeypatch.setattr(
+        company_profile,
+        "load_company_metrics",
+        lambda _access: ({"vat_percent": 18}, {}),
+    )
+    monkeypatch.setattr(
+        company_profile,
+        "save_company_pricing",
+        lambda _access, values: pricing_saves.append(values),
+    )
+
+    app = AppTest.from_function(_render_profile_test)
+    app.session_state["test_profile_role"] = "owner"
+    app.session_state["screen"] = "account"
+    app.session_state["company_profile_tab"] = "Pricing Cost"
+    app.run()
+
+    next(field for field in app.text_input if field.label == "Ma'am / VAT rate").set_value("19")
+    next(button for button in app.button if button.label == "Save Pricing Cost").click()
+    app.run()
+
+    assert pricing_saves and pricing_saves[-1]["vat_percent"] == 19
+    assert "Pricing Cost saved" in " ".join(item.value for item in app.success)
+    company_profile.st.session_state.clear()
+
+
 def test_labor_input_change_synchronizes_editable_totals():
     company_profile.st.session_state.clear()
     company_profile.st.session_state.update({
@@ -3027,7 +3058,7 @@ def test_company_profile_tabs_support_stateful_streamlit_dom():
     assert '[role="tab"][data-selected] p' in css
     assert '[role="tabpanel"]:has(.st-key-company_metrics_card)' in css
     assert '> [data-testid="stVerticalBlock"]' in css
-    assert "padding: 0 23px;" in css
+    assert "padding: 0 20px;" in css
 
 
 def test_company_metrics_bridge_does_not_navigate_parent_page():

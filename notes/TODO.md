@@ -2,6 +2,15 @@
 
 Current owner-approved execution order:
 
+ACTIVE, 3.15.17 Pricing Cost restoration on the accepted `d3e83bd`
+performance baseline. The Pricing persistence and deterministic calculation
+contract are restored without the later transition experiments. The Profile tab
+is named Pricing Cost, follows Labor Costs, uses the Bank Details white
+two-column form and one Save action, and keeps the compact eight-tab rail.
+Local implementation verification passes. Remaining acceptance: deploy, verify
+owner save and member read-only behavior, then repeat the protected production
+transition timings before restoring Machinery or File Review metadata.
+
 ACTIVE, 3.15.7 Labor reference-model foundation: checkpoint recorded in
 `notes/LABOR_FOUNDATION_3_15_7_CHECKPOINT_2026_09_30.md`. Time baselines,
 roles, drivers, source links, confidence markers, material-specific metal

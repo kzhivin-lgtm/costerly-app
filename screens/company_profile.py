@@ -3331,46 +3331,11 @@ def _render_metrics(access: CompanyAccess) -> None:
             _render_metrics_save(access)
 
 
-def _consume_company_pricing_snapshot(access: CompanyAccess, raw_snapshot: str | None) -> str | None:
-    if not raw_snapshot:
-        return None
-    snapshot = json.loads(str(raw_snapshot))
-    nonce = snapshot.get("nonce") if isinstance(snapshot, dict) else None
-    if not isinstance(nonce, str) or not nonce:
-        raise ValueError("Pricing payload is invalid.")
-    if nonce == st.session_state.get("_company_pricing_consumed_nonce"):
-        return None
-    st.session_state["_company_pricing_consumed_nonce"] = nonce
-    values = snapshot.get("settings")
-    if not isinstance(values, dict):
-        raise ValueError("Pricing payload is invalid.")
-    save_company_pricing(access, values)
-    return "Pricing saved"
-
-
-@st.fragment
-def _render_pricing_save(access: CompanyAccess) -> None:
-    try:
-        with st.container(key="company_pricing_bridge_host"):
-            raw_snapshot = company_metrics_bridge(key="company_pricing_bridge", mode="pricing")
-        message = _consume_company_pricing_snapshot(access, raw_snapshot)
-    except ValueError as exc:
-        st.error(str(exc))
-    except PermissionError:
-        st.error("Only the company owner can save pricing settings.")
-    except Exception:
-        logger.exception("Company pricing save failed")
-        st.error("Pricing was not saved. Try again in a moment.")
-        return
-    if message:
-        st.success(message)
-
-
 def _render_pricing(access: CompanyAccess) -> None:
     try:
         settings, _monthly = load_company_metrics(access)
     except Exception:
-        st.error("Pricing is unavailable right now. Try again in a moment.")
+        st.error("Pricing Cost is unavailable right now. Try again in a moment.")
         return
     editable = access.role == "owner"
     fields = (
@@ -3384,25 +3349,37 @@ def _render_pricing(access: CompanyAccess) -> None:
         ("delivery_percent", "Delivery", 3),
         ("installation_percent", "Installation", 10),
     )
-    with st.container(key="company_pricing_card", border=True):
-        with st.container(key="company_pricing_settings"):
-            for start in range(0, len(fields), 3):
-                columns = st.columns(3)
-                for column, (field, label, default) in zip(columns, fields[start:start + 3]):
-                    key = f"profile_pricing_{field}"
-                    _ensure_metric_text_state(key, _metric_percent_text(settings.get(field, default)))
-                    with column:
-                        st.text_input(
-                            label, key=key, on_change=_normalize_metric_percent,
-                            args=(key,), disabled=not editable,
-                        )
-        if editable:
-            st.markdown(
-                company_metrics_view.save_action_html(label="SAVE PRICING", action="pricing"),
-                unsafe_allow_html=True,
-            )
-            install_company_metrics_input_guard()
-            _render_pricing_save(access)
+    values: dict[str, float] = {}
+    with st.form("company_profile_pricing_cost"):
+        for start in range(0, len(fields), 2):
+            columns = st.columns(2)
+            for column, (field, label, default) in zip(columns, fields[start:start + 2]):
+                key = f"profile_pricing_{field}"
+                _ensure_metric_text_state(
+                    key,
+                    _metric_percent_text(settings.get(field, default)),
+                )
+                with column:
+                    entered = st.text_input(
+                        label,
+                        key=key,
+                        disabled=not editable,
+                    )
+                values[field] = _metric_amount(entered)
+        saved = _profile_save_button("Save Pricing Cost") if editable else False
+    install_company_metrics_input_guard()
+    if saved:
+        try:
+            save_company_pricing(access, values)
+        except ValueError as exc:
+            st.error(str(exc))
+        except PermissionError:
+            st.error("Only the company owner can save Pricing Cost.")
+        except Exception:
+            logger.exception("Company Pricing Cost save failed")
+            st.error("Pricing Cost was not saved. Try again in a moment.")
+        else:
+            st.success("Pricing Cost saved")
 
 
 def _render_users(access: CompanyAccess) -> None:
@@ -4301,7 +4278,7 @@ def render_company_profile(access: CompanyAccess, *, platform_access=None, trace
         [
             "Overhead Expenses",
             "Labor Costs",
-            "Pricing",
+            "Pricing Cost",
             "Machinery",
             "Price Lists",
             "Contacts",
