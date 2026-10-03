@@ -28,6 +28,15 @@ target visible, and target styled boundaries first. Do not add a fixed delay
 unless it improves the real production transition without increasing total
 time unnecessarily.
 
+ACTIVE, 3.16.4 Client Proposal PDF: Final Approval generates a private PDF from
+the immutable approved snapshot. The header uses only populated Company
+Contacts and the company logo. The commercial body contains Project, Partner,
+optional Client, Objects with quantity and sale prices, Delivery, Installation,
+VAT, and totals, with no self cost. Partners exposes the latest proposal through
+a short-lived signed PDF link. The private production bucket was provisioned
+and its upload, signed URL, and cleanup cycle verified. Remaining: authenticated
+production acceptance of Final Approval and PDF download.
+
 ACTIVE, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the
 wrapper's 8-second fallback. Preserve the accepted Fast Resume and `app-ready`

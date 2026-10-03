@@ -51,6 +51,10 @@ def test_final_approval_freezes_fresh_priced_snapshot(monkeypatch):
     monkeypatch.setattr("use_cases.final_approval.get_supabase_client", lambda: client)
     monkeypatch.setattr("use_cases.final_approval.assert_run_owned", lambda *args: None)
     monkeypatch.setattr("use_cases.final_approval.assert_estimate_owned", lambda *args: None)
+    monkeypatch.setattr(
+        "use_cases.final_approval.publish_proposal_pdf",
+        lambda **kwargs: "001/project-1/version-1.pdf",
+    )
 
     result = final_approval(company_id="001", run_id="run-1", estimate_id="estimate-1")
 
@@ -59,6 +63,7 @@ def test_final_approval_freezes_fresh_priced_snapshot(monkeypatch):
     payload = client.calls[0][1]
     assert payload["p_snapshot"]["rows"][0]["sale_price_total"] == 130.5
     assert payload["p_snapshot"]["summary"]["total"] == 158.62
+    assert result["proposal_pdf_path"] == "001/project-1/version-1.pdf"
 
 
 def test_final_approval_rejects_unapproved_object(monkeypatch):

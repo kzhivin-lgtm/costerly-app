@@ -8,6 +8,7 @@ from typing import Any
 from db.company_access import assert_estimate_owned, assert_run_owned
 from db.supabase_client import get_supabase_client
 from use_cases.estimation import load_objects_estimation_data
+from use_cases.proposal_pdf import publish_proposal_pdf
 
 
 def _json_safe(value: Any) -> Any:
@@ -68,4 +69,12 @@ def final_approval(
         result = result[0] if result else None
     if not isinstance(result, dict) or not result.get("project_id"):
         raise RuntimeError("Final Approval did not return a Project version")
+    result["proposal_pdf_path"] = publish_proposal_pdf(
+        client=client,
+        company_id=company_id,
+        project_id=str(result["project_id"]),
+        version_id=str(result["version_id"]),
+        run_id=run_id,
+        snapshot=snapshot,
+    )
     return result

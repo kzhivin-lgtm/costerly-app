@@ -356,6 +356,8 @@ def test_projects_is_one_page_with_native_partner_disclosure_rows():
     assert "<div>Project</div><div>Client</div><div>Calculation</div><div>Total</div><div>PDF</div>" in source
     assert "st.button(" not in source
     assert "set_screen(" not in source
+    assert '>Partners</h1>' in source
+    assert 'version.get("proposal_pdf_url")' in source
 
 
 def test_objects_initializes_action_state_before_live_fragment_branch():

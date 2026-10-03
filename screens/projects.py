@@ -66,7 +66,7 @@ def _project_row(
         f'<div>{escape(client_names.get(str(project.get("client_organization_id") or ""), "—"))}</div>'
         f'<div>{_calculation_time(version.get("approved_at") if version else None)}</div>'
         f'<div class="projects-total">{_money(summary.get("total"))}</div>'
-        f'<div>{_pdf_link(version.get("proposal_pdf_path") if version else None)}</div>'
+        f'<div>{_pdf_link(version.get("proposal_pdf_url") if version else None)}</div>'
         '</div>'
     )
 
@@ -120,7 +120,7 @@ def _projects_table(data: dict[str, list[dict[str, Any]]]) -> str:
 def render_projects_screen(company_id: str) -> None:
     apply_projects_css()
     st.markdown('<div class="projects-screen-active"></div>', unsafe_allow_html=True)
-    st.markdown('<h1 class="projects-title">Projects</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="projects-title">Partners</h1>', unsafe_allow_html=True)
     try:
         data = load_projects_workspace(company_id)
     except Exception:

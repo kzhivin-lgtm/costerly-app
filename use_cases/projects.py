@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from db.supabase_client import get_supabase_client
+from use_cases.proposal_pdf import PROPOSAL_BUCKET
 
 
 def load_projects_workspace(company_id: str) -> dict[str, list[dict[str, Any]]]:
@@ -43,6 +44,29 @@ def load_projects_workspace(company_id: str) -> dict[str, list[dict[str, Any]]]:
         organizations = organizations_future.result()
         projects = projects_future.result()
         versions = versions_future.result()
+    latest_version_ids: set[str] = set()
+    latest_by_project: dict[str, dict[str, Any]] = {}
+    for version in versions:
+        project_id = str(version.get("project_id") or "")
+        current = latest_by_project.get(project_id)
+        if current is None or int(version.get("version_number") or 0) > int(
+            current.get("version_number") or 0
+        ):
+            latest_by_project[project_id] = version
+    latest_version_ids = {
+        str(version.get("version_id") or "") for version in latest_by_project.values()
+    }
+    for version in versions:
+        if str(version.get("version_id") or "") not in latest_version_ids:
+            continue
+        object_path = str(version.get("proposal_pdf_path") or "").strip()
+        if not object_path:
+            continue
+        try:
+            signed = client.storage.from_(PROPOSAL_BUCKET).create_signed_url(object_path, 3600)
+            version["proposal_pdf_url"] = signed.get("signedURL") or signed.get("signedUrl")
+        except Exception:
+            version["proposal_pdf_url"] = None
     return {
         "organizations": [row for row in organizations if row.get("is_partner")],
         "clients": [row for row in organizations if row.get("is_client")],
