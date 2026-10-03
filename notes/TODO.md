@@ -92,7 +92,8 @@ with a deterministic regression test. Changed-draft approval also writes the
 recalculated totals and approved state together, removing the redundant second
 authorization/read/write approval pass.
 
-ACTIVE, P0, 3.15.25 Processing to File Review handoff latency: the first File
+COMPLETED AND OWNER-ACCEPTED, P0, 3.15.25 Processing to File Review handoff
+latency: the first File
 Review render must reuse the exact validated Detection payload already persisted
 by Processing instead of repeating ownership, run, detected-object, and usage
 reads. Refresh and restored sessions continue loading Supabase. The complete
@@ -100,9 +101,9 @@ marker must not begin a deliberately extended gray interval. The zero-delay
 candidate was rejected because the browser observer missed the marker and
 exposed intermediate Streamlit DOM. Use only the bounded 120 ms handshake needed
 by the existing 80 ms watcher, while preserving Cloudflare target readiness.
-Production acceptance requires a fresh upload with the gray interval measured
-from `processing_to_file_review` click to styled File Review, no broken frame,
-and unchanged File Review content.
+Production acceptance completed: the transition is fast, intermediate fragments
+are no longer exposed, and the owner accepted the remaining gray interval of
+approximately 1-2 seconds. Checkpoint: `5c322bf`.
 
 ACTIVE, PARTIAL OWNER-ACCEPTED CHECKPOINT, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the

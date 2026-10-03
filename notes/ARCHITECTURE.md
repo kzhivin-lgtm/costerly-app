@@ -243,6 +243,21 @@ validate and normalize detection result
 persist RFQ run and detected objects
         ↓
 render review screen
+
+Processing to File Review handoff
+After Detection validation and persistence, Processing builds the normalized
+File Review view model from the same in-memory result and seeds the session
+cache before navigation. The first File Review render consumes that cache and
+does not repeat ownership, run, detected-object, or usage reads. Supabase remains
+the durable source for refreshes, restored sessions, and direct navigation.
+
+The completed Processing DOM remains visible only long enough for the existing
+browser observer to start transition masking. The final contract uses a bounded
+120 ms handshake for the 80 ms watcher. A zero-delay rerun is prohibited because
+it can destroy the completion marker before observation and expose intermediate
+Streamlit fragments. This handoff does not change Cloudflare target readiness,
+Sign Out readiness, Fast Resume, workflow routing, or persisted File Review data.
+
 Comments
 Code comments should explain responsibility and timing:
 why a module exists;

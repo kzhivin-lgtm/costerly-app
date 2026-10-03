@@ -1,5 +1,15 @@
 # Done Log
 
+3.15.25 owner-accepted production checkpoint `5c322bf`: the first File Review
+render reuses the normalized Detection result already persisted by Processing;
+refresh and restored sessions still load Supabase. The rejected zero-delay
+handoff exposed intermediate Streamlit fragments because the browser observer
+missed the completion marker. The final bounded 120 ms handshake lets the
+existing watcher mask the rerun without restoring the old deliberate delay.
+Production transition is fast, no broken frame is exposed, and the remaining
+gray interval of approximately 1-2 seconds was accepted. 899 tests passed,
+завершена 03.10
+
 3.15.24 implementation checkpoint `5f6360f`: synchronized canonical object
 quantity across File Review, Objects, and Object Detail; replaced two rejected
 component-rerun bridges with authenticated Supabase quantity and draft RPCs;

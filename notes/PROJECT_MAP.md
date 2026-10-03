@@ -115,4 +115,8 @@ This file explains where code belongs so the project stays understandable.
   stores the canonical quantity, Object Detail draft/Approve architecture,
   rejected component-rerun path, Materials-zeroing root cause, migration, and
   production acceptance matrix for 3.15.24.
+- `notes/PROCESSING_FILE_REVIEW_HANDOFF_CHECKPOINT_3_15_25_2026_10_03.md`
+  stores the accepted Processing to File Review cache handoff, bounded browser
+  observer handshake, rejected zero-delay experiment, verification evidence,
+  and rollback points for 3.15.25.
 - Keep notes short and update them when structure changes.
