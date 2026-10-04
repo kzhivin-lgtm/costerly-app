@@ -71,7 +71,7 @@ Exactly one relevant page reference must include `preview_bbox`, in the OCR page
 
 ### D. Secondary metadata
 
-`project_name` is the project, venue, property or concise address, not a sheet, room or product name.
+`project_name` is the project, venue, property or concise address, not a sheet, room or product name. Preserve an explicit distinctive project or venue name. When the only reliable identifier is an address, use only street and primary building number, for example `Ленинградский проспект, 5`. Omit city, корпус, строение, подъезд, этаж, квартира and other address detail unless it is required to distinguish the project. Do not shorten a proper project name by deleting its distinctive words.
 
 `design_partner` is the party coordinating or requesting the fabrication quote. Prefer the named designer, architect, design or architecture bureau. If absent, use the named design-build, construction or general contractor. A named individual author may also be the partner when they are the only identified designer or architect.
 

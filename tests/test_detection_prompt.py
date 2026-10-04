@@ -21,6 +21,8 @@ def test_detection_prompt_vnext_locks_object_dossiers_without_naming():
     assert "preview_bbox" in prompt
     assert "text-only Naming Agent" in prompt
     assert "Partner and client may match only when direct commissioning is supported" in prompt
+    assert "street and primary building number" in prompt
+    assert "Do not shorten a proper project name" in prompt
     assert "detected_materials" not in prompt
     assert "package-wide missing-information" in prompt
     assert DETECTION_PROMPT_VERSION == "detection_vnext_3_15_8_object_dossier_v1"
