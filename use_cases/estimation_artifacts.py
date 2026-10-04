@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from hashlib import sha256
 from io import BytesIO
-import json
 from typing import Any
 
 from PIL import Image
@@ -13,34 +12,6 @@ from use_cases.estimation_evidence import EvidenceArtifact
 
 
 EVIDENCE_BUCKET = "rfq-estimation-evidence"
-
-
-def persist_object_scoped_ocr_artifact(
-    *,
-    client: Any,
-    company_id: str,
-    run_id: str,
-    object_id: str,
-    page_number: int,
-    ocr_evidence: dict[str, Any],
-) -> str:
-    """Persist a derived, object-scoped view of the original OCR package.
-
-    This is JSON evidence, not a new OCR call and not yet an Estimation artifact
-    type.  Its ref is attached to the existing object/page evidence entry until
-    the future Estimation consumer contract is separately approved.
-    """
-    if not all((company_id, run_id, object_id, page_number > 0, ocr_evidence)):
-        raise ValueError("object OCR identity and evidence are required")
-    payload = json.dumps(
-        ocr_evidence, ensure_ascii=False, separators=(",", ":"), sort_keys=True
-    ).encode("utf-8")
-    digest = sha256(payload).hexdigest()
-    path = f"{company_id}/{run_id}/{object_id}/object-ocr-{page_number}-{digest}.json"
-    client.storage.from_(EVIDENCE_BUCKET).upload(
-        path, payload, file_options={"content-type": "application/json", "upsert": "true"}
-    )
-    return f"storage://{EVIDENCE_BUCKET}/{path}"
 
 
 def evidence_signed_url(*, client: Any, storage_ref: str, company_id: str) -> str | None:
