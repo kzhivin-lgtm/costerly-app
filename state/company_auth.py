@@ -1622,7 +1622,11 @@ def render_account_control(
         show_admin=platform_access is not None,
         show_projects=active_screen != "projects",
         show_new_estimate=active_screen not in {"upload", "processing"},
-        show_last_estimate=latest_route is not None and active_screen not in workflow_screens,
+        show_last_estimate=(
+            latest_route is not None
+            and active_screen not in workflow_screens
+            and not st.session_state.get("suppress_header_last_estimate", False)
+        ),
         show_profile=active_screen != "account",
     )
     last_estimate_error = st.session_state.pop("header_last_estimate_error", None)

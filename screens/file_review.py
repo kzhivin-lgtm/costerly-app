@@ -623,6 +623,12 @@ def _back_to_upload_button(*, clear_processing_error: bool = False) -> None:
     st.button("BACK TO UPLOAD", type="secondary", on_click=return_to_upload)
 
 
+def _back_to_upload_from_review() -> None:
+    """Leave this review without offering a stale company estimate in Upload."""
+    st.session_state.suppress_header_last_estimate = True
+    set_screen("upload")
+
+
 def _render_processing_error(message: object) -> None:
     """Render the File Review fallback when RFQ processing failed."""
     _render_file_review_header_only()
@@ -718,8 +724,7 @@ def render_file_review_screen(company_id: str) -> None:
         "BACK TO UPLOAD",
         type="secondary",
         use_container_width=True,
-        on_click=set_screen,
-        args=("upload",),
+        on_click=_back_to_upload_from_review,
     )
 
     col_next.button(

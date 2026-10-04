@@ -176,7 +176,7 @@ def test_file_review_navigation_uses_widget_callbacks_not_a_second_rerun():
     )[0]
 
     assert "on_click=_continue_to_objects_estimation" in source
-    assert "on_click=set_screen" in source
+    assert "on_click=_back_to_upload_from_review" in source
     assert "st.rerun()" not in continue_source
 
 
@@ -346,6 +346,15 @@ def test_file_review_collects_completed_naming_without_a_timed_fragment():
     assert st.session_state.current_naming_future is None
     assert st.session_state.current_naming_result == {"status": "succeeded", "names": {}}
     assert "@st.fragment(run_every=0.5)" not in Path("screens/file_review.py").read_text()
+
+
+def test_file_review_back_to_upload_hides_stale_last_estimate():
+    st.session_state.clear()
+
+    file_review._back_to_upload_from_review()
+
+    assert st.session_state.suppress_header_last_estimate is True
+    assert st.session_state.screen == "upload"
 
 
 def test_file_review_back_to_upload_is_never_disabled_after_an_input_event():
