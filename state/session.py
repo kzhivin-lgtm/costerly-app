@@ -70,6 +70,12 @@ def init_state() -> None:
     if "current_naming_result" not in st.session_state:
         st.session_state.current_naming_result = None
 
+    if "current_preview_future" not in st.session_state:
+        st.session_state.current_preview_future = None
+
+    if "file_review_deferred_work" not in st.session_state:
+        st.session_state.file_review_deferred_work = None
+
     if "last_estimation_error" not in st.session_state:
         st.session_state.last_estimation_error = None
 

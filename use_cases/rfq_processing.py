@@ -39,6 +39,7 @@ from agents.ocr_rendering import (
 from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL
 from db.repositories import (
     fetch_deferred_naming_status,
+    fetch_deferred_preview_status,
     fetch_agent_usage_events,
     fetch_rfq_detected_objects,
     fetch_rfq_detected_object_names,
@@ -613,6 +614,37 @@ def load_file_review_naming_publication(run_id: str) -> dict[str, Any]:
         "status": "succeeded",
         "names": names,
         "naming_seconds": duration_seconds,
+    }
+
+
+def load_file_review_preview_publication(run_id: str) -> dict[str, Any]:
+    """Read the durable terminal Preview result without reloading File Review."""
+    client = get_supabase_client()
+    from state.company_auth import company_auth_enabled
+    if company_auth_enabled():
+        assert_run_owned(client, run_id, get_company_id())
+
+    event = fetch_deferred_preview_status(client, run_id)
+    if not event:
+        return {"status": "pending"}
+
+    raw_usage = event.get("raw_usage") or {}
+    if isinstance(raw_usage, str):
+        try:
+            raw_usage = json.loads(raw_usage)
+        except (TypeError, ValueError):
+            raw_usage = {}
+    try:
+        duration_seconds = float(
+            event.get("duration_seconds")
+            or (raw_usage.get("duration_seconds") if isinstance(raw_usage, dict) else 0)
+            or 0
+        )
+    except (TypeError, ValueError):
+        duration_seconds = 0.0
+    return {
+        "status": str(event.get("status") or "failed"),
+        "preview_seconds": duration_seconds,
     }
 
 

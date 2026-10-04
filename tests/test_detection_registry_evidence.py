@@ -1,4 +1,7 @@
-from agents.detection_agent import _merge_registry_evidence
+from agents.detection_agent import (
+    _enforce_shared_track_door_system_quantity,
+    _merge_registry_evidence,
+)
 
 
 def test_registry_evidence_keeps_full_estimation_set_not_only_visual_dossier():
@@ -44,3 +47,22 @@ def test_registry_locks_complete_system_quantity_against_component_count():
 
     assert merged["detected_objects"][0]["quantity"] == 1
     assert merged["detected_objects"][0]["quantity_explicit"] is False
+
+
+def test_registry_resolves_shared_track_leaves_to_one_commercial_door_system():
+    registry = {"objects": [{
+        "object_id": "object-002",
+        "transport_label": "Object 2",
+        "quantity": 2,
+        "quantity_explicit": False,
+        "visual_identity": "Two sliding door leaves on an overhead track",
+        "boundary_basis": "One continuous track forms one commercial door system",
+        "identity_pages": [1],
+        "dossier_pages": [1],
+        "estimation_evidence_pages": [1],
+    }]}
+
+    resolved = _enforce_shared_track_door_system_quantity(registry)
+
+    assert resolved["objects"][0]["quantity"] == 1
+    assert resolved["objects"][0]["quantity_explicit"] is False

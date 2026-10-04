@@ -409,6 +409,56 @@ def test_deferred_naming_publication_reads_only_the_terminal_name_snapshot(monke
     }
 
 
+def test_deferred_preview_publication_reads_only_the_terminal_preview_status(monkeypatch):
+    monkeypatch.setattr(rfq_processing, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(
+        rfq_processing,
+        "fetch_deferred_preview_status",
+        lambda _client, _run_id: {
+            "status": "succeeded",
+            "raw_usage": {"duration_seconds": 1.7},
+        },
+    )
+
+    assert rfq_processing.load_file_review_preview_publication("run-1") == {
+        "status": "succeeded",
+        "preview_seconds": 1.7,
+    }
+
+
+def test_file_review_preview_publication_reloads_only_after_terminal_success():
+    st.session_state.clear()
+    run_id = "run-1"
+    st.session_state.file_review_data_cache = {run_id: {"objects": [{"preview_pending": True}]}}
+    st.session_state.file_review_deferred_work = {
+        "run_id": run_id,
+        "naming": False,
+        "preview": True,
+    }
+
+    assert file_review._publish_persisted_preview(
+        run_id,
+        {"status": "succeeded", "preview_seconds": 1.7},
+    ) is True
+    assert run_id not in st.session_state.file_review_data_cache
+    assert file_review._has_deferred_work(run_id) is False
+
+
+def test_file_review_preview_failure_reloads_saved_refs_then_stops_spinner():
+    st.session_state.clear()
+    run_id = "run-1"
+    st.session_state.file_review_data_cache = {run_id: {"objects": [{"preview_pending": True}]}}
+    st.session_state.file_review_deferred_work = {
+        "run_id": run_id,
+        "naming": False,
+        "preview": True,
+    }
+
+    assert file_review._publish_persisted_preview(run_id, {"status": "partial"}) is True
+    assert run_id not in st.session_state.file_review_data_cache
+    assert st.session_state[f"file_review_preview_terminal.{run_id}"] == "partial"
+
+
 def test_file_review_back_to_upload_remembers_the_current_review_run():
     st.session_state.clear()
     st.session_state.current_run_id = "run-current"

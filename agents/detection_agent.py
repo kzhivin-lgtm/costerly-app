@@ -6,6 +6,37 @@ from agents.prompt_loader import load_detection_agent_prompt, load_detection_reg
 from agents.schemas.detection_schema import validate_detection_result
 
 
+def _enforce_shared_track_door_system_quantity(registry: dict) -> dict:
+    """Resolve an internal registry contradiction for a shared-track door set.
+
+    This is a domain invariant, not a Page 23 special case: leaves on one
+    continuous track are construction components of one commercial door system.
+    The registry has already identified that boundary in ``boundary_basis``;
+    this guard prevents a conflicting leaf count from becoming the quote count.
+    """
+    shared_track_markers = (
+        "continuous track", "shared track", "common track", "same track",
+        "single track", "one track", "overhead track", "continuous guide",
+        "shared guide", "common guide", "same guide", "single guide",
+    )
+    door_markers = ("door", "leaf", "leaves", "sliding")
+    for item in registry.get("objects") or []:
+        if not isinstance(item, dict):
+            continue
+        basis = " ".join(
+            str(item.get(key) or "")
+            for key in ("transport_label", "visual_identity", "boundary_basis")
+        ).casefold()
+        if (
+            float(item.get("quantity") or 0) > 1
+            and any(marker in basis for marker in shared_track_markers)
+            and any(marker in basis for marker in door_markers)
+        ):
+            item["quantity"] = 1
+            item["quantity_explicit"] = False
+    return registry
+
+
 def _merge_registry_evidence(result: dict, registry: dict) -> dict:
     """Preserve the compact visual dossier while retaining Estimation evidence.
 
@@ -110,6 +141,7 @@ def run_detection_agent(
         page_images=registry_images, regions=regions,
         ocr_package=ocr_package, model=model,
     )
+    registry = _enforce_shared_track_door_system_quantity(registry)
     dossier_page_numbers = sorted({page for item in registry["objects"] for page in item["dossier_pages"]})
     dossier_images = [registry_images[page - 1] for page in dossier_page_numbers if page <= len(registry_images)]
     dossier_regions = [region for region in regions if region["page_number"] in dossier_page_numbers]

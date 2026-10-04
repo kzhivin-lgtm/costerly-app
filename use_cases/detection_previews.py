@@ -36,6 +36,38 @@ def _preview_target(item: Mapping[str, Any]) -> tuple[int, dict[str, Any]] | Non
     return None
 
 
+def normalize_preview_bbox(
+    bbox: Mapping[str, Any],
+    page_dimensions: Mapping[str, Any],
+) -> dict[str, float]:
+    """Return a crop box in the persisted OCR pixel coordinate system.
+
+    Detection is told to emit OCR pixel coordinates, but visual models can
+    occasionally return page fractions instead. A box entirely within 0..1
+    is unambiguously fractional and must be expanded before crop creation and
+    persistence. All other valid boxes remain unchanged.
+    """
+    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
+    try:
+        normalized = {key: float(bbox[key]) for key in keys}
+        width = float(page_dimensions["width"])
+        height = float(page_dimensions["height"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("preview bbox and OCR dimensions must be numeric") from exc
+
+    if width <= 0 or height <= 0:
+        raise ValueError("OCR page dimensions must be positive")
+
+    if all(0 <= value <= 1 for value in normalized.values()):
+        return {
+            "top_left_x": normalized["top_left_x"] * width,
+            "top_left_y": normalized["top_left_y"] * height,
+            "bottom_right_x": normalized["bottom_right_x"] * width,
+            "bottom_right_y": normalized["bottom_right_y"] * height,
+        }
+    return normalized
+
+
 def create_detection_previews(
     *, client: Any, company_id: str, run_id: str, file_name: str, file_bytes: bytes,
     objects: Sequence[Mapping[str, Any]], ocr_package: Mapping[str, Any],
@@ -65,6 +97,7 @@ def create_detection_previews(
             skipped[object_id] = "preview_page_unavailable"
             continue
         try:
+            bbox = normalize_preview_bbox(bbox, page.get("dimensions") or {})
             preview = crop_ocr_region_to_webp(
                 page_image=pages[page_number - 1],
                 page_dimensions=page.get("dimensions") or {},
@@ -77,6 +110,7 @@ def create_detection_previews(
             refs = [dict(ref) for ref in object_row.get("evidence_page_refs") or []]
             for ref in refs:
                 if int(ref.get("page_number") or 0) == page_number and ref.get("preview_bbox"):
+                    ref["preview_bbox"] = bbox
                     ref["preview_ref"] = artifact.storage_ref
                     break
             update_rfq_detected_object(

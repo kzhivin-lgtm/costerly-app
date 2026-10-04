@@ -355,6 +355,22 @@ def fetch_deferred_naming_status(client: Client, run_id: str) -> dict | None:
     return dict(rows[0]) if rows else None
 
 
+def fetch_deferred_preview_status(client: Client, run_id: str) -> dict | None:
+    """Return the terminal Preview ledger entry for one run, if it exists."""
+    response = (
+        client.table("agent_usage_events")
+        .select("status,raw_usage,created_at")
+        .eq("run_id", run_id)
+        .eq("agent_name", "preview")
+        .eq("operation", "detection_object_previews")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return dict(rows[0]) if rows else None
+
+
 def fetch_latest_ocr_result(client: Client, run_id: str) -> dict | None:
     """Load the latest complete OCR result and Detection handoff for a run."""
     response = (

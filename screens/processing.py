@@ -138,6 +138,11 @@ def render_processing_screen(company_id: str) -> None:
     st.session_state.current_agent_timings = result.get("timings")
     st.session_state.current_naming_future = result.get("naming_future")
     st.session_state.current_preview_future = result.get("preview_future")
+    st.session_state.file_review_deferred_work = {
+        "run_id": run_id,
+        "naming": result.get("naming_future") is not None,
+        "preview": result.get("preview_future") is not None,
+    }
     st.session_state.current_naming_result = None
     st.session_state.processed_file_name = file_name
     st.session_state.processing_error = None

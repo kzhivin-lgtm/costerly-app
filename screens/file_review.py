@@ -24,6 +24,7 @@ from use_cases.latest_estimate import load_latest_estimate_route_for_run
 from use_cases.rfq_processing import (
     load_file_review_data,
     load_file_review_naming_publication,
+    load_file_review_preview_publication,
     save_file_review_object_name,
     save_file_review_run_metadata,
 )
@@ -506,19 +507,57 @@ def _publish_persisted_naming(
     return True
 
 
-def _collect_completed_previews(run_id: str) -> bool:
+def _collect_completed_previews() -> dict[str, object] | None:
     future = st.session_state.get("current_preview_future")
     if not isinstance(future, Future) or not future.done():
-        return False
+        return None
     try:
-        result = future.result()
+        result = dict(future.result() or {})
         timings = st.session_state.get("current_agent_timings")
         if isinstance(timings, dict):
             timings["preview_seconds"] = float(result.get("duration_seconds") or 0)
-    except Exception:
-        pass
+    except Exception as exc:
+        result = {"status": "failed", "error": type(exc).__name__}
     st.session_state.current_preview_future = None
-    st.session_state.setdefault("file_review_data_cache", {}).pop(run_id, None)
+    return result
+
+
+def _mark_deferred_work_complete(run_id: str, work_type: str) -> None:
+    work = st.session_state.get("file_review_deferred_work")
+    if isinstance(work, dict) and work.get("run_id") == run_id:
+        work[work_type] = False
+
+
+def _has_deferred_work(run_id: str) -> bool:
+    work = st.session_state.get("file_review_deferred_work")
+    return bool(
+        isinstance(work, dict)
+        and work.get("run_id") == run_id
+        and (work.get("naming") or work.get("preview"))
+    )
+
+
+def _publish_persisted_preview(run_id: str, result: dict[str, object]) -> bool:
+    """Publish one durable Preview result and stop its File Review poll."""
+    status = str(result.get("status") or "pending")
+    if status == "pending":
+        return False
+
+    published_key = f"file_review_preview_published.{run_id}"
+    if st.session_state.get(published_key):
+        _mark_deferred_work_complete(run_id, "preview")
+        return False
+    st.session_state[published_key] = True
+    _mark_deferred_work_complete(run_id, "preview")
+
+    timings = st.session_state.get("current_agent_timings")
+    if isinstance(timings, dict):
+        timings["preview_seconds"] = float(result.get("preview_seconds") or result.get("duration_seconds") or 0)
+
+    cache = st.session_state.setdefault("file_review_data_cache", {})
+    cache.pop(run_id, None)
+    if status != "succeeded":
+        st.session_state[f"file_review_preview_terminal.{run_id}"] = status
     return True
 
 
@@ -532,7 +571,11 @@ def _poll_deferred_file_review_work(run_id: str) -> None:
     """
     naming_result = load_file_review_naming_publication(run_id)
     naming_done = _publish_persisted_naming(run_id, naming_result)
-    preview_done = _collect_completed_previews(run_id)
+    if naming_done:
+        _mark_deferred_work_complete(run_id, "naming")
+    local_preview_result = _collect_completed_previews()
+    preview_result = local_preview_result or load_file_review_preview_publication(run_id)
+    preview_done = _publish_persisted_preview(run_id, preview_result)
     if naming_done or preview_done:
         st.rerun(scope="app")
 
@@ -671,13 +714,17 @@ def render_file_review_screen(company_id: str) -> None:
         _render_missing_run_state()
         return
 
-    _collect_completed_previews(run_id)
-
     try:
         data = _load_file_review_screen_data(run_id)
     except Exception as exc:
         _render_load_error(exc)
         return
+
+    preview_terminal_status = st.session_state.get(f"file_review_preview_terminal.{run_id}")
+    if preview_terminal_status:
+        for item in data.get("objects") or []:
+            if isinstance(item, dict) and not item.get("preview_ref"):
+                item["preview_pending"] = False
 
     _sync_run_metadata_state(run_id, data["run"])
     with st.container():
@@ -717,9 +764,7 @@ def render_file_review_screen(company_id: str) -> None:
     for item in data["objects"]:
         _render_object_card(item)
 
-    if isinstance(st.session_state.get("current_naming_future"), Future) or isinstance(
-        st.session_state.get("current_preview_future"), Future
-    ):
+    if _has_deferred_work(run_id):
         _poll_deferred_file_review_work(run_id)
 
     _render_missing_object_search()

@@ -36,6 +36,8 @@ def _reset_post_upload_flow_state() -> None:
     st.session_state.current_ocr_package = None
     st.session_state.current_agent_timings = None
     st.session_state.current_naming_future = None
+    st.session_state.current_preview_future = None
+    st.session_state.file_review_deferred_work = None
     st.session_state.current_naming_result = None
     st.session_state.processed_file_name = None
     st.session_state.processing_error = None
