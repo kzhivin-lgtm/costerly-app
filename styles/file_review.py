@@ -277,10 +277,17 @@ def apply_file_review_css() -> None:
             visibility: hidden;
         }
 
+        .file-review-preview-slot {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+        }
+
         .file-review-preview-box,
         .file-review-preview-placeholder {
-            width: 100px;
-            height: 100px;
+            width: 145px;
+            height: 145px;
+            flex: 0 0 auto;
             box-sizing: border-box;
             border-radius: 8px;
             overflow: hidden;

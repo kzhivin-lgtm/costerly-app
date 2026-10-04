@@ -327,7 +327,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             'style="display:none!important;width:0;height:0;overflow:hidden;">&#8203;</span>',
             unsafe_allow_html=True,
         )
-        card_main, card_preview = st.columns([7, 1.4], gap="small", vertical_alignment="top")
+        card_main, card_preview = st.columns([6.2, 2.2], gap="small", vertical_alignment="top")
         preview_ref = item.get("preview_ref")
         preview_html = '<div class="file-review-preview-placeholder"><span></span></div>'
         if isinstance(preview_ref, str):
@@ -347,7 +347,10 @@ def _render_object_card(item: dict[str, object]) -> None:
                 '<span class="file-review-preview-spinner"></span>'
                 '</div>'
             )
-        card_preview.markdown(preview_html, unsafe_allow_html=True)
+        card_preview.markdown(
+            f'<div class="file-review-preview-slot">{preview_html}</div>',
+            unsafe_allow_html=True,
+        )
 
         name_slot = card_main
 
