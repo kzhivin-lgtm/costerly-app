@@ -394,11 +394,9 @@ def _render_object_card(item: dict[str, object]) -> None:
             '<div class="file-review-object-detail-grid">'
             '<div class="file-review-label">Dimensions:</div>'
             f'<div class="file-review-value">{_escape(item.get("dimensions"))}</div>'
-            '<div class="file-review-label">Materials:</div>'
-            f'<div class="file-review-value">{_escape(item.get("materials"))}</div>'
             '</div>'
             '<div class="file-review-divider"></div>'
-            '<div class="file-review-section-title">Missing information:</div>',
+            '<div class="file-review-section-title">Notes:</div>',
             unsafe_allow_html=True,
         )
         notes_html = _list_html(
