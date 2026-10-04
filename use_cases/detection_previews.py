@@ -44,20 +44,15 @@ def create_detection_previews(
     """Persist one isolated crop per object without blocking first File Review."""
     started_at = datetime.now(UTC).isoformat()
     started = perf_counter()
+    pages = _source_pages(file_name, file_bytes, page_images)
+    ocr_pages = {
+        int(row["page_number"]): row
+        for row in ocr_package.get("pages") or []
+        if isinstance(row, Mapping) and row.get("page_number")
+    }
     created = 0
     skipped: dict[str, str] = {}
-    try:
-        pages = _source_pages(file_name, file_bytes, page_images)
-        ocr_pages = {
-            int(row["page_number"]): row
-            for row in ocr_package.get("pages") or []
-            if isinstance(row, Mapping) and row.get("page_number")
-        }
-    except Exception as exc:
-        pages = []
-        ocr_pages = {}
-        skipped["__worker__"] = type(exc).__name__
-    for object_row in objects if not skipped else []:
+    for object_row in objects:
         object_id = str(object_row.get("object_id") or "")
         target = _preview_target(object_row)
         if not object_id or not target:

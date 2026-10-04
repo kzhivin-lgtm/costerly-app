@@ -137,28 +137,6 @@ def test_first_file_review_reuses_normalized_detection_payload():
     assert data["timings"]["detection_seconds"] == 12.5
 
 
-def test_terminal_preview_without_artifact_is_not_shown_as_pending():
-    item = {
-        "object_id": "object-001",
-        "object_name": "Counter",
-        "quantity": 1,
-        "confidence": 90,
-        "dimensions_json": {},
-        "evidence_page_refs": [{
-            "page_number": 1,
-            "preview_bbox": {
-                "top_left_x": 1, "top_left_y": 1,
-                "bottom_right_x": 2, "bottom_right_y": 2,
-            },
-        }],
-    }
-
-    assert "preview_pending" in rfq_processing._normalize_object(item)
-    assert "preview_pending" not in rfq_processing._normalize_object(
-        item, preview_terminal=True,
-    )
-
-
 def test_processing_uses_only_bounded_browser_handshake_after_complete_marker():
     source = Path("screens/processing.py").read_text()
     complete_tail = source.split(

@@ -559,19 +559,10 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
         raise RuntimeError(f"RFQ run not found in Supabase: {run_id}")
 
     run = run_df.iloc[0].to_dict()
-    preview_rows = usage_df[
-        usage_df.get("operation", pd.Series(dtype=str)) == "detection_object_previews"
-    ]
-    preview_terminal = not preview_rows.empty and str(
-        preview_rows.iloc[-1].get("status") or ""
-    ) in {"succeeded", "partial", "failed"}
     objects = [row.to_dict() for _, row in objects_df.iterrows()]
     return {
         "run": _normalize_run(run),
-        "objects": [
-            _normalize_object(item, preview_terminal=preview_terminal)
-            for item in objects
-        ],
+        "objects": [_normalize_object(item) for item in objects],
         "timings": _latest_runtime_timings(usage_df),
     }
 
@@ -773,9 +764,7 @@ def _normalize_run(run: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _normalize_object(
-    item: dict[str, Any], *, preview_terminal: bool = False,
-) -> dict[str, Any]:
+def _normalize_object(item: dict[str, Any]) -> dict[str, Any]:
     """Convert one Supabase detected object row to the File Review card contract."""
     dimensions = item.get("dimensions_json")
     if isinstance(dimensions, str):
@@ -795,7 +784,7 @@ def _normalize_object(
     preview_ref = _preview_ref(item)
     if preview_ref:
         normalized["preview_ref"] = preview_ref
-    elif not preview_terminal and any(
+    elif any(
         isinstance(ref, dict) and isinstance(ref.get("preview_bbox"), dict)
         for ref in item.get("evidence_page_refs") or []
     ):
