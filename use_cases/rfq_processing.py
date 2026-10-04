@@ -858,15 +858,7 @@ def _format_dimensions(dimensions: dict[str, Any]) -> str:
 def _percent(value: Any) -> str:
     if value is None or _is_missing(value):
         return "—"
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return f"{_clean_number(value)}%"
-    # Detection confidence is a probability. Historic rows can contain either
-    # the canonical 0..100 value or the direct 0..1 model probability.
-    if 0 < number <= 1:
-        number *= 100
-    return f"{_clean_number(number)}%"
+    return f"{_clean_number(value)}%"
 
 
 def _clean_number(value: Any) -> str:

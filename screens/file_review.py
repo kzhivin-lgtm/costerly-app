@@ -510,16 +510,6 @@ def _collect_completed_previews(run_id: str) -> bool:
     return True
 
 
-@st.fragment(run_every=2.0)
-def _poll_deferred_file_review_work(run_id: str) -> None:
-    """Perform one safe full rerun after background results are persisted."""
-    naming_done = _collect_completed_naming()
-    preview_done = _collect_completed_previews(run_id)
-    if naming_done or preview_done:
-        _apply_completed_naming(run_id)
-        st.rerun(scope="app")
-
-
 def _file_review_edits_changed(
     objects: list[dict[str, object]],
     object_edits: dict[str, dict[str, object]],
@@ -659,7 +649,6 @@ def render_file_review_screen(company_id: str) -> None:
     _collect_completed_naming()
     _collect_completed_previews(run_id)
     _apply_completed_naming(run_id)
-    _poll_deferred_file_review_work(run_id)
 
     try:
         data = _load_file_review_screen_data(run_id)

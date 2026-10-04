@@ -8,7 +8,6 @@ import streamlit as st
 
 import app
 from screens import file_review, objects
-from use_cases import rfq_processing
 
 
 def test_profile_route_preserves_selected_tab():
@@ -337,7 +336,7 @@ def test_file_review_metadata_state_does_not_leak_between_runs():
     assert "file_review_run_metadata.project_name" not in st.session_state
 
 
-def test_file_review_collects_completed_naming_and_has_a_scoped_async_refresh():
+def test_file_review_collects_completed_naming_without_a_timed_fragment():
     st.session_state.clear()
     future = Future()
     future.set_result({"status": "succeeded", "names": {}})
@@ -346,14 +345,7 @@ def test_file_review_collects_completed_naming_and_has_a_scoped_async_refresh():
     assert file_review._collect_completed_naming() is True
     assert st.session_state.current_naming_future is None
     assert st.session_state.current_naming_result == {"status": "succeeded", "names": {}}
-    source = Path("screens/file_review.py").read_text()
-    assert "@st.fragment(run_every=2.0)" in source
-    assert "def _poll_deferred_file_review_work(run_id: str)" in source
-
-
-def test_file_review_formats_probability_confidence_as_percent():
-    assert rfq_processing._percent(0.9) == "90%"
-    assert rfq_processing._percent(90) == "90%"
+    assert "@st.fragment(run_every=0.5)" not in Path("screens/file_review.py").read_text()
 
 
 def test_file_review_back_to_upload_is_never_disabled_after_an_input_event():
