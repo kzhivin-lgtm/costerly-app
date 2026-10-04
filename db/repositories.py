@@ -355,22 +355,6 @@ def fetch_deferred_naming_status(client: Client, run_id: str) -> dict | None:
     return dict(rows[0]) if rows else None
 
 
-def fetch_rfq_processing_cycle_event(client: Client, run_id: str) -> dict | None:
-    """Return the durable processing-cycle contract for one RFQ run."""
-    response = (
-        client.table("agent_usage_events")
-        .select("raw_usage,created_at")
-        .eq("run_id", run_id)
-        .eq("agent_name", "orchestration")
-        .eq("operation", "rfq_processing_cycle")
-        .order("created_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-    rows = response.data or []
-    return dict(rows[0]) if rows else None
-
-
 def fetch_deferred_preview_status(client: Client, run_id: str) -> dict | None:
     """Return the terminal object-preview ledger entry for one run, if present."""
     response = (

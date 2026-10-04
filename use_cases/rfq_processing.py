@@ -44,7 +44,6 @@ from db.repositories import (
     fetch_rfq_detected_objects,
     fetch_rfq_detected_object_evidence,
     fetch_rfq_detected_object_names,
-    fetch_rfq_processing_cycle_event,
     fetch_rfq_run,
     insert_agent_usage_event,
     insert_agent_usage_event_returning_id,
@@ -587,15 +586,6 @@ def load_file_review_naming_publication(run_id: str) -> dict[str, Any]:
 
     event = fetch_deferred_naming_status(client, run_id)
     if not event:
-        cycle_event = fetch_rfq_processing_cycle_event(client, run_id)
-        cycle_usage = (cycle_event or {}).get("raw_usage") or {}
-        if isinstance(cycle_usage, str):
-            try:
-                cycle_usage = json.loads(cycle_usage)
-            except (TypeError, ValueError):
-                cycle_usage = {}
-        if isinstance(cycle_usage, dict) and cycle_usage.get("naming_deferred") is False:
-            return {"status": "not_requested"}
         return {"status": "pending"}
 
     status = str(event.get("status") or "failed")

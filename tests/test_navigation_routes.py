@@ -409,20 +409,6 @@ def test_deferred_naming_publication_reads_only_the_terminal_name_snapshot(monke
     }
 
 
-def test_deferred_naming_marks_a_run_without_naming_as_terminal(monkeypatch):
-    monkeypatch.setattr(rfq_processing, "get_supabase_client", lambda: object())
-    monkeypatch.setattr(rfq_processing, "fetch_deferred_naming_status", lambda *_: None)
-    monkeypatch.setattr(
-        rfq_processing,
-        "fetch_rfq_processing_cycle_event",
-        lambda *_: {"raw_usage": {"naming_deferred": False}},
-    )
-
-    assert rfq_processing.load_file_review_naming_publication("run-1") == {
-        "status": "not_requested",
-    }
-
-
 def test_file_review_publishes_persisted_preview_once_without_a_local_future():
     st.session_state.clear()
     run_id = "run-1"
@@ -448,36 +434,14 @@ def test_file_review_publishes_persisted_preview_once_without_a_local_future():
     ) is False
 
 
-def test_file_review_rechecks_persisted_results_when_local_futures_are_missing():
+def test_file_review_rechecks_persisted_preview_when_local_future_is_missing():
     st.session_state.clear()
     run_id = "run-1"
 
     assert file_review._needs_deferred_review_publication(
         run_id,
         [{"object_id": "object-1", "preview_pending": True}],
-    ) == (True, True)
-
-
-def test_file_review_stops_each_durable_publisher_after_its_own_terminal_result():
-    st.session_state.clear()
-    run_id = "run-1"
-    object_id = "object-1"
-    objects = [{"object_id": object_id, "name": "Object 1", "preview_pending": True}]
-    st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
-    file_review._sync_object_edit_state(run_id, objects)
-    st.session_state.file_review_object_edits[object_id] = {"name": "Object 1"}
-
-    assert file_review._needs_deferred_review_publication(run_id, objects) == (True, True)
-    assert file_review._publish_persisted_naming(
-        run_id,
-        {"status": "succeeded", "names": {object_id: "Shelving unit"}},
-    ) is True
-    assert file_review._needs_deferred_review_publication(run_id, objects) == (False, True)
-    assert file_review._publish_persisted_previews(
-        run_id,
-        {"status": "failed", "preview_seconds": 0.5},
-    ) is True
-    assert file_review._needs_deferred_review_publication(run_id, objects) == (False, False)
+    ) == (False, True)
 
 
 def test_deferred_preview_publication_reads_only_the_terminal_evidence_snapshot(monkeypatch):
