@@ -305,6 +305,18 @@ def fetch_rfq_detected_objects(client: Client, run_id: str) -> pd.DataFrame:
     )
 
 
+def fetch_rfq_detected_object_names(client: Client, run_id: str) -> list[dict]:
+    """Load only the object names needed by deferred File Review Naming."""
+    response = (
+        client.table("rfq_detected_objects")
+        .select("object_id,object_name")
+        .eq("run_id", run_id)
+        .order("object_id")
+        .execute()
+    )
+    return list(response.data or [])
+
+
 def update_rfq_run(
     client: Client,
     *,
@@ -323,6 +335,22 @@ def fetch_agent_usage_events(client: Client, run_id: str) -> pd.DataFrame:
         order_by="created_at",
         filters={"run_id": run_id},
     )
+
+
+def fetch_deferred_naming_status(client: Client, run_id: str) -> dict | None:
+    """Return the terminal Naming ledger entry for one run, if it exists."""
+    response = (
+        client.table("agent_usage_events")
+        .select("status,duration_seconds,raw_usage,created_at")
+        .eq("run_id", run_id)
+        .eq("agent_name", "naming")
+        .eq("operation", "locked_object_naming_deferred")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return dict(rows[0]) if rows else None
 
 
 def fetch_latest_ocr_result(client: Client, run_id: str) -> dict | None:

@@ -8,6 +8,7 @@ import streamlit as st
 
 import app
 from screens import file_review, objects
+from use_cases import rfq_processing
 
 
 def test_profile_route_preserves_selected_tab():
@@ -336,16 +337,73 @@ def test_file_review_metadata_state_does_not_leak_between_runs():
     assert "file_review_run_metadata.project_name" not in st.session_state
 
 
-def test_file_review_collects_completed_naming_without_a_timed_fragment():
+def test_file_review_publishes_persisted_naming_once_without_reloading_review():
     st.session_state.clear()
-    future = Future()
-    future.set_result({"status": "succeeded", "names": {}})
-    st.session_state.current_naming_future = future
+    run_id = "run-1"
+    object_id = "object-1"
+    widget_key = f"file_review_object_edits.{object_id}.name"
+    objects = [{"object_id": object_id, "name": "Object 1"}]
+    st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
+    st.session_state.current_agent_timings = {}
+    file_review._sync_object_edit_state(run_id, objects)
+    st.session_state.file_review_object_edits[object_id] = {"name": "Object 1"}
+    st.session_state[widget_key] = "Object 1"
 
-    assert file_review._collect_completed_naming() is True
-    assert st.session_state.current_naming_future is None
-    assert st.session_state.current_naming_result == {"status": "succeeded", "names": {}}
-    assert "@st.fragment(run_every=0.5)" not in Path("screens/file_review.py").read_text()
+    assert file_review._publish_persisted_naming(
+        run_id,
+        {"status": "succeeded", "names": {object_id: "Shelving unit"}, "naming_seconds": 1.2},
+    ) is True
+    assert objects[0]["name"] == "Shelving unit"
+    assert st.session_state.file_review_object_edits[object_id]["name"] == "Shelving unit"
+    assert st.session_state[widget_key] == "Shelving unit"
+    assert st.session_state.current_agent_timings["naming_seconds"] == 1.2
+    assert file_review._publish_persisted_naming(
+        run_id,
+        {"status": "succeeded", "names": {object_id: "Different name"}},
+    ) is False
+
+
+def test_file_review_persisted_naming_does_not_overwrite_a_manual_name():
+    st.session_state.clear()
+    run_id = "run-1"
+    object_id = "object-1"
+    widget_key = f"file_review_object_edits.{object_id}.name"
+    objects = [{"object_id": object_id, "name": "Object 1"}]
+    st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
+    file_review._sync_object_edit_state(run_id, objects)
+    st.session_state.file_review_object_edits[object_id] = {"name": "Custom shelf"}
+    st.session_state[widget_key] = "Custom shelf"
+
+    file_review._publish_persisted_naming(
+        run_id,
+        {"status": "succeeded", "names": {object_id: "Shelving unit"}},
+    )
+
+    assert objects[0]["name"] == "Shelving unit"
+    assert st.session_state.file_review_object_edits[object_id]["name"] == "Custom shelf"
+    assert st.session_state[widget_key] == "Custom shelf"
+
+
+def test_deferred_naming_publication_reads_only_the_terminal_name_snapshot(monkeypatch):
+    monkeypatch.setattr(rfq_processing, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(
+        rfq_processing,
+        "fetch_deferred_naming_status",
+        lambda _client, _run_id: {"status": "succeeded", "duration_seconds": 1.7},
+    )
+    monkeypatch.setattr(
+        rfq_processing,
+        "fetch_rfq_detected_object_names",
+        lambda _client, _run_id: [
+            {"object_id": "object-1", "object_name": "Shelving unit"},
+        ],
+    )
+
+    assert rfq_processing.load_file_review_naming_publication("run-1") == {
+        "status": "succeeded",
+        "names": {"object-1": "Shelving unit"},
+        "naming_seconds": 1.7,
+    }
 
 
 def test_file_review_back_to_upload_remembers_the_current_review_run():

@@ -37,8 +37,10 @@ from agents.ocr_rendering import (
 )
 from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL
 from db.repositories import (
+    fetch_deferred_naming_status,
     fetch_agent_usage_events,
     fetch_rfq_detected_objects,
+    fetch_rfq_detected_object_names,
     fetch_rfq_run,
     insert_agent_usage_event,
     insert_agent_usage_event_returning_id,
@@ -564,6 +566,42 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
         "run": _normalize_run(run),
         "objects": [_normalize_object(item) for item in objects],
         "timings": _latest_runtime_timings(usage_df),
+    }
+
+
+def load_file_review_naming_publication(run_id: str) -> dict[str, Any]:
+    """Read the durable deferred-Naming result without reloading File Review.
+
+    The Naming worker saves object names before it writes its terminal ledger
+    entry.  A terminal event therefore makes the narrow name query safe and
+    avoids invalidating the Detection result or the preview cache.
+    """
+    client = get_supabase_client()
+    from state.company_auth import company_auth_enabled
+    if company_auth_enabled():
+        assert_run_owned(client, run_id, get_company_id())
+
+    event = fetch_deferred_naming_status(client, run_id)
+    if not event:
+        return {"status": "pending"}
+
+    status = str(event.get("status") or "failed")
+    try:
+        duration_seconds = float(event.get("duration_seconds") or 0)
+    except (TypeError, ValueError):
+        duration_seconds = 0.0
+    if status != "succeeded":
+        return {"status": "failed", "naming_seconds": duration_seconds}
+
+    names = {
+        str(row.get("object_id") or ""): str(row.get("object_name") or "")
+        for row in fetch_rfq_detected_object_names(client, run_id)
+        if str(row.get("object_id") or "")
+    }
+    return {
+        "status": "succeeded",
+        "names": names,
+        "naming_seconds": duration_seconds,
     }
 
 

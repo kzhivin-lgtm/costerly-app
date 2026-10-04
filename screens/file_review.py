@@ -23,6 +23,7 @@ from use_cases.estimation_runtime import submit_estimation_job
 from use_cases.latest_estimate import load_latest_estimate_route_for_run
 from use_cases.rfq_processing import (
     load_file_review_data,
+    load_file_review_naming_publication,
     save_file_review_object_name,
     save_file_review_run_metadata,
 )
@@ -437,13 +438,20 @@ def _sync_object_edit_state(run_id: str, objects: list[dict[str, object]]) -> No
         st.session_state.file_review_object_edits = {}
         st.session_state.file_review_object_edits_run_id = run_id
         st.session_state.file_review_saved_ignored_object_ids = set()
+        st.session_state.file_review_initial_object_names = {}
 
     edits = st.session_state.setdefault("file_review_object_edits", {})
+    initial_names = st.session_state.setdefault("file_review_initial_object_names", {})
     active_object_ids = {_object_id(item) for item in objects}
 
     for object_id in list(edits.keys()):
         if object_id not in active_object_ids:
             del edits[object_id]
+            initial_names.pop(object_id, None)
+
+    for item in objects:
+        object_id = _object_id(item)
+        initial_names.setdefault(object_id, str(item.get("name") or ""))
 
 
 def _load_file_review_screen_data(run_id: str) -> dict[str, object]:
@@ -454,49 +462,47 @@ def _load_file_review_screen_data(run_id: str) -> dict[str, object]:
     return cache[run_id]
 
 
-def _apply_completed_naming(run_id: str) -> None:
-    """Merge deferred names without overwriting names edited by the user."""
-    result = st.session_state.pop("current_naming_result", None)
-    if not isinstance(result, dict) or result.get("status") != "succeeded":
-        return
+def _publish_persisted_naming(
+    run_id: str, result: dict[str, object],
+) -> bool:
+    """Apply one durable Naming publication without reloading File Review."""
+    status = str(result.get("status") or "pending")
+    if status == "pending":
+        return False
+
+    published_key = f"file_review_naming_published.{run_id}"
+    if st.session_state.get(published_key):
+        return False
+    st.session_state[published_key] = True
+
+    if status != "succeeded":
+        return True
 
     names = result.get("names") or {}
+    if not isinstance(names, dict):
+        return True
     cache = st.session_state.setdefault("file_review_data_cache", {})
     data = cache.get(run_id)
     if isinstance(data, dict):
         edits = st.session_state.setdefault("file_review_object_edits", {})
+        initial_names = st.session_state.setdefault("file_review_initial_object_names", {})
         for item in data.get("objects") or []:
             object_id = _object_id(item)
             new_name = str(names.get(object_id) or "")
             if not new_name:
                 continue
-            old_name = str(item.get("name") or "")
+            initial_name = str(initial_names.get(object_id) or item.get("name") or "")
             edit = edits.get(object_id)
-            if isinstance(edit, dict) and str(edit.get("name") or "") == old_name:
+            if isinstance(edit, dict) and str(edit.get("name") or "") == initial_name:
                 edit["name"] = new_name
                 widget_key = f"file_review_object_edits.{object_id}.name"
-                if st.session_state.get(widget_key) == old_name:
+                if st.session_state.get(widget_key) == initial_name:
                     st.session_state[widget_key] = new_name
             item["name"] = new_name
 
     timings = st.session_state.get("current_agent_timings")
     if isinstance(timings, dict):
         timings["naming_seconds"] = float(result.get("naming_seconds") or 0)
-
-
-def _collect_completed_naming() -> bool:
-    """Collect the background Naming result when it has completed."""
-    future = st.session_state.get("current_naming_future")
-    if not isinstance(future, Future) or not future.done():
-        return False
-    try:
-        st.session_state.current_naming_result = future.result()
-    except Exception as exc:
-        st.session_state.current_naming_result = {
-            "status": "failed",
-            "error": str(exc),
-        }
-    st.session_state.current_naming_future = None
     return True
 
 
@@ -524,10 +530,10 @@ def _poll_deferred_file_review_work(run_id: str) -> None:
     Review, so its bounded two-second poll cannot rerun another screen while a
     user is leaving this one.
     """
-    naming_done = _collect_completed_naming()
+    naming_result = load_file_review_naming_publication(run_id)
+    naming_done = _publish_persisted_naming(run_id, naming_result)
     preview_done = _collect_completed_previews(run_id)
     if naming_done or preview_done:
-        _apply_completed_naming(run_id)
         st.rerun(scope="app")
 
 
@@ -665,9 +671,7 @@ def render_file_review_screen(company_id: str) -> None:
         _render_missing_run_state()
         return
 
-    _collect_completed_naming()
     _collect_completed_previews(run_id)
-    _apply_completed_naming(run_id)
 
     try:
         data = _load_file_review_screen_data(run_id)
