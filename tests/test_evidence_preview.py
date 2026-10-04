@@ -26,12 +26,24 @@ def test_crop_uses_ocr_page_dimensions_not_assumed_render_dimensions():
         assert image.size == (200, 200)
 
 
-def test_crop_rejects_bbox_outside_ocr_page():
+def test_crop_clamps_a_bbox_that_slightly_overshoots_the_ocr_page():
+    preview = crop_ocr_region_to_webp(
+        page_image=_page(),
+        page_dimensions={"width": 1000, "height": 500},
+        bbox={"top_left_x": 900, "top_left_y": 0, "bottom_right_x": 1001, "bottom_right_y": 100},
+        padding_ratio=0,
+    )
+
+    with Image.open(BytesIO(preview)) as image:
+        assert image.size == (100, 100)
+
+
+def test_crop_rejects_bbox_wholly_outside_ocr_page():
     with pytest.raises(ValueError, match="inside"):
         crop_ocr_region_to_webp(
             page_image=_page(),
             page_dimensions={"width": 1000, "height": 500},
-            bbox={"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 1001, "bottom_right_y": 10},
+            bbox={"top_left_x": 1001, "top_left_y": 0, "bottom_right_x": 1010, "bottom_right_y": 10},
         )
 
 

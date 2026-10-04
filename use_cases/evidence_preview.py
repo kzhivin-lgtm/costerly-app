@@ -33,7 +33,14 @@ def crop_ocr_region_to_webp(
     if all(0 <= value <= 1 for value in (left, top, right, bottom)):
         left, right = left * source_width, right * source_width
         top, bottom = top * source_height, bottom * source_height
-    if source_width <= 0 or source_height <= 0 or not (0 <= left < right <= source_width and 0 <= top < bottom <= source_height):
+    if source_width <= 0 or source_height <= 0:
+        raise ValueError("bbox must be inside the OCR page dimensions")
+    # A vision bbox can overshoot an OCR-page edge by a few pixels. Preserve
+    # every overlapping object crop by clamping that edge, but reject a region
+    # that is wholly outside or geometrically invalid.
+    left, right = max(0, left), min(source_width, right)
+    top, bottom = max(0, top), min(source_height, bottom)
+    if not (left < right and top < bottom):
         raise ValueError("bbox must be inside the OCR page dimensions")
     with Image.open(BytesIO(page_image)) as source:
         image = source.convert("RGB")
