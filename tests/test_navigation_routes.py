@@ -358,6 +358,18 @@ def test_file_review_back_to_upload_remembers_the_current_review_run():
     assert st.session_state.screen == "upload"
 
 
+def test_file_review_updates_a_provisional_name_from_the_persisted_snapshot():
+    st.session_state.clear()
+    initial = {"object_id": "object-1", "name": "Object 1"}
+    named = {"object_id": "object-1", "name": "Shelving unit"}
+
+    file_review._sync_object_edit_state("run-1", [initial])
+    file_review._ensure_object_edit("object-1", initial)
+    file_review._sync_object_edit_state("run-1", [named])
+
+    assert st.session_state.file_review_object_edits["object-1"]["name"] == "Shelving unit"
+
+
 def test_return_route_is_not_overwritten_by_the_historic_estimate_lookup():
     source = Path("app.py").read_text()
 
