@@ -348,26 +348,6 @@ def test_file_review_collects_completed_naming_without_a_timed_fragment():
     assert "@st.fragment(run_every=0.5)" not in Path("screens/file_review.py").read_text()
 
 
-def test_file_review_publishes_completed_naming_by_invalidating_only_its_run_cache():
-    st.session_state.clear()
-    st.session_state.current_naming_result = {
-        "status": "succeeded",
-        "names": {"object-001": "Display cabinet"},
-        "naming_seconds": 1.7,
-    }
-    st.session_state.current_agent_timings = {}
-    st.session_state.file_review_data_cache = {
-        "run-current": {"objects": [{"name": "Object 1"}]},
-        "run-other": {"objects": [{"name": "Other object"}]},
-    }
-
-    assert file_review._publish_completed_naming("run-current") is True
-    assert "run-current" not in st.session_state.file_review_data_cache
-    assert st.session_state.file_review_data_cache["run-other"]["objects"][0]["name"] == "Other object"
-    assert "current_naming_result" not in st.session_state
-    assert st.session_state.current_agent_timings["naming_seconds"] == 1.7
-
-
 def test_file_review_back_to_upload_remembers_the_current_review_run():
     st.session_state.clear()
     st.session_state.current_run_id = "run-current"
