@@ -250,6 +250,27 @@ Production acceptance and the 861-test suite passed at `8b18fc3`. Full record:
 
 Current owner-approved execution order:
 
+ACTIVE, P0, 3.15.27 Anthropic token-cost accounting: record the cost of every
+successful Anthropic model request from the usage fields returned by the model,
+using the configured per-token pricing and preserving the existing request,
+run, company, agent and model identity. The Platform Admin Detection,
+Estimation and Price Source totals must include every such recorded request,
+regardless of agent version or company. This is an application-calculated
+usage cost, not a claim of an invoice-level provider debit. Mistral OCR is
+explicitly excluded from this task and must remain unpriced rather than being
+estimated from a public list price. Acceptance: nonzero Anthropic calls in all
+three categories appear in the matching company row and in its total, while
+zero, failed or unavailable events are visibly distinguished from a known zero.
+
+DEFERRED, P1, USER REQUEST, 3.15.28 full provider billing reconciliation:
+create a billing system that reconciles Costerly's request ledger with official
+provider billing data, records reconciliation status and time window, and
+never represents a local token calculation as an exact account debit. Design
+the provider credentials, access controls, retention, aggregation boundary,
+credit/adjustment treatment, and Mistral ingestion before implementation.
+Trigger: after 3.15.27 is accepted and provider billing-data access is
+available.
+
 ACTIVE, 3.15.19 File Review editable project metadata: render Project name,
 Partner, and Client as compact inputs using the accepted 52 px Overhead input
 geometry. Persist edits only to the current RFQ run, keep drafts scoped by
