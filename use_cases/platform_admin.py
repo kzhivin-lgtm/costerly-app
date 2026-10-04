@@ -68,17 +68,20 @@ def load_company_dashboard(
     }
     try:
         response = client.rpc(
-            "platform_admin_company_dashboard_v2",
+            "platform_admin_company_dashboard_v3",
             params,
         ).execute()
     except Exception as exc:
         message = str(exc)
         if "PGRST202" not in message and "Could not find the function" not in message:
             raise
-        response = client.rpc(
-            "platform_admin_company_dashboard",
-            params,
-        ).execute()
+        try:
+            response = client.rpc("platform_admin_company_dashboard_v2", params).execute()
+        except Exception as fallback_exc:
+            fallback_message = str(fallback_exc)
+            if "PGRST202" not in fallback_message and "Could not find the function" not in fallback_message:
+                raise
+            response = client.rpc("platform_admin_company_dashboard", params).execute()
     return [dict(row) for row in (response.data or [])]
 
 

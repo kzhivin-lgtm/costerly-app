@@ -37,6 +37,7 @@ from agents.ocr_rendering import (
     run_mistral_document_evidence_ocr,
 )
 from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL
+from config import agent_cost_category, calculate_llm_cost_usd
 from db.repositories import (
     fetch_deferred_naming_status,
     fetch_deferred_preview_status,
@@ -105,6 +106,14 @@ def _runtime_event(
 ) -> dict[str, Any]:
     usage = dict(raw_usage or {})
     usage["duration_seconds"] = duration_seconds
+    usage["cost_category"] = agent_cost_category(agent_name)
+    costs = {"input_cost_usd": None, "output_cost_usd": None, "total_cost_usd": None}
+    if agent_name == "naming":
+        costs = calculate_llm_cost_usd(
+            model=model,
+            input_tokens=int(usage.get("input_tokens") or 0),
+            output_tokens=int(usage.get("output_tokens") or 0),
+        )
     return {
         "company_id": company_id,
         "run_id": run_id,
@@ -117,9 +126,7 @@ def _runtime_event(
         "prompt_version": prompt_version,
         "input_tokens": 0,
         "output_tokens": 0,
-        "input_cost_usd": None,
-        "output_cost_usd": None,
-        "total_cost_usd": None,
+        **costs,
         "status": status,
         "duration_seconds": duration_seconds,
         "started_at": started_at,

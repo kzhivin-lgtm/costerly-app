@@ -15,6 +15,8 @@ DEFAULT_CLAUDE_MODEL_PRICING: dict[str, dict[str, str]] = {
     "default": {"input": "1", "output": "5"},
 }
 
+AI_COST_CATEGORIES = {"detection", "estimation", "price_source"}
+
 
 def get_optional_secret(name: str, default: str | None = None) -> str | None:
     """Read runtime config from env first, then Streamlit secrets."""
@@ -88,3 +90,18 @@ def calculate_llm_cost_usd(
         "output_cost_usd": money(output_cost),
         "total_cost_usd": money(total_cost),
     }
+
+
+def agent_cost_category(agent_name: str) -> str:
+    """Classify every external AI request into an Admin cost column.
+
+    Prefixes deliberately decouple the dashboard from agent/prompt version
+    names. Unknown future external agents default to Detection so paid usage is
+    never omitted from the total while a dedicated category is being added.
+    """
+    normalized = str(agent_name or "").strip().casefold()
+    if normalized == "price_source" or normalized.startswith("price_source_"):
+        return "price_source"
+    if normalized == "estimation" or normalized.startswith("estimation_"):
+        return "estimation"
+    return "detection"

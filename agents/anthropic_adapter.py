@@ -13,7 +13,7 @@ from typing import Any
 
 import anthropic
 
-from config import calculate_llm_cost_usd
+from config import agent_cost_category, calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
@@ -632,6 +632,7 @@ def build_agent_usage_event(
         "cache_creation_input_tokens": cache_creation_input_tokens,
         "cache_read_input_tokens": cache_read_input_tokens,
         "duration_seconds": duration_seconds,
+        "cost_category": agent_cost_category(agent_name),
     }
     if request_diagnostics:
         raw_usage.update(request_diagnostics)

@@ -165,6 +165,12 @@ def apply_platform_admin_css() -> None:
 
         .platform-admin-table tr:last-child td { border-bottom: 0; }
 
+        .platform-admin-table tfoot td {
+            border-top: 2px solid rgba(42, 31, 44, 0.18);
+            background: rgba(42, 31, 44, 0.055);
+            font-weight: 700;
+        }
+
         .platform-admin-company {
             color: var(--color-text-strong);
             font-size: 14px;

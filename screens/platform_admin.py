@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from html import escape
 import logging
 from pathlib import Path
@@ -77,6 +78,33 @@ def _metric_cell(count: int, cost: str, *, label: str) -> str:
     )
 
 
+def _dashboard_totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Sum the displayed company metrics without inventing a status or stage."""
+    totals: dict[str, Any] = {}
+    integer_keys = (
+        "users_count", "active_days_7", "active_days_30", "files_uploaded",
+        "files_reuploaded", "detection_runs", "detection_unpriced_events",
+        "estimation_calls", "estimation_unpriced_events", "price_source_runs",
+        "price_source_unpriced_events", "pdfs_generated", "total_unpriced_events",
+        "failed_agent_events",
+    )
+    cost_keys = (
+        "detection_cost_usd", "estimation_cost_usd", "price_source_cost_usd",
+        "total_ai_cost_usd",
+    )
+    for key in integer_keys:
+        totals[key] = sum(int(row.get(key) or 0) for row in rows)
+    for key in cost_keys:
+        values: list[Decimal] = []
+        for row in rows:
+            try:
+                values.append(Decimal(str(row.get(key) or 0)))
+            except Exception:
+                values.append(Decimal("0"))
+        totals[key] = sum(values, Decimal("0"))
+    return totals
+
+
 def _dashboard_table(rows: list[dict[str, Any]]) -> str:
     if not rows:
         return (
@@ -85,9 +113,9 @@ def _dashboard_table(rows: list[dict[str, Any]]) -> str:
             "</div>"
         )
 
+    normalized_rows = [normalize_dashboard_row(raw_row) for raw_row in rows]
     body = []
-    for raw_row in rows:
-        row = normalize_dashboard_row(raw_row)
+    for row in normalized_rows:
         stage = row["account_stage"]
         status, status_kind = company_operational_status(row)
         detection_cost = format_ai_cost(
@@ -124,6 +152,41 @@ def _dashboard_table(rows: list[dict[str, Any]]) -> str:
             "</tr>"
         )
 
+    totals = _dashboard_totals(normalized_rows)
+    total_detection_cost = format_ai_cost(
+        totals["detection_cost_usd"],
+        unpriced_events=totals["detection_unpriced_events"],
+    )
+    total_estimation_cost = format_ai_cost(
+        totals["estimation_cost_usd"],
+        unpriced_events=totals["estimation_unpriced_events"],
+    )
+    total_price_source_cost = format_ai_cost(
+        totals["price_source_cost_usd"],
+        unpriced_events=totals["price_source_unpriced_events"],
+    )
+    total_ai_cost = format_ai_cost(
+        totals["total_ai_cost_usd"],
+        unpriced_events=totals["total_unpriced_events"],
+    )
+    displayed_total_ai_cost = total_ai_cost if total_ai_cost == "—" else f"${total_ai_cost}"
+    footer = (
+        '<tfoot><tr class="platform-admin-total-row">'
+        '<td><span class="platform-admin-company">Total</span></td>'
+        '<td>—</td>'
+        f'<td>{totals["users_count"]}</td>'
+        f'<td>{totals["active_days_7"]} ({totals["active_days_30"]})</td>'
+        f'<td>{totals["files_uploaded"]}</td>'
+        f'<td>{totals["files_reuploaded"]}</td>'
+        f'<td>{_metric_cell(totals["detection_runs"], total_detection_cost, label="doc")}</td>'
+        f'<td>{_metric_cell(totals["estimation_calls"], total_estimation_cost, label="calls")}</td>'
+        f'<td>{_metric_cell(totals["price_source_runs"], total_price_source_cost, label="sources")}</td>'
+        f'<td><span class="platform-admin-metric-count">{totals["pdfs_generated"]}</span></td>'
+        f'<td><span class="platform-admin-metric-count">{escape(displayed_total_ai_cost)}</span></td>'
+        '<td>—</td>'
+        '</tr></tfoot>'
+    )
+
     return (
         '<div class="platform-admin-table-card">'
         '<div class="platform-admin-table-scroll">'
@@ -140,7 +203,7 @@ def _dashboard_table(rows: list[dict[str, Any]]) -> str:
         "<th>Detection</th><th>Estimation</th><th>Price Lists</th>"
         "<th>PDFs</th><th>AI cost</th><th>Status</th>"
         "</tr></thead>"
-        f"<tbody>{''.join(body)}</tbody>"
+        f"<tbody>{''.join(body)}</tbody>{footer}"
         "</table></div></div>"
     )
 

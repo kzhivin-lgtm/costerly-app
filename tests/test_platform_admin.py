@@ -115,7 +115,7 @@ def test_dashboard_uses_guarded_v2_rpc_and_validates_period():
     ) == rows
     assert client.rpc_calls == [
         (
-            "platform_admin_company_dashboard_v2",
+            "platform_admin_company_dashboard_v3",
             {"p_requesting_user_id": "user-1", "p_days": 30},
         )
     ]
@@ -245,6 +245,9 @@ def test_dashboard_escapes_company_name_and_omits_customer_content():
     assert "Estimation, $" not in markup
     assert "Price Lists, $" not in markup
     assert "AI cost, $" not in markup
+    assert '<tfoot><tr class="platform-admin-total-row">' in markup
+    assert '<span class="platform-admin-company">Total</span>' in markup
+    assert "$1.55" in markup
     assert "<td><span class=\"platform-admin-metric-count\">—</span></td>" in markup
 
 
@@ -453,6 +456,18 @@ def test_admin_session_migration_has_rolling_session_counts_and_private_rpc():
     assert "interval '30 days'" in migration
     assert "from public, anon, authenticated" in migration
     assert "to service_role" in migration
+
+
+def test_complete_ai_cost_migration_classifies_anthropic_agent_families_and_excludes_mistral():
+    migration = (
+        ROOT / "db/sql/2026_10_04_platform_admin_complete_ai_costs.sql"
+    ).read_text()
+
+    assert "platform_admin_company_dashboard_v3" in migration
+    assert "agent_usage_cost_category" in migration
+    assert "estimation\\_%" in migration
+    assert "price_source\\_%" in migration
+    assert "like 'claude-%'" in migration
 
 
 def test_admin_route_is_hidden_and_guarded_in_application_source():
