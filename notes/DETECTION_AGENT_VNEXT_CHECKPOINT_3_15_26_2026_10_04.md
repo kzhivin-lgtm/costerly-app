@@ -91,14 +91,14 @@ provide enough information to calculate cabinet parts, material area, hardware
 or fabrication work. Incorrect envelopes are more harmful than absent values.
 
 Experiments with isolated visual crops, expanded context, annotated page
-regions, dimension-chain maps and object-scoped OCR were not retained. They
-could not reliably associate all projections of one object with its external
-chains on Page 23. Object-scoped OCR did recover some local dimension text, but
-the accepted object preview bounds did not always cover every relevant view.
-No experiment modified the accepted production code or this checkpoint's
-preview, Naming, or shared-track quantity behavior.
+regions, dimension-chain maps and repeated OCR of object crops were not retained
+as a method for external dimensions. They could not reliably associate all
+projections of one object with its external chains on Page 23. Repeated crop OCR
+did recover some local dimension text, but the accepted object preview bounds did
+not always cover every relevant view. No dimension experiment modifies the
+accepted preview, Naming, or shared-track quantity behavior.
 
-### Retained research evidence, not a production behavior checkpoint
+### Retained research evidence, not an external-dimension behavior checkpoint
 
 Object-scoped OCR is a useful future evidence primitive. On the accepted Page
 23 object crops it recovered local literal values for the shelving object,
@@ -109,10 +109,29 @@ those values appear. Mistral returned the recovered values as one annotation
 for the crop image, not as separately coordinate-addressable number spans.
 
 This confirms that object-scoped OCR can enrich a future Estimation evidence
-pack, but it cannot yet derive or validate external envelopes. The test reused
-the accepted persisted Page 23 run and was never wired into Processing, deferred
-Naming or Preview publication. Therefore it adds no new claim about File Review
-publication, preview creation or object quantity.
+pack, but it cannot yet derive or validate external envelopes.
+
+### 2026-10-04 additive production implementation
+
+`use_cases/object_scoped_ocr.py` now derives an object-scoped OCR evidence pack
+from the single original OCR package already obtained for Detection. It makes no
+new Mistral request. It retains only text blocks that intersect the accepted
+object bbox and image annotations whose source image is entirely inside that
+bbox. The result is saved as a private JSON artifact and linked from that
+object's existing `evidence_page_refs` entry.
+
+The worker starts only after the Preview worker has completed, then reloads the
+persisted objects before appending its ref. This ordering is intentional: it
+prevents two background workers from overwriting one another's update to the
+same JSON column. Naming remains independent because it updates only
+`object_name`. The worker is not polled by File Review and never changes
+Detection, quantity, Naming, Preview, external dimensions, or the customer
+visible first-render timing.
+
+This is an evidence-capture capability, not a claim that Estimation consumes
+this JSON yet. A future Estimation handoff must explicitly adopt the ref and
+keep the existing `review_required` behavior when the selected evidence is not
+sufficient.
 
 Estimation v2 may proceed without overall dimensions when object-scoped parts,
 materials and operation drivers are evidenced. Detection dimensions remain

@@ -59,6 +59,7 @@ from use_cases.retry import read_with_retry
 from use_cases.platform_admin import record_rfq_upload
 from use_cases.estimation_originals import persist_estimation_original
 from use_cases.detection_previews import create_detection_previews
+from use_cases.object_scoped_ocr import create_object_scoped_ocr_evidence
 
 
 _DIAGNOSTICS_EXECUTOR = ThreadPoolExecutor(
@@ -70,6 +71,7 @@ _NAMING_EXECUTOR = ThreadPoolExecutor(
     thread_name_prefix="rfq-naming",
 )
 _PREVIEW_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="rfq-preview")
+_OBJECT_OCR_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="rfq-object-ocr")
 
 
 def _object_lock_log(objects: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -444,6 +446,18 @@ def process_uploaded_rfq(
             objects=deepcopy(detection_result["detected_objects"]),
             ocr_package=deepcopy(ocr_package), page_images=page_images,
         )
+    # This reads the OCR package already obtained for Detection.  It runs after
+    # Preview has written its ref, so the two workers cannot race on the same
+    # evidence_page_refs JSON column.  It is private evidence only and never
+    # participates in Detection, quantity, Naming or File Review publication.
+    object_ocr_future = None
+    if detection_result["detected_objects"] and ocr_package:
+        object_ocr_future = _OBJECT_OCR_EXECUTOR.submit(
+            create_object_scoped_ocr_evidence,
+            client=client, company_id=company_id, run_id=run_id,
+            file_name=file_name, ocr_package=deepcopy(ocr_package),
+            preview_future=preview_future,
+        )
     if locked_objects is not None:
         naming_future = _NAMING_EXECUTOR.submit(
             _run_deferred_naming,
@@ -485,6 +499,7 @@ def process_uploaded_rfq(
             "naming_seconds": naming_seconds,
             "naming_deferred": naming_future is not None,
             "preview_deferred": preview_future is not None,
+            "object_ocr_deferred": object_ocr_future is not None,
             "object_lock_log": _object_lock_log(detection_result["detected_objects"]),
         },
     )
@@ -534,6 +549,7 @@ def process_uploaded_rfq(
         "original": original,
         "naming_future": naming_future,
         "preview_future": preview_future,
+        "object_ocr_future": object_ocr_future,
         "timings": {
             "ocr_seconds": ocr_seconds,
             "render_seconds": render_seconds,
