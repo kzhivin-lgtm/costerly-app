@@ -454,34 +454,27 @@ def _load_file_review_screen_data(run_id: str) -> dict[str, object]:
     return cache[run_id]
 
 
-def _apply_completed_naming(run_id: str) -> None:
-    """Merge deferred names without overwriting names edited by the user."""
+def _publish_completed_naming(run_id: str) -> bool:
+    """Publish deferred names through the persisted File Review source of truth.
+
+    Naming already conditionally saves names in Supabase.  The initial Review
+    payload is deliberately cached for a fast first paint, so mutating that
+    cache in memory can leave a placeholder visible after the worker has
+    finished.  Invalidate it once on terminal Naming completion and let the
+    ordinary File Review load read the saved names.  This is not a polling
+    path and it does not change Detection or Preview publication.
+    """
     result = st.session_state.pop("current_naming_result", None)
     if not isinstance(result, dict) or result.get("status") != "succeeded":
-        return
+        return False
 
-    names = result.get("names") or {}
     cache = st.session_state.setdefault("file_review_data_cache", {})
-    data = cache.get(run_id)
-    if isinstance(data, dict):
-        edits = st.session_state.setdefault("file_review_object_edits", {})
-        for item in data.get("objects") or []:
-            object_id = _object_id(item)
-            new_name = str(names.get(object_id) or "")
-            if not new_name:
-                continue
-            old_name = str(item.get("name") or "")
-            edit = edits.get(object_id)
-            if isinstance(edit, dict) and str(edit.get("name") or "") == old_name:
-                edit["name"] = new_name
-                widget_key = f"file_review_object_edits.{object_id}.name"
-                if st.session_state.get(widget_key) == old_name:
-                    st.session_state[widget_key] = new_name
-            item["name"] = new_name
+    cache.pop(run_id, None)
 
     timings = st.session_state.get("current_agent_timings")
     if isinstance(timings, dict):
         timings["naming_seconds"] = float(result.get("naming_seconds") or 0)
+    return True
 
 
 def _collect_completed_naming() -> bool:
@@ -527,7 +520,7 @@ def _poll_deferred_file_review_work(run_id: str) -> None:
     naming_done = _collect_completed_naming()
     preview_done = _collect_completed_previews(run_id)
     if naming_done or preview_done:
-        _apply_completed_naming(run_id)
+        _publish_completed_naming(run_id)
         st.rerun(scope="app")
 
 
@@ -667,7 +660,7 @@ def render_file_review_screen(company_id: str) -> None:
 
     _collect_completed_naming()
     _collect_completed_previews(run_id)
-    _apply_completed_naming(run_id)
+    _publish_completed_naming(run_id)
 
     try:
         data = _load_file_review_screen_data(run_id)
