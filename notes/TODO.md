@@ -5,6 +5,12 @@ make W/D/H extraction a Detection critical-path objective or an Estimation
 precondition. Show only directly evidenced values as optional File Review
 context and preserve unknown values otherwise. Trigger: a future dedicated
 object-view and dimension-chain evidence architecture, approved separately.
+The 04.10 original-OCR projection experiment is not a candidate implementation:
+the current direct-PDF OCR result has no object-local drawing text to project,
+the private evidence bucket accepts images rather than JSON, and the worker was
+reverted. Before reopening, approve the object-local OCR evidence contract,
+storage format and single-pass OCR profile, then test it without altering
+Detection, quantity, deferred Naming or Preview publication.
 
 COMPLETED AND OWNER-ACCEPTED, 3.16.1 Partners workspace foundation: Partner is the required top-level entity.
 Organizations use one company-scoped identity with Partner and Client roles;

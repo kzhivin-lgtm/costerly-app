@@ -114,6 +114,42 @@ the accepted persisted Page 23 run and was never wired into Processing, deferred
 Naming or Preview publication. Therefore it adds no new claim about File Review
 publication, preview creation or object quantity.
 
+### 2026-10-04 experiment log: original-OCR geometric projection
+
+The follow-up implementation was deliberately rolled back. It attempted to
+derive per-object OCR JSON from the already completed document OCR pass, then
+save a private ref after Preview publication. No additional Mistral request was
+made. The worker was sequenced after Preview to avoid competing writes to
+`evidence_page_refs`; Naming remained independent because it writes only the
+object name.
+
+It did not meet the release gate:
+
+- the first real Page 23 run preserved three objects, one shared-track door
+  system with quantity `1`, three Preview refs and successful deferred Naming,
+  but the new worker initially iterated a repository DataFrame incorrectly;
+- after that narrow bug was repaired, a second independent Detection run
+  returned door quantity `2`, so it could not establish the required end-to-end
+  quantity acceptance;
+- more fundamentally, the one-pass direct-PDF OCR package on Page 23 contains
+  header/footer text and a single full-sheet image block, with no literal items
+  or drawing-internal text boxes. A geometric projection therefore has no local
+  dimension text to select;
+- the private evidence bucket is intentionally restricted to image MIME types,
+  so it rejects a JSON OCR artifact; and the usage ledger accepts only terminal
+  `succeeded` or `failed` statuses, not `partial`.
+
+Commit `0bbfb19` briefly contained this worker. It was reverted by `f761604`.
+Neither commit is an accepted feature checkpoint. The accepted functional state
+remains the deferred-artifact checkpoint: Preview, Naming and shared-track
+quantity behavior are unchanged.
+
+Do not revive this implementation as a patch. A future object-local text
+evidence project must first define an approved consumer contract, storage type,
+terminal-state semantics, and a single-pass OCR profile that actually produces
+coordinate-addressable drawing text. It must then be benchmarked independently
+against the protected Page 23 quantity, Naming and Preview acceptance criteria.
+
 Estimation v2 may proceed without overall dimensions when object-scoped parts,
 materials and operation drivers are evidenced. Detection dimensions remain
 locator hints only and are not trusted fabrication facts. If evidence is
