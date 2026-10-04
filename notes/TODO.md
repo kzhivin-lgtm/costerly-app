@@ -56,6 +56,15 @@ Project Summary / Download XLS control is the reserved UI entry point. Define
 aggregation, duplicate-material merging, units, quantities, source prices, and
 supplier fields before implementation.
 
+DEFERRED, P1, USER REQUEST, 3.16.6 Unknown Partner completion path: a missing,
+blank, or explicitly `unknown` Partner must never block Final Approval. Final
+Approval must complete normally and store the finalized Project Version under
+one company-scoped reserved Unknown Partner group in Partners. All unresolved
+projects share that group until the user assigns a real Partner name. Renaming
+or assigning the Partner must move the project to the matching real Partner
+without changing its immutable estimate versions, proposal files, totals, or
+approval history. Trigger: resume Projects and Final Approval completion work.
+
 ACTIVE, IMPLEMENTATION CHECKPOINT `5f6360f`, P0, 3.15.24 canonical object quantity and durable Object Detail route:
 make item quantity editable on File Review, Objects, and Object Detail. All
 three screens share `rfq_detected_objects.quantity` as the canonical record;
@@ -159,6 +168,18 @@ Estimate evidence completed in 864 ms with a 22 ms screen render. Treat this as
 a likely File Review/Supabase I/O outlier, not a transition-wrapper diagnosis.
 If it repeats, add scoped timing around File Review data loading and then a
 bounded timeout/recovery based on that evidence.
+
+DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
+user refreshes Costerly after a long idle period and the application or session
+must wake and restore authenticated state, replace the unexplained prolonged
+gray screen with an explicit recovery state such as `Restoring your session`.
+Show it only when wake or recovery is actually detected, not during ordinary
+navigation or fast refresh. Preserve the accepted Fast Resume, authentication,
+membership validation, transition masking, and no-intermediate-DOM contracts.
+Acceptance requires a real long-idle production refresh, a truthful recovery
+message while waiting, no broken screen fragments, and normal navigation once
+restoration completes. Trigger: resume cold-start and session-recovery work.
+
 COMPLETED AND OWNER-ACCEPTED, 3.15.23 Object Detail edit recovery: the
 navigation rail remains protected by the accepted stale-state observer, and
 material edits no longer collapse the full Materials section to zero. Browser
