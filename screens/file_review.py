@@ -325,19 +325,30 @@ def _render_object_card(item: dict[str, object]) -> None:
             'style="display:none!important;width:0;height:0;overflow:hidden;">&#8203;</span>',
             unsafe_allow_html=True,
         )
-        card_main, card_preview = st.columns([7.5, 1], gap="small", vertical_alignment="top")
+        card_main, card_preview = st.columns([8, 1], gap="small", vertical_alignment="top")
         preview_ref = item.get("preview_ref")
+        preview_html = '<div class="file-review-preview-placeholder"><span></span></div>'
         if isinstance(preview_ref, str):
             preview_url = evidence_signed_url(
                 client=get_supabase_client(), storage_ref=preview_ref,
                 company_id=get_company_id(),
             )
             if preview_url:
-                card_preview.image(preview_url, width=100)
+                preview_html = (
+                    '<div class="file-review-preview-box">'
+                    f'<img src="{html.escape(preview_url, quote=True)}" alt="Object preview">'
+                    '</div>'
+                )
         elif item.get("preview_pending"):
-            card_preview.caption("Preview is preparing")
+            preview_html = (
+                '<div class="file-review-preview-placeholder" aria-label="Preview is preparing">'
+                '<span class="file-review-preview-spinner"></span>'
+                '</div>'
+            )
+        card_preview.markdown(preview_html, unsafe_allow_html=True)
 
-        card_main.markdown(
+        name_slot, _ = card_main.columns([7, 3], gap="small", vertical_alignment="top")
+        name_slot.markdown(
             '<div class="file-review-top-label">Object name</div>',
             unsafe_allow_html=True,
         )
@@ -349,7 +360,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             canonical_name and not current_widget_name.strip()
         ):
             st.session_state[name_widget_key] = canonical_name
-        edit["name"] = card_main.text_input(
+        edit["name"] = name_slot.text_input(
             "Object name",
             key=name_widget_key,
             on_change=_commit_object_name,
@@ -360,7 +371,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             ),
             label_visibility="collapsed",
         )
-        label_qty, label_conf, label_ignore = card_main.columns(
+        label_qty, label_conf, label_ignore = name_slot.columns(
             [1.3, 1.3, 1.7], gap="small", vertical_alignment="top",
         )
         label_qty.markdown(
@@ -375,7 +386,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             '<div class="file-review-top-label file-review-top-label-empty" aria-hidden="true">&nbsp;</div>',
             unsafe_allow_html=True,
         )
-        col_qty, col_conf, col_ignore = card_main.columns(
+        col_qty, col_conf, col_ignore = name_slot.columns(
             [1.3, 1.3, 1.7], gap="small", vertical_alignment="top",
         )
         edit["quantity"] = col_qty.text_input(
@@ -516,7 +527,8 @@ def _poll_deferred_file_review_work(run_id: str) -> None:
     naming_done = _collect_completed_naming()
     preview_done = _collect_completed_previews(run_id)
     if naming_done or preview_done:
-        st.rerun()
+        _apply_completed_naming(run_id)
+        st.rerun(scope="app")
 
 
 def _file_review_edits_changed(

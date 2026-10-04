@@ -277,6 +277,49 @@ def apply_file_review_css() -> None:
             visibility: hidden;
         }
 
+        .file-review-preview-box,
+        .file-review-preview-placeholder {
+            width: 100px;
+            height: 100px;
+            box-sizing: border-box;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .file-review-preview-box {
+            border: 1px solid rgba(42, 31, 44, 0.14);
+            background: #fff;
+        }
+
+        .file-review-preview-box img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .file-review-preview-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(42, 31, 44, 0.12);
+            background: rgba(42, 31, 44, 0.035);
+        }
+
+        .file-review-preview-spinner {
+            width: 20px;
+            height: 20px;
+            box-sizing: border-box;
+            border: 2px solid rgba(42, 31, 44, 0.18);
+            border-top-color: rgba(42, 31, 44, 0.66);
+            border-radius: 50%;
+            animation: file-review-preview-spin 800ms linear infinite;
+        }
+
+        @keyframes file-review-preview-spin {
+            to { transform: rotate(360deg); }
+        }
+
         :is(div[data-testid="stVerticalBlock"], div[data-testid="stVerticalBlockBorderWrapper"]):has(> div[data-testid="stElementContainer"] .file-review-object-card-marker)
             [data-testid="stTextInput"] {
             margin: 0;
