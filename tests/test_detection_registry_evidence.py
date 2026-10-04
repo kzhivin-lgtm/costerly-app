@@ -13,7 +13,8 @@ def test_registry_evidence_keeps_full_estimation_set_not_only_visual_dossier():
         }],
     }
     registry = {"objects": [{
-        "object_id": "object-001", "estimation_evidence_pages": [1, 9, 10, 13],
+        "object_id": "object-001", "quantity": 1, "quantity_explicit": False,
+        "estimation_evidence_pages": [1, 9, 10, 13],
     }]}
 
     merged = _merge_registry_evidence(result, registry)
@@ -25,3 +26,21 @@ def test_registry_evidence_keeps_full_estimation_set_not_only_visual_dossier():
         {"page_number": 10, "source_label": "10", "roles": ["construction"]},
         {"page_number": 13, "source_label": "13", "roles": ["construction"]},
     ]
+
+
+def test_registry_locks_complete_system_quantity_against_component_count():
+    result = {
+        "detected_objects": [{
+            "object_id": "object-001", "quantity": 2, "quantity_explicit": True,
+            "evidence_pages": "1", "evidence_page_refs": [],
+        }],
+    }
+    registry = {"objects": [{
+        "object_id": "object-001", "quantity": 1, "quantity_explicit": False,
+        "estimation_evidence_pages": [1],
+    }]}
+
+    merged = _merge_registry_evidence(result, registry)
+
+    assert merged["detected_objects"][0]["quantity"] == 1
+    assert merged["detected_objects"][0]["quantity_explicit"] is False

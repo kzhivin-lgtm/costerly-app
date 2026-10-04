@@ -29,9 +29,9 @@ from agents.schemas.detection_schema import (
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_AGENT_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
-DETECTION_PROMPT_VERSION = "detection_vnext_3_15_8_object_dossier_v1"
+DETECTION_PROMPT_VERSION = "detection_vnext_3_15_8_object_dossier_v2"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
-DETECTION_REGISTRY_PROMPT_VERSION = "detection_vnext_3_15_8_registry_regions_v1"
+DETECTION_REGISTRY_PROMPT_VERSION = "detection_vnext_3_15_8_registry_regions_v2"
 
 
 def get_secret(name: str, default: str | None = None) -> str | None:

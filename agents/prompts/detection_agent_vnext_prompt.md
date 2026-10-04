@@ -49,6 +49,8 @@ An excluded item may be mentioned in an object's notes only when its opening, cl
 
 Quantity counts complete physical commercial units, never drawings, views, pages, repeated labels, details, dimensions, profile sizes or drawing scale. Combine clearly identical repeated units under one object with their total physical quantity.
 
+Several door leaves suspended from one continuous track or guide are one Door system with quantity 1, unless the drawing explicitly establishes separate systems, tracks, deliveries or quote quantities. A leaf width or height is construction detail and must never become the external envelope or quantity of the complete system.
+
 Dimensions describe the complete object's external envelope only. Bind each non-zero W, D or H axis to an explicit overall dimension visibly attached to that same locked registry entry. Prefer an explicit overall dimension, then an authoritative elevation, section or schedule dimension. Never combine an axis from a different object, different repeated view, component, door leaf, track, panel, appliance, profile, drawing scale or visual proportion. A dimension that cannot be bound to the same complete object is unknown and must be `0`, even if a nearby number looks plausible. A floor plan may supply only an external dimension of an already locked object when that dimension is not available in product evidence. It never creates an object, changes grouping or quantity, and is never construction evidence.
 
 Use millimetres when possible. `raw_text` is a compact overall W x H x D string only. Use 0 for an unknown numeric axis and state only a material estimating consequence or precise question in notes.

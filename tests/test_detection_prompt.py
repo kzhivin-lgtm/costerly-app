@@ -25,7 +25,8 @@ def test_detection_prompt_vnext_locks_object_dossiers_without_naming():
     assert "Do not shorten a proper project name" in prompt
     assert "detected_materials" not in prompt
     assert "package-wide missing-information" in prompt
-    assert DETECTION_PROMPT_VERSION == "detection_vnext_3_15_8_object_dossier_v1"
+    assert "one continuous track or guide" in prompt
+    assert DETECTION_PROMPT_VERSION == "detection_vnext_3_15_8_object_dossier_v2"
 
 
 def test_detection_prompt_vnext_stays_compact():

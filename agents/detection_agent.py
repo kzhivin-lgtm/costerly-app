@@ -14,16 +14,23 @@ def _merge_registry_evidence(result: dict, registry: dict) -> dict:
     a kitchen's block and assembly sheets, for example, remain required by
     Estimation even when Detection did not need to inspect every sheet again.
     """
-    registry_pages = {
-        str(item["object_id"]): set(item["estimation_evidence_pages"])
+    registry_objects = {
+        str(item["object_id"]): item
         for item in registry["objects"]
     }
     for detected in result.get("detected_objects") or []:
         if not isinstance(detected, dict):
             continue
-        required_pages = registry_pages.get(str(detected.get("object_id")), set())
-        if not required_pages:
+        locked_object = registry_objects.get(str(detected.get("object_id")))
+        if not isinstance(locked_object, dict):
             continue
+        # The registry locks the commercial-object boundary and complete-unit
+        # quantity before the richer dossier pass sees component dimensions.
+        # Do not let a leaf, panel, view, or repeated detail replace that
+        # locked quantity in the final commercial object.
+        detected["quantity"] = locked_object["quantity"]
+        detected["quantity_explicit"] = locked_object["quantity_explicit"]
+        required_pages = set(locked_object["estimation_evidence_pages"])
         refs_by_page: dict[int, dict] = {}
         for raw_ref in detected.get("evidence_page_refs") or []:
             if not isinstance(raw_ref, dict):
