@@ -17,7 +17,9 @@ from config import calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
+    load_detection_registry_prompt,
 )
+from agents.schemas.detection_registry_schema import DETECTION_REGISTRY_JSON_SCHEMA, validate_detection_registry
 from agents.schemas.detection_schema import (
     DETECTION_RESULT_JSON_SCHEMA,
     validate_detection_result,
@@ -29,6 +31,7 @@ DEFAULT_CLAUDE_AGENT_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
 DETECTION_PROMPT_VERSION = "detection_vnext_3_15_8_object_dossier_v1"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
+DETECTION_REGISTRY_PROMPT_VERSION = "detection_vnext_3_15_8_registry_regions_v1"
 
 
 def get_secret(name: str, default: str | None = None) -> str | None:
@@ -471,6 +474,39 @@ def build_detection_content_blocks(
     blocks.append({"type": "text", "text": user_text})
     return blocks
 
+def build_detection_registry_content_blocks(*, file_name: str, file_bytes: bytes, user_text: str, page_images: list[bytes], regions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    blocks = build_detection_content_blocks(file_name=file_name, file_bytes=file_bytes, user_text="", page_images=page_images)
+    blocks.pop()
+    for region in regions:
+        blocks.append({"type":"text", "text":f"PDF page {region['page_number']} enlarged region: {region['region']}"})
+        blocks.append({"type":"image", "source":{"type":"base64","media_type":"image/jpeg","data":base64.standard_b64encode(region["bytes"]).decode("ascii")}})
+    blocks.append({"type":"text", "text":user_text})
+    return blocks
+
+def append_detection_focus_regions(blocks: list[dict[str, Any]], regions: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    if not regions:
+        return blocks
+    user_text = blocks.pop()["text"]
+    for region in regions:
+        blocks.append({"type":"text", "text":f"Enlarged drawing region, PDF page {region['page_number']}: {region['region']}"})
+        blocks.append({"type":"image", "source":{"type":"base64","media_type":"image/jpeg","data":base64.standard_b64encode(region["bytes"]).decode("ascii")}})
+    blocks.append({"type":"text", "text":user_text})
+    return blocks
+
+def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
+    selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
+    prompt = load_detection_registry_prompt()
+    user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
+    schema = strip_schema_for_claude(DETECTION_REGISTRY_JSON_SCHEMA)
+    response, diagnostics = create_claude_message_streamed(get_anthropic_client(), model=selected_model, max_tokens=2500, system=build_detection_system_content(prompt=prompt), messages=[{"role":"user","content":build_detection_registry_content_blocks(file_name=file_name,file_bytes=file_bytes,user_text=user_text,page_images=page_images,regions=regions)}], output_config={"format":{"type":"json_schema","schema":schema}})
+    try:
+        registry = validate_detection_registry(json.loads(extract_text_from_claude_response(response)))
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Detection registry response failed validation: {exc}") from exc
+    diagnostics.update({"registry_object_count":len(registry["objects"]),"region_count":len(regions),"page_count":len(page_images),"attempt_label":"registry_regions"})
+    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    return registry, usage
+
 
 def _utc_now_iso() -> str:
     return datetime.now(UTC).isoformat()
@@ -661,6 +697,8 @@ def run_anthropic_detection_agent(
     page_image_diagnostics: dict[str, Any] | None = None,
     model: str | None = None,
     attempt_label: str = "primary",
+    locked_registry: dict[str, Any] | None = None,
+    focus_regions: list[dict[str, Any]] | None = None,
 ) -> dict:
     """
     Real Claude-backed Detection Agent.
@@ -693,6 +731,8 @@ def run_anthropic_detection_agent(
         company_id=company_id,
         ocr_package=ocr_package,
     )
+    if locked_registry is not None:
+        user_text += "\n\nLOCKED OBJECT REGISTRY:\n" + json.dumps(locked_registry, ensure_ascii=False) + "\nReturn exactly these objects in this order. Preserve object_id, transport_label as object_name, quantity and quantity_explicit. Do not add, remove, split or merge objects."
     claude_schema = strip_schema_for_claude(DETECTION_RESULT_JSON_SCHEMA)
     system_content = build_detection_system_content(
         cache_enabled=cache_enabled,
@@ -729,13 +769,13 @@ def run_anthropic_detection_agent(
         messages=[
             {
                 "role": "user",
-                "content": build_detection_content_blocks(
+                "content": append_detection_focus_regions(build_detection_content_blocks(
                     file_name=file_name,
                     file_bytes=file_bytes,
                     user_text=user_text,
                     page_images=page_images,
                     cache_enabled=cache_enabled,
-                ),
+                ), focus_regions),
             }
         ],
         output_config={
@@ -829,6 +869,9 @@ def run_anthropic_detection_agent_with_fallback(
     page_images: list[bytes] | None = None,
     page_image_diagnostics: dict[str, Any] | None = None,
     primary_model_override: str | None = None,
+    locked_registry: dict[str, Any] | None = None,
+    focus_regions: list[dict[str, Any]] | None = None,
+    allow_sonnet_fallback: bool = False,
 ) -> dict:
     """
     First tries Haiku. If anything breaks, retries once with Sonnet.
@@ -851,11 +894,13 @@ def run_anthropic_detection_agent_with_fallback(
             page_image_diagnostics=page_image_diagnostics,
             model=primary_model,
             attempt_label="primary",
+            locked_registry=locked_registry,
+            focus_regions=focus_regions,
         )
     except Exception as primary_error:
         print(f"[Detection Agent] Primary Claude model failed: {primary_error}")
 
-        if not fallback_model or fallback_model == primary_model:
+        if not allow_sonnet_fallback or not fallback_model or fallback_model == primary_model:
             raise
 
         return run_anthropic_detection_agent(
@@ -867,6 +912,8 @@ def run_anthropic_detection_agent_with_fallback(
             page_image_diagnostics=page_image_diagnostics,
             model=fallback_model,
             attempt_label="fallback",
+            locked_registry=locked_registry,
+            focus_regions=focus_regions,
         )
 
 

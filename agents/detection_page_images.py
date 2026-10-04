@@ -17,6 +17,8 @@ DEFAULT_PAGE_IMAGE_WORKERS = 4
 DEFAULT_INLINE_PDF_REQUEST_MAX_BYTES = 30_000_000
 ANTHROPIC_MAX_IMAGES_PER_REQUEST = 100
 ANTHROPIC_MULTI_IMAGE_MAX_DIMENSION = 2_000
+REGISTRY_MAX_IMAGES = 100
+REGISTRY_REGIONS_PER_PAGE = 3
 
 
 def estimated_inline_pdf_bytes(file_bytes: bytes) -> int:
@@ -138,3 +140,36 @@ def render_detection_pdf_pages(
         "rendered_bytes_total": sum(len(page) for page in pages),
         "render_seconds": round(time.perf_counter() - started, 6),
     }
+
+
+def build_detection_registry_regions(
+    page_images: list[bytes],
+    *,
+    max_images: int = REGISTRY_MAX_IMAGES,
+) -> list[dict[str, Any]]:
+    """Add stable large visual zones so Haiku can inspect dense drawing sheets."""
+    if not page_images:
+        return []
+    from PIL import Image
+    from io import BytesIO
+
+    regions: list[dict[str, Any]] = []
+    available_regions = max(0, max_images - len(page_images))
+    pages_with_regions = available_regions // REGISTRY_REGIONS_PER_PAGE
+    for page_number, page_bytes in enumerate(page_images[:pages_with_regions], start=1):
+        with Image.open(BytesIO(page_bytes)) as image:
+            width, height = image.size
+            crops = (
+                ("upper_left", (0, 0, width // 2, height // 2)),
+                ("upper_right", (width // 2, 0, width, height // 2)),
+                ("lower", (0, height // 2, width, height)),
+            )
+            for region, box in crops:
+                output = BytesIO()
+                image.crop(box).save(output, format="JPEG", quality=85)
+                regions.append({
+                    "page_number": page_number,
+                    "region": region,
+                    "bytes": output.getvalue(),
+                })
+    return regions

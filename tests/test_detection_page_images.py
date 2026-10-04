@@ -56,7 +56,7 @@ def test_detection_request_combines_jpeg_pages_without_index_anchor():
     assert all(block["type"] != "document" for block in blocks)
 
 
-def test_large_route_skips_mistral_and_uses_sonnet(monkeypatch):
+def test_large_route_skips_mistral_and_keeps_haiku_default(monkeypatch):
     captured = {}
     monkeypatch.setattr(
         rfq_processing, "should_use_detection_page_images", lambda **_kwargs: True
@@ -96,9 +96,9 @@ def test_large_route_skips_mistral_and_uses_sonnet(monkeypatch):
 
     assert captured["page_images"] == [b"page-1"]
     assert captured["ocr_package"] is None
-    assert captured["model"] == "claude-sonnet-4-6"
+    assert captured["model"] is None
     assert result["timings"]["ocr_seconds"] == 0.0
-    assert result["timings"]["document_route"] == "jpeg_pages_96dpi_sonnet_4_6"
+    assert result["timings"]["document_route"] == "jpeg_pages_96dpi_haiku_4_5"
 
 
 def test_first_file_review_reuses_normalized_detection_payload():

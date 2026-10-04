@@ -68,6 +68,22 @@ _NAMING_EXECUTOR = ThreadPoolExecutor(
 _PREVIEW_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="rfq-preview")
 
 
+def _object_lock_log(objects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Record the immutable quote-unit decision before Naming can change labels."""
+    return [
+        {
+            "object_id": str(item.get("object_id") or ""),
+            "creator_label": str(item.get("object_name") or ""),
+            "quantity": item.get("quantity"),
+            "external_dimensions": dict(item.get("dimensions_json") or {}),
+            "evidence_pages": list(item.get("evidence_page_refs") or []),
+            "lock_note": str(item.get("notes") or ""),
+        }
+        for item in objects
+        if isinstance(item, dict)
+    ]
+
+
 def _runtime_event(
     *,
     agent_name: str,
@@ -129,7 +145,7 @@ def _persist_rfq_diagnostics(
     client: Any,
     ocr_package: dict[str, Any],
     detection_context: str,
-    usage_event: dict[str, Any] | None,
+    usage_events: list[dict[str, Any]] | None,
     naming_event: dict[str, Any] | None,
     cycle_event: dict[str, Any],
     company_id: str,
@@ -156,7 +172,7 @@ def _persist_rfq_diagnostics(
         ),
         status="failed" if ocr_package.get("status") == "failed" else "succeeded",
     )
-    events = [event for event in (usage_event, naming_event, cycle_event) if event]
+    events = [*(usage_events or []), *(event for event in (naming_event, cycle_event) if event)]
     try:
         insert_agent_usage_events(client, events)
     except Exception as exc:
@@ -382,20 +398,25 @@ def process_uploaded_rfq(
         ocr_package=detection_ocr_package,
         page_images=page_images,
         page_image_diagnostics=page_image_diagnostics,
-        model=(
-            get_secret("CLAUDE_LARGE_PDF_DETECTION_MODEL", "claude-sonnet-4-6")
-            if use_page_images
-            else None
-        ),
+        # Object boundaries must use the same Haiku path for every upload size.
+        # A rendered-page route changes transport, not the detection model.
+        model=None,
     )
     detection_seconds = round(time.perf_counter() - detection_started, 3)
-    usage_event = detection_result.pop("_agent_usage", None)
+    usage_events = detection_result.pop("_agent_usage_events", [])
+    legacy_usage_event = detection_result.pop("_agent_usage", None)
+    if isinstance(legacy_usage_event, dict):
+        usage_events.append(legacy_usage_event)
     # A model-generated run_id is not globally unique. In multi-company mode,
     # mint it on the server before any service-role upsert can overwrite another
     # company's RFQ with the same model-generated value.
     from state.company_auth import company_auth_enabled
     if company_auth_enabled():
         assign_server_run_id(detection_result)
+    # Detection records its usage before authenticated persistence mints the
+    # server run ID. Keep every later stage on the same correlation key.
+    for usage_event in usage_events:
+        usage_event["run_id"] = detection_result["rfq_run"]["run_id"]
     naming_seconds = 0.0
     naming_future = None
     locked_objects = None
@@ -449,7 +470,7 @@ def process_uploaded_rfq(
             "ocr_seconds": ocr_seconds,
             "render_seconds": render_seconds,
             "document_route": (
-                "jpeg_pages_96dpi_sonnet_4_6"
+                "jpeg_pages_96dpi_haiku_4_5"
                 if use_page_images
                 else "inline_base64"
             ),
@@ -460,6 +481,7 @@ def process_uploaded_rfq(
             "naming_seconds": naming_seconds,
             "naming_deferred": naming_future is not None,
             "preview_deferred": preview_future is not None,
+            "object_lock_log": _object_lock_log(detection_result["detected_objects"]),
         },
     )
     ocr_event = _runtime_event(
@@ -491,7 +513,7 @@ def process_uploaded_rfq(
         client=client,
         ocr_package=ocr_package,
         detection_context=detection_context,
-        usage_event=usage_event,
+        usage_events=usage_events,
         naming_event=None,
         cycle_event=cycle_event,
         company_id=company_id,
@@ -512,7 +534,7 @@ def process_uploaded_rfq(
             "ocr_seconds": ocr_seconds,
             "render_seconds": render_seconds,
             "document_route": (
-                "jpeg_pages_96dpi_sonnet_4_6"
+                "jpeg_pages_96dpi_haiku_4_5"
                 if use_page_images
                 else "inline_base64"
             ),
