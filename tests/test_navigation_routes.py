@@ -409,6 +409,71 @@ def test_deferred_naming_publication_reads_only_the_terminal_name_snapshot(monke
     }
 
 
+def test_file_review_publishes_persisted_preview_once_without_a_local_future():
+    st.session_state.clear()
+    run_id = "run-1"
+    object_id = "object-1"
+    objects = [{"object_id": object_id, "name": "Object 1", "preview_pending": True}]
+    st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
+    st.session_state.current_agent_timings = {}
+
+    assert file_review._publish_persisted_previews(
+        run_id,
+        {
+            "status": "succeeded",
+            "previews": {object_id: "storage://rfq-estimation-evidence/1/preview.webp"},
+            "preview_seconds": 4.1,
+        },
+    ) is True
+    assert objects[0]["preview_ref"] == "storage://rfq-estimation-evidence/1/preview.webp"
+    assert "preview_pending" not in objects[0]
+    assert st.session_state.current_agent_timings["preview_seconds"] == 4.1
+    assert file_review._publish_persisted_previews(
+        run_id,
+        {"status": "succeeded", "previews": {object_id: "storage://different.webp"}},
+    ) is False
+
+
+def test_file_review_rechecks_persisted_preview_when_local_future_is_missing():
+    st.session_state.clear()
+    run_id = "run-1"
+
+    assert file_review._needs_deferred_review_publication(
+        run_id,
+        [{"object_id": "object-1", "preview_pending": True}],
+    ) == (False, True)
+
+
+def test_deferred_preview_publication_reads_only_the_terminal_evidence_snapshot(monkeypatch):
+    monkeypatch.setattr(rfq_processing, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(
+        rfq_processing,
+        "fetch_deferred_preview_status",
+        lambda _client, _run_id: {
+            "status": "succeeded",
+            "raw_usage": {"duration_seconds": 4.1},
+        },
+    )
+    monkeypatch.setattr(
+        rfq_processing,
+        "fetch_rfq_detected_object_evidence",
+        lambda _client, _run_id: [
+            {
+                "object_id": "object-1",
+                "evidence_page_refs": [
+                    {"page_number": 1, "preview_ref": "storage://rfq-estimation-evidence/1/preview.webp"},
+                ],
+            },
+        ],
+    )
+
+    assert rfq_processing.load_file_review_preview_publication("run-1") == {
+        "status": "succeeded",
+        "previews": {"object-1": "storage://rfq-estimation-evidence/1/preview.webp"},
+        "preview_seconds": 4.1,
+    }
+
+
 def test_file_review_back_to_upload_remembers_the_current_review_run():
     st.session_state.clear()
     st.session_state.current_run_id = "run-current"

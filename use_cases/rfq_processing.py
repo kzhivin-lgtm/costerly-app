@@ -39,8 +39,10 @@ from agents.ocr_rendering import (
 from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL
 from db.repositories import (
     fetch_deferred_naming_status,
+    fetch_deferred_preview_status,
     fetch_agent_usage_events,
     fetch_rfq_detected_objects,
+    fetch_rfq_detected_object_evidence,
     fetch_rfq_detected_object_names,
     fetch_rfq_run,
     insert_agent_usage_event,
@@ -613,6 +615,52 @@ def load_file_review_naming_publication(run_id: str) -> dict[str, Any]:
         "status": "succeeded",
         "names": names,
         "naming_seconds": duration_seconds,
+    }
+
+
+def load_file_review_preview_publication(run_id: str) -> dict[str, Any]:
+    """Read durable preview references without reloading the Detection result."""
+    client = get_supabase_client()
+    from state.company_auth import company_auth_enabled
+    if company_auth_enabled():
+        assert_run_owned(client, run_id, get_company_id())
+
+    event = fetch_deferred_preview_status(client, run_id)
+    if not event:
+        return {"status": "pending"}
+
+    raw_usage = event.get("raw_usage") or {}
+    if isinstance(raw_usage, str):
+        try:
+            raw_usage = json.loads(raw_usage)
+        except (TypeError, ValueError):
+            raw_usage = {}
+    try:
+        duration_seconds = float(
+            (raw_usage.get("duration_seconds") if isinstance(raw_usage, dict) else 0) or 0
+        )
+    except (TypeError, ValueError):
+        duration_seconds = 0.0
+
+    status = str(event.get("status") or "failed")
+    if status != "succeeded":
+        return {"status": "failed", "preview_seconds": duration_seconds}
+
+    previews: dict[str, str] = {}
+    for row in fetch_rfq_detected_object_evidence(client, run_id):
+        object_id = str(row.get("object_id") or "")
+        if not object_id:
+            continue
+        for evidence_ref in row.get("evidence_page_refs") or []:
+            if isinstance(evidence_ref, dict) and isinstance(
+                evidence_ref.get("preview_ref"), str
+            ):
+                previews[object_id] = evidence_ref["preview_ref"]
+                break
+    return {
+        "status": "succeeded",
+        "previews": previews,
+        "preview_seconds": duration_seconds,
     }
 
 
