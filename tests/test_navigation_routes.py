@@ -348,12 +348,13 @@ def test_file_review_collects_completed_naming_without_a_timed_fragment():
     assert "@st.fragment(run_every=0.5)" not in Path("screens/file_review.py").read_text()
 
 
-def test_file_review_back_to_upload_hides_stale_last_estimate():
+def test_file_review_back_to_upload_remembers_the_current_review_run():
     st.session_state.clear()
+    st.session_state.current_run_id = "run-current"
 
     file_review._back_to_upload_from_review()
 
-    assert st.session_state.suppress_header_last_estimate is True
+    assert st.session_state.return_file_review_run_id == "run-current"
     assert st.session_state.screen == "upload"
 
 

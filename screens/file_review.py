@@ -624,8 +624,10 @@ def _back_to_upload_button(*, clear_processing_error: bool = False) -> None:
 
 
 def _back_to_upload_from_review() -> None:
-    """Leave this review without offering a stale company estimate in Upload."""
-    st.session_state.suppress_header_last_estimate = True
+    """Leave Upload with a route back to this exact File Review run."""
+    run_id = str(st.session_state.get("current_run_id") or "").strip()
+    if run_id:
+        st.session_state.return_file_review_run_id = run_id
     set_screen("upload")
 
 

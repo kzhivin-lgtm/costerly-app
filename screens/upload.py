@@ -28,7 +28,7 @@ def _render_upload_hero() -> None:
 
 def _reset_post_upload_flow_state() -> None:
     """Clear RFQ/estimate state when a new upload starts."""
-    st.session_state.suppress_header_last_estimate = False
+    st.session_state.return_file_review_run_id = None
     st.session_state.current_run_id = None
     st.session_state.current_estimate_id = None
     st.session_state.current_estimate_run_id = None

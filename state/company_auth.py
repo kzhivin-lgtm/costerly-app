@@ -1596,8 +1596,9 @@ def _open_last_estimate(latest_route: dict[str, str] | None) -> None:
         st.session_state.header_last_estimate_error = "No previous estimate is available."
         return
     st.session_state.current_run_id = latest_route["run_id"]
-    st.session_state.current_estimate_id = latest_route["estimate_id"]
-    st.session_state.current_estimate_run_id = latest_route["run_id"]
+    estimate_id = str(latest_route.get("estimate_id") or "").strip()
+    st.session_state.current_estimate_id = estimate_id or None
+    st.session_state.current_estimate_run_id = latest_route["run_id"] if estimate_id else None
     st.session_state.current_object_id = None
     # File Review is the one consistent entry point. Its Continue action starts
     # unfinished work or reopens an already durable Objects estimate.
@@ -1622,11 +1623,7 @@ def render_account_control(
         show_admin=platform_access is not None,
         show_projects=active_screen != "projects",
         show_new_estimate=active_screen not in {"upload", "processing"},
-        show_last_estimate=(
-            latest_route is not None
-            and active_screen not in workflow_screens
-            and not st.session_state.get("suppress_header_last_estimate", False)
-        ),
+        show_last_estimate=latest_route is not None and active_screen not in workflow_screens,
         show_profile=active_screen != "account",
     )
     last_estimate_error = st.session_state.pop("header_last_estimate_error", None)

@@ -479,9 +479,17 @@ def main() -> None:
         )
         latest_route = None
         latest_route_cache_key = f"_latest_estimate_route:{access.company_id}"
+        return_file_review_run_id = str(
+            st.session_state.get("return_file_review_run_id") or ""
+        ).strip()
         current_run_id = st.session_state.get("current_run_id")
         current_estimate_id = st.session_state.get("current_estimate_id")
-        if current_run_id and current_estimate_id:
+        if return_file_review_run_id:
+            latest_route = {
+                "run_id": return_file_review_run_id,
+                "estimate_id": "",
+            }
+        elif current_run_id and current_estimate_id:
             latest_route = {
                 "run_id": str(current_run_id),
                 "estimate_id": str(current_estimate_id),
