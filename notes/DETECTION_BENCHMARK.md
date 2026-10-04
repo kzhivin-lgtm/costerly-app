@@ -29,6 +29,21 @@ Object boundaries and metadata are stable. All three runs return one shelving
 unit, one sliding-door system, and one console; component leaves are not split.
 External dimensions remain a separate known issue.
 
+### Accepted vNext artifact checkpoint, 2026-10-04
+
+Checkpoint: `43933e5`, tag
+`checkpoint-2026-10-04-deferred-review-artifacts`. Production owner acceptance
+on `run_a341ead8c4724e9d8b0b95e238b39b2f` confirmed three isolated previews,
+three deferred names, and one shared-track Sliding door system with quantity
+`1`. Preview production must accept normalized `0..1` model coordinates and
+persist their OCR-pixel equivalent before crop creation.
+
+This is an artifact-publication and door-quantity checkpoint, not an external
+dimension acceptance. The same run still stored door leaf width `950` instead
+of the `4130` track span and console width `1760` instead of the `3610` full
+span. The next benchmark must score every W/H/D axis separately after an
+isolated dimension pass.
+
 ## Металл (1).pdf
 
 Expected commercial objects: 15, including distinct ЛП-1, ЛС-1, ЛС-2, and МП-1 positions.

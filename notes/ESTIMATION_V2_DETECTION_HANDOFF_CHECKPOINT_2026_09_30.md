@@ -50,3 +50,19 @@ Authenticated browser verification of File Review to Objects routing, refresh,
 company isolation and unchanged rendered UI is still required. It is separate
 from the completed production backend acceptance and must not be inferred from
 source inspection or automated tests.
+
+## Current Detection vNext evidence checkpoint, 2026-10-04
+
+The later owner-accepted checkpoint is `43933e5`, tagged
+`checkpoint-2026-10-04-deferred-review-artifacts`. Detection now persists an
+isolated source-derived preview for each accepted object before Estimation input
+creation. File Review publishes the durable deferred Naming and Preview results
+without requiring the in-memory worker future to survive a rerun.
+
+For accepted one-page Page 23 evidence, Estimation will receive both the
+object-local preview and the relevant private full-page artifact. This is enough
+to preserve construction context, but the full page contains multiple products;
+it must not be mistaken for object-local construction evidence. The accepted
+run has no Estimation input row or Estimation output yet. In addition, external
+dimensions are explicitly non-authoritative until the planned isolated
+dimension pass is implemented.

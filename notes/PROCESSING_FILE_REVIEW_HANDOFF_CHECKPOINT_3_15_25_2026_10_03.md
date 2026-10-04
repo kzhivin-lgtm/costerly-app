@@ -57,3 +57,13 @@ without new evidence.
 - Revert `5c322bf` only to remove the bounded observer handshake.
 - Revert `267d6eb` only to remove first-render Detection-result reuse.
 - Do not roll back to the rejected zero-delay intermediate behavior.
+
+## Successor checkpoint, 2026-10-04
+
+`43933e5` and tag `checkpoint-2026-10-04-deferred-review-artifacts` extend
+this handoff without changing the accepted 120 ms completion-marker contract.
+The successor records durable publication of deferred Naming and Preview,
+including a terminal Preview failure state that stops a permanent spinner. The
+owner accepted the production result for three Page 23 previews, three names,
+and one shared-track door system. External dimensions and Estimation output are
+not part of that acceptance.
