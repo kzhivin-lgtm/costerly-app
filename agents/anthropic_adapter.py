@@ -735,7 +735,7 @@ def run_anthropic_detection_agent(
         ocr_package=ocr_package,
     )
     if locked_registry is not None:
-        user_text += "\n\nLOCKED OBJECT REGISTRY:\n" + json.dumps(locked_registry, ensure_ascii=False) + "\nReturn exactly these objects in this order. Preserve object_id, transport_label as object_name, quantity and quantity_explicit. Do not add, remove, split or merge objects."
+        user_text += "\n\nLOCKED OBJECT REGISTRY:\n" + json.dumps(locked_registry, ensure_ascii=False) + "\nReturn exactly these objects in this order. The registry locks commercial boundaries: preserve object_id and transport_label as object_name, and do not add, remove, split or merge objects. Reassess quantity, quantity_explicit, external dimensions, notes and evidence against the supplied visual dossier. Correct a registry quantity only when the dossier proves a different number of complete commercial units."
     claude_schema = strip_schema_for_claude(DETECTION_RESULT_JSON_SCHEMA)
     system_content = build_detection_system_content(
         cache_enabled=cache_enabled,
