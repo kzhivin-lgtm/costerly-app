@@ -98,6 +98,22 @@ the accepted object preview bounds did not always cover every relevant view.
 No experiment modified the accepted production code or this checkpoint's
 preview, Naming, or shared-track quantity behavior.
 
+### Retained research evidence, not a production behavior checkpoint
+
+Object-scoped OCR is a useful future evidence primitive. On the accepted Page
+23 object crops it recovered local literal values for the shelving object,
+including `450`, `410`, `1660` and `2695`, and for the sliding-door system,
+including `2345`, `4130` and `950`. It did not recover the console's `3610` and
+`610`, because the accepted preview crop omitted the other projection where
+those values appear. Mistral returned the recovered values as one annotation
+for the crop image, not as separately coordinate-addressable number spans.
+
+This confirms that object-scoped OCR can enrich a future Estimation evidence
+pack, but it cannot yet derive or validate external envelopes. The test reused
+the accepted persisted Page 23 run and was never wired into Processing, deferred
+Naming or Preview publication. Therefore it adds no new claim about File Review
+publication, preview creation or object quantity.
+
 Estimation v2 may proceed without overall dimensions when object-scoped parts,
 materials and operation drivers are evidenced. Detection dimensions remain
 locator hints only and are not trusted fabrication facts. If evidence is
