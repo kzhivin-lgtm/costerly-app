@@ -459,6 +459,15 @@ def test_file_review_preview_failure_reloads_saved_refs_then_stops_spinner():
     assert st.session_state[f"file_review_preview_terminal.{run_id}"] == "partial"
 
 
+def test_file_review_mounts_deferred_artifact_poll_after_navigation_controls():
+    source = (Path(__file__).parents[1] / "screens/file_review.py").read_text()
+
+    poll = source.index("if _has_deferred_work(run_id):\n        _poll_deferred_file_review_work(run_id)")
+    next_action = source.index('"CONTINUE TO OBJECTS ESTIMATION"')
+
+    assert poll > next_action
+
+
 def test_file_review_back_to_upload_remembers_the_current_review_run():
     st.session_state.clear()
     st.session_state.current_run_id = "run-current"

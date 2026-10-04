@@ -764,9 +764,6 @@ def render_file_review_screen(company_id: str) -> None:
     for item in data["objects"]:
         _render_object_card(item)
 
-    if _has_deferred_work(run_id):
-        _poll_deferred_file_review_work(run_id)
-
     _render_missing_object_search()
 
     col_back, col_next = st.columns(2, gap="small")
@@ -789,6 +786,13 @@ def render_file_review_screen(company_id: str) -> None:
             "objects": data["objects"],
         },
     )
+
+    # A terminal deferred artifact causes one app rerun so the persisted name
+    # or preview can replace its placeholder. Mount this polling fragment only
+    # after both navigation controls have been emitted. Otherwise its rerun can
+    # interrupt the File Review render before the fixed header rail exists.
+    if _has_deferred_work(run_id):
+        _poll_deferred_file_review_work(run_id)
 
 
 def _object_edits_snapshot() -> dict[str, dict[str, object]]:
