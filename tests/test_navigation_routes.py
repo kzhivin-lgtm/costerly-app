@@ -337,33 +337,58 @@ def test_file_review_metadata_state_does_not_leak_between_runs():
     assert "file_review_run_metadata.project_name" not in st.session_state
 
 
-def test_file_review_publishes_persisted_naming_once_without_reloading_review():
+def test_file_review_publishes_naming_and_preview_as_one_terminal_update():
     st.session_state.clear()
     run_id = "run-1"
     object_id = "object-1"
     widget_key = f"file_review_object_edits.{object_id}.name"
-    objects = [{"object_id": object_id, "name": "Object 1"}]
+    objects = [{"object_id": object_id, "name": "Object 1", "preview_pending": True}]
     st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
     st.session_state.current_agent_timings = {}
     file_review._sync_object_edit_state(run_id, objects)
     st.session_state.file_review_object_edits[object_id] = {"name": "Object 1"}
     st.session_state[widget_key] = "Object 1"
 
-    assert file_review._publish_persisted_naming(
+    assert file_review._publish_deferred_file_review(
         run_id,
-        {"status": "succeeded", "names": {object_id: "Shelving unit"}, "naming_seconds": 1.2},
+        {
+            "status": "ready",
+            "names": {object_id: "Shelving unit"},
+            "previews": {object_id: "storage://rfq-estimation-evidence/1/preview.webp"},
+            "naming_seconds": 1.2,
+            "preview_seconds": 4.1,
+        },
     ) is True
     assert objects[0]["name"] == "Shelving unit"
+    assert objects[0]["preview_ref"] == "storage://rfq-estimation-evidence/1/preview.webp"
+    assert "preview_pending" not in objects[0]
     assert st.session_state.file_review_object_edits[object_id]["name"] == "Shelving unit"
     assert st.session_state[widget_key] == "Shelving unit"
     assert st.session_state.current_agent_timings["naming_seconds"] == 1.2
-    assert file_review._publish_persisted_naming(
+    assert st.session_state.current_agent_timings["preview_seconds"] == 4.1
+    assert file_review._publish_deferred_file_review(
         run_id,
-        {"status": "succeeded", "names": {object_id: "Different name"}},
+        {"status": "ready", "names": {}, "previews": {}},
     ) is False
 
 
-def test_file_review_persisted_naming_does_not_overwrite_a_manual_name():
+def test_file_review_does_not_publish_a_partial_deferred_result():
+    st.session_state.clear()
+    run_id = "run-1"
+    object_id = "object-1"
+    objects = [{"object_id": object_id, "name": "Object 1", "preview_pending": True}]
+    st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
+
+    assert file_review._publish_deferred_file_review(
+        run_id,
+        {"status": "pending"},
+    ) is False
+    assert objects[0]["name"] == "Object 1"
+    assert "preview_ref" not in objects[0]
+    assert not st.session_state.get(f"file_review_deferred_publication_done.{run_id}")
+
+
+def test_file_review_deferred_update_does_not_overwrite_a_manual_name():
     st.session_state.clear()
     run_id = "run-1"
     object_id = "object-1"
@@ -374,9 +399,13 @@ def test_file_review_persisted_naming_does_not_overwrite_a_manual_name():
     st.session_state.file_review_object_edits[object_id] = {"name": "Custom shelf"}
     st.session_state[widget_key] = "Custom shelf"
 
-    file_review._publish_persisted_naming(
+    file_review._publish_deferred_file_review(
         run_id,
-        {"status": "succeeded", "names": {object_id: "Shelving unit"}},
+        {
+            "status": "ready",
+            "names": {object_id: "Shelving unit"},
+            "previews": {},
+        },
     )
 
     assert objects[0]["name"] == "Shelving unit"
@@ -384,128 +413,34 @@ def test_file_review_persisted_naming_does_not_overwrite_a_manual_name():
     assert st.session_state[widget_key] == "Custom shelf"
 
 
-def test_deferred_naming_publication_reads_only_the_terminal_name_snapshot(monkeypatch):
+def test_deferred_file_review_publication_reads_one_terminal_snapshot(monkeypatch):
     monkeypatch.setattr(rfq_processing, "get_supabase_client", lambda: object())
     monkeypatch.setattr(
         rfq_processing,
-        "fetch_deferred_naming_status",
-        lambda _client, _run_id: {
-            "status": "succeeded",
-            "raw_usage": {"duration_seconds": 1.7},
-        },
-    )
-    monkeypatch.setattr(
-        rfq_processing,
-        "fetch_rfq_detected_object_names",
+        "fetch_deferred_file_review_events",
         lambda _client, _run_id: [
-            {"object_id": "object-1", "object_name": "Shelving unit"},
+            {"operation": "rfq_processing_cycle", "raw_usage": {"naming_deferred": True, "preview_deferred": True}},
+            {"operation": "locked_object_naming_deferred", "status": "succeeded", "raw_usage": {"duration_seconds": 1.7}},
+            {"operation": "detection_object_previews", "status": "succeeded", "raw_usage": {"duration_seconds": 4.1}},
         ],
     )
-
-    assert rfq_processing.load_file_review_naming_publication("run-1") == {
-        "status": "succeeded",
-        "names": {"object-1": "Shelving unit"},
-        "naming_seconds": 1.7,
-    }
-
-
-def test_deferred_naming_marks_a_run_without_naming_as_terminal(monkeypatch):
-    monkeypatch.setattr(rfq_processing, "get_supabase_client", lambda: object())
-    monkeypatch.setattr(rfq_processing, "fetch_deferred_naming_status", lambda *_: None)
     monkeypatch.setattr(
         rfq_processing,
-        "fetch_rfq_processing_cycle_event",
-        lambda *_: {"raw_usage": {"naming_deferred": False}},
-    )
-
-    assert rfq_processing.load_file_review_naming_publication("run-1") == {
-        "status": "not_requested",
-    }
-
-
-def test_file_review_publishes_persisted_preview_once_without_a_local_future():
-    st.session_state.clear()
-    run_id = "run-1"
-    object_id = "object-1"
-    objects = [{"object_id": object_id, "name": "Object 1", "preview_pending": True}]
-    st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
-    st.session_state.current_agent_timings = {}
-
-    assert file_review._publish_persisted_previews(
-        run_id,
-        {
-            "status": "succeeded",
-            "previews": {object_id: "storage://rfq-estimation-evidence/1/preview.webp"},
-            "preview_seconds": 4.1,
-        },
-    ) is True
-    assert objects[0]["preview_ref"] == "storage://rfq-estimation-evidence/1/preview.webp"
-    assert "preview_pending" not in objects[0]
-    assert st.session_state.current_agent_timings["preview_seconds"] == 4.1
-    assert file_review._publish_persisted_previews(
-        run_id,
-        {"status": "succeeded", "previews": {object_id: "storage://different.webp"}},
-    ) is False
-
-
-def test_file_review_rechecks_persisted_results_when_local_futures_are_missing():
-    st.session_state.clear()
-    run_id = "run-1"
-
-    assert file_review._needs_deferred_review_publication(
-        run_id,
-        [{"object_id": "object-1", "preview_pending": True}],
-    ) == (True, True)
-
-
-def test_file_review_stops_each_durable_publisher_after_its_own_terminal_result():
-    st.session_state.clear()
-    run_id = "run-1"
-    object_id = "object-1"
-    objects = [{"object_id": object_id, "name": "Object 1", "preview_pending": True}]
-    st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
-    file_review._sync_object_edit_state(run_id, objects)
-    st.session_state.file_review_object_edits[object_id] = {"name": "Object 1"}
-
-    assert file_review._needs_deferred_review_publication(run_id, objects) == (True, True)
-    assert file_review._publish_persisted_naming(
-        run_id,
-        {"status": "succeeded", "names": {object_id: "Shelving unit"}},
-    ) is True
-    assert file_review._needs_deferred_review_publication(run_id, objects) == (False, True)
-    assert file_review._publish_persisted_previews(
-        run_id,
-        {"status": "failed", "preview_seconds": 0.5},
-    ) is True
-    assert file_review._needs_deferred_review_publication(run_id, objects) == (False, False)
-
-
-def test_deferred_preview_publication_reads_only_the_terminal_evidence_snapshot(monkeypatch):
-    monkeypatch.setattr(rfq_processing, "get_supabase_client", lambda: object())
-    monkeypatch.setattr(
-        rfq_processing,
-        "fetch_deferred_preview_status",
-        lambda _client, _run_id: {
-            "status": "succeeded",
-            "raw_usage": {"duration_seconds": 4.1},
-        },
-    )
-    monkeypatch.setattr(
-        rfq_processing,
-        "fetch_rfq_detected_object_evidence",
+        "fetch_rfq_detected_object_publication_fields",
         lambda _client, _run_id: [
             {
                 "object_id": "object-1",
-                "evidence_page_refs": [
-                    {"page_number": 1, "preview_ref": "storage://rfq-estimation-evidence/1/preview.webp"},
-                ],
+                "object_name": "Shelving unit",
+                "evidence_page_refs": [{"preview_ref": "storage://rfq-estimation-evidence/1/preview.webp"}],
             },
         ],
     )
 
-    assert rfq_processing.load_file_review_preview_publication("run-1") == {
-        "status": "succeeded",
+    assert rfq_processing.load_file_review_deferred_publication("run-1") == {
+        "status": "ready",
+        "names": {"object-1": "Shelving unit"},
         "previews": {"object-1": "storage://rfq-estimation-evidence/1/preview.webp"},
+        "naming_seconds": 1.7,
         "preview_seconds": 4.1,
     }
 
