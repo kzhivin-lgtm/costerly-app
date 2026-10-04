@@ -1,5 +1,11 @@
 # TODO
 
+DEFERRED, P1, USER DECISION, Detection external envelope dimensions: do not
+make W/D/H extraction a Detection critical-path objective or an Estimation
+precondition. Show only directly evidenced values as optional File Review
+context and preserve unknown values otherwise. Trigger: a future dedicated
+object-view and dimension-chain evidence architecture, approved separately.
+
 COMPLETED AND OWNER-ACCEPTED, 3.16.1 Partners workspace foundation: Partner is the required top-level entity.
 Organizations use one company-scoped identity with Partner and Client roles;
 one organization may hold both roles. A Project belongs to one Partner and may
