@@ -280,7 +280,7 @@ def apply_file_review_css() -> None:
         .file-review-preview-box,
         .file-review-preview-placeholder {
             width: 100px;
-            height: 100px;
+            height: 145px;
             box-sizing: border-box;
             border-radius: 8px;
             overflow: hidden;

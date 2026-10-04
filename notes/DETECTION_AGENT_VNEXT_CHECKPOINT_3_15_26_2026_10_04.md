@@ -156,6 +156,21 @@ locator hints only and are not trusted fabrication facts. If evidence is
 insufficient, Estimation must return `review_required`, not derive a bill of
 materials from an uncertain envelope.
 
+## 2026-10-04 deferred-publication navigation checkpoint
+
+Checkpoint commit: `c41ba29`, tag
+`checkpoint-2026-10-04-deferred-publication-navigation`.
+
+The owner observed one production cycle where the upper navigation rail stayed
+visible while deferred Preview and Naming replaced their File Review
+placeholders. The repair confines deferred rendering to object cards and
+publishes terminal artifacts before creating keyed card inputs. This is an
+accepted intermediate checkpoint, not a closed reliability claim. Monitor the
+next production runs for all three conditions together: every saved preview
+appears, every completed Naming result replaces its provisional name, and the
+navigation rail remains visible. Any failure reopens this checkpoint before
+unrelated Detection changes are attempted.
+
 ## Next authorized direction
 
 Prioritize an object-scoped evidence pack for Estimation and test the kitchen

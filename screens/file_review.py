@@ -349,11 +349,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             )
         card_preview.markdown(preview_html, unsafe_allow_html=True)
 
-        name_slot, _ = card_main.columns([7, 3], gap="small", vertical_alignment="top")
-        name_slot.markdown(
-            '<div class="file-review-top-label">Object name</div>',
-            unsafe_allow_html=True,
-        )
+        name_slot = card_main
 
         name_widget_key = f"{edit_key}.name"
         canonical_name = str(edit.get("name") or "")

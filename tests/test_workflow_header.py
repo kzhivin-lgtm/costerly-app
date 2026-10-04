@@ -36,6 +36,14 @@ def test_workflow_titles_use_brand_ink_and_only_object_names_use_accent():
     assert ".file-review-detected-title" in review_css
 
 
+def test_file_review_object_preview_matches_the_name_and_ignore_control_stack():
+    review_source = open("screens/file_review.py").read()
+    review_css = open("styles/file_review.py").read()
+
+    assert "'<div class=\"file-review-top-label\">Object name</div>'" not in review_source
+    assert "height: 145px;" in review_css
+
+
 def test_file_review_does_not_need_a_stale_upload_navigation_override():
     review_css = open("styles/file_review.py").read()
 
