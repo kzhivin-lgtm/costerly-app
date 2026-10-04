@@ -1,5 +1,4 @@
 from __future__ import annotations
-import re
 
 from agents.anthropic_adapter import run_anthropic_detection_agent_with_fallback, run_anthropic_detection_registry_agent
 from agents.detection_page_images import build_detection_registry_regions, render_detection_pdf_pages
@@ -54,23 +53,6 @@ def _merge_registry_evidence(result: dict, registry: dict) -> dict:
         detected["evidence_pages"] = ",".join(
             str(ref["page_number"]) for ref in refs
         )
-    return result
-
-
-def _remove_uncertain_envelope_axes(result: dict) -> dict:
-    """Never pass a model's explicitly approximate envelope axis downstream."""
-    uncertain_depth = re.compile(
-        r"(?:depth|глубин)[^.]{0,80}(?:~|approx|approximately|var(?:ies|iable))"
-        r"|(?:~|approx|approximately)[^.]{0,80}(?:depth|глубин)",
-        re.IGNORECASE,
-    )
-    for detected in result.get("detected_objects") or []:
-        if not isinstance(detected, dict):
-            continue
-        notes = str(detected.get("notes") or "")
-        dimensions = detected.get("dimensions_json")
-        if isinstance(dimensions, dict) and uncertain_depth.search(notes):
-            dimensions["depth"] = 0
     return result
 
 
@@ -139,8 +121,6 @@ def run_detection_agent(
     )
 
     usage_event = result.pop("_agent_usage", None)
-    validated = validate_detection_result(
-        _remove_uncertain_envelope_axes(_merge_registry_evidence(result, registry))
-    )
+    validated = validate_detection_result(_merge_registry_evidence(result, registry))
     validated["_agent_usage_events"] = [event for event in (registry_usage, usage_event) if event]
     return validated

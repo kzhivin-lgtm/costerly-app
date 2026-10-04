@@ -836,21 +836,23 @@ def _normalize_note_item(value: str) -> str:
 
 
 def _format_dimensions(dimensions: dict[str, Any]) -> str:
+    raw_text = dimensions.get("raw_text")
+    if raw_text and not _is_missing(raw_text):
+        return str(raw_text)
+
     unit = dimensions.get("unit") or "mm"
+    parts = []
     labels = [
         ("W", dimensions.get("width")),
         ("D", dimensions.get("depth")),
         ("H", dimensions.get("height")),
     ]
-    if not any(value and not _is_missing(value) for _, value in labels):
-        raw_text = dimensions.get("raw_text")
-        return str(raw_text) if raw_text and not _is_missing(raw_text) else "—"
-    parts = []
     for label, value in labels:
         if value and not _is_missing(value):
             parts.append(f"{label} {_clean_number(value)}")
-        else:
-            parts.append(f"{label} ?")
+
+    if not parts:
+        return "—"
 
     return " × ".join(parts) + f" {unit}"
 

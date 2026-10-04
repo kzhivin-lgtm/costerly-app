@@ -49,7 +49,6 @@ def _reset_post_upload_flow_state() -> None:
     st.session_state.file_review_data_cache = {}
     st.session_state.objects_estimation_data_cache = {}
     st.session_state.objects_estimation_cache_dirty = set()
-    st.session_state.suppress_header_last_estimate = False
 
 
 def render_upload_screen(company_id: str) -> None:
@@ -66,7 +65,6 @@ def render_upload_screen(company_id: str) -> None:
         "📎 Drop or upload",
         type=["pdf", "png", "jpg", "jpeg"],
         label_visibility="collapsed",
-        key="rfq_upload_file",
     )
     install_upload_interaction_guards(processing_stage_html(elapsed_seconds=0))
 

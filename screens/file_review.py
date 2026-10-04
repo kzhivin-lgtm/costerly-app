@@ -325,7 +325,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             'style="display:none!important;width:0;height:0;overflow:hidden;">&#8203;</span>',
             unsafe_allow_html=True,
         )
-        card_main, card_preview = st.columns([7, 1.25], gap="small", vertical_alignment="top")
+        card_main, card_preview = st.columns([8, 1], gap="small", vertical_alignment="top")
         preview_ref = item.get("preview_ref")
         preview_html = '<div class="file-review-preview-placeholder"><span></span></div>'
         if isinstance(preview_ref, str):
@@ -347,6 +347,12 @@ def _render_object_card(item: dict[str, object]) -> None:
             )
         card_preview.markdown(preview_html, unsafe_allow_html=True)
 
+        name_slot, _ = card_main.columns([7, 3], gap="small", vertical_alignment="top")
+        name_slot.markdown(
+            '<div class="file-review-top-label">Object name</div>',
+            unsafe_allow_html=True,
+        )
+
         name_widget_key = f"{edit_key}.name"
         canonical_name = str(edit.get("name") or "")
         current_widget_name = str(st.session_state.get(name_widget_key) or "")
@@ -354,7 +360,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             canonical_name and not current_widget_name.strip()
         ):
             st.session_state[name_widget_key] = canonical_name
-        edit["name"] = card_main.text_input(
+        edit["name"] = name_slot.text_input(
             "Object name",
             key=name_widget_key,
             on_change=_commit_object_name,
@@ -365,7 +371,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             ),
             label_visibility="collapsed",
         )
-        label_qty, label_conf, label_ignore = card_main.columns(
+        label_qty, label_conf, label_ignore = name_slot.columns(
             [1.3, 1.3, 1.7], gap="small", vertical_alignment="top",
         )
         label_qty.markdown(
@@ -380,7 +386,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             '<div class="file-review-top-label file-review-top-label-empty" aria-hidden="true">&nbsp;</div>',
             unsafe_allow_html=True,
         )
-        col_qty, col_conf, col_ignore = card_main.columns(
+        col_qty, col_conf, col_ignore = name_slot.columns(
             [1.3, 1.3, 1.7], gap="small", vertical_alignment="top",
         )
         edit["quantity"] = col_qty.text_input(
@@ -510,6 +516,21 @@ def _collect_completed_previews(run_id: str) -> bool:
     return True
 
 
+@st.fragment(run_every=2.0)
+def _poll_deferred_file_review_work(run_id: str) -> None:
+    """Refresh File Review once when async Naming or previews have finished.
+
+    The fragment contains no navigation controls. It is mounted only on File
+    Review, so its bounded two-second poll cannot rerun another screen while a
+    user is leaving this one.
+    """
+    naming_done = _collect_completed_naming()
+    preview_done = _collect_completed_previews(run_id)
+    if naming_done or preview_done:
+        _apply_completed_naming(run_id)
+        st.rerun(scope="app")
+
+
 def _file_review_edits_changed(
     objects: list[dict[str, object]],
     object_edits: dict[str, dict[str, object]],
@@ -602,16 +623,6 @@ def _back_to_upload_button(*, clear_processing_error: bool = False) -> None:
     st.button("BACK TO UPLOAD", type="secondary", on_click=return_to_upload)
 
 
-def _back_to_upload_from_review() -> None:
-    """Open a genuinely empty Upload screen, never a stale file or estimate."""
-    st.session_state.suppress_header_last_estimate = True
-    st.session_state.uploaded_file_name = None
-    st.session_state.uploaded_file_bytes = None
-    st.session_state.processed_file_name = None
-    st.session_state.pop("rfq_upload_file", None)
-    set_screen("upload")
-
-
 def _render_processing_error(message: object) -> None:
     """Render the File Review fallback when RFQ processing failed."""
     _render_file_review_header_only()
@@ -694,6 +705,11 @@ def render_file_review_screen(company_id: str) -> None:
     for item in data["objects"]:
         _render_object_card(item)
 
+    if isinstance(st.session_state.get("current_naming_future"), Future) or isinstance(
+        st.session_state.get("current_preview_future"), Future
+    ):
+        _poll_deferred_file_review_work(run_id)
+
     _render_missing_object_search()
 
     col_back, col_next = st.columns(2, gap="small")
@@ -702,7 +718,8 @@ def render_file_review_screen(company_id: str) -> None:
         "BACK TO UPLOAD",
         type="secondary",
         use_container_width=True,
-        on_click=_back_to_upload_from_review,
+        on_click=set_screen,
+        args=("upload",),
     )
 
     col_next.button(
