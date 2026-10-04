@@ -446,12 +446,14 @@ def build_detection_content_blocks(
     file_bytes: bytes,
     user_text: str,
     page_images: list[bytes] | None = None,
+    page_image_numbers: list[int] | None = None,
     cache_enabled: bool = False,
 ) -> list[dict[str, Any]]:
     """Build one ordered package from an inline file or rendered PDF pages."""
     if page_images:
         blocks: list[dict[str, Any]] = []
-        for page_number, page_bytes in enumerate(page_images, start=1):
+        for position, page_bytes in enumerate(page_images, start=1):
+            page_number = page_image_numbers[position - 1] if page_image_numbers else position
             blocks.append({"type": "text", "text": f"PDF page {page_number}"})
             blocks.append(
                 {
@@ -699,6 +701,7 @@ def run_anthropic_detection_agent(
     attempt_label: str = "primary",
     locked_registry: dict[str, Any] | None = None,
     focus_regions: list[dict[str, Any]] | None = None,
+    page_image_numbers: list[int] | None = None,
 ) -> dict:
     """
     Real Claude-backed Detection Agent.
@@ -774,6 +777,7 @@ def run_anthropic_detection_agent(
                     file_bytes=file_bytes,
                     user_text=user_text,
                     page_images=page_images,
+                    page_image_numbers=page_image_numbers,
                     cache_enabled=cache_enabled,
                 ), focus_regions),
             }
@@ -871,6 +875,7 @@ def run_anthropic_detection_agent_with_fallback(
     primary_model_override: str | None = None,
     locked_registry: dict[str, Any] | None = None,
     focus_regions: list[dict[str, Any]] | None = None,
+    page_image_numbers: list[int] | None = None,
     allow_sonnet_fallback: bool = False,
 ) -> dict:
     """
@@ -896,6 +901,7 @@ def run_anthropic_detection_agent_with_fallback(
             attempt_label="primary",
             locked_registry=locked_registry,
             focus_regions=focus_regions,
+            page_image_numbers=page_image_numbers,
         )
     except Exception as primary_error:
         print(f"[Detection Agent] Primary Claude model failed: {primary_error}")
@@ -914,6 +920,7 @@ def run_anthropic_detection_agent_with_fallback(
             attempt_label="fallback",
             locked_registry=locked_registry,
             focus_regions=focus_regions,
+            page_image_numbers=page_image_numbers,
         )
 
 

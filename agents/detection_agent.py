@@ -53,17 +53,21 @@ def run_detection_agent(
         page_images=registry_images, regions=regions,
         ocr_package=ocr_package, model=model,
     )
+    dossier_page_numbers = sorted({page for item in registry["objects"] for page in item["dossier_pages"]})
+    dossier_images = [registry_images[page - 1] for page in dossier_page_numbers if page <= len(registry_images)]
+    dossier_regions = [region for region in regions if region["page_number"] in dossier_page_numbers]
     result = run_anthropic_detection_agent_with_fallback(
         file_name=file_name,
         company_id=company_id,
         file_bytes=file_bytes,
         ocr_package=ocr_package,
-        page_images=page_images,
+        page_images=dossier_images,
         page_image_diagnostics=page_image_diagnostics,
         primary_model_override=model,
         locked_registry=registry,
         allow_sonnet_fallback=False,
-        focus_regions=regions,
+        focus_regions=dossier_regions,
+        page_image_numbers=dossier_page_numbers,
     )
 
     usage_event = result.pop("_agent_usage", None)
