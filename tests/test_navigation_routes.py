@@ -358,6 +358,14 @@ def test_file_review_back_to_upload_remembers_the_current_review_run():
     assert st.session_state.screen == "upload"
 
 
+def test_return_route_is_not_overwritten_by_the_historic_estimate_lookup():
+    source = Path("app.py").read_text()
+
+    assert source.count(
+        "latest_route is None and latest_route_cache_key not in st.session_state"
+    ) == 2
+
+
 def test_file_review_back_to_upload_is_never_disabled_after_an_input_event():
     source = Path("screens/file_review.py").read_text()
 

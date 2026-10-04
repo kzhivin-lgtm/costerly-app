@@ -499,7 +499,7 @@ def main() -> None:
             latest_route = st.session_state.get(latest_route_cache_key)
         if platform_cached:
             platform_access = st.session_state.get("_platform_access")
-            if latest_route_cache_key not in st.session_state:
+            if latest_route is None and latest_route_cache_key not in st.session_state:
                 try:
                     latest_route = load_latest_estimate_route(
                         get_supabase_client(), str(access.company_id)
@@ -517,7 +517,7 @@ def main() -> None:
                     executor.submit(
                         load_latest_estimate_route, client, str(access.company_id)
                     )
-                    if latest_route_cache_key not in st.session_state
+                    if latest_route is None and latest_route_cache_key not in st.session_state
                     else None
                 )
             try:
