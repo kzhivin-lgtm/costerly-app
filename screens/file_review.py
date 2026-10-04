@@ -223,6 +223,24 @@ def _timing_html(timings: dict[str, object] | None) -> str:
     )
 
 
+def _merged_timings(
+    in_session: object, persisted: object,
+) -> dict[str, object] | None:
+    """Prefer the live cycle values, but never hide completed async timing."""
+    if not isinstance(in_session, dict) and not isinstance(persisted, dict):
+        return None
+    result = dict(persisted) if isinstance(persisted, dict) else {}
+    if isinstance(in_session, dict):
+        result.update(in_session)
+    try:
+        persisted_naming = float((persisted or {}).get("naming_seconds") or 0)
+        session_naming = float((in_session or {}).get("naming_seconds") or 0)
+        result["naming_seconds"] = max(persisted_naming, session_naming)
+    except (AttributeError, TypeError, ValueError):
+        pass
+    return result
+
+
 def _build_review_card_details_html(
     run: dict[str, object],
     timings: dict[str, object] | None = None,
@@ -307,6 +325,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             'style="display:none!important;width:0;height:0;overflow:hidden;">&#8203;</span>',
             unsafe_allow_html=True,
         )
+        card_main, card_preview = st.columns([7.5, 1], gap="small", vertical_alignment="top")
         preview_ref = item.get("preview_ref")
         if isinstance(preview_ref, str):
             preview_url = evidence_signed_url(
@@ -314,18 +333,35 @@ def _render_object_card(item: dict[str, object]) -> None:
                 company_id=get_company_id(),
             )
             if preview_url:
-                st.image(preview_url, caption="Object preview", use_container_width=True)
+                card_preview.image(preview_url, width=100)
         elif item.get("preview_pending"):
-            st.caption("Object preview is preparing")
+            card_preview.caption("Preview is preparing")
 
-        label_name, label_qty, label_conf, label_ignore = st.columns(
-            [7.4, 1.2, 1.2, 1.5],
-            gap="small",
-            vertical_alignment="top",
-        )
-        label_name.markdown(
+        card_main.markdown(
             '<div class="file-review-top-label">Object name</div>',
             unsafe_allow_html=True,
+        )
+
+        name_widget_key = f"{edit_key}.name"
+        canonical_name = str(edit.get("name") or "")
+        current_widget_name = str(st.session_state.get(name_widget_key) or "")
+        if name_widget_key not in st.session_state or (
+            canonical_name and not current_widget_name.strip()
+        ):
+            st.session_state[name_widget_key] = canonical_name
+        edit["name"] = card_main.text_input(
+            "Object name",
+            key=name_widget_key,
+            on_change=_commit_object_name,
+            args=(
+                str(st.session_state.get("current_run_id") or ""),
+                object_id,
+                name_widget_key,
+            ),
+            label_visibility="collapsed",
+        )
+        label_qty, label_conf, label_ignore = card_main.columns(
+            [1.3, 1.3, 1.7], gap="small", vertical_alignment="top",
         )
         label_qty.markdown(
             '<div class="file-review-top-label file-review-top-label-center">QTY</div>',
@@ -339,30 +375,8 @@ def _render_object_card(item: dict[str, object]) -> None:
             '<div class="file-review-top-label file-review-top-label-empty" aria-hidden="true">&nbsp;</div>',
             unsafe_allow_html=True,
         )
-
-        col_name, col_qty, col_conf, col_ignore = st.columns(
-            [7.4, 1.2, 1.2, 1.5],
-            gap="small",
-            vertical_alignment="top",
-        )
-
-        name_widget_key = f"{edit_key}.name"
-        canonical_name = str(edit.get("name") or "")
-        current_widget_name = str(st.session_state.get(name_widget_key) or "")
-        if name_widget_key not in st.session_state or (
-            canonical_name and not current_widget_name.strip()
-        ):
-            st.session_state[name_widget_key] = canonical_name
-        edit["name"] = col_name.text_input(
-            "Object name",
-            key=name_widget_key,
-            on_change=_commit_object_name,
-            args=(
-                str(st.session_state.get("current_run_id") or ""),
-                object_id,
-                name_widget_key,
-            ),
-            label_visibility="collapsed",
+        col_qty, col_conf, col_ignore = card_main.columns(
+            [1.3, 1.3, 1.7], gap="small", vertical_alignment="top",
         )
         edit["quantity"] = col_qty.text_input(
             "QTY",
@@ -460,12 +474,7 @@ def _apply_completed_naming(run_id: str) -> None:
 
 
 def _collect_completed_naming() -> bool:
-    """Collect completed Naming only during an ordinary app rerun.
-
-    A timed Streamlit fragment creates an independent rerun while the user can
-    be navigating to Objects or Upload. Keep the agent asynchronous, but fold
-    its result into the next normal File Review render instead.
-    """
+    """Collect the background Naming result when it has completed."""
     future = st.session_state.get("current_naming_future")
     if not isinstance(future, Future) or not future.done():
         return False
@@ -494,6 +503,20 @@ def _collect_completed_previews(run_id: str) -> bool:
     st.session_state.current_preview_future = None
     st.session_state.setdefault("file_review_data_cache", {}).pop(run_id, None)
     return True
+
+
+@st.fragment(run_every=2.0)
+def _poll_deferred_file_review_work(run_id: str) -> None:
+    """Refresh File Review once when async Naming or previews have finished.
+
+    The fragment contains no navigation controls. It is mounted only on File
+    Review, so its bounded two-second poll cannot rerun another screen while a
+    user is leaving this one.
+    """
+    naming_done = _collect_completed_naming()
+    preview_done = _collect_completed_previews(run_id)
+    if naming_done or preview_done:
+        st.rerun()
 
 
 def _file_review_edits_changed(
@@ -645,7 +668,7 @@ def render_file_review_screen(company_id: str) -> None:
         _render_review_card(
             run_id=run_id,
             run=data["run"],
-            timings=st.session_state.get("current_agent_timings") or data.get("timings"),
+            timings=_merged_timings(st.session_state.get("current_agent_timings"), data.get("timings")),
         )
     install_workflow_header_alignment_guard()
 
@@ -669,6 +692,11 @@ def render_file_review_screen(company_id: str) -> None:
 
     for item in data["objects"]:
         _render_object_card(item)
+
+    if isinstance(st.session_state.get("current_naming_future"), Future) or isinstance(
+        st.session_state.get("current_preview_future"), Future
+    ):
+        _poll_deferred_file_review_work(run_id)
 
     _render_missing_object_search()
 

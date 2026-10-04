@@ -7,7 +7,7 @@ from typing import Any, Mapping, Sequence
 
 from agents.detection_page_images import render_detection_pdf_pages
 from db.repositories import insert_estimation_object_input, next_estimation_object_input_revision
-from use_cases.estimation_artifacts import persist_preview_artifact
+from use_cases.estimation_artifacts import persist_page_artifact, persist_preview_artifact
 from use_cases.estimation_evidence import EvidenceArtifact
 from use_cases.estimation_evidence import build_estimation_input_v2, resolve_anchor_bbox
 from use_cases.estimation_originals import StoredOriginal
@@ -30,17 +30,14 @@ def persist_estimation_v2_inputs(
     versions: Mapping[str, str],
 ) -> dict[str, Any]:
     """Persist one immutable input revision for each estimable object."""
-    # Preview worker normally completed before Estimation. Do not re-render the
-    # source document if every selected object already has its immutable crop.
-    needs_fallback_preview = any(
+    # Preview worker normally completed before Estimation. Full selected pages
+    # still need immutable artifacts: a crop alone cannot prove cabinet blocks,
+    # hardware or fabrication details to Estimation.
+    needs_source_pages = any(
         str(item.get("object_id") or "") not in ignored_object_ids
-        and not any(
-            isinstance(ref, Mapping) and ref.get("preview_ref")
-            for ref in item.get("evidence_page_refs") or []
-        )
         for item in objects
     )
-    pages = _render_pages(file_name, file_bytes) if needs_fallback_preview else []
+    pages = _render_pages(file_name, file_bytes) if needs_source_pages else []
     ocr_pages = {int(row["page_number"]): row for row in ocr_package.get("pages") or [] if row.get("page_number")}
     created: list[str] = []
     created_inputs: list[dict[str, Any]] = []
@@ -139,10 +136,29 @@ def persist_estimation_v2_inputs(
                     "text_blocks": [],
                 },
             }
+        page_artifacts: list[EvidenceArtifact] = []
+        for page_ref in item.get("evidence_page_refs") or []:
+            try:
+                evidence_page_number = int(page_ref.get("page_number"))
+            except (AttributeError, TypeError, ValueError):
+                continue
+            if evidence_page_number < 1 or evidence_page_number > len(pages):
+                continue
+            page_artifacts.append(persist_page_artifact(
+                client=client, company_id=str(run["company_id"]), run_id=str(run["run_id"]),
+                object_id=object_id, page_number=evidence_page_number,
+                page_bytes=pages[evidence_page_number - 1],
+            ))
+        if len(page_artifacts) != len({
+            int(ref["page_number"]) for ref in item.get("evidence_page_refs") or []
+            if isinstance(ref, Mapping) and str(ref.get("page_number") or "").isdigit()
+        }):
+            skipped[object_id] = "evidence_page_not_renderable"
+            continue
         payload = build_estimation_input_v2(
             run=run, detected_object=item, ocr_event_id=ocr_event_id,
             ocr_package=bounded_ocr_package,
-            evidence_artifacts=(artifact,), versions=versions,
+            evidence_artifacts=(artifact, *page_artifacts), versions=versions,
         )
         labels = {int(ref["page_number"]): str(ref.get("source_label") or ref["page_number"])
                   for ref in item.get("evidence_page_refs") or []}
@@ -156,8 +172,11 @@ def persist_estimation_v2_inputs(
             original_mime_type=original.mime_type, original_size_bytes=original.size_bytes,
             ocr_event_id=ocr_event_id, input_payload=payload,
             object_input_revision=revision,
-            artifacts=[{"page_number": page_number, "source_label": labels.get(page_number, str(page_number)),
-                        "artifact_kind": artifact.artifact_kind, "storage_ref": artifact.storage_ref}],
+            artifacts=[
+                {"page_number": evidence.page_number, "source_label": labels.get(evidence.page_number, str(evidence.page_number)),
+                 "artifact_kind": evidence.artifact_kind, "storage_ref": evidence.storage_ref}
+                for evidence in (artifact, *page_artifacts)
+            ],
         )
         created.append(input_id)
         created_inputs.append({

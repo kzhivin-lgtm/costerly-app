@@ -14,9 +14,6 @@ from use_cases.material_identity_resolution import normalize_material_phrase
 
 
 ESTIMATION_INPUT_CONTRACT_VERSION = "estimation_input_v2"
-MAX_OCR_BLOCKS_PER_OBJECT = 80
-
-
 @dataclass(frozen=True)
 class EvidenceArtifact:
     storage_ref: str
@@ -149,8 +146,6 @@ def build_estimation_input_v2(
             **dict(block),
             "block_ref": f"ocr:{ocr_event_id}:p{page_number}:b{block_index:04d}",
         })
-        if len(blocks) >= MAX_OCR_BLOCKS_PER_OBJECT:
-            break
     artifacts = _artifact_payload(evidence_artifacts, pages)
     previews = [artifact for artifact in artifacts if artifact["artifact_kind"] == "preview"]
     if len(previews) != 1:

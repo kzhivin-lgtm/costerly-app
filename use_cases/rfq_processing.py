@@ -617,10 +617,21 @@ def _latest_runtime_timings(usage_df: pd.DataFrame) -> dict[str, float] | None:
     if total_seconds is None or pd.isna(total_seconds):
         total_seconds = raw_usage.get("duration_seconds", 0)
 
+    naming_rows = usage_df[
+        usage_df.get("operation", pd.Series(dtype=str)) == "locked_object_naming_deferred"
+    ]
+    naming_seconds = float(raw_usage.get("naming_seconds") or 0)
+    if not naming_rows.empty:
+        naming_row = naming_rows.iloc[-1]
+        if str(naming_row.get("status") or "") == "succeeded":
+            candidate = naming_row.get("duration_seconds")
+            if candidate is not None and not pd.isna(candidate):
+                naming_seconds = float(candidate)
+
     return {
         "ocr_seconds": float(raw_usage.get("ocr_seconds") or 0),
         "detection_seconds": float(raw_usage.get("detection_seconds") or 0),
-        "naming_seconds": float(raw_usage.get("naming_seconds") or 0),
+        "naming_seconds": naming_seconds,
         "total_seconds": float(total_seconds or 0),
     }
 

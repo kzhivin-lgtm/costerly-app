@@ -52,8 +52,8 @@ def _validate_input(payload: Mapping[str, Any]) -> tuple[Mapping[str, Any], Mapp
     object_payload = _required_input(payload, "object")
     evidence = _required_input(payload, "evidence")
     blocks = evidence.get("ocr_blocks")
-    if not isinstance(blocks, list) or len(blocks) > 80:
-        raise ValueError("estimation_input_v2 must contain at most 80 bounded OCR blocks")
+    if not isinstance(blocks, list):
+        raise ValueError("estimation_input_v2 OCR blocks must be an array")
     block_refs = [str(block.get("block_ref") or "") for block in blocks if isinstance(block, Mapping)]
     if len(block_refs) != len(blocks) or any(not ref for ref in block_refs) or len(block_refs) != len(set(block_refs)):
         raise ValueError("estimation_input_v2 OCR blocks require unique block_ref values")

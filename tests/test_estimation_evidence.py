@@ -102,6 +102,23 @@ def test_e03_builder_freezes_only_cited_ocr_blocks_and_private_evidence_refs():
     assert result["document"]["ocr_event_id"] == "ocr-event-1"
 
 
+def test_builder_keeps_all_cited_ocr_blocks_instead_of_silently_truncating_evidence():
+    ocr = {
+        "contract_version": "ocr_v2",
+        "evidence": {"text_blocks": [
+            {"page_number": 1, "text": f"detail-{index}", "bbox": {}}
+            for index in range(100)
+        ]},
+    }
+    result = build_estimation_input_v2(
+        run=RUN, detected_object={**OBJECT, "evidence_pages": "1"},
+        ocr_event_id="ocr-all", ocr_package=ocr,
+        evidence_artifacts=(ARTIFACTS[0],), versions={},
+    )
+
+    assert len(result["evidence"]["ocr_blocks"]) == 100
+
+
 def test_e02_two_objects_share_one_persisted_ocr_result_without_document_reread():
     first = build_estimation_input_v2(
         run=RUN,

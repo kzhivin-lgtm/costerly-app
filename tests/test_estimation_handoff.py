@@ -155,13 +155,9 @@ def test_shadow_handoff_prefers_vnext_object_preview_bbox_over_label_anchor():
     assert Image.open(BytesIO(stored_webp)).size == (100, 100)
 
 
-def test_shadow_handoff_reuses_detection_preview_without_rendering_source(monkeypatch):
+def test_shadow_handoff_reuses_detection_preview_and_persists_full_evidence_page():
     source = _image_bytes()
     client = _Client()
-    monkeypatch.setattr(
-        estimation_handoff, "_render_pages",
-        lambda *_args: (_ for _ in ()).throw(AssertionError("source must not be rerendered")),
-    )
     result = persist_estimation_v2_inputs(
         client=client, run={"run_id": "run-1", "company_id": "company-1"},
         objects=[{"object_id": "object-1", "object_name": "Desk", "quantity": 1,
@@ -175,4 +171,8 @@ def test_shadow_handoff_reuses_detection_preview_without_rendering_source(monkey
         versions={"detection": "test"},
     )
     assert result["created_input_ids"] == ["input-1"]
-    assert client.uploads == []
+    assert len(client.uploads) == 1
+    payload = client.rows["rfq_estimation_object_inputs"]["input_payload"]
+    assert [artifact["artifact_kind"] for artifact in payload["evidence"]["artifacts"]] == [
+        "page", "preview"
+    ]

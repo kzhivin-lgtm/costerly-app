@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from hashlib import sha256
+from io import BytesIO
 from typing import Any
+
+from PIL import Image
 
 from use_cases.estimation_evidence import EvidenceArtifact
 
@@ -57,4 +60,24 @@ def persist_preview_artifact(*, client: Any, company_id: str, run_id: str, objec
         storage_ref=f"storage://{EVIDENCE_BUCKET}/{path}",
         page_number=page_number,
         artifact_kind="preview",
+    )
+
+
+def persist_page_artifact(*, client: Any, company_id: str, run_id: str, object_id: str, page_number: int, page_bytes: bytes) -> EvidenceArtifact:
+    """Persist one full, object-relevant drawing page as private evidence."""
+    if not all((company_id, run_id, object_id, page_number > 0, page_bytes)):
+        raise ValueError("page evidence identity and bytes are required")
+    image = Image.open(BytesIO(page_bytes)).convert("RGB")
+    output = BytesIO()
+    image.save(output, "WEBP", quality=88, method=6)
+    payload = output.getvalue()
+    digest = sha256(payload).hexdigest()
+    path = f"{company_id}/{run_id}/{object_id}/page-{page_number}-{digest}.webp"
+    client.storage.from_(EVIDENCE_BUCKET).upload(
+        path, payload, file_options={"content-type": "image/webp", "upsert": "true"}
+    )
+    return EvidenceArtifact(
+        storage_ref=f"storage://{EVIDENCE_BUCKET}/{path}",
+        page_number=page_number,
+        artifact_kind="page",
     )

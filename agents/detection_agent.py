@@ -6,6 +6,56 @@ from agents.prompt_loader import load_detection_agent_prompt, load_detection_reg
 from agents.schemas.detection_schema import validate_detection_result
 
 
+def _merge_registry_evidence(result: dict, registry: dict) -> dict:
+    """Preserve the compact visual dossier while retaining Estimation evidence.
+
+    The registry intentionally selects only a small set of pages for the
+    second Detection pass.  Those pages are not the object evidence boundary:
+    a kitchen's block and assembly sheets, for example, remain required by
+    Estimation even when Detection did not need to inspect every sheet again.
+    """
+    registry_pages = {
+        str(item["object_id"]): set(item["estimation_evidence_pages"])
+        for item in registry["objects"]
+    }
+    for detected in result.get("detected_objects") or []:
+        if not isinstance(detected, dict):
+            continue
+        required_pages = registry_pages.get(str(detected.get("object_id")), set())
+        if not required_pages:
+            continue
+        refs_by_page: dict[int, dict] = {}
+        for raw_ref in detected.get("evidence_page_refs") or []:
+            if not isinstance(raw_ref, dict):
+                continue
+            try:
+                page_number = int(raw_ref.get("page_number"))
+            except (TypeError, ValueError):
+                continue
+            if page_number > 0:
+                refs_by_page[page_number] = dict(raw_ref)
+        for page_number in sorted(required_pages):
+            ref = refs_by_page.get(page_number)
+            if ref is None:
+                refs_by_page[page_number] = {
+                    "page_number": page_number,
+                    "source_label": str(page_number),
+                    "roles": ["construction"],
+                }
+                continue
+            roles = list(ref.get("roles") or [])
+            if "construction" not in roles:
+                roles.append("construction")
+            ref["roles"] = roles
+            refs_by_page[page_number] = ref
+        refs = [refs_by_page[page_number] for page_number in sorted(refs_by_page)]
+        detected["evidence_page_refs"] = refs
+        detected["evidence_pages"] = ",".join(
+            str(ref["page_number"]) for ref in refs
+        )
+    return result
+
+
 def get_secret(name: str, default: str | None = None) -> str | None:
     try:
         import streamlit as st
@@ -71,6 +121,6 @@ def run_detection_agent(
     )
 
     usage_event = result.pop("_agent_usage", None)
-    validated = validate_detection_result(result)
+    validated = validate_detection_result(_merge_registry_evidence(result, registry))
     validated["_agent_usage_events"] = [event for event in (registry_usage, usage_event) if event]
     return validated
