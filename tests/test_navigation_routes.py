@@ -389,7 +389,10 @@ def test_deferred_naming_publication_reads_only_the_terminal_name_snapshot(monke
     monkeypatch.setattr(
         rfq_processing,
         "fetch_deferred_naming_status",
-        lambda _client, _run_id: {"status": "succeeded", "duration_seconds": 1.7},
+        lambda _client, _run_id: {
+            "status": "succeeded",
+            "raw_usage": {"duration_seconds": 1.7},
+        },
     )
     monkeypatch.setattr(
         rfq_processing,
