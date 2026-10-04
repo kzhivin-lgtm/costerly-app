@@ -7,7 +7,14 @@ overwrites a recorded cost. Mistral OCR is deliberately excluded.
 
 from __future__ import annotations
 
+from pathlib import Path
+import sys
 from typing import Any
+
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from config import calculate_llm_cost_usd
 from db.supabase_client import get_supabase_client
