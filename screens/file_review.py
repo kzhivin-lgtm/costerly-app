@@ -327,7 +327,7 @@ def _render_object_card(item: dict[str, object]) -> None:
             'style="display:none!important;width:0;height:0;overflow:hidden;">&#8203;</span>',
             unsafe_allow_html=True,
         )
-        card_main, card_preview = st.columns([8, 1], gap="small", vertical_alignment="top")
+        card_main, card_preview = st.columns([7, 1.4], gap="small", vertical_alignment="top")
         preview_ref = item.get("preview_ref")
         preview_html = '<div class="file-review-preview-placeholder"><span></span></div>'
         if isinstance(preview_ref, str):

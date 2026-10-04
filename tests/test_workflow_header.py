@@ -41,7 +41,8 @@ def test_file_review_object_preview_matches_the_name_and_ignore_control_stack():
     review_css = open("styles/file_review.py").read()
 
     assert "'<div class=\"file-review-top-label\">Object name</div>'" not in review_source
-    assert "height: 145px;" in review_css
+    assert 'st.columns([7, 1.4], gap="small", vertical_alignment="top")' in review_source
+    assert "width: 100px;\n            height: 100px;" in review_css
 
 
 def test_file_review_does_not_need_a_stale_upload_navigation_override():
