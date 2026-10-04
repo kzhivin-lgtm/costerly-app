@@ -8,30 +8,6 @@ def apply_file_review_css() -> None:
     st.markdown(
         """
         <style>
-        /* Streamlit can retain the departing Upload tree for one reconciliation
-           pass. Upload CSS must not turn File Review's fixed header controls
-           into a static child of that stale layout wrapper. */
-        .stApp:has(.file-review-title-card-shell-marker)
-        [data-testid="stLayoutWrapper"]:has(.st-key-costerly_header_controls) {
-            position: static !important;
-            order: initial !important;
-            left: auto !important;
-            width: auto !important;
-            transform: none !important;
-            display: block !important;
-            justify-content: initial !important;
-        }
-
-        .stApp:has(.file-review-title-card-shell-marker)
-        .st-key-costerly_header_controls {
-            position: fixed !important;
-            top: calc(var(--app-header-top) + 15px) !important;
-            right: max(28px, calc((100vw - var(--post-upload-width)) / 2)) !important;
-            width: fit-content !important;
-            max-width: calc(100vw - 56px) !important;
-            margin: 0 !important;
-        }
-
         .file-review-timing-row {
             display: flex;
             flex-wrap: wrap;

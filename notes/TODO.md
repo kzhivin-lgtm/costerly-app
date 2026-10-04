@@ -180,6 +180,15 @@ Estimate evidence completed in 864 ms with a 22 ms screen render. Treat this as
 a likely File Review/Supabase I/O outlier, not a transition-wrapper diagnosis.
 If it repeats, add scoped timing around File Review data loading and then a
 bounded timeout/recovery based on that evidence.
+The later File Review regression is now isolated more narrowly: initial render
+keeps the navigation rail, but the deferred Naming or Preview publisher issued
+`st.rerun(scope="app")` when an artifact became terminal. That full rerun
+unmounted the shared rail during Streamlit reconciliation. The active repair
+keeps the rail and summary outside the two-second File Review fragment; only
+object cards refresh from the persisted deferred artifacts. The earlier
+File-Review-only stale-Upload CSS override is removed because it addressed the
+wrong phase. Pending owner production acceptance: one run must retain the rail
+while both a preview and an object name replace their placeholders.
 
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session

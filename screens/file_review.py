@@ -561,14 +561,8 @@ def _publish_persisted_preview(run_id: str, result: dict[str, object]) -> bool:
     return True
 
 
-@st.fragment(run_every=2.0)
-def _poll_deferred_file_review_work(run_id: str) -> None:
-    """Refresh File Review once when async Naming or previews have finished.
-
-    The fragment contains no navigation controls. It is mounted only on File
-    Review, so its bounded two-second poll cannot rerun another screen while a
-    user is leaving this one.
-    """
+def _publish_deferred_file_review_work(run_id: str) -> None:
+    """Persist terminal Naming and Preview work without rerunning the app."""
     naming_result = load_file_review_naming_publication(run_id)
     naming_done = _publish_persisted_naming(run_id, naming_result)
     if naming_done:
@@ -576,8 +570,49 @@ def _poll_deferred_file_review_work(run_id: str) -> None:
     local_preview_result = _collect_completed_previews()
     preview_result = local_preview_result or load_file_review_preview_publication(run_id)
     preview_done = _publish_persisted_preview(run_id, preview_result)
-    if naming_done or preview_done:
-        st.rerun(scope="app")
+    # The enclosing fragment renders from the session cache on its next poll.
+    # Do not issue an app rerun here: that briefly unmounts the global
+    # navigation rail while Streamlit reconciles File Review.
+
+
+@st.fragment(run_every=2.0)
+def _render_file_review_dynamic_content(run_id: str) -> None:
+    """Refresh only object cards while deferred artifacts become available."""
+    try:
+        data = _load_file_review_screen_data(run_id)
+    except Exception as exc:
+        st.error(f"Could not refresh File Review data: {exc}")
+        return
+
+    preview_terminal_status = st.session_state.get(f"file_review_preview_terminal.{run_id}")
+    if preview_terminal_status:
+        for item in data.get("objects") or []:
+            if isinstance(item, dict) and not item.get("preview_ref"):
+                item["preview_pending"] = False
+
+    _sync_object_edit_state(run_id, data["objects"])
+
+    name_save_error = st.session_state.get("file_review_name_save_error")
+    if name_save_error:
+        st.error(f"Could not save object name: {name_save_error}")
+    metadata_save_error = st.session_state.get("file_review_metadata_save_error")
+    if metadata_save_error:
+        st.error(f"Could not save project details: {metadata_save_error}")
+
+    st.markdown(
+        (
+            '<h1 class="file-review-detected-title">'
+            f'Detected Objects: {len(data["objects"])}'
+            "</h1>"
+        ),
+        unsafe_allow_html=True,
+    )
+    for item in data["objects"]:
+        _render_object_card(item)
+    _render_missing_object_search()
+
+    if _has_deferred_work(run_id):
+        _publish_deferred_file_review_work(run_id)
 
 
 def _file_review_edits_changed(
@@ -720,12 +755,6 @@ def render_file_review_screen(company_id: str) -> None:
         _render_load_error(exc)
         return
 
-    preview_terminal_status = st.session_state.get(f"file_review_preview_terminal.{run_id}")
-    if preview_terminal_status:
-        for item in data.get("objects") or []:
-            if isinstance(item, dict) and not item.get("preview_ref"):
-                item["preview_pending"] = False
-
     _sync_run_metadata_state(run_id, data["run"])
     with st.container():
         st.markdown(
@@ -743,28 +772,7 @@ def render_file_review_screen(company_id: str) -> None:
         )
     install_workflow_header_alignment_guard()
 
-    _sync_object_edit_state(run_id, data["objects"])
-
-    name_save_error = st.session_state.get("file_review_name_save_error")
-    if name_save_error:
-        st.error(f"Could not save object name: {name_save_error}")
-    metadata_save_error = st.session_state.get("file_review_metadata_save_error")
-    if metadata_save_error:
-        st.error(f"Could not save project details: {metadata_save_error}")
-
-    st.markdown(
-        (
-            '<h1 class="file-review-detected-title">'
-            f'Detected Objects: {len(data["objects"])}'
-            "</h1>"
-        ),
-        unsafe_allow_html=True,
-    )
-
-    for item in data["objects"]:
-        _render_object_card(item)
-
-    _render_missing_object_search()
+    _render_file_review_dynamic_content(run_id)
 
     col_back, col_next = st.columns(2, gap="small")
 
@@ -787,12 +795,6 @@ def render_file_review_screen(company_id: str) -> None:
         },
     )
 
-    # A terminal deferred artifact causes one app rerun so the persisted name
-    # or preview can replace its placeholder. Mount this polling fragment only
-    # after both navigation controls have been emitted. Otherwise its rerun can
-    # interrupt the File Review render before the fixed header rail exists.
-    if _has_deferred_work(run_id):
-        _poll_deferred_file_review_work(run_id)
 
 
 def _object_edits_snapshot() -> dict[str, dict[str, object]]:

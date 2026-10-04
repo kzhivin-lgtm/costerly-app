@@ -36,14 +36,11 @@ def test_workflow_titles_use_brand_ink_and_only_object_names_use_accent():
     assert ".file-review-detected-title" in review_css
 
 
-def test_file_review_restores_fixed_navigation_after_a_stale_upload_layout():
+def test_file_review_does_not_need_a_stale_upload_navigation_override():
     review_css = open("styles/file_review.py").read()
 
     assert ".file-review-title-card-shell-marker" in review_css
-    assert "[data-testid=\"stLayoutWrapper\"]:has(.st-key-costerly_header_controls)" in review_css
-    assert "transform: none !important;" in review_css
-    assert ".st-key-costerly_header_controls" in review_css
-    assert "position: fixed !important;" in review_css
+    assert ".st-key-costerly_header_controls" not in review_css
 
 
 def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_events():
