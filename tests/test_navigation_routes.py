@@ -426,7 +426,7 @@ def test_deferred_preview_publication_reads_only_the_terminal_preview_status(mon
     }
 
 
-def test_file_review_preview_publication_reloads_only_after_terminal_success():
+def test_file_review_preview_publication_reloads_only_after_terminal_success(monkeypatch):
     st.session_state.clear()
     run_id = "run-1"
     st.session_state.file_review_data_cache = {run_id: {"objects": [{"preview_pending": True}]}}
@@ -442,6 +442,12 @@ def test_file_review_preview_publication_reloads_only_after_terminal_success():
     ) is True
     assert run_id not in st.session_state.file_review_data_cache
     assert file_review._has_deferred_work(run_id) is False
+
+    stored = {"run": {}, "objects": [{"object_id": "object-1", "preview_ref": "previews/1.png"}]}
+    monkeypatch.setattr(file_review, "load_file_review_data", lambda _run_id: stored)
+
+    assert file_review._load_file_review_screen_data(run_id) is stored
+    assert st.session_state.file_review_data_cache[run_id]["objects"][0]["preview_ref"] == "previews/1.png"
 
 
 def test_file_review_preview_failure_reloads_saved_refs_then_stops_spinner():
