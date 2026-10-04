@@ -38,10 +38,13 @@ from agents.ocr_rendering import (
 )
 from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL
 from db.repositories import (
-    fetch_deferred_file_review_events,
+    fetch_deferred_naming_status,
+    fetch_deferred_preview_status,
     fetch_agent_usage_events,
     fetch_rfq_detected_objects,
-    fetch_rfq_detected_object_publication_fields,
+    fetch_rfq_detected_object_evidence,
+    fetch_rfq_detected_object_names,
+    fetch_rfq_processing_cycle_event,
     fetch_rfq_run,
     insert_agent_usage_event,
     insert_agent_usage_event_returning_id,
@@ -570,82 +573,105 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
     }
 
 
-def load_file_review_deferred_publication(run_id: str) -> dict[str, Any]:
-    """Read the one durable snapshot used to publish Naming and Preview.
+def load_file_review_naming_publication(run_id: str) -> dict[str, Any]:
+    """Read the durable deferred-Naming result without reloading File Review.
 
-    The two workers persist their artifacts before their terminal events. File
-    Review consequently waits for both events, then reads one object snapshot
-    and updates both fields together.
+    The Naming worker saves object names before it writes its terminal ledger
+    entry.  A terminal event therefore makes the narrow name query safe and
+    avoids invalidating the Detection result or the preview cache.
     """
     client = get_supabase_client()
     from state.company_auth import company_auth_enabled
     if company_auth_enabled():
         assert_run_owned(client, run_id, get_company_id())
 
-    events = fetch_deferred_file_review_events(client, run_id)
-    events_by_operation = {
-        str(event.get("operation") or ""): event
-        for event in events
-        if isinstance(event, dict)
-    }
-    cycle_event = events_by_operation.get("rfq_processing_cycle")
-    cycle_usage = _event_raw_usage(cycle_event)
-    naming_event = events_by_operation.get("locked_object_naming_deferred")
-    preview_event = events_by_operation.get("detection_object_previews")
-    naming_status = _deferred_stage_status(
-        naming_event,
-        requested=(bool(cycle_usage.get("naming_deferred")) if cycle_event else None),
-    )
-    preview_status = _deferred_stage_status(
-        preview_event,
-        requested=(bool(cycle_usage.get("preview_deferred")) if cycle_event else None),
-    )
-    if naming_status == "pending" or preview_status == "pending":
+    event = fetch_deferred_naming_status(client, run_id)
+    if not event:
+        cycle_event = fetch_rfq_processing_cycle_event(client, run_id)
+        cycle_usage = (cycle_event or {}).get("raw_usage") or {}
+        if isinstance(cycle_usage, str):
+            try:
+                cycle_usage = json.loads(cycle_usage)
+            except (TypeError, ValueError):
+                cycle_usage = {}
+        if isinstance(cycle_usage, dict) and cycle_usage.get("naming_deferred") is False:
+            return {"status": "not_requested"}
         return {"status": "pending"}
 
-    names: dict[str, str] = {}
-    previews: dict[str, str] = {}
-    for row in fetch_rfq_detected_object_publication_fields(client, run_id):
-        object_id = str(row.get("object_id") or "")
-        if not object_id:
-            continue
-        names[object_id] = str(row.get("object_name") or "")
-        for evidence_ref in row.get("evidence_page_refs") or []:
-            if isinstance(evidence_ref, dict) and isinstance(evidence_ref.get("preview_ref"), str):
-                previews[object_id] = evidence_ref["preview_ref"]
-                break
-    return {
-        "status": "ready",
-        "names": names,
-        "previews": previews,
-        "naming_seconds": _event_duration_seconds(naming_event),
-        "preview_seconds": _event_duration_seconds(preview_event),
-    }
-
-
-def _event_raw_usage(event: dict[str, Any] | None) -> dict[str, Any]:
-    raw_usage = (event or {}).get("raw_usage") or {}
+    status = str(event.get("status") or "failed")
+    raw_usage = event.get("raw_usage") or {}
     if isinstance(raw_usage, str):
         try:
             raw_usage = json.loads(raw_usage)
         except (TypeError, ValueError):
             raw_usage = {}
-    return raw_usage if isinstance(raw_usage, dict) else {}
-
-
-def _event_duration_seconds(event: dict[str, Any] | None) -> float:
     try:
-        return float(_event_raw_usage(event).get("duration_seconds") or 0)
+        duration_seconds = float(
+            event.get("duration_seconds")
+            or (raw_usage.get("duration_seconds") if isinstance(raw_usage, dict) else 0)
+            or 0
+        )
     except (TypeError, ValueError):
-        return 0.0
+        duration_seconds = 0.0
+    if status != "succeeded":
+        return {"status": "failed", "naming_seconds": duration_seconds}
+
+    names = {
+        str(row.get("object_id") or ""): str(row.get("object_name") or "")
+        for row in fetch_rfq_detected_object_names(client, run_id)
+        if str(row.get("object_id") or "")
+    }
+    return {
+        "status": "succeeded",
+        "names": names,
+        "naming_seconds": duration_seconds,
+    }
 
 
-def _deferred_stage_status(
-    event: dict[str, Any] | None, *, requested: bool | None,
-) -> str:
+def load_file_review_preview_publication(run_id: str) -> dict[str, Any]:
+    """Read durable preview references without reloading the Detection result."""
+    client = get_supabase_client()
+    from state.company_auth import company_auth_enabled
+    if company_auth_enabled():
+        assert_run_owned(client, run_id, get_company_id())
+
+    event = fetch_deferred_preview_status(client, run_id)
     if not event:
-        return "pending" if requested is not False else "not_requested"
-    return "succeeded" if str(event.get("status") or "") == "succeeded" else "failed"
+        return {"status": "pending"}
+
+    raw_usage = event.get("raw_usage") or {}
+    if isinstance(raw_usage, str):
+        try:
+            raw_usage = json.loads(raw_usage)
+        except (TypeError, ValueError):
+            raw_usage = {}
+    try:
+        duration_seconds = float(
+            (raw_usage.get("duration_seconds") if isinstance(raw_usage, dict) else 0) or 0
+        )
+    except (TypeError, ValueError):
+        duration_seconds = 0.0
+
+    status = str(event.get("status") or "failed")
+    if status != "succeeded":
+        return {"status": "failed", "preview_seconds": duration_seconds}
+
+    previews: dict[str, str] = {}
+    for row in fetch_rfq_detected_object_evidence(client, run_id):
+        object_id = str(row.get("object_id") or "")
+        if not object_id:
+            continue
+        for evidence_ref in row.get("evidence_page_refs") or []:
+            if isinstance(evidence_ref, dict) and isinstance(
+                evidence_ref.get("preview_ref"), str
+            ):
+                previews[object_id] = evidence_ref["preview_ref"]
+                break
+    return {
+        "status": "succeeded",
+        "previews": previews,
+        "preview_seconds": duration_seconds,
+    }
 
 
 def build_file_review_data(

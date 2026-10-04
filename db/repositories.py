@@ -305,11 +305,11 @@ def fetch_rfq_detected_objects(client: Client, run_id: str) -> pd.DataFrame:
     )
 
 
-def fetch_rfq_detected_object_publication_fields(client: Client, run_id: str) -> list[dict]:
-    """Load only fields published together after Naming and Preview complete."""
+def fetch_rfq_detected_object_names(client: Client, run_id: str) -> list[dict]:
+    """Load only the object names needed by deferred File Review Naming."""
     response = (
         client.table("rfq_detected_objects")
-        .select("object_id,object_name,evidence_page_refs")
+        .select("object_id,object_name")
         .eq("run_id", run_id)
         .order("object_id")
         .execute()
@@ -337,21 +337,63 @@ def fetch_agent_usage_events(client: Client, run_id: str) -> pd.DataFrame:
     )
 
 
-def fetch_deferred_file_review_events(client: Client, run_id: str) -> list[dict]:
-    """Load the durable events that govern one deferred File Review update."""
+def fetch_deferred_naming_status(client: Client, run_id: str) -> dict | None:
+    """Return the terminal Naming ledger entry for one run, if it exists."""
     response = (
         client.table("agent_usage_events")
-        .select("agent_name,operation,status,raw_usage,created_at")
+        # duration_seconds is an optional later migration.  Production stores
+        # the same value in raw_usage on older schemas.
+        .select("status,raw_usage,created_at")
         .eq("run_id", run_id)
-        .in_(
-            "operation",
-            [
-                "rfq_processing_cycle",
-                "locked_object_naming_deferred",
-                "detection_object_previews",
-            ],
-        )
-        .order("created_at")
+        .eq("agent_name", "naming")
+        .eq("operation", "locked_object_naming_deferred")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return dict(rows[0]) if rows else None
+
+
+def fetch_rfq_processing_cycle_event(client: Client, run_id: str) -> dict | None:
+    """Return the durable processing-cycle contract for one RFQ run."""
+    response = (
+        client.table("agent_usage_events")
+        .select("raw_usage,created_at")
+        .eq("run_id", run_id)
+        .eq("agent_name", "orchestration")
+        .eq("operation", "rfq_processing_cycle")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return dict(rows[0]) if rows else None
+
+
+def fetch_deferred_preview_status(client: Client, run_id: str) -> dict | None:
+    """Return the terminal object-preview ledger entry for one run, if present."""
+    response = (
+        client.table("agent_usage_events")
+        .select("status,raw_usage,created_at")
+        .eq("run_id", run_id)
+        .eq("agent_name", "preview")
+        .eq("operation", "detection_object_previews")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    return dict(rows[0]) if rows else None
+
+
+def fetch_rfq_detected_object_evidence(client: Client, run_id: str) -> list[dict]:
+    """Load only evidence references needed to publish object previews."""
+    response = (
+        client.table("rfq_detected_objects")
+        .select("object_id,evidence_page_refs")
+        .eq("run_id", run_id)
+        .order("object_id")
         .execute()
     )
     return list(response.data or [])

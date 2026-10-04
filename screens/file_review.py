@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from concurrent.futures import Future
 from datetime import UTC, datetime
 import html
 import time
@@ -23,7 +22,8 @@ from use_cases.estimation_runtime import submit_estimation_job
 from use_cases.latest_estimate import load_latest_estimate_route_for_run
 from use_cases.rfq_processing import (
     load_file_review_data,
-    load_file_review_deferred_publication,
+    load_file_review_naming_publication,
+    load_file_review_preview_publication,
     save_file_review_object_name,
     save_file_review_run_metadata,
 )
@@ -462,19 +462,25 @@ def _load_file_review_screen_data(run_id: str) -> dict[str, object]:
     return cache[run_id]
 
 
-def _publish_deferred_file_review(run_id: str, result: dict[str, object]) -> bool:
-    """Publish saved Naming and Preview results together, once per run."""
-    if str(result.get("status") or "pending") != "ready":
+def _publish_persisted_naming(
+    run_id: str, result: dict[str, object],
+) -> bool:
+    """Apply one durable Naming publication without reloading File Review."""
+    status = str(result.get("status") or "pending")
+    if status == "pending":
         return False
 
-    published_key = f"file_review_deferred_publication_done.{run_id}"
+    published_key = f"file_review_naming_published.{run_id}"
     if st.session_state.get(published_key):
         return False
+    st.session_state[published_key] = True
+
+    if status != "succeeded":
+        return True
 
     names = result.get("names") or {}
-    previews = result.get("previews") or {}
-    if not isinstance(names, dict) or not isinstance(previews, dict):
-        return False
+    if not isinstance(names, dict):
+        return True
     cache = st.session_state.setdefault("file_review_data_cache", {})
     data = cache.get(run_id)
     if isinstance(data, dict):
@@ -483,34 +489,88 @@ def _publish_deferred_file_review(run_id: str, result: dict[str, object]) -> boo
         for item in data.get("objects") or []:
             object_id = _object_id(item)
             new_name = str(names.get(object_id) or "")
+            if not new_name:
+                continue
             initial_name = str(initial_names.get(object_id) or item.get("name") or "")
             edit = edits.get(object_id)
-            if new_name and isinstance(edit, dict) and str(edit.get("name") or "") == initial_name:
+            if isinstance(edit, dict) and str(edit.get("name") or "") == initial_name:
                 edit["name"] = new_name
                 widget_key = f"file_review_object_edits.{object_id}.name"
                 if st.session_state.get(widget_key) == initial_name:
                     st.session_state[widget_key] = new_name
-            if new_name:
-                item["name"] = new_name
-            item.pop("preview_pending", None)
-            preview_ref = previews.get(object_id)
-            if isinstance(preview_ref, str) and preview_ref:
-                item["preview_ref"] = preview_ref
+            item["name"] = new_name
 
     timings = st.session_state.get("current_agent_timings")
     if isinstance(timings, dict):
         timings["naming_seconds"] = float(result.get("naming_seconds") or 0)
-        timings["preview_seconds"] = float(result.get("preview_seconds") or 0)
-    st.session_state[published_key] = True
     return True
 
 
+def _publish_persisted_previews(
+    run_id: str, result: dict[str, object],
+) -> bool:
+    """Apply preview refs from durable evidence without reloading File Review."""
+    status = str(result.get("status") or "pending")
+    if status == "pending":
+        return False
+
+    published_key = f"file_review_preview_published.{run_id}"
+    if st.session_state.get(published_key):
+        return False
+    st.session_state[published_key] = True
+
+    previews = result.get("previews") or {}
+    if status == "succeeded" and isinstance(previews, dict):
+        data = st.session_state.setdefault("file_review_data_cache", {}).get(run_id)
+        if isinstance(data, dict):
+            for item in data.get("objects") or []:
+                object_id = _object_id(item)
+                preview_ref = previews.get(object_id)
+                item.pop("preview_pending", None)
+                if isinstance(preview_ref, str) and preview_ref:
+                    item["preview_ref"] = preview_ref
+
+    timings = st.session_state.get("current_agent_timings")
+    if isinstance(timings, dict):
+        timings["preview_seconds"] = float(result.get("preview_seconds") or 0)
+    return True
+
+
+def _needs_deferred_review_publication(
+    run_id: str, objects: list[dict[str, object]],
+) -> tuple[bool, bool]:
+    """Return whether this review still needs durable Naming or Preview publication."""
+    naming_key = f"file_review_naming_published.{run_id}"
+    preview_key = f"file_review_preview_published.{run_id}"
+    # Both deferred publishers are driven by durable RFQ state.  Browser and
+    # Streamlit session state may lose a local Future while the worker has
+    # already written its result, so Future presence must not gate publication.
+    needs_naming = not st.session_state.get(naming_key)
+    needs_preview = any(item.get("preview_pending") for item in objects) and not st.session_state.get(preview_key)
+    return needs_naming, needs_preview
+
+
 @st.fragment(run_every=2.0)
-def _poll_deferred_file_review_work(run_id: str) -> None:
-    """Wait for one durable Naming and Preview snapshot, then publish it."""
-    if _publish_deferred_file_review(
-        run_id, load_file_review_deferred_publication(run_id),
-    ):
+def _poll_deferred_file_review_work(
+    run_id: str, *, needs_naming: bool, needs_preview: bool,
+) -> None:
+    """Refresh File Review once when async Naming or previews have finished.
+
+    The fragment contains no navigation controls. It is mounted only on File
+    Review, so its bounded two-second poll cannot rerun another screen while a
+    user is leaving this one.
+    """
+    naming_done = False
+    if needs_naming:
+        naming_done = _publish_persisted_naming(
+            run_id, load_file_review_naming_publication(run_id),
+        )
+    preview_done = False
+    if needs_preview:
+        preview_done = _publish_persisted_previews(
+            run_id, load_file_review_preview_publication(run_id),
+        )
+    if naming_done or preview_done:
         st.rerun(scope="app")
 
 
@@ -692,8 +752,13 @@ def render_file_review_screen(company_id: str) -> None:
     for item in data["objects"]:
         _render_object_card(item)
 
-    if not st.session_state.get(f"file_review_deferred_publication_done.{run_id}"):
-        _poll_deferred_file_review_work(run_id)
+    needs_naming, needs_preview = _needs_deferred_review_publication(
+        run_id, data["objects"],
+    )
+    if needs_naming or needs_preview:
+        _poll_deferred_file_review_work(
+            run_id, needs_naming=needs_naming, needs_preview=needs_preview,
+        )
 
     _render_missing_object_search()
 
