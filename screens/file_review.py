@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from concurrent.futures import Future
 from datetime import UTC, datetime
 import html
 import time
@@ -543,13 +542,11 @@ def _needs_deferred_review_publication(
     """Return whether this review still needs durable Naming or Preview publication."""
     naming_key = f"file_review_naming_published.{run_id}"
     preview_key = f"file_review_preview_published.{run_id}"
-    naming_future = st.session_state.get("current_naming_future")
-    preview_future = st.session_state.get("current_preview_future")
-    needs_naming = isinstance(naming_future, Future) and not st.session_state.get(naming_key)
-    needs_preview = (
-        (isinstance(preview_future, Future) or any(item.get("preview_pending") for item in objects))
-        and not st.session_state.get(preview_key)
-    )
+    # Both deferred publishers are driven by durable RFQ state.  Browser and
+    # Streamlit session state may lose a local Future while the worker has
+    # already written its result, so Future presence must not gate publication.
+    needs_naming = not st.session_state.get(naming_key)
+    needs_preview = any(item.get("preview_pending") for item in objects) and not st.session_state.get(preview_key)
     return needs_naming, needs_preview
 
 
