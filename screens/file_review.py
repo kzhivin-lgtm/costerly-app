@@ -437,13 +437,34 @@ def _sync_object_edit_state(run_id: str, objects: list[dict[str, object]]) -> No
         st.session_state.file_review_object_edits = {}
         st.session_state.file_review_object_edits_run_id = run_id
         st.session_state.file_review_saved_ignored_object_ids = set()
+        st.session_state.file_review_loaded_object_names = {}
 
     edits = st.session_state.setdefault("file_review_object_edits", {})
+    loaded_names = st.session_state.setdefault("file_review_loaded_object_names", {})
     active_object_ids = {_object_id(item) for item in objects}
 
     for object_id in list(edits.keys()):
         if object_id not in active_object_ids:
             del edits[object_id]
+            loaded_names.pop(object_id, None)
+
+    for item in objects:
+        object_id = _object_id(item)
+        persisted_name = str(item.get("name") or "")
+        previous_name = str(loaded_names.get(object_id) or "")
+        edit = edits.get(object_id)
+        if (
+            previous_name
+            and persisted_name
+            and persisted_name != previous_name
+            and isinstance(edit, dict)
+            and str(edit.get("name") or "") == previous_name
+        ):
+            edit["name"] = persisted_name
+            widget_key = f"file_review_object_edits.{object_id}.name"
+            if st.session_state.get(widget_key) == previous_name:
+                st.session_state[widget_key] = persisted_name
+        loaded_names[object_id] = persisted_name
 
 
 def _load_file_review_screen_data(run_id: str) -> dict[str, object]:

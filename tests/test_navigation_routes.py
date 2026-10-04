@@ -368,6 +368,40 @@ def test_file_review_publishes_completed_naming_by_invalidating_only_its_run_cac
     assert st.session_state.current_agent_timings["naming_seconds"] == 1.7
 
 
+def test_file_review_replaces_a_placeholder_widget_after_persisted_naming_arrives():
+    st.session_state.clear()
+    st.session_state.file_review_object_edits_run_id = "run-current"
+    st.session_state.file_review_object_edits = {
+        "object-001": {"name": "Object 1", "quantity": "1", "ignored": False},
+    }
+    st.session_state.file_review_loaded_object_names = {"object-001": "Object 1"}
+    st.session_state["file_review_object_edits.object-001.name"] = "Object 1"
+
+    file_review._sync_object_edit_state(
+        "run-current", [{"object_id": "object-001", "name": "Shelving unit"}]
+    )
+
+    assert st.session_state.file_review_object_edits["object-001"]["name"] == "Shelving unit"
+    assert st.session_state["file_review_object_edits.object-001.name"] == "Shelving unit"
+
+
+def test_file_review_never_overwrites_a_user_edited_name_with_deferred_naming():
+    st.session_state.clear()
+    st.session_state.file_review_object_edits_run_id = "run-current"
+    st.session_state.file_review_object_edits = {
+        "object-001": {"name": "My custom shelf", "quantity": "1", "ignored": False},
+    }
+    st.session_state.file_review_loaded_object_names = {"object-001": "Object 1"}
+    st.session_state["file_review_object_edits.object-001.name"] = "My custom shelf"
+
+    file_review._sync_object_edit_state(
+        "run-current", [{"object_id": "object-001", "name": "Shelving unit"}]
+    )
+
+    assert st.session_state.file_review_object_edits["object-001"]["name"] == "My custom shelf"
+    assert st.session_state["file_review_object_edits.object-001.name"] == "My custom shelf"
+
+
 def test_file_review_back_to_upload_remembers_the_current_review_run():
     st.session_state.clear()
     st.session_state.current_run_id = "run-current"
