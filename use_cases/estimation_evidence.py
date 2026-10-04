@@ -86,12 +86,15 @@ def _page_refs(detected_object: Mapping[str, Any]) -> tuple[dict[str, Any], ...]
             raise ValueError("evidence_page_refs page_number must be numeric") from exc
         if page_number < 1:
             raise ValueError("evidence_page_refs page_number must be positive")
-        result.append(
-            {
-                "page_number": page_number,
-                "source_label": str(item.get("source_label") or page_number),
-            }
-        )
+        row = {
+            "page_number": page_number,
+            "source_label": str(item.get("source_label") or page_number),
+        }
+        if item.get("roles"):
+            row["roles"] = [str(role) for role in item["roles"]]
+        if isinstance(item.get("preview_bbox"), Mapping):
+            row["preview_bbox"] = dict(item["preview_bbox"])
+        result.append(row)
     return tuple(sorted(result, key=lambda item: (item["page_number"], item["source_label"])))
 
 

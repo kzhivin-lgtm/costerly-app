@@ -8,6 +8,7 @@ import time
 import streamlit as st
 
 from state.session import set_screen
+from state.session import get_company_id
 from styles.file_review import apply_file_review_css
 from ui.js_guards import (
     install_workflow_header_alignment_guard,
@@ -25,6 +26,8 @@ from use_cases.rfq_processing import (
     save_file_review_object_name,
     save_file_review_run_metadata,
 )
+from use_cases.estimation_artifacts import evidence_signed_url
+from db.supabase_client import get_supabase_client
 
 
 _RUN_METADATA_LABELS = {
@@ -304,6 +307,16 @@ def _render_object_card(item: dict[str, object]) -> None:
             'style="display:none!important;width:0;height:0;overflow:hidden;">&#8203;</span>',
             unsafe_allow_html=True,
         )
+        preview_ref = item.get("preview_ref")
+        if isinstance(preview_ref, str):
+            preview_url = evidence_signed_url(
+                client=get_supabase_client(), storage_ref=preview_ref,
+                company_id=get_company_id(),
+            )
+            if preview_url:
+                st.image(preview_url, caption="Object preview", use_container_width=True)
+        elif item.get("preview_pending"):
+            st.caption("Object preview is preparing")
 
         label_name, label_qty, label_conf, label_ignore = st.columns(
             [7.4, 1.2, 1.2, 1.5],
@@ -469,6 +482,22 @@ def _collect_completed_naming() -> bool:
     return True
 
 
+def _collect_completed_previews(run_id: str) -> bool:
+    future = st.session_state.get("current_preview_future")
+    if not isinstance(future, Future) or not future.done():
+        return False
+    try:
+        result = future.result()
+        timings = st.session_state.get("current_agent_timings")
+        if isinstance(timings, dict):
+            timings["preview_seconds"] = float(result.get("duration_seconds") or 0)
+    except Exception:
+        pass
+    st.session_state.current_preview_future = None
+    st.session_state.setdefault("file_review_data_cache", {}).pop(run_id, None)
+    return True
+
+
 def _file_review_edits_changed(
     objects: list[dict[str, object]],
     object_edits: dict[str, dict[str, object]],
@@ -596,6 +625,7 @@ def render_file_review_screen(company_id: str) -> None:
         return
 
     _collect_completed_naming()
+    _collect_completed_previews(run_id)
     _apply_completed_naming(run_id)
 
     try:

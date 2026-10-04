@@ -6,10 +6,26 @@ import re
 
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 DETECTION_PROMPT_PATH = PROMPTS_DIR / "detection_agent_prompt.md"
+DETECTION_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_agent_vnext_prompt.md"
 PRICE_SOURCE_PROMPT_PATH = PROMPTS_DIR / "price_source_agent_prompt.md"
 
 
 def load_detection_agent_prompt() -> str:
+    """Load the active Detection vNext contract.
+
+    The accepted V3.2.6 prompt remains beside it as a rollback artifact.  Do
+    not rebuild the active contract through a sequence of textual replacements:
+    the model, schema and tests must all see one explicit prompt.
+    """
+    if not DETECTION_VNEXT_PROMPT_PATH.exists():
+        raise FileNotFoundError(f"Detection vNext prompt not found: {DETECTION_VNEXT_PROMPT_PATH}")
+    prompt = DETECTION_VNEXT_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    if not prompt:
+        raise ValueError(f"Detection vNext prompt is empty: {DETECTION_VNEXT_PROMPT_PATH}")
+    return prompt
+
+
+def load_legacy_detection_agent_prompt() -> str:
     if not DETECTION_PROMPT_PATH.exists():
         raise FileNotFoundError(
             f"Detection prompt not found: {DETECTION_PROMPT_PATH}"
@@ -24,8 +40,13 @@ def load_detection_agent_prompt() -> str:
 
 
 def load_detection_agent_without_naming_prompt() -> str:
-    """Build the isolated A/B prompt that delegates all user-facing naming."""
-    prompt = load_detection_agent_prompt()
+    """Return the active contract, which delegates naming explicitly."""
+    return load_detection_agent_prompt()
+
+
+def load_legacy_detection_agent_without_naming_prompt() -> str:
+    """Build the historical V3.2.6 A/B prompt for rollback investigation."""
+    prompt = load_legacy_detection_agent_prompt()
     prompt = prompt.replace(
         "Detection alone makes all semantic decisions.",
         "Detection makes all object-boundary and evidence decisions. Naming is delegated downstream.",

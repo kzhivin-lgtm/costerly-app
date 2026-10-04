@@ -192,6 +192,36 @@ def test_builder_uses_detection_vnext_page_reference_for_drawing_labels():
     ]
 
 
+def test_builder_preserves_vnext_evidence_roles_and_preview_bbox():
+    result = build_estimation_input_v2(
+        run=RUN,
+        detected_object={
+            **OBJECT,
+            "evidence_page_refs": [{
+                "page_number": 1, "source_label": "A-01",
+                "roles": ["identity", "overall_dimensions"],
+                "preview_bbox": {
+                    "top_left_x": 1, "top_left_y": 2,
+                    "bottom_right_x": 30, "bottom_right_y": 40,
+                },
+            }],
+        },
+        ocr_event_id="ocr-event-1",
+        ocr_package=OCR,
+        evidence_artifacts=(ARTIFACTS[0],),
+        versions={},
+    )
+
+    assert result["object"]["evidence_pages"] == [{
+        "page_number": 1, "source_label": "A-01",
+        "roles": ["identity", "overall_dimensions"],
+        "preview_bbox": {
+            "top_left_x": 1, "top_left_y": 2,
+            "bottom_right_x": 30, "bottom_right_y": 40,
+        },
+    }]
+
+
 def test_anchor_bbox_requires_one_exact_ocr_match():
     result = resolve_anchor_bbox(
         anchor={"page_number": 1, "text": "Reception desk"},

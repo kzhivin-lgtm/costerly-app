@@ -54,6 +54,7 @@ from state.session import get_company_id
 from use_cases.retry import read_with_retry
 from use_cases.platform_admin import record_rfq_upload
 from use_cases.estimation_originals import persist_estimation_original
+from use_cases.detection_previews import create_detection_previews
 
 
 _DIAGNOSTICS_EXECUTOR = ThreadPoolExecutor(
@@ -64,6 +65,7 @@ _NAMING_EXECUTOR = ThreadPoolExecutor(
     max_workers=4,
     thread_name_prefix="rfq-naming",
 )
+_PREVIEW_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="rfq-preview")
 
 
 def _runtime_event(
@@ -408,6 +410,15 @@ def process_uploaded_rfq(
     if progress_callback:
         progress_callback("Saving results", None)
     upsert_rfq_detection_result(client, detection_result)
+    preview_future = None
+    if detection_result["detected_objects"]:
+        preview_future = _PREVIEW_EXECUTOR.submit(
+            create_detection_previews,
+            client=client, company_id=company_id, run_id=run_id,
+            file_name=file_name, file_bytes=file_bytes,
+            objects=deepcopy(detection_result["detected_objects"]),
+            ocr_package=deepcopy(ocr_package), page_images=page_images,
+        )
     if locked_objects is not None:
         naming_future = _NAMING_EXECUTOR.submit(
             _run_deferred_naming,
@@ -448,6 +459,7 @@ def process_uploaded_rfq(
             "detection_seconds": detection_seconds,
             "naming_seconds": naming_seconds,
             "naming_deferred": naming_future is not None,
+            "preview_deferred": preview_future is not None,
         },
     )
     ocr_event = _runtime_event(
@@ -495,6 +507,7 @@ def process_uploaded_rfq(
         "ocr_event_id": ocr_event_id,
         "original": original,
         "naming_future": naming_future,
+        "preview_future": preview_future,
         "timings": {
             "ocr_seconds": ocr_seconds,
             "render_seconds": render_seconds,
@@ -525,7 +538,6 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
 
     run = run_df.iloc[0].to_dict()
     objects = [row.to_dict() for _, row in objects_df.iterrows()]
-
     return {
         "run": _normalize_run(run),
         "objects": [_normalize_object(item) for item in objects],
@@ -727,7 +739,7 @@ def _normalize_object(item: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(dimensions, dict):
         dimensions = {}
 
-    return {
+    normalized = {
         "object_id": item.get("object_id"),
         "name": item.get("object_name"),
         "quantity": _clean_number(item.get("quantity")),
@@ -736,6 +748,22 @@ def _normalize_object(item: dict[str, Any]) -> dict[str, Any]:
         "materials": item.get("detected_materials"),
         "notes": _split_notes(item.get("notes")),
     }
+    preview_ref = _preview_ref(item)
+    if preview_ref:
+        normalized["preview_ref"] = preview_ref
+    elif any(
+        isinstance(ref, dict) and isinstance(ref.get("preview_bbox"), dict)
+        for ref in item.get("evidence_page_refs") or []
+    ):
+        normalized["preview_pending"] = True
+    return normalized
+
+
+def _preview_ref(item: dict[str, Any]) -> str | None:
+    for ref in item.get("evidence_page_refs") or []:
+        if isinstance(ref, dict) and isinstance(ref.get("preview_ref"), str):
+            return ref["preview_ref"]
+    return None
 
 
 def _split_notes(value: Any) -> list[str]:

@@ -8,6 +8,7 @@ from typing import Any, Mapping, Sequence
 from agents.detection_page_images import render_detection_pdf_pages
 from db.repositories import insert_estimation_object_input, next_estimation_object_input_revision
 from use_cases.estimation_artifacts import persist_preview_artifact
+from use_cases.estimation_evidence import EvidenceArtifact
 from use_cases.estimation_evidence import build_estimation_input_v2, resolve_anchor_bbox
 from use_cases.estimation_originals import StoredOriginal
 from use_cases.evidence_preview import crop_ocr_region_to_webp
@@ -29,7 +30,17 @@ def persist_estimation_v2_inputs(
     versions: Mapping[str, str],
 ) -> dict[str, Any]:
     """Persist one immutable input revision for each estimable object."""
-    pages = _render_pages(file_name, file_bytes)
+    # Preview worker normally completed before Estimation. Do not re-render the
+    # source document if every selected object already has its immutable crop.
+    needs_fallback_preview = any(
+        str(item.get("object_id") or "") not in ignored_object_ids
+        and not any(
+            isinstance(ref, Mapping) and ref.get("preview_ref")
+            for ref in item.get("evidence_page_refs") or []
+        )
+        for item in objects
+    )
+    pages = _render_pages(file_name, file_bytes) if needs_fallback_preview else []
     ocr_pages = {int(row["page_number"]): row for row in ocr_package.get("pages") or [] if row.get("page_number")}
     created: list[str] = []
     created_inputs: list[dict[str, Any]] = []
@@ -39,7 +50,42 @@ def persist_estimation_v2_inputs(
         if not object_id or object_id in ignored_object_ids:
             continue
         resolved = None
+        existing_preview = next(
+            (
+                EvidenceArtifact(
+                    storage_ref=str(ref["preview_ref"]),
+                    page_number=int(ref["page_number"]),
+                    artifact_kind="preview",
+                )
+                for ref in item.get("evidence_page_refs") or []
+                if isinstance(ref, Mapping) and ref.get("preview_ref")
+            ),
+            None,
+        )
+        if existing_preview:
+            artifact = existing_preview
+            page_number = artifact.page_number
+            exact_ocr_anchor = True
+            resolved = {"page_number": page_number, "text": "", "bbox": {}}
+        else:
+            artifact = None
+        # vNext supplies an object-region bbox. It is the only contract that
+        # guarantees an isolated preview rather than a crop around a label.
+        for page_ref in item.get("evidence_page_refs") or []:
+            if artifact:
+                break
+            bbox = page_ref.get("preview_bbox") if isinstance(page_ref, Mapping) else None
+            if isinstance(bbox, Mapping):
+                try:
+                    page_number = int(page_ref.get("page_number"))
+                except (TypeError, ValueError):
+                    continue
+                if page_number > 0:
+                    resolved = {"page_number": page_number, "text": "", "bbox": dict(bbox)}
+                    break
         for anchor in item.get("evidence_anchors") or []:
+            if resolved:
+                break
             resolved = resolve_anchor_bbox(anchor=anchor, ocr_package=ocr_package)
             if resolved:
                 break
@@ -71,18 +117,19 @@ def persist_estimation_v2_inputs(
             continue
         page_number = int(resolved["page_number"])
         ocr_page = ocr_pages.get(page_number)
-        if not ocr_page or page_number > len(pages):
+        if not ocr_page or (not artifact and page_number > len(pages)):
             skipped[object_id] = "evidence_page_not_renderable"
             continue
-        preview = crop_ocr_region_to_webp(
-            page_image=pages[page_number - 1],
-            page_dimensions=ocr_page.get("dimensions") or {},
-            bbox=resolved["bbox"],
-        )
-        artifact = persist_preview_artifact(
-            client=client, company_id=str(run["company_id"]), run_id=str(run["run_id"]),
-            object_id=object_id, page_number=page_number, webp_bytes=preview,
-        )
+        if not artifact:
+            preview = crop_ocr_region_to_webp(
+                page_image=pages[page_number - 1],
+                page_dimensions=ocr_page.get("dimensions") or {},
+                bbox=resolved["bbox"],
+            )
+            artifact = persist_preview_artifact(
+                client=client, company_id=str(run["company_id"]), run_id=str(run["run_id"]),
+                object_id=object_id, page_number=page_number, webp_bytes=preview,
+            )
         bounded_ocr_package = ocr_package
         if not exact_ocr_anchor:
             bounded_ocr_package = {

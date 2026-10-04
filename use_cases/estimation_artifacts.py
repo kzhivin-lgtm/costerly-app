@@ -11,6 +11,23 @@ from use_cases.estimation_evidence import EvidenceArtifact
 EVIDENCE_BUCKET = "rfq-estimation-evidence"
 
 
+def evidence_signed_url(*, client: Any, storage_ref: str, company_id: str) -> str | None:
+    """Return a short-lived URL only for evidence owned by this company."""
+    prefix = f"storage://{EVIDENCE_BUCKET}/"
+    if not storage_ref.startswith(prefix):
+        return None
+    object_path = storage_ref.removeprefix(prefix)
+    if not company_id or not object_path.startswith(f"{company_id}/"):
+        return None
+    try:
+        response = client.storage.from_(EVIDENCE_BUCKET).create_signed_url(object_path, 3600)
+    except Exception:
+        return None
+    if isinstance(response, dict):
+        return response.get("signedURL") or response.get("signed_url")
+    return getattr(response, "signedURL", None) or getattr(response, "signed_url", None)
+
+
 def download_evidence_artifact(*, client: Any, storage_ref: str) -> bytes:
     """Download one private evidence artifact from its immutable storage ref."""
     prefix = f"storage://{EVIDENCE_BUCKET}/"

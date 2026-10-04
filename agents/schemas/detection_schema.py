@@ -21,7 +21,6 @@ REQUIRED_RUN_FIELDS = {
     "file_quality_label",
     "file_quality_confidence",
     "file_quality_notes",
-    "missing_information",
     "status",
     "created_at",
 }
@@ -36,14 +35,14 @@ REQUIRED_OBJECT_FIELDS = {
     "quantity_confidence",
     "confidence",
     "evidence_pages",
-    "detected_materials",
     "dimensions_json",
     "notes",
     "approved",
     "created_at",
 }
 
-OPTIONAL_OBJECT_FIELDS = {"evidence_page_refs", "evidence_anchors"}
+OPTIONAL_RUN_FIELDS = {"missing_information"}
+OPTIONAL_OBJECT_FIELDS = {"detected_materials", "evidence_page_refs", "evidence_anchors"}
 
 REQUIRED_DIMENSION_FIELDS = {
     "unit",
@@ -82,7 +81,6 @@ DETECTION_RESULT_JSON_SCHEMA: dict[str, Any] = {
                 "file_quality_label": {"type": "string"},
                 "file_quality_confidence": {"type": "number", "minimum": 0, "maximum": 100},
                 "file_quality_notes": {"type": "string"},
-                "missing_information": {"type": "string"},
                 "status": {"type": "string", "enum": sorted(STATUS_VALUES)},
                 "created_at": {"type": "string"},
             },
@@ -103,6 +101,8 @@ DETECTION_RESULT_JSON_SCHEMA: dict[str, Any] = {
                     "quantity_confidence": {"type": "number", "minimum": 0, "maximum": 100},
                     "confidence": {"type": "number", "minimum": 0, "maximum": 100},
                     "evidence_pages": {"type": "string"},
+                    # Compatibility only. Detection vNext does not extract a
+                    # material summary; legacy persisted rows may still have it.
                     "detected_materials": {"type": "string"},
                     "dimensions_json": {
                         "type": "object",
@@ -129,6 +129,21 @@ DETECTION_RESULT_JSON_SCHEMA: dict[str, Any] = {
                             "properties": {
                                 "page_number": {"type": "integer", "minimum": 1},
                                 "source_label": {"type": "string"},
+                                "roles": {
+                                    "type": "array",
+                                    "items": {"type": "string", "enum": ["identity", "overall_dimensions", "construction"]},
+                                },
+                                "preview_bbox": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y"],
+                                    "properties": {
+                                        "top_left_x": {"type": "number", "minimum": 0},
+                                        "top_left_y": {"type": "number", "minimum": 0},
+                                        "bottom_right_x": {"type": "number", "minimum": 0},
+                                        "bottom_right_y": {"type": "number", "minimum": 0},
+                                    },
+                                },
                             },
                         },
                     },
@@ -203,7 +218,7 @@ def validate_detection_result(result: dict[str, Any]) -> dict[str, Any]:
     detected_objects = _require_list(result["detected_objects"], "detected_objects")
 
     _check_required_keys(rfq_run, REQUIRED_RUN_FIELDS, "rfq_run")
-    _check_no_extra_keys(rfq_run, REQUIRED_RUN_FIELDS, "rfq_run")
+    _check_no_extra_keys(rfq_run, REQUIRED_RUN_FIELDS | OPTIONAL_RUN_FIELDS, "rfq_run")
 
     if rfq_run["status"] not in STATUS_VALUES:
         raise DetectionSchemaError(
@@ -267,11 +282,25 @@ def validate_detection_result(result: dict[str, Any]) -> dict[str, Any]:
                 ref_name = f"{obj_name}.evidence_page_refs[{ref_index}]"
                 page_ref = _require_dict(page_ref, ref_name)
                 _check_required_keys(page_ref, {"page_number", "source_label"}, ref_name)
-                _check_no_extra_keys(page_ref, {"page_number", "source_label"}, ref_name)
+                _check_no_extra_keys(page_ref, {"page_number", "source_label", "roles", "preview_bbox"}, ref_name)
                 if not isinstance(page_ref["page_number"], int) or page_ref["page_number"] < 1:
                     raise DetectionSchemaError(f"{ref_name}.page_number must be positive integer")
                 if not isinstance(page_ref["source_label"], str):
                     raise DetectionSchemaError(f"{ref_name}.source_label must be string")
+                if "roles" in page_ref:
+                    roles = _require_list(page_ref["roles"], f"{ref_name}.roles")
+                    if any(role not in {"identity", "overall_dimensions", "construction"} for role in roles):
+                        raise DetectionSchemaError(f"{ref_name}.roles has unsupported role")
+                if "preview_bbox" in page_ref:
+                    bbox = _require_dict(page_ref["preview_bbox"], f"{ref_name}.preview_bbox")
+                    required_bbox = {"top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y"}
+                    _check_required_keys(bbox, required_bbox, f"{ref_name}.preview_bbox")
+                    _check_no_extra_keys(bbox, required_bbox, f"{ref_name}.preview_bbox")
+                    for key in required_bbox:
+                        if not isinstance(bbox[key], (int, float)) or bbox[key] < 0:
+                            raise DetectionSchemaError(f"{ref_name}.preview_bbox.{key} must be non-negative number")
+                    if bbox["bottom_right_x"] <= bbox["top_left_x"] or bbox["bottom_right_y"] <= bbox["top_left_y"]:
+                        raise DetectionSchemaError(f"{ref_name}.preview_bbox must have positive area")
 
         if "evidence_anchors" in obj:
             anchors = _require_list(obj["evidence_anchors"], f"{obj_name}.evidence_anchors")

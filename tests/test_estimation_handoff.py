@@ -2,6 +2,7 @@ from io import BytesIO
 
 from PIL import Image
 
+from use_cases import estimation_handoff
 from use_cases.estimation_handoff import persist_estimation_v2_inputs
 from use_cases.estimation_originals import describe_estimation_original
 
@@ -119,3 +120,59 @@ def test_shadow_handoff_uses_source_page_when_image_only_ocr_cannot_resolve_anch
     assert client.rows["rfq_estimation_object_inputs"]["input_payload"]["evidence"][
         "ocr_blocks"
     ] == []
+
+
+def test_shadow_handoff_prefers_vnext_object_preview_bbox_over_label_anchor():
+    source = _image_bytes()
+    client = _Client()
+    result = persist_estimation_v2_inputs(
+        client=client,
+        run={"run_id": "run-1", "company_id": "company-1", "file_name": "drawing.png"},
+        objects=[{
+            "object_id": "object-1", "object_name": "Desk", "quantity": 1,
+            "quantity_explicit": True, "dimensions_json": {}, "notes": "",
+            "evidence_page_refs": [{
+                "page_number": 1, "source_label": "A-01",
+                "roles": ["identity", "construction"],
+                "preview_bbox": {
+                    "top_left_x": 0, "top_left_y": 0,
+                    "bottom_right_x": 100, "bottom_right_y": 100,
+                },
+            }],
+            "evidence_anchors": [{"page_number": 1, "text": "DC-01"}],
+        }],
+        ignored_object_ids=set(), file_name="drawing.png", file_bytes=source,
+        ocr_event_id="ocr-1",
+        ocr_package={"contract_version": "ocr_v2", "pages": [{"page_number": 1, "dimensions": {"width": 100, "height": 100}}],
+                     "evidence": {"text_blocks": [{"page_number": 1, "text": "DC-01", "bbox": {"top_left_x": 10, "top_left_y": 10, "bottom_right_x": 20, "bottom_right_y": 20}}]}},
+        original=describe_estimation_original(company_id="company-1", file_name="drawing.png", file_bytes=source),
+        versions={"detection": "test"},
+    )
+
+    assert result["created_input_ids"] == ["input-1"]
+    # The full 100x100 preview bbox proves this was not cropped to the 10x10 label.
+    stored_webp = client.uploads[0][1]
+    assert Image.open(BytesIO(stored_webp)).size == (100, 100)
+
+
+def test_shadow_handoff_reuses_detection_preview_without_rendering_source(monkeypatch):
+    source = _image_bytes()
+    client = _Client()
+    monkeypatch.setattr(
+        estimation_handoff, "_render_pages",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("source must not be rerendered")),
+    )
+    result = persist_estimation_v2_inputs(
+        client=client, run={"run_id": "run-1", "company_id": "company-1"},
+        objects=[{"object_id": "object-1", "object_name": "Desk", "quantity": 1,
+                  "dimensions_json": {}, "notes": "", "evidence_page_refs": [{
+                      "page_number": 1, "source_label": "A-01",
+                      "preview_ref": "storage://rfq-estimation-evidence/company-1/run-1/object-1/ready.webp",
+                  }]}],
+        ignored_object_ids=set(), file_name="drawing.png", file_bytes=source,
+        ocr_event_id="ocr-1", ocr_package={"pages": [{"page_number": 1, "dimensions": {"width": 100, "height": 100}}]},
+        original=describe_estimation_original(company_id="company-1", file_name="drawing.png", file_bytes=source),
+        versions={"detection": "test"},
+    )
+    assert result["created_input_ids"] == ["input-1"]
+    assert client.uploads == []

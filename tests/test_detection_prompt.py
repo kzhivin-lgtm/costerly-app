@@ -8,65 +8,34 @@ from agents.prompt_loader import (
 )
 
 
-def test_detection_prompt_v3_2_6_covers_ocr_identity_reconciliation():
+def test_detection_prompt_vnext_locks_object_dossiers_without_naming():
     prompt = load_detection_agent_prompt()
 
-    assert "RFQ DETECTION AGENT V3.2.6" in prompt
-    assert "Stage A — establish visual object candidates" in prompt
-    assert "Stage B — lock identities and enrich from OCR" in prompt
-    assert "unanchored OCR never creates an object" in prompt
-    assert "reconcile authoritative product-level tags from OCR once" in prompt
-    assert "This targeted reconciliation is not a second page-by-page review" in prompt
-    assert "Do not retranscribe text OCR already provides" in prompt
-    assert "Detection alone makes all semantic decisions" in prompt
-    assert "six user-facing jobs" in prompt
-    assert "### Metadata — project name" in prompt
-    assert "file name alone only as weak evidence" in prompt
-    assert "Береговой проезд, 5" in prompt
-    assert "Omit city, apartment, корпус, строение" in prompt
-    assert "### Metadata — partner, client, and author" in prompt
-    assert "design_partner is the supported intermediary" in prompt
-    assert "client is the end customer" in prompt
-    assert 'use "unknown" for design_partner' in prompt
-    assert "Do not copy one visible name into both fields" in prompt
-    assert "Do not use the upload date" in prompt
-    assert "quote-line test" in prompt
-    assert "one Curtain system" in prompt
-    assert "Object naming" in prompt
-    assert "Quantity" in prompt
-    assert "External dimensions" in prompt
-    assert "Notes and clarification questions" in prompt
-    assert "They never imply mains power" in prompt
-    assert "Estimation Agent handoff boundary" in prompt
-    assert "independent-product test" in prompt
-    assert "ЛП-1, ЛС-1, ЛС-2, and МП-1 remain separate quote lines" in prompt
-    assert "Component, BOM, hardware, and detail codes are not object identities" in prompt
-    assert "does not establish parent-child containment" in prompt
-    assert "Build one package-level candidate set" in prompt
-    assert "Living room furniture assembly" in prompt
-    assert 'use "W 3610 × H 630 × D 610 mm"' in prompt
-    assert "evidence_page_refs" in prompt
-    assert "physical upload page number shown as P#" in prompt
-    assert "copied verbatim from P# TEXT entries" in prompt
-    assert "Never paraphrase, translate, combine, correct" in prompt
-    assert "return an empty evidence_anchors list" in prompt
-    assert "does not receive the original file" in prompt
-    assert DETECTION_PROMPT_VERSION == "detection_v3_2_6_4_deduplicated_objects"
+    assert "RFQ DETECTION AGENT VNEXT 3.15.8" in prompt
+    assert "four primary jobs" in prompt
+    assert "OCR may enrich a locked object but cannot create" in prompt
+    assert "Kitchen and large integrated systems" in prompt
+    assert "Physical contact alone proves neither merge nor split" in prompt
+    assert "coffee machines" in prompt
+    assert "floor plan may supply only an external dimension" in prompt
+    assert "preview_bbox" in prompt
+    assert "text-only Naming Agent" in prompt
+    assert "Partner and client may match only when direct commissioning is supported" in prompt
+    assert "detected_materials" not in prompt
+    assert "package-wide missing-information" in prompt
+    assert DETECTION_PROMPT_VERSION == "detection_vnext_3_15_8_object_dossier_v1"
 
 
-def test_detection_prompt_v3_stays_compact():
+def test_detection_prompt_vnext_stays_compact():
     prompt = load_detection_agent_prompt()
 
-    assert len(prompt) < 24_000
-    assert len(prompt.splitlines()) < 500
+    assert len(prompt) < 16_000
+    assert len(prompt.splitlines()) < 220
 
 
 def test_no_naming_ab_prompt_delegates_user_facing_name_once():
     prompt = load_detection_agent_without_naming_prompt()
 
-    assert DETECTION_NO_NAMING_PROMPT_VERSION == "detection_v3_2_6_3_estimation_evidence"
-    assert "Your output has five user-facing jobs" in prompt
-    assert "## 5. Object naming" not in prompt
-    assert "Do not create, translate, shorten, improve, or validate" in prompt
-    assert "otherwise use Object 1, Object 2" in prompt
-    assert "Naming is performed once by a separate downstream Naming Agent" in prompt
+    assert DETECTION_NO_NAMING_PROMPT_VERSION == DETECTION_PROMPT_VERSION
+    assert "Naming is delegated to a separate text-only Naming Agent" in prompt
+    assert "Do not create a user-facing product name" in prompt

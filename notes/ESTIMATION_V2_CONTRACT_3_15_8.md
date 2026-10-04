@@ -1,6 +1,6 @@
 # Estimation v2 contract, task 3.15.8
 
-Status: active architecture checkpoint candidate
+Status: active. Detection vNext v1 is locally implemented and regression-tested; live benchmark and File Review preview delivery remain pending.
 
 ## Objective
 
@@ -68,6 +68,43 @@ Estimation uses the physical number for lookup and retains the label for audit.
 The existing Detection object remains authoritative for object identity,
 quantity and whole-document deduplication. The handoff adds durable evidence,
 not a second object taxonomy.
+
+### Detection vNext v1, 2026-10-04
+
+The active vNext prompt narrows Detection to commercial-object locking,
+complete-unit quantity, external envelope dimensions and a bounded Estimation
+dossier. It keeps the V3.2.6 scope exclusions, whole-document deduplication
+and identity protections while adding explicit kitchen/large-system rules,
+connected-but-independent product rules, metadata role precedence, classified
+evidence roles and an isolated `preview_bbox`.
+
+`evidence_page_refs` now carries the additive fields below, so the v1 does not
+need a destructive table migration:
+
+```json
+{
+  "page_number": 2,
+  "source_label": "A-02",
+  "roles": ["identity", "overall_dimensions"],
+  "preview_bbox": {
+    "top_left_x": 120,
+    "top_left_y": 80,
+    "bottom_right_x": 1040,
+    "bottom_right_y": 720
+  }
+}
+```
+
+`detected_materials` and package-wide `missing_information` are no longer
+requested by vNext. They remain accepted as legacy optional fields so historic
+rows remain readable. Estimation uses `preview_bbox` before an OCR text-anchor
+when creating its source crop.
+
+Local verification: `902 passed` on 2026-10-04. This does not verify model
+quality, provider latency, cost, live Supabase compatibility, or a File Review
+card preview. The next acceptance benchmark must test the protected object
+boundaries, page-role relevance, isolated crops, time to review and time to
+final names on fresh source files.
 
 ```json
 {
