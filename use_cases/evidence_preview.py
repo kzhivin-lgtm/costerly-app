@@ -27,6 +27,12 @@ def crop_ocr_region_to_webp(
         bottom = float(bbox["bottom_right_y"])
     except (KeyError, TypeError, ValueError) as exc:
         raise ValueError("page dimensions and bbox must be numeric") from exc
+    # Vision output occasionally expresses a region as 0..1 fractions even
+    # though the contract requests OCR-page pixels. Convert that unambiguous
+    # representation before validating and cropping it.
+    if all(0 <= value <= 1 for value in (left, top, right, bottom)):
+        left, right = left * source_width, right * source_width
+        top, bottom = top * source_height, bottom * source_height
     if source_width <= 0 or source_height <= 0 or not (0 <= left < right <= source_width and 0 <= top < bottom <= source_height):
         raise ValueError("bbox must be inside the OCR page dimensions")
     with Image.open(BytesIO(page_image)) as source:

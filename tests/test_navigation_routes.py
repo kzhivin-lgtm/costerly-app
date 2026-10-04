@@ -176,7 +176,7 @@ def test_file_review_navigation_uses_widget_callbacks_not_a_second_rerun():
     )[0]
 
     assert "on_click=_continue_to_objects_estimation" in source
-    assert "on_click=set_screen" in source
+    assert "on_click=_back_to_upload_from_review" in source
     assert "st.rerun()" not in continue_source
 
 
