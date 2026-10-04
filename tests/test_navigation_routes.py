@@ -474,6 +474,9 @@ def test_file_review_refreshes_only_object_cards_for_deferred_artifacts():
     assert "@st.fragment(run_every=2.0)" in source[:dynamic]
     assert "st.rerun(scope=\"app\")" not in source
     assert dynamic < navigation
+    assert source.index("_publish_deferred_file_review_work(run_id)", dynamic) < source.index(
+        "_render_object_card(item)", dynamic
+    )
 
 
 def test_file_review_back_to_upload_remembers_the_current_review_run():

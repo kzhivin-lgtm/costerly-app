@@ -578,6 +578,13 @@ def _publish_deferred_file_review_work(run_id: str) -> None:
 @st.fragment(run_every=2.0)
 def _render_file_review_dynamic_content(run_id: str) -> None:
     """Refresh only object cards while deferred artifacts become available."""
+    # Naming updates a keyed text input. It must complete before this fragment
+    # creates that input, otherwise Streamlit rejects the session-state write.
+    # Preview publication also invalidates the cached object snapshot, so load
+    # the cards only after either terminal artifact is published.
+    if _has_deferred_work(run_id):
+        _publish_deferred_file_review_work(run_id)
+
     try:
         data = _load_file_review_screen_data(run_id)
     except Exception as exc:
@@ -610,9 +617,6 @@ def _render_file_review_dynamic_content(run_id: str) -> None:
     for item in data["objects"]:
         _render_object_card(item)
     _render_missing_object_search()
-
-    if _has_deferred_work(run_id):
-        _publish_deferred_file_review_work(run_id)
 
 
 def _file_review_edits_changed(
