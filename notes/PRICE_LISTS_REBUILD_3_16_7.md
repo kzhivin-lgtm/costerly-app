@@ -251,3 +251,22 @@ The workspace requirements are:
   requires a durable submitted-job record before the worker starts, plus a
   client recovery path. Do not claim photo OCR quality until a real submitted
   photo has a terminal trace.
+
+### Increment, 2026-10-05, explicit OCR text layer for Price Sources
+
+- JPEG, PNG, TIFF, HEIC and HEIF Price Sources now run through the existing
+  Mistral OCR adapter before commercial extraction. The commercial agent gets
+  only the resulting bounded text layer, never an untracked image attachment.
+- A PDF with at least 120 characters of embedded text uses that native text.
+  A scanned or textless PDF falls back to one direct Mistral OCR request.
+  XLSX and CSV remain direct structured-table imports. Supplier URLs retain
+  their fetched visible HTML text.
+- OCR preserves a provider response, usage data, timing, page count and the
+  selected text-layer strategy in the company-scoped usage ledger. The source
+  summary contains only the strategy and compact metrics.
+- TIFF and HEIC/HEIF previews and multi-photo documents are normalized through
+  Pillow before being rendered or sent to Mistral. The optional `pillow-heif`
+  dependency enables HEIC/HEIF decoding.
+- The earlier P1 durable-job recovery remains open. This increment improves a
+  submitted image's extraction route, it does not make an unacknowledged
+  Streamlit session recoverable.

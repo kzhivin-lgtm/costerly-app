@@ -20,7 +20,7 @@ from uuid import uuid4
 
 import httpx
 import pandas as pd
-from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
 
 from agents.material_identity_agent import run_material_identity_agent
 from agents.price_source_agent import run_price_source_agent
@@ -31,6 +31,11 @@ from agents.schemas.price_source_schema import (
 from db.company_access import assert_company_owner
 from db.repositories import insert_agent_usage_event
 from db.supabase_client import get_supabase_client
+from use_cases.price_source_ocr import (
+    OCR_IMAGE_SUFFIXES,
+    open_price_source_image,
+    prepare_price_source_text_layer,
+)
 from use_cases.price_source_material_resolution import (
     resolve_price_source_material_identities,
 )
@@ -49,7 +54,7 @@ SUPPLIER_PAGE_HEADERS = {
 }
 LEGACY_EXTREME_RATIO = 3.0
 LEGACY_CONFIDENCE_PENALTY = 15.0
-SUPPORTED_SUFFIXES = {".pdf", ".xlsx", ".csv", ".jpg", ".jpeg", ".png"}
+SUPPORTED_SUFFIXES = {".pdf", ".xlsx", ".csv", *OCR_IMAGE_SUFFIXES}
 CONTENT_TYPES = {
     ".pdf": "application/pdf",
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -57,6 +62,10 @@ CONTENT_TYPES = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".png": "image/png",
+    ".tif": "image/tiff",
+    ".tiff": "image/tiff",
+    ".heic": "image/heic",
+    ".heif": "image/heif",
 }
 
 PRICE_SOURCE_DEPARTMENTS = ("Wood", "Metal", "Finishing")
@@ -453,9 +462,9 @@ def validate_price_source_upload_selection(files: list) -> None:
     if len(selected) <= 1:
         return
     suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
-    if any(suffix not in {".jpg", ".jpeg", ".png"} for suffix in suffixes):
+    if any(suffix not in OCR_IMAGE_SUFFIXES for suffix in suffixes):
         raise PriceSourceError(
-            "Select one PDF or spreadsheet, or several JPEG/PNG photos from the same document"
+            "Select one PDF or spreadsheet, or several photos from the same document"
         )
 
 
@@ -465,7 +474,7 @@ def accepted_price_source_uploads(files: list) -> list:
     if len(selected) <= 1:
         return selected
     suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
-    photo_suffixes = {".jpg", ".jpeg", ".png"}
+    photo_suffixes = OCR_IMAGE_SUFFIXES
     if suffixes[0] in photo_suffixes:
         return [
             item
@@ -576,15 +585,16 @@ def render_price_source_preview(
             max_width=max_width,
             max_height=max_height,
         )
-    if suffix in {".jpg", ".jpeg", ".png"}:
+    if suffix in OCR_IMAGE_SUFFIXES:
         try:
-            with Image.open(BytesIO(file_bytes)) as source:
-                image = ImageOps.exif_transpose(source).convert("RGB")
+            image = open_price_source_image(file_bytes)
+            try:
                 image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
                 output = BytesIO()
                 image.save(output, format="PNG", optimize=True)
-                image.close()
                 return output.getvalue()
+            finally:
+                image.close()
         except (UnidentifiedImageError, OSError):
             logger.info("Price source image preview unavailable", exc_info=True)
             return None
@@ -617,7 +627,7 @@ def render_price_source_preview(
 
 
 def combine_price_source_files(files: list) -> object | None:
-    """Freeze one upload or combine ordered JPEG/PNG pages into one PDF."""
+    """Freeze one upload or combine ordered image pages into one PDF."""
     selected = accepted_price_source_uploads(files)
     if not selected:
         return None
@@ -630,10 +640,7 @@ def combine_price_source_files(files: list) -> object | None:
     pages: list[Image.Image] = []
     try:
         for item in selected:
-            with Image.open(BytesIO(item.getvalue())) as image:
-                page = image.convert("RGB")
-                page.load()
-                pages.append(page)
+            pages.append(open_price_source_image(item.getvalue()))
         output = BytesIO()
         pages[0].save(output, format="PDF", save_all=True, append_images=pages[1:])
     except (UnidentifiedImageError, OSError) as exc:
@@ -1472,7 +1479,7 @@ def extract_spreadsheet_text(file_name: str, data: bytes) -> str:
 def _source_extension(file_name: str) -> str:
     suffix = Path(file_name).suffix.lower()
     if suffix not in SUPPORTED_SUFFIXES:
-        raise PriceSourceError("Upload PDF, XLSX, CSV, JPEG, or PNG")
+        raise PriceSourceError("Upload PDF, XLSX, CSV, JPEG, PNG, TIFF, or HEIC")
     return suffix
 
 
@@ -2535,25 +2542,25 @@ def process_price_source(
             source_bytes=len(source_bytes),
         )
         parse_started = time.perf_counter()
-        extracted_text = extract_spreadsheet_text(source_name, source_bytes)
+        structured_text = extract_spreadsheet_text(source_name, source_bytes)
         template_sha256 = price_source_template_fingerprint(source_name, source_bytes)
         _emit_duration(
             trace,
             "server.price_source_spreadsheet_parse",
             parse_started,
-            extracted_chars=len(extracted_text),
+            extracted_chars=len(structured_text),
         )
         mime_type = CONTENT_TYPES[suffix]
     else:
         _emit_marker(trace, "server.price_source_input_read_started", source_kind="url")
         fetch_started = time.perf_counter()
-        resolved_url, source_bytes, extracted_text = fetch_public_page(source_url)
+        resolved_url, source_bytes, structured_text = fetch_public_page(source_url)
         _emit_duration(
             trace,
             "server.price_source_url_fetch",
             fetch_started,
             source_bytes=len(source_bytes),
-            extracted_chars=len(extracted_text),
+            extracted_chars=len(structured_text),
         )
         source_name = resolved_url
         source_kind = "url"
@@ -2581,6 +2588,62 @@ def process_price_source(
             summary=duplicate_summary,
         )
 
+    text_layer_started = time.perf_counter()
+    _emit_marker(trace, "server.price_source_text_layer_started", suffix=suffix)
+    try:
+        text_layer = prepare_price_source_text_layer(
+            file_name=source_name,
+            file_bytes=source_bytes,
+            structured_text=structured_text,
+        )
+    except Exception as exc:
+        _emit_duration(
+            trace,
+            "server.price_source_text_layer_failed",
+            text_layer_started,
+            suffix=suffix,
+            error_type=type(exc).__name__,
+        )
+        raise PriceSourceError(f"Price source OCR failed: {exc}") from exc
+    _emit_duration(
+        trace,
+        "server.price_source_text_layer",
+        text_layer_started,
+        strategy=text_layer.strategy,
+        extracted_chars=len(text_layer.text),
+        ocr_pages=len((text_layer.ocr_package or {}).get("pages") or []),
+    )
+    if text_layer.ocr_package:
+        ocr_package = text_layer.ocr_package
+        try:
+            insert_agent_usage_event(
+                client,
+                {
+                    "company_id": company_id,
+                    "run_id": source_id,
+                    "file_name": source_name,
+                    "object_id": None,
+                    "object_name": None,
+                    "agent_name": "ocr",
+                    "operation": "company_price_source_ocr",
+                    "model": str(ocr_package.get("model") or "unknown"),
+                    "prompt_version": str(ocr_package.get("contract_version") or "ocr_v2"),
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "status": "succeeded",
+                    "duration_seconds": float(ocr_package.get("processing_seconds") or 0),
+                    "started_at": str(ocr_package.get("started_at") or datetime.now(timezone.utc).isoformat()),
+                    "finished_at": str(ocr_package.get("finished_at") or datetime.now(timezone.utc).isoformat()),
+                    "raw_usage": {
+                        "provider_usage": dict(ocr_package.get("usage") or {}),
+                        "ocr_result": ocr_package,
+                        "text_layer_strategy": text_layer.strategy,
+                    },
+                },
+            )
+        except Exception:
+            logger.exception("Price source OCR usage persistence failed")
+
     agent_started = time.perf_counter()
     _emit_marker(trace, "server.price_source_agent_started")
     result = run_price_source_agent(
@@ -2588,8 +2651,10 @@ def process_price_source(
         department=department,
         source_name=source_name,
         source_kind=source_kind,
-        source_bytes=source_bytes if suffix in {".pdf", ".jpg", ".jpeg", ".png"} else None,
-        extracted_text=extracted_text,
+        # The commercial agent receives an auditable text layer only.  This
+        # keeps image/scanned-PDF interpretation in the dedicated OCR stage.
+        source_bytes=None,
+        extracted_text=text_layer.text,
         import_id=source_id,
         trace=trace,
     )
@@ -2748,6 +2813,13 @@ def process_price_source(
             "output_tokens": usage_event.get("output_tokens") if usage_event else None,
             "model": usage_event.get("model") if usage_event else None,
             "prompt_version": usage_event.get("prompt_version") if usage_event else None,
+            "text_layer": {
+                "strategy": text_layer.strategy,
+                "characters": len(text_layer.text),
+                "ocr_pages": len((text_layer.ocr_package or {}).get("pages") or []),
+                "ocr_seconds": float((text_layer.ocr_package or {}).get("processing_seconds") or 0),
+                "ocr_model": (text_layer.ocr_package or {}).get("model"),
+            },
         }
         client.table("company_price_sources").insert(
             {

@@ -1434,6 +1434,15 @@ def test_multiple_photos_are_valid_as_one_document_before_processing_is_queued()
     )
 
 
+def test_multiple_tiff_and_heic_photos_are_valid_as_one_document_before_processing_is_queued():
+    validate_price_source_upload_selection(
+        [
+            _UploadedPhoto("page-1.tiff", b"first"),
+            _UploadedPhoto("page-2.heic", b"second"),
+        ]
+    )
+
+
 def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
     from screens import company_profile
 
