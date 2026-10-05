@@ -11,21 +11,41 @@ begin;
 alter table public.company_price_sources
     add column if not exists source_supplier_name text;
 
-alter table public.company_price_sources
-    add constraint company_price_sources_source_supplier_name_check
-    check (
-        source_supplier_name is null
-        or length(trim(source_supplier_name)) between 1 and 240
-    ) not valid;
+do $constraint$
+begin
+    if not exists (
+        select 1 from pg_constraint
+        where conrelid = 'public.company_price_sources'::regclass
+          and conname = 'company_price_sources_source_supplier_name_check'
+    ) then
+        alter table public.company_price_sources
+            add constraint company_price_sources_source_supplier_name_check
+            check (
+                source_supplier_name is null
+                or length(trim(source_supplier_name)) between 1 and 240
+            ) not valid;
+    end if;
+end
+$constraint$;
 
 alter table public.company_price_source_rows
     add column if not exists row_kind text not null default 'material',
     add column if not exists reference_operation_id uuid
         references public.reference_operations(operation_id);
 
-alter table public.company_price_source_rows
-    add constraint company_price_source_rows_row_kind_check
-    check (row_kind in ('material', 'operation_service', 'non_catalog')) not valid;
+do $constraint$
+begin
+    if not exists (
+        select 1 from pg_constraint
+        where conrelid = 'public.company_price_source_rows'::regclass
+          and conname = 'company_price_source_rows_row_kind_check'
+    ) then
+        alter table public.company_price_source_rows
+            add constraint company_price_source_rows_row_kind_check
+            check (row_kind in ('material', 'operation_service', 'non_catalog')) not valid;
+    end if;
+end
+$constraint$;
 
 create index if not exists company_price_source_rows_operation_idx
     on public.company_price_source_rows(company_id, reference_operation_id)

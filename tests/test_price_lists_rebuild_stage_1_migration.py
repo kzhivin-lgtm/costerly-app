@@ -33,6 +33,9 @@ def test_stage_1_preserves_source_evidence_and_supplier_aliases():
     assert "create table if not exists public.company_supplier_aliases" in sql
     assert "alias_kind in ('source_observed', 'manual')" in sql
     assert "unique (company_id, normalized_name)" in sql
+    assert "company_price_sources_source_supplier_name_check" in sql
+    assert "company_price_source_rows_row_kind_check" in sql
+    assert "from pg_constraint" in sql
 
 
 def test_stage_1_adds_the_supplier_bundle_without_changing_estimation_contracts():
