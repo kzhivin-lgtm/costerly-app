@@ -2657,12 +2657,16 @@ def _render_price_source_review_queue(
 
 def _render_material_jobs(access: CompanyAccess, jobs: list[dict]) -> None:
     """Render Material Jobs as the fourth top-level Price Lists department."""
-    if not jobs:
-        return
     with st.container(key="material_jobs_section"):
         with st.expander(
             f'Material Jobs · {_material_jobs_count(len(jobs))}', expanded=True
         ):
+            if not jobs:
+                st.markdown(
+                    '<div class="price-catalog-empty-row">No active jobs</div>',
+                    unsafe_allow_html=True,
+                )
+                return
             _render_price_catalog_grid_header("Job")
             for job in jobs:
                 job_id = str(job.get("operation_offer_id") or job.get("source_row_id") or "job")
@@ -3085,8 +3089,10 @@ def _render_price_source_add(
                     args=(access, uploader_key, url_key),
                 )
                 install_price_source_processing_guard()
-        if cycle_result:
-            _render_price_source_cycle_result(_price_source_notice_text(cycle_result))
+                if cycle_result:
+                    _render_price_source_cycle_result(
+                        _price_source_notice_text(cycle_result)
+                    )
 
 def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     if not st.session_state.get("_price_source_processing"):

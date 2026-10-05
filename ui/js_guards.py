@@ -3816,8 +3816,19 @@ def install_price_source_processing_guard() -> None:
             const CLEANUP_KEY = "__costerlyPriceSourceProcessingGuardCleanup";
             const STARTING_KEY = "__costerlyPriceSourceStartPending";
             const STARTING_TIMER_KEY = "__costerlyPriceSourceStartTimer";
+            const DEFERRED_TAB_KEY = "__costerlyDeferredPriceSourceTab";
+            const REPLAYING_TAB_KEY = "__costerlyReplayingPriceSourceTab";
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
+
+            function releaseDeferredProfileNavigation() {
+                const tab = parentWindow[DEFERRED_TAB_KEY];
+                delete parentWindow[DEFERRED_TAB_KEY];
+                if (!tab || !tab.isConnected) return;
+                parentWindow[REPLAYING_TAB_KEY] = true;
+                tab.click();
+                parentWindow[REPLAYING_TAB_KEY] = false;
+            }
 
             function removeLiveProgress(card) {
                 const progress = card.querySelector(".price-source-live-progress");
@@ -3869,6 +3880,7 @@ def install_price_source_processing_guard() -> None:
                             parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
                             delete parentWindow[STARTING_TIMER_KEY];
                         }
+                        releaseDeferredProfileNavigation();
                         card.classList.add("costerly-price-source-processing");
                         if (!card.querySelector(".price-source-live-progress")) {
                             showLiveProgress(
@@ -3891,6 +3903,7 @@ def install_price_source_processing_guard() -> None:
                         parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
                         delete parentWindow[STARTING_TIMER_KEY];
                     }
+                    releaseDeferredProfileNavigation();
                     delete card.dataset.costerlyProcessingCycle;
                     removeLiveProgress(card);
                     const button = card.querySelector(".st-key-process_price_source button");
@@ -3929,6 +3942,7 @@ def install_price_source_processing_guard() -> None:
                 parentWindow[STARTING_TIMER_KEY] = parentWindow.setTimeout(() => {
                     parentWindow[STARTING_KEY] = false;
                     delete parentWindow[STARTING_TIMER_KEY];
+                    releaseDeferredProfileNavigation();
                 }, 3000);
                 showLiveProgress(card, Date.now());
                 button.disabled = true;
@@ -3938,11 +3952,14 @@ def install_price_source_processing_guard() -> None:
             }
 
             function preventPrematureProfileNavigation(event) {
+                if (parentWindow[REPLAYING_TAB_KEY]) return;
                 if (!parentWindow[STARTING_KEY]) return;
-                if (!event.target.closest('[role="tab"]')) return;
+                const tab = event.target.closest('[role="tab"]');
+                if (!tab) return;
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
+                parentWindow[DEFERRED_TAB_KEY] = tab;
             }
 
             parentDoc.addEventListener("click", handleClick, true);
@@ -3960,6 +3977,8 @@ def install_price_source_processing_guard() -> None:
                     delete parentWindow[STARTING_TIMER_KEY];
                 }
                 delete parentWindow[STARTING_KEY];
+                delete parentWindow[DEFERRED_TAB_KEY];
+                delete parentWindow[REPLAYING_TAB_KEY];
                 delete parentWindow[CLEANUP_KEY];
             };
         })();

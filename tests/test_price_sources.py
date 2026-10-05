@@ -51,6 +51,7 @@ from use_cases.price_sources import (
     price_source_semantic_fingerprint,
     supplier_service_pricing_basis,
     match_existing_supplier,
+    normalize_price_source_sheet_rows,
     supplier_merge_key,
     supplier_merge_max_distance,
     price_source_template_fingerprint,
@@ -502,6 +503,50 @@ def test_supplier_merge_rejects_an_ambiguous_fuzzy_match():
     assert match_existing_supplier("Wood Zenter", candidates) is None
 
 
+def test_supplier_merge_uses_the_first_saved_supplier_for_a_timestamped_tie():
+    candidates = [
+        {
+            "supplier_id": "first",
+            "supplier_name": "Wood Center",
+            "normalized_name": "wood center",
+            "created_at": "2026-10-05T09:57:00+00:00",
+        },
+        {
+            "supplier_id": "later",
+            "supplier_name": "Wood Senter",
+            "normalized_name": "wood senter",
+            "created_at": "2026-10-05T12:01:00+00:00",
+        },
+    ]
+
+    assert match_existing_supplier("Wood Zenter", candidates)["supplier_id"] == "first"
+
+
+def test_sheet_normalization_corrects_okume_and_its_piece_unit():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "לוח אוקומה 5 ממ 3100",
+        "normalized_name": "Glass 5mm 3100 sheet",
+        "material_type": "Glass",
+        "material_family": "glass",
+        "raw_unit": "piece",
+        "purchase_unit": "piece",
+        "calculation_unit": "piece",
+        "conversion_factor": 1,
+        "normalized_price": row["raw_price"],
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 5, "width_mm": 3100},
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["material_type"] == "Wood Sheets"
+    assert row["material_family"] == "okume"
+    assert row["normalized_name"] == "Okume 5 mm × 3100 mm"
+    assert row["purchase_unit"] == row["calculation_unit"] == "sheet"
+    assert row["conversion_factor"] == 1
+
+
 def test_identity_attributes_require_the_fixed_contract():
     result = _result()
     del result["rows"][0]["identity_attributes"]["thickness_mm"]
@@ -608,7 +653,7 @@ def test_unknown_canonical_unit_is_sent_to_review_not_allowed_to_fail_the_source
     assert validate_price_source_result(guarded) is guarded
 
 
-def test_known_material_job_with_unknown_unit_keeps_its_unit_review_reason():
+def test_known_material_job_with_unknown_unit_uses_its_canonical_supplier_basis():
     result = _result(confidence=95)
     row = result["rows"][0]
     row.update({
@@ -622,10 +667,10 @@ def test_known_material_job_with_unknown_unit_keeps_its_unit_review_reason():
     })
 
     guarded = guard_price_source_row_activation(result)
-    assert prepare_price_source_operation_rows(guarded) == {}
+    assert prepare_price_source_operation_rows(guarded) == {1: "supplier_cut_and_edge_banding"}
 
-    assert guarded["rows"][0]["status"] == "unresolved"
-    assert "missing_unit" in guarded["rows"][0]["reason_codes"]
+    assert guarded["rows"][0]["status"] == "ready"
+    assert "missing_unit" not in guarded["rows"][0]["reason_codes"]
     assert "operation_type_unresolved" not in guarded["rows"][0]["reason_codes"]
 
 
@@ -1095,6 +1140,9 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "completedCycle === startedCycle" in source
     assert "new MutationObserver(resetCompletedState)" in source
     assert "preventPrematureProfileNavigation" in source
+    assert "releaseDeferredProfileNavigation" in source
+    assert "__costerlyDeferredPriceSourceTab" in source
+    assert "tab.click()" in source
     assert "__costerlyPriceSourceStartPending" in source
     assert "3000" in source
     assert "observer.disconnect()" in source

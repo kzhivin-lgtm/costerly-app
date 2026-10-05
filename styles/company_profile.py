@@ -1489,6 +1489,8 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_catalog_section [data-testid="stExpanderDetails"] > [data-testid="stVerticalBlock"],
         .stApp:has(.company-profile-active)
+        .st-key-material_jobs_section [data-testid="stExpanderDetails"] > [data-testid="stVerticalBlock"],
+        .stApp:has(.company-profile-active)
         .st-key-price_source_review_queue[data-testid="stVerticalBlock"],
         .stApp:has(.company-profile-active)
         .st-key-price_source_review_queue > [data-testid="stVerticalBlock"] {
@@ -1497,6 +1499,12 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_catalog_section [data-testid="stExpanderDetails"] > [data-testid="stVerticalBlock"] {
+            min-height: 52px;
+            padding: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-material_jobs_section [data-testid="stExpanderDetails"] > [data-testid="stVerticalBlock"] {
             min-height: 52px;
             padding: 0 !important;
         }
@@ -1536,6 +1544,16 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-material_jobs_section [data-testid="stExpander"] {
+            overflow: hidden;
+            border: 1px solid var(--color-border-soft) !important;
+            border-radius: 18px !important;
+            background: #FBF9FD !important;
+            box-shadow: 0 12px 34px rgba(42, 31, 44, 0.06);
+            isolation: isolate;
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_catalog_section
         [data-testid="stElementContainer"]:has(.price-catalog-title-main)
         + [data-testid="stExpander"] {
@@ -1544,6 +1562,12 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_catalog_section [data-testid="stExpander"] > details {
+            overflow: hidden !important;
+            border-radius: 17px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-material_jobs_section [data-testid="stExpander"] > details {
             overflow: hidden !important;
             border-radius: 17px !important;
         }
@@ -1563,7 +1587,20 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
+        .st-key-material_jobs_section [data-testid="stExpanderDetails"] {
+            overflow: hidden;
+            padding: 0 !important;
+            border-radius: 0 0 18px 18px !important;
+        }
+
+        .stApp:has(.company-profile-active)
         .st-key-price_catalog_section [data-testid="stExpander"] summary {
+            min-height: 46px;
+            background: #F7F3FA;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-material_jobs_section [data-testid="stExpander"] summary {
             min-height: 46px;
             background: #F7F3FA;
         }

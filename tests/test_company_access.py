@@ -1880,7 +1880,7 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     assert "Wood · 0 prices" in expander_labels
     assert "Metal · 0 prices" in expander_labels
     assert "Coating · 0 prices" in expander_labels
-    assert markup.count('class="price-catalog-empty-row"') == 3
+    assert markup.count('class="price-catalog-empty-row"') == 4
     assert any(button.label == "Extract prices" for button in app.button)
     assert not any(field.label == "Department (optional)" for field in app.selectbox)
     assert not any(field.label == "Search" for field in app.text_input)

@@ -125,11 +125,28 @@ The workspace requirements are:
   VAT-inclusive value. If the source cannot prove the tax rate, the unavailable
   side stays blank rather than being guessed.
 - A source row with an unknown canonical unit is downgraded to Review with
-  `Estimation unit required`; it never aborts the complete document. A
-  dedicated Material Jobs resolver remains deferred until its unit and price
-  basis rules are agreed.
+  `Estimation unit required`; it never aborts the complete document. A known
+  canonical Material Job is the exception: its reference operation determines
+  department and a `supplier_defined` billing basis, so a missing reusable
+  unit does not send it to Review.
 - Source Library columns are Supplier/source name, document type, department,
   row count, compact View, and compact Remove. It does not expose the removed
   source-wide VAT settings.
 - A new source cannot start while an extraction is active. There is no hidden
   queue, and a concurrent request is rejected rather than delayed.
+
+### Increment, 2026-10-05, canonical supplier and delayed tab handoff
+
+- The first saved supplier remains the canonical company spelling. When OCR
+  variants have equal safe edit distance, a production lookup with timestamps
+  selects the oldest supplier rather than creating a second lane. Untimestamped
+  import/test ties stay unresolved.
+- A Profile-tab click made immediately after Extract is delayed only until the
+  background worker is observed, or for a three-second maximum. The same click
+  is then replayed automatically. It is not discarded and does not cancel the
+  extraction.
+- `Material Jobs` is always the fourth top-level catalog department, including
+  when empty, and uses the same expander/card component geometry as materials.
+- `Okume` is treated as a plywood-sheet family only when independent sheet
+  evidence exists, such as the sheet wording or thickness plus a sheet-sized
+  dimension. A Hebrew spelling alone is not sufficient categorisation evidence.

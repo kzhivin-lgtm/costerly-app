@@ -87,10 +87,64 @@ _CONSUMABLE_MARKERS = (
     "glue", "adhesive", "sandpaper", "abrasive", "ברג", "דיבל", "למלו", "דבק",
     "נייר לטש", "נייר שיוף", "שוחק",
 )
+_OKUME_MARKERS = ("okume", "okoume", "אוקמה", "אוקומה")
 
 
 class PriceSourceError(ValueError):
     pass
+
+
+def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
+    """Apply deterministic sheet-material evidence after OCR extraction."""
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("item_kind") != "material":
+            continue
+        text = " ".join(
+            str(row.get(key) or "")
+            for key in ("raw_description", "normalized_name", "material_family")
+        ).casefold()
+        attributes = row.get("identity_attributes") or {}
+        has_sheet_evidence = (
+            row.get("material_type") == "Wood Sheets"
+            or "sheet" in text
+            or "לוח" in text
+            or (
+                float(attributes.get("thickness_mm") or 0) > 0
+                and max(
+                    float(attributes.get("width_mm") or 0),
+                    float(attributes.get("length_mm") or 0),
+                ) >= 1000
+            )
+        )
+        if any(marker in text for marker in _OKUME_MARKERS) and has_sheet_evidence:
+            # Okume may be a trade name. Treat it as a plywood-sheet family
+            # only where the row independently proves sheet context.
+            row["material_type"] = "Wood Sheets"
+            row["material_family"] = "okume"
+            name = str(row.get("normalized_name") or "").strip()
+            if not name or "glass" in name.casefold():
+                thickness = int(float(attributes.get("thickness_mm") or 0))
+                width = int(float(attributes.get("width_mm") or 0))
+                parts = ["Okume"]
+                if thickness:
+                    parts.append(f"{thickness} mm")
+                if width:
+                    parts.append(f"× {width} mm")
+                row["normalized_name"] = " ".join(parts)
+        if row.get("material_type") != "Wood Sheets":
+            continue
+        # A full sheet quoted as a piece is still the same purchasable sheet.
+        # Cut parts are represented by supplier Material Jobs, not by a second
+        # material unit.
+        if _normalized_unit(str(row.get("raw_unit") or "")) == "piece":
+            row["raw_unit"] = "sheet"
+            row["purchase_unit"] = "sheet"
+            row["calculation_unit"] = "sheet"
+            row["conversion_factor"] = 1
+            raw_price = row.get("raw_price")
+            if isinstance(raw_price, (int, float)):
+                row["normalized_price"] = raw_price
+    return result
 
 
 def discard_price_source_consumables(result: dict[str, Any]) -> int:
@@ -154,13 +208,18 @@ def prepare_price_source_operation_rows(result: dict[str, Any]) -> dict[int, str
         if row.get("item_kind") != "operation_service":
             continue
         code = price_source_service_operation_code(row)
-        if code and row.get("status") == "ready" and float(row.get("raw_price") or 0) > 0:
-            mapped[int(row["source_row_number"])] = code
-            continue
         if code:
-            # The job type is known. A separate material-job resolver may
-            # later establish its unit or pricing basis, so retain its actual
-            # Review blocker rather than replacing it with a false type error.
+            # The canonical operation itself supplies the department and the
+            # supplier-defined billing basis. An invoice's missing reusable
+            # estimation unit must not push a known cut, edge-band, metal or
+            # coating service into Review.
+            if float(row.get("raw_price") or 0) > 0 and row.get("raw_vat_mode") != "unknown":
+                row["status"] = "ready"
+                row["reason_codes"] = sorted(
+                    set(row.get("reason_codes") or [])
+                    - {"missing_unit", "operation_service_unit_unclear", "package_conversion_unresolved"}
+                )
+                mapped[int(row["source_row_number"])] = code
             continue
         if row.get("status") != "excluded":
             row["status"] = "unresolved"
@@ -239,7 +298,14 @@ def match_existing_supplier(
     supplier_name: str,
     candidates: Sequence[Mapping[str, Any]],
 ) -> Mapping[str, Any] | None:
-    """Return one safe existing supplier, never an arbitrary fuzzy tie."""
+    """Return the canonical supplier for a safe OCR-level match.
+
+    If an incoming name is equally close to aliases already accumulated for one
+    supplier, production callers provide ``created_at``.  The first stored
+    supplier is the product's canonical spelling, so it wins that tie.  Test
+    and import callers without a creation timestamp retain the conservative
+    ambiguous-match behaviour.
+    """
     incoming = supplier_merge_key(supplier_name)
     if not incoming:
         return None
@@ -256,7 +322,13 @@ def match_existing_supplier(
     scored.sort(key=lambda item: item[0])
     best_distance = scored[0][0]
     best = [candidate for distance, candidate in scored if distance == best_distance]
-    return best[0] if len(best) == 1 else None
+    if len(best) == 1:
+        return best[0]
+    dated = [candidate for candidate in best if candidate.get("created_at")]
+    if len(dated) != len(best):
+        return None
+    dated.sort(key=lambda candidate: (str(candidate["created_at"]), str(candidate.get("supplier_id") or "")))
+    return dated[0]
 
 
 @dataclass(frozen=True)
@@ -2286,6 +2358,7 @@ def process_price_source(
         import_id=source_id,
         trace=trace,
     )
+    normalize_price_source_sheet_rows(result)
     discarded_non_candidates = discard_price_source_non_candidates(result)
     discarded_consumables = discard_price_source_consumables(result)
     operation_code_by_row_number = prepare_price_source_operation_rows(result)
@@ -2357,7 +2430,7 @@ def process_price_source(
         if supplier_name:
             existing_suppliers = (
                 client.table("company_suppliers")
-                .select("supplier_id,supplier_name,normalized_name,categories")
+                .select("supplier_id,supplier_name,normalized_name,categories,created_at")
                 .eq("company_id", company_id)
                 .execute()
             ).data or []
