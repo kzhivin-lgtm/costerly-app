@@ -1929,17 +1929,14 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
     app.run()
 
     assert not app.exception
-    assert calls == [
-        (
-            "company-a",
-            {
-                "department": "",
-                "uploaded_file": None,
-                "source_url": "https://supplier.example/prices",
-                "trace": None,
-            },
-        )
-    ]
+    assert len(calls) == 1
+    company_id, kwargs = calls[0]
+    assert company_id == "company-a"
+    assert kwargs["department"] == ""
+    assert kwargs["uploaded_file"] is None
+    assert kwargs["source_url"] == "https://supplier.example/prices"
+    assert kwargs["trace"] is None
+    assert kwargs["client"] is not None
     assert calls
     assert "price-lists-toast" in Path("screens/company_profile.py").read_text()
 

@@ -2019,6 +2019,7 @@ def process_price_source(
     uploaded_file=None,
     source_url: str = "",
     trace=None,
+    client=None,
 ) -> PriceSourceProcessResult:
     """Process and persist one source. Ambiguous rows stay non-active."""
     process_started = time.perf_counter()
@@ -2027,7 +2028,7 @@ def process_price_source(
         raise PriceSourceError("Add one file or one supplier URL.")
 
     company_id = str(access.company_id)
-    client = get_supabase_client()
+    client = client or get_supabase_client()
     assert_company_owner(client, str(access.user_id), company_id)
     source_id = str(uuid4())
 

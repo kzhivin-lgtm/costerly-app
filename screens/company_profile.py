@@ -2786,7 +2786,7 @@ def _queue_price_source_processing(
     # Do this in the Streamlit request while secrets and cached resources have
     # their normal request context. The worker then only performs I/O and does
     # not depend on an UploadedFile or a Streamlit secret lookup.
-    get_supabase_client()
+    supabase_client = get_supabase_client()
     get_agent_secret("ANTHROPIC_API_KEY")
     get_agent_secret("CLAUDE_PRICE_SOURCE_MODEL")
     pending = {
@@ -2801,6 +2801,7 @@ def _queue_price_source_processing(
         access,
         uploaded_file,
         source_url,
+        supabase_client,
     )
     st.session_state._price_source_pending = pending
     st.session_state._price_source_processing = True
@@ -2812,6 +2813,7 @@ def _run_price_source_in_background(
     access: CompanyAccess,
     uploaded_file,
     source_url: str,
+    client,
 ):
     """Run exactly one extraction without holding the Streamlit request open."""
     if not _PRICE_SOURCE_PROCESSING_LOCK.acquire(blocking=False):
@@ -2823,6 +2825,7 @@ def _run_price_source_in_background(
             uploaded_file=uploaded_file,
             source_url=source_url,
             trace=None,
+            client=client,
         )
     finally:
         _PRICE_SOURCE_PROCESSING_LOCK.release()
