@@ -118,6 +118,8 @@ def create_claude_message(client: anthropic.Anthropic, **kwargs: Any) -> Any:
 
 def create_claude_message_streamed(
     client: anthropic.Anthropic,
+    *,
+    max_stream_seconds: float | None = None,
     **kwargs: Any,
 ) -> tuple[Any, dict[str, Any]]:
     """Collect one streamed Message and precise request-phase diagnostics."""
@@ -134,6 +136,11 @@ def create_claude_message_streamed(
             request_id = stream.request_id
             for event in stream:
                 elapsed = time.perf_counter() - started
+                if max_stream_seconds is not None and elapsed > max_stream_seconds:
+                    raise RuntimeError(
+                        f"Claude stream exceeded the {max_stream_seconds:.0f}-second limit. "
+                        "Try the source again."
+                    )
                 stream_event_count += 1
                 if first_event_seconds is None:
                     first_event_seconds = elapsed

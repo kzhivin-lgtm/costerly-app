@@ -1163,6 +1163,7 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "observer.disconnect()" in source
     assert "function showLiveProgress(card, startedAtMs)" in source
     assert "function removeLiveProgress(card)" in source
+    assert 'card.querySelectorAll(".price-source-cycle-result")' in source
     assert "!completeMarker && processingMarker" in source
 
 
@@ -2242,6 +2243,7 @@ def test_price_source_agent_disables_sdk_retries_for_background_cycles():
     source = Path("agents/price_source_agent.py").read_text()
 
     assert "with_options(timeout=45.0, max_retries=0)" in source
+    assert "max_stream_seconds=60.0" in source
 
 
 def test_price_source_failure_message_keeps_actionable_exception_detail_bounded():

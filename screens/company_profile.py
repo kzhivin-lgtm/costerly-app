@@ -3020,6 +3020,9 @@ def _render_price_source_add(
             uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
             uploader_key = f"price_source_upload_{uploader_version}"
             url_key = f"price_source_url_{uploader_version}"
+            # This component writes an iframe. Install it before the columns so
+            # the subsequent dashboard remains in the right control column.
+            install_price_source_processing_guard()
             file_column, details_column = st.columns(2, gap="large")
             with file_column:
                 uploaded_files = st.file_uploader(
@@ -3088,7 +3091,6 @@ def _render_price_source_add(
                     on_click=_queue_price_source_processing,
                     args=(access, uploader_key, url_key),
                 )
-                install_price_source_processing_guard()
                 if cycle_result:
                     _render_price_source_cycle_result(
                         _price_source_notice_text(cycle_result)

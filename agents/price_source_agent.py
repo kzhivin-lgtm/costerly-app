@@ -77,6 +77,7 @@ def run_price_source_agent(
     # apparently live cycle. A terminal failure is actionable and visible.
     response, diagnostics = create_claude_message_streamed(
         get_anthropic_client().with_options(timeout=45.0, max_retries=0),
+        max_stream_seconds=60.0,
         model=selected_model,
         max_tokens=PRICE_SOURCE_MAX_OUTPUT_TOKENS,
         system=prompt,

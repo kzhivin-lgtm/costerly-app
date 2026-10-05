@@ -3932,6 +3932,9 @@ def install_price_source_processing_guard() -> None:
                     ? completeMarker.dataset.processingCycle || ""
                     : "";
                 card.classList.add("costerly-price-source-processing");
+                card.querySelectorAll(".price-source-cycle-result").forEach((result) => {
+                    result.remove();
+                });
                 // Do not let a Profile-tab click win the race before
                 // Streamlit has run the Extract callback and queued its worker.
                 // The server marker clears this immediately after submission.

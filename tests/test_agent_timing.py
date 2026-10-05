@@ -150,6 +150,17 @@ def test_streamed_message_timeout_is_not_misreported_as_connection_failure():
     assert "connection failed" not in str(exc_info.value).lower()
 
 
+def test_streamed_message_has_an_optional_wall_clock_limit():
+    with patch(
+        "agents.anthropic_adapter.time.perf_counter",
+        side_effect=[10.0, 71.0],
+    ):
+        with pytest.raises(RuntimeError, match="60-second limit"):
+            create_claude_message_streamed(
+                _FakeClient(), messages=[], max_stream_seconds=60.0
+            )
+
+
 def test_benchmark_suffix_is_applied_after_detection(monkeypatch):
     monkeypatch.setenv("BENCHMARK_RUN_SUFFIX", "baseline 3262")
     result = {

@@ -150,3 +150,8 @@ The workspace requirements are:
 - `Glass` requires an explicit glass marker in the original source text. The
   agent's own normalised label is not proof. An unproved category becomes
   `Other` and stays editable, rather than creating a false Glass material.
+- The price-source stream has a 60-second wall-clock cap in addition to its
+  network timeout. A slow or stalled stream produces an actionable failure
+  instead of leaving an indefinite Extracting state.
+- Starting a new extraction removes the prior green result immediately in the
+  browser, before the server callback rerenders the upload controls.

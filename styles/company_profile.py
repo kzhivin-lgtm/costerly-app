@@ -1240,9 +1240,9 @@ def apply_company_profile_css() -> None:
             right: auto;
             bottom: auto;
             z-index: 30;
-            width: 100%;
+            width: calc(100% - 24px);
             max-width: none;
-            margin: 10px 0 14px;
+            margin: 12px 12px 16px;
             border-color: #B9DFCC;
             background: #F5FCF7;
             box-shadow: 0 8px 22px rgba(33, 91, 55, 0.12);
