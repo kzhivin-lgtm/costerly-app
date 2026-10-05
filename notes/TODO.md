@@ -77,6 +77,16 @@ or assigning the Partner must move the project to the matching real Partner
 without changing its immutable estimate versions, proposal files, totals, or
 approval history. Trigger: resume Projects and Final Approval completion work.
 
+ACTIVE, P0, USER REQUEST, 3.16.7 Price Lists rebuild: replace the legacy
+material-only Price Source flow with a source-first tool that keeps materials,
+supplier processing services, excluded consumables, supplier identity, VAT,
+review, and durable extraction state distinct. Stage 1 is the additive data
+contract: retain source supplier spelling and aliases, link an operation-service
+row to the existing global `reference_operations` catalog, and persist private
+supplier operation offers separately from material offers. No existing source
+or material offer is reclassified automatically. Detailed contract:
+`notes/PRICE_LISTS_REBUILD_3_16_7.md`.
+
 ACTIVE, IMPLEMENTATION CHECKPOINT `5f6360f`, P0, 3.15.24 canonical object quantity and durable Object Detail route:
 make item quantity editable on File Review, Objects, and Object Detail. All
 three screens share `rfq_detected_objects.quantity` as the canonical record;
