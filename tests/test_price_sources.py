@@ -1372,6 +1372,8 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert 'if (!card.querySelector(".price-source-live-progress"))' in source
     assert "trigger itself indefinitely and freeze the browser" in source
     assert "observer.disconnect()" in source
+    assert "callback receive the event before changing the visual state" in source
+    assert "parentWindow.setTimeout(() =>" in source
     assert "function showLiveProgress(card, startedAtMs)" in source
     assert "function removeLiveProgress(card)" in source
     assert 'card.querySelectorAll(".price-source-cycle-result")' in source

@@ -329,3 +329,13 @@ The workspace requirements are:
   marker. The worker still performs the owner check before it reads, writes,
   or calls an extraction provider. This restores a fast acknowledgement
   without weakening the server-side authorization boundary.
+
+### Hotfix, 2026-10-06, preserve the Streamlit Extract click
+
+- The browser guard listened in capture phase and disabled the native Extract
+  button during that same event. In some browser/Streamlit render states this
+  prevented Streamlit's own delegated handler from receiving the click, so no
+  server event was emitted and the watchdog was correct only accidentally.
+- The guard now waits one browser tick before changing button UI state. The
+  original click reaches Streamlit first, while duplicate-click protection and
+  the acknowledgement marker remain intact.

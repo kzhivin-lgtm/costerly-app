@@ -4011,10 +4011,17 @@ def install_price_source_processing_guard() -> None:
                     showStartFailure(card);
                     releaseDeferredProfileNavigation();
                 }, 20000);
-                button.disabled = true;
-                button.setAttribute("aria-disabled", "true");
-                const label = button.querySelector("p");
-                if (label) label.textContent = "Starting extraction";
+                // This listener runs in capture phase, ahead of Streamlit's
+                // delegated click handler. Disabling the native button here
+                // can make Streamlit discard this very click, so let that
+                // callback receive the event before changing the visual state.
+                parentWindow.setTimeout(() => {
+                    if (!parentWindow[STARTING_KEY]) return;
+                    button.disabled = true;
+                    button.setAttribute("aria-disabled", "true");
+                    const label = button.querySelector("p");
+                    if (label) label.textContent = "Starting extraction";
+                }, 0);
             }
 
             function preventPrematureProfileNavigation(event) {
