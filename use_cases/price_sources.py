@@ -107,6 +107,28 @@ def discard_price_source_consumables(result: dict[str, Any]) -> int:
     return discarded
 
 
+def discard_price_source_non_candidates(result: dict[str, Any]) -> int:
+    """Do not persist rows that cannot ever be a price candidate.
+
+    A source file remains available for audit, but a row without a meaningful
+    name or a positive price must not become Review noise or a hidden entity.
+    """
+    retained: list[dict[str, Any]] = []
+    discarded = 0
+    for row in result.get("rows") or []:
+        name = str(row.get("normalized_name") or row.get("raw_description") or "").strip()
+        try:
+            price = float(row.get("raw_price") or 0)
+        except (TypeError, ValueError):
+            price = 0
+        if not name or price <= 0:
+            discarded += 1
+            continue
+        retained.append(row)
+    result["rows"] = retained
+    return discarded
+
+
 def price_source_service_operation_code(row: Mapping[str, Any]) -> str | None:
     """Map an extracted supplier service to an existing reference operation."""
     text = " ".join(str(row.get(key) or "") for key in ("raw_description", "normalized_name", "material_family")).casefold()
@@ -679,21 +701,12 @@ def price_source_material_types(result: dict) -> list[str]:
 
 
 def guard_price_source_department(result: dict, department: str) -> dict:
-    """Keep rows outside an explicitly selected department non-active."""
-    if not department:
-        return result
-    for row in result.get("rows") or []:
-        if not isinstance(row, dict) or row.get("status") == "excluded":
-            continue
-        material_type = canonical_price_source_category(
-            str(row.get("material_type") or "Other")
-        )
-        detected_department = PRICE_CATALOG_DEPARTMENTS.get(material_type)
-        if material_type != "Other" and detected_department != department:
-            row["status"] = "unresolved"
-            row["reason_codes"] = sorted(
-                set((row.get("reason_codes") or []) + ["selected_department_mismatch"])
-            )
+    """Compatibility no-op after removing source-level department selection.
+
+    Rows are classified individually. An unknown category is a valid catalog
+    value, not grounds for Review merely because a source was opened in a
+    different department.
+    """
     return result
 
 
@@ -2087,6 +2100,7 @@ def process_price_source(
         import_id=source_id,
         trace=trace,
     )
+    discarded_non_candidates = discard_price_source_non_candidates(result)
     discarded_consumables = discard_price_source_consumables(result)
     operation_code_by_row_number = prepare_price_source_operation_rows(result)
     guard_price_source_department(result, department)
@@ -2201,6 +2215,7 @@ def process_price_source(
             "unchanged": 0,
             "unresolved": unresolved_count,
             "excluded": excluded_count,
+            "discarded_non_candidates": discarded_non_candidates,
             "discarded_consumables": discarded_consumables,
             "operation_services": len(operation_code_by_row_number),
             "total": len(result["rows"]),

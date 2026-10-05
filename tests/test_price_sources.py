@@ -22,6 +22,7 @@ from agents.schemas.price_source_schema import (
 )
 from agents.price_source_agent import PRICE_SOURCE_MAX_OUTPUT_TOKENS
 from use_cases.price_sources import (
+    discard_price_source_non_candidates,
     discard_price_source_consumables,
     prepare_price_source_operation_rows,
     PriceSourceError,
@@ -456,6 +457,20 @@ def test_consumables_are_discarded_and_supplier_services_map_before_persistence(
     assert supplier_service_pricing_basis("m2") == "square_meter"
 
 
+def test_rows_without_a_name_or_positive_price_are_not_persisted_for_review():
+    nameless = _result()["rows"][0]
+    nameless["raw_description"] = ""
+    nameless["normalized_name"] = ""
+    zero_price = _result()["rows"][0]
+    zero_price["source_row_number"] = 2
+    zero_price["raw_price"] = 0
+    result = _result()
+    result["rows"] = [nameless, zero_price]
+
+    assert discard_price_source_non_candidates(result) == 2
+    assert result["rows"] == []
+
+
 def test_supplier_merge_ignores_legal_forms_and_uses_unique_length_scaled_match():
     candidates = [
         {"supplier_id": "a", "supplier_name": "ООО Ёлочка", "normalized_name": "ооо елочка"},
@@ -561,14 +576,14 @@ def test_mixed_material_types_are_preserved_per_row():
     assert price_source_material_types(result) == ["Metal Profiles", "Wood Sheets"]
 
 
-def test_selected_department_mismatch_becomes_unresolved():
+def test_source_department_does_not_change_row_review_status():
     result = _result()
     result["rows"][0]["material_type"] = "Metal Sheets"
 
     guarded = guard_price_source_department(result, "Wood")
 
-    assert guarded["rows"][0]["status"] == "unresolved"
-    assert "selected_department_mismatch" in guarded["rows"][0]["reason_codes"]
+    assert guarded["rows"][0]["status"] == "ready"
+    assert "selected_department_mismatch" not in guarded["rows"][0]["reason_codes"]
 
 
 def test_explicit_document_totals_are_reconciled_deterministically():

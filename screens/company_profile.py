@@ -2224,6 +2224,9 @@ def _price_source_review_reason(row: dict) -> str:
         "vat_basis_unknown": "VAT basis required",
         "material_type_unresolved": "Material type required",
         "package_conversion_unresolved": "Package quantity required",
+        "missing_unit": "Estimation unit required",
+        "ambiguous_unit": "Estimation unit required",
+        "operation_type_unresolved": "Service type required",
         "document_total_mismatch": "Document totals do not match",
         "extreme_legacy_price_difference": "Price differs significantly from the saved price",
         "internal_price_lane_pending": "Confirm internal material cost",
@@ -2241,7 +2244,7 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
     material_type = _price_source_row_material_type(row, source)
     categories = list(PRICE_SOURCE_CATEGORIES)
     units = [item for item in sorted(CANONICAL_UNIT_CODES) if item not in {"other", "unknown"}]
-    purchase_unit = str(row.get("purchase_unit") or row.get("raw_unit") or "piece")
+    purchase_unit = str(row.get("purchase_unit") or row.get("raw_unit") or "")
     calculation_unit = str(
         row.get("calculation_unit") or row.get("normalized_unit") or purchase_unit
     )
@@ -2256,6 +2259,16 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
         "Estimation units per purchase unit :red[*]"
         if "package_conversion_unresolved" in blocking_reasons
         else "Estimation units per purchase unit"
+    )
+    purchase_unit_label = (
+        "Purchase unit :red[*]"
+        if purchase_unit not in units
+        else "Purchase unit"
+    )
+    calculation_unit_label = (
+        "Estimation unit :red[*]"
+        if calculation_unit not in units or "missing_unit" in blocking_reasons or "ambiguous_unit" in blocking_reasons
+        else "Estimation unit"
     )
     field_keys = {
         name: f"price_row_{name}_{source_id}_{row_id}"
@@ -2325,19 +2338,21 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
                 key=field_keys["raw_unit"],
             )
         with purchase_unit_col:
-            purchase_value = purchase_unit if purchase_unit in units else units[0]
+            purchase_options = [""] + units
             selected_purchase_unit = st.selectbox(
-                "Purchase unit",
-                units,
-                index=units.index(purchase_value),
+                purchase_unit_label,
+                purchase_options,
+                index=purchase_options.index(purchase_unit) if purchase_unit in purchase_options else 0,
+                format_func=lambda value: value or "Choose purchase unit",
                 key=field_keys["purchase_unit"],
             )
         with calculation_unit_col:
-            calculation_value = calculation_unit if calculation_unit in units else units[0]
+            calculation_options = [""] + units
             selected_calculation_unit = st.selectbox(
-                "Estimation unit",
-                units,
-                index=units.index(calculation_value),
+                calculation_unit_label,
+                calculation_options,
+                index=calculation_options.index(calculation_unit) if calculation_unit in calculation_options else 0,
+                format_func=lambda value: value or "Choose estimation unit",
                 key=field_keys["calculation_unit"],
             )
         with factor_col:
