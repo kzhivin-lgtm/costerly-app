@@ -286,7 +286,18 @@ def supplier_merge_key(name: object) -> str:
     text = re.sub(r"[\s\-‐‑‒–—―'\".,/()\\]+", " ", text)
     for token in ("בעמ", "בע מ", "חברה", "חברה בעמ", "ltd", "limited", "llc", "inc", "corp", "co", "ооо", "ooo"):
         text = re.sub(rf"\b{re.escape(token)}\b", " ", text)
+    # OCR produces many remaining variants of the Israeli legal suffix, for
+    # example בעיים and בעימו. It never identifies the commercial supplier.
+    text = re.sub(r"\bבע[\w]{0,4}\b", " ", text, flags=re.UNICODE)
     return re.sub(r"[^\w]+", "", text, flags=re.UNICODE)
+
+
+def clean_supplier_name(name: object) -> str:
+    """Keep the first readable supplier spelling, without legal OCR noise."""
+    text = str(name or "").strip()
+    text = re.sub(r"(?:\s|[,.\-])*בע[\w]{0,4}\s*$", "", text, flags=re.IGNORECASE | re.UNICODE)
+    text = re.sub(r"(?:\s|[,.\-])*(?:ltd|limited|llc|inc|corp|co|ooo|ооо)\.?\s*$", "", text, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", text).strip() or str(name or "").strip()
 
 
 def supplier_merge_max_distance(core_length: int) -> int:
@@ -2480,7 +2491,7 @@ def process_price_source(
                 .execute()
             ).data or []
             matched_supplier = match_existing_supplier(supplier_name, existing_suppliers)
-            canonical_supplier_name = str(
+            canonical_supplier_name = clean_supplier_name(
                 (matched_supplier or {}).get("supplier_name") or supplier_name
             )
             canonical_supplier_key = str(
