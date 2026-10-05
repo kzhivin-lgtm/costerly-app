@@ -550,6 +550,41 @@ def test_unknown_vat_basis_cannot_activate():
     assert "vat_basis_unknown" in guarded["rows"][0]["reason_codes"]
 
 
+def test_unknown_canonical_unit_is_sent_to_review_not_allowed_to_fail_the_source():
+    result = _result(confidence=95)
+    result["rows"][0]["purchase_unit"] = "unknown"
+    result["rows"][0]["calculation_unit"] = "unknown"
+    result["rows"][0]["conversion_factor"] = 0
+    result["rows"][0]["normalized_price"] = 0
+
+    guarded = guard_price_source_row_activation(result)
+
+    assert guarded["rows"][0]["status"] == "unresolved"
+    assert "missing_unit" in guarded["rows"][0]["reason_codes"]
+    assert validate_price_source_result(guarded) is guarded
+
+
+def test_known_material_job_with_unknown_unit_keeps_its_unit_review_reason():
+    result = _result(confidence=95)
+    row = result["rows"][0]
+    row.update({
+        "item_kind": "operation_service",
+        "raw_description": "פס חיתוך + קנט",
+        "normalized_name": "Cut and edge banding",
+        "purchase_unit": "unknown",
+        "calculation_unit": "unknown",
+        "conversion_factor": 0,
+        "normalized_price": 0,
+    })
+
+    guarded = guard_price_source_row_activation(result)
+    assert prepare_price_source_operation_rows(guarded) == {}
+
+    assert guarded["rows"][0]["status"] == "unresolved"
+    assert "missing_unit" in guarded["rows"][0]["reason_codes"]
+    assert "operation_type_unresolved" not in guarded["rows"][0]["reason_codes"]
+
+
 def test_confidence_and_other_material_type_do_not_block_a_usable_price():
     result = _result(confidence=42)
     result["rows"][0]["material_type"] = "Other"

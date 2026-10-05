@@ -101,6 +101,10 @@ The workspace requirements are:
 - Material prices, Review rows, and Material Jobs show a proved ex-VAT and
   VAT-inclusive value. If the source cannot prove the tax rate, the unavailable
   side stays blank rather than being guessed.
+- A source row with an unknown canonical unit is downgraded to Review with
+  `Estimation unit required`; it never aborts the complete document. A
+  dedicated Material Jobs resolver remains deferred until its unit and price
+  basis rules are agreed.
 - Source Library columns are Supplier/source name, document type, department,
   row count, compact View, and compact Remove. It does not expose the removed
   source-wide VAT settings.

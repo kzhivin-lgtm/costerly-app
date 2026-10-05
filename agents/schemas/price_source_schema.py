@@ -263,6 +263,14 @@ def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
         blockers: list[str] = []
         if row.get("raw_vat_mode") == "unknown":
             blockers.append("vat_basis_unknown")
+        if (
+            row.get("purchase_unit") in {"unknown", "other"}
+            or row.get("calculation_unit") in {"unknown", "other"}
+        ):
+            # The agent may correctly identify a purchasable line without
+            # proving its estimation unit. Keep it in Review instead of
+            # allowing a later schema assertion to discard the whole source.
+            blockers.append("missing_unit")
         package_quantity = row.get("raw_package_quantity")
         conversion_factor = row.get("conversion_factor")
         if row.get("item_kind") == "material" and (

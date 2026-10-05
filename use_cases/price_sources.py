@@ -157,6 +157,11 @@ def prepare_price_source_operation_rows(result: dict[str, Any]) -> dict[int, str
         if code and row.get("status") == "ready" and float(row.get("raw_price") or 0) > 0:
             mapped[int(row["source_row_number"])] = code
             continue
+        if code:
+            # The job type is known. A separate material-job resolver may
+            # later establish its unit or pricing basis, so retain its actual
+            # Review blocker rather than replacing it with a false type error.
+            continue
         if row.get("status") != "excluded":
             row["status"] = "unresolved"
             row["reason_codes"] = sorted(set(row.get("reason_codes") or []) | {"operation_type_unresolved"})
@@ -1287,12 +1292,16 @@ def list_material_jobs(access) -> list[dict]:
         supplier_name = str(supplier.get("supplier_name") or "Unknown supplier")
         if summary.get("source_origin") == "company_internal":
             supplier_name = "Internal estimate"
+        operation_department = str(operation.get("department") or "").casefold()
         jobs.append(
             {
                 **offer,
                 "operation_name": str(operation.get("operation_name") or "Material job"),
                 "operation_code": str(operation.get("operation_code") or ""),
-                "department": str(operation.get("department") or "Wood"),
+                "department": {
+                    "metal": "Metal",
+                    "coating": "Finishing",
+                }.get(operation_department, "Wood"),
                 "supplier_name": supplier_name,
                 "source": source,
                 "updated_at": (
