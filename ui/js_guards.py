@@ -3831,10 +3831,15 @@ def install_price_source_processing_guard() -> None:
                 const progress = parentDoc.createElement("div");
                 progress.className = "price-source-live-progress";
                 progress.innerHTML =
-                    '<span class="price-source-live-progress-label">Extracting document</span>' +
+                    '<span class="price-source-live-progress-label">Extracting prices</span>' +
                     '<span class="price-source-live-progress-time">0 s elapsed</span>' +
                     '<span class="price-source-live-progress-track"><span></span></span>';
-                card.appendChild(progress);
+                const buttonContainer = card.querySelector(".st-key-process_price_source");
+                if (buttonContainer) {
+                    buttonContainer.after(progress);
+                } else {
+                    card.appendChild(progress);
+                }
                 const elapsed = progress.querySelector(".price-source-live-progress-time");
                 const startedAt = Date.now();
                 card._costerlyPriceSourceTimer = parentWindow.setInterval(() => {

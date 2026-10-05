@@ -1164,8 +1164,10 @@ def apply_company_profile_css() -> None:
             display: grid;
             grid-template-columns: 1fr auto;
             gap: 5px 14px;
-            margin: 12px 0 0;
-            padding: 12px 14px;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 8px 0 0;
+            padding: 8px 10px;
             border: 1px solid var(--color-border-soft);
             border-radius: 12px;
             background: #FBF9FD;

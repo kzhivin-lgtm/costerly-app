@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import Future
 from io import BytesIO
 from copy import deepcopy
 import inspect
@@ -1150,13 +1151,20 @@ def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
         price_url="",
     )
     monkeypatch.setattr(company_profile.st, "session_state", state)
+    submitted = []
+    monkeypatch.setattr(
+        company_profile,
+        "submit_price_source_job",
+        lambda **kwargs: submitted.append(kwargs) or Future(),
+    )
 
-    company_profile._queue_price_source_processing("price_upload", "price_url")
+    company_profile._queue_price_source_processing(
+        SimpleNamespace(company_id="company-1"), "price_upload", "price_url"
+    )
 
     assert state["_price_source_processing"] is True
-    assert [item.name for item in state["_price_source_pending"]["uploaded_files"]] == [
-        "prices-a.xlsx"
-    ]
+    assert submitted[0]["uploaded_file"].name == "prices-a.xlsx"
+    assert isinstance(state["_price_source_pending"]["future"], Future)
     assert "_price_source_error" not in state
 
 
@@ -2106,13 +2114,19 @@ def test_wordpress_json_alternate_retries_bounded_accepted_responses(monkeypatch
     assert "MDF 18 mm" in text
 
 
-def test_price_source_processing_reruns_after_any_terminal_outcome():
-    from screens.company_profile import _process_pending_price_source
+def test_price_source_processing_collects_completed_future_from_status_fragment():
+    from screens.company_profile import (
+        _process_pending_price_source,
+        _render_price_source_processing_status,
+    )
 
     source = inspect.getsource(_process_pending_price_source)
+    status_source = inspect.getsource(_render_price_source_processing_status)
 
-    assert "st.rerun()" in source
-    assert "if completed:" not in source
+    assert "future.done()" in source
+    assert "future.result()" in source
+    assert "run_every=1.0" in status_source
+    assert "st.rerun(scope=\"app\")" in status_source
 
 
 def test_price_source_failure_message_keeps_actionable_exception_detail_bounded():

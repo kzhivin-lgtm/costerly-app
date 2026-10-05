@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from concurrent.futures import Future
 from contextlib import contextmanager
 import inspect
 import json
@@ -1897,8 +1898,8 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
     monkeypatch.setattr(company_profile, "list_material_jobs", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_unresolved_price_source_rows", lambda _access: [])
 
-    def process_source(access, **kwargs):
-        calls.append((access.company_id, kwargs))
+    def submit_source(**kwargs):
+        calls.append((kwargs["access"].company_id, kwargs))
         sources.append(
             {
                 "source_id": "source-new",
@@ -1918,12 +1919,14 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
                 "company_suppliers": None,
             }
         )
-        return "source-new"
+        future = Future()
+        future.set_result("source-new")
+        return future
 
     monkeypatch.setattr(
         company_profile,
-        "process_price_source",
-        process_source,
+        "submit_price_source_job",
+        submit_source,
     )
 
     app = AppTest.from_function(_render_price_lists_test).run()
@@ -1937,10 +1940,8 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
     assert len(calls) == 1
     company_id, kwargs = calls[0]
     assert company_id == "company-a"
-    assert kwargs["department"] == ""
     assert kwargs["uploaded_file"] is None
     assert kwargs["source_url"] == "https://supplier.example/prices"
-    assert kwargs["trace"] is None
     assert calls
     assert "price-lists-toast" in Path("screens/company_profile.py").read_text()
 

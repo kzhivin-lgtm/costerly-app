@@ -90,6 +90,14 @@ require a durable job model. They are not implied by this synchronous release.
 The source-first data contract, Review downgrade for unresolved canonical
 units, Material Jobs separation, and compact Price Lists structure are working
 in production. This is an implementation checkpoint, not task completion.
+
+The next 3.16.7 increment runs the one active extraction in a background
+worker. It is intentionally company-locked and remains active while the user
+switches between Profile tabs. It is not a durable server job: an app-process
+restart still cancels it. The UI reports only the truthful active state
+(`Extracting prices` plus elapsed time), rather than invented processing
+phases. Production acceptance with a real uploaded PDF remains required.
+
 Remaining work includes durable server jobs with confirmed processing phases,
 the Material Jobs resolver, and production acceptance of asynchronous editing.
 

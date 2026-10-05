@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from concurrent.futures import Future
 from datetime import datetime, timezone
 import hashlib
 from html import escape
@@ -57,6 +58,7 @@ from use_cases.price_sources import (
     save_price_source_row,
     validate_price_source_upload_selection,
 )
+from use_cases.price_source_runtime import submit_price_source_job
 from use_cases.machinery import (
     CNC_ESTIMATE_LEVEL_DEFAULT,
     CNC_ESTIMATE_LEVEL_KEY,
@@ -2885,7 +2887,11 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
                 _render_price_source_row_editor(access, source, row)
 
 
-def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
+def _queue_price_source_processing(
+    access: CompanyAccess,
+    uploader_key: str,
+    url_key: str,
+) -> None:
     """Capture the selected source before the Price Lists fragment reruns."""
     uploaded_files = accepted_price_source_uploads(
         list(st.session_state.get(uploader_key) or [])
@@ -2906,10 +2912,20 @@ def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
         st.session_state.get("_price_source_processing_cycle") or 0
     ) + 1
     st.session_state._price_source_processing_cycle = processing_cycle
+    try:
+        uploaded_file = combine_price_source_files(uploaded_files)
+        future = submit_price_source_job(
+            access=access,
+            uploaded_file=uploaded_file,
+            source_url=source_url,
+        )
+    except Exception as exc:
+        st.session_state._price_source_processing = False
+        st.session_state.pop("_price_source_pending", None)
+        st.session_state._price_source_error = _price_source_failure_message(exc)
+        return
     st.session_state._price_source_pending = {
-        "uploaded_files": uploaded_files,
-        "department": "",
-        "source_url": source_url,
+        "future": future,
         "processing_cycle": processing_cycle,
         "user_cycle_started_at": time.perf_counter(),
     }
@@ -3055,7 +3071,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     use_container_width=True,
                     disabled=processing or not source_selected,
                     on_click=_queue_price_source_processing,
-                    args=(uploader_key, url_key),
+                    args=(access, uploader_key, url_key),
                 )
                 install_price_source_processing_guard()
 
@@ -3063,17 +3079,14 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     if not st.session_state.get("_price_source_processing"):
         return
 
-    uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
     pending = st.session_state.get("_price_source_pending") or {}
+    future = pending.get("future")
+    if not isinstance(future, Future) or not future.done():
+        return
+
+    uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
     try:
-        uploaded_file = combine_price_source_files(pending.get("uploaded_files") or [])
-        result = process_price_source(
-            access,
-            department=str(pending.get("department") or ""),
-            uploaded_file=uploaded_file,
-            source_url=str(pending.get("source_url") or ""),
-            trace=trace,
-        )
+        result = future.result()
     except PriceSourceError as exc:
         st.session_state._price_source_error = str(exc)
     except PermissionError:
@@ -3097,7 +3110,18 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     finally:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
-    st.rerun()
+
+
+@st.fragment(run_every=1.0, parallel=True)
+def _render_price_source_processing_status(access: CompanyAccess) -> None:
+    """Refresh only the terminal state while the worker runs in background."""
+    if not st.session_state.get("_price_source_processing"):
+        return
+    pending = st.session_state.get("_price_source_pending") or {}
+    future = pending.get("future")
+    if isinstance(future, Future) and future.done():
+        _process_pending_price_source(access)
+        st.rerun(scope="app")
 
 
 def _set_price_source_action_notice(message: str) -> None:
@@ -3149,6 +3173,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         return
 
     _render_price_source_add(access, trace=trace)
+    _render_price_source_processing_status(access)
 
     # Keep the terminal result visible until the next Extract attempt replaces it.
     # A transient notice can otherwise disappear on the uploader-key rerun and
