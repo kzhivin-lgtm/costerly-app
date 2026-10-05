@@ -1242,12 +1242,17 @@ def apply_company_profile_css() -> None:
             right: auto;
             bottom: auto;
             z-index: 30;
-            width: calc(100% - 24px);
+            width: 100%;
             max-width: none;
-            margin: 12px 12px 16px;
+            margin: 12px 0 16px;
             border-color: #B9DFCC;
             background: #F5FCF7;
             box-shadow: 0 8px 22px rgba(33, 91, 55, 0.12);
+        }
+        .price-source-cycle-error {
+            border-color: #F1C5C5;
+            background: #FFF3F3;
+            color: #B42318;
         }
 
         .price-lists-toast button {

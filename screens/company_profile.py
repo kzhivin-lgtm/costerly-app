@@ -2898,6 +2898,8 @@ def _queue_price_source_processing(
     trace=None,
 ) -> None:
     """Capture the selected source before the Price Lists fragment reruns."""
+    st.session_state.pop("_price_source_error", None)
+    st.session_state.pop("_price_source_notice", None)
     uploaded_files = accepted_price_source_uploads(
         list(st.session_state.get(uploader_key) or [])
     )
@@ -2910,7 +2912,6 @@ def _queue_price_source_processing(
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
         st.session_state._price_source_error = str(exc)
-        st.session_state.pop("_price_source_notice", None)
         st.session_state._price_source_start_rejected = True
         return
 
@@ -3011,6 +3012,7 @@ def _render_price_source_add(
     *,
     trace=None,
     cycle_result: dict | None = None,
+    cycle_error: str | None = None,
 ) -> None:
     processing = bool(st.session_state.get("_price_source_processing"))
     processing_cycle = int(
@@ -3105,6 +3107,8 @@ def _render_price_source_add(
                     _render_price_source_cycle_result(
                         _price_source_notice_text(cycle_result)
                     )
+                elif cycle_error:
+                    _render_price_source_cycle_error(cycle_error)
 
 def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     if not st.session_state.get("_price_source_processing"):
@@ -3184,6 +3188,16 @@ def _render_price_source_cycle_result(message: str) -> None:
     install_price_source_notice_guard()
 
 
+def _render_price_source_cycle_error(message: str) -> None:
+    st.markdown(
+        '<div class="price-lists-toast price-source-cycle-result price-source-cycle-error" '
+        'data-duration-ms="0"><span>' + escape(message) + '</span>'
+        '<button type="button" aria-label="Dismiss">×</button></div>',
+        unsafe_allow_html=True,
+    )
+    install_price_source_notice_guard()
+
+
 @st.fragment
 def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     if access.role != "owner":
@@ -3219,12 +3233,12 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         )
     else:
         cycle_result = None
-    _render_price_source_add(access, trace=trace, cycle_result=cycle_result)
+    error = st.session_state.pop("_price_source_error", None)
+    _render_price_source_add(
+        access, trace=trace, cycle_result=cycle_result, cycle_error=error,
+    )
     _render_price_source_processing_status(access)
 
-    error = st.session_state.pop("_price_source_error", None)
-    if error:
-        st.error(error)
     action_notice = st.session_state.get("_price_source_action_notice")
     if isinstance(action_notice, dict):
         age = time.monotonic() - float(action_notice.get("created_at") or 0)
