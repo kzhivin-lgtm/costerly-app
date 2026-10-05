@@ -76,12 +76,24 @@ def extract_embedded_pdf_text(file_bytes: bytes) -> str:
 
 
 def ocr_package_text(package: dict[str, Any]) -> str:
-    """Flatten exact page OCR text, retaining its page boundary."""
+    """Flatten OCR text and extracted tables, retaining page boundaries.
+
+    Mistral keeps a compact ``[tbl-0.html]`` reference in page Markdown and
+    stores the actual invoice rows separately in ``tables[].content``.  The
+    table content is source evidence, not decoration, and must reach Price
+    extraction with the surrounding document text.
+    """
     parts: list[str] = []
     for position, page in enumerate(package.get("pages") or [], start=1):
         markdown = str(page.get("markdown") or "").strip()
-        if markdown:
-            parts.append(f"PAGE {page.get('page_number') or position}:\n{markdown}")
+        tables = [
+            str(table.get("content") or "").strip()
+            for table in (page.get("tables") or [])
+            if isinstance(table, dict) and str(table.get("content") or "").strip()
+        ]
+        if markdown or tables:
+            page_text = "\n\n".join(part for part in (markdown, *tables) if part)
+            parts.append(f"PAGE {page.get('page_number') or position}:\n{page_text}")
     return "\n\n".join(parts)[:180_000]
 
 

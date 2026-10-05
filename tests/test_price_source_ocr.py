@@ -3,7 +3,7 @@ from io import BytesIO
 import fitz
 from PIL import Image
 
-from use_cases.price_source_ocr import prepare_price_source_text_layer
+from use_cases.price_source_ocr import ocr_package_text, prepare_price_source_text_layer
 
 
 def _ocr_package(markdown: str) -> dict:
@@ -99,3 +99,27 @@ def test_tiff_is_normalised_to_png_for_mistral_ocr():
     assert result.strategy == "image_ocr"
     assert called[0]["file_name"] == "invoice.png"
     assert result.ocr_package["source_file_name"] == "invoice.tiff"
+
+
+def test_ocr_text_layer_includes_mistral_table_content_not_only_its_link():
+    text = ocr_package_text(
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "markdown": "# Invoice\n[tbl-0.html](tbl-0.html)",
+                    "tables": [
+                        {
+                            "id": "tbl-0.html",
+                            "format": "html",
+                            "content": "<table><tr><td>Plywood</td><td>100</td></tr></table>",
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+
+    assert "[tbl-0.html]" in text
+    assert "Plywood" in text
+    assert "100" in text

@@ -270,3 +270,17 @@ The workspace requirements are:
 - The earlier P1 durable-job recovery remains open. This increment improves a
   submitted image's extraction route, it does not make an unacknowledged
   Streamlit session recoverable.
+
+### Hotfix, 2026-10-05, OCR table evidence and invoice returns
+
+- Mistral stores invoice-table HTML in `pages[].tables[].content` while page
+  Markdown has only a `tbl-N.html` reference. The Price Source text flattener
+  now includes the table content, so a photographed invoice reaches the
+  commercial agent with its line rows rather than an empty reference.
+- A negative quantity or negative line total denotes a return or credit row.
+  It is retained as source evidence, normalized to a positive observed
+  quantity, marked `return_or_credit_line`, and excluded from cataloging. It
+  cannot invalidate the remaining invoice rows.
+- Diagnostic replay of the user-provided photographed invoice: 11 extracted
+  rows, 7 ready, 1 Review, 3 excluded, including one return row. This is a
+  non-persistent verification run and did not alter the company catalog.

@@ -729,6 +729,20 @@ def test_invoice_footer_rounding_discount_is_not_persisted_on_a_material_row():
     assert normalized["rows"][0]["raw_discount_amount"] == 0
 
 
+def test_negative_return_line_is_excluded_without_rejecting_the_invoice():
+    result = _result()
+    row = result["rows"][0]
+    row["raw_quantity"] = -3
+    row["raw_line_total"] = -360
+
+    normalized = normalize_price_source_optional_numbers(result)
+
+    assert row["status"] == "excluded"
+    assert row["raw_quantity"] == 3
+    assert "return_or_credit_line" in row["reason_codes"]
+    assert validate_price_source_result(normalized) is normalized
+
+
 def test_numeric_invoice_item_codes_are_preserved_as_sku_not_row_numbers():
     result = _result()
     first = result["rows"][0]

@@ -192,7 +192,7 @@ class PriceSourceSchemaError(ValueError):
 
 
 def normalize_price_source_optional_numbers(result: dict[str, Any]) -> dict[str, Any]:
-    """Normalize evidence-only line discounts without pricing from rounding."""
+    """Normalize non-commercial numeric notation before strict row validation."""
     for row in result.get("rows") or []:
         if not isinstance(row, dict):
             continue
@@ -229,6 +229,25 @@ def normalize_price_source_optional_numbers(result: dict[str, Any]) -> dict[str,
         if discount_percent < 3:
             row["raw_discount_percent"] = 0
             row["raw_discount_amount"] = 0
+        # A supplier credit or returned-goods line is source evidence but never
+        # a purchasable catalog price. Preserve its signed total, make the
+        # observed quantity valid for the schema, and exclude only that row.
+        # One negative return must not reject the complete invoice.
+        raw_quantity = row.get("raw_quantity")
+        raw_line_total = row.get("raw_line_total")
+        if (
+            isinstance(raw_quantity, (int, float))
+            and raw_quantity < 0
+        ) or (
+            isinstance(raw_line_total, (int, float))
+            and raw_line_total < 0
+        ):
+            if isinstance(raw_quantity, (int, float)):
+                row["raw_quantity"] = abs(raw_quantity)
+            row["status"] = "excluded"
+            row["reason_codes"] = sorted(
+                set((row.get("reason_codes") or []) + ["return_or_credit_line"])
+            )
     return result
 
 
