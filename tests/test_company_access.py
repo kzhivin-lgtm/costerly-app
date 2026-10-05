@@ -1828,7 +1828,7 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
     next(field for field in app.selectbox if field.label.startswith("VAT")).set_value(
         "excluded"
     )
-    next(button for button in app.button if button.label == "Save price").click()
+    next(button for button in app.button if button.label == "Save").click()
     app.run()
 
     assert not app.exception

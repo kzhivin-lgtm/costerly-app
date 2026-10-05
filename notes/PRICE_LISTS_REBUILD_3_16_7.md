@@ -85,6 +85,14 @@ agent stage or percentage.
 True concurrent editing during extraction and confirmed server-side phases
 require a durable job model. They are not implied by this synchronous release.
 
+### Checkpoint, 2026-10-05
+
+The source-first data contract, Review downgrade for unresolved canonical
+units, Material Jobs separation, and compact Price Lists structure are working
+in production. This is an implementation checkpoint, not task completion.
+Remaining work includes durable server jobs with confirmed processing phases,
+the Material Jobs resolver, and production acceptance of asynchronous editing.
+
 The workspace requirements are:
 
 - Catalog and Review use the same compact information hierarchy: English name

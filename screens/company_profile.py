@@ -26,6 +26,7 @@ from ui.js_guards import (
     install_company_metrics_input_guard,
     install_price_source_notice_guard,
     install_price_source_processing_guard,
+    install_price_source_save_guard,
     install_upload_dragover_guard,
 )
 from use_cases.email_addresses import is_valid_email_address
@@ -2490,7 +2491,7 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
             )
         save_col, cancel_col, _ = st.columns([1, 0.82, 4], gap="small")
         save_col.form_submit_button(
-            "Save price",
+            "Save",
             type="primary",
             key=f"save_price_row_{source_id}_{row_id}",
             on_click=_save_price_source_row_action,
@@ -2501,6 +2502,7 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
             key=f"cancel_price_row_{source_id}_{row_id}",
             on_click=_cancel_price_source_row_edit,
         )
+    install_price_source_save_guard()
 
 
 def _render_price_source_row_remove_confirmation(
@@ -3025,7 +3027,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     file_previews=file_previews
                 )
             with details_column:
-                st.text_input(
+                source_url = st.text_input(
                     "Paste supplier page URL",
                     placeholder="https://supplier.example/prices",
                     key=url_key,
@@ -3045,12 +3047,13 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                         f'data-processing-cycle="{processing_cycle}"></span>',
                         unsafe_allow_html=True,
                     )
+                source_selected = bool(accepted_files) ^ bool(source_url.strip())
                 st.button(
                     "Extracting prices" if processing else "Extract prices",
                     key="process_price_source",
                     type="primary",
                     use_container_width=True,
-                    disabled=processing,
+                    disabled=processing or not source_selected,
                     on_click=_queue_price_source_processing,
                     args=(uploader_key, url_key),
                 )

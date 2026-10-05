@@ -1051,6 +1051,18 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "completedCycle === startedCycle" in source
     assert "new MutationObserver(resetCompletedState)" in source
     assert "observer.disconnect()" in source
+    assert "function showLiveProgress(card)" in source
+    assert "function removeLiveProgress(card)" in source
+    assert "!completeMarker && processingMarker" in source
+
+
+def test_price_source_save_guard_shows_saving_state_immediately():
+    from ui.js_guards import install_price_source_save_guard
+
+    source = inspect.getsource(install_price_source_save_guard)
+
+    assert "costerly-price-source-saving" in source
+    assert 'label.textContent = "Saving"' in source
 
 
 def test_price_source_add_renders_an_explicit_server_completion_marker():

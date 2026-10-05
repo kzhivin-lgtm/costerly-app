@@ -1225,7 +1225,11 @@ def apply_company_profile_css() -> None:
             transition: opacity 180ms ease, transform 180ms ease;
         }
 
-        .price-lists-toast-saved { border-color: #B9DFCC; }
+        .price-lists-toast-saved {
+            border-color: #B9DFCC;
+            background: #F5FCF7;
+            color: #17653A;
+        }
         .price-lists-toast-result { border-color: #D7C6E8; }
 
         .price-source-cycle-result {
@@ -1258,6 +1262,28 @@ def apply_company_profile_css() -> None:
         .price-lists-toast button:hover {
             background: #F1EDF5;
             color: var(--color-text);
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-save_price_row_"] button.costerly-price-source-saving {
+            opacity: 1 !important;
+            background: var(--color-accent) !important;
+            color: #FFFFFF !important;
+            pointer-events: none;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-save_price_row_"] button.costerly-price-source-saving p::before {
+            content: "";
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 8px;
+            vertical-align: -2px;
+            border: 2px solid rgba(255, 255, 255, 0.42);
+            border-top-color: #FFFFFF;
+            border-radius: 50%;
+            animation: price-source-button-spin 700ms linear infinite;
         }
 
         .price-lists-toast.costerly-toast-hidden {

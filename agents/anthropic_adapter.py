@@ -90,7 +90,9 @@ def get_anthropic_client() -> anthropic.Anthropic:
             "or export it as an environment variable."
         )
 
-    return anthropic.Anthropic(api_key=api_key)
+    # A source extraction must fail visibly rather than leave a synchronous
+    # Streamlit interaction spinning for the SDK's much longer default.
+    return anthropic.Anthropic(api_key=api_key, timeout=90.0)
 
 
 def create_claude_message(client: anthropic.Anthropic, **kwargs: Any) -> Any:

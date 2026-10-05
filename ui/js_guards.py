@@ -22,31 +22,6 @@ def install_workflow_header_alignment_guard(
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
-            function removeLiveProgress(card) {
-                const progress = card.querySelector(".price-source-live-progress");
-                if (progress) progress.remove();
-                if (card._costerlyPriceSourceTimer) {
-                    parentWindow.clearInterval(card._costerlyPriceSourceTimer);
-                    delete card._costerlyPriceSourceTimer;
-                }
-            }
-
-            function showLiveProgress(card) {
-                removeLiveProgress(card);
-                const progress = parentDoc.createElement("div");
-                progress.className = "price-source-live-progress";
-                progress.innerHTML =
-                    '<span class="price-source-live-progress-label">Extracting document</span>' +
-                    '<span class="price-source-live-progress-time">0 s elapsed</span>' +
-                    '<span class="price-source-live-progress-track"><span></span></span>';
-                card.appendChild(progress);
-                const elapsed = progress.querySelector(".price-source-live-progress-time");
-                const startedAt = Date.now();
-                card._costerlyPriceSourceTimer = parentWindow.setInterval(() => {
-                    if (elapsed) elapsed.textContent = `${Math.floor((Date.now() - startedAt) / 1000)} s elapsed`;
-                }, 1000);
-            }
-
             let frameId = null;
             let titleObserver = null;
             let actionsObserver = null;
@@ -3842,6 +3817,31 @@ def install_price_source_processing_guard() -> None:
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
+            function removeLiveProgress(card) {
+                const progress = card.querySelector(".price-source-live-progress");
+                if (progress) progress.remove();
+                if (card._costerlyPriceSourceTimer) {
+                    parentWindow.clearInterval(card._costerlyPriceSourceTimer);
+                    delete card._costerlyPriceSourceTimer;
+                }
+            }
+
+            function showLiveProgress(card) {
+                removeLiveProgress(card);
+                const progress = parentDoc.createElement("div");
+                progress.className = "price-source-live-progress";
+                progress.innerHTML =
+                    '<span class="price-source-live-progress-label">Extracting document</span>' +
+                    '<span class="price-source-live-progress-time">0 s elapsed</span>' +
+                    '<span class="price-source-live-progress-track"><span></span></span>';
+                card.appendChild(progress);
+                const elapsed = progress.querySelector(".price-source-live-progress-time");
+                const startedAt = Date.now();
+                card._costerlyPriceSourceTimer = parentWindow.setInterval(() => {
+                    if (elapsed) elapsed.textContent = `${Math.floor((Date.now() - startedAt) / 1000)} s elapsed`;
+                }, 1000);
+            }
+
             function resetCompletedState() {
                 parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach((card) => {
                     const completeMarker = card.querySelector(
@@ -3850,14 +3850,19 @@ def install_price_source_processing_guard() -> None:
                     const processingMarker = card.querySelector(
                         ".price-source-processing-marker"
                     );
+                    if (!completeMarker && processingMarker) {
+                        card.classList.add("costerly-price-source-processing");
+                        if (!card.querySelector(".price-source-live-progress")) {
+                            showLiveProgress(card);
+                        }
+                        return;
+                    }
                     if (card.classList.contains("costerly-price-source-processing")) {
                         const startedCycle = card.dataset.costerlyProcessingCycle || "";
                         const completedCycle = completeMarker
                             ? completeMarker.dataset.processingCycle || ""
                             : "";
                         if (!completeMarker || completedCycle === startedCycle) return;
-                    } else if (!completeMarker && processingMarker) {
-                        return;
                     }
                     card.classList.remove("costerly-price-source-processing");
                     delete card.dataset.costerlyProcessingCycle;
@@ -3903,6 +3908,39 @@ def install_price_source_processing_guard() -> None:
                 parentDoc.removeEventListener("click", handleClick, true);
                 observer.disconnect();
                 parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach(removeLiveProgress);
+                delete parentWindow[CLEANUP_KEY];
+            };
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
+def install_price_source_save_guard() -> None:
+    """Give a Review save immediate, unambiguous client-side feedback."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const CLEANUP_KEY = "__costerlyPriceSourceSaveGuardCleanup";
+            if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
+
+            function handleClick(event) {
+                const button = event.target.closest('[class*="st-key-save_price_row_"] button');
+                if (!button || button.classList.contains("costerly-price-source-saving")) return;
+                button.classList.add("costerly-price-source-saving");
+                button.setAttribute("aria-busy", "true");
+                const label = button.querySelector("p");
+                if (label) label.textContent = "Saving";
+            }
+
+            parentDoc.addEventListener("click", handleClick, true);
+            parentWindow[CLEANUP_KEY] = () => {
+                parentDoc.removeEventListener("click", handleClick, true);
                 delete parentWindow[CLEANUP_KEY];
             };
         })();
