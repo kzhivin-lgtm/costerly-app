@@ -215,3 +215,16 @@ The workspace requirements are:
 - Verification: focused Price Sources and archive migration tests, 118 passed;
   Python compilation and diff check passed. Production migration
   `2026_10_05_archive_supplier_operation_offers.sql` applied successfully.
+
+### Checkpoint, 2026-10-05, supplier canonicalisation accepted in production
+
+- User acceptance: two real invoices from the same supplier now resolve to the
+  same canonical supplier. This is the strongest accepted Price Lists result
+  so far and is the rollback baseline for the following service-offer repair.
+- Production diagnosis of duplicate `Supplier cut and edge banding` entries:
+  both offers have one canonical operation, one canonical supplier, ₪17.50,
+  ILS, excluded VAT and `supplier_defined` pricing. The only differing field
+  is source unit: one invoice stored `piece`, the other stored no unit. The
+  current operation-offer comparator treats missing source unit as a distinct
+  service. This is an incorrect constraint for a supplier-defined job, where
+  a visible `piece` is not a reusable rate basis.
