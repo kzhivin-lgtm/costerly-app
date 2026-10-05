@@ -2642,87 +2642,77 @@ def _render_price_source_review_queue(
 
 
 def _render_material_jobs(access: CompanyAccess, jobs: list[dict]) -> None:
-    """Render supplier jobs with the same department structure as materials."""
+    """Render Material Jobs as the fourth top-level Price Lists department."""
     if not jobs:
         return
     with st.container(key="material_jobs_section"):
-        departments: dict[str, list[dict]] = {}
-        for job in jobs:
-            departments.setdefault(str(job.get("department") or "Wood"), []).append(job)
-        department_labels = {"Wood": "Wood", "Metal": "Metal", "Finishing": "Coating"}
-        st.markdown(
-            '<div class="price-catalog-title price-catalog-title-main"><span>Material Jobs</span>'
-            f'<span>{len(jobs)} {"job" if len(jobs) == 1 else "jobs"}</span></div>',
-            unsafe_allow_html=True,
-        )
-        for department_name in ("Wood", "Metal", "Finishing"):
-            department_jobs = departments.get(department_name) or []
-            with st.expander(
-                f'{department_labels[department_name]} · {_material_jobs_count(len(department_jobs))}',
-                expanded=True,
+        with st.expander(
+            f'Material Jobs · {_material_jobs_count(len(jobs))}', expanded=True
+        ):
+            # Match the material-price grid. The first and penultimate cells
+            # are intentionally blank because jobs do not yet expose delete
+            # or edit actions.
+            header = st.columns([0.24, 1.8, 0.95, 1.05, 0.95, 0.95, 0.75, 0.5, 0.6])
+            for column, label in zip(
+                header,
+                ("", "Job", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Updated", "", ""),
             ):
-                if not department_jobs:
-                    st.markdown(
-                        '<div class="price-catalog-empty-row">No active jobs</div>',
-                        unsafe_allow_html=True,
-                    )
-                    continue
-                header = st.columns([2.15, 1.2, 1.05, 1.05, 0.75, 0.6])
-                for column, label in zip(
-                    header,
-                    ("Job", "Supplier", "Price ex VAT", "Price incl VAT", "Updated", ""),
-                ):
+                if label:
                     column.markdown(
                         f'<span class="price-source-row-label">{label}</span>',
                         unsafe_allow_html=True,
                     )
-                for job in department_jobs:
-                    job_id = str(job.get("operation_offer_id") or job.get("source_row_id") or "job")
-                    name_col, supplier_col, net_price_col, gross_price_col, date_col, source_col = st.columns(
-                        [2.15, 1.2, 1.05, 1.05, 0.75, 0.6],
-                        vertical_alignment="center",
+            for job in jobs:
+                job_id = str(job.get("operation_offer_id") or job.get("source_row_id") or "job")
+                _, name_col, category_col, supplier_col, net_price_col, gross_price_col, date_col, _, source_col = st.columns(
+                    [0.24, 1.8, 0.95, 1.05, 0.95, 0.95, 0.75, 0.5, 0.6],
+                    vertical_alignment="center",
+                )
+                operation_name = str(job.get("operation_name") or "Material job")
+                original_name = str(job.get("raw_service_name") or "")
+                name_col.markdown(
+                    f'<span class="price-catalog-material-name">{escape(operation_name)}</span>'
+                    + (
+                        f'  \n<span class="price-catalog-original-name">{escape(original_name)}</span>'
+                        if original_name and original_name.casefold() != operation_name.casefold()
+                        else ""
+                    ),
+                    unsafe_allow_html=True,
+                )
+                category_col.markdown(
+                    f'<span class="price-catalog-cell">{escape(_price_source_department_label(str(job.get("department") or "Wood")))}</span>',
+                    unsafe_allow_html=True,
+                )
+                supplier_col.markdown(
+                    _price_source_supplier_markup(job.get("supplier_name")),
+                    unsafe_allow_html=True,
+                )
+                net_price, gross_price = _price_source_amounts(
+                    job,
+                    value_key="source_price",
+                    unit_key="source_unit_label",
+                    source=job.get("source"),
+                )
+                net_price_col.markdown(
+                    f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>',
+                    unsafe_allow_html=True,
+                )
+                gross_price_col.markdown(
+                    f'<span class="price-catalog-cell price-catalog-cell-nowrap">{gross_price}</span>',
+                    unsafe_allow_html=True,
+                )
+                date_col.markdown(
+                    f'<span class="price-catalog-cell price-catalog-cell-nowrap">{_price_catalog_date(job.get("updated_at"))}</span>',
+                    unsafe_allow_html=True,
+                )
+                source_url = _price_source_direct_url(access, job.get("source") or {})
+                if source_url:
+                    source_col.link_button(
+                        "Source",
+                        source_url,
+                        key=f"material_job_source_{job_id}",
+                        use_container_width=True,
                     )
-                    operation_name = str(job.get("operation_name") or "Material job")
-                    original_name = str(job.get("raw_service_name") or "")
-                    name_col.markdown(
-                        f'<span class="price-catalog-material-name">{escape(operation_name)}</span>'
-                        + (
-                            f'  \n<span class="price-catalog-original-name">{escape(original_name)}</span>'
-                            if original_name and original_name.casefold() != operation_name.casefold()
-                            else ""
-                        ),
-                        unsafe_allow_html=True,
-                    )
-                    supplier_col.markdown(
-                        _price_source_supplier_markup(job.get("supplier_name")),
-                        unsafe_allow_html=True,
-                    )
-                    net_price, gross_price = _price_source_amounts(
-                        job,
-                        value_key="source_price",
-                        unit_key="source_unit_label",
-                        source=job.get("source"),
-                    )
-                    net_price_col.markdown(
-                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>',
-                        unsafe_allow_html=True,
-                    )
-                    gross_price_col.markdown(
-                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{gross_price}</span>',
-                        unsafe_allow_html=True,
-                    )
-                    date_col.markdown(
-                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{_price_catalog_date(job.get("updated_at"))}</span>',
-                        unsafe_allow_html=True,
-                    )
-                    source_url = _price_source_direct_url(access, job.get("source") or {})
-                    if source_url:
-                        source_col.link_button(
-                            "Source",
-                            source_url,
-                            key=f"material_job_source_{job_id}",
-                            use_container_width=True,
-                        )
 
 
 def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
