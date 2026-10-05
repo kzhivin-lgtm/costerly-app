@@ -160,6 +160,19 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
                 )
         if row.get("material_type") != "Wood Sheets":
             continue
+        thickness = float(attributes.get("thickness_mm") or 0)
+        name = str(row.get("normalized_name") or "")
+        # Category already conveys sheet form. Keep only identity-bearing words;
+        # never lose a proven thickness.
+        name = re.sub(r"\b(?:sheet|sheets|panel|board|\d+\s*[- ]?sheet)\b", "", name, flags=re.I)
+        name = re.sub(r"\s+", " ", name).strip(" ,-")
+        if thickness:
+            thickness_label = f"{int(thickness)} mm"
+            if re.search(r"\b\d+(?:\.\d+)?\s*mm\b", name, flags=re.I):
+                name = re.sub(r"\b\d+(?:\.\d+)?\s*mm\b", thickness_label, name, count=1, flags=re.I)
+            else:
+                name = f"{name} {thickness_label}".strip()
+        row["normalized_name"] = name
         # A full wood sheet quoted as a piece is still the same purchasable sheet.
         # Cut parts are represented by supplier Material Jobs, not by a second
         # material unit.
@@ -172,6 +185,33 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
             if isinstance(raw_price, (int, float)):
                 row["normalized_price"] = raw_price
     return result
+
+
+def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str, str, str]:
+    """Return the deterministic private-material identity.
+
+    The key deliberately ignores prose, SKU, colour and décor.  A supplier can
+    write the same sheet in many ways, but thickness, dimensions and a proven
+    construction such as perforated are real catalog distinctions.
+    """
+    attributes = row.get("identity_attributes") or {}
+
+    def number(field: str) -> str:
+        try:
+            value = float(attributes.get(field) or 0)
+        except (TypeError, ValueError):
+            return ""
+        return str(int(value)) if value > 0 and value.is_integer() else (str(value) if value > 0 else "")
+
+    family_tokens = _normalized_name(str(row.get("material_family") or "")).split()
+    return (
+        " ".join(sorted(family_tokens)),
+        number("thickness_mm"),
+        number("width_mm"),
+        number("length_mm"),
+        number("diameter_mm"),
+        _normalized_name(str(attributes.get("construction") or "")),
+    )
 
 
 def discard_price_source_consumables(result: dict[str, Any]) -> int:
@@ -335,6 +375,8 @@ def _damerau_levenshtein(left: str, right: str) -> int:
 def match_existing_supplier(
     supplier_name: str,
     candidates: Sequence[Mapping[str, Any]],
+    *,
+    supplier_hp: str = "",
 ) -> Mapping[str, Any] | None:
     """Return the canonical supplier for a safe OCR-level match.
 
@@ -344,6 +386,18 @@ def match_existing_supplier(
     and import callers without a creation timestamp retain the conservative
     ambiguous-match behaviour.
     """
+    normalized_hp = re.sub(r"[^a-z0-9]", "", str(supplier_hp or "").casefold())
+    if normalized_hp:
+        hp_matches = [
+            candidate for candidate in candidates
+            if re.sub(r"[^a-z0-9]", "", str(candidate.get("supplier_hp") or "").casefold())
+            == normalized_hp
+        ]
+        if hp_matches:
+            return min(
+                hp_matches,
+                key=lambda candidate: (str(candidate.get("created_at") or "~"), str(candidate.get("supplier_id") or "")),
+            )
     incoming = supplier_merge_key(supplier_name)
     if not incoming:
         return None
@@ -803,9 +857,16 @@ def material_offer_matches_extracted_row(
     """
     if not _decimal_equal(offer.get("source_price"), row.get("raw_price"), "0.0001"):
         return False
-    if _normalized_unit(str(offer.get("source_unit") or "")) != _normalized_unit(
-        str(row.get("raw_unit") or "")
-    ):
+    if offer.get("calculation_unit"):
+        offer_unit = _normalized_unit(str(offer.get("calculation_unit") or ""))
+        row_unit = _normalized_unit(str(row.get("calculation_unit") or ""))
+    elif offer.get("purchase_unit"):
+        offer_unit = _normalized_unit(str(offer.get("purchase_unit") or ""))
+        row_unit = _normalized_unit(str(row.get("purchase_unit") or ""))
+    else:
+        offer_unit = _normalized_unit(str(offer.get("source_unit") or ""))
+        row_unit = _normalized_unit(str(row.get("raw_unit") or ""))
+    if offer_unit != row_unit:
         return False
     currency = str(row.get("raw_currency") or default_currency or "").strip().upper()
     if str(offer.get("currency") or "").strip().upper() != currency:
@@ -817,28 +878,34 @@ def material_offer_matches_extracted_row(
     if offer.get("vat_included") is not vat_included:
         return False
 
-    evidence = row.get("identity_attributes") or {}
-    if not evidence and isinstance(row.get("evidence"), Mapping):
-        evidence = (row.get("evidence") or {}).get("identity_attributes") or {}
-    family = _normalized_name(str(row.get("material_family") or ""))
-    material_name = _normalized_name(
-        str(material.get("canonical_name") or material.get("normalized_name") or "")
-    )
-    if not family or family not in material_name:
-        return False
-
-    material_numbers = {
-        int(value)
-        for value in re.findall(r"\d+(?:\.0+)?", material_name)
+    material_row = {
+        "material_family": material.get("material_family") or "",
+        "identity_attributes": material.get("specifications") or {},
     }
-    for field in ("thickness_mm", "width_mm", "length_mm", "diameter_mm"):
-        try:
-            value = float(evidence.get(field) or 0)
-        except (TypeError, ValueError):
+    if not material_row["identity_attributes"]:
+        # Read-only compatibility for catalog rows created before structural
+        # specifications existed. New rows never take this wording path.
+        family = _normalized_name(str(row.get("material_family") or ""))
+        material_name = _normalized_name(
+            str(material.get("canonical_name") or material.get("normalized_name") or "")
+        )
+        if not family or family not in material_name:
             return False
-        if value > 0 and int(value) not in material_numbers:
-            return False
-    return True
+        evidence = row.get("identity_attributes") or {}
+        material_numbers = {int(value) for value in re.findall(r"\d+(?:\.0+)?", material_name)}
+        for field in ("thickness_mm", "width_mm", "length_mm", "diameter_mm"):
+            try:
+                value = float(evidence.get(field) or 0)
+            except (TypeError, ValueError):
+                return False
+            if value > 0 and int(value) not in material_numbers:
+                return False
+        return True
+    # Pre-existing materials may lack a persisted family.  Their canonical name
+    # remains a fallback only for that legacy case.
+    if not material_row["material_family"]:
+        material_row["material_family"] = str(material.get("canonical_name") or material.get("normalized_name") or "").split(" ")[0]
+    return material_structural_key(material_row) == material_structural_key(row)
 
 
 def price_offer_lane_key(
@@ -2482,39 +2549,48 @@ def process_price_source(
         _emit_marker(trace, "server.price_source_database_started")
         source_record_started = time.perf_counter()
         supplier_name = price_source_supplier_name(result)
+        supplier_hp = str(result.get("supplier_hp") or "").strip()
         supplier_id = None
         if supplier_name:
             existing_suppliers = (
                 client.table("company_suppliers")
-                .select("supplier_id,supplier_name,normalized_name,categories,created_at")
+                .select("supplier_id,supplier_name,normalized_name,supplier_hp,categories,created_at")
                 .eq("company_id", company_id)
                 .execute()
             ).data or []
-            matched_supplier = match_existing_supplier(supplier_name, existing_suppliers)
+            matched_supplier = match_existing_supplier(
+                supplier_name, existing_suppliers, supplier_hp=supplier_hp,
+            )
             canonical_supplier_name = clean_supplier_name(
                 (matched_supplier or {}).get("supplier_name") or supplier_name
             )
-            canonical_supplier_key = str(
-                (matched_supplier or {}).get("normalized_name")
-                or _normalized_name(canonical_supplier_name)
-            )
+            canonical_supplier_key = supplier_merge_key(canonical_supplier_name)
             categories = sorted(
                 set(((matched_supplier or {}).get("categories") or []) + material_types)
             ) if matched_supplier else material_types
-            supplier_row = (
-                client.table("company_suppliers")
-                .upsert(
-                    {
-                        "company_id": company_id,
-                        "supplier_name": canonical_supplier_name,
-                        "normalized_name": canonical_supplier_key,
-                        "categories": categories,
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
-                    },
-                    on_conflict="company_id,normalized_name",
-                )
-                .execute()
-            ).data[0]
+            supplier_payload = {
+                "company_id": company_id,
+                "supplier_name": canonical_supplier_name,
+                "normalized_name": canonical_supplier_key,
+                "supplier_hp": supplier_hp or (matched_supplier or {}).get("supplier_hp") or None,
+                "categories": categories,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            if matched_supplier:
+                # Keep the first accepted supplier as the canonical row even
+                # when its old normalized key still contained OCR legal noise.
+                supplier_row = (
+                    client.table("company_suppliers")
+                    .update(supplier_payload)
+                    .eq("supplier_id", matched_supplier["supplier_id"])
+                    .execute()
+                ).data[0]
+            else:
+                supplier_row = (
+                    client.table("company_suppliers")
+                    .upsert(supplier_payload, on_conflict="company_id,normalized_name")
+                    .execute()
+                ).data[0]
             supplier_id = supplier_row["supplier_id"]
         ready_count = sum(row["status"] == "ready" for row in result["rows"])
         unresolved_count = sum(row["status"] == "unresolved" for row in result["rows"])
@@ -2535,6 +2611,7 @@ def process_price_source(
             "operation_services": len(operation_code_by_row_number),
             "total": len(result["rows"]),
             "document_number": result["document_number"],
+            "supplier_hp": supplier_hp or None,
             "source_origin": result["source_origin"],
             "price_context": result["price_context"],
             "document_subtotal": result["document_subtotal"],
@@ -2690,26 +2767,28 @@ def process_price_source(
         ready_material_keys = {
             (
                 canonical_price_source_category(str(row["material_type"])),
-                _normalized_name(row["normalized_name"]),
+                material_structural_key(row),
             )
             for row in result["rows"]
             if row["status"] == "ready" and row["item_kind"] == "material"
         }
-        ready_material_names = sorted({name for _, name in ready_material_keys})
         existing_material_rows = (
             client.table("company_material_items")
-            .select("company_material_id,status,category,normalized_name")
+            .select("company_material_id,status,category,canonical_name,normalized_name,specifications")
             .eq("company_id", company_id)
-            .in_("normalized_name", ready_material_names)
             .execute()
             .data
             or []
-        ) if ready_material_names else []
-        materials_by_key: dict[tuple[str, str], dict] = {}
+        ) if ready_material_keys else []
+        materials_by_key: dict[tuple[str, tuple[str, str, str, str, str, str]], dict] = {}
         for material in existing_material_rows:
+            specifications = material.get("specifications") or {}
             key = (
                 canonical_price_source_category(str(material.get("category") or "")),
-                _normalized_name(str(material.get("normalized_name") or "")),
+                material_structural_key({
+                    "material_family": specifications.get("material_family") or "",
+                    "identity_attributes": specifications,
+                }),
             )
             if key in ready_material_keys and key not in materials_by_key:
                 materials_by_key[key] = material
@@ -2778,7 +2857,7 @@ def process_price_source(
                 continue
             key = (
                 canonical_price_source_category(str(row["material_type"])),
-                _normalized_name(row["normalized_name"]),
+                material_structural_key(row),
             )
             if key in materials_by_key:
                 continue
@@ -2787,6 +2866,7 @@ def process_price_source(
                 for attribute, value in (row.get("identity_attributes") or {}).items()
                 if value not in (None, "", 0, 0.0, [])
             }
+            identity_attributes["material_family"] = str(row.get("material_family") or "")
             new_material_payloads.append(
                 {
                     "company_id": company_id,
@@ -2812,7 +2892,10 @@ def process_price_source(
             for material in created_materials:
                 key = (
                     canonical_price_source_category(str(material.get("category") or "")),
-                    _normalized_name(str(material.get("normalized_name") or "")),
+                    material_structural_key({
+                        "material_family": (material.get("specifications") or {}).get("material_family") or "",
+                        "identity_attributes": material.get("specifications") or {},
+                    }),
                 )
                 materials_by_key[key] = material
         _emit_duration(
@@ -2835,19 +2918,30 @@ def process_price_source(
             operation_code = operation_code_by_row_number.get(int(row["source_row_number"]))
             operation_id = operation_ids_by_code.get(operation_code or "")
             if result_status == "ready" and row["item_kind"] == "material":
-                normalized = _normalized_name(row["normalized_name"])
+                structural_key = material_structural_key(row)
                 sku = _normalized_name(str(row.get("raw_sku") or ""))
                 sku_offers = offers_by_sku.get((current_lane, sku), []) if sku else []
+                sku_materials = [
+                    material_by_id.get(str(offer.get("company_material_id") or ""))
+                    for offer in sku_offers
+                    if material_by_id.get(str(offer.get("company_material_id") or ""))
+                    and material_offer_matches_extracted_row(
+                        offer,
+                        material_by_id[str(offer.get("company_material_id") or "")],
+                        row,
+                        default_currency=str(result.get("currency") or ""),
+                    )
+                ]
                 existing = (
-                    [{"company_material_id": sku_offers[0]["company_material_id"]}]
-                    if sku_offers
+                    [sku_materials[0]]
+                    if len({str(item.get("company_material_id")): item for item in sku_materials}) == 1
                     else [
                         inferred_material_by_row_number[int(row["source_row_number"])]
                     ]
                     if int(row["source_row_number"]) in inferred_material_by_row_number
                     else [
-                        materials_by_key[(row_category, normalized)]
-                    ] if (row_category, normalized) in materials_by_key else []
+                        materials_by_key[(row_category, structural_key)]
+                    ] if (row_category, structural_key) in materials_by_key else []
                 )
                 if existing:
                     material_id = existing[0]["company_material_id"]

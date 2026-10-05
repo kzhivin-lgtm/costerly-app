@@ -57,6 +57,7 @@ from use_cases.price_sources import (
     price_source_template_fingerprint,
     price_offer_matches_row,
     material_offer_matches_extracted_row,
+    material_structural_key,
     supplier_operation_offer_matches_row,
     price_offer_lane_key,
     price_source_supplier_name,
@@ -350,6 +351,7 @@ class _MutableClient:
 def _result(*, status: str = "ready", confidence: float = 96) -> dict:
     return {
         "supplier_name": "Supplier Ltd",
+        "supplier_hp": "",
         "source_origin": "supplier",
         "document_type": "price_list",
         "document_number": "PL-204",
@@ -531,6 +533,31 @@ def test_supplier_merge_keeps_first_saved_canonical_when_later_ocr_is_closer():
     assert match_existing_supplier("Wood Zenter", candidates)["supplier_id"] == "first"
 
 
+def test_supplier_merge_uses_hp_before_unreliable_ocr_name():
+    candidates = [
+        {"supplier_id": "first", "supplier_name": "Wood Center", "supplier_hp": "HP-120", "created_at": "2026-10-05T09:57:00+00:00"},
+        {"supplier_id": "other", "supplier_name": "Other supplier", "supplier_hp": "HP-222", "created_at": "2026-10-05T10:00:00+00:00"},
+    ]
+
+    assert match_existing_supplier("Unreadable OCR issuer", candidates, supplier_hp="hp 120")["supplier_id"] == "first"
+
+
+def test_material_structural_key_ignores_sheet_wording_but_keeps_perforation():
+    base = _result()["rows"][0]
+    base.update({
+        "material_family": "twin plywood",
+        "normalized_name": "Twin plywood 17 mm",
+        "identity_attributes": {**base["identity_attributes"], "thickness_mm": 17, "length_mm": 3100},
+    })
+    variant = deepcopy(base)
+    variant["normalized_name"] = "Plywood twin 17 mm sheet"
+    perforated = deepcopy(base)
+    perforated["identity_attributes"]["construction"] = "perforated"
+
+    assert material_structural_key(base) == material_structural_key(variant)
+    assert material_structural_key(base) != material_structural_key(perforated)
+
+
 def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
     result = _result()
     row = result["rows"][0]
@@ -538,13 +565,14 @@ def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
         "raw_description": "Twin plywood 17 mm מבוקע high gloss",
         "normalized_name": "Twin plywood 17mm cut to size sheet",
         "material_type": "Wood Sheets",
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 17},
     })
 
     normalize_price_source_sheet_rows(result)
 
     assert row["identity_attributes"]["construction"] == "perforated"
     assert row["identity_attributes"]["finish"] == "glossy"
-    assert row["normalized_name"] == "Twin plywood 17mm perforated sheet"
+    assert row["normalized_name"] == "Twin plywood 17 mm perforated"
 
 
 def test_sheet_normalization_refuses_an_unproved_glass_category():

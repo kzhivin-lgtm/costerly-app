@@ -3733,7 +3733,10 @@ def install_price_source_file_selection_guard(
                 if (!uploader) return;
                 const files = Array.from(input.files || []);
                 const accepted = acceptedIncomingFiles(uploader, files);
-                setWarning(accepted.length < files.length);
+                // A single PDF is valid.  Streamlit can briefly retain a
+                // previous chip while replacing it, so never show the
+                // multi-file warning merely because of that transient state.
+                setWarning(files.length > 1 && accepted.length < files.length);
                 if (files.length && !accepted.length) {
                     replaceFiles(input, []);
                     event.preventDefault();
@@ -3754,7 +3757,7 @@ def install_price_source_file_selection_guard(
 
                 const files = Array.from(event.dataTransfer.files || []);
                 const accepted = acceptedIncomingFiles(uploader, files);
-                setWarning(accepted.length < files.length);
+                setWarning(files.length > 1 && accepted.length < files.length);
                 if (accepted.length === files.length) return;
 
                 event.preventDefault();

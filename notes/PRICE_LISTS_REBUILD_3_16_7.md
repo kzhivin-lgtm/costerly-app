@@ -153,6 +153,19 @@ The workspace requirements are:
 - The price-source stream has a 60-second wall-clock cap in addition to its
   network timeout. A slow or stalled stream produces an actionable failure
   instead of leaving an indefinite Extracting state.
+
+### Increment, 2026-10-05, canonical supplier evidence and material identity
+
+- `company_suppliers.supplier_hp` is additive evidence from an invoice's HP or
+  HeadPay number. Exact company-private HP wins supplier matching before OCR
+  text, while the first accepted supplier remains the canonical display name.
+- New sheet-material rows persist a deterministic structural identity: material
+  family, proven thickness and dimensions, and proven construction. It ignores
+  `sheet`, colour, décor, OCR word order and SKU. `perforated` remains a real
+  distinction. This preserves one first canonical material while preventing a
+  normal sheet and a perforated sheet from collapsing together.
+- Supplier SKU is source provenance only. It may corroborate an already equal
+  structural material offer but cannot select a material by itself.
 - Starting a new extraction removes the prior green result immediately in the
   browser, before the server callback rerenders the upload controls.
 - Tab navigation acknowledges the server processing marker, not an arbitrary

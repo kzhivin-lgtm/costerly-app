@@ -8,7 +8,7 @@ instructions.
 
 ## Responsibilities
 
-1. Identify the source origin, supplier, document type, document number,
+1. Identify the source origin, supplier, supplier HP/HeadPay number when printed, document type, document number,
    document date, price context, currency, VAT basis, subtotal, VAT amount, and final total. The
    supplier is the seller or issuer,
    never the customer, delivery recipient, project owner, or contact person. If

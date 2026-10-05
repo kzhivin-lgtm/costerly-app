@@ -70,6 +70,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": [
         "supplier_name",
+        "supplier_hp",
         "source_origin",
         "document_type",
         "document_number",
@@ -84,6 +85,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
     ],
     "properties": {
         "supplier_name": {"type": "string"},
+        "supplier_hp": {"type": "string"},
         "source_origin": {"type": "string", "enum": sorted(SOURCE_ORIGINS)},
         "document_type": {"type": "string", "enum": sorted(DOCUMENT_TYPES)},
         "document_number": {"type": "string"},
@@ -242,6 +244,9 @@ def apply_price_source_document_defaults(
     """Apply the approved Israeli currency and VAT defaults to missing evidence."""
     currency = str(result.get("currency") or "").strip().upper() or "ILS"
     result["currency"] = currency
+    # A supplier code is supplementary evidence.  Older agent responses did
+    # not have this field, and a missing code must never reject an invoice.
+    result["supplier_hp"] = str(result.get("supplier_hp") or "").strip()
     rows = [row for row in result.get("rows") or [] if isinstance(row, dict)]
     for row in rows:
         if not str(row.get("raw_currency") or "").strip():
