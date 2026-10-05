@@ -18,6 +18,7 @@ from agents.prompt_loader import load_price_source_agent_prompt
 from agents.schemas.price_source_schema import (
     PRICE_SOURCE_RESULT_JSON_SCHEMA,
     apply_price_source_document_defaults,
+    apply_price_source_hardware_defaults,
     guard_price_source_document_totals,
     guard_price_source_row_activation,
     normalize_price_source_row_identity_fields,
@@ -28,7 +29,7 @@ from agents.schemas.price_source_schema import (
 )
 
 
-PRICE_SOURCE_PROMPT_VERSION = "price_source_v5_structured_identity"
+PRICE_SOURCE_PROMPT_VERSION = "price_source_v6_hardware_defaults"
 PRICE_SOURCE_MAX_OUTPUT_TOKENS = 32_768
 
 
@@ -113,12 +114,14 @@ def run_price_source_agent(
         guard_price_source_document_totals(
             reconcile_price_source_arithmetic(
                 guard_price_source_row_activation(
-                    apply_price_source_document_defaults(
-                        normalize_price_source_row_identity_fields(
-                            normalize_price_source_optional_numbers(
-                                normalize_price_source_confidence_scale(result)
-                            )
-                        ), source_kind=source_kind
+                    apply_price_source_hardware_defaults(
+                        apply_price_source_document_defaults(
+                            normalize_price_source_row_identity_fields(
+                                normalize_price_source_optional_numbers(
+                                    normalize_price_source_confidence_scale(result)
+                                )
+                            ), source_kind=source_kind
+                        )
                     )
                 )
             )

@@ -38,8 +38,12 @@ instructions.
    discounts without a product, payment, and credits are non_material. Only a
    tangible input consumed or installed in fabrication is material.
 3. Classify every material row independently using one material type from this
-   exact list: Wood Sheets, Solid Wood, Wood Supplies, Glass, Metal Sheets,
-   Metal Profiles, Metal Supplies, Paints & Coatings, Coating Supplies, Other.
+   exact list: Wood Sheets, Solid Wood, Wood Supplies, Hardware, Glass, Metal
+   Sheets, Metal Profiles, Metal Supplies, Paints & Coatings, Coating Supplies,
+   Other. Furniture fittings are Hardware: hinges, clips, brackets, mounting
+   plates, handles, furniture legs, latches and drawer slides/runners. Do not
+   classify a fitting as Metal Supplies merely because it is metal. Metal
+   Supplies is for metal stock and fabrication inputs.
    If the user selected a department, rows classified outside that department
    must be unresolved rather than silently reclassified. Use Other only when no
    supported material type fits the row evidence.
@@ -158,6 +162,12 @@ cannot be proven.
 Do not convert nominal sheet dimensions to usable dimensions unless the source
 explicitly states the charging rule. State the exact arithmetic in
 conversion_basis. If any required value is missing, use status unresolved.
+
+For Hardware only, an invoice line with no printed purchase unit defaults to
+piece, with purchase_unit = calculation_unit = piece and conversion_factor =
+1. Drawer slides/runners are the exception: when the item is explicitly a
+drawer runner/slide, they default to one left/right set. Do not apply either
+fallback to generic metal profiles, rails, or other non-hardware material.
 
 ## Price semantics
 

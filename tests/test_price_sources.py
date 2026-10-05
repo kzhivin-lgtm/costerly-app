@@ -14,6 +14,7 @@ from PIL import Image
 
 from agents.schemas.price_source_schema import (
     apply_price_source_document_defaults,
+    apply_price_source_hardware_defaults,
     PriceSourceSchemaError,
     guard_price_source_document_totals,
     guard_price_source_row_activation,
@@ -495,6 +496,52 @@ def test_consumables_are_discarded_and_supplier_services_map_before_persistence(
     assert supplier_service_pricing_basis(
         "piece", operation_code="supplier_cut_and_edge_banding"
     ) == "supplier_defined"
+
+
+def test_hardware_with_integral_screws_is_not_discarded_as_a_consumable():
+    result = _result()
+    hardware = result["rows"][0]
+    hardware.update({
+        "material_type": "Metal Supplies",
+        "material_family": "furniture leg",
+        "raw_description": "Adjustable plinth leg 80 mm with mounting screws",
+        "normalized_name": "Adjustable plinth leg 80 mm",
+        "raw_unit": "unknown",
+        "purchase_unit": "unknown",
+        "calculation_unit": "unknown",
+        "conversion_factor": 0,
+        "normalized_price": 0,
+    })
+
+    prepared = apply_price_source_hardware_defaults(result)
+
+    assert prepared["rows"][0]["material_type"] == "Hardware"
+    assert prepared["rows"][0]["purchase_unit"] == "piece"
+    assert prepared["rows"][0]["calculation_unit"] == "piece"
+    assert discard_price_source_consumables(prepared) == 0
+
+
+def test_drawer_runner_defaults_to_a_set_when_the_source_omits_the_unit():
+    result = _result()
+    runner = result["rows"][0]
+    runner.update({
+        "material_type": "Other",
+        "material_family": "drawer runner",
+        "raw_description": "Undermount drawer runner 600 mm",
+        "normalized_name": "Undermount drawer runner 600 mm",
+        "raw_unit": "",
+        "purchase_unit": "unknown",
+        "calculation_unit": "unknown",
+        "conversion_factor": 0,
+        "normalized_price": 0,
+    })
+
+    prepared = apply_price_source_hardware_defaults(result)
+
+    assert prepared["rows"][0]["material_type"] == "Hardware"
+    assert prepared["rows"][0]["purchase_unit"] == "set"
+    assert prepared["rows"][0]["calculation_unit"] == "set"
+    assert prepared["rows"][0]["normalized_price"] == 90
 
 
 def test_rows_without_a_name_or_positive_price_are_not_persisted_for_review():
@@ -1224,6 +1271,7 @@ def test_price_source_output_budget_supports_large_supplier_pages():
 def test_price_catalog_uses_three_stable_user_facing_departments():
     assert PRICE_CATALOG_DEPARTMENTS["Wood Sheets"] == "Wood"
     assert PRICE_CATALOG_DEPARTMENTS["Wood Supplies"] == "Wood"
+    assert PRICE_CATALOG_DEPARTMENTS["Hardware"] == "Wood"
     assert PRICE_CATALOG_DEPARTMENTS["Other"] == "Wood"
     assert PRICE_CATALOG_DEPARTMENTS["Metal Sheets"] == "Metal"
     assert PRICE_CATALOG_DEPARTMENTS["Metal Profiles"] == "Metal"
@@ -1234,7 +1282,7 @@ def test_price_catalog_uses_three_stable_user_facing_departments():
 
 def test_legacy_material_types_are_canonicalized_without_splitting_filters():
     assert canonical_price_source_category("Sheet Materials") == "Wood Sheets"
-    assert canonical_price_source_category("Hardware") == "Wood Supplies"
+    assert canonical_price_source_category("Hardware") == "Hardware"
     assert canonical_price_source_category("Metal") == "Metal"
     assert PRICE_CATALOG_DEPARTMENTS["Metal"] == "Metal"
 

@@ -73,6 +73,7 @@ PRICE_CATALOG_DEPARTMENTS = {
     "Wood Sheets": "Wood",
     "Solid Wood": "Wood",
     "Wood Supplies": "Wood",
+    "Hardware": "Wood",
     "Glass": "Wood",
     "Metal Sheets": "Metal",
     "Metal Profiles": "Metal",
@@ -84,7 +85,6 @@ PRICE_CATALOG_DEPARTMENTS = {
 }
 LEGACY_PRICE_SOURCE_CATEGORIES = {
     "Sheet Materials": "Wood Sheets",
-    "Hardware": "Wood Supplies",
     "Edgebanding": "Wood Supplies",
     "Adhesives and Consumables": "Wood Supplies",
     "Finishes and Coatings": "Paints & Coatings",
@@ -95,6 +95,13 @@ _CONSUMABLE_MARKERS = (
     "screw", "screws", "fastener", "dowel", "dowels", "lamello", "biscuit",
     "glue", "adhesive", "sandpaper", "abrasive", "ברג", "דיבל", "למלו", "דבק",
     "נייר לטש", "נייר שיוף", "שוחק",
+)
+_HARDWARE_MARKERS = (
+    "hinge", "drawer slide", "drawer runner", "drawer rail", "runner",
+    "bracket", "mounting plate", "mounting bracket", "clip", "latch",
+    "handle", "knob", "furniture leg", "plinth leg", "hardware",
+    "ציר", "מסילה", "מגירה", "תושבת", "פלטת חיבור", "קליפ", "פרפר",
+    "רגלית", "ידית", "לחצן",
 )
 _GLASS_MARKERS = ("glass", "זכוכית")
 _IDENTITY_DESCRIPTOR_MARKERS = {
@@ -234,7 +241,15 @@ def discard_price_source_consumables(result: dict[str, Any]) -> int:
     discarded = 0
     for row in result.get("rows") or []:
         text = " ".join(str(row.get(key) or "") for key in ("raw_description", "normalized_name", "material_family")).casefold()
-        if row.get("item_kind") == "material" and any(marker in text for marker in _CONSUMABLE_MARKERS):
+        is_hardware = (
+            row.get("material_type") == "Hardware"
+            or any(marker in text for marker in _HARDWARE_MARKERS)
+        )
+        if (
+            row.get("item_kind") == "material"
+            and not is_hardware
+            and any(marker in text for marker in _CONSUMABLE_MARKERS)
+        ):
             discarded += 1
             continue
         retained.append(row)

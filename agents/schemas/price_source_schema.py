@@ -47,6 +47,7 @@ PRICE_SOURCE_CATEGORIES = (
     "Wood Sheets",
     "Solid Wood",
     "Wood Supplies",
+    "Hardware",
     "Glass",
     "Metal Sheets",
     "Metal Profiles",
@@ -65,6 +66,63 @@ CANONICAL_UNIT_CODES = {
     "bucket", "can", "tube", "pallet",
     "other", "unknown",
 }
+
+# These are product families, not generic words for a material or finish. A
+# hinge remains furniture hardware even when it is made from metal.
+_HARDWARE_MARKERS = (
+    "hinge", "drawer slide", "drawer runner", "drawer rail", "runner",
+    "bracket", "mounting plate", "mounting bracket", "clip", "latch",
+    "handle", "knob", "furniture leg", "plinth leg", "hardware",
+    "ציר", "מסילה", "מגירה", "תושבת", "פלטת חיבור", "קליפ", "פרפר",
+    "רגלית", "ידית", "לחצן",
+)
+_DRAWER_RUNNER_MARKERS = (
+    "drawer slide", "drawer runner", "drawer rail", "undermount runner",
+    "side-mount runner", "מסילת מגירה", "מסילה תחתית", "מסילה כפולה",
+)
+
+
+def _price_source_row_text(row: dict[str, Any]) -> str:
+    return " ".join(
+        str(row.get(key) or "")
+        for key in ("raw_description", "normalized_name", "material_family")
+    ).casefold()
+
+
+def apply_price_source_hardware_defaults(result: dict[str, Any]) -> dict[str, Any]:
+    """Classify furniture fittings and apply the agreed count-unit fallback."""
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("item_kind") != "material":
+            continue
+        text = _price_source_row_text(row)
+        if not (
+            row.get("material_type") == "Hardware"
+            or any(marker in text for marker in _HARDWARE_MARKERS)
+        ):
+            continue
+        row["material_type"] = "Hardware"
+        default_unit = (
+            "set" if any(marker in text for marker in _DRAWER_RUNNER_MARKERS)
+            else "piece"
+        )
+        changed = False
+        for key in ("purchase_unit", "calculation_unit"):
+            if row.get(key) in {"", "unknown", "other", None}:
+                row[key] = default_unit
+                changed = True
+        if str(row.get("raw_unit") or "").strip().casefold() in {"", "unknown", "other"}:
+            row["raw_unit"] = default_unit
+            changed = True
+        if changed:
+            row["conversion_factor"] = 1
+            raw_price = row.get("raw_price")
+            if isinstance(raw_price, (int, float)) and raw_price > 0:
+                row["normalized_price"] = raw_price
+            reasons = set(row.get("reason_codes") or [])
+            reasons.difference_update({"missing_unit", "package_conversion_unresolved"})
+            reasons.add(f"hardware_unit_default_{default_unit}")
+            row["reason_codes"] = sorted(reasons)
+    return result
 
 PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",

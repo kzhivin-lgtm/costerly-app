@@ -108,6 +108,20 @@ canonical operation, supplier lane and price basis, never by raw OCR wording.
 Remaining work includes durable server jobs with confirmed processing phases,
 the Material Jobs resolver, and production acceptance of asynchronous editing.
 
+### Checkpoint, 2026-10-06, photographed hardware invoice
+
+The first successful image-OCR production pass for Pirzul invoice 63385
+identified the seller from its issuer block and HP `337791438`, not the Hebrew
+`לכבוד` buyer block. OCR recovered all five priced lines. The initial
+consumables filter then incorrectly discarded an adjustable plinth leg with
+included screws because it matched the word for screws. Hardware is now a
+separate company catalog category under the Wood department. A fitting with
+integral screws remains Hardware, rather than being discarded as a consumable.
+
+For Hardware rows only, omitted units default deterministically to `piece`.
+Positively identified drawer runners/slides default to one left/right `set`.
+This is a user-approved commercial default, not an inferred package conversion.
+
 The workspace requirements are:
 
 - Catalog and Review use the same compact information hierarchy: English name
