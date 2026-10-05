@@ -204,7 +204,12 @@ def normalize_price_source_optional_numbers(result: dict[str, Any]) -> dict[str,
                 try:
                     row[key] = float(text)
                 except ValueError:
-                    pass
+                    # A discount cell has no independent commercial meaning
+                    # when it cannot be read as a number.  Keep the source row
+                    # usable and treat it as no stated discount.
+                    row[key] = 0
+            elif not isinstance(value, (int, float)):
+                row[key] = 0
     return result
 
 
