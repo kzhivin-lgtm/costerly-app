@@ -57,7 +57,6 @@ from use_cases.price_sources import (
     normalize_price_source_sheet_rows,
     supplier_merge_key,
     supplier_merge_max_distance,
-    supplier_hp_name_conflicts,
     price_source_template_fingerprint,
     price_offer_matches_row,
     material_offer_matches_extracted_row,
@@ -569,22 +568,6 @@ def test_supplier_merge_ignores_legal_forms_and_uses_unique_length_scaled_match(
     assert supplier_merge_max_distance(5) == 1
     assert supplier_merge_max_distance(9) == 4
     assert match_existing_supplier("Елочкa", candidates)["supplier_id"] == "a"
-
-
-def test_supplier_hp_conflict_repairs_a_legacy_buyer_name_not_the_new_seller():
-    legacy_buyer = {
-        "supplier_id": "legacy",
-        "supplier_name": "Lev Kegels",
-        "supplier_hp": "337791438",
-    }
-
-    assert supplier_hp_name_conflicts(
-        "Pirzul", legacy_buyer, supplier_hp="337791438"
-    ) is True
-    assert supplier_hp_name_conflicts(
-        "Pirzul Ltd", {**legacy_buyer, "supplier_name": "Pirzul"},
-        supplier_hp="337791438",
-    ) is False
 
 
 def test_supplier_merge_rejects_an_ambiguous_fuzzy_match():
@@ -2608,7 +2591,7 @@ def test_price_source_runtime_marks_worker_boundaries(monkeypatch):
             self.events.append((name, kwargs))
 
     trace = Trace()
-    monkeypatch.setattr(price_source_runtime, "create_price_source_supabase_client", lambda: object())
+    monkeypatch.setattr(price_source_runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(
         price_source_runtime,
         "process_price_source",

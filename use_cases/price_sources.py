@@ -453,35 +453,6 @@ def match_existing_supplier(
     return best[0] if len(best) == 1 else None
 
 
-def supplier_hp_name_conflicts(
-    supplier_name: str,
-    matched_supplier: Mapping[str, Any] | None,
-    *,
-    supplier_hp: str,
-) -> bool:
-    """Detect legacy HP records whose saved name contradicts new seller evidence.
-
-    HP is normally the strongest merge key. Older imports could nevertheless
-    have copied a buyer name into a supplier row. If the current document ties
-    its HP to a seller letterhead and that name is not a safe OCR variant of
-    the stored name, preserve the supplier id but repair its canonical display
-    name from the new seller evidence.
-    """
-    if not matched_supplier or not supplier_hp:
-        return False
-    matched_hp = re.sub(r"\D", "", str(matched_supplier.get("supplier_hp") or ""))
-    incoming_hp = re.sub(r"\D", "", str(supplier_hp))
-    if not incoming_hp or matched_hp != incoming_hp:
-        return False
-    incoming = supplier_merge_key(supplier_name)
-    stored = supplier_merge_key(str(matched_supplier.get("supplier_name") or ""))
-    if not incoming or not stored:
-        return False
-    return _damerau_levenshtein(incoming, stored) > supplier_merge_max_distance(
-        max(len(incoming), len(stored))
-    )
-
-
 @dataclass(frozen=True)
 class CombinedPriceSource:
     name: str
@@ -2823,13 +2794,8 @@ def process_price_source(
             matched_supplier = match_existing_supplier(
                 supplier_name, existing_suppliers, supplier_hp=supplier_hp,
             )
-            repair_legacy_hp_name = supplier_hp_name_conflicts(
-                supplier_name, matched_supplier, supplier_hp=supplier_hp,
-            )
             canonical_supplier_name = clean_supplier_name(
-                supplier_name
-                if repair_legacy_hp_name
-                else (matched_supplier or {}).get("supplier_name") or supplier_name
+                (matched_supplier or {}).get("supplier_name") or supplier_name
             )
             canonical_supplier_key = supplier_merge_key(canonical_supplier_name)
             categories = sorted(
