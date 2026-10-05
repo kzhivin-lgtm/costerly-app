@@ -295,3 +295,18 @@ The workspace requirements are:
 - This removes the false infinite progress state. The durable-job recovery
   work remains P1 because a browser refresh after an acknowledged worker start
   still requires persistent job state to recover the result.
+
+### Hotfix, 2026-10-05, worker authorization boundary and bounded OCR
+
+- Production trace for a submitted job stopped immediately after
+  `server.price_source_process_started`. The next operation was a duplicate
+  owner lookup from the background worker. Authorization is now revalidated on
+  the authenticated request thread before submission, then carried as an
+  explicit verified flag into the worker. Direct processing paths retain their
+  own owner validation.
+- Mistral OCR now has a 45-second transport timeout. A provider stall fails
+  the job and releases the company lock instead of occupying it for up to
+  three minutes.
+- The browser no longer paints a zero-second elapsed bar while submission is
+  unconfirmed. It displays `Starting extraction`; the real elapsed progress
+  begins only after the server processing marker arrives.

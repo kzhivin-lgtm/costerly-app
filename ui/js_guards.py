@@ -3994,11 +3994,9 @@ def install_price_source_processing_guard() -> None:
                         card.classList.add("costerly-price-source-starting");
                     }
                 }, 3000);
-                // This is intentionally not labelled "Extracting" yet.  The
-                // client must receive the server marker before it may claim a
-                // worker exists.  A lost Streamlit callback used to leave this
-                // optimistic progress bar running forever.
-                showLiveProgress(card, Date.now(), "Starting extraction");
+                // Do not create an elapsed progress bar before the server
+                // marker exists. A browser click is not evidence that a job
+                // was submitted, and an optimistic timer can freeze at zero.
                 parentWindow[STARTING_WATCHDOG_KEY] = parentWindow.setTimeout(() => {
                     delete parentWindow[STARTING_WATCHDOG_KEY];
                     if (!parentWindow[STARTING_KEY]) return;
@@ -4009,7 +4007,7 @@ def install_price_source_processing_guard() -> None:
                 button.disabled = true;
                 button.setAttribute("aria-disabled", "true");
                 const label = button.querySelector("p");
-                if (label) label.textContent = "Extracting prices";
+                if (label) label.textContent = "Starting extraction";
             }
 
             function preventPrematureProfileNavigation(event) {

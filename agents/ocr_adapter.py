@@ -50,7 +50,10 @@ def get_mistral_http_client() -> Any:
         if _HTTP_CLIENT is None:
             import httpx
 
-            _HTTP_CLIENT = httpx.Client(timeout=180)
+            # OCR normally returns in seconds.  A bounded timeout makes a
+            # provider or network stall actionable instead of holding the
+            # company extraction lock for several minutes.
+            _HTTP_CLIENT = httpx.Client(timeout=45)
     return _HTTP_CLIENT
 
 

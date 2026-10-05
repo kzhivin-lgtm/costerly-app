@@ -2508,6 +2508,7 @@ def process_price_source(
     source_url: str = "",
     trace=None,
     client=None,
+    owner_authorized: bool = False,
 ) -> PriceSourceProcessResult:
     """Process and persist one source. Ambiguous rows stay non-active."""
     process_started = time.perf_counter()
@@ -2522,7 +2523,8 @@ def process_price_source(
         "server.price_source_process_started",
         source_kind="file" if uploaded_file is not None else "url",
     )
-    assert_company_owner(client, str(access.user_id), company_id)
+    if not owner_authorized:
+        assert_company_owner(client, str(access.user_id), company_id)
     source_id = str(uuid4())
 
     if uploaded_file is not None:
