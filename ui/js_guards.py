@@ -3819,6 +3819,7 @@ def install_price_source_processing_guard() -> None:
             const CLEANUP_KEY = "__costerlyPriceSourceProcessingGuardCleanup";
             const STARTING_KEY = "__costerlyPriceSourceStartPending";
             const STARTING_TIMER_KEY = "__costerlyPriceSourceStartTimer";
+            const STARTING_WATCHDOG_KEY = "__costerlyPriceSourceStartWatchdog";
             const DEFERRED_TAB_KEY = "__costerlyDeferredPriceSourceTab";
             const REPLAYING_TAB_KEY = "__costerlyReplayingPriceSourceTab";
 
@@ -3843,11 +3844,12 @@ def install_price_source_processing_guard() -> None:
             }
 
             function showLiveProgress(card, startedAtMs) {
+                const labelText = arguments[2] || "Extracting prices";
                 removeLiveProgress(card);
                 const progress = parentDoc.createElement("div");
                 progress.className = "price-source-live-progress";
                 progress.innerHTML =
-                    '<span class="price-source-live-progress-label">Extracting prices</span>' +
+                    '<span class="price-source-live-progress-label"></span>' +
                     '<span class="price-source-live-progress-time">0 s elapsed</span>' +
                     '<span class="price-source-live-progress-track"><span></span></span>';
                 const buttonContainer = card.querySelector(".st-key-process_price_source");
@@ -3857,6 +3859,8 @@ def install_price_source_processing_guard() -> None:
                     card.appendChild(progress);
                 }
                 const elapsed = progress.querySelector(".price-source-live-progress-time");
+                const label = progress.querySelector(".price-source-live-progress-label");
+                if (label) label.textContent = labelText;
                 const startedAt = Number(startedAtMs) || Date.now();
                 const updateElapsed = () => {
                     if (elapsed) {
@@ -3867,6 +3871,38 @@ def install_price_source_processing_guard() -> None:
                 card._costerlyPriceSourceTimer = parentWindow.setInterval(() => {
                     updateElapsed();
                 }, 1000);
+            }
+
+            function clearStartingTimers() {
+                if (parentWindow[STARTING_TIMER_KEY]) {
+                    parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
+                    delete parentWindow[STARTING_TIMER_KEY];
+                }
+                if (parentWindow[STARTING_WATCHDOG_KEY]) {
+                    parentWindow.clearTimeout(parentWindow[STARTING_WATCHDOG_KEY]);
+                    delete parentWindow[STARTING_WATCHDOG_KEY];
+                }
+            }
+
+            function showStartFailure(card) {
+                removeLiveProgress(card);
+                card.classList.remove("costerly-price-source-processing");
+                card.classList.remove("costerly-price-source-starting");
+                const button = card.querySelector(".st-key-process_price_source button");
+                if (button) {
+                    button.disabled = false;
+                    button.removeAttribute("aria-disabled");
+                    const label = button.querySelector("p");
+                    if (label) label.textContent = "Extract prices";
+                }
+                card.querySelectorAll(".price-source-client-start-error").forEach((node) => node.remove());
+                const message = parentDoc.createElement("div");
+                message.className = "price-source-client-start-error";
+                message.setAttribute("role", "alert");
+                message.textContent = "Extraction did not reach the server. Try again.";
+                const buttonContainer = card.querySelector(".st-key-process_price_source");
+                if (buttonContainer) buttonContainer.after(message);
+                else card.appendChild(message);
             }
 
             function resetCompletedState() {
@@ -3882,27 +3918,20 @@ def install_price_source_processing_guard() -> None:
                     );
                     if (startRejectedMarker) {
                         parentWindow[STARTING_KEY] = false;
-                        if (parentWindow[STARTING_TIMER_KEY]) {
-                            parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
-                            delete parentWindow[STARTING_TIMER_KEY];
-                        }
+                        clearStartingTimers();
                         releaseDeferredProfileNavigation();
                         return;
                     }
                     if (!completeMarker && processingMarker) {
                         parentWindow[STARTING_KEY] = false;
-                        if (parentWindow[STARTING_TIMER_KEY]) {
-                            parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
-                            delete parentWindow[STARTING_TIMER_KEY];
-                        }
+                        clearStartingTimers();
                         releaseDeferredProfileNavigation();
                         card.classList.add("costerly-price-source-processing");
-                        if (!card.querySelector(".price-source-live-progress")) {
-                            showLiveProgress(
-                                card,
-                                processingMarker.dataset.startedAtMs
-                            );
-                        }
+                        showLiveProgress(
+                            card,
+                            processingMarker.dataset.startedAtMs,
+                            "Extracting prices"
+                        );
                         return;
                     }
                     if (card.classList.contains("costerly-price-source-processing")) {
@@ -3914,10 +3943,7 @@ def install_price_source_processing_guard() -> None:
                     }
                     card.classList.remove("costerly-price-source-processing");
                     parentWindow[STARTING_KEY] = false;
-                    if (parentWindow[STARTING_TIMER_KEY]) {
-                        parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
-                        delete parentWindow[STARTING_TIMER_KEY];
-                    }
+                    clearStartingTimers();
                     releaseDeferredProfileNavigation();
                     delete card.dataset.costerlyProcessingCycle;
                     removeLiveProgress(card);
@@ -3939,6 +3965,8 @@ def install_price_source_processing_guard() -> None:
                 if (!button || button.disabled) return;
                 const card = button.closest(".st-key-price_source_add_card");
                 if (!card) return;
+
+                card.querySelectorAll(".price-source-client-start-error").forEach((node) => node.remove());
 
                 const completeMarker = card.querySelector(
                     ".price-source-processing-complete-marker"
@@ -3966,7 +3994,18 @@ def install_price_source_processing_guard() -> None:
                         card.classList.add("costerly-price-source-starting");
                     }
                 }, 3000);
-                showLiveProgress(card, Date.now());
+                // This is intentionally not labelled "Extracting" yet.  The
+                // client must receive the server marker before it may claim a
+                // worker exists.  A lost Streamlit callback used to leave this
+                // optimistic progress bar running forever.
+                showLiveProgress(card, Date.now(), "Starting extraction");
+                parentWindow[STARTING_WATCHDOG_KEY] = parentWindow.setTimeout(() => {
+                    delete parentWindow[STARTING_WATCHDOG_KEY];
+                    if (!parentWindow[STARTING_KEY]) return;
+                    parentWindow[STARTING_KEY] = false;
+                    showStartFailure(card);
+                    releaseDeferredProfileNavigation();
+                }, 20000);
                 button.disabled = true;
                 button.setAttribute("aria-disabled", "true");
                 const label = button.querySelector("p");
@@ -3994,10 +4033,7 @@ def install_price_source_processing_guard() -> None:
                 parentDoc.removeEventListener("click", preventPrematureProfileNavigation, true);
                 observer.disconnect();
                 parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach(removeLiveProgress);
-                if (parentWindow[STARTING_TIMER_KEY]) {
-                    parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
-                    delete parentWindow[STARTING_TIMER_KEY];
-                }
+                clearStartingTimers();
                 delete parentWindow[STARTING_KEY];
                 delete parentWindow[DEFERRED_TAB_KEY];
                 delete parentWindow[REPLAYING_TAB_KEY];

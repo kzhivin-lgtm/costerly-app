@@ -284,3 +284,14 @@ The workspace requirements are:
 - Diagnostic replay of the user-provided photographed invoice: 11 extracted
   rows, 7 ready, 1 Review, 3 excluded, including one return row. This is a
   non-persistent verification run and did not alter the company catalog.
+
+### Hotfix, 2026-10-05, unacknowledged extraction start
+
+- A five-minute `Extracting` display with no matching runtime event proved the
+  browser could optimistically paint progress before the Streamlit callback
+  created a worker. The UI now says `Starting extraction` until it observes
+  the server processing marker. If no marker arrives in 20 seconds, it stops,
+  re-enables Extract and shows an actionable server-acknowledgement failure.
+- This removes the false infinite progress state. The durable-job recovery
+  work remains P1 because a browser refresh after an acknowledged worker start
+  still requires persistent job state to recover the result.
