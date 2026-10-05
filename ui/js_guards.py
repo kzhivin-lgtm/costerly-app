@@ -3927,11 +3927,18 @@ def install_price_source_processing_guard() -> None:
                         clearStartingTimers();
                         releaseDeferredProfileNavigation();
                         card.classList.add("costerly-price-source-processing");
-                        showLiveProgress(
-                            card,
-                            processingMarker.dataset.startedAtMs,
-                            "Extracting prices"
-                        );
+                        // The observer watches child-list mutations. Creating
+                        // or replacing progress on every observation would
+                        // trigger itself indefinitely and freeze the browser.
+                        // The server marker is stable for one cycle, so build
+                        // the live bar once only.
+                        if (!card.querySelector(".price-source-live-progress")) {
+                            showLiveProgress(
+                                card,
+                                processingMarker.dataset.startedAtMs,
+                                "Extracting prices"
+                            );
+                        }
                         return;
                     }
                     if (card.classList.contains("costerly-price-source-processing")) {

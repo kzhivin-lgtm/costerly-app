@@ -1369,6 +1369,8 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "Extraction did not reach the server. Try again." in source
     assert 'label.textContent = "Starting extraction"' in source
     assert 'showLiveProgress(card, Date.now(), "Starting extraction")' not in source
+    assert 'if (!card.querySelector(".price-source-live-progress"))' in source
+    assert "trigger itself indefinitely and freeze the browser" in source
     assert "observer.disconnect()" in source
     assert "function showLiveProgress(card, startedAtMs)" in source
     assert "function removeLiveProgress(card)" in source

@@ -310,3 +310,10 @@ The workspace requirements are:
 - The browser no longer paints a zero-second elapsed bar while submission is
   unconfirmed. It displays `Starting extraction`; the real elapsed progress
   begins only after the server processing marker arrives.
+
+### Hotfix, 2026-10-05, progress observer recursion
+
+- The first server-confirmed progress update recreated its own progress DOM on
+  every `MutationObserver` callback. Those mutations recursively triggered the
+  observer and froze Chrome. The progress bar is now created once per stable
+  server processing marker; later observer callbacks do not modify its DOM.
