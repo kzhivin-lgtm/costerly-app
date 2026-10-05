@@ -66,12 +66,34 @@ from use_cases.price_sources import (
     supplier_operation_offer_catalog_key,
     price_offer_lane_key,
     price_source_supplier_name,
+    price_source_extraction_diagnostics,
     remove_price_source_row,
     render_price_source_pdf_preview,
     render_price_source_preview,
     save_price_source_row,
     validate_price_source_upload_selection,
 )
+
+
+def test_price_source_extraction_diagnostics_records_zero_row_evidence():
+    diagnostics = price_source_extraction_diagnostics(
+        {"document_type": "tax_invoice", "source_origin": "supplier", "rows": []},
+        text_layer_strategy="image_ocr",
+        text_layer_characters=563,
+        ocr_pages=1,
+    )
+
+    assert diagnostics == {
+        "text_layer_strategy": "image_ocr",
+        "text_layer_characters": 563,
+        "ocr_pages": 1,
+        "agent_row_count": 0,
+        "agent_ready_row_count": 0,
+        "agent_unresolved_row_count": 0,
+        "agent_excluded_row_count": 0,
+        "document_type": "tax_invoice",
+        "source_origin": "supplier",
+    }
 
 
 def test_price_source_download_url_is_direct_owned_and_attachment_scoped(monkeypatch):

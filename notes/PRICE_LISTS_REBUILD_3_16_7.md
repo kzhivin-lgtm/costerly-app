@@ -350,3 +350,12 @@ The workspace requirements are:
   upgrades it when the server marker arrives, and allows deferred Profile-tab
   navigation after three seconds. Only a server-rendered error can state that
   extraction failed.
+
+### Diagnostic guard, 2026-10-06, zero-row source extraction
+
+- A source that reaches OCR and the commercial agent but returns no rows is no
+  longer stored as a successful empty Price Source. Its usage record retains
+  the OCR strategy, evidence length, page count, row-status counts, document
+  type, and origin; the user receives a terminal extraction error instead.
+- This separates a true extraction failure from a valid invoice with excluded
+  rows and gives the next diagnosis evidence before any catalog state changes.

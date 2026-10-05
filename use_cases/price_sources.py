@@ -1046,6 +1046,28 @@ def price_source_supplier_name(result: dict) -> str:
     return str(result.get("supplier_name") or "").strip()
 
 
+def price_source_extraction_diagnostics(
+    result: Mapping[str, Any],
+    *,
+    text_layer_strategy: str,
+    text_layer_characters: int,
+    ocr_pages: int,
+) -> dict[str, object]:
+    """Return compact, source-safe evidence for a single extraction attempt."""
+    rows = list(result.get("rows") or [])
+    return {
+        "text_layer_strategy": text_layer_strategy,
+        "text_layer_characters": max(0, int(text_layer_characters)),
+        "ocr_pages": max(0, int(ocr_pages)),
+        "agent_row_count": len(rows),
+        "agent_ready_row_count": sum(row.get("status") == "ready" for row in rows),
+        "agent_unresolved_row_count": sum(row.get("status") == "unresolved" for row in rows),
+        "agent_excluded_row_count": sum(row.get("status") == "excluded" for row in rows),
+        "document_type": str(result.get("document_type") or ""),
+        "source_origin": str(result.get("source_origin") or ""),
+    }
+
+
 def apply_legacy_price_benchmark(result: dict, legacy_materials: list[dict]) -> dict:
     """Use exact legacy identity/unit matches only as a negative confidence signal."""
     benchmark: dict[tuple[str, str], float] = {}
@@ -2681,13 +2703,28 @@ def process_price_source(
         extracted_rows=len(result.get("rows") or []),
     )
     usage_event = result.pop("_agent_usage", None)
+    extraction_diagnostics = price_source_extraction_diagnostics(
+        result,
+        text_layer_strategy=text_layer.strategy,
+        text_layer_characters=len(text_layer.text),
+        ocr_pages=len((text_layer.ocr_package or {}).get("pages") or []),
+    )
     if usage_event:
+        raw_usage = dict(usage_event.get("raw_usage") or {})
+        raw_usage["price_source_extraction"] = extraction_diagnostics
+        usage_event["raw_usage"] = raw_usage
         usage_started = time.perf_counter()
         try:
             insert_agent_usage_event(client, usage_event)
         except Exception:
             logger.exception("Price source agent usage persistence failed")
         _emit_duration(trace, "server.price_source_usage_persist", usage_started)
+    if not result.get("rows"):
+        _emit_marker(trace, "server.price_source_agent_zero_rows", **extraction_diagnostics)
+        raise PriceSourceError(
+            "No priced rows were extracted from this source. "
+            "The OCR and agent diagnostics were saved for analysis."
+        )
     previous_revision, source_revision = _find_previous_source_revision(
         client,
         company_id,
