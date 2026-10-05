@@ -51,9 +51,7 @@ instructions.
    Use 0 for unknown numeric attributes and an empty string for unknown text
    attributes. Never infer that a bare dimension is millimeters.
 7. Normalize a price only when the conversion is fully supported by the source.
-8. Keep operation_service and non_material rows as excluded evidence. This
-   includes subtotal, VAT or tax total, grand total, and amount due. They must
-   never create a material or material price.
+8. Keep non_material rows as excluded evidence. This includes subtotal, VAT or tax total, grand total, and amount due. An operation_service never creates a material or material price, but a positively priced service remains ready for the server to map into the supplier work catalog.
 9. Mark ambiguous material rows unresolved. Never invent a unit, package size, dimension,
    price, discount, supplier, document number, SKU, material type, or conversion.
 
@@ -152,8 +150,9 @@ conversion_basis. If any required value is missing, use status unresolved.
   price is VAT included, VAT excluded, mixed, or unknown. A document-level VAT or
   tax total row is excluded, but the presence of that row must not alter item prices.
 - Supplier invoices commonly show line prices excluding VAT and add VAT after
-  the subtotal. Use excluded only when labels or document arithmetic support
-  that conclusion. Never assume excluded merely because it is common.
+  the subtotal. When explicit subtotal, VAT and total reconcile, use excluded
+  for otherwise-unknown line VAT. For a supplier webpage, use included when no
+  tax treatment is stated. Never override explicit source evidence.
 - Reconcile subtotal + VAT = total when all three values are explicit. A
   mismatch must reduce confidence and add a reason code; do not repair evidence.
 - A usable material unit price is always positive. Preserve negative credit or

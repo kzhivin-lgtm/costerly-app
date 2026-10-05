@@ -211,16 +211,42 @@ def normalize_price_source_confidence_scale(result: dict[str, Any]) -> dict[str,
     return result
 
 
+def apply_price_source_document_defaults(
+    result: dict[str, Any], *, source_kind: str,
+) -> dict[str, Any]:
+    """Apply the approved Israeli currency and VAT defaults to missing evidence."""
+    currency = str(result.get("currency") or "").strip().upper() or "ILS"
+    result["currency"] = currency
+    rows = [row for row in result.get("rows") or [] if isinstance(row, dict)]
+    for row in rows:
+        if not str(row.get("raw_currency") or "").strip():
+            row["raw_currency"] = currency
+    subtotal, vat_amount, total = (
+        result.get("document_subtotal"), result.get("document_vat_amount"), result.get("document_total"),
+    )
+    reconciles = all(isinstance(value, (int, float)) and value > 0 for value in (subtotal, vat_amount, total)) and abs((float(subtotal) + float(vat_amount)) - float(total)) <= max(0.02, abs(float(total)) * 0.005)
+    invoice_excludes_vat = result.get("document_type") in {"invoice", "tax_invoice"} and reconciles
+    website_includes_vat = source_kind == "url" and result.get("source_origin") == "supplier" and result.get("vat_mode") == "unknown"
+    if invoice_excludes_vat and result.get("vat_mode") == "unknown":
+        result["vat_mode"] = "excluded"
+    elif website_includes_vat:
+        result["vat_mode"] = "included"
+    for row in rows:
+        if row.get("raw_vat_mode") != "unknown":
+            continue
+        if invoice_excludes_vat:
+            row["raw_vat_mode"] = "excluded"
+            row["reason_codes"] = sorted(set(row.get("reason_codes") or []) | {"vat_inferred_from_document_total"})
+        elif website_includes_vat:
+            row["raw_vat_mode"] = "included"
+            row["reason_codes"] = sorted(set(row.get("reason_codes") or []) | {"vat_inferred_for_supplier_website"})
+    return result
+
+
 def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
     """Keep rows with missing critical pricing evidence out of active pricing."""
     for row in result.get("rows") or []:
         if not isinstance(row, dict) or row.get("status") != "ready":
-            continue
-        if row.get("item_kind") == "operation_service":
-            row["status"] = "excluded"
-            row["reason_codes"] = sorted(
-                set((row.get("reason_codes") or []) + ["operation_service_not_material"])
-            )
             continue
         if row.get("item_kind") == "non_material":
             row["status"] = "excluded"
@@ -239,7 +265,7 @@ def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
             blockers.append("vat_basis_unknown")
         package_quantity = row.get("raw_package_quantity")
         conversion_factor = row.get("conversion_factor")
-        if (
+        if row.get("item_kind") == "material" and (
             isinstance(package_quantity, (int, float))
             and package_quantity > 1
             and row.get("purchase_unit") == row.get("calculation_unit")
@@ -375,8 +401,8 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
             if row[key] < 0 and row["status"] != "excluded":
                 raise PriceSourceSchemaError(f"negative {key} must be excluded")
         if row["status"] == "ready":
-            if row["item_kind"] != "material":
-                raise PriceSourceSchemaError("only material rows may be ready")
+            if row["item_kind"] not in {"material", "operation_service"}:
+                raise PriceSourceSchemaError("only material or operation-service rows may be ready")
             if not str(row["normalized_name"]).strip():
                 raise PriceSourceSchemaError("ready row requires a normalized name")
             if row["normalized_price"] <= 0:

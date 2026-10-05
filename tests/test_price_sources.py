@@ -12,6 +12,7 @@ from openpyxl import Workbook
 from PIL import Image
 
 from agents.schemas.price_source_schema import (
+    apply_price_source_document_defaults,
     PriceSourceSchemaError,
     guard_price_source_document_totals,
     guard_price_source_row_activation,
@@ -21,6 +22,8 @@ from agents.schemas.price_source_schema import (
 )
 from agents.price_source_agent import PRICE_SOURCE_MAX_OUTPUT_TOKENS
 from use_cases.price_sources import (
+    discard_price_source_consumables,
+    prepare_price_source_operation_rows,
     PriceSourceError,
     PRICE_CATALOG_DEPARTMENTS,
     _VisibleTextParser,
@@ -43,6 +46,7 @@ from use_cases.price_sources import (
     price_source_material_types,
     price_source_family_identity,
     price_source_semantic_fingerprint,
+    supplier_service_pricing_basis,
     price_source_template_fingerprint,
     price_offer_matches_row,
     price_offer_lane_key,
@@ -395,7 +399,7 @@ def test_price_source_schema_accepts_evidenced_unit_conversion():
     assert validate_price_source_result(result) is result
 
 
-def test_operation_service_is_preserved_as_excluded_evidence():
+def test_operation_service_remains_ready_for_the_supplier_work_catalog():
     result = _result()
     row = result["rows"][0]
     row["item_kind"] = "operation_service"
@@ -403,9 +407,50 @@ def test_operation_service_is_preserved_as_excluded_evidence():
 
     guarded = guard_price_source_row_activation(result)
 
-    assert guarded["rows"][0]["status"] == "excluded"
-    assert "operation_service_not_material" in guarded["rows"][0]["reason_codes"]
+    assert guarded["rows"][0]["status"] == "ready"
     assert validate_price_source_result(guarded) is guarded
+
+
+def test_document_vat_and_currency_defaults_apply_without_manual_source_gate():
+    result = _result()
+    result.update({
+        "currency": "",
+        "vat_mode": "unknown",
+        "document_type": "tax_invoice",
+        "document_subtotal": 100,
+        "document_vat_amount": 18,
+        "document_total": 118,
+    })
+    result["rows"][0]["raw_currency"] = ""
+    result["rows"][0]["raw_vat_mode"] = "unknown"
+
+    prepared = apply_price_source_document_defaults(result, source_kind="file")
+
+    assert prepared["currency"] == "ILS"
+    assert prepared["vat_mode"] == "excluded"
+    assert prepared["rows"][0]["raw_currency"] == "ILS"
+    assert prepared["rows"][0]["raw_vat_mode"] == "excluded"
+
+
+def test_consumables_are_discarded_and_supplier_services_map_before_persistence():
+    consumable = _result()["rows"][0]
+    consumable["raw_description"] = "Wood screws 4x40"
+    service = _result()["rows"][0]
+    service.update({
+        "source_row_number": 2,
+        "item_kind": "operation_service",
+        "raw_description": "פס חיתוך + קנט",
+        "normalized_name": "Cut and edge banding",
+        "material_family": "supplier processing",
+    })
+    result = _result()
+    result["rows"] = [consumable, service]
+
+    assert discard_price_source_consumables(result) == 1
+    assert prepare_price_source_operation_rows(result) == {2: "supplier_cut_and_edge_banding"}
+    assert supplier_service_pricing_basis("") == "supplier_defined"
+    assert supplier_service_pricing_basis("m") == "linear_meter"
+    assert supplier_service_pricing_basis("m2") == "square_meter"
 
 
 def test_identity_attributes_require_the_fixed_contract():

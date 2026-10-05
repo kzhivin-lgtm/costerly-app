@@ -82,10 +82,81 @@ LEGACY_PRICE_SOURCE_CATEGORIES = {
     "Abrasives and Sanding": "Coating Supplies",
 }
 PRICE_CATALOG_DEPARTMENT_ORDER = {"Wood": 0, "Metal": 1, "Finishing": 2}
+_CONSUMABLE_MARKERS = (
+    "screw", "screws", "fastener", "dowel", "dowels", "lamello", "biscuit",
+    "glue", "adhesive", "sandpaper", "abrasive", "ברג", "דיבל", "למלו", "דבק",
+    "נייר לטש", "נייר שיוף", "שוחק",
+)
 
 
 class PriceSourceError(ValueError):
     pass
+
+
+def discard_price_source_consumables(result: dict[str, Any]) -> int:
+    """Discard low-value consumables before any private row or offer is stored."""
+    retained: list[dict[str, Any]] = []
+    discarded = 0
+    for row in result.get("rows") or []:
+        text = " ".join(str(row.get(key) or "") for key in ("raw_description", "normalized_name", "material_family")).casefold()
+        if row.get("item_kind") == "material" and any(marker in text for marker in _CONSUMABLE_MARKERS):
+            discarded += 1
+            continue
+        retained.append(row)
+    result["rows"] = retained
+    return discarded
+
+
+def price_source_service_operation_code(row: Mapping[str, Any]) -> str | None:
+    """Map an extracted supplier service to an existing reference operation."""
+    text = " ".join(str(row.get(key) or "") for key in ("raw_description", "normalized_name", "material_family")).casefold()
+    if ("חיתוך" in text or "cut" in text) and ("קנט" in text or "edge" in text):
+        return "supplier_cut_and_edge_banding"
+    for markers, code in (
+        (("קנט", "edge"), "edge_banding"),
+        (("חיתוך", "cut"), "panel_saw_cutting"),
+        (("כרסום", "cnc", "router"), "cnc_router_profile_cutting"),
+        (("קידוח", "drill"), "cnc_vertical_drilling"),
+        (("חריץ", "groove", "dado"), "cnc_grooving"),
+        (("הרכב", "assembly"), "carcass_assembly"),
+    ):
+        if any(marker in text for marker in markers):
+            return code
+    return None
+
+
+def prepare_price_source_operation_rows(result: dict[str, Any]) -> dict[int, str]:
+    """Retain only safely normalised supplier services for operation-offer storage."""
+    mapped: dict[int, str] = {}
+    for row in result.get("rows") or []:
+        if row.get("item_kind") != "operation_service":
+            continue
+        code = price_source_service_operation_code(row)
+        if code and row.get("status") == "ready" and float(row.get("raw_price") or 0) > 0:
+            mapped[int(row["source_row_number"])] = code
+            continue
+        if row.get("status") != "excluded":
+            row["status"] = "unresolved"
+            row["reason_codes"] = sorted(set(row.get("reason_codes") or []) | {"operation_type_unresolved"})
+    return mapped
+
+
+def supplier_service_pricing_basis(raw_unit: object) -> str:
+    """Return a billing basis only when the source unit actually proves one."""
+    unit = _normalized_name(str(raw_unit or ""))
+    if unit in {"m", "meter", "metre", "linear m", "linear meter"}:
+        return "linear_meter"
+    if unit in {"m2", "sqm", "square meter", "square metre"}:
+        return "square_meter"
+    if unit in {"sheet", "panel", "board"}:
+        return "sheet"
+    if unit in {"hour", "hr"}:
+        return "hour"
+    if unit in {"job", "order"}:
+        return "job"
+    if unit in {"piece", "pc", "unit", "each"}:
+        return "piece"
+    return "supplier_defined"
 
 
 @dataclass(frozen=True)
@@ -1949,11 +2020,14 @@ def process_price_source(
         company_id=company_id,
         department=department,
         source_name=source_name,
+        source_kind=source_kind,
         source_bytes=source_bytes if suffix in {".pdf", ".jpg", ".jpeg", ".png"} else None,
         extracted_text=extracted_text,
         import_id=source_id,
         trace=trace,
     )
+    discarded_consumables = discard_price_source_consumables(result)
+    operation_code_by_row_number = prepare_price_source_operation_rows(result)
     guard_price_source_department(result, department)
     material_types = price_source_material_types(result)
     category = material_types[0] if len(material_types) == 1 else "Mixed"
@@ -2060,6 +2134,8 @@ def process_price_source(
             "unchanged": 0,
             "unresolved": unresolved_count,
             "excluded": excluded_count,
+            "discarded_consumables": discarded_consumables,
+            "operation_services": len(operation_code_by_row_number),
             "total": len(result["rows"]),
             "document_number": result["document_number"],
             "source_origin": result["source_origin"],
@@ -2090,6 +2166,7 @@ def process_price_source(
                 "source_id": source_id,
                 "company_id": company_id,
                 "supplier_id": supplier_id,
+                "source_supplier_name": supplier_name or None,
                 "category": category,
                 "source_kind": source_kind,
                 "source_name": source_name,
@@ -2108,6 +2185,30 @@ def process_price_source(
             }
         ).execute()
         _emit_duration(trace, "server.price_source_database_source_record", source_record_started)
+        if supplier_id and supplier_name:
+            client.table("company_supplier_aliases").upsert(
+                {
+                    "company_id": company_id,
+                    "supplier_id": supplier_id,
+                    "alias_name": supplier_name,
+                    "normalized_name": _normalized_name(supplier_name),
+                    "alias_kind": "source_observed",
+                    "source_id": source_id,
+                },
+                on_conflict="company_id,normalized_name",
+            ).execute()
+
+        operation_ids_by_code = {
+            str(row["operation_code"]): str(row["operation_id"])
+            for row in (
+                client.table("reference_operations")
+                .select("operation_id,operation_code")
+                .in_("operation_code", sorted(set(operation_code_by_row_number.values())))
+                .execute().data or []
+            )
+        } if operation_code_by_row_number else {}
+        if set(operation_code_by_row_number.values()) - set(operation_ids_by_code):
+            raise RuntimeError("Prepared supplier operation is missing from the reference catalog")
 
         offer_index_started = time.perf_counter()
         active_offers = (
@@ -2172,7 +2273,7 @@ def process_price_source(
                 _normalized_name(row["normalized_name"]),
             )
             for row in result["rows"]
-            if row["status"] == "ready"
+            if row["status"] == "ready" and row["item_kind"] == "material"
         }
         ready_material_names = sorted({name for _, name in ready_material_keys})
         existing_material_rows = (
@@ -2195,7 +2296,7 @@ def process_price_source(
 
         new_material_payloads: list[dict] = []
         for row in result["rows"]:
-            if row["status"] != "ready":
+            if row["status"] != "ready" or row["item_kind"] != "material":
                 continue
             key = (
                 canonical_price_source_category(str(row["material_type"])),
@@ -2247,12 +2348,15 @@ def process_price_source(
         rows_apply_started = time.perf_counter()
         source_row_payloads: list[dict[str, Any]] = []
         offer_intents: list[dict[str, Any]] = []
+        operation_offer_intents: list[dict[str, Any]] = []
         prior_offer_ids_to_supersede: set[str] = set()
         for row in result["rows"]:
             row_category = canonical_price_source_category(str(row["material_type"]))
             material_id = None
             result_status = row["status"]
-            if result_status == "ready":
+            operation_code = operation_code_by_row_number.get(int(row["source_row_number"]))
+            operation_id = operation_ids_by_code.get(operation_code or "")
+            if result_status == "ready" and row["item_kind"] == "material":
                 normalized = _normalized_name(row["normalized_name"])
                 sku = _normalized_name(str(row.get("raw_sku") or ""))
                 sku_offers = offers_by_sku.get((current_lane, sku), []) if sku else []
@@ -2287,6 +2391,8 @@ def process_price_source(
                             new_count += 1
                 else:
                     raise RuntimeError("Prepared company material was not available")
+            elif result_status == "ready" and operation_id:
+                result_status = "new"
 
             source_row_payloads.append(
                 {
@@ -2310,6 +2416,8 @@ def process_price_source(
                     "normalized_unit": row["calculation_unit"] or None,
                     "conversion_basis": {"description": row["conversion_basis"]},
                     "company_material_id": material_id,
+                    "row_kind": "operation_service" if operation_id else "material" if row["item_kind"] == "material" else "non_catalog",
+                    "reference_operation_id": operation_id,
                     "result_status": "updated" if result_status == "unchanged" else result_status,
                     "confidence": row["confidence"],
                     "reason_codes": row["reason_codes"],
@@ -2362,6 +2470,23 @@ def process_price_source(
                 offers_by_identity[identity] = [pending_offer]
                 if sku:
                     offers_by_sku[(current_lane, sku)] = [pending_offer]
+            elif operation_id and result_status == "new":
+                operation_offer_intents.append(
+                    {
+                        "source_row_number": row["source_row_number"],
+                        "operation_id": operation_id,
+                        "raw_service_name": row["raw_description"] or row["normalized_name"],
+                        "supplier_sku": row["raw_sku"] or None,
+                        "source_price": row["raw_price"],
+                        "pricing_basis": supplier_service_pricing_basis(row.get("raw_unit")),
+                        "source_unit_label": row["raw_unit"] or None,
+                        "currency": row["raw_currency"] or result["currency"],
+                        "vat_included": True if row["raw_vat_mode"] == "included" else False if row["raw_vat_mode"] == "excluded" else None,
+                        "valid_from": _date_or_none(result["document_date"]),
+                        "confidence": row["confidence"],
+                        "evidence": {"reference": row["evidence_reference"], "operation_code": operation_code},
+                    }
+                )
 
         inserted_rows = (
             client.table("company_price_source_rows").insert(source_row_payloads).execute().data
@@ -2391,6 +2516,20 @@ def process_price_source(
             offer_payloads.append(payload)
         if offer_payloads:
             client.table("company_material_offers").insert(offer_payloads).execute()
+
+        operation_offer_payloads = []
+        for intent in operation_offer_intents:
+            payload = dict(intent)
+            payload["source_row_id"] = row_id_by_number[str(payload.pop("source_row_number"))]
+            payload.update({
+                "company_id": company_id,
+                "supplier_id": supplier_id,
+                "source_id": source_id,
+                "status": "active",
+            })
+            operation_offer_payloads.append(payload)
+        if operation_offer_payloads:
+            client.table("company_supplier_operation_offers").insert(operation_offer_payloads).execute()
 
         _emit_duration(
             trace,

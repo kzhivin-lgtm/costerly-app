@@ -17,6 +17,7 @@ from agents.anthropic_adapter import (
 from agents.prompt_loader import load_price_source_agent_prompt
 from agents.schemas.price_source_schema import (
     PRICE_SOURCE_RESULT_JSON_SCHEMA,
+    apply_price_source_document_defaults,
     guard_price_source_document_totals,
     guard_price_source_row_activation,
     normalize_price_source_confidence_scale,
@@ -34,6 +35,7 @@ def run_price_source_agent(
     company_id: str,
     department: str,
     source_name: str,
+    source_kind: str = "file",
     source_bytes: bytes | None = None,
     extracted_text: str = "",
     import_id: str | None = None,
@@ -97,7 +99,9 @@ def run_price_source_agent(
         guard_price_source_document_totals(
             reconcile_price_source_arithmetic(
                 guard_price_source_row_activation(
-                    normalize_price_source_confidence_scale(result)
+                    apply_price_source_document_defaults(
+                        normalize_price_source_confidence_scale(result), source_kind=source_kind
+                    )
                 )
             )
         )
