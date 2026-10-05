@@ -3826,7 +3826,7 @@ def install_price_source_processing_guard() -> None:
                 }
             }
 
-            function showLiveProgress(card) {
+            function showLiveProgress(card, startedAtMs) {
                 removeLiveProgress(card);
                 const progress = parentDoc.createElement("div");
                 progress.className = "price-source-live-progress";
@@ -3841,9 +3841,15 @@ def install_price_source_processing_guard() -> None:
                     card.appendChild(progress);
                 }
                 const elapsed = progress.querySelector(".price-source-live-progress-time");
-                const startedAt = Date.now();
+                const startedAt = Number(startedAtMs) || Date.now();
+                const updateElapsed = () => {
+                    if (elapsed) {
+                        elapsed.textContent = `${Math.max(0, Math.floor((Date.now() - startedAt) / 1000))} s elapsed`;
+                    }
+                };
+                updateElapsed();
                 card._costerlyPriceSourceTimer = parentWindow.setInterval(() => {
-                    if (elapsed) elapsed.textContent = `${Math.floor((Date.now() - startedAt) / 1000)} s elapsed`;
+                    updateElapsed();
                 }, 1000);
             }
 
@@ -3858,7 +3864,10 @@ def install_price_source_processing_guard() -> None:
                     if (!completeMarker && processingMarker) {
                         card.classList.add("costerly-price-source-processing");
                         if (!card.querySelector(".price-source-live-progress")) {
-                            showLiveProgress(card);
+                            showLiveProgress(
+                                card,
+                                processingMarker.dataset.startedAtMs
+                            );
                         }
                         return;
                     }
@@ -3898,7 +3907,7 @@ def install_price_source_processing_guard() -> None:
                     ? completeMarker.dataset.processingCycle || ""
                     : "";
                 card.classList.add("costerly-price-source-processing");
-                showLiveProgress(card);
+                showLiveProgress(card, Date.now());
                 button.disabled = true;
                 button.setAttribute("aria-disabled", "true");
                 const label = button.querySelector("p");

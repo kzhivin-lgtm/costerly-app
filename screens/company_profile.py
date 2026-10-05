@@ -2928,6 +2928,7 @@ def _queue_price_source_processing(
         "future": future,
         "processing_cycle": processing_cycle,
         "user_cycle_started_at": time.perf_counter(),
+        "user_cycle_started_at_epoch_ms": int(time.time() * 1000),
     }
     st.session_state._price_source_processing = True
     st.session_state.pop("_price_source_error", None)
@@ -2973,16 +2974,16 @@ def _price_source_notice_text(source: dict | None) -> str:
     elif has_diff_counts:
         parts = [
             f'{total} {"row" if total == 1 else "rows"} extracted',
-            f"{new} new",
+            f"{new} recorded",
             f"{updated} updated",
-            f"{unchanged} unchanged",
-            f"{unresolved} unresolved",
+            f"{unchanged} already in catalog",
+            f"{unresolved} review",
         ]
     else:
         parts = [
             f'{total} {"row" if total == 1 else "rows"} extracted',
-            f"{ready} active",
-            f"{unresolved} unresolved",
+            f"{ready} recorded",
+            f"{unresolved} review",
         ]
     if excluded:
         parts.append(f"{excluded} excluded")
@@ -2996,7 +2997,12 @@ def _price_source_notice_text(source: dict | None) -> str:
     return " · ".join(parts)
 
 
-def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
+def _render_price_source_add(
+    access: CompanyAccess,
+    *,
+    trace=None,
+    cycle_result: dict | None = None,
+) -> None:
     processing = bool(st.session_state.get("_price_source_processing"))
     processing_cycle = int(
         st.session_state.get("_price_source_processing_cycle") or 0
@@ -3052,9 +3058,14 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     args=(url_key,),
                 )
                 if processing:
+                    pending = st.session_state.get("_price_source_pending") or {}
+                    started_at_ms = int(
+                        pending.get("user_cycle_started_at_epoch_ms") or 0
+                    )
                     st.markdown(
                         '<span class="price-source-processing-marker" '
-                        f'data-processing-cycle="{processing_cycle}"></span>',
+                        f'data-processing-cycle="{processing_cycle}" '
+                        f'data-started-at-ms="{started_at_ms}"></span>',
                         unsafe_allow_html=True,
                     )
                 else:
@@ -3074,6 +3085,8 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     args=(access, uploader_key, url_key),
                 )
                 install_price_source_processing_guard()
+        if cycle_result:
+            _render_price_source_cycle_result(_price_source_notice_text(cycle_result))
 
 def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     if not st.session_state.get("_price_source_processing"):
@@ -3145,7 +3158,7 @@ def _render_price_source_cycle_result(message: str) -> None:
     """Keep the terminal extraction result directly below the upload controls."""
     st.markdown(
         '<div class="price-lists-toast price-lists-toast-result price-source-cycle-result" '
-        'data-duration-ms="10000"><span>'
+        'data-duration-ms="0"><span>'
         + escape(message)
         + '</span><button type="button" aria-label="Dismiss">×</button></div>',
         unsafe_allow_html=True,
@@ -3172,26 +3185,25 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         st.info("Price Sources storage is not configured yet.")
         return
 
-    _render_price_source_add(access, trace=trace)
+    # Keep the dashboard in the upload card, so it cannot leave a detached
+    # blank region after the processing marker is removed.
+    notice_result = st.session_state.get("_price_source_notice")
+    if isinstance(notice_result, dict):
+        cycle_result = notice_result
+    elif notice_result:
+        cycle_result = next(
+            (
+                source
+                for source in sources
+                if str(source.get("source_id")) == str(notice_result)
+            ),
+            None,
+        )
+    else:
+        cycle_result = None
+    _render_price_source_add(access, trace=trace, cycle_result=cycle_result)
     _render_price_source_processing_status(access)
 
-    # Keep the terminal result visible until the next Extract attempt replaces it.
-    # A transient notice can otherwise disappear on the uploader-key rerun and
-    # leave an exact or renamed duplicate looking like a silent no-op.
-    notice_result = st.session_state.get("_price_source_notice")
-    if notice_result:
-        if isinstance(notice_result, dict) and notice_result.get("summary") is not None:
-            notice_source = notice_result
-        else:
-            notice_source = next(
-                (
-                    source
-                    for source in sources
-                    if str(source.get("source_id")) == str(notice_result)
-                ),
-                None,
-            )
-        _render_price_source_cycle_result(_price_source_notice_text(notice_source))
     error = st.session_state.pop("_price_source_error", None)
     if error:
         st.error(error)

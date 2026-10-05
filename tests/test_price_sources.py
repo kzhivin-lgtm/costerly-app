@@ -55,6 +55,8 @@ from use_cases.price_sources import (
     supplier_merge_max_distance,
     price_source_template_fingerprint,
     price_offer_matches_row,
+    material_offer_matches_extracted_row,
+    supplier_operation_offer_matches_row,
     price_offer_lane_key,
     price_source_supplier_name,
     remove_price_source_row,
@@ -487,7 +489,7 @@ def test_supplier_merge_ignores_legal_forms_and_uses_unique_length_scaled_match(
 
     assert supplier_merge_key("Ёлочка בע\"מ") == supplier_merge_key("ООО Ёлочка")
     assert supplier_merge_max_distance(5) == 1
-    assert supplier_merge_max_distance(9) == 3
+    assert supplier_merge_max_distance(9) == 4
     assert match_existing_supplier("Елочкa", candidates)["supplier_id"] == "a"
 
 
@@ -525,20 +527,61 @@ def test_mixed_confidence_scales_are_rejected():
         normalize_price_source_confidence_scale(result)
 
 
-def test_ambiguous_package_to_unit_conversion_cannot_activate():
+def test_line_quantity_does_not_block_a_proven_sheet_price():
     result = _result(confidence=95)
     row = result["rows"][0]
     row["raw_package_quantity"] = 25
-    row["purchase_unit"] = "ml"
-    row["calculation_unit"] = "ml"
+    row["purchase_unit"] = "sheet"
+    row["calculation_unit"] = "sheet"
     row["conversion_factor"] = 1
     row["normalized_price"] = row["raw_price"]
 
     guarded = guard_price_source_row_activation(result)
 
-    assert guarded["rows"][0]["status"] == "unresolved"
-    assert "package_conversion_unresolved" in guarded["rows"][0]["reason_codes"]
+    assert guarded["rows"][0]["status"] == "ready"
+    assert "package_conversion_unresolved" not in guarded["rows"][0]["reason_codes"]
     assert validate_price_source_result(guarded) is guarded
+
+
+def test_supplier_operation_offer_comparison_ignores_raw_service_spelling():
+    row = _result(confidence=95)["rows"][0]
+    row.update({"raw_price": 17.5, "raw_unit": "piece", "raw_currency": "ILS"})
+    offer = {
+        "source_price": 17.5,
+        "pricing_basis": "supplier_defined",
+        "source_unit_label": "piece",
+        "currency": "ILS",
+        "vat_included": False,
+    }
+
+    assert supplier_operation_offer_matches_row(
+        offer, row, pricing_basis="supplier_defined", default_currency="ILS"
+    )
+
+
+def test_material_offer_comparison_reuses_sheet_despite_line_quantity_words():
+    row = _result(confidence=95)["rows"][0]
+    row.update(
+        {
+            "normalized_name": "Plywood Twin 17mm Split ×2",
+            "material_family": "Plywood",
+            "raw_price": 110,
+            "raw_unit": "sheet",
+            "raw_currency": "ILS",
+            "identity_attributes": {
+                **row["identity_attributes"],
+                "thickness_mm": 17,
+                "width_mm": 0,
+                "length_mm": 0,
+            },
+        }
+    )
+    offer = {"source_price": 110, "source_unit": "sheet", "currency": "ILS", "vat_included": False}
+    material = {"canonical_name": "Plywood Twin 17 mm × 3100 mm"}
+
+    assert material_offer_matches_extracted_row(
+        offer, material, row, default_currency="ILS"
+    )
 
 
 def test_unknown_vat_basis_cannot_activate():
@@ -1052,7 +1095,7 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "completedCycle === startedCycle" in source
     assert "new MutationObserver(resetCompletedState)" in source
     assert "observer.disconnect()" in source
-    assert "function showLiveProgress(card)" in source
+    assert "function showLiveProgress(card, startedAtMs)" in source
     assert "function removeLiveProgress(card)" in source
     assert "!completeMarker && processingMarker" in source
 

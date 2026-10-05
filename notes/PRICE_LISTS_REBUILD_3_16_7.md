@@ -98,6 +98,13 @@ restart still cancels it. The UI reports only the truthful active state
 (`Extracting prices` plus elapsed time), rather than invented processing
 phases. Production acceptance with a real uploaded PDF remains required.
 
+For invoice rows, a line quantity is not a package-conversion blocker. A
+proven `sheet -> sheet` factor of one is active even when the invoice lists
+two or more sheets. Repeated material rows reuse an existing catalog offer
+only when supplier lane, price, unit, VAT, material family, and available
+structural dimensions agree. Supplier jobs reuse the existing offer by
+canonical operation, supplier lane and price basis, never by raw OCR wording.
+
 Remaining work includes durable server jobs with confirmed processing phases,
 the Material Jobs resolver, and production acceptance of asynchronous editing.
 

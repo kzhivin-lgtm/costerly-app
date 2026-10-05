@@ -1484,8 +1484,8 @@ def test_price_source_notice_exposes_all_rows_status_time_and_tc():
     )
 
     assert notice == (
-        "10 rows extracted · 2 new · 1 updated · 5 unchanged · "
-        "2 unresolved · Agent 13.8 s · TC 0.015"
+        "10 rows extracted · 2 recorded · 1 updated · 5 already in catalog · "
+        "2 review · Agent 13.8 s · TC 0.015"
     )
 
 
@@ -1539,13 +1539,14 @@ def test_price_source_notice_exposes_full_user_cycle_duration():
         }
     )
 
-    assert notice == "1 row extracted · 1 active · 0 unresolved · Agent 13.8 s · Full cycle 17.2 s · TC 0.015"
+    assert notice == "1 row extracted · 1 recorded · 0 review · Agent 13.8 s · Full cycle 17.2 s · TC 0.015"
 
 
 def test_price_source_result_notice_persists_until_the_next_extract_attempt():
     source = inspect.getsource(company_profile._render_price_lists)
 
     assert 'st.session_state.get("_price_source_notice")' in source
+    assert "cycle_result=cycle_result" in source
     assert 'st.session_state.pop("_price_source_notice", None)' not in source
 
 

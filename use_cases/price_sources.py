@@ -207,7 +207,11 @@ def supplier_merge_max_distance(core_length: int) -> int:
     """Allow proportionate OCR variance, but keep short names conservative."""
     if core_length <= 5:
         return 1
-    return max(1, round(core_length * 0.30))
+    # Supplier names in invoices often arrive through OCR. Once the meaningful
+    # core is long enough, favour one unique close candidate over creating a
+    # duplicate supplier that splits its price history. Ties are still refused
+    # by ``match_existing_supplier`` below.
+    return max(1, round(core_length * 0.45))
 
 
 def _damerau_levenshtein(left: str, right: str) -> int:
@@ -640,6 +644,85 @@ def price_offer_matches_row(
             offer.get("vat_included") is vat_included,
         )
     )
+
+
+def supplier_operation_offer_matches_row(
+    offer: Mapping[str, Any],
+    row: Mapping[str, Any],
+    *,
+    pricing_basis: str,
+    default_currency: str = "",
+) -> bool:
+    """Compare one supplier job without treating its raw wording as identity."""
+    vat_included = (
+        True if row.get("raw_vat_mode") == "included"
+        else False if row.get("raw_vat_mode") == "excluded" else None
+    )
+    return all(
+        (
+            _decimal_equal(offer.get("source_price"), row.get("raw_price"), "0.0001"),
+            str(offer.get("pricing_basis") or "") == pricing_basis,
+            _normalized_unit(str(offer.get("source_unit_label") or ""))
+            == _normalized_unit(str(row.get("raw_unit") or "")),
+            str(offer.get("currency") or "").strip().upper()
+            == str(row.get("raw_currency") or default_currency or "").strip().upper(),
+            offer.get("vat_included") is vat_included,
+        )
+    )
+
+
+def material_offer_matches_extracted_row(
+    offer: Mapping[str, Any],
+    material: Mapping[str, Any],
+    row: Mapping[str, Any],
+    *,
+    default_currency: str = "",
+) -> bool:
+    """Recognise a repeat material despite invoice-only wording differences.
+
+    This is deliberately narrower than an open-ended fuzzy material merge. It
+    needs the same supplier-lane price, source unit, VAT basis, material family
+    and every available structural size. Extra invoice words such as colour,
+    line quantity or "split" cannot make a second company material.
+    """
+    if not _decimal_equal(offer.get("source_price"), row.get("raw_price"), "0.0001"):
+        return False
+    if _normalized_unit(str(offer.get("source_unit") or "")) != _normalized_unit(
+        str(row.get("raw_unit") or "")
+    ):
+        return False
+    currency = str(row.get("raw_currency") or default_currency or "").strip().upper()
+    if str(offer.get("currency") or "").strip().upper() != currency:
+        return False
+    vat_included = (
+        True if row.get("raw_vat_mode") == "included"
+        else False if row.get("raw_vat_mode") == "excluded" else None
+    )
+    if offer.get("vat_included") is not vat_included:
+        return False
+
+    evidence = row.get("identity_attributes") or {}
+    if not evidence and isinstance(row.get("evidence"), Mapping):
+        evidence = (row.get("evidence") or {}).get("identity_attributes") or {}
+    family = _normalized_name(str(row.get("material_family") or ""))
+    material_name = _normalized_name(
+        str(material.get("canonical_name") or material.get("normalized_name") or "")
+    )
+    if not family or family not in material_name:
+        return False
+
+    material_numbers = {
+        int(value)
+        for value in re.findall(r"\d+(?:\.0+)?", material_name)
+    }
+    for field in ("thickness_mm", "width_mm", "length_mm", "diameter_mm"):
+        try:
+            value = float(evidence.get(field) or 0)
+        except (TypeError, ValueError):
+            return False
+        if value > 0 and int(value) not in material_numbers:
+            return False
+    return True
 
 
 def price_offer_lane_key(
@@ -2417,6 +2500,18 @@ def process_price_source(
             str(candidate.get("source_id") or ""): candidate
             for candidate in offer_sources
         }
+        active_operation_offers = (
+            client.table("company_supplier_operation_offers")
+            .select(
+                "operation_offer_id,operation_id,supplier_id,source_id,source_price,"
+                "pricing_basis,source_unit_label,currency,vat_included,status"
+            )
+            .eq("company_id", company_id)
+            .eq("status", "active")
+            .execute()
+            .data
+            or []
+        )
         current_lane = price_offer_lane_key(
             supplier_id=supplier_id,
             source_summary=source_summary,
@@ -2442,12 +2537,23 @@ def process_price_source(
                 offers_by_sku.setdefault((offer_lane, sku), []).append(
                     offer
                 )
+        operation_offers_by_identity: dict[tuple[str, str], list[dict]] = {}
+        for offer in active_operation_offers:
+            offer_source = source_by_id.get(str(offer.get("source_id") or ""), {})
+            offer_lane = price_offer_lane_key(
+                supplier_id=offer_source.get("supplier_id") or offer.get("supplier_id"),
+                source_summary=offer_source.get("processing_summary"),
+                source_id=offer.get("source_id"),
+            )
+            identity = (str(offer.get("operation_id") or ""), offer_lane)
+            operation_offers_by_identity.setdefault(identity, []).append(offer)
 
         _emit_duration(
             trace,
             "server.price_source_database_offer_index",
             offer_index_started,
             active_offers=len(active_offers),
+            active_operation_offers=len(active_operation_offers),
             source_count=len(offer_sources),
         )
 
@@ -2479,9 +2585,67 @@ def process_price_source(
             if key in ready_material_keys and key not in materials_by_key:
                 materials_by_key[key] = material
 
+        current_lane_material_ids = sorted(
+            {
+                str(offer.get("company_material_id") or "")
+                for identity, candidates in offers_by_identity.items()
+                if identity[1] == current_lane
+                for offer in candidates
+                if str(offer.get("company_material_id") or "")
+            }
+        )
+        current_lane_materials = (
+            client.table("company_material_items")
+            .select(
+                "company_material_id,status,category,canonical_name,normalized_name,specifications"
+            )
+            .eq("company_id", company_id)
+            .in_("company_material_id", current_lane_material_ids)
+            .execute()
+            .data
+            or []
+        ) if current_lane_material_ids else []
+        material_by_id = {
+            str(material.get("company_material_id")): material
+            for material in [*existing_material_rows, *current_lane_materials]
+            if material.get("company_material_id")
+        }
+        inferred_material_by_row_number: dict[int, dict] = {}
+        for row in result["rows"]:
+            if row["status"] != "ready" or row["item_kind"] != "material":
+                continue
+            candidates = []
+            for identity, offers in offers_by_identity.items():
+                if identity[1] != current_lane:
+                    continue
+                material = material_by_id.get(identity[0])
+                if not material or canonical_price_source_category(
+                    str(material.get("category") or "")
+                ) != canonical_price_source_category(str(row["material_type"])):
+                    continue
+                if any(
+                    material_offer_matches_extracted_row(
+                        offer,
+                        material,
+                        row,
+                        default_currency=str(result.get("currency") or ""),
+                    )
+                    for offer in offers
+                ):
+                    candidates.append(material)
+            unique_candidates = {
+                str(material["company_material_id"]): material for material in candidates
+            }
+            if len(unique_candidates) == 1:
+                inferred_material_by_row_number[int(row["source_row_number"])] = next(
+                    iter(unique_candidates.values())
+                )
+
         new_material_payloads: list[dict] = []
         for row in result["rows"]:
             if row["status"] != "ready" or row["item_kind"] != "material":
+                continue
+            if int(row["source_row_number"]) in inferred_material_by_row_number:
                 continue
             key = (
                 canonical_price_source_category(str(row["material_type"])),
@@ -2549,6 +2713,10 @@ def process_price_source(
                     [{"company_material_id": sku_offers[0]["company_material_id"]}]
                     if sku_offers
                     else [
+                        inferred_material_by_row_number[int(row["source_row_number"])]
+                    ]
+                    if int(row["source_row_number"]) in inferred_material_by_row_number
+                    else [
                         materials_by_key[(row_category, normalized)]
                     ] if (row_category, normalized) in materials_by_key else []
                 )
@@ -2577,7 +2745,25 @@ def process_price_source(
                 else:
                     raise RuntimeError("Prepared company material was not available")
             elif result_status == "ready" and operation_id:
-                result_status = "new"
+                pricing_basis = supplier_service_pricing_basis(
+                    row.get("raw_unit"), operation_code=operation_code
+                )
+                identity = (str(operation_id), current_lane)
+                matching_operation_offers = operation_offers_by_identity.get(identity, [])
+                if any(
+                    supplier_operation_offer_matches_row(
+                        offer,
+                        row,
+                        pricing_basis=pricing_basis,
+                        default_currency=str(result.get("currency") or ""),
+                    )
+                    for offer in matching_operation_offers
+                ):
+                    result_status = "unchanged"
+                    unchanged_count += 1
+                else:
+                    result_status = "new"
+                    new_count += 1
 
             source_row_payloads.append(
                 {
@@ -2656,6 +2842,9 @@ def process_price_source(
                 if sku:
                     offers_by_sku[(current_lane, sku)] = [pending_offer]
             elif operation_id and result_status == "new":
+                pricing_basis = supplier_service_pricing_basis(
+                    row.get("raw_unit"), operation_code=operation_code
+                )
                 operation_offer_intents.append(
                     {
                         "source_row_number": row["source_row_number"],
@@ -2663,9 +2852,7 @@ def process_price_source(
                         "raw_service_name": row["raw_description"] or row["normalized_name"],
                         "supplier_sku": row["raw_sku"] or None,
                         "source_price": row["raw_price"],
-                        "pricing_basis": supplier_service_pricing_basis(
-                            row.get("raw_unit"), operation_code=operation_code
-                        ),
+                        "pricing_basis": pricing_basis,
                         "source_unit_label": row["raw_unit"] or None,
                         "currency": row["raw_currency"] or result["currency"],
                         "vat_included": True if row["raw_vat_mode"] == "included" else False if row["raw_vat_mode"] == "excluded" else None,
@@ -2674,6 +2861,18 @@ def process_price_source(
                         "evidence": {"reference": row["evidence_reference"], "operation_code": operation_code},
                     }
                 )
+                operation_offers_by_identity[(str(operation_id), current_lane)] = [
+                    {
+                        "source_price": row["raw_price"],
+                        "pricing_basis": pricing_basis,
+                        "source_unit_label": row["raw_unit"],
+                        "currency": row["raw_currency"] or result["currency"],
+                        "vat_included": (
+                            True if row["raw_vat_mode"] == "included"
+                            else False if row["raw_vat_mode"] == "excluded" else None
+                        ),
+                    }
+                ]
 
         inserted_rows = (
             client.table("company_price_source_rows").insert(source_row_payloads).execute().data

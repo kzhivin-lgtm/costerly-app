@@ -271,16 +271,12 @@ def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
             # proving its estimation unit. Keep it in Review instead of
             # allowing a later schema assertion to discard the whole source.
             blockers.append("missing_unit")
-        package_quantity = row.get("raw_package_quantity")
-        conversion_factor = row.get("conversion_factor")
-        if row.get("item_kind") == "material" and (
-            isinstance(package_quantity, (int, float))
-            and package_quantity > 1
-            and row.get("purchase_unit") == row.get("calculation_unit")
-            and isinstance(conversion_factor, (int, float))
-            and conversion_factor == 1
-        ):
-            blockers.append("package_conversion_unresolved")
+        # A quantity greater than one on an invoice is a line quantity, not
+        # evidence that the listed price is for an opaque package. When the
+        # document already proves the same canonical purchase and calculation
+        # unit with a factor of one, keep that row active. A real package that
+        # cannot be converted must instead arrive with an unknown unit or
+        # factor and is still routed to Review above.
         if blockers:
             row["status"] = "unresolved"
             row["reason_codes"] = sorted(
