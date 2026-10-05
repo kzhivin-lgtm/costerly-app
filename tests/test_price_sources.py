@@ -2033,6 +2033,15 @@ def test_price_source_processing_is_polled_by_a_dedicated_status_fragment():
     assert 'st.rerun(scope="app")' in source
 
 
+def test_price_source_failure_message_keeps_actionable_exception_detail_bounded():
+    from screens.company_profile import _price_source_failure_message
+
+    message = _price_source_failure_message(RuntimeError("upstream request failed"))
+
+    assert message == "Price extraction failed (RuntimeError): upstream request failed"
+    assert len(_price_source_failure_message(RuntimeError("x" * 400))) <= 330
+
+
 @pytest.mark.parametrize(
     "url",
     [

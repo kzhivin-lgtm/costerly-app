@@ -94,6 +94,14 @@ _PRICE_SOURCE_EXECUTOR = ThreadPoolExecutor(
 _PRICE_SOURCE_PROCESSING_LOCK = Lock()
 
 
+def _price_source_failure_message(error: Exception) -> str:
+    """Give the owner actionable extraction diagnostics without dumping a trace."""
+    detail = " ".join(str(error).split())[:280]
+    if not detail:
+        detail = "No error detail was returned."
+    return f"Price extraction failed ({type(error).__name__}): {detail}"
+
+
 PROFILE_COLUMNS = (
     "company_id,company_name,legal_name,legal_name_hebrew,"
     "company_registration_number,vat_file_number,public_email,public_phone,"
@@ -2987,11 +2995,9 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
         st.session_state._price_source_error = str(exc)
     except PermissionError:
         st.session_state._price_source_error = "Only the company owner can add price sources."
-    except Exception:
+    except Exception as exc:
         logger.exception("Price source processing failed")
-        st.session_state._price_source_error = (
-            "The price source could not be processed. Try again in a moment."
-        )
+        st.session_state._price_source_error = _price_source_failure_message(exc)
     else:
         _clear_price_lists_snapshot()
         st.session_state._price_source_uploader_version = uploader_version + 1
