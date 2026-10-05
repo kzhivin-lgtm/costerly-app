@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timezone
 import hashlib
 from html import escape
@@ -9,7 +8,6 @@ import json
 import logging
 from pathlib import Path
 import time
-from threading import Lock
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
@@ -17,7 +15,6 @@ import streamlit as st
 
 from db.company_access import assert_company_owner
 from db.supabase_client import get_supabase_client
-from agents.anthropic_adapter import get_secret as get_agent_secret
 from agents.schemas.price_source_schema import CANONICAL_UNIT_CODES, PRICE_SOURCE_CATEGORIES
 from styles.company_profile import apply_company_profile_css
 from styles.object_detail import apply_object_detail_css
@@ -82,16 +79,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-# One source extraction is deliberately allowed at a time. The lock rejects a
-# concurrent request instead of silently creating a queue, while the Future
-# keeps the Streamlit session free for Review and catalog edits.
-_PRICE_SOURCE_EXECUTOR = ThreadPoolExecutor(
-    max_workers=1,
-    thread_name_prefix="price-source-extraction",
-)
-_PRICE_SOURCE_PROCESSING_LOCK = Lock()
 
 
 def _price_source_failure_message(error: Exception) -> str:
@@ -2765,11 +2752,7 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
                 _render_price_source_row_editor(access, source, row)
 
 
-def _queue_price_source_processing(
-    access: CompanyAccess,
-    uploader_key: str,
-    url_key: str,
-) -> None:
+def _queue_price_source_processing(uploader_key: str, url_key: str) -> None:
     """Capture the selected source before the Price Lists fragment reruns."""
     uploaded_files = accepted_price_source_uploads(
         list(st.session_state.get(uploader_key) or [])
@@ -2790,54 +2773,16 @@ def _queue_price_source_processing(
         st.session_state.get("_price_source_processing_cycle") or 0
     ) + 1
     st.session_state._price_source_processing_cycle = processing_cycle
-    uploaded_file = combine_price_source_files(uploaded_files)
-    # Do this in the Streamlit request while secrets and cached resources have
-    # their normal request context. The worker then only performs I/O and does
-    # not depend on an UploadedFile or a Streamlit secret lookup.
-    supabase_client = get_supabase_client()
-    get_agent_secret("ANTHROPIC_API_KEY")
-    get_agent_secret("CLAUDE_PRICE_SOURCE_MODEL")
-    pending = {
-        "uploaded_file": uploaded_file,
+    st.session_state._price_source_pending = {
+        "uploaded_files": uploaded_files,
         "department": "",
         "source_url": source_url,
         "processing_cycle": processing_cycle,
         "user_cycle_started_at": time.perf_counter(),
     }
-    pending["future"] = _PRICE_SOURCE_EXECUTOR.submit(
-        _run_price_source_in_background,
-        access,
-        uploaded_file,
-        source_url,
-        supabase_client,
-    )
-    st.session_state._price_source_pending = pending
     st.session_state._price_source_processing = True
     st.session_state.pop("_price_source_error", None)
     st.session_state.pop("_price_source_notice", None)
-
-
-def _run_price_source_in_background(
-    access: CompanyAccess,
-    uploaded_file,
-    source_url: str,
-    client,
-):
-    """Run exactly one extraction without holding the Streamlit request open."""
-    if not _PRICE_SOURCE_PROCESSING_LOCK.acquire(blocking=False):
-        raise PriceSourceError("Another price extraction is already running. Try again when it finishes.")
-    try:
-        return process_price_source(
-            access,
-            department="",
-            uploaded_file=uploaded_file,
-            source_url=source_url,
-            trace=None,
-            client=client,
-        )
-    finally:
-        _PRICE_SOURCE_PROCESSING_LOCK.release()
-
 
 def _clear_price_source_url_for_files(uploader_key: str, url_key: str) -> None:
     """Keep one document source active when the user selects files."""
@@ -2976,7 +2921,7 @@ def _render_price_source_add(access: CompanyAccess, *, trace=None) -> None:
                     use_container_width=True,
                     disabled=processing,
                     on_click=_queue_price_source_processing,
-                    args=(access, uploader_key, url_key),
+                    args=(uploader_key, url_key),
                 )
                 install_price_source_processing_guard()
 
@@ -2986,11 +2931,15 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
 
     uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
     pending = st.session_state.get("_price_source_pending") or {}
-    future = pending.get("future")
-    if not isinstance(future, Future) or not future.done():
-        return
     try:
-        result = future.result()
+        uploaded_file = combine_price_source_files(pending.get("uploaded_files") or [])
+        result = process_price_source(
+            access,
+            department=str(pending.get("department") or ""),
+            uploaded_file=uploaded_file,
+            source_url=str(pending.get("source_url") or ""),
+            trace=trace,
+        )
     except PriceSourceError as exc:
         st.session_state._price_source_error = str(exc)
     except PermissionError:
@@ -3014,29 +2963,7 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     finally:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
-    # A fragment rerun can retain the pre-import catalog. The status fragment
-    # triggers the app rerun when the background Future completes.
-
-
-@st.fragment(run_every=1, parallel=True)
-def _render_price_source_processing_status(access: CompanyAccess) -> None:
-    """Poll only the small status area while the source worker is running."""
-    if not st.session_state.get("_price_source_processing"):
-        return
-    pending = st.session_state.get("_price_source_pending") or {}
-    future = pending.get("future")
-    if isinstance(future, Future) and future.done():
-        _process_pending_price_source(access)
-        st.rerun(scope="app")
-    elapsed = max(0, time.perf_counter() - float(pending.get("user_cycle_started_at") or time.perf_counter()))
-    st.markdown(
-        '<div class="price-source-live-progress">'
-        '<span class="price-source-live-progress-label">Extracting prices</span>'
-        '<span class="price-source-live-progress-time">'
-        f'{elapsed:.0f} s</span><div class="price-source-live-progress-track">'
-        '<span></span></div></div>',
-        unsafe_allow_html=True,
-    )
+    st.rerun()
 
 
 def _set_price_source_action_notice(message: str) -> None:
@@ -3076,7 +3003,6 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         return
 
     _render_price_source_add(access, trace=trace)
-    _render_price_source_processing_status(access)
 
     # Keep the terminal result visible until the next Extract attempt replaces it.
     # A transient notice can otherwise disappear on the uploader-key rerun and

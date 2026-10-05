@@ -1936,7 +1936,6 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
     assert kwargs["uploaded_file"] is None
     assert kwargs["source_url"] == "https://supplier.example/prices"
     assert kwargs["trace"] is None
-    assert kwargs["client"] is not None
     assert calls
     assert "price-lists-toast" in Path("screens/company_profile.py").read_text()
 

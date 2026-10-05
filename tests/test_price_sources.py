@@ -1097,12 +1097,12 @@ def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
     )
     monkeypatch.setattr(company_profile.st, "session_state", state)
 
-    access = SimpleNamespace(company_id="company-a", user_id="user-a")
-    monkeypatch.setattr(company_profile, "_run_price_source_in_background", lambda *_args: None)
-    company_profile._queue_price_source_processing(access, "price_upload", "price_url")
+    company_profile._queue_price_source_processing("price_upload", "price_url")
 
     assert state["_price_source_processing"] is True
-    assert state["_price_source_pending"]["uploaded_file"].name == "prices-a.xlsx"
+    assert [item.name for item in state["_price_source_pending"]["uploaded_files"]] == [
+        "prices-a.xlsx"
+    ]
     assert "_price_source_error" not in state
 
 
@@ -2023,14 +2023,13 @@ def test_wordpress_json_alternate_retries_bounded_accepted_responses(monkeypatch
     assert "MDF 18 mm" in text
 
 
-def test_price_source_processing_is_polled_by_a_dedicated_status_fragment():
-    from screens.company_profile import _render_price_source_processing_status
+def test_price_source_processing_reruns_after_any_terminal_outcome():
+    from screens.company_profile import _process_pending_price_source
 
-    source = inspect.getsource(_render_price_source_processing_status)
+    source = inspect.getsource(_process_pending_price_source)
 
-    assert "run_every=1" in source
-    assert "future.done()" in source
-    assert 'st.rerun(scope="app")' in source
+    assert "st.rerun()" in source
+    assert "if completed:" not in source
 
 
 def test_price_source_failure_message_keeps_actionable_exception_detail_bounded():
