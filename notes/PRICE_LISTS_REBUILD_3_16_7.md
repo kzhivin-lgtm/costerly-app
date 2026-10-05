@@ -166,6 +166,15 @@ The workspace requirements are:
   normal sheet and a perforated sheet from collapsing together.
 - Supplier SKU is source provenance only. It may corroborate an already equal
   structural material offer but cannot select a material by itself.
+
+### Increment, 2026-10-05, invoice issuer boundary
+
+- Supplier HP is optional, exactly nine digits, and accepted only from the
+  seller's issuer block. Hebrew `לכבוד` is a buyer block, so its company
+  number must never create or merge a supplier.
+- A brand-only sheet row remains Review by default. It can inherit a known
+  family only from one existing offer in the same supplier lane whose SKU,
+  price, unit, VAT, and structural attributes all agree.
 - Starting a new extraction removes the prior green result immediately in the
   browser, before the server callback rerenders the upload controls.
 - Tab navigation acknowledges the server processing marker, not an arbitrary

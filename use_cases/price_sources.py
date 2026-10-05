@@ -878,9 +878,10 @@ def material_offer_matches_extracted_row(
     if offer.get("vat_included") is not vat_included:
         return False
 
+    specifications = material.get("specifications") or {}
     material_row = {
-        "material_family": material.get("material_family") or "",
-        "identity_attributes": material.get("specifications") or {},
+        "material_family": material.get("material_family") or specifications.get("material_family") or "",
+        "identity_attributes": specifications,
     }
     if not material_row["identity_attributes"]:
         # Read-only compatibility for catalog rows created before structural
@@ -906,6 +907,29 @@ def material_offer_matches_extracted_row(
     if not material_row["material_family"]:
         material_row["material_family"] = str(material.get("canonical_name") or material.get("normalized_name") or "").split(" ")[0]
     return material_structural_key(material_row) == material_structural_key(row)
+
+
+def material_offer_proves_unknown_family(
+    offer: Mapping[str, Any],
+    material: Mapping[str, Any],
+    row: Mapping[str, Any],
+    *,
+    default_currency: str = "",
+) -> str:
+    """Return a known family only when a same-lane offer proves it.
+
+    A brand name is not enough to invent plywood, MDF, or another family.  It
+    is enough to inherit a prior family when the supplier SKU, price, unit,
+    VAT and structural attributes all point to one existing private offer.
+    """
+    family = str((material.get("specifications") or {}).get("material_family") or "").strip()
+    if not family:
+        return ""
+    candidate = dict(row)
+    candidate["material_family"] = family
+    return family if material_offer_matches_extracted_row(
+        offer, material, candidate, default_currency=default_currency,
+    ) else ""
 
 
 def price_offer_lane_key(
@@ -2764,35 +2788,6 @@ def process_price_source(
         )
 
         material_index_started = time.perf_counter()
-        ready_material_keys = {
-            (
-                canonical_price_source_category(str(row["material_type"])),
-                material_structural_key(row),
-            )
-            for row in result["rows"]
-            if row["status"] == "ready" and row["item_kind"] == "material"
-        }
-        existing_material_rows = (
-            client.table("company_material_items")
-            .select("company_material_id,status,category,canonical_name,normalized_name,specifications")
-            .eq("company_id", company_id)
-            .execute()
-            .data
-            or []
-        ) if ready_material_keys else []
-        materials_by_key: dict[tuple[str, tuple[str, str, str, str, str, str]], dict] = {}
-        for material in existing_material_rows:
-            specifications = material.get("specifications") or {}
-            key = (
-                canonical_price_source_category(str(material.get("category") or "")),
-                material_structural_key({
-                    "material_family": specifications.get("material_family") or "",
-                    "identity_attributes": specifications,
-                }),
-            )
-            if key in ready_material_keys and key not in materials_by_key:
-                materials_by_key[key] = material
-
         current_lane_material_ids = sorted(
             {
                 str(offer.get("company_material_id") or "")
@@ -2815,9 +2810,78 @@ def process_price_source(
         ) if current_lane_material_ids else []
         material_by_id = {
             str(material.get("company_material_id")): material
-            for material in [*existing_material_rows, *current_lane_materials]
+            for material in current_lane_materials
             if material.get("company_material_id")
         }
+        # A brand-only row is normally Review.  The one safe exception is a
+        # prior offer from this same canonical supplier that proves the SKU,
+        # price, unit, VAT and structure already map to one material family.
+        for row in result["rows"]:
+            if (
+                row.get("item_kind") != "material"
+                or row.get("status") != "unresolved"
+                or "unknown_material_family" not in (row.get("reason_codes") or [])
+            ):
+                continue
+            sku = _normalized_name(str(row.get("raw_sku") or ""))
+            if not sku:
+                continue
+            candidates: dict[str, tuple[dict, str]] = {}
+            for offer in offers_by_sku.get((current_lane, sku), []):
+                material = material_by_id.get(str(offer.get("company_material_id") or ""))
+                if not material or canonical_price_source_category(
+                    str(material.get("category") or "")
+                ) != canonical_price_source_category(str(row.get("material_type") or "")):
+                    continue
+                family = material_offer_proves_unknown_family(
+                    offer, material, row,
+                    default_currency=str(result.get("currency") or ""),
+                )
+                if family:
+                    candidates[str(material["company_material_id"])] = (material, family)
+            if len(candidates) == 1:
+                _, family = next(iter(candidates.values()))
+                row["material_family"] = family
+                row["status"] = "ready"
+                row["reason_codes"] = sorted(
+                    (set(row.get("reason_codes") or set()) - {"unknown_material_family"})
+                    | {"family_inherited_from_supplier_offer"}
+                )
+
+        ready_material_keys = {
+            (
+                canonical_price_source_category(str(row["material_type"])),
+                material_structural_key(row),
+            )
+            for row in result["rows"]
+            if row["status"] == "ready" and row["item_kind"] == "material"
+        }
+        existing_material_rows = (
+            client.table("company_material_items")
+            .select("company_material_id,status,category,canonical_name,normalized_name,specifications")
+            .eq("company_id", company_id)
+            .execute()
+            .data
+            or []
+        ) if ready_material_keys else []
+        material_by_id.update({
+            str(material.get("company_material_id")): material
+            for material in existing_material_rows
+            if material.get("company_material_id")
+        })
+        materials_by_key: dict[tuple[str, tuple[str, str, str, str, str, str]], dict] = {}
+        for material in existing_material_rows:
+            specifications = material.get("specifications") or {}
+            key = (
+                canonical_price_source_category(str(material.get("category") or "")),
+                material_structural_key({
+                    "material_family": specifications.get("material_family") or "",
+                    "identity_attributes": specifications,
+                }),
+            )
+            if key in ready_material_keys and key not in materials_by_key:
+                materials_by_key[key] = material
+
         inferred_material_by_row_number: dict[int, dict] = {}
         for row in result["rows"]:
             if row["status"] != "ready" or row["item_kind"] != "material":

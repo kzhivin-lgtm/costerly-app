@@ -58,6 +58,7 @@ from use_cases.price_sources import (
     price_source_template_fingerprint,
     price_offer_matches_row,
     material_offer_matches_extracted_row,
+    material_offer_proves_unknown_family,
     material_structural_key,
     supplier_operation_offer_matches_row,
     price_offer_lane_key,
@@ -543,6 +544,16 @@ def test_supplier_merge_uses_hp_before_unreliable_ocr_name():
     assert match_existing_supplier("Unreadable OCR issuer", candidates, supplier_hp="hp 120")["supplier_id"] == "first"
 
 
+def test_supplier_hp_defaults_to_exactly_nine_digits_or_empty():
+    result = _result()
+    result["supplier_hp"] = "514-539-998"
+
+    assert apply_price_source_document_defaults(result, source_kind="file")["supplier_hp"] == "514539998"
+
+    result["supplier_hp"] = "customer 337791438 / seller unknown"
+    assert apply_price_source_document_defaults(result, source_kind="file")["supplier_hp"] == ""
+
+
 def test_material_structural_key_ignores_sheet_wording_but_keeps_perforation():
     base = _result()["rows"][0]
     base.update({
@@ -557,6 +568,28 @@ def test_material_structural_key_ignores_sheet_wording_but_keeps_perforation():
 
     assert material_structural_key(base) == material_structural_key(variant)
     assert material_structural_key(base) != material_structural_key(perforated)
+
+
+def test_existing_supplier_offer_can_prove_an_unknown_brand_family():
+    row = _result()["rows"][0]
+    row.update({
+        "material_family": "",
+        "raw_sku": "4",
+        "raw_price": 65,
+        "raw_unit": "sheet",
+        "purchase_unit": "sheet",
+        "calculation_unit": "sheet",
+        "conversion_factor": 1,
+        "normalized_price": 65,
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 5, "width_mm": 3100, "length_mm": 0},
+    })
+    offer = {"source_price": 65, "source_unit": "sheet", "currency": "ILS", "vat_included": False}
+    material = {
+        "canonical_name": "Okume plywood 5 mm",
+        "specifications": {"material_family": "plywood", "thickness_mm": 5, "width_mm": 3100},
+    }
+
+    assert material_offer_proves_unknown_family(offer, material, row, default_currency="ILS") == "plywood"
 
 
 def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():

@@ -16,6 +16,16 @@ instructions.
    The customer or delivery recipient named in the document may be a different
    company from the current user. That is valid source evidence and must never
    cause rejection, exclusion, or reduced confidence.
+   For Hebrew invoices, `לכבוד` means "To" and identifies the buyer or
+   recipient, never the supplier. A tax or company number printed alongside
+   `לכבוד` belongs to that recipient. Take supplier_name and supplier_hp only
+   from the issuer's letterhead or seller block, normally at the top of the
+   document. Never use a recipient name, recipient VAT number, delivery name,
+   or customer contact as supplier evidence.
+   supplier_hp is optional and must contain exactly the seller's nine decimal
+   digits, with no label, punctuation, or other text. If there are multiple
+   nine-digit company numbers and the seller association is not explicit,
+   return an empty supplier_hp. Never guess or use the recipient's number.
    Use source_origin supplier for supplier-issued documents and webpages. Use
    company_internal for the company's own estimating workbook, costing template,
    or customer quote. Never create a supplier from the company name, workbook

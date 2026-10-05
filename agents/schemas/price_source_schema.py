@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 
@@ -260,9 +261,16 @@ def apply_price_source_document_defaults(
     """Apply the approved Israeli currency and VAT defaults to missing evidence."""
     currency = str(result.get("currency") or "").strip().upper() or "ILS"
     result["currency"] = currency
-    # A supplier code is supplementary evidence.  Older agent responses did
-    # not have this field, and a missing code must never reject an invoice.
-    result["supplier_hp"] = str(result.get("supplier_hp") or "").strip()
+    # HP is an Israeli company identifier, exactly nine digits.  It is useful
+    # only when the model can tie it to the seller, so malformed or annotated
+    # text becomes unknown rather than a false supplier-match key.
+    hp_raw = str(result.get("supplier_hp") or "").strip()
+    hp_digits = re.sub(r"\D", "", hp_raw)
+    result["supplier_hp"] = (
+        hp_digits
+        if len(hp_digits) == 9 and re.fullmatch(r"[\s\d().-]+", hp_raw)
+        else ""
+    )
     rows = [row for row in result.get("rows") or [] if isinstance(row, dict)]
     for row in rows:
         if not str(row.get("raw_currency") or "").strip():
@@ -394,6 +402,10 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         raise PriceSourceSchemaError("unsupported price context")
     if result["vat_mode"] not in VAT_MODES:
         raise PriceSourceSchemaError("unsupported VAT mode")
+    if not isinstance(result["supplier_hp"], str) or (
+        result["supplier_hp"] and not re.fullmatch(r"\d{9}", result["supplier_hp"])
+    ):
+        raise PriceSourceSchemaError("supplier HP must be exactly nine digits")
     for key in ("document_subtotal", "document_vat_amount", "document_total"):
         if not isinstance(result[key], (int, float)) or result[key] < 0:
             raise PriceSourceSchemaError(f"{key} must be a non-negative number")
