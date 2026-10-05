@@ -1228,6 +1228,20 @@ def apply_company_profile_css() -> None:
         .price-lists-toast-saved { border-color: #B9DFCC; }
         .price-lists-toast-result { border-color: #D7C6E8; }
 
+        .price-source-cycle-result {
+            position: sticky;
+            top: 12px;
+            right: auto;
+            bottom: auto;
+            z-index: 30;
+            width: 100%;
+            max-width: none;
+            margin: 10px 0 14px;
+            border-color: #B9DFCC;
+            background: #F5FCF7;
+            box-shadow: 0 8px 22px rgba(33, 91, 55, 0.12);
+        }
+
         .price-lists-toast button {
             width: 22px;
             height: 22px;

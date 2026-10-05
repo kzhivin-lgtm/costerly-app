@@ -79,7 +79,7 @@ approval history. Trigger: resume Projects and Final Approval completion work.
 
 ACTIVE, P0, USER REQUEST, 3.16.7 Price Lists rebuild: replace the legacy
 material-only Price Source flow with a source-first tool that keeps materials,
-supplier processing services, excluded consumables, supplier identity, VAT,
+Material Jobs, excluded consumables, supplier identity, VAT,
 review, and durable extraction state distinct. Stage 1 is the additive data
 contract: retain source supplier spelling and aliases, link an operation-service
 row to the existing global `reference_operations` catalog, and persist private

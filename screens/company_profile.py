@@ -44,6 +44,7 @@ from use_cases.price_sources import (
     canonical_price_source_category,
     combine_price_source_files,
     create_price_source_download_url,
+    list_material_jobs,
     list_price_catalog,
     list_price_sources,
     list_unresolved_price_source_rows,
@@ -1846,6 +1847,49 @@ def _price_catalog_value(row: dict) -> str:
     return f"{prefix}{_price_catalog_number(row.get('normalized_price'))}{suffix}"
 
 
+def _price_source_vat_rate(source: dict | None) -> float | None:
+    """Use a document's proved VAT totals, never a guessed invoice rate."""
+    summary = (source or {}).get("processing_summary") or {}
+    try:
+        subtotal = float(summary.get("document_subtotal") or 0)
+        vat = float(summary.get("document_vat_amount") or 0)
+    except (TypeError, ValueError):
+        return None
+    return vat / subtotal if subtotal > 0 and vat >= 0 else None
+
+
+def _price_source_amounts(
+    row: dict,
+    *,
+    value_key: str,
+    unit_key: str,
+    source: dict | None,
+) -> tuple[str, str]:
+    """Display ex-VAT and VAT-inclusive values where the evidence proves both."""
+    try:
+        amount = float(row.get(value_key) or 0)
+    except (TypeError, ValueError):
+        return "Missing", "—"
+    if amount <= 0:
+        return "Missing", "—"
+    currency = str(row.get("currency") or row.get("raw_currency") or "").upper()
+    prefix = "₪" if currency == "ILS" else f"{currency} " if currency else ""
+    unit = str(row.get(unit_key) or "")
+    suffix = f" / {escape(unit)}" if unit else ""
+    vat_included = row.get("vat_included")
+    if vat_included is None:
+        vat_included = row.get("raw_vat_included")
+    rate = _price_source_vat_rate(source)
+    if vat_included is True:
+        including = amount
+        excluding = amount / (1 + rate) if rate is not None else None
+    else:
+        excluding = amount
+        including = amount * (1 + rate) if rate is not None else None
+    format_value = lambda value: f"{prefix}{_price_catalog_number(value)}{suffix}"
+    return format_value(excluding) if excluding is not None else "—", format_value(including) if including is not None else "—"
+
+
 def _price_catalog_date(value: object) -> str:
     text = str(value or "").strip()
     if not text:
@@ -2005,7 +2049,7 @@ def _load_price_lists_snapshot(
     company_id: str,
     user_id: str,
     _access: CompanyAccess,
-) -> tuple[list[dict], list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
     """Reuse a tenant-scoped read snapshot across fragment UI interactions."""
     if company_id != str(_access.company_id) or user_id != str(_access.user_id):
         raise PermissionError("Price snapshot access does not match the active company")
@@ -2013,6 +2057,7 @@ def _load_price_lists_snapshot(
         list_price_sources(_access),
         list_price_catalog(_access),
         list_unresolved_price_source_rows(_access),
+        list_material_jobs(_access),
     )
 
 
@@ -2170,10 +2215,10 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                     unsafe_allow_html=True,
                 )
                 continue
-            header = st.columns([0.24, 2.15, 1.1, 1.25, 1.05, 0.75, 0.5, 0.6])
+            header = st.columns([0.24, 1.8, 0.95, 1.05, 0.95, 0.95, 0.75, 0.5, 0.6])
             for column, label in zip(
                 header,
-                ("", "Material", "Category", "Supplier", "Price", "Updated", "", ""),
+                ("", "Material", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Updated", "", ""),
             ):
                 if label:
                     column.markdown(
@@ -2188,8 +2233,8 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                 supplier_name = str(row.get("supplier_name") or "Unknown supplier")
                 source = sources_by_id.get(source_id) or {}
                 with st.container(key=f"price_catalog_row_{row_id}"):
-                    remove_col, material_col, category_col, supplier_col, price_col, date_col, edit_col, source_col = st.columns(
-                        [0.24, 2.15, 1.1, 1.25, 1.05, 0.75, 0.5, 0.6],
+                    remove_col, material_col, category_col, supplier_col, net_price_col, gross_price_col, date_col, edit_col, source_col = st.columns(
+                        [0.24, 1.8, 0.95, 1.05, 0.95, 0.95, 0.75, 0.5, 0.6],
                         vertical_alignment="center",
                     )
                     if remove_col.button("×", key=f"catalog_remove_{row_id}"):
@@ -2212,8 +2257,18 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         _price_source_supplier_markup(supplier_name),
                         unsafe_allow_html=True,
                     )
-                    price_col.markdown(
-                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{_price_catalog_value(row)}</span>',
+                    net_price, gross_price = _price_source_amounts(
+                        row,
+                        value_key="normalized_price",
+                        unit_key="normalized_unit",
+                        source=source,
+                    )
+                    net_price_col.markdown(
+                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>',
+                        unsafe_allow_html=True,
+                    )
+                    gross_price_col.markdown(
+                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{gross_price}</span>',
                         unsafe_allow_html=True,
                     )
                     date_col.markdown(
@@ -2472,10 +2527,10 @@ def _render_price_source_review_queue(
             unsafe_allow_html=True,
         )
         with st.container(key="price_review_header"):
-            header = st.columns([0.24, 2.05, 1.05, 1.15, 0.95, 1.25, 0.6])
+            header = st.columns([0.24, 1.72, 0.85, 1.0, 0.88, 0.88, 1.05, 0.6])
             for column, label in zip(
                 header,
-                ("", "Material", "Category", "Supplier", "Source price", "Reason", ""),
+                ("", "Material", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Reason", ""),
             ):
                 if label:
                     column.markdown(
@@ -2493,8 +2548,8 @@ def _render_price_source_review_queue(
             row_id = str(row["row_id"])
             target = (source_id, row_id)
             with st.container(key=f"price_review_row_{row_id}"):
-                remove_col, item_col, category_col, supplier_col, price_col, reason_col, review_col = st.columns(
-                    [0.24, 2.05, 1.05, 1.15, 0.95, 1.25, 0.6],
+                remove_col, item_col, category_col, supplier_col, net_price_col, gross_price_col, reason_col, review_col = st.columns(
+                    [0.24, 1.72, 0.85, 1.0, 0.88, 0.88, 1.05, 0.6],
                     vertical_alignment="center",
                 )
                 if remove_col.button("×", key=f"review_remove_{row_id}"):
@@ -2522,16 +2577,18 @@ def _render_price_source_review_queue(
                     _price_source_supplier_markup(_price_source_supplier(source)),
                     unsafe_allow_html=True,
                 )
-                raw_price = row.get("raw_price")
-                price_markup = (
-                    f'<span class="price-catalog-cell price-catalog-cell-nowrap">'
-                    f'{escape(str(row.get("raw_currency") or source.get("currency") or ""))} '
-                    f'{raw_price:g} / {escape(str(row.get("raw_unit") or "?"))}</span>'
-                    if isinstance(raw_price, (int, float)) and raw_price > 0
-                    else '<span class="price-catalog-cell">Missing</span>'
+                net_price, gross_price = _price_source_amounts(
+                    row,
+                    value_key="raw_price",
+                    unit_key="raw_unit",
+                    source=source,
                 )
-                price_col.markdown(
-                    price_markup,
+                net_price_col.markdown(
+                    f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>',
+                    unsafe_allow_html=True,
+                )
+                gross_price_col.markdown(
+                    f'<span class="price-catalog-cell price-catalog-cell-nowrap">{gross_price}</span>',
                     unsafe_allow_html=True,
                 )
                 reason_col.markdown(
@@ -2577,6 +2634,74 @@ def _render_price_source_review_queue(
                 page_col.markdown(
                     f'<span class="price-review-page">{page + 1} / {page_count}</span>',
                     unsafe_allow_html=True,
+                )
+
+
+def _render_material_jobs(access: CompanyAccess, jobs: list[dict]) -> None:
+    """Show supplier work as a catalogue distinct from materials and labour."""
+    if not jobs:
+        return
+    with st.container(key="material_jobs_section"):
+        st.markdown(
+            '<div class="price-catalog-title"><span>Material Jobs</span>'
+            f'<span>{len(jobs)} {"job" if len(jobs) == 1 else "jobs"}</span></div>',
+            unsafe_allow_html=True,
+        )
+        header = st.columns([2.15, 1.2, 1.05, 1.05, 0.75, 0.6])
+        for column, label in zip(
+            header,
+            ("Job", "Supplier", "Price ex VAT", "Price incl VAT", "Updated", ""),
+        ):
+            column.markdown(
+                f'<span class="price-source-row-label">{label}</span>',
+                unsafe_allow_html=True,
+            )
+        for job in jobs:
+            job_id = str(job.get("operation_offer_id") or job.get("source_row_id") or "job")
+            name_col, supplier_col, net_price_col, gross_price_col, date_col, source_col = st.columns(
+                [2.15, 1.2, 1.05, 1.05, 0.75, 0.6],
+                vertical_alignment="center",
+            )
+            operation_name = str(job.get("operation_name") or "Material job")
+            original_name = str(job.get("raw_service_name") or "")
+            name_col.markdown(
+                f'<span class="price-catalog-material-name">{escape(operation_name)}</span>'
+                + (
+                    f'  \n<span class="price-catalog-original-name">{escape(original_name)}</span>'
+                    if original_name and original_name.casefold() != operation_name.casefold()
+                    else ""
+                ),
+                unsafe_allow_html=True,
+            )
+            supplier_col.markdown(
+                _price_source_supplier_markup(job.get("supplier_name")),
+                unsafe_allow_html=True,
+            )
+            net_price, gross_price = _price_source_amounts(
+                job,
+                value_key="source_price",
+                unit_key="source_unit_label",
+                source=job.get("source"),
+            )
+            net_price_col.markdown(
+                f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>',
+                unsafe_allow_html=True,
+            )
+            gross_price_col.markdown(
+                f'<span class="price-catalog-cell price-catalog-cell-nowrap">{gross_price}</span>',
+                unsafe_allow_html=True,
+            )
+            date_col.markdown(
+                f'<span class="price-catalog-cell price-catalog-cell-nowrap">{_price_catalog_date(job.get("updated_at"))}</span>',
+                unsafe_allow_html=True,
+            )
+            source_url = _price_source_direct_url(access, job.get("source") or {})
+            if source_url:
+                source_col.link_button(
+                    "Source",
+                    source_url,
+                    key=f"material_job_source_{job_id}",
+                    use_container_width=True,
                 )
 
 
@@ -2983,6 +3108,18 @@ def _render_price_source_toast(message: str, *, duration_ms: int, kind: str) -> 
     install_price_source_notice_guard()
 
 
+def _render_price_source_cycle_result(message: str) -> None:
+    """Keep the terminal extraction result directly below the upload controls."""
+    st.markdown(
+        '<div class="price-lists-toast price-lists-toast-result price-source-cycle-result" '
+        'data-duration-ms="10000"><span>'
+        + escape(message)
+        + '</span><button type="button" aria-label="Dismiss">×</button></div>',
+        unsafe_allow_html=True,
+    )
+    install_price_source_notice_guard()
+
+
 @st.fragment
 def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     if access.role != "owner":
@@ -2992,7 +3129,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     _process_pending_price_source(access, trace=trace)
 
     try:
-        sources, catalog, review_rows = _load_price_lists_snapshot(
+        sources, catalog, review_rows, material_jobs = _load_price_lists_snapshot(
             str(access.company_id),
             str(access.user_id),
             access,
@@ -3020,11 +3157,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                 ),
                 None,
             )
-        _render_price_source_toast(
-            _price_source_notice_text(notice_source),
-            duration_ms=10_000,
-            kind="result",
-        )
+        _render_price_source_cycle_result(_price_source_notice_text(notice_source))
     error = st.session_state.pop("_price_source_error", None)
     if error:
         st.error(error)
@@ -3048,6 +3181,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):
             _render_price_catalog(access, catalog, sources)
+            _render_material_jobs(access, material_jobs)
             _render_price_source_review_queue(access, review_rows)
 
         with st.container(key="price_source_library_section"):

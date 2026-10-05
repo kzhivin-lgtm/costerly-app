@@ -1695,6 +1695,7 @@ def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch)
     }
     monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: [source])
     monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_material_jobs", lambda _access: [])
     monkeypatch.setattr(
         company_profile,
         "list_unresolved_price_source_rows",
@@ -1758,6 +1759,7 @@ def test_price_review_pagination_reuses_the_tenant_snapshot(monkeypatch):
 
     monkeypatch.setattr(company_profile, "list_price_sources", load_sources)
     monkeypatch.setattr(company_profile, "list_price_catalog", load_catalog)
+    monkeypatch.setattr(company_profile, "list_material_jobs", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_unresolved_price_source_rows", load_review)
 
     app = AppTest.from_function(_render_price_lists_test).run()
@@ -1803,6 +1805,7 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
     }
     monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: [source])
     monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_material_jobs", lambda _access: [])
     monkeypatch.setattr(
         company_profile,
         "list_unresolved_price_source_rows",
@@ -1860,6 +1863,7 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     ]
     monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: sources)
     monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_material_jobs", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_unresolved_price_source_rows", lambda _access: [])
 
     app = AppTest.from_function(_render_price_lists_test).run()
@@ -1890,6 +1894,7 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
     sources = []
     monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: sources)
     monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
+    monkeypatch.setattr(company_profile, "list_material_jobs", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_unresolved_price_source_rows", lambda _access: [])
 
     def process_source(access, **kwargs):

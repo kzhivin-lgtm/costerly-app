@@ -22,6 +22,31 @@ def install_workflow_header_alignment_guard(
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
+            function removeLiveProgress(card) {
+                const progress = card.querySelector(".price-source-live-progress");
+                if (progress) progress.remove();
+                if (card._costerlyPriceSourceTimer) {
+                    parentWindow.clearInterval(card._costerlyPriceSourceTimer);
+                    delete card._costerlyPriceSourceTimer;
+                }
+            }
+
+            function showLiveProgress(card) {
+                removeLiveProgress(card);
+                const progress = parentDoc.createElement("div");
+                progress.className = "price-source-live-progress";
+                progress.innerHTML =
+                    '<span class="price-source-live-progress-label">Extracting document</span>' +
+                    '<span class="price-source-live-progress-time">0 s elapsed</span>' +
+                    '<span class="price-source-live-progress-track"><span></span></span>';
+                card.appendChild(progress);
+                const elapsed = progress.querySelector(".price-source-live-progress-time");
+                const startedAt = Date.now();
+                card._costerlyPriceSourceTimer = parentWindow.setInterval(() => {
+                    if (elapsed) elapsed.textContent = `${Math.floor((Date.now() - startedAt) / 1000)} s elapsed`;
+                }, 1000);
+            }
+
             let frameId = null;
             let titleObserver = null;
             let actionsObserver = null;
@@ -3836,6 +3861,7 @@ def install_price_source_processing_guard() -> None:
                     }
                     card.classList.remove("costerly-price-source-processing");
                     delete card.dataset.costerlyProcessingCycle;
+                    removeLiveProgress(card);
                     const button = card.querySelector(".st-key-process_price_source button");
                     if (!button) return;
                     button.disabled = false;
@@ -3862,6 +3888,7 @@ def install_price_source_processing_guard() -> None:
                     ? completeMarker.dataset.processingCycle || ""
                     : "";
                 card.classList.add("costerly-price-source-processing");
+                showLiveProgress(card);
                 button.disabled = true;
                 button.setAttribute("aria-disabled", "true");
                 const label = button.querySelector("p");
@@ -3875,6 +3902,7 @@ def install_price_source_processing_guard() -> None:
             parentWindow[CLEANUP_KEY] = () => {
                 parentDoc.removeEventListener("click", handleClick, true);
                 observer.disconnect();
+                parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach(removeLiveProgress);
                 delete parentWindow[CLEANUP_KEY];
             };
         })();

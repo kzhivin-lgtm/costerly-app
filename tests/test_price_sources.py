@@ -41,6 +41,7 @@ from use_cases.price_sources import (
     extract_spreadsheet_text,
     fetch_public_page,
     guard_price_source_department,
+    list_material_jobs,
     list_price_catalog,
     list_unresolved_price_source_rows,
     prepare_internal_estimate_row_defaults,
@@ -229,6 +230,9 @@ class _CatalogQuery:
         return self
 
     def neq(self, *_args):
+        return self
+
+    def in_(self, *_args):
         return self
 
     def order(self, *_args, **_kwargs):
@@ -455,6 +459,9 @@ def test_consumables_are_discarded_and_supplier_services_map_before_persistence(
     assert supplier_service_pricing_basis("") == "supplier_defined"
     assert supplier_service_pricing_basis("m") == "linear_meter"
     assert supplier_service_pricing_basis("m2") == "square_meter"
+    assert supplier_service_pricing_basis(
+        "piece", operation_code="supplier_cut_and_edge_banding"
+    ) == "supplier_defined"
 
 
 def test_rows_without_a_name_or_positive_price_are_not_persisted_for_review():
@@ -1225,6 +1232,35 @@ def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
     assert rows[0]["original_name"] == "Plywood birch 10mm"
     assert rows[0]["supplier_name"] == "Supplier Ltd"
     assert rows[0]["updated_at"] == "2026-09-24"
+
+
+def test_active_supplier_operation_offer_is_enriched_as_material_job(monkeypatch):
+    tables = {
+        "company_supplier_operation_offers": [{
+            "operation_offer_id": "job-1", "operation_id": "operation-1",
+            "supplier_id": "supplier-1", "source_id": "source-1", "source_row_id": "row-1",
+            "raw_service_name": "פס חיתוך + קנט", "source_price": 17.5,
+            "pricing_basis": "supplier_defined", "source_unit_label": "piece",
+            "currency": "ILS", "vat_included": False, "valid_from": "2026-10-05",
+        }],
+        "reference_operations": [{
+            "operation_id": "operation-1", "operation_code": "supplier_cut_and_edge_banding",
+            "department": "Wood", "operation_name": "Cutting and edge banding",
+        }],
+        "company_suppliers": [{"supplier_id": "supplier-1", "supplier_name": "Wood supplier"}],
+        "company_price_sources": [{
+            "source_id": "source-1", "source_name": "invoice.pdf", "source_kind": "file",
+            "processing_summary": {"document_subtotal": 100, "document_vat_amount": 18},
+        }],
+    }
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: _CatalogClient(tables))
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+
+    rows = list_material_jobs(SimpleNamespace(company_id="company-1", user_id="user-1"))
+
+    assert rows[0]["operation_name"] == "Cutting and edge banding"
+    assert rows[0]["supplier_name"] == "Wood supplier"
+    assert rows[0]["pricing_basis"] == "supplier_defined"
 
 
 def test_unresolved_queue_excludes_rows_from_archived_sources(monkeypatch):

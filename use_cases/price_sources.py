@@ -163,8 +163,16 @@ def prepare_price_source_operation_rows(result: dict[str, Any]) -> dict[int, str
     return mapped
 
 
-def supplier_service_pricing_basis(raw_unit: object) -> str:
+def supplier_service_pricing_basis(
+    raw_unit: object,
+    *,
+    operation_code: str | None = None,
+) -> str:
     """Return a billing basis only when the source unit actually proves one."""
+    # A combined cut-and-edge order is normally a supplier-defined detail.
+    # "piece" in the invoice does not prove a reusable per-piece rate.
+    if operation_code == "supplier_cut_and_edge_banding":
+        return "supplier_defined"
     unit = _normalized_name(str(raw_unit or ""))
     if unit in {"m", "meter", "metre", "linear m", "linear meter"}:
         return "linear_meter"
@@ -1164,7 +1172,7 @@ def list_price_catalog(access) -> list[dict]:
         client.table("company_price_sources")
         .select(
             "source_id,source_name,source_kind,source_url,processing_summary,"
-            "processed_at,created_at"
+            "currency,vat_mode,processed_at,created_at"
         )
         .eq("company_id", company_id)
         .execute()
@@ -1216,6 +1224,90 @@ def list_price_catalog(access) -> list[dict]:
             PRICE_CATALOG_DEPARTMENT_ORDER.get(str(row["department"]), 99),
             str(row["material_type"]).casefold(),
             str(row["canonical_name"]).casefold(),
+            str(row["supplier_name"]).casefold(),
+        ),
+    )
+
+
+def list_material_jobs(access) -> list[dict]:
+    """Return active supplier material-job offers, separate from material offers."""
+    client = get_supabase_client()
+    company_id = str(access.company_id)
+    assert_company_owner(client, str(access.user_id), company_id)
+    offers = (
+        client.table("company_supplier_operation_offers")
+        .select(
+            "operation_offer_id,operation_id,supplier_id,source_id,source_row_id,"
+            "raw_service_name,source_price,pricing_basis,source_unit_label,currency,"
+            "vat_included,valid_from,confidence,created_at"
+        )
+        .eq("company_id", company_id)
+        .eq("status", "active")
+        .execute()
+    ).data or []
+    if not offers:
+        return []
+
+    operation_ids = list({str(row.get("operation_id")) for row in offers if row.get("operation_id")})
+    operations = []
+    if operation_ids:
+        operations = (
+            client.table("reference_operations")
+            .select("operation_id,operation_code,department,operation_name")
+            .in_("operation_id", operation_ids)
+            .execute()
+        ).data or []
+    suppliers = (
+        client.table("company_suppliers")
+        .select("supplier_id,supplier_name")
+        .eq("company_id", company_id)
+        .execute()
+    ).data or []
+    sources = (
+        client.table("company_price_sources")
+        .select(
+            "source_id,source_name,source_kind,source_url,processing_summary,"
+            "currency,vat_mode,processed_at,created_at"
+        )
+        .eq("company_id", company_id)
+        .neq("status", "archived")
+        .execute()
+    ).data or []
+    operation_by_id = {str(row["operation_id"]): row for row in operations}
+    supplier_by_id = {str(row["supplier_id"]): row for row in suppliers}
+    source_by_id = {str(row["source_id"]): row for row in sources}
+    jobs: list[dict] = []
+    for offer in offers:
+        operation = operation_by_id.get(str(offer.get("operation_id")))
+        source = source_by_id.get(str(offer.get("source_id")))
+        if not operation or not source:
+            continue
+        supplier = supplier_by_id.get(str(offer.get("supplier_id")), {})
+        summary = source.get("processing_summary") or {}
+        supplier_name = str(supplier.get("supplier_name") or "Unknown supplier")
+        if summary.get("source_origin") == "company_internal":
+            supplier_name = "Internal estimate"
+        jobs.append(
+            {
+                **offer,
+                "operation_name": str(operation.get("operation_name") or "Material job"),
+                "operation_code": str(operation.get("operation_code") or ""),
+                "department": str(operation.get("department") or "Wood"),
+                "supplier_name": supplier_name,
+                "source": source,
+                "updated_at": (
+                    offer.get("valid_from")
+                    or source.get("processed_at")
+                    or offer.get("created_at")
+                    or source.get("created_at")
+                ),
+            }
+        )
+    return sorted(
+        jobs,
+        key=lambda row: (
+            str(row["department"]).casefold(),
+            str(row["operation_name"]).casefold(),
             str(row["supplier_name"]).casefold(),
         ),
     )
@@ -2562,7 +2654,9 @@ def process_price_source(
                         "raw_service_name": row["raw_description"] or row["normalized_name"],
                         "supplier_sku": row["raw_sku"] or None,
                         "source_price": row["raw_price"],
-                        "pricing_basis": supplier_service_pricing_basis(row.get("raw_unit")),
+                        "pricing_basis": supplier_service_pricing_basis(
+                            row.get("raw_unit"), operation_code=operation_code
+                        ),
                         "source_unit_label": row["raw_unit"] or None,
                         "currency": row["raw_currency"] or result["currency"],
                         "vat_included": True if row["raw_vat_mode"] == "included" else False if row["raw_vat_mode"] == "excluded" else None,

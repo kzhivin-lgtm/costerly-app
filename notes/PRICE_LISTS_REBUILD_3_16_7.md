@@ -75,11 +75,15 @@ the accepted policies, and keep ambiguous calculation units in review.
 
 ## Stage 3, interactive Price Lists workspace
 
-Stage 3 replaces the blocking legacy interaction around the established data
-contract. One extraction runs in the background with no queue. While it runs,
-the owner can continue to edit or resolve existing catalog and Review rows.
-The visible progress indicator is intentionally indeterminate: it reports
-elapsed time but must not invent a completion percentage for an agent cycle.
+Stage 3 replaces the legacy interaction around the established data contract.
+The released extraction remains synchronous and stable: one extraction runs at
+a time and no new source can enter a hidden queue. Existing catalog and Review
+rows remain available between cycles. The upload control shows an immediate
+indeterminate activity bar and elapsed time, but it must not invent a completed
+agent stage or percentage.
+
+True concurrent editing during extraction and confirmed server-side phases
+require a durable job model. They are not implied by this synchronous release.
 
 The workspace requirements are:
 
@@ -90,7 +94,13 @@ The workspace requirements are:
 - Review fields that caused the blocker start unselected. They are visibly
   required rather than defaulted to `piece` or another unsupported value.
 - Saved is a viewport confirmation for five seconds. Extraction result is a
-  viewport confirmation for ten seconds and can be closed earlier.
+  green confirmation directly below the upload card, sticky while scrolling,
+  for ten seconds and can be closed earlier.
+- Supplier-provided material processing is shown as `Material Jobs`, separate
+  from material prices and separate from in-house labour.
+- Material prices, Review rows, and Material Jobs show a proved ex-VAT and
+  VAT-inclusive value. If the source cannot prove the tax rate, the unavailable
+  side stays blank rather than being guessed.
 - Source Library columns are Supplier/source name, document type, department,
   row count, compact View, and compact Remove. It does not expose the removed
   source-wide VAT settings.
