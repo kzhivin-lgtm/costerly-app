@@ -1362,18 +1362,19 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "__costerlyDeferredPriceSourceTab" in source
     assert "tab.click()" in source
     assert ".price-source-start-rejected-marker" in source
-    assert "server marker is the acknowledgement" in source
+    assert "Server markers" in source
     assert "__costerlyPriceSourceStartPending" in source
     assert "3000" in source
-    assert "__costerlyPriceSourceStartWatchdog" in source
-    assert "Extraction did not reach the server. Try again." in source
+    assert "__costerlyPriceSourceStartWatchdog" not in source
+    assert "Extraction did not reach the server. Try again." not in source
     assert 'label.textContent = "Starting extraction"' in source
-    assert 'showLiveProgress(card, Date.now(), "Starting extraction")' not in source
+    assert 'showLiveProgress(card, Date.now(), "Starting extraction")' in source
     assert 'if (!card.querySelector(".price-source-live-progress"))' in source
     assert "trigger itself indefinitely and freeze the browser" in source
     assert "observer.disconnect()" in source
     assert "callback receive the event before changing the visual state" in source
     assert "parentWindow.setTimeout(() =>" in source
+    assert 'showLiveProgress(card, Date.now(), "Starting extraction")' in source
     assert "function showLiveProgress(card, startedAtMs)" in source
     assert "function removeLiveProgress(card)" in source
     assert 'card.querySelectorAll(".price-source-cycle-result")' in source

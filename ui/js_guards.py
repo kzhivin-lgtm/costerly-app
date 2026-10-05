@@ -3819,7 +3819,6 @@ def install_price_source_processing_guard() -> None:
             const CLEANUP_KEY = "__costerlyPriceSourceProcessingGuardCleanup";
             const STARTING_KEY = "__costerlyPriceSourceStartPending";
             const STARTING_TIMER_KEY = "__costerlyPriceSourceStartTimer";
-            const STARTING_WATCHDOG_KEY = "__costerlyPriceSourceStartWatchdog";
             const DEFERRED_TAB_KEY = "__costerlyDeferredPriceSourceTab";
             const REPLAYING_TAB_KEY = "__costerlyReplayingPriceSourceTab";
 
@@ -3878,31 +3877,6 @@ def install_price_source_processing_guard() -> None:
                     parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
                     delete parentWindow[STARTING_TIMER_KEY];
                 }
-                if (parentWindow[STARTING_WATCHDOG_KEY]) {
-                    parentWindow.clearTimeout(parentWindow[STARTING_WATCHDOG_KEY]);
-                    delete parentWindow[STARTING_WATCHDOG_KEY];
-                }
-            }
-
-            function showStartFailure(card) {
-                removeLiveProgress(card);
-                card.classList.remove("costerly-price-source-processing");
-                card.classList.remove("costerly-price-source-starting");
-                const button = card.querySelector(".st-key-process_price_source button");
-                if (button) {
-                    button.disabled = false;
-                    button.removeAttribute("aria-disabled");
-                    const label = button.querySelector("p");
-                    if (label) label.textContent = "Extract prices";
-                }
-                card.querySelectorAll(".price-source-client-start-error").forEach((node) => node.remove());
-                const message = parentDoc.createElement("div");
-                message.className = "price-source-client-start-error";
-                message.setAttribute("role", "alert");
-                message.textContent = "Extraction did not reach the server. Try again.";
-                const buttonContainer = card.querySelector(".st-key-process_price_source");
-                if (buttonContainer) buttonContainer.after(message);
-                else card.appendChild(message);
             }
 
             function resetCompletedState() {
@@ -3994,23 +3968,15 @@ def install_price_source_processing_guard() -> None:
                 }
                 parentWindow[STARTING_TIMER_KEY] = parentWindow.setTimeout(() => {
                     delete parentWindow[STARTING_TIMER_KEY];
-                    // Do not throw away a click based on elapsed time. The
-                    // server marker is the acknowledgement that the callback
-                    // has actually submitted the worker job.
+                    // A tab switch may wait for the callback handshake, but
+                    // it must never be blocked indefinitely by a slow page
+                    // rerender. The real worker state remains server-owned.
                     if (parentWindow[STARTING_KEY]) {
                         card.classList.add("costerly-price-source-starting");
+                        parentWindow[STARTING_KEY] = false;
+                        releaseDeferredProfileNavigation();
                     }
                 }, 3000);
-                // Do not create an elapsed progress bar before the server
-                // marker exists. A browser click is not evidence that a job
-                // was submitted, and an optimistic timer can freeze at zero.
-                parentWindow[STARTING_WATCHDOG_KEY] = parentWindow.setTimeout(() => {
-                    delete parentWindow[STARTING_WATCHDOG_KEY];
-                    if (!parentWindow[STARTING_KEY]) return;
-                    parentWindow[STARTING_KEY] = false;
-                    showStartFailure(card);
-                    releaseDeferredProfileNavigation();
-                }, 20000);
                 // This listener runs in capture phase, ahead of Streamlit's
                 // delegated click handler. Disabling the native button here
                 // can make Streamlit discard this very click, so let that
@@ -4021,6 +3987,12 @@ def install_price_source_processing_guard() -> None:
                     button.setAttribute("aria-disabled", "true");
                     const label = button.querySelector("p");
                     if (label) label.textContent = "Starting extraction";
+                    // This is an honest client-side elapsed indicator, not a
+                    // claim that the worker was accepted. Server markers
+                    // replace its label when they arrive.
+                    if (!card.querySelector(".price-source-live-progress")) {
+                        showLiveProgress(card, Date.now(), "Starting extraction");
+                    }
                 }, 0);
             }
 

@@ -339,3 +339,14 @@ The workspace requirements are:
 - The guard now waits one browser tick before changing button UI state. The
   original click reaches Streamlit first, while duplicate-click protection and
   the acknowledgement marker remain intact.
+
+### Hotfix, 2026-10-06, remove false client-side extraction failure
+
+- A DOM marker is not a reliable transport acknowledgement. Slow Streamlit
+  rerenders let the browser's 20-second watchdog announce a server failure
+  while the worker could already be running. The client must not make that
+  claim.
+- The client now starts an elapsed `Starting extraction` display immediately,
+  upgrades it when the server marker arrives, and allows deferred Profile-tab
+  navigation after three seconds. Only a server-rendered error can state that
+  extraction failed.
