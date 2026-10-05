@@ -72,3 +72,27 @@ displayed or calculated as `piece`, `m`, `m2`, `sheet`, or `hour`. The
 Stage 2 changes the Price Source application layer: classify rows, persist
 service offers, exclude consumables completely, resolve VAT and currency under
 the accepted policies, and keep ambiguous calculation units in review.
+
+## Stage 3, interactive Price Lists workspace
+
+Stage 3 replaces the blocking legacy interaction around the established data
+contract. One extraction runs in the background with no queue. While it runs,
+the owner can continue to edit or resolve existing catalog and Review rows.
+The visible progress indicator is intentionally indeterminate: it reports
+elapsed time but must not invent a completion percentage for an agent cycle.
+
+The workspace requirements are:
+
+- Catalog and Review use the same compact information hierarchy: English name
+  above source/original name, Category, shortened Supplier with full hover
+  text, Price, and Updated where applicable.
+- `Other` category is visibly `?` in Review, not a fake resolved category.
+- Review fields that caused the blocker start unselected. They are visibly
+  required rather than defaulted to `piece` or another unsupported value.
+- Saved is a viewport confirmation for five seconds. Extraction result is a
+  viewport confirmation for ten seconds and can be closed earlier.
+- Source Library columns are Supplier/source name, document type, department,
+  row count, compact View, and compact Remove. It does not expose the removed
+  source-wide VAT settings.
+- A new source cannot start while an extraction is active. There is no hidden
+  queue, and a concurrent request is rejected rather than delayed.

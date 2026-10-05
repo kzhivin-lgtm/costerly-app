@@ -1816,6 +1816,20 @@ def _price_source_supplier(source: dict) -> str:
     return "Unknown supplier"
 
 
+def _price_source_short_text(value: object, *, limit: int = 20) -> str:
+    """Keep table cells compact while retaining the full value in title text."""
+    text = str(value or "")
+    return text if len(text) <= limit else f"{text[:limit - 1].rstrip()}…"
+
+
+def _price_source_supplier_markup(value: object) -> str:
+    full = str(value or "Unknown supplier")
+    return (
+        f'<span class="price-catalog-cell price-catalog-supplier" title="{escape(full)}">'
+        f'{escape(_price_source_short_text(full))}</span>'
+    )
+
+
 def _price_catalog_number(value: object) -> str:
     try:
         number = float(value or 0)
@@ -1924,6 +1938,18 @@ def _price_source_context_label(value: object) -> str:
         "customer_sale": "Customer sale",
         "unknown": "Unknown context",
     }.get(str(value or ""), str(value or "").replace("_", " ").title())
+
+
+def _price_source_document_type_label(value: object) -> str:
+    labels = {
+        "tax_invoice": "Tax invoice",
+        "invoice": "Invoice",
+        "price_list": "Price list",
+        "supplier_web_page": "Supplier page",
+        "internal_estimate": "Internal estimate",
+        "customer_quote": "Customer quote",
+    }
+    return labels.get(str(value or ""), "Source document")
 
 
 def _price_source_tc(value: object) -> str:
@@ -2148,10 +2174,10 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                     unsafe_allow_html=True,
                 )
                 continue
-            header = st.columns([0.24, 2.55, 1.45, 1.1, 0.85, 0.58, 0.72])
+            header = st.columns([0.24, 2.15, 1.1, 1.25, 1.05, 0.75, 0.5, 0.6])
             for column, label in zip(
                 header,
-                ("", "Material", "Supplier", "Price", "Updated", "", ""),
+                ("", "Material", "Category", "Supplier", "Price", "Updated", "", ""),
             ):
                 if label:
                     column.markdown(
@@ -2166,8 +2192,8 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                 supplier_name = str(row.get("supplier_name") or "Unknown supplier")
                 source = sources_by_id.get(source_id) or {}
                 with st.container(key=f"price_catalog_row_{row_id}"):
-                    remove_col, material_col, supplier_col, price_col, date_col, edit_col, source_col = st.columns(
-                        [0.24, 2.55, 1.45, 1.1, 0.85, 0.58, 0.72],
+                    remove_col, material_col, category_col, supplier_col, price_col, date_col, edit_col, source_col = st.columns(
+                        [0.24, 2.15, 1.1, 1.25, 1.05, 0.75, 0.5, 0.6],
                         vertical_alignment="center",
                     )
                     if remove_col.button("×", key=f"catalog_remove_{row_id}"):
@@ -2182,8 +2208,12 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         ),
                         unsafe_allow_html=True,
                     )
+                    category_col.markdown(
+                        f'<span class="price-catalog-cell">{escape(_price_source_category_label(str(row.get("material_type") or "Other")))}</span>',
+                        unsafe_allow_html=True,
+                    )
                     supplier_col.markdown(
-                        f'<span class="price-catalog-cell">{escape(supplier_name)}</span>',
+                        _price_source_supplier_markup(supplier_name),
                         unsafe_allow_html=True,
                     )
                     price_col.markdown(
@@ -2429,10 +2459,10 @@ def _render_price_source_review_queue(
             unsafe_allow_html=True,
         )
         with st.container(key="price_review_header"):
-            header = st.columns([0.24, 2.55, 1.35, 1.05, 1.35, 0.7])
+            header = st.columns([0.24, 2.05, 1.05, 1.15, 0.95, 1.25, 0.6])
             for column, label in zip(
                 header,
-                ("", "Source Item", "Supplier", "Source Price", "Reason", ""),
+                ("", "Material", "Category", "Supplier", "Source price", "Reason", ""),
             ):
                 if label:
                     column.markdown(
@@ -2450,19 +2480,33 @@ def _render_price_source_review_queue(
             row_id = str(row["row_id"])
             target = (source_id, row_id)
             with st.container(key=f"price_review_row_{row_id}"):
-                remove_col, item_col, supplier_col, price_col, reason_col, review_col = st.columns(
-                    [0.24, 2.55, 1.35, 1.05, 1.35, 0.7],
+                remove_col, item_col, category_col, supplier_col, price_col, reason_col, review_col = st.columns(
+                    [0.24, 2.05, 1.05, 1.15, 0.95, 1.25, 0.6],
                     vertical_alignment="center",
                 )
                 if remove_col.button("×", key=f"review_remove_{row_id}"):
                     st.session_state._removing_price_source_row = target
                     st.session_state._price_source_action_location = "review"
+                english_name = str(row.get("normalized_name") or "").strip()
+                original_name = str(row.get("raw_description") or "Price item")
                 item_col.markdown(
-                    f'<span class="price-catalog-material-name">{escape(str(row.get("raw_description") or "Price item"))}</span>',
+                    f'<span class="price-catalog-material-name">{escape(english_name or original_name)}</span>'
+                    + (
+                        f'  \n<span class="price-catalog-original-name">{escape(original_name)}</span>'
+                        if english_name and english_name.casefold() != original_name.casefold()
+                        else ""
+                    ),
+                    unsafe_allow_html=True,
+                )
+                category = _price_source_row_material_type(row, source)
+                category_col.markdown(
+                    '<span class="price-catalog-cell">?</span>'
+                    if category == "Other"
+                    else f'<span class="price-catalog-cell">{escape(_price_source_category_label(category))}</span>',
                     unsafe_allow_html=True,
                 )
                 supplier_col.markdown(
-                    f'<span class="price-catalog-cell">{escape(_price_source_supplier(source))}</span>',
+                    _price_source_supplier_markup(_price_source_supplier(source)),
                     unsafe_allow_html=True,
                 )
                 raw_price = row.get("raw_price")
@@ -3057,38 +3101,48 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                     st.info("No source documents yet.")
                 else:
                     with st.container(key="price_source_list_card"):
+                        header = st.columns([2.15, 1.15, 1.0, 0.7, 0.5, 0.55])
+                        for column, label in zip(
+                            header,
+                            ("Supplier / source", "Document type", "Department", "Rows", "", ""),
+                        ):
+                            if label:
+                                column.markdown(
+                                    f'<span class="price-source-row-label">{label}</span>',
+                                    unsafe_allow_html=True,
+                                )
                         for source in sources:
                             source_id = str(source["source_id"])
                             summary = source.get("processing_summary") or {}
-                            left, category_col, status_col, items_col, action_col, remove_col = st.columns(
-                                [2.3, 1.45, 0.8, 0.65, 0.65, 0.65],
+                            left, document_col, department_col, items_col, action_col, remove_col = st.columns(
+                                [2.15, 1.15, 1.0, 0.7, 0.5, 0.55],
                                 vertical_alignment="center",
                             )
                             with left:
                                 st.markdown(
-                                    f'**{escape(_price_source_supplier(source))}**  \n'
-                                    f'<span class="price-source-file">'
-                                    f'{escape(str(source.get("source_name") or ""))}</span>',
+                                    f'<span class="price-source-library-supplier" title="{escape(_price_source_supplier(source))}">'
+                                    f'{escape(_price_source_short_text(_price_source_supplier(source)))}</span>'
+                                    f'<span class="price-source-file" title="{escape(str(source.get("source_name") or ""))}">'
+                                    f'{escape(_price_source_short_text(source.get("source_name"), limit=32))}</span>',
                                     unsafe_allow_html=True,
                                 )
-                            with category_col:
-                                department_label, material_label = (
-                                    _price_source_classification(source)
-                                )
+                            with document_col:
                                 st.markdown(
-                                    '<span class="price-source-library-department">'
-                                    f'{escape(department_label)}'
-                                    '</span>'
-                                    '<span class="price-source-library-material-type">'
-                                    f'{escape(material_label)}'
-                                    '</span>',
+                                    f'<span class="price-catalog-cell">{escape(_price_source_document_type_label(source.get("document_type")))}</span>',
                                     unsafe_allow_html=True,
                                 )
-                            with status_col:
-                                st.write(str(source.get("status") or "").title())
+                            with department_col:
+                                department_label, _ = _price_source_classification(source)
+                                st.markdown(
+                                    f'<span class="price-catalog-cell">{escape(department_label)}</span>',
+                                    unsafe_allow_html=True,
+                                )
                             with items_col:
-                                ready_count = int(summary.get("ready") or 0)
-                                st.write(f"{ready_count} {'price' if ready_count == 1 else 'prices'}")
+                                row_count = int(summary.get("total") or 0)
+                                st.markdown(
+                                    f'<span class="price-catalog-cell">{row_count}</span>',
+                                    unsafe_allow_html=True,
+                                )
                             with action_col:
                                 source_url = _price_source_direct_url(access, source)
                                 if source_url:

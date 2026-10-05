@@ -1629,7 +1629,7 @@ def test_price_catalog_renders_material_first_grouped_table():
     assert "Supplier Ltd" in markup
     assert "₪1\u202f200 / sheet" in markup
     assert 'class="price-catalog-type"' not in markup
-    assert "Wood Sheets</span>" not in markup
+    assert "Wood Sheets</span>" in markup
     assert any(button.label == "Edit" for button in app.button)
     assert any(button.label == "×" for button in app.button)
     assert "SRC-12345678" not in markup
@@ -1882,7 +1882,7 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     source_library = next(item for item in app.expander if item.proto.label == "Source library · 2")
     assert source_library.proto.expanded is False
     assert "Multiple departments" in markup
-    assert "Mixed materials" in markup
+    assert "Document type" in markup
 
 
 def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypatch):

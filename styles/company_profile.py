@@ -1263,14 +1263,29 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_list_card [data-testid="stHorizontalBlock"] {
-            min-height: 68px;
-            padding: 10px 16px;
+            min-height: 52px;
+            padding: 7px 14px;
             border-bottom: 1px solid var(--color-border-soft);
+        }
+
+        .st-key-price_source_list_card [data-testid="stHorizontalBlock"]:first-child {
+            min-height: 38px;
+            background: #FAF8FC;
+        }
+
+        .price-source-library-supplier {
+            display: block;
+            overflow: hidden;
+            color: var(--color-text);
+            font-size: 13px;
+            font-weight: 650;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .price-source-file {
             display: block;
-            max-width: 360px;
+            max-width: 300px;
             overflow: hidden;
             color: var(--color-text-muted);
             font-size: 12px;
@@ -1676,19 +1691,19 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_source_review_queue .price-catalog-title {
             display: grid;
-            grid-template-columns: 0.24fr 2.55fr 1.35fr 1.05fr 1.35fr 0.7fr;
+            grid-template-columns: 0.24fr 2.05fr 1.05fr 1.15fr 0.95fr 1.25fr 0.6fr;
             column-gap: var(--space-4);
             padding: 0 var(--space-4);
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_review_queue .price-catalog-title span:first-child {
-            grid-column: 1 / 6;
+            grid-column: 1 / 7;
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_review_queue .price-catalog-title span:last-child {
-            grid-column: 6;
+            grid-column: 7;
             justify-self: center;
             text-align: center;
         }
