@@ -188,6 +188,26 @@ class PriceSourceSchemaError(ValueError):
     pass
 
 
+def normalize_price_source_optional_numbers(result: dict[str, Any]) -> dict[str, Any]:
+    """Convert absent invoice discount cells to explicit zeroes."""
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict):
+            continue
+        for key in ("raw_discount_percent", "raw_discount_amount"):
+            value = row.get(key)
+            if value is None or (isinstance(value, str) and value.strip().casefold() in {"", "-", "—", "n/a", "na"}):
+                row[key] = 0
+            elif isinstance(value, str):
+                text = value.strip().replace(",", "")
+                if key == "raw_discount_percent":
+                    text = text.removesuffix("%").strip()
+                try:
+                    row[key] = float(text)
+                except ValueError:
+                    pass
+    return result
+
+
 def normalize_price_source_confidence_scale(result: dict[str, Any]) -> dict[str, Any]:
     """Normalize a consistently fractional model response to percentage points."""
     rows = result.get("rows") or []
