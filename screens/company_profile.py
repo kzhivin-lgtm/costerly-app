@@ -40,7 +40,6 @@ from use_cases.price_sources import (
     PriceSourceError,
     accepted_price_source_uploads,
     archive_price_source,
-    apply_price_source_defaults,
     canonical_price_source_category,
     combine_price_source_files,
     create_price_source_download_url,
@@ -2396,89 +2395,6 @@ def _render_price_source_review_queue(
     if not review_rows:
         return
     with st.container(key="price_source_review_queue"):
-        internal_sources: dict[str, dict] = {}
-        for row in review_rows:
-            source = row.get("source") or {}
-            summary = source.get("processing_summary") or {}
-            reasons = set(row.get("reason_codes") or [])
-            if (
-                summary.get("source_origin") == "company_internal"
-                and (
-                    source.get("vat_mode") in {None, "unknown"}
-                    or not source.get("currency")
-                    or bool(
-                        reasons
-                        & {
-                            "unknown_currency",
-                            "unknown_vat",
-                            "vat_basis_unknown",
-                            "zero_quantity",
-                        }
-                    )
-                )
-            ):
-                internal_sources[str(source["source_id"])] = source
-        source_defaults_notice = st.session_state.pop(
-            "_price_source_defaults_notice", None
-        )
-        if source_defaults_notice:
-            st.success(source_defaults_notice)
-        if internal_sources:
-            source_ids = list(internal_sources)
-            with st.form("price_source_defaults_form", border=True):
-                st.markdown("**Complete internal source settings**")
-                source_col, currency_col, vat_col, action_col = st.columns(
-                    [2.1, 0.65, 1.15, 0.7],
-                    gap="small",
-                    vertical_alignment="bottom",
-                )
-                selected_source_id = source_col.selectbox(
-                    "Source",
-                    source_ids,
-                    format_func=lambda value: str(
-                        internal_sources[value].get("source_name") or "Internal estimate"
-                    ),
-                )
-                selected_source = internal_sources[selected_source_id]
-                currency = currency_col.text_input(
-                    "Currency",
-                    value=str(selected_source.get("currency") or "ILS"),
-                    max_chars=3,
-                )
-                vat_mode = vat_col.selectbox(
-                    "VAT basis",
-                    ("", "excluded", "included"),
-                    format_func=lambda value: (
-                        "Choose VAT basis"
-                        if not value
-                        else "Prices exclude VAT"
-                        if value == "excluded"
-                        else "Prices include VAT"
-                    ),
-                )
-                apply_defaults = action_col.form_submit_button(
-                    "Apply",
-                    type="primary",
-                    use_container_width=True,
-                )
-            if apply_defaults:
-                try:
-                    result = apply_price_source_defaults(
-                        access,
-                        selected_source_id,
-                        currency=currency,
-                        vat_mode=vat_mode,
-                    )
-                except PriceSourceError as exc:
-                    st.error(str(exc))
-                else:
-                    _clear_price_lists_snapshot()
-                    st.session_state._price_source_defaults_notice = (
-                        f'{result["activated"]} prices activated · '
-                        f'{result["unresolved"]} still need review · '
-                        f'{result["excluded"]} excluded'
-                    )
-                    st.rerun()
         st.markdown(
             '<div class="price-catalog-title"><span>Needs review</span>'
             f'<span>{len(review_rows)} {"price" if len(review_rows) == 1 else "prices"}</span></div>',
