@@ -828,21 +828,52 @@ def supplier_operation_offer_matches_row(
     pricing_basis: str,
     default_currency: str = "",
 ) -> bool:
-    """Compare one supplier job without treating its raw wording as identity."""
+    """Compare one supplier job without treating its raw wording as identity.
+
+    ``supplier_defined`` proves a supplier's finished-detail price, not a
+    reusable rate per unit. A printed ``piece`` and an omitted unit therefore
+    describe the same offer. Measured bases still require equal units.
+    """
     vat_included = (
         True if row.get("raw_vat_mode") == "included"
         else False if row.get("raw_vat_mode") == "excluded" else None
+    )
+    unit_matches = (
+        True
+        if pricing_basis == "supplier_defined"
+        else _normalized_unit(str(offer.get("source_unit_label") or ""))
+        == _normalized_unit(str(row.get("raw_unit") or ""))
     )
     return all(
         (
             _decimal_equal(offer.get("source_price"), row.get("raw_price"), "0.0001"),
             str(offer.get("pricing_basis") or "") == pricing_basis,
-            _normalized_unit(str(offer.get("source_unit_label") or ""))
-            == _normalized_unit(str(row.get("raw_unit") or "")),
+            unit_matches,
             str(offer.get("currency") or "").strip().upper()
             == str(row.get("raw_currency") or default_currency or "").strip().upper(),
             offer.get("vat_included") is vat_included,
         )
+    )
+
+
+def supplier_operation_offer_catalog_key(offer: Mapping[str, Any]) -> tuple[str, str, str, str, str, str, str]:
+    """Return the user-facing identity of one supplier Material Job offer."""
+    basis = str(offer.get("pricing_basis") or "")
+    try:
+        price = Decimal(str(offer.get("source_price") or "0")).quantize(Decimal("0.0001"))
+    except (InvalidOperation, ValueError):
+        price = Decimal("0")
+    source_unit = "" if basis == "supplier_defined" else _normalized_unit(
+        str(offer.get("source_unit_label") or "")
+    )
+    return (
+        str(offer.get("operation_id") or ""),
+        str(offer.get("supplier_id") or ""),
+        basis,
+        str(price),
+        str(offer.get("currency") or "").strip().upper(),
+        str(offer.get("vat_included")),
+        source_unit,
     )
 
 
@@ -1652,8 +1683,17 @@ def list_material_jobs(access) -> list[dict]:
                 ),
             }
         )
+    # A previous build could store both an omitted and a "piece" unit for the
+    # same supplier-defined job. Keep source history, but display one current
+    # catalog offer, choosing the newest evidence deterministically.
+    visible_jobs: dict[tuple[str, str, str, str, str, str, str], dict] = {}
+    for job in jobs:
+        identity = supplier_operation_offer_catalog_key(job)
+        prior = visible_jobs.get(identity)
+        if prior is None or str(job.get("updated_at") or "") > str(prior.get("updated_at") or ""):
+            visible_jobs[identity] = job
     return sorted(
-        jobs,
+        visible_jobs.values(),
         key=lambda row: (
             str(row["department"]).casefold(),
             str(row["operation_name"]).casefold(),

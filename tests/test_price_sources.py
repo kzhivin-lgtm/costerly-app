@@ -63,6 +63,7 @@ from use_cases.price_sources import (
     material_offer_proves_unknown_family,
     material_structural_key,
     supplier_operation_offer_matches_row,
+    supplier_operation_offer_catalog_key,
     price_offer_lane_key,
     price_source_supplier_name,
     remove_price_source_row,
@@ -774,6 +775,37 @@ def test_supplier_operation_offer_comparison_ignores_raw_service_spelling():
     assert supplier_operation_offer_matches_row(
         offer, row, pricing_basis="supplier_defined", default_currency="ILS"
     )
+
+
+def test_supplier_defined_operation_matches_when_invoice_omits_a_piece_unit():
+    row = _result(confidence=95)["rows"][0]
+    row.update({"raw_price": 17.5, "raw_unit": "", "raw_currency": "ILS"})
+    offer = {
+        "source_price": 17.5,
+        "pricing_basis": "supplier_defined",
+        "source_unit_label": "piece",
+        "currency": "ILS",
+        "vat_included": False,
+    }
+
+    assert supplier_operation_offer_matches_row(
+        offer, row, pricing_basis="supplier_defined", default_currency="ILS"
+    )
+
+
+def test_supplier_defined_job_catalog_identity_ignores_piece_vs_missing_unit():
+    common = {
+        "operation_id": "operation-1",
+        "supplier_id": "supplier-1",
+        "pricing_basis": "supplier_defined",
+        "source_price": 17.5,
+        "currency": "ILS",
+        "vat_included": False,
+    }
+
+    assert supplier_operation_offer_catalog_key(
+        {**common, "source_unit_label": "piece"}
+    ) == supplier_operation_offer_catalog_key({**common, "source_unit_label": None})
 
 
 def test_material_offer_comparison_reuses_sheet_despite_line_quantity_words():
@@ -1585,6 +1617,47 @@ def test_active_supplier_operation_offer_is_enriched_as_material_job(monkeypatch
     assert rows[0]["operation_name"] == "Cutting and edge banding"
     assert rows[0]["supplier_name"] == "Wood supplier"
     assert rows[0]["pricing_basis"] == "supplier_defined"
+
+
+def test_material_jobs_show_one_supplier_defined_offer_when_unit_was_omitted(monkeypatch):
+    tables = {
+        "company_supplier_operation_offers": [
+            {
+                "operation_offer_id": "job-old", "operation_id": "operation-1",
+                "supplier_id": "supplier-1", "source_id": "source-old", "source_row_id": "row-old",
+                "raw_service_name": "cut and edge", "source_price": 17.5,
+                "pricing_basis": "supplier_defined", "source_unit_label": "piece",
+                "currency": "ILS", "vat_included": False, "valid_from": "2026-10-04",
+                "created_at": "2026-10-04T10:00:00Z",
+            },
+            {
+                "operation_offer_id": "job-new", "operation_id": "operation-1",
+                "supplier_id": "supplier-1", "source_id": "source-new", "source_row_id": "row-new",
+                "raw_service_name": "פס חיתוך + קנט", "source_price": 17.5,
+                "pricing_basis": "supplier_defined", "source_unit_label": None,
+                "currency": "ILS", "vat_included": False, "valid_from": "2026-10-05",
+                "created_at": "2026-10-05T10:00:00Z",
+            },
+        ],
+        "reference_operations": [{
+            "operation_id": "operation-1", "operation_code": "supplier_cut_and_edge_banding",
+            "department": "Wood", "operation_name": "Cutting and edge banding",
+        }],
+        "company_suppliers": [{"supplier_id": "supplier-1", "supplier_name": "Wood supplier"}],
+        "company_price_sources": [
+            {"source_id": "source-old", "source_name": "old.pdf", "source_kind": "file", "source_url": None,
+             "processed_at": "2026-10-04T10:00:00Z", "processing_summary": {}},
+            {"source_id": "source-new", "source_name": "new.jpg", "source_kind": "file", "source_url": None,
+             "processed_at": "2026-10-05T10:00:00Z", "processing_summary": {}},
+        ],
+    }
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: _CatalogClient(tables))
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+
+    rows = list_material_jobs(SimpleNamespace(company_id="company-1", user_id="user-1"))
+
+    assert len(rows) == 1
+    assert rows[0]["operation_offer_id"] == "job-new"
 
 
 def test_unresolved_queue_excludes_rows_from_archived_sources(monkeypatch):

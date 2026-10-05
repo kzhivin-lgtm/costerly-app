@@ -228,3 +228,26 @@ The workspace requirements are:
   current operation-offer comparator treats missing source unit as a distinct
   service. This is an incorrect constraint for a supplier-defined job, where
   a visible `piece` is not a reusable rate basis.
+
+### Increment, 2026-10-05, Material Jobs current-offer identity
+
+- For `supplier_defined` Material Jobs, an omitted source unit and `piece`
+  match the same offer. The current catalog identity is canonical operation,
+  canonical supplier, effective price, currency, VAT and pricing basis. A
+  unit remains identity-bearing only for measured bases such as linear metre
+  and square metre. Legacy duplicate evidence is retained by source, but the
+  Material Jobs catalog displays only the newest equivalent offer.
+- Verification: focused Price Sources and archive migration tests, 121 passed;
+  Python compilation and diff check passed.
+
+### P1 pending, 2026-10-05, photo extraction session recovery
+
+- A submitted JPEG photo showed client-side progress for roughly 200 seconds
+  and then a blank screen. Production has neither a new source record nor a
+  `server.price_source_job_submitted` runtime mark for that attempt. Therefore
+  the extractor/OCR did not stall: browser/session state was lost before a
+  server worker was acknowledged. The current Future exists only in Streamlit
+  session state, so it cannot recover an interrupted browser session. Repair
+  requires a durable submitted-job record before the worker starts, plus a
+  client recovery path. Do not claim photo OCR quality until a real submitted
+  photo has a terminal trace.
