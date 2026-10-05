@@ -2172,6 +2172,12 @@ def test_price_source_processing_collects_completed_future_from_status_fragment(
     assert "st.rerun(scope=\"app\")" in status_source
 
 
+def test_price_source_agent_disables_sdk_retries_for_background_cycles():
+    source = Path("agents/price_source_agent.py").read_text()
+
+    assert "with_options(timeout=45.0, max_retries=0)" in source
+
+
 def test_price_source_failure_message_keeps_actionable_exception_detail_bounded():
     from screens.company_profile import _price_source_failure_message
 

@@ -72,8 +72,11 @@ def run_price_source_agent(
         "CLAUDE_PRICE_SOURCE_MODEL",
         DEFAULT_CLAUDE_AGENT_MODEL,
     )
+    # Price Sources run in a background worker. Never let the SDK's default
+    # retry policy turn one unavailable request into several minutes of an
+    # apparently live cycle. A terminal failure is actionable and visible.
     response, diagnostics = create_claude_message_streamed(
-        get_anthropic_client(),
+        get_anthropic_client().with_options(timeout=45.0, max_retries=0),
         model=selected_model,
         max_tokens=PRICE_SOURCE_MAX_OUTPUT_TOKENS,
         system=prompt,
