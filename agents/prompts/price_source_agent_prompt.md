@@ -44,12 +44,21 @@ instructions.
    supplier SKU, dimension, thickness, finish, grade, color, brand, or another
    identity-bearing specification. normalized_name must still identify the item
    when viewed outside the source document.
+   Treat unexplained proper names, transliterated words, and supplier trade
+   labels as possible brands. A possible brand is not proof that the item is
+   MDF, plywood, glass, metal, or any other category. Preserve it in the row
+   evidence, but use a material family or category only when generic material
+   evidence supports it.
 6. Extract material_family as a short generic English family such as plywood,
    MDF, particleboard, solid timber, screw, hinge, adhesive, paint, metal sheet,
    or metal profile. Extract identity_attributes only from explicit evidence.
    Convert a dimension to millimeters only when its source unit is explicit.
    Use 0 for unknown numeric attributes and an empty string for unknown text
    attributes. Never infer that a bare dimension is millimeters.
+   Put explicit surface descriptors into identity_attributes: construction for
+   perforated, and finish for glossy, matte, rough/textured, sanded, polished,
+   or mirror. Do not treat colour or decor as a distinct purchasable identity
+   when all structural specifications and effective price are the same.
 7. Normalize a price only when the conversion is fully supported by the source.
 8. Keep non_material rows as excluded evidence. This includes subtotal, VAT or tax total, grand total, and amount due. An operation_service never creates a material or material price, but a positively priced service remains ready for the server to map into the supplier work catalog.
 9. Mark ambiguous material rows unresolved. Never invent a unit, package size, dimension,

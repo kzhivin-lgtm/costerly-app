@@ -522,6 +522,31 @@ def test_supplier_merge_uses_the_first_saved_supplier_for_a_timestamped_tie():
     assert match_existing_supplier("Wood Zenter", candidates)["supplier_id"] == "first"
 
 
+def test_supplier_merge_keeps_first_saved_canonical_when_later_ocr_is_closer():
+    candidates = [
+        {"supplier_id": "first", "supplier_name": "Wood Center Ltd", "created_at": "2026-10-05T09:57:00+00:00"},
+        {"supplier_id": "later", "supplier_name": "Wood Zenter", "created_at": "2026-10-05T12:01:00+00:00"},
+    ]
+
+    assert match_existing_supplier("Wood Zenter", candidates)["supplier_id"] == "first"
+
+
+def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "Twin plywood 17 mm מבוקע high gloss",
+        "normalized_name": "Twin plywood 17mm cut to size sheet",
+        "material_type": "Wood Sheets",
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["identity_attributes"]["construction"] == "perforated"
+    assert row["identity_attributes"]["finish"] == "glossy"
+    assert row["normalized_name"] == "Twin plywood 17mm perforated sheet"
+
+
 def test_sheet_normalization_refuses_an_unproved_glass_category():
     result = _result()
     row = result["rows"][0]

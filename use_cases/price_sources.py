@@ -88,6 +88,19 @@ _CONSUMABLE_MARKERS = (
     "נייר לטש", "נייר שיוף", "שוחק",
 )
 _GLASS_MARKERS = ("glass", "זכוכית")
+_IDENTITY_DESCRIPTOR_MARKERS = {
+    "construction": (
+        ("perforated", ("perforated", "perforation", "מחורר", "מבוקע")),
+    ),
+    "finish": (
+        ("glossy", ("high gloss", "glossy", "gloss", "מבריק")),
+        ("matte", ("matte", "matt", "מט")),
+        ("rough", ("rough", "textured", "texture", "מחוספס", "טקסטור")),
+        ("sanded", ("sanded", "sanding", "שיוף", "משויף")),
+        ("polished", ("polished", "polish", "מלוטש")),
+        ("mirror", ("mirror", "mirrored", "מראה")),
+    ),
+}
 
 
 class PriceSourceError(ValueError):
@@ -105,6 +118,20 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
         ).casefold()
         source_text = str(row.get("raw_description") or "").casefold()
         attributes = row.get("identity_attributes") or {}
+        # Only normalise descriptors which are literally present in the source.
+        # This makes equivalent OCR/translations share an identity without making
+        # a brand or trade name prove a material family or category.
+        for attribute, descriptors in _IDENTITY_DESCRIPTOR_MARKERS.items():
+            for canonical, markers in descriptors:
+                if any(marker in source_text for marker in markers):
+                    attributes[attribute] = canonical
+                    if canonical == "perforated":
+                        row["normalized_name"] = re.sub(
+                            r"\b(?:cut to size|split)\b", "perforated",
+                            str(row.get("normalized_name") or ""), flags=re.IGNORECASE,
+                        )
+                    break
+        row["identity_attributes"] = attributes
         has_sheet_evidence = (
             row.get("material_type") == "Wood Sheets"
             or "sheet" in text
@@ -320,15 +347,16 @@ def match_existing_supplier(
     if not scored:
         return None
     scored.sort(key=lambda item: item[0])
+    # In production every supplier row is timestamped.  Once all safe matches
+    # have timestamps, the first accepted spelling is canonical, even when a
+    # later OCR variant is a few edits closer to this particular invoice.
+    dated = [candidate for _, candidate in scored if candidate.get("created_at")]
+    if len(dated) == len(scored):
+        dated.sort(key=lambda candidate: (str(candidate["created_at"]), str(candidate.get("supplier_id") or "")))
+        return dated[0]
     best_distance = scored[0][0]
     best = [candidate for distance, candidate in scored if distance == best_distance]
-    if len(best) == 1:
-        return best[0]
-    dated = [candidate for candidate in best if candidate.get("created_at")]
-    if len(dated) != len(best):
-        return None
-    dated.sort(key=lambda candidate: (str(candidate["created_at"]), str(candidate.get("supplier_id") or "")))
-    return dated[0]
+    return best[0] if len(best) == 1 else None
 
 
 @dataclass(frozen=True)
