@@ -1094,6 +1094,9 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "completeMarker.dataset.processingCycle" in source
     assert "completedCycle === startedCycle" in source
     assert "new MutationObserver(resetCompletedState)" in source
+    assert "preventPrematureProfileNavigation" in source
+    assert "__costerlyPriceSourceStartPending" in source
+    assert "3000" in source
     assert "observer.disconnect()" in source
     assert "function showLiveProgress(card, startedAtMs)" in source
     assert "function removeLiveProgress(card)" in source

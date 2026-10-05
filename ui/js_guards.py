@@ -3814,6 +3814,8 @@ def install_price_source_processing_guard() -> None:
             const parentWindow = window.parent;
             const parentDoc = parentWindow.document;
             const CLEANUP_KEY = "__costerlyPriceSourceProcessingGuardCleanup";
+            const STARTING_KEY = "__costerlyPriceSourceStartPending";
+            const STARTING_TIMER_KEY = "__costerlyPriceSourceStartTimer";
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
@@ -3862,6 +3864,11 @@ def install_price_source_processing_guard() -> None:
                         ".price-source-processing-marker"
                     );
                     if (!completeMarker && processingMarker) {
+                        parentWindow[STARTING_KEY] = false;
+                        if (parentWindow[STARTING_TIMER_KEY]) {
+                            parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
+                            delete parentWindow[STARTING_TIMER_KEY];
+                        }
                         card.classList.add("costerly-price-source-processing");
                         if (!card.querySelector(".price-source-live-progress")) {
                             showLiveProgress(
@@ -3879,6 +3886,11 @@ def install_price_source_processing_guard() -> None:
                         if (!completeMarker || completedCycle === startedCycle) return;
                     }
                     card.classList.remove("costerly-price-source-processing");
+                    parentWindow[STARTING_KEY] = false;
+                    if (parentWindow[STARTING_TIMER_KEY]) {
+                        parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
+                        delete parentWindow[STARTING_TIMER_KEY];
+                    }
                     delete card.dataset.costerlyProcessingCycle;
                     removeLiveProgress(card);
                     const button = card.querySelector(".st-key-process_price_source button");
@@ -3907,6 +3919,17 @@ def install_price_source_processing_guard() -> None:
                     ? completeMarker.dataset.processingCycle || ""
                     : "";
                 card.classList.add("costerly-price-source-processing");
+                // Do not let a Profile-tab click win the race before
+                // Streamlit has run the Extract callback and queued its worker.
+                // The server marker clears this immediately after submission.
+                parentWindow[STARTING_KEY] = true;
+                if (parentWindow[STARTING_TIMER_KEY]) {
+                    parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
+                }
+                parentWindow[STARTING_TIMER_KEY] = parentWindow.setTimeout(() => {
+                    parentWindow[STARTING_KEY] = false;
+                    delete parentWindow[STARTING_TIMER_KEY];
+                }, 3000);
                 showLiveProgress(card, Date.now());
                 button.disabled = true;
                 button.setAttribute("aria-disabled", "true");
@@ -3914,14 +3937,29 @@ def install_price_source_processing_guard() -> None:
                 if (label) label.textContent = "Extracting prices";
             }
 
+            function preventPrematureProfileNavigation(event) {
+                if (!parentWindow[STARTING_KEY]) return;
+                if (!event.target.closest('[role="tab"]')) return;
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
+
             parentDoc.addEventListener("click", handleClick, true);
+            parentDoc.addEventListener("click", preventPrematureProfileNavigation, true);
             const observer = new MutationObserver(resetCompletedState);
             observer.observe(parentDoc.body, {childList: true, subtree: true});
             resetCompletedState();
             parentWindow[CLEANUP_KEY] = () => {
                 parentDoc.removeEventListener("click", handleClick, true);
+                parentDoc.removeEventListener("click", preventPrematureProfileNavigation, true);
                 observer.disconnect();
                 parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach(removeLiveProgress);
+                if (parentWindow[STARTING_TIMER_KEY]) {
+                    parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
+                    delete parentWindow[STARTING_TIMER_KEY];
+                }
+                delete parentWindow[STARTING_KEY];
                 delete parentWindow[CLEANUP_KEY];
             };
         })();
