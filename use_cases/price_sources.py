@@ -87,7 +87,7 @@ _CONSUMABLE_MARKERS = (
     "glue", "adhesive", "sandpaper", "abrasive", "ברג", "דיבל", "למלו", "דבק",
     "נייר לטש", "נייר שיוף", "שוחק",
 )
-_OKUME_MARKERS = ("okume", "okoume", "אוקמה", "אוקומה")
+_GLASS_MARKERS = ("glass", "זכוכית")
 
 
 class PriceSourceError(ValueError):
@@ -103,6 +103,7 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
             str(row.get(key) or "")
             for key in ("raw_description", "normalized_name", "material_family")
         ).casefold()
+        source_text = str(row.get("raw_description") or "").casefold()
         attributes = row.get("identity_attributes") or {}
         has_sheet_evidence = (
             row.get("material_type") == "Wood Sheets"
@@ -116,24 +117,23 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
                 ) >= 1000
             )
         )
-        if any(marker in text for marker in _OKUME_MARKERS) and has_sheet_evidence:
-            # Okume may be a trade name. Treat it as a plywood-sheet family
-            # only where the row independently proves sheet context.
-            row["material_type"] = "Wood Sheets"
-            row["material_family"] = "okume"
-            name = str(row.get("normalized_name") or "").strip()
-            if not name or "glass" in name.casefold():
-                thickness = int(float(attributes.get("thickness_mm") or 0))
-                width = int(float(attributes.get("width_mm") or 0))
-                parts = ["Okume"]
-                if thickness:
-                    parts.append(f"{thickness} mm")
-                if width:
-                    parts.append(f"× {width} mm")
-                row["normalized_name"] = " ".join(parts)
+        if row.get("material_type") == "Glass" and not any(
+            marker in source_text for marker in _GLASS_MARKERS
+        ):
+            # The extractor must positively prove glass. A trade name, a size,
+            # or a generic sheet is not such proof. Keep the row editable,
+            # rather than inventing a wrong catalogue category.
+            row["material_type"] = "Other"
+            row["material_family"] = "other"
+            if "glass" in str(row.get("normalized_name") or "").casefold():
+                row["normalized_name"] = (
+                    "Unclassified sheet material"
+                    if has_sheet_evidence
+                    else "Unclassified material"
+                )
         if row.get("material_type") != "Wood Sheets":
             continue
-        # A full sheet quoted as a piece is still the same purchasable sheet.
+        # A full wood sheet quoted as a piece is still the same purchasable sheet.
         # Cut parts are represented by supplier Material Jobs, not by a second
         # material unit.
         if _normalized_unit(str(row.get("raw_unit") or "")) == "piece":

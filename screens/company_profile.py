@@ -2011,7 +2011,7 @@ def _price_source_context_label(value: object) -> str:
 
 def _price_source_document_type_label(value: object) -> str:
     labels = {
-        "tax_invoice": "Tax invoice",
+        "tax_invoice": "Invoice",
         "invoice": "Invoice",
         "price_list": "Price list",
         "supplier_web_page": "Supplier page",

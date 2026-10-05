@@ -147,6 +147,6 @@ The workspace requirements are:
   extraction.
 - `Material Jobs` is always the fourth top-level catalog department, including
   when empty, and uses the same expander/card component geometry as materials.
-- `Okume` is treated as a plywood-sheet family only when independent sheet
-  evidence exists, such as the sheet wording or thickness plus a sheet-sized
-  dimension. A Hebrew spelling alone is not sufficient categorisation evidence.
+- `Glass` requires an explicit glass marker in the original source text. The
+  agent's own normalised label is not proof. An unproved category becomes
+  `Other` and stays editable, rather than creating a false Glass material.

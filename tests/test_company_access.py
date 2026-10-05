@@ -3315,6 +3315,10 @@ def test_company_metrics_format_whole_shekels_and_exempt_arnona_from_vat():
     assert company_profile._metric_percent_text(2.5) == "2.5%"
 
 
+def test_price_source_tax_invoice_uses_the_plain_invoice_label():
+    assert company_profile._price_source_document_type_label("tax_invoice") == "Invoice"
+
+
 @pytest.mark.parametrize(("raw", "formatted"), [
     ("0534000000", "+972 53 400 0000"),
     ("+972534000000", "+972 53 400 0000"),

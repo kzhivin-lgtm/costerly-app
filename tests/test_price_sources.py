@@ -522,7 +522,7 @@ def test_supplier_merge_uses_the_first_saved_supplier_for_a_timestamped_tie():
     assert match_existing_supplier("Wood Zenter", candidates)["supplier_id"] == "first"
 
 
-def test_sheet_normalization_corrects_okume_and_its_piece_unit():
+def test_sheet_normalization_refuses_an_unproved_glass_category():
     result = _result()
     row = result["rows"][0]
     row.update({
@@ -540,11 +540,26 @@ def test_sheet_normalization_corrects_okume_and_its_piece_unit():
 
     normalize_price_source_sheet_rows(result)
 
-    assert row["material_type"] == "Wood Sheets"
-    assert row["material_family"] == "okume"
-    assert row["normalized_name"] == "Okume 5 mm × 3100 mm"
-    assert row["purchase_unit"] == row["calculation_unit"] == "sheet"
-    assert row["conversion_factor"] == 1
+    assert row["material_type"] == "Other"
+    assert row["material_family"] == "other"
+    assert row["normalized_name"] == "Unclassified sheet material"
+    assert row["purchase_unit"] == row["calculation_unit"] == "piece"
+
+
+def test_sheet_normalization_keeps_proved_glass_category():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "Glass sheet 5 mm 3100",
+        "normalized_name": "Glass 5 mm 3100 sheet",
+        "material_type": "Glass",
+        "material_family": "glass",
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["material_type"] == "Glass"
+    assert row["normalized_name"] == "Glass 5 mm 3100 sheet"
 
 
 def test_identity_attributes_require_the_fixed_contract():
