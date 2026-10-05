@@ -2382,22 +2382,39 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
             )
         with purchase_unit_col:
             purchase_options = [""] + units
-            selected_purchase_unit = st.selectbox(
-                purchase_unit_label,
-                purchase_options,
-                index=purchase_options.index(purchase_unit) if purchase_unit in purchase_options else 0,
-                format_func=lambda value: value or "Choose purchase unit",
-                key=field_keys["purchase_unit"],
+            purchase_container = (
+                f"price_source_required_input_{source_id}_{row_id}_purchase"
+                if purchase_unit not in units
+                else f"price_source_input_{source_id}_{row_id}_purchase"
             )
+            with st.container(key=purchase_container):
+                selected_purchase_unit = st.selectbox(
+                    purchase_unit_label,
+                    purchase_options,
+                    index=purchase_options.index(purchase_unit) if purchase_unit in purchase_options else 0,
+                    format_func=lambda value: value or "Choose purchase unit",
+                    key=field_keys["purchase_unit"],
+                )
         with calculation_unit_col:
             calculation_options = [""] + units
-            selected_calculation_unit = st.selectbox(
-                calculation_unit_label,
-                calculation_options,
-                index=calculation_options.index(calculation_unit) if calculation_unit in calculation_options else 0,
-                format_func=lambda value: value or "Choose estimation unit",
-                key=field_keys["calculation_unit"],
+            calculation_required = (
+                calculation_unit not in units
+                or "missing_unit" in blocking_reasons
+                or "ambiguous_unit" in blocking_reasons
             )
+            calculation_container = (
+                f"price_source_required_input_{source_id}_{row_id}_calculation"
+                if calculation_required
+                else f"price_source_input_{source_id}_{row_id}_calculation"
+            )
+            with st.container(key=calculation_container):
+                selected_calculation_unit = st.selectbox(
+                    calculation_unit_label,
+                    calculation_options,
+                    index=calculation_options.index(calculation_unit) if calculation_unit in calculation_options else 0,
+                    format_func=lambda value: value or "Choose estimation unit",
+                    key=field_keys["calculation_unit"],
+                )
         with factor_col:
             conversion_factor = st.number_input(
                 factor_label,

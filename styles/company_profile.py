@@ -1252,6 +1252,12 @@ def apply_company_profile_css() -> None:
             transform: translateY(8px);
         }
 
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_required_input_"] [data-baseweb="select"] > div {
+            border-color: #D94B52 !important;
+            box-shadow: 0 0 0 1px #D94B52 !important;
+        }
+
         .stApp:has(.company-profile-active) .st-key-price_source_list_card {
             padding-bottom: 10px;
         }
