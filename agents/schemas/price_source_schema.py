@@ -200,17 +200,22 @@ def normalize_price_source_optional_numbers(result: dict[str, Any]) -> dict[str,
             if value is None or (isinstance(value, str) and value.strip().casefold() in {"", "-", "—", "n/a", "na"}):
                 row[key] = 0
             elif isinstance(value, str):
-                text = value.strip().replace(",", "")
+                text = value.strip().replace(",", "").replace("−", "-").replace("–", "-")
                 if key == "raw_discount_percent":
                     text = text.removesuffix("%").strip()
                 try:
-                    row[key] = float(text)
+                    # Invoices frequently print a discount as a negative
+                    # deduction.  The schema stores the discount magnitude,
+                    # so -10% is 10 rather than an invalid negative field.
+                    row[key] = abs(float(text))
                 except ValueError:
                     # A discount cell has no independent commercial meaning
                     # when it cannot be read as a number.  Keep the source row
                     # usable and treat it as no stated discount.
                     row[key] = 0
-            elif not isinstance(value, (int, float)):
+            elif isinstance(value, (int, float)):
+                row[key] = abs(value)
+            else:
                 row[key] = 0
     return result
 

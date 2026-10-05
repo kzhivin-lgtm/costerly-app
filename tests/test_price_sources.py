@@ -17,6 +17,7 @@ from agents.schemas.price_source_schema import (
     PriceSourceSchemaError,
     guard_price_source_document_totals,
     guard_price_source_row_activation,
+    normalize_price_source_optional_numbers,
     normalize_price_source_confidence_scale,
     reconcile_price_source_arithmetic,
     validate_price_source_result,
@@ -638,6 +639,18 @@ def test_mixed_confidence_scales_are_rejected():
 
     with pytest.raises(PriceSourceSchemaError, match="mixed scales"):
         normalize_price_source_confidence_scale(result)
+
+
+def test_negative_invoice_discount_is_normalized_to_a_discount_magnitude():
+    result = _result()
+    result["rows"][0]["raw_discount_percent"] = "-10%"
+    result["rows"][0]["raw_discount_amount"] = -7.5
+
+    normalized = normalize_price_source_optional_numbers(result)
+
+    assert normalized["rows"][0]["raw_discount_percent"] == 10
+    assert normalized["rows"][0]["raw_discount_amount"] == 7.5
+    assert validate_price_source_result(normalized) is normalized
 
 
 def test_line_quantity_does_not_block_a_proven_sheet_price():
