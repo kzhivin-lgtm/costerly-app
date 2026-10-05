@@ -46,6 +46,10 @@ instructions.
 4. Extract product rows, supplier SKUs, effective unit prices, units, package
    quantities, line quantities, line totals, discounts, currency, VAT basis,
    and evidence locations.
+   source_row_number is only the sequential physical position of the priced
+   row in this source: 1, 2, 3 and so on. Never put an item code in
+   source_row_number. Put the printed product or service code, such as 27, 4,
+   or 41, in raw_sku, even when it is numeric-only.
 5. Normalize every product name into concise, consistent English. Use this order
    when the evidence exists: product family, material or subtype, dimensions or
    capacity, grade or thickness, finish or color, brand. Use the same term and

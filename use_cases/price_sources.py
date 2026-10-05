@@ -214,6 +214,11 @@ def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str,
     )
 
 
+def material_source_description_key(row: Mapping[str, Any]) -> str:
+    """Return stable source wording for same-supplier repeat matching."""
+    return _normalized_name(str(row.get("raw_description") or ""))
+
+
 def discard_price_source_consumables(result: dict[str, Any]) -> int:
     """Discard low-value consumables before any private row or offer is stored."""
     retained: list[dict[str, Any]] = []
@@ -930,6 +935,51 @@ def material_offer_proves_unknown_family(
     return family if material_offer_matches_extracted_row(
         offer, material, candidate, default_currency=default_currency,
     ) else ""
+
+
+def material_offer_matches_same_supplier_description(
+    offer: Mapping[str, Any],
+    material: Mapping[str, Any],
+    row: Mapping[str, Any],
+    *,
+    default_currency: str = "",
+) -> bool:
+    """Match a repeated source line despite a changed AI family label."""
+    specifications = material.get("specifications") or {}
+    if specifications.get("source_description_key") != material_source_description_key(row):
+        return False
+    if not _decimal_equal(offer.get("source_price"), row.get("raw_price"), "0.0001"):
+        return False
+    offer_unit = _normalized_unit(str(
+        offer.get("calculation_unit")
+        or offer.get("purchase_unit")
+        or offer.get("source_unit")
+        or ""
+    ))
+    row_unit = _normalized_unit(str(
+        row.get("calculation_unit") or row.get("purchase_unit") or row.get("raw_unit") or ""
+    ))
+    if offer_unit != row_unit:
+        return False
+    currency = str(row.get("raw_currency") or default_currency or "").strip().upper()
+    if str(offer.get("currency") or "").strip().upper() != currency:
+        return False
+    vat_included = (
+        True if row.get("raw_vat_mode") == "included"
+        else False if row.get("raw_vat_mode") == "excluded" else None
+    )
+    if offer.get("vat_included") is not vat_included:
+        return False
+    row_attributes = row.get("identity_attributes") or {}
+    for field in ("thickness_mm", "width_mm", "length_mm", "diameter_mm"):
+        try:
+            material_value = float(specifications.get(field) or 0)
+            row_value = float(row_attributes.get(field) or 0)
+        except (TypeError, ValueError):
+            return False
+        if material_value > 0 and row_value > 0 and material_value != row_value:
+            return False
+    return True
 
 
 def price_offer_lane_key(
@@ -2242,7 +2292,7 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         }
         offer_sources = (
             client.table("company_price_sources")
-            .select("source_id,supplier_id,processing_summary")
+            .select("source_id,supplier_id,status,processing_summary")
             .eq("company_id", company_id)
             .execute()
         ).data or []
@@ -2722,7 +2772,7 @@ def process_price_source(
         ).data or []
         offer_sources = (
             client.table("company_price_sources")
-            .select("source_id,supplier_id,processing_summary")
+            .select("source_id,supplier_id,status,processing_summary")
             .eq("company_id", company_id)
             .execute()
         ).data or []
@@ -2770,6 +2820,11 @@ def process_price_source(
         operation_offers_by_identity: dict[tuple[str, str], list[dict]] = {}
         for offer in active_operation_offers:
             offer_source = source_by_id.get(str(offer.get("source_id") or ""), {})
+            # A deleted source must not silently suppress a new visible job.
+            # Older archive RPCs left operation offers active, so ignore those
+            # stale records even before the repaired archive function runs.
+            if offer_source.get("status") == "archived":
+                continue
             offer_lane = price_offer_lane_key(
                 supplier_id=offer_source.get("supplier_id") or offer.get("supplier_id"),
                 source_summary=offer_source.get("processing_summary"),
@@ -2901,6 +2956,11 @@ def process_price_source(
                         material,
                         row,
                         default_currency=str(result.get("currency") or ""),
+                    ) or material_offer_matches_same_supplier_description(
+                        offer,
+                        material,
+                        row,
+                        default_currency=str(result.get("currency") or ""),
                     )
                     for offer in offers
                 ):
@@ -2931,6 +2991,7 @@ def process_price_source(
                 if value not in (None, "", 0, 0.0, [])
             }
             identity_attributes["material_family"] = str(row.get("material_family") or "")
+            identity_attributes["source_description_key"] = material_source_description_key(row)
             new_material_payloads.append(
                 {
                     "company_id": company_id,

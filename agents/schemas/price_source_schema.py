@@ -232,6 +232,35 @@ def normalize_price_source_optional_numbers(result: dict[str, Any]) -> dict[str,
     return result
 
 
+def normalize_price_source_row_identity_fields(result: dict[str, Any]) -> dict[str, Any]:
+    """Keep a supplier item code out of the internal row-position field.
+
+    The model occasionally mistakes visible invoice product codes such as 27,
+    41 or 4 for ``source_row_number``.  That silently discards SKU evidence
+    and makes the same supplier item look new on a later invoice.  Row numbers
+    are internal, sequential positions in the extracted set, while the visible
+    code belongs in ``raw_sku``.  Preserve an explicit SKU and only recover an
+    unambiguous non-sequential numeric value.
+    """
+    rows = result.get("rows") or []
+    if not isinstance(rows, list):
+        return result
+    for position, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            continue
+        source_number = row.get("source_row_number")
+        raw_sku = str(row.get("raw_sku") or "").strip()
+        if (
+            not raw_sku
+            and isinstance(source_number, int)
+            and source_number > 0
+            and source_number != position
+        ):
+            row["raw_sku"] = str(source_number)
+        row["source_row_number"] = position
+    return result
+
+
 def normalize_price_source_confidence_scale(result: dict[str, Any]) -> dict[str, Any]:
     """Normalize a consistently fractional model response to percentage points."""
     rows = result.get("rows") or []

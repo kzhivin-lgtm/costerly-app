@@ -197,3 +197,21 @@ The workspace requirements are:
 - Test-company 610 Price Lists data and uploaded source objects were cleared
   on 2026-10-05 with user authorisation. The next real invoice run is a clean
   acceptance baseline.
+
+### Checkpoint, 2026-10-05, repeated invoice identity and Material Jobs removal
+
+- A printed numeric invoice item code is supplier provenance, never the
+  internal extracted row position. The schema repairs the known `27`, `41`,
+  `4` misplacement into `raw_sku` before persistence, while retaining the
+  sequential internal row position.
+- Repeated material from the same canonical supplier can reuse the first
+  catalog material when original source wording, price, unit, VAT and proven
+  dimensions agree, even when the model changes the English family label. SKU
+  strengthens the match but is not required. Perforation remains distinct.
+- The archive RPC now archives supplier-operation offers too. The resolver
+  also ignores legacy active job offers whose source is already archived. This
+  prevents a removed source from making a later Material Job appear "already
+  in catalog" while the Material Jobs department shows zero jobs.
+- Verification: focused Price Sources and archive migration tests, 118 passed;
+  Python compilation and diff check passed. Production migration
+  `2026_10_05_archive_supplier_operation_offers.sql` applied successfully.

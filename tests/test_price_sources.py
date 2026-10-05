@@ -17,6 +17,7 @@ from agents.schemas.price_source_schema import (
     PriceSourceSchemaError,
     guard_price_source_document_totals,
     guard_price_source_row_activation,
+    normalize_price_source_row_identity_fields,
     normalize_price_source_optional_numbers,
     normalize_price_source_confidence_scale,
     reconcile_price_source_arithmetic,
@@ -58,6 +59,7 @@ from use_cases.price_sources import (
     price_source_template_fingerprint,
     price_offer_matches_row,
     material_offer_matches_extracted_row,
+    material_offer_matches_same_supplier_description,
     material_offer_proves_unknown_family,
     material_structural_key,
     supplier_operation_offer_matches_row,
@@ -592,6 +594,35 @@ def test_existing_supplier_offer_can_prove_an_unknown_brand_family():
     assert material_offer_proves_unknown_family(offer, material, row, default_currency="ILS") == "plywood"
 
 
+def test_same_supplier_source_wording_merges_despite_changed_family_label():
+    row = _result()["rows"][0]
+    row.update({
+        "material_family": "plywood",
+        "raw_description": "טווין 17 ממ 3100 טפ *2",
+        "raw_price": 110,
+        "raw_unit": "sheet",
+        "purchase_unit": "sheet",
+        "calculation_unit": "sheet",
+        "conversion_factor": 1,
+        "normalized_price": 110,
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 17, "width_mm": 3100, "length_mm": 0},
+    })
+    offer = {"source_price": 110, "source_unit": "sheet", "currency": "ILS", "vat_included": False}
+    material = {
+        "canonical_name": "Twin 17 mm",
+        "specifications": {
+            "source_description_key": "טווין 17 ממ 3100 טפ 2",
+            "material_family": "laminated particleboard",
+            "thickness_mm": 17,
+            "width_mm": 3100,
+        },
+    }
+
+    assert material_offer_matches_same_supplier_description(
+        offer, material, row, default_currency="ILS"
+    )
+
+
 def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
     result = _result()
     row = result["rows"][0]
@@ -695,6 +726,22 @@ def test_invoice_footer_rounding_discount_is_not_persisted_on_a_material_row():
 
     assert normalized["rows"][0]["raw_discount_percent"] == 0
     assert normalized["rows"][0]["raw_discount_amount"] == 0
+
+
+def test_numeric_invoice_item_codes_are_preserved_as_sku_not_row_numbers():
+    result = _result()
+    first = result["rows"][0]
+    first["source_row_number"] = 27
+    first["raw_sku"] = ""
+    second = deepcopy(first)
+    second["source_row_number"] = 41
+    second["raw_sku"] = ""
+    result["rows"].append(second)
+
+    normalized = normalize_price_source_row_identity_fields(result)
+
+    assert [row["source_row_number"] for row in normalized["rows"]] == [1, 2]
+    assert [row["raw_sku"] for row in normalized["rows"]] == ["27", "41"]
 
 
 def test_line_quantity_does_not_block_a_proven_sheet_price():
