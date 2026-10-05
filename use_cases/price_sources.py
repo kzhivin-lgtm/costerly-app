@@ -430,12 +430,13 @@ def render_price_source_preview(
 
 
 def combine_price_source_files(files: list) -> object | None:
-    """Keep one upload as-is or combine ordered JPEG/PNG pages into one PDF."""
+    """Freeze one upload or combine ordered JPEG/PNG pages into one PDF."""
     selected = accepted_price_source_uploads(files)
     if not selected:
         return None
     if len(selected) == 1:
-        return selected[0]
+        item = selected[0]
+        return CombinedPriceSource(name=str(item.name), data=item.getvalue())
     validate_price_source_upload_selection(selected)
     if sum(len(item.getvalue()) for item in selected) > MAX_SOURCE_BYTES:
         raise PriceSourceError("The combined price source must be 50 MB or smaller")

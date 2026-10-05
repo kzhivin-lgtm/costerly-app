@@ -1047,7 +1047,9 @@ def test_mixed_selection_keeps_only_the_first_file():
     )
 
     assert selected == [first]
-    assert combine_price_source_files(selected) is first
+    combined = combine_price_source_files(selected)
+    assert combined.name == first.name
+    assert combined.getvalue() == first.getvalue()
 
 
 def test_photo_led_mixed_selection_keeps_all_photo_pages_only():

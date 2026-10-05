@@ -17,6 +17,7 @@ import streamlit as st
 
 from db.company_access import assert_company_owner
 from db.supabase_client import get_supabase_client
+from agents.anthropic_adapter import get_secret as get_agent_secret
 from agents.schemas.price_source_schema import CANONICAL_UNIT_CODES, PRICE_SOURCE_CATEGORIES
 from styles.company_profile import apply_company_profile_css
 from styles.object_detail import apply_object_detail_css
@@ -2782,6 +2783,12 @@ def _queue_price_source_processing(
     ) + 1
     st.session_state._price_source_processing_cycle = processing_cycle
     uploaded_file = combine_price_source_files(uploaded_files)
+    # Do this in the Streamlit request while secrets and cached resources have
+    # their normal request context. The worker then only performs I/O and does
+    # not depend on an UploadedFile or a Streamlit secret lookup.
+    get_supabase_client()
+    get_agent_secret("ANTHROPIC_API_KEY")
+    get_agent_secret("CLAUDE_PRICE_SOURCE_MODEL")
     pending = {
         "uploaded_file": uploaded_file,
         "department": "",

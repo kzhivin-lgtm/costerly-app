@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import sys
+from threading import Lock
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,6 +34,9 @@ DETECTION_PROMPT_VERSION = "detection_vnext_3_15_8_object_dossier_v2"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_vnext_3_15_8_registry_regions_v2"
 
+_STREAMLIT_SECRET_CACHE: dict[str, str] = {}
+_STREAMLIT_SECRET_CACHE_LOCK = Lock()
+
 
 def get_secret(name: str, default: str | None = None) -> str | None:
     """
@@ -44,11 +48,19 @@ def get_secret(name: str, default: str | None = None) -> str | None:
     if value:
         return value
 
+    with _STREAMLIT_SECRET_CACHE_LOCK:
+        cached = _STREAMLIT_SECRET_CACHE.get(name)
+    if cached:
+        return cached
+
     try:
         import streamlit as st
 
         if name in st.secrets:
-            return str(st.secrets[name])
+            value = str(st.secrets[name])
+            with _STREAMLIT_SECRET_CACHE_LOCK:
+                _STREAMLIT_SECRET_CACHE[name] = value
+            return value
     except Exception:
         pass
 
