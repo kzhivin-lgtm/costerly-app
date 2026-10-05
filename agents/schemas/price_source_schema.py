@@ -191,7 +191,7 @@ class PriceSourceSchemaError(ValueError):
 
 
 def normalize_price_source_optional_numbers(result: dict[str, Any]) -> dict[str, Any]:
-    """Convert absent invoice discount cells to explicit zeroes."""
+    """Normalize evidence-only line discounts without pricing from rounding."""
     for row in result.get("rows") or []:
         if not isinstance(row, dict):
             continue
@@ -217,6 +217,17 @@ def normalize_price_source_optional_numbers(result: dict[str, Any]) -> dict[str,
                 row[key] = abs(value)
             else:
                 row[key] = 0
+        # Invoice footer adjustments such as 0.02% / 0.38 ILS are rounding,
+        # not a commercial discount on every material.  They must neither
+        # change a line price nor appear as discount evidence.  Only a clear,
+        # material-level discount of at least three percent is retained.
+        try:
+            discount_percent = float(row.get("raw_discount_percent") or 0)
+        except (TypeError, ValueError):
+            discount_percent = 0
+        if discount_percent < 3:
+            row["raw_discount_percent"] = 0
+            row["raw_discount_amount"] = 0
     return result
 
 

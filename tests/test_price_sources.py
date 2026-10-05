@@ -641,7 +641,7 @@ def test_mixed_confidence_scales_are_rejected():
         normalize_price_source_confidence_scale(result)
 
 
-def test_negative_invoice_discount_is_normalized_to_a_discount_magnitude():
+def test_meaningful_negative_invoice_discount_is_normalized_to_a_magnitude():
     result = _result()
     result["rows"][0]["raw_discount_percent"] = "-10%"
     result["rows"][0]["raw_discount_amount"] = -7.5
@@ -651,6 +651,17 @@ def test_negative_invoice_discount_is_normalized_to_a_discount_magnitude():
     assert normalized["rows"][0]["raw_discount_percent"] == 10
     assert normalized["rows"][0]["raw_discount_amount"] == 7.5
     assert validate_price_source_result(normalized) is normalized
+
+
+def test_invoice_footer_rounding_discount_is_not_persisted_on_a_material_row():
+    result = _result()
+    result["rows"][0]["raw_discount_percent"] = "-0.02%"
+    result["rows"][0]["raw_discount_amount"] = "-0.38"
+
+    normalized = normalize_price_source_optional_numbers(result)
+
+    assert normalized["rows"][0]["raw_discount_percent"] == 0
+    assert normalized["rows"][0]["raw_discount_amount"] == 0
 
 
 def test_line_quantity_does_not_block_a_proven_sheet_price():

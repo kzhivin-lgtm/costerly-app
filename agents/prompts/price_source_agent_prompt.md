@@ -152,8 +152,13 @@ conversion_basis. If any required value is missing, use status unresolved.
   customer-specific observed price, but delivery and document totals are never
   material unit prices.
 - raw_price is the effective unit price after an explicit line discount and in
-  the VAT basis recorded by raw_vat_mode. Preserve the explicit discount in
-  raw_discount_percent and raw_discount_amount. Use 0 when no discount is shown.
+  the VAT basis recorded by raw_vat_mode. Preserve a discount only when it is
+  explicitly linked to that product line and is at least 3 percent. For such a
+  discount, raw_price is already the final discounted unit price, while
+  raw_discount_percent and raw_discount_amount retain the evidence for audit.
+  Never distribute a document-footer discount, a settlement difference, or a
+  rounding adjustment across product lines. Treat any discount below 3 percent
+  as rounding: set both raw discount fields to 0 and retain the shown unit price.
 - Preserve the item price exactly in the VAT basis shown by the source. Never add
   or remove VAT from a product price during extraction. Record whether the item
   price is VAT included, VAT excluded, mixed, or unknown. A document-level VAT or
