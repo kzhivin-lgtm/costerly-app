@@ -3874,6 +3874,18 @@ def install_price_source_processing_guard() -> None:
                     const processingMarker = card.querySelector(
                         ".price-source-processing-marker"
                     );
+                    const startRejectedMarker = card.querySelector(
+                        ".price-source-start-rejected-marker"
+                    );
+                    if (startRejectedMarker) {
+                        parentWindow[STARTING_KEY] = false;
+                        if (parentWindow[STARTING_TIMER_KEY]) {
+                            parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
+                            delete parentWindow[STARTING_TIMER_KEY];
+                        }
+                        releaseDeferredProfileNavigation();
+                        return;
+                    }
                     if (!completeMarker && processingMarker) {
                         parentWindow[STARTING_KEY] = false;
                         if (parentWindow[STARTING_TIMER_KEY]) {
@@ -3943,9 +3955,13 @@ def install_price_source_processing_guard() -> None:
                     parentWindow.clearTimeout(parentWindow[STARTING_TIMER_KEY]);
                 }
                 parentWindow[STARTING_TIMER_KEY] = parentWindow.setTimeout(() => {
-                    parentWindow[STARTING_KEY] = false;
                     delete parentWindow[STARTING_TIMER_KEY];
-                    releaseDeferredProfileNavigation();
+                    // Do not throw away a click based on elapsed time. The
+                    // server marker is the acknowledgement that the callback
+                    // has actually submitted the worker job.
+                    if (parentWindow[STARTING_KEY]) {
+                        card.classList.add("costerly-price-source-starting");
+                    }
                 }, 3000);
                 showLiveProgress(card, Date.now());
                 button.disabled = true;

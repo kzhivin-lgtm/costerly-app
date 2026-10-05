@@ -1158,6 +1158,8 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "releaseDeferredProfileNavigation" in source
     assert "__costerlyDeferredPriceSourceTab" in source
     assert "tab.click()" in source
+    assert ".price-source-start-rejected-marker" in source
+    assert "server marker is the acknowledgement" in source
     assert "__costerlyPriceSourceStartPending" in source
     assert "3000" in source
     assert "observer.disconnect()" in source
@@ -2244,6 +2246,40 @@ def test_price_source_agent_disables_sdk_retries_for_background_cycles():
 
     assert "with_options(timeout=45.0, max_retries=0)" in source
     assert "max_stream_seconds=60.0" in source
+
+
+def test_price_source_runtime_marks_worker_boundaries(monkeypatch):
+    from use_cases import price_source_runtime
+
+    class Trace:
+        def __init__(self):
+            self.events = []
+
+        def event(self, name, **kwargs):
+            self.events.append((name, kwargs))
+
+    trace = Trace()
+    monkeypatch.setattr(price_source_runtime, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(
+        price_source_runtime,
+        "process_price_source",
+        lambda _access, **_kwargs: "completed",
+    )
+
+    result = price_source_runtime._run_price_source_job(
+        access=SimpleNamespace(company_id="diagnostic-company"),
+        uploaded_file=SimpleNamespace(),
+        source_url="",
+        trace=trace,
+        job_id="job-diagnostic",
+    )
+
+    assert result == "completed"
+    assert [name for name, _kwargs in trace.events] == [
+        "server.price_source_worker_started",
+        "server.price_source_lock_acquired",
+        "server.price_source_worker_finished",
+    ]
 
 
 def test_price_source_failure_message_keeps_actionable_exception_detail_bounded():

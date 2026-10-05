@@ -161,6 +161,18 @@ def test_streamed_message_has_an_optional_wall_clock_limit():
             )
 
 
+def test_streamed_message_emits_first_event_and_first_token_phases():
+    phases = []
+
+    create_claude_message_streamed(
+        _FakeClient(),
+        messages=[],
+        on_stream_phase=lambda phase, _elapsed: phases.append(phase),
+    )
+
+    assert phases == ["first_event", "first_token"]
+
+
 def test_benchmark_suffix_is_applied_after_detection(monkeypatch):
     monkeypatch.setenv("BENCHMARK_RUN_SUFFIX", "baseline 3262")
     result = {

@@ -2895,6 +2895,7 @@ def _queue_price_source_processing(
     access: CompanyAccess,
     uploader_key: str,
     url_key: str,
+    trace=None,
 ) -> None:
     """Capture the selected source before the Price Lists fragment reruns."""
     uploaded_files = accepted_price_source_uploads(
@@ -2910,6 +2911,7 @@ def _queue_price_source_processing(
         st.session_state.pop("_price_source_pending", None)
         st.session_state._price_source_error = str(exc)
         st.session_state.pop("_price_source_notice", None)
+        st.session_state._price_source_start_rejected = True
         return
 
     processing_cycle = int(
@@ -2922,11 +2924,13 @@ def _queue_price_source_processing(
             access=access,
             uploaded_file=uploaded_file,
             source_url=source_url,
+            trace=trace,
         )
     except Exception as exc:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
         st.session_state._price_source_error = _price_source_failure_message(exc)
+        st.session_state._price_source_start_rejected = True
         return
     st.session_state._price_source_pending = {
         "future": future,
@@ -2937,6 +2941,7 @@ def _queue_price_source_processing(
     st.session_state._price_source_processing = True
     st.session_state.pop("_price_source_error", None)
     st.session_state.pop("_price_source_notice", None)
+    st.session_state.pop("_price_source_start_rejected", None)
 
 def _clear_price_source_url_for_files(uploader_key: str, url_key: str) -> None:
     """Keep one document source active when the user selects files."""
@@ -3081,6 +3086,11 @@ def _render_price_source_add(
                         f'data-processing-cycle="{processing_cycle}"></span>',
                         unsafe_allow_html=True,
                     )
+                    if st.session_state.pop("_price_source_start_rejected", False):
+                        st.markdown(
+                            '<span class="price-source-start-rejected-marker"></span>',
+                            unsafe_allow_html=True,
+                        )
                 source_selected = bool(accepted_files) ^ bool(source_url.strip())
                 st.button(
                     "Extracting prices" if processing else "Extract prices",
@@ -3089,7 +3099,7 @@ def _render_price_source_add(
                     use_container_width=True,
                     disabled=processing or not source_selected,
                     on_click=_queue_price_source_processing,
-                    args=(access, uploader_key, url_key),
+                    args=(access, uploader_key, url_key, trace),
                 )
                 if cycle_result:
                     _render_price_source_cycle_result(

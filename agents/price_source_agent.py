@@ -75,9 +75,17 @@ def run_price_source_agent(
     # Price Sources run in a background worker. Never let the SDK's default
     # retry policy turn one unavailable request into several minutes of an
     # apparently live cycle. A terminal failure is actionable and visible.
+    def on_stream_phase(phase: str, elapsed_seconds: float) -> None:
+        if trace is not None:
+            trace.event(
+                f"server.price_source_agent_{phase}",
+                duration_ms=elapsed_seconds * 1000,
+            )
+
     response, diagnostics = create_claude_message_streamed(
         get_anthropic_client().with_options(timeout=45.0, max_retries=0),
         max_stream_seconds=60.0,
+        on_stream_phase=on_stream_phase,
         model=selected_model,
         max_tokens=PRICE_SOURCE_MAX_OUTPUT_TOKENS,
         system=prompt,

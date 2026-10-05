@@ -155,3 +155,10 @@ The workspace requirements are:
   instead of leaving an indefinite Extracting state.
 - Starting a new extraction removes the prior green result immediately in the
   browser, before the server callback rerenders the upload controls.
+- Tab navigation acknowledges the server processing marker, not an arbitrary
+  timer. A click immediately after Extract is replayed only after the worker
+  has accepted the job, so navigation cannot silently discard a source.
+- The existing durable `app_runtime_events` sink records the extraction job
+  submission, worker and lock state, source input, duplicate check, agent
+  start and first stream event/token, storage, database, and terminal worker
+  outcome. These marks are keyed by the runtime trace and job id.

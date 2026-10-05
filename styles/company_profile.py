@@ -1118,12 +1118,14 @@ def apply_company_profile_css() -> None:
             margin-top: 0;
         }
 
-        .price-source-processing-marker {
+        .price-source-processing-marker,
+        .price-source-start-rejected-marker {
             display: none;
         }
 
         .stApp:has(.company-profile-active)
-        [data-testid="stElementContainer"]:has(.price-source-processing-marker) {
+        [data-testid="stElementContainer"]:has(.price-source-processing-marker),
+        [data-testid="stElementContainer"]:has(.price-source-start-rejected-marker) {
             display: none !important;
         }
 

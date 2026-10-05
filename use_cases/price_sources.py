@@ -558,6 +558,11 @@ def _emit_duration(trace, name: str, started_at: float, **metadata: object) -> N
         )
 
 
+def _emit_marker(trace, name: str, **metadata: object) -> None:
+    if trace is not None:
+        trace.event(name, metadata=metadata)
+
+
 class _VisibleTextParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -2285,10 +2290,16 @@ def process_price_source(
 
     company_id = str(access.company_id)
     client = client or get_supabase_client()
+    _emit_marker(
+        trace,
+        "server.price_source_process_started",
+        source_kind="file" if uploaded_file is not None else "url",
+    )
     assert_company_owner(client, str(access.user_id), company_id)
     source_id = str(uuid4())
 
     if uploaded_file is not None:
+        _emit_marker(trace, "server.price_source_input_read_started", source_kind="file")
         source_read_started = time.perf_counter()
         source_name = str(uploaded_file.name)
         suffix = _source_extension(source_name)
@@ -2314,6 +2325,7 @@ def process_price_source(
         )
         mime_type = CONTENT_TYPES[suffix]
     else:
+        _emit_marker(trace, "server.price_source_input_read_started", source_kind="url")
         fetch_started = time.perf_counter()
         resolved_url, source_bytes, extracted_text = fetch_public_page(source_url)
         _emit_duration(
@@ -2330,6 +2342,7 @@ def process_price_source(
         template_sha256 = None
 
     source_digest = sha256(source_bytes).hexdigest()
+    _emit_marker(trace, "server.price_source_duplicate_check_started")
     duplicate = (
         client.table("company_price_sources")
         .select("source_id,processing_summary")
@@ -2340,6 +2353,7 @@ def process_price_source(
         .execute()
     ).data or []
     if duplicate:
+        _emit_marker(trace, "server.price_source_duplicate_found")
         duplicate_summary = _unchanged_duplicate_summary(duplicate[0])
         duplicate_summary["processing_duration_seconds"] = time.perf_counter() - process_started
         return PriceSourceProcessResult(
@@ -2348,6 +2362,7 @@ def process_price_source(
         )
 
     agent_started = time.perf_counter()
+    _emit_marker(trace, "server.price_source_agent_started")
     result = run_price_source_agent(
         company_id=company_id,
         department=department,
@@ -2409,6 +2424,7 @@ def process_price_source(
     )
     object_path = f"{company_id}/{source_id}{suffix}"
     storage_started = time.perf_counter()
+    _emit_marker(trace, "server.price_source_storage_started")
     client.storage.from_(PRICE_SOURCE_BUCKET).upload(
         object_path,
         source_bytes,
@@ -2424,6 +2440,7 @@ def process_price_source(
     superseded_offer_ids: list[str] = []
     try:
         database_started = time.perf_counter()
+        _emit_marker(trace, "server.price_source_database_started")
         source_record_started = time.perf_counter()
         supplier_name = price_source_supplier_name(result)
         supplier_id = None

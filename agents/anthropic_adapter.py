@@ -10,7 +10,7 @@ from threading import Lock
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import anthropic
 
@@ -120,6 +120,7 @@ def create_claude_message_streamed(
     client: anthropic.Anthropic,
     *,
     max_stream_seconds: float | None = None,
+    on_stream_phase: Callable[[str, float], None] | None = None,
     **kwargs: Any,
 ) -> tuple[Any, dict[str, Any]]:
     """Collect one streamed Message and precise request-phase diagnostics."""
@@ -144,6 +145,8 @@ def create_claude_message_streamed(
                 stream_event_count += 1
                 if first_event_seconds is None:
                     first_event_seconds = elapsed
+                    if on_stream_phase is not None:
+                        on_stream_phase("first_event", elapsed)
 
                 if getattr(event, "type", None) != "content_block_delta":
                     continue
@@ -156,6 +159,8 @@ def create_claude_message_streamed(
                 text_delta_count += 1
                 if first_token_seconds is None:
                     first_token_seconds = elapsed
+                    if on_stream_phase is not None:
+                        on_stream_phase("first_token", elapsed)
 
             response = stream.get_final_message()
     except anthropic.APITimeoutError as exc:
