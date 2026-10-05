@@ -14,7 +14,7 @@ import re
 import socket
 import time
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from urllib.parse import quote, urljoin, urlsplit
 from uuid import uuid4
 
@@ -157,6 +157,67 @@ def supplier_service_pricing_basis(raw_unit: object) -> str:
     if unit in {"piece", "pc", "unit", "each"}:
         return "piece"
     return "supplier_defined"
+
+
+def supplier_merge_key(name: object) -> str:
+    """Compare supplier cores, ignoring legal wrappers and punctuation."""
+    text = str(name or "").casefold()
+    text = re.sub(r"[\s\-‐‑‒–—―'\".,/()\\]+", " ", text)
+    for token in ("בעמ", "בע מ", "חברה", "חברה בעמ", "ltd", "limited", "llc", "inc", "corp", "co", "ооо", "ooo"):
+        text = re.sub(rf"\b{re.escape(token)}\b", " ", text)
+    return re.sub(r"[^\w]+", "", text, flags=re.UNICODE)
+
+
+def supplier_merge_max_distance(core_length: int) -> int:
+    """Allow proportionate OCR variance, but keep short names conservative."""
+    if core_length <= 5:
+        return 1
+    return max(1, round(core_length * 0.30))
+
+
+def _damerau_levenshtein(left: str, right: str) -> int:
+    previous = list(range(len(right) + 1))
+    previous_previous: list[int] | None = None
+    for index, left_char in enumerate(left, start=1):
+        current = [index]
+        for right_index, right_char in enumerate(right, start=1):
+            replace = previous[right_index - 1] + (left_char != right_char)
+            insert = current[right_index - 1] + 1
+            delete = previous[right_index] + 1
+            transpose = (
+                previous_previous[right_index - 2] + 1
+                if previous_previous is not None and right_index > 1
+                and left_char == right[right_index - 2]
+                and left[index - 2] == right_char
+                else replace + 1
+            )
+            current.append(min(replace, insert, delete, transpose))
+        previous_previous, previous = previous, current
+    return previous[-1]
+
+
+def match_existing_supplier(
+    supplier_name: str,
+    candidates: Sequence[Mapping[str, Any]],
+) -> Mapping[str, Any] | None:
+    """Return one safe existing supplier, never an arbitrary fuzzy tie."""
+    incoming = supplier_merge_key(supplier_name)
+    if not incoming:
+        return None
+    scored = []
+    for candidate in candidates:
+        core = supplier_merge_key(candidate.get("supplier_name") or candidate.get("normalized_name"))
+        if not core:
+            continue
+        distance = _damerau_levenshtein(incoming, core)
+        if distance <= supplier_merge_max_distance(max(len(incoming), len(core))):
+            scored.append((distance, candidate))
+    if not scored:
+        return None
+    scored.sort(key=lambda item: item[0])
+    best_distance = scored[0][0]
+    best = [candidate for distance, candidate in scored if distance == best_distance]
+    return best[0] if len(best) == 1 else None
 
 
 @dataclass(frozen=True)
@@ -2096,22 +2157,28 @@ def process_price_source(
         if supplier_name:
             existing_suppliers = (
                 client.table("company_suppliers")
-                .select("supplier_id,categories")
+                .select("supplier_id,supplier_name,normalized_name,categories")
                 .eq("company_id", company_id)
-                .eq("normalized_name", _normalized_name(supplier_name))
-                .limit(1)
                 .execute()
             ).data or []
+            matched_supplier = match_existing_supplier(supplier_name, existing_suppliers)
+            canonical_supplier_name = str(
+                (matched_supplier or {}).get("supplier_name") or supplier_name
+            )
+            canonical_supplier_key = str(
+                (matched_supplier or {}).get("normalized_name")
+                or _normalized_name(canonical_supplier_name)
+            )
             categories = sorted(
-                set((existing_suppliers[0].get("categories") or []) + material_types)
-            ) if existing_suppliers else material_types
+                set(((matched_supplier or {}).get("categories") or []) + material_types)
+            ) if matched_supplier else material_types
             supplier_row = (
                 client.table("company_suppliers")
                 .upsert(
                     {
                         "company_id": company_id,
-                        "supplier_name": supplier_name,
-                        "normalized_name": _normalized_name(supplier_name),
+                        "supplier_name": canonical_supplier_name,
+                        "normalized_name": canonical_supplier_key,
                         "categories": categories,
                         "updated_at": datetime.now(timezone.utc).isoformat(),
                     },

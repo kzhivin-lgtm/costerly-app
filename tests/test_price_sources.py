@@ -47,6 +47,9 @@ from use_cases.price_sources import (
     price_source_family_identity,
     price_source_semantic_fingerprint,
     supplier_service_pricing_basis,
+    match_existing_supplier,
+    supplier_merge_key,
+    supplier_merge_max_distance,
     price_source_template_fingerprint,
     price_offer_matches_row,
     price_offer_lane_key,
@@ -451,6 +454,27 @@ def test_consumables_are_discarded_and_supplier_services_map_before_persistence(
     assert supplier_service_pricing_basis("") == "supplier_defined"
     assert supplier_service_pricing_basis("m") == "linear_meter"
     assert supplier_service_pricing_basis("m2") == "square_meter"
+
+
+def test_supplier_merge_ignores_legal_forms_and_uses_unique_length_scaled_match():
+    candidates = [
+        {"supplier_id": "a", "supplier_name": "ООО Ёлочка", "normalized_name": "ооо елочка"},
+        {"supplier_id": "b", "supplier_name": "Другой поставщик", "normalized_name": "другой поставщик"},
+    ]
+
+    assert supplier_merge_key("Ёлочка בע\"מ") == supplier_merge_key("ООО Ёлочка")
+    assert supplier_merge_max_distance(5) == 1
+    assert supplier_merge_max_distance(9) == 3
+    assert match_existing_supplier("Елочкa", candidates)["supplier_id"] == "a"
+
+
+def test_supplier_merge_rejects_an_ambiguous_fuzzy_match():
+    candidates = [
+        {"supplier_id": "a", "supplier_name": "Wood Center", "normalized_name": "wood center"},
+        {"supplier_id": "b", "supplier_name": "Wood Senter", "normalized_name": "wood senter"},
+    ]
+
+    assert match_existing_supplier("Wood Zenter", candidates) is None
 
 
 def test_identity_attributes_require_the_fixed_contract():
