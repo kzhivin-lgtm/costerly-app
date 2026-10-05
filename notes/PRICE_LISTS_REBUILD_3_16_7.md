@@ -162,3 +162,16 @@ The workspace requirements are:
   submission, worker and lock state, source input, duplicate check, agent
   start and first stream event/token, storage, database, and terminal worker
   outcome. These marks are keyed by the runtime trace and job id.
+
+### Increment, 2026-10-05, supplier canonicalisation and descriptors
+
+- Among all safely matching timestamped supplier spellings, the earliest stored
+  company supplier is canonical, even if a later OCR spelling is a closer edit
+  match for a particular invoice.
+- Explicit source descriptors are canonicalised before catalog resolution:
+  perforated construction, and glossy, matte, rough/textured, sanded,
+  polished, and mirror finishes. The resolver never infers material category
+  from an unexplained proper name or possible brand.
+- Test-company 610 Price Lists data and uploaded source objects were cleared
+  on 2026-10-05 with user authorisation. The next real invoice run is a clean
+  acceptance baseline.
