@@ -7,7 +7,7 @@ import time
 from typing import Any
 from uuid import uuid4
 
-from db.supabase_client import get_supabase_client
+from db.supabase_client import create_price_source_supabase_client
 from use_cases.price_sources import PriceSourceError, process_price_source
 
 
@@ -83,8 +83,9 @@ def _run_price_source_job(
             uploaded_file=uploaded_file,
             source_url=source_url,
             trace=trace,
-            # Get a fresh client from the background-safe cached factory.
-            client=get_supabase_client(),
+            # Never borrow Streamlit's shared database client. A stalled
+            # request must be bounded locally and must not poison later jobs.
+            client=create_price_source_supabase_client(),
             owner_authorized=owner_authorized,
         )
         _trace_event(

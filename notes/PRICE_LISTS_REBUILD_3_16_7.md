@@ -122,6 +122,18 @@ For Hardware rows only, omitted units default deterministically to `piece`.
 Positively identified drawer runners/slides default to one left/right `set`.
 This is a user-approved commercial default, not an inferred package conversion.
 
+### Repair, 2026-10-06, legacy supplier and worker isolation
+
+An earlier extraction had stored the buyer name `Lev` against Pirzul HP
+`337791438`. An exact HP match remains the primary merge signal, but a new
+seller name that is not a safe OCR variant of that old canonical name repairs
+the display name on the same supplier record. This avoids both a false Lev
+label in Review and creation of a duplicate Pirzul supplier.
+
+Each Price Source worker now uses an isolated, short-timeout Supabase client.
+It cannot borrow a stale shared Streamlit connection and hold later extraction
+clicks indefinitely before source creation.
+
 The workspace requirements are:
 
 - Catalog and Review use the same compact information hierarchy: English name
