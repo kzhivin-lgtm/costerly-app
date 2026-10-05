@@ -7,8 +7,6 @@ import time
 from typing import Any
 from uuid import uuid4
 
-from agents.anthropic_adapter import get_secret
-from db.company_access import assert_company_owner
 from db.supabase_client import get_supabase_client
 from use_cases.price_sources import PriceSourceError, process_price_source
 
@@ -45,17 +43,12 @@ def submit_price_source_job(
     source_url: str,
     trace=None,
 ) -> Future:
-    """Start one company-scoped extraction without holding the UI request open."""
-    # Prime Streamlit-bound resources on the request thread. The worker then
-    # reads cached credentials and uses the same safe Supabase-client pattern
-    # as background Estimation.
-    if not get_secret("ANTHROPIC_API_KEY"):
-        raise RuntimeError("ANTHROPIC_API_KEY is missing.")
-    client = get_supabase_client()
-    # Authorize while handling the authenticated Streamlit callback.  Repeating
-    # this short read inside a background worker can block on a stale shared
-    # Supabase connection before the source is even read.
-    assert_company_owner(client, str(access.user_id), str(access.company_id))
+    """Queue one company-scoped extraction without holding the UI request open."""
+    # A click must acknowledge quickly. Network I/O here delayed the Streamlit
+    # callback by almost the browser watchdog window, which made a submitted
+    # extraction look as though it never reached the server. Authorization is
+    # still enforced by ``process_price_source`` in the worker before it can
+    # create or change any company data.
     job_id = str(uuid4())
     _trace_event(trace, "server.price_source_job_submitted", job_id=job_id)
     return _PRICE_SOURCE_EXECUTOR.submit(
@@ -65,7 +58,7 @@ def submit_price_source_job(
         source_url=source_url,
         trace=trace,
         job_id=job_id,
-        owner_authorized=True,
+        owner_authorized=False,
     )
 
 

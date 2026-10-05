@@ -2541,6 +2541,30 @@ def test_price_source_runtime_marks_worker_boundaries(monkeypatch):
     ]
 
 
+def test_price_source_submission_queues_without_request_thread_network_io(monkeypatch):
+    from use_cases import price_source_runtime
+
+    class Executor:
+        def __init__(self):
+            self.kwargs = None
+
+        def submit(self, _fn, **kwargs):
+            self.kwargs = kwargs
+            return Future()
+
+    executor = Executor()
+    monkeypatch.setattr(price_source_runtime, "_PRICE_SOURCE_EXECUTOR", executor)
+
+    future = price_source_runtime.submit_price_source_job(
+        access=SimpleNamespace(company_id="company-1", user_id="owner-1"),
+        uploaded_file=SimpleNamespace(),
+        source_url="",
+    )
+
+    assert isinstance(future, Future)
+    assert executor.kwargs["owner_authorized"] is False
+
+
 def test_price_source_failure_message_keeps_actionable_exception_detail_bounded():
     from screens.company_profile import _price_source_failure_message
 

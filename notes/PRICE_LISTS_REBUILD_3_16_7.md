@@ -317,3 +317,15 @@ The workspace requirements are:
   every `MutationObserver` callback. Those mutations recursively triggered the
   observer and froze Chrome. The progress bar is now created once per stable
   server processing marker; later observer callbacks do not modify its DOM.
+
+### Hotfix, 2026-10-05, immediate extraction acknowledgement
+
+- Production tracing showed that the request had reached the server, but the
+  synchronous owner lookup in the Streamlit click callback took about 18
+  seconds before a job could be submitted. That raced the browser's 20-second
+  acknowledgement watchdog and produced a false `did not reach the server`
+  message.
+- Submission now only creates the background job and returns the processing
+  marker. The worker still performs the owner check before it reads, writes,
+  or calls an extraction provider. This restores a fast acknowledgement
+  without weakening the server-side authorization boundary.
