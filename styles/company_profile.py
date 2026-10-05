@@ -1160,6 +1160,98 @@ def apply_company_profile_css() -> None:
             to { transform: rotate(360deg); }
         }
 
+        .price-source-live-progress {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 5px 14px;
+            margin: 12px 0 0;
+            padding: 12px 14px;
+            border: 1px solid var(--color-border-soft);
+            border-radius: 12px;
+            background: #FBF9FD;
+        }
+
+        .price-source-live-progress-label {
+            color: var(--color-text);
+            font-size: 13px;
+            font-weight: 650;
+        }
+
+        .price-source-live-progress-time {
+            color: var(--color-text-muted);
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .price-source-live-progress-track {
+            grid-column: 1 / -1;
+            height: 4px;
+            overflow: hidden;
+            border-radius: 99px;
+            background: #E8E0F0;
+        }
+
+        .price-source-live-progress-track span {
+            display: block;
+            width: 36%;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--color-accent);
+            animation: price-source-progress 1.15s ease-in-out infinite alternate;
+        }
+
+        @keyframes price-source-progress {
+            from { transform: translateX(-30%); }
+            to { transform: translateX(210%); }
+        }
+
+        .price-lists-toast {
+            position: fixed;
+            z-index: 1002;
+            right: 24px;
+            bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            max-width: min(520px, calc(100vw - 40px));
+            padding: 12px 14px 12px 16px;
+            border: 1px solid #D7C6E8;
+            border-radius: 12px;
+            box-shadow: 0 12px 34px rgba(42, 25, 60, 0.18);
+            background: #FFFFFF;
+            color: var(--color-text);
+            font-size: 13px;
+            font-weight: 600;
+            transition: opacity 180ms ease, transform 180ms ease;
+        }
+
+        .price-lists-toast-saved { border-color: #B9DFCC; }
+        .price-lists-toast-result { border-color: #D7C6E8; }
+
+        .price-lists-toast button {
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            border: 0;
+            border-radius: 5px;
+            background: transparent;
+            color: var(--color-text-muted);
+            cursor: pointer;
+            font-size: 20px;
+            line-height: 20px;
+        }
+
+        .price-lists-toast button:hover {
+            background: #F1EDF5;
+            color: var(--color-text);
+        }
+
+        .price-lists-toast.costerly-toast-hidden {
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
         .stApp:has(.company-profile-active) .st-key-price_source_list_card {
             padding-bottom: 10px;
         }

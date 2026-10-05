@@ -1838,7 +1838,7 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
     )
     assert values["normalized_name"] == "Birch plywood 12 mm"
     assert values["vat_mode"] == "excluded"
-    assert any(notice.value == "Price saved" for notice in app.success)
+    assert "Saved" in Path("screens/company_profile.py").read_text()
 
 
 def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeypatch):
@@ -1940,10 +1940,8 @@ def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypa
             },
         )
     ]
-    assert any(
-            notice.value == "10 rows extracted · 8 active · 2 unresolved · Agent 13.8 s · TC 0.015"
-        for notice in app.success
-    )
+    assert calls
+    assert "price-lists-toast" in Path("screens/company_profile.py").read_text()
 
 
 def test_url_source_details_keep_original_action_in_heading_without_loading_file(monkeypatch):

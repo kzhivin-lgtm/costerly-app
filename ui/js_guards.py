@@ -3885,6 +3885,29 @@ def install_price_source_processing_guard() -> None:
     )
 
 
+def install_price_source_notice_guard() -> None:
+    """Dismiss and expire viewport-level Price Lists confirmations client-side."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentDoc = window.parent.document;
+            parentDoc.querySelectorAll(".price-lists-toast:not([data-costerly-toast-bound])")
+                .forEach((toast) => {
+                    toast.dataset.costerlyToastBound = "true";
+                    const dismiss = () => toast.classList.add("costerly-toast-hidden");
+                    toast.querySelector("button")?.addEventListener("click", dismiss);
+                    const duration = Number(toast.dataset.durationMs || 0);
+                    if (duration > 0) window.setTimeout(dismiss, duration);
+                });
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def install_company_logo_picker_guard() -> None:
     """Let the full-width Change Logo action open the native logo picker."""
     with st.sidebar:
