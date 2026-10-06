@@ -491,6 +491,14 @@ The workspace requirements are:
   `T766H750` and `B766H750` cannot collapse merely because their generic
   family and invoice quantity look similar.
 
+### Hotfix, 2026-10-06, Hardware database identity
+
+- The company-material database unique constraint is keyed by company,
+  category and persisted normalized name. Hardware persistence now encodes the
+  complete Hardware identity, including the SKU or proven name discriminator,
+  rather than only its generic structural tuple. Distinct SKUs therefore no
+  longer fail with a duplicate-key error or collapse into one material.
+
 ### Increment, 2026-10-06, line-price arithmetic
 
 - Price extraction now treats quantity, unit price and line total as a required

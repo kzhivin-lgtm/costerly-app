@@ -4,6 +4,7 @@ from concurrent.futures import Future
 from io import BytesIO
 from copy import deepcopy
 import inspect
+import json
 from pathlib import Path
 from types import SimpleNamespace
 import fitz
@@ -68,6 +69,7 @@ from use_cases.price_sources import (
     material_offer_matches_same_supplier_material,
     material_offer_proves_unknown_family,
     material_catalog_key,
+    material_persisted_normalized_name,
     material_structural_key,
     price_rows_match_same_supplier_material,
     company_identity_blacklist,
@@ -811,6 +813,29 @@ def test_hardware_catalog_key_keeps_different_sku_rows_separate():
     other_sku["raw_sku"] = "B766H750"
 
     assert material_catalog_key(base) != material_catalog_key(other_sku)
+
+
+def test_hardware_persisted_key_keeps_different_skus_separate_for_database_uniqueness():
+    base = _result()["rows"][0]
+    base.update(
+        {
+            "material_type": "Hardware",
+            "material_family": "drawer slide",
+            "normalized_name": "Drawer slide 750 mm double",
+            "raw_sku": "T766H750",
+        }
+    )
+    other_sku = deepcopy(base)
+    other_sku["raw_sku"] = "B766H750"
+
+    assert material_persisted_normalized_name(base) != material_persisted_normalized_name(other_sku)
+    assert "sku:t766h750" in material_persisted_normalized_name(base)
+
+
+def test_non_hardware_persisted_key_remains_its_structural_identity():
+    row = _result()["rows"][0]
+
+    assert json.loads(material_persisted_normalized_name(row)) == list(material_structural_key(row))
 
 
 def test_hardware_same_sku_keeps_identity_when_supplier_price_changes():

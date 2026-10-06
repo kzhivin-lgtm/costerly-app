@@ -310,6 +310,19 @@ def material_catalog_key_from_material(material: Mapping[str, Any]) -> tuple[obj
     )
 
 
+def material_persisted_normalized_name(row: Mapping[str, Any]) -> str:
+    """Encode the full private identity for the database unique constraint.
+
+    ``company_material_items`` is unique by company, category and
+    ``normalized_name``. Hardware identity also includes its supplier SKU (or
+    an evidence-backed name discriminator), so persisting the structural tuple
+    alone would make distinct Hardware rows collide in that unique constraint.
+    """
+    key = material_catalog_key(row)
+    persisted_key: object = key[1:] if _is_hardware_material(row) else key[1]
+    return json.dumps(persisted_key, ensure_ascii=False, separators=(",", ":"))
+
+
 def material_source_description_key(row: Mapping[str, Any]) -> str:
     """Return stable source wording for same-supplier repeat matching."""
     return _normalized_name(str(row.get("raw_description") or ""))
@@ -3532,7 +3545,7 @@ def process_price_source(
                     "company_id": company_id,
                     "category": key[0],
                     "canonical_name": row["normalized_name"],
-                    "normalized_name": key[1],
+                    "normalized_name": material_persisted_normalized_name(row),
                     "preferred_unit": row["calculation_unit"],
                     "specifications": identity_attributes,
                     "created_from_source_id": source_id,
