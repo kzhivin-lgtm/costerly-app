@@ -3363,7 +3363,7 @@ def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
             company_name = _text_input(profile, "Company name", "company_name")
         with first_right:
             registration = _text_input(
-                profile, "Company registration number", "company_registration_number"
+                profile, "Company registration number (H.P.)", "company_registration_number"
             )
 
         legal_name_left, legal_name_right = st.columns(2)

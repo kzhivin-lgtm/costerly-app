@@ -1265,7 +1265,7 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
         assert any(button.label == "Save Bank Details" for button in app.button)
         assert labels[:4] == [
             "Company name",
-            "Company registration number",
+            "Company registration number (H.P.)",
             "Company legal name (Hebrew)",
             "Company legal name (English)",
         ]
@@ -1445,7 +1445,7 @@ def test_price_catalog_formats_ils_without_mislabeling_foreign_currency():
 
 
 def test_price_source_categories_use_clear_user_facing_labels():
-    assert company_profile._price_source_category_label("Hardware") == "Wood Supplies"
+    assert company_profile._price_source_category_label("Hardware") == "Hardware"
     assert company_profile._price_source_category_label("Metal Profiles") == "Metal Profiles"
     assert company_profile._price_source_category_label("Finishes and Coatings") == "Paints & Coatings"
 

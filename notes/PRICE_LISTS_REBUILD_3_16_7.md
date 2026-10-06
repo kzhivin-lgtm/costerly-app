@@ -373,3 +373,25 @@ The workspace requirements are:
   type, and origin; the user receives a terminal extraction error instead.
 - This separates a true extraction failure from a valid invoice with excluded
   rows and gives the next diagnosis evidence before any catalog state changes.
+
+### Increment, 2026-10-06, self-identity boundary and low-threshold private merge
+
+- The Bank Details label is `Company registration number (H.P.)`.  The company
+  name, Hebrew and English legal names, and its nine-digit H.P. form an exact
+  local blacklist for supplier identification.  A buyer identity found in an
+  invoice cannot create or update a company supplier.  This check is local and
+  does not disclose Bank Details to the commercial extraction provider.
+- Exact supplier H.P. continues to select the already stored supplier before
+  text matching.  Without H.P., supplier-name OCR matching now tolerates a
+  larger, length-scaled edit distance, while names of five characters or fewer
+  remain limited to one changed character.  The oldest accepted supplier stays
+  canonical.
+- Material merging remains strictly inside the same supplier lane.  An existing
+  material can now be reused when category, effective price, proven thickness,
+  compatible material family and all non-conflicting proven dimensions agree.
+  SKU, colour and decor corroborate provenance but do not split the catalog.
+  An explicit construction mismatch, including `perforated` versus ordinary,
+  a price mismatch, or a thickness mismatch prevents a merge.  Cross-supplier
+  material merging remains deliberately out of scope.
+- Focused Price Sources and Company Profile checks: 330 passed.  Production
+  acceptance remains required with two real invoices from the same supplier.

@@ -370,14 +370,67 @@ def clean_supplier_name(name: object) -> str:
 
 
 def supplier_merge_max_distance(core_length: int) -> int:
-    """Allow proportionate OCR variance, but keep short names conservative."""
+    """Allow proportionate OCR variance, but keep short names conservative.
+
+    A supplier name on an invoice is OCR evidence, not a legal identifier.  A
+    nine digit HP is decisive when it exists; without it we deliberately favour
+    one established supplier over making a second private supplier for a small
+    OCR variation.  Very short names remain strict because one wrong letter is
+    material there.
+    """
     if core_length <= 5:
         return 1
-    # Supplier names in invoices often arrive through OCR. Once the meaningful
-    # core is long enough, favour one unique close candidate over creating a
-    # duplicate supplier that splits its price history. Ties are still refused
-    # by ``match_existing_supplier`` below.
-    return max(1, round(core_length * 0.45))
+    return max(1, round(core_length * 0.55))
+
+
+def company_identity_blacklist(profile: Mapping[str, Any] | None) -> dict[str, object]:
+    """Return the company's own invoice identity, never a supplier candidate."""
+    profile = profile or {}
+    names = {
+        supplier_merge_key(profile.get(field))
+        for field in ("company_name", "legal_name", "legal_name_hebrew")
+    }
+    registration = re.sub(r"\D", "", str(profile.get("company_registration_number") or ""))
+    return {
+        "names": sorted(name for name in names if name),
+        "hp": registration if len(registration) == 9 else "",
+    }
+
+
+def supplier_is_company_identity(
+    supplier_name: object,
+    supplier_hp: object,
+    *,
+    company_identity: Mapping[str, object] | None,
+) -> bool:
+    """Reject an invoice buyer before it can create a supplier lane.
+
+    This is intentionally exact after legal-form normalisation.  A fuzzy match
+    would risk rejecting a real supplier with a similar commercial name.
+    """
+    identity = company_identity or {}
+    own_hp = re.sub(r"\D", "", str(identity.get("hp") or ""))
+    observed_hp = re.sub(r"\D", "", str(supplier_hp or ""))
+    if len(own_hp) == 9 and observed_hp == own_hp:
+        return True
+    own_names = {str(name) for name in (identity.get("names") or []) if str(name)}
+    return bool(own_names and supplier_merge_key(supplier_name) in own_names)
+
+
+def remove_company_identity_from_supplier_result(
+    result: dict[str, Any],
+    *,
+    company_identity: Mapping[str, object] | None,
+) -> bool:
+    """Clear a false buyer identity while keeping the invoice evidence intact."""
+    if not supplier_is_company_identity(
+        result.get("supplier_name"), result.get("supplier_hp"), company_identity=company_identity,
+    ):
+        return False
+    result["supplier_name"] = ""
+    result["supplier_hp"] = ""
+    result["_supplier_company_identity_rejected"] = True
+    return True
 
 
 def _damerau_levenshtein(left: str, right: str) -> int:
@@ -1033,6 +1086,89 @@ def material_offer_matches_same_supplier_description(
         if material_value > 0 and row_value > 0 and material_value != row_value:
             return False
     return True
+
+
+def _identity_number(attributes: Mapping[str, Any], field: str) -> str:
+    try:
+        value = float(attributes.get(field) or 0)
+    except (TypeError, ValueError):
+        return ""
+    return str(int(value)) if value > 0 and value.is_integer() else (str(value) if value > 0 else "")
+
+
+def _material_family_tokens(value: object) -> set[str]:
+    return {token for token in _normalized_name(str(value or "")).split() if token}
+
+
+def _compatible_material_family(left: object, right: object) -> bool:
+    """Accept a generic and a more specific spelling of the same family."""
+    left_tokens = _material_family_tokens(left)
+    right_tokens = _material_family_tokens(right)
+    if not left_tokens or not right_tokens:
+        return False
+    return left_tokens <= right_tokens or right_tokens <= left_tokens
+
+
+def _same_material_construction(
+    left_attributes: Mapping[str, Any],
+    right_attributes: Mapping[str, Any],
+) -> bool:
+    """Keep structural variants, notably perforated sheets, separate."""
+    left = _normalized_name(str(left_attributes.get("construction") or ""))
+    right = _normalized_name(str(right_attributes.get("construction") or ""))
+    return left == right
+
+
+def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    """Merge a supplier's decorative variants into one catalog material.
+
+    This is intentionally a same-supplier rule.  It needs the same effective
+    price, category, proven thickness and compatible material family.  SKU and
+    colour are only source evidence.  Any explicit construction difference,
+    such as perforated versus ordinary sheet, is a hard boundary.
+    """
+    if canonical_price_source_category(str(left.get("material_type") or "")) != canonical_price_source_category(
+        str(right.get("material_type") or "")
+    ):
+        return False
+    if not _decimal_equal(left.get("raw_price"), right.get("raw_price"), "0.0001"):
+        return False
+    left_attributes = left.get("identity_attributes") or {}
+    right_attributes = right.get("identity_attributes") or {}
+    left_thickness = _identity_number(left_attributes, "thickness_mm")
+    right_thickness = _identity_number(right_attributes, "thickness_mm")
+    if not left_thickness or left_thickness != right_thickness:
+        return False
+    if not _compatible_material_family(left.get("material_family"), right.get("material_family")):
+        return False
+    if not _same_material_construction(left_attributes, right_attributes):
+        return False
+    for field in ("width_mm", "length_mm", "diameter_mm"):
+        left_value = _identity_number(left_attributes, field)
+        right_value = _identity_number(right_attributes, field)
+        if left_value and right_value and left_value != right_value:
+            return False
+    return True
+
+
+def material_offer_matches_same_supplier_material(
+    offer: Mapping[str, Any],
+    material: Mapping[str, Any],
+    row: Mapping[str, Any],
+    *,
+    default_currency: str = "",
+) -> bool:
+    """Recognise a same-supplier material despite different decor or SKU."""
+    if not price_offer_matches_row(offer, row, default_currency=default_currency):
+        return False
+    specifications = material.get("specifications") or {}
+    material_row = {
+        "material_type": material.get("category") or "",
+        "material_family": specifications.get("material_family") or "",
+        "raw_price": offer.get("source_price"),
+        "identity_attributes": specifications,
+    }
+    return price_rows_match_same_supplier_material(material_row, row)
 
 
 def price_offer_lane_key(
@@ -2562,6 +2698,16 @@ def process_price_source(
     )
     if not owner_authorized:
         assert_company_owner(client, str(access.user_id), company_id)
+    company_profile_rows = (
+        client.table("companies")
+        .select("company_name,legal_name,legal_name_hebrew,company_registration_number")
+        .eq("company_id", company_id)
+        .limit(1)
+        .execute()
+    ).data or []
+    company_identity = company_identity_blacklist(
+        company_profile_rows[0] if company_profile_rows else None
+    )
     source_id = str(uuid4())
 
     if uploaded_file is not None:
@@ -2696,6 +2842,9 @@ def process_price_source(
         extracted_text=text_layer.text,
         import_id=source_id,
         trace=trace,
+    )
+    supplier_company_identity_rejected = remove_company_identity_from_supplier_result(
+        result, company_identity=company_identity,
     )
     normalize_price_source_sheet_rows(result)
     discarded_non_candidates = discard_price_source_non_candidates(result)
@@ -2845,6 +2994,7 @@ def process_price_source(
             "total": len(result["rows"]),
             "document_number": result["document_number"],
             "supplier_hp": supplier_hp or None,
+            "supplier_company_identity_rejected": supplier_company_identity_rejected,
             "source_origin": result["source_origin"],
             "price_context": result["price_context"],
             "document_subtotal": result["document_subtotal"],
@@ -3127,6 +3277,11 @@ def process_price_source(
                         material,
                         row,
                         default_currency=str(result.get("currency") or ""),
+                    ) or material_offer_matches_same_supplier_material(
+                        offer,
+                        material,
+                        row,
+                        default_currency=str(result.get("currency") or ""),
                     )
                     for offer in offers
                 ):
@@ -3140,6 +3295,8 @@ def process_price_source(
                 )
 
         new_material_payloads: list[dict] = []
+        pending_material_rows: list[tuple[dict, tuple[str, tuple[str, str, str, str, str, str]]]] = []
+        pending_material_key_by_row_number: dict[int, tuple[str, tuple[str, str, str, str, str, str]]] = {}
         for row in result["rows"]:
             if row["status"] != "ready" or row["item_kind"] != "material":
                 continue
@@ -3150,6 +3307,17 @@ def process_price_source(
                 material_structural_key(row),
             )
             if key in materials_by_key:
+                continue
+            pending_match = next(
+                (
+                    pending_key
+                    for pending_row, pending_key in pending_material_rows
+                    if price_rows_match_same_supplier_material(pending_row, row)
+                ),
+                None,
+            )
+            if pending_match is not None:
+                pending_material_key_by_row_number[int(row["source_row_number"])] = pending_match
                 continue
             identity_attributes = {
                 attribute: value
@@ -3172,6 +3340,8 @@ def process_price_source(
             # Reserve the key now so duplicate rows from one source still share
             # one private material, as they did in the sequential path.
             materials_by_key[key] = {}
+            pending_material_rows.append((row, key))
+            pending_material_key_by_row_number[int(row["source_row_number"])] = key
         if new_material_payloads:
             created_materials = (
                 client.table("company_material_items")
@@ -3223,6 +3393,9 @@ def process_price_source(
                         default_currency=str(result.get("currency") or ""),
                     )
                 ]
+                pending_or_structural_key = pending_material_key_by_row_number.get(
+                    int(row["source_row_number"]), (row_category, structural_key)
+                )
                 existing = (
                     [sku_materials[0]]
                     if len({str(item.get("company_material_id")): item for item in sku_materials}) == 1
@@ -3231,8 +3404,8 @@ def process_price_source(
                     ]
                     if int(row["source_row_number"]) in inferred_material_by_row_number
                     else [
-                        materials_by_key[(row_category, structural_key)]
-                    ] if (row_category, structural_key) in materials_by_key else []
+                        materials_by_key[pending_or_structural_key]
+                    ] if pending_or_structural_key in materials_by_key else []
                 )
                 if existing:
                     material_id = existing[0]["company_material_id"]

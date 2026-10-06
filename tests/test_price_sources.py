@@ -61,8 +61,12 @@ from use_cases.price_sources import (
     price_offer_matches_row,
     material_offer_matches_extracted_row,
     material_offer_matches_same_supplier_description,
+    material_offer_matches_same_supplier_material,
     material_offer_proves_unknown_family,
     material_structural_key,
+    price_rows_match_same_supplier_material,
+    company_identity_blacklist,
+    supplier_is_company_identity,
     supplier_operation_offer_matches_row,
     supplier_operation_offer_catalog_key,
     price_offer_lane_key,
@@ -566,7 +570,7 @@ def test_supplier_merge_ignores_legal_forms_and_uses_unique_length_scaled_match(
 
     assert supplier_merge_key("Ёлочка בע\"מ") == supplier_merge_key("ООО Ёлочка")
     assert supplier_merge_max_distance(5) == 1
-    assert supplier_merge_max_distance(9) == 4
+    assert supplier_merge_max_distance(9) == 5
     assert match_existing_supplier("Елочкa", candidates)["supplier_id"] == "a"
 
 
@@ -616,6 +620,26 @@ def test_supplier_merge_uses_hp_before_unreliable_ocr_name():
     assert match_existing_supplier("Unreadable OCR issuer", candidates, supplier_hp="hp 120")["supplier_id"] == "first"
 
 
+def test_company_identity_is_an_exact_supplier_blacklist():
+    identity = company_identity_blacklist({
+        "company_name": "Wooden Heart",
+        "legal_name": "Wooden Heart Ltd",
+        "legal_name_hebrew": "וודן הארט בעמ",
+        "company_registration_number": "514-539-998",
+    })
+
+    assert identity["hp"] == "514539998"
+    assert supplier_is_company_identity(
+        "Wooden Heart Ltd", "", company_identity=identity,
+    )
+    assert supplier_is_company_identity(
+        "Unrelated OCR", "514539998", company_identity=identity,
+    )
+    assert not supplier_is_company_identity(
+        "Wooden Hearts Supply", "", company_identity=identity,
+    )
+
+
 def test_supplier_hp_defaults_to_exactly_nine_digits_or_empty():
     result = _result()
     result["supplier_hp"] = "514-539-998"
@@ -640,6 +664,75 @@ def test_material_structural_key_ignores_sheet_wording_but_keeps_perforation():
 
     assert material_structural_key(base) == material_structural_key(variant)
     assert material_structural_key(base) != material_structural_key(perforated)
+
+
+def test_same_supplier_material_merge_allows_decor_and_sku_variants():
+    first = _result()["rows"][0]
+    first.update({
+        "material_type": "Wood Sheets",
+        "material_family": "twin plywood",
+        "raw_sku": "WHITE-17",
+        "raw_price": 110,
+        "identity_attributes": {**first["identity_attributes"], "thickness_mm": 17, "width_mm": 3100},
+    })
+    second = deepcopy(first)
+    second.update({"raw_sku": "BLACK-17", "normalized_name": "Plywood twin 17 mm black"})
+
+    assert price_rows_match_same_supplier_material(first, second)
+
+
+def test_same_supplier_material_merge_keeps_perforated_and_price_or_thickness_distinct():
+    base = _result()["rows"][0]
+    base.update({
+        "material_type": "Wood Sheets",
+        "material_family": "plywood",
+        "raw_price": 110,
+        "identity_attributes": {**base["identity_attributes"], "thickness_mm": 17, "width_mm": 3100},
+    })
+    perforated = deepcopy(base)
+    perforated["identity_attributes"]["construction"] = "perforated"
+    other_price = deepcopy(base)
+    other_price["raw_price"] = 111
+    other_thickness = deepcopy(base)
+    other_thickness["identity_attributes"]["thickness_mm"] = 18
+
+    assert not price_rows_match_same_supplier_material(base, perforated)
+    assert not price_rows_match_same_supplier_material(base, other_price)
+    assert not price_rows_match_same_supplier_material(base, other_thickness)
+
+
+def test_same_supplier_offer_merge_allows_sku_variants_but_needs_same_thickness():
+    row = _result()["rows"][0]
+    row.update({
+        "material_type": "Wood Sheets",
+        "material_family": "plywood",
+        "raw_sku": "B-17",
+        "raw_price": 110,
+        "raw_unit": "sheet",
+        "purchase_unit": "sheet",
+        "calculation_unit": "sheet",
+        "conversion_factor": 1,
+        "normalized_price": 110,
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 17},
+    })
+    offer = {
+        "source_price": 110,
+        "source_unit": "sheet",
+        "purchase_unit": "sheet",
+        "calculation_unit": "sheet",
+        "conversion_factor": 1,
+        "normalized_price": 110,
+        "currency": "ILS",
+        "vat_included": False,
+    }
+    material = {
+        "category": "Wood Sheets",
+        "specifications": {"material_family": "twin plywood", "thickness_mm": 17},
+    }
+
+    assert material_offer_matches_same_supplier_material(offer, material, row, default_currency="ILS")
+    material["specifications"]["thickness_mm"] = 18
+    assert not material_offer_matches_same_supplier_material(offer, material, row, default_currency="ILS")
 
 
 def test_existing_supplier_offer_can_prove_an_unknown_brand_family():
