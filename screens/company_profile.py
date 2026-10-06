@@ -3140,10 +3140,16 @@ def _render_price_source_add(
                 )
                 if cycle_result:
                     _render_price_source_cycle_result(
-                        _price_source_notice_text(cycle_result)
+                        _price_source_notice_text(cycle_result),
+                        processing_cycle=int(
+                            cycle_result.get("processing_cycle") or processing_cycle
+                        ),
                     )
                 elif cycle_error:
-                    _render_price_source_cycle_error(cycle_error)
+                    _render_price_source_cycle_error(
+                        cycle_error,
+                        processing_cycle=processing_cycle,
+                    )
 
 def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     if not st.session_state.get("_price_source_processing"):
@@ -3174,6 +3180,7 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
             st.session_state._price_source_notice = {
                 "source_id": result.source_id,
                 "summary": result.summary,
+                "processing_cycle": pending.get("processing_cycle"),
             }
         else:
             st.session_state._price_source_notice = result
@@ -3223,11 +3230,11 @@ def _render_price_source_toast(message: str, *, duration_ms: int, kind: str) -> 
     install_price_source_notice_guard()
 
 
-def _render_price_source_cycle_result(message: str) -> None:
+def _render_price_source_cycle_result(message: str, *, processing_cycle: int) -> None:
     """Keep the terminal extraction result directly below the upload controls."""
     st.markdown(
         '<div class="price-lists-toast price-lists-toast-result price-source-cycle-result" '
-        'data-duration-ms="0"><span>'
+        f'data-duration-ms="0" data-processing-cycle="{processing_cycle}"><span>'
         + escape(message)
         + '</span><button type="button" aria-label="Dismiss">×</button></div>',
         unsafe_allow_html=True,
@@ -3235,10 +3242,11 @@ def _render_price_source_cycle_result(message: str) -> None:
     install_price_source_notice_guard()
 
 
-def _render_price_source_cycle_error(message: str) -> None:
+def _render_price_source_cycle_error(message: str, *, processing_cycle: int) -> None:
     st.markdown(
         '<div class="price-lists-toast price-source-cycle-result price-source-cycle-error" '
-        'data-duration-ms="0"><span>' + escape(message) + '</span>'
+        f'data-duration-ms="0" data-processing-cycle="{processing_cycle}"><span>'
+        + escape(message) + '</span>'
         '<button type="button" aria-label="Dismiss">×</button></div>',
         unsafe_allow_html=True,
     )

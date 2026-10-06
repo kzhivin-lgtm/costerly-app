@@ -554,18 +554,23 @@ The workspace requirements are:
   backend cycle from a client-side display loss in later diagnostics.
 - Verified with focused Price Sources and Company Profile tests, 347 passed.
 
-### P0 regression, 2026-10-06, terminal dashboard cardinality
+### Checkpoint, 2026-10-06, terminal dashboard cardinality
 
 - Production evidence shows two green terminal extraction dashboards visible
   after two consecutive completed cycles. The accepted contract is exactly one
   dashboard: it describes only the latest terminal cycle, survives Profile-tab
   navigation and ordinary rerenders, and is removed immediately when a new
   file or URL selection begins.
-- [hypothesis] The session-storage restoration guard can append a stale cached
-  dashboard during a rerender and later preserve it beside the server-rendered
-  current result. Repair must identify the result by processing cycle, replace
-  rather than append restored markup, and verify two consecutive real cycles.
-- This is a display-only regression. It does not change source processing,
+- [verified] The session-storage restoration guard could append a stale cached
+  dashboard during a rerender, then preserve it beside the server-rendered
+  current result.
+- Every server-rendered terminal result now carries its processing-cycle id.
+  The browser keeps only the highest cycle result, replacing stale restored
+  markup rather than appending it. File and supplier-URL selection both clear
+  the browser cache before the next Extract click.
+- Verification: focused Company Access and Price Sources checks, 348 passed.
+  Production acceptance remains one manual check with two consecutive cycles.
+- This is a display-only repair. It does not change source processing,
   supplier resolution, or catalog persistence.
 
 ### Checkpoint, 2026-10-06, permanent Price Source deletion

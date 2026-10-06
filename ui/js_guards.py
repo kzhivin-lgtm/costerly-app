@@ -3880,12 +3880,17 @@ def install_price_source_processing_guard() -> None:
                 }
             }
 
-            function clearTerminalResultForNewFileSelection(event) {
+            function clearTerminalResultForNewSelection(event) {
                 const input = event.target;
                 if (!(input instanceof parentWindow.HTMLInputElement)) return;
-                if (input.type !== "file" || !input.files || input.files.length === 0) return;
-                if (!input.closest('[class*="st-key-price_source_upload_"]')) return;
-                // File selection, not the Extract click, begins the next user
+                const isFileSelection = input.type === "file"
+                    && input.files && input.files.length > 0
+                    && input.closest('[class*="st-key-price_source_upload_"]');
+                const isUrlSelection = input.type !== "file"
+                    && input.value.trim()
+                    && input.closest('[class*="st-key-price_source_url_"]');
+                if (!isFileSelection && !isUrlSelection) return;
+                // File or URL selection, not the Extract click, begins the next user
                 // cycle. The visible terminal dashboard must never describe a
                 // source the user has already replaced.
                 parentDoc.querySelectorAll(".price-source-cycle-result").forEach((result) => {
@@ -3894,10 +3899,29 @@ def install_price_source_processing_guard() -> None:
                 parentWindow.sessionStorage.removeItem(TERMINAL_RESULT_KEY);
             }
 
-            function syncTerminalResult(card) {
-                const visibleResult = card.querySelector(
+            function terminalResultCycle(result) {
+                const cycle = Number(result.dataset.processingCycle || "0");
+                return Number.isFinite(cycle) ? cycle : 0;
+            }
+
+            function keepLatestTerminalResult(card) {
+                const results = Array.from(card.querySelectorAll(
                     ".price-source-cycle-result.price-lists-toast-result"
-                );
+                ));
+                if (!results.length) return null;
+                const latest = results.reduce((newest, result) => (
+                    terminalResultCycle(result) >= terminalResultCycle(newest)
+                        ? result
+                        : newest
+                ));
+                results.forEach((result) => {
+                    if (result !== latest) result.remove();
+                });
+                return latest;
+            }
+
+            function syncTerminalResult(card) {
+                const visibleResult = keepLatestTerminalResult(card);
                 if (visibleResult) {
                     parentWindow.sessionStorage.setItem(
                         TERMINAL_RESULT_KEY,
@@ -4062,14 +4086,16 @@ def install_price_source_processing_guard() -> None:
 
             parentDoc.addEventListener("click", handleClick, true);
             parentDoc.addEventListener("click", preventPrematureProfileNavigation, true);
-            parentDoc.addEventListener("change", clearTerminalResultForNewFileSelection, true);
+            parentDoc.addEventListener("change", clearTerminalResultForNewSelection, true);
+            parentDoc.addEventListener("input", clearTerminalResultForNewSelection, true);
             const observer = new MutationObserver(resetCompletedState);
             observer.observe(parentDoc.body, {childList: true, subtree: true});
             resetCompletedState();
             parentWindow[CLEANUP_KEY] = () => {
                 parentDoc.removeEventListener("click", handleClick, true);
                 parentDoc.removeEventListener("click", preventPrematureProfileNavigation, true);
-                parentDoc.removeEventListener("change", clearTerminalResultForNewFileSelection, true);
+                parentDoc.removeEventListener("change", clearTerminalResultForNewSelection, true);
+                parentDoc.removeEventListener("input", clearTerminalResultForNewSelection, true);
                 observer.disconnect();
                 parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach(removeLiveProgress);
                 clearStartingTimers();
