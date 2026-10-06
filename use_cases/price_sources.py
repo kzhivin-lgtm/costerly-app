@@ -2898,7 +2898,13 @@ def process_price_source(
 
     agent_started = time.perf_counter()
     _emit_marker(trace, "server.price_source_agent_started")
-    issuer_identity = issuer_identity_from_source_text(text_layer.text)
+    # OCR Markdown is body-oriented. Typed header/footer blocks remain local
+    # seller-priority evidence for deterministic issuer repair. The external
+    # commercial extraction request deliberately retains its established body
+    # text contract.
+    issuer_identity = issuer_identity_from_source_text(
+        text_layer.issuer_evidence_text or text_layer.text
+    )
     result = run_price_source_agent(
         company_id=company_id,
         department=department,

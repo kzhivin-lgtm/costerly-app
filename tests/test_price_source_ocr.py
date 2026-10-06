@@ -3,7 +3,12 @@ from io import BytesIO
 import fitz
 from PIL import Image
 
-from use_cases.price_source_ocr import ocr_package_text, prepare_price_source_text_layer
+from use_cases.price_source_ocr import (
+    ocr_issuer_evidence_text,
+    ocr_package_text,
+    prepare_price_source_text_layer,
+)
+from use_cases.price_sources import issuer_identity_from_source_text
 
 
 def _ocr_package(markdown: str) -> dict:
@@ -123,3 +128,54 @@ def test_ocr_text_layer_includes_mistral_table_content_not_only_its_link():
     assert "[tbl-0.html]" in text
     assert "Plywood" in text
     assert "100" in text
+
+
+def test_ocr_issuer_evidence_keeps_header_and_footer_outside_markdown():
+    package = {
+        "pages": [
+            {
+                "page_number": 1,
+                "markdown": "# Invoice\nלכבוד: Buyer",
+                "blocks": [
+                    {"type": "header", "content": 'א.ש. פירוזל בע"מ\nע.מ. 513453233'},
+                    {"type": "footer", "content": "תודה שקניתם בא.ש. פירוזל"},
+                ],
+            }
+        ]
+    }
+
+    evidence = ocr_issuer_evidence_text(package)
+
+    assert "OCR HEADER" in evidence
+    assert "א.ש. פירוזל" in evidence
+    assert "513453233" in evidence
+    assert "OCR FOOTER" in evidence
+    assert "תודה שקניתם" in evidence
+    assert issuer_identity_from_source_text(evidence) == {
+        "supplier_name": "א.ש. פירוזל",
+        "supplier_hp": "513453233",
+    }
+
+
+def test_ocr_image_layer_exposes_header_footer_as_local_issuer_evidence():
+    package = {
+        "pages": [
+            {
+                "page_number": 1,
+                "markdown": "# Invoice\nלכבוד: Buyer",
+                "blocks": [
+                    {"type": "header", "content": 'א.ש. פירוזל בע"מ\nע.מ. 513453233'},
+                ],
+            }
+        ]
+    }
+
+    result = prepare_price_source_text_layer(
+        file_name="invoice.jpg",
+        file_bytes=_image_bytes(),
+        image_ocr=lambda **_kwargs: package,
+    )
+
+    assert "לכבוד" in result.text
+    assert "513453233" not in result.text
+    assert "513453233" in result.issuer_evidence_text

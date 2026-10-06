@@ -24,6 +24,7 @@ class PriceSourceTextLayer:
     text: str
     strategy: str
     ocr_package: dict[str, Any] | None = None
+    issuer_evidence_text: str = ""
 
 
 def _register_heif_decoder() -> None:
@@ -97,6 +98,44 @@ def ocr_package_text(package: dict[str, Any]) -> str:
     return "\n\n".join(parts)[:180_000]
 
 
+def ocr_issuer_evidence_text(package: dict[str, Any]) -> str:
+    """Return seller-biased OCR blocks for local supplier resolution.
+
+    OCR Markdown often omits page ``header`` and ``footer`` blocks even when
+    the provider extracted them accurately.  Those blocks are the strongest
+    invoice issuer evidence, while the body commonly contains the buyer after
+    ``לכבוד``.  This evidence stays local and supplements, rather than
+    replaces, the full extraction text sent to the commercial agent.
+    """
+    parts: list[str] = []
+    for position, page in enumerate(package.get("pages") or [], start=1):
+        page_number = page.get("page_number") or position
+        headers = [
+            str(block.get("content") or "").strip()
+            for block in (page.get("blocks") or [])
+            if isinstance(block, dict)
+            and str(block.get("type") or "").lower() == "header"
+            and str(block.get("content") or "").strip()
+        ]
+        footers = [
+            str(block.get("content") or "").strip()
+            for block in (page.get("blocks") or [])
+            if isinstance(block, dict)
+            and str(block.get("type") or "").lower() == "footer"
+            and str(block.get("content") or "").strip()
+        ]
+        # Some provider revisions expose these aggregates but not typed blocks.
+        if not headers and str(page.get("header") or "").strip():
+            headers.append(str(page["header"]).strip())
+        if not footers and str(page.get("footer") or "").strip():
+            footers.append(str(page["footer"]).strip())
+        if headers:
+            parts.append(f"PAGE {page_number} OCR HEADER:\n" + "\n".join(headers))
+        if footers:
+            parts.append(f"PAGE {page_number} OCR FOOTER:\n" + "\n".join(footers))
+    return "\n\n".join(parts)[:40_000]
+
+
 def prepare_price_source_text_layer(
     *,
     file_name: str,
@@ -117,7 +156,12 @@ def prepare_price_source_text_layer(
         text = ocr_package_text(package)
         if not text:
             raise RuntimeError("OCR returned no readable text for this PDF.")
-        return PriceSourceTextLayer(text=text, strategy="pdf_ocr", ocr_package=package)
+        return PriceSourceTextLayer(
+            text=text,
+            strategy="pdf_ocr",
+            ocr_package=package,
+            issuer_evidence_text=ocr_issuer_evidence_text(package),
+        )
     if suffix in OCR_IMAGE_SUFFIXES:
         ocr_name, ocr_bytes = normalise_ocr_image(file_name, file_bytes)
         package = dict(image_ocr(file_name=ocr_name, file_bytes=ocr_bytes))
@@ -125,5 +169,10 @@ def prepare_price_source_text_layer(
         text = ocr_package_text(package)
         if not text:
             raise RuntimeError("OCR returned no readable text for this image.")
-        return PriceSourceTextLayer(text=text, strategy="image_ocr", ocr_package=package)
+        return PriceSourceTextLayer(
+            text=text,
+            strategy="image_ocr",
+            ocr_package=package,
+            issuer_evidence_text=ocr_issuer_evidence_text(package),
+        )
     return PriceSourceTextLayer(text=structured_text, strategy="source_text")

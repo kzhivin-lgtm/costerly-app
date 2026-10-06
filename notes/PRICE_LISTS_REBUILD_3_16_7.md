@@ -445,3 +445,15 @@ The workspace requirements are:
   guard's own pending/processing state. This replaces the earlier one-tick
   workaround, which was still unsafe in some render states.
 - Verification: focused Price Sources and Company Profile checks, 334 passed.
+
+### Increment, 2026-10-06, structured OCR issuer evidence
+
+- Price Source OCR now preserves typed `header` and `footer` blocks as a
+  separate local supplier-evidence layer. Header blocks are seller-priority
+  evidence because an invoice body often contains the buyer after `לכבוד`.
+  Footer blocks corroborate the issuer but never override a conflicting header
+  identifier.
+- The commercial extraction agent keeps its established body-text input. The
+  structured issuer layer is used locally for deterministic supplier repair,
+  so this change neither expands external disclosure nor alters material-row
+  extraction semantics.
