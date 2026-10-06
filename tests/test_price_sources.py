@@ -2906,6 +2906,14 @@ def test_price_source_agent_disables_sdk_retries_for_background_cycles():
     assert "max_stream_seconds=60.0" in source
 
 
+def test_price_source_arithmetic_recheck_uses_runtime_trace_metadata_contract():
+    source = Path("agents/price_source_agent.py").read_text()
+
+    assert 'metadata={"conflict_rows": len(arithmetic_conflicts)}' in source
+    assert 'status="error"' in source
+    assert '"repaired_rows": repaired_count' in source
+
+
 def test_price_source_runtime_marks_worker_boundaries(monkeypatch):
     from use_cases import price_source_runtime
 

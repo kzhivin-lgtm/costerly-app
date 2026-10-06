@@ -303,7 +303,7 @@ def run_price_source_agent(
         if trace is not None:
             trace.event(
                 "server.price_source_arithmetic_recheck_started",
-                conflict_rows=len(arithmetic_conflicts),
+                metadata={"conflict_rows": len(arithmetic_conflicts)},
             )
         try:
             recheck_rows, arithmetic_recheck_usage = _run_price_source_arithmetic_recheck(
@@ -319,8 +319,10 @@ def run_price_source_agent(
             if trace is not None:
                 trace.event(
                     "server.price_source_arithmetic_recheck_completed",
-                    conflict_rows=len(arithmetic_conflicts),
-                    repaired_rows=repaired_count,
+                    metadata={
+                        "conflict_rows": len(arithmetic_conflicts),
+                        "repaired_rows": repaired_count,
+                    },
                 )
         except Exception as exc:
             # This is a best-effort proof step. The original extraction remains
@@ -328,8 +330,11 @@ def run_price_source_agent(
             if trace is not None:
                 trace.event(
                     "server.price_source_arithmetic_recheck_failed",
-                    conflict_rows=len(arithmetic_conflicts),
-                    error_type=type(exc).__name__,
+                    status="error",
+                    metadata={
+                        "conflict_rows": len(arithmetic_conflicts),
+                        "error_type": type(exc).__name__,
+                    },
                 )
     validated = validate_price_source_result(
         guard_price_source_document_totals(
