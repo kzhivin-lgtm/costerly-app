@@ -1578,7 +1578,8 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
 
     assert "resetCompletedState" in source
     assert 'card.classList.remove("costerly-price-source-processing")' in source
-    assert "button.disabled = false" in source
+    assert "button.disabled = true" not in source
+    assert "button.disabled = false" not in source
     assert 'label.textContent = "Extract prices"' in source
     assert '".price-source-processing-marker"' in source
     assert ".price-source-processing-complete-marker" in source
@@ -1601,13 +1602,15 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert 'if (!card.querySelector(".price-source-live-progress"))' in source
     assert "trigger itself indefinitely and freeze the browser" in source
     assert "observer.disconnect()" in source
-    assert "callback receive the event before changing the visual state" in source
+    assert "never the native disabled property" in source
     assert "parentWindow.setTimeout(() =>" in source
     assert 'showLiveProgress(card, Date.now(), "Starting extraction")' in source
     assert "function showLiveProgress(card, startedAtMs)" in source
     assert "function removeLiveProgress(card)" in source
     assert 'card.querySelectorAll(".price-source-cycle-result")' in source
     assert "!completeMarker && processingMarker" in source
+    assert "event.stopImmediatePropagation()" in source
+    assert 'card.classList.contains("costerly-price-source-processing")' in source
 
 
 def test_price_source_save_guard_shows_saving_state_immediately():

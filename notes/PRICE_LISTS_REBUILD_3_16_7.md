@@ -419,3 +419,16 @@ The workspace requirements are:
   source objects for every one of those scopes. The company profile and other
   product domains were not touched.
 - Verification: focused Price Sources and Company Profile checks, 334 passed.
+
+### Hotfix, 2026-10-06, native Extract button event delivery
+
+- Runtime traces proved a reported 165-second `Starting extraction` state had
+  no `server.price_source_job_submitted` event, worker event, or lock. It was
+  therefore neither OCR nor an agent/provider timeout: the click had not
+  reached the Streamlit callback.
+- The capture-phase UI guard no longer changes the Extract button's native
+  `disabled` property at any time. It keeps the first click untouched for
+  Streamlit's delegated handler and suppresses only later clicks through the
+  guard's own pending/processing state. This replaces the earlier one-tick
+  workaround, which was still unsafe in some render states.
+- Verification: focused Price Sources and Company Profile checks, 334 passed.

@@ -3930,7 +3930,10 @@ def install_price_source_processing_guard() -> None:
                     removeLiveProgress(card);
                     const button = card.querySelector(".st-key-process_price_source button");
                     if (!button) return;
-                    button.disabled = false;
+                    // Never toggle the native disabled property for this
+                    // button. Streamlit owns its event delivery and can drop
+                    // an already-dispatched click when the native control is
+                    // disabled while its delegated handler is still running.
                     button.removeAttribute("aria-disabled");
                     const label = button.querySelector("p");
                     if (label && label.textContent === "Extracting prices") {
@@ -3946,6 +3949,20 @@ def install_price_source_processing_guard() -> None:
                 if (!button || button.disabled) return;
                 const card = button.closest(".st-key-price_source_add_card");
                 if (!card) return;
+
+                // Keep duplicate clicks from queuing a second extraction,
+                // without mutating the native button state. This capture
+                // listener must leave the first click entirely untouched so
+                // Streamlit's delegated handler can submit the server job.
+                if (
+                    parentWindow[STARTING_KEY] ||
+                    card.classList.contains("costerly-price-source-processing")
+                ) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation();
+                    return;
+                }
 
                 card.querySelectorAll(".price-source-client-start-error").forEach((node) => node.remove());
 
@@ -3978,13 +3995,11 @@ def install_price_source_processing_guard() -> None:
                     }
                 }, 3000);
                 // This listener runs in capture phase, ahead of Streamlit's
-                // delegated click handler. Disabling the native button here
-                // can make Streamlit discard this very click, so let that
-                // callback receive the event before changing the visual state.
+                // delegated click handler. Change only presentation after the
+                // event turn, never the native disabled property, otherwise
+                // Streamlit can discard this very click.
                 parentWindow.setTimeout(() => {
                     if (!parentWindow[STARTING_KEY]) return;
-                    button.disabled = true;
-                    button.setAttribute("aria-disabled", "true");
                     const label = button.querySelector("p");
                     if (label) label.textContent = "Starting extraction";
                     // This is an honest client-side elapsed indicator, not a
