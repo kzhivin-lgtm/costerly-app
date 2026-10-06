@@ -554,14 +554,32 @@ The workspace requirements are:
   backend cycle from a client-side display loss in later diagnostics.
 - Verified with focused Price Sources and Company Profile tests, 347 passed.
 
-### Pending activation, 2026-10-06, permanent source removal
+### Checkpoint, 2026-10-06, permanent Price Source deletion
 
-- `Remove` now has a prepared `purge_company_price_source` implementation:
-  it deletes source-owned offers, source rows, source-observed supplier aliases,
-  resolver artifacts, orphan materials, and the owned Storage object. A material
-  still supported by another offer is preserved and detached from the deleted
-  source.
-- The application change must not be deployed before
-  `db/sql/2026_10_06_purge_company_price_source.sql` is applied to production,
-  because the new UI action invokes that RPC. Local verification: 352 focused
-  tests passed.
+- Production is on commits `a8e6280`, `e1f0086`, and `740bd62`. The SQL function
+  `public.purge_company_price_source(text, uuid)` is applied to production.
+- Source Library now uses one compact `View` and `Delete` action size. `Delete`
+  opens a modal, rather than expanding a second inline table row. `Cancel` is
+  client-side only. Confirming `Delete source` hides the source immediately;
+  database and Storage cleanup proceed in a background worker. A failed purge
+  restores the source and reports the failure.
+- Purge removes source-owned material offers, supplier-operation offers,
+  service offers, source rows, source-observed supplier aliases, material
+  aliases, resolver events and orphan source-created materials. A material
+  still used by another offer survives and is detached from the deleted source.
+- The source-row and identity-candidate tables have reciprocal foreign keys.
+  The production function now first clears `identity_candidate_id` on those
+  rows, then removes candidates, then rows. This is required for real deletion,
+  not merely UI hiding.
+- Production rollback verification against source
+  `6b7fa94f-69ed-4f9f-bd6b-51198ea44b28` completed successfully and reported
+  five source rows, four material offers and four orphan materials eligible for
+  deletion. The transaction was rolled back, so that verification changed no
+  user data.
+- Post-check: literal `company_id = 1` contains zero Price Source records,
+  offers, materials, aliases, candidates and resolver events. The current
+  test company `610` deliberately retains three sources, 18 source rows, nine
+  material offers and seven materials.
+- Verification: 148 focused Price Source and purge-migration tests passed after
+  the dependency-order fix. This is a functional checkpoint, not completion of
+  the full Price Lists rebuild.
