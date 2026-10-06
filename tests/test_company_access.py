@@ -1554,6 +1554,24 @@ def test_price_source_result_notice_persists_until_the_source_selection_changes(
     assert 'pop("_price_source_notice", None)' in file_change_source
 
 
+def test_price_source_result_clears_on_file_selection_not_extract_click():
+    guard_source = Path("ui/js_guards.py").read_text()
+
+    assert "clearTerminalResultForNewFileSelection" in guard_source
+    assert 'addEventListener("change", clearTerminalResultForNewFileSelection, true)' in guard_source
+    assert 'card.querySelectorAll(".price-source-cycle-result")' not in guard_source
+    assert "sessionStorage.removeItem(TERMINAL_RESULT_KEY)" in guard_source
+
+
+def test_price_source_terminal_result_has_a_browser_session_display_fallback():
+    guard_source = Path("ui/js_guards.py").read_text()
+
+    assert 'const TERMINAL_RESULT_KEY = "__costerlyPriceSourceTerminalResult"' in guard_source
+    assert "function syncTerminalResult(card)" in guard_source
+    assert "sessionStorage.setItem" in guard_source
+    assert "sessionStorage.getItem(TERMINAL_RESULT_KEY)" in guard_source
+
+
 def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():
     screen_source = Path("screens/company_profile.py").read_text()
     css = Path("styles/company_profile.py").read_text()

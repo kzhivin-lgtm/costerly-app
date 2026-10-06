@@ -3821,6 +3821,7 @@ def install_price_source_processing_guard() -> None:
             const STARTING_TIMER_KEY = "__costerlyPriceSourceStartTimer";
             const DEFERRED_TAB_KEY = "__costerlyDeferredPriceSourceTab";
             const REPLAYING_TAB_KEY = "__costerlyReplayingPriceSourceTab";
+            const TERMINAL_RESULT_KEY = "__costerlyPriceSourceTerminalResult";
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
 
@@ -3879,6 +3880,45 @@ def install_price_source_processing_guard() -> None:
                 }
             }
 
+            function clearTerminalResultForNewFileSelection(event) {
+                const input = event.target;
+                if (!(input instanceof parentWindow.HTMLInputElement)) return;
+                if (input.type !== "file" || !input.files || input.files.length === 0) return;
+                if (!input.closest('[class*="st-key-price_source_upload_"]')) return;
+                // File selection, not the Extract click, begins the next user
+                // cycle. The visible terminal dashboard must never describe a
+                // source the user has already replaced.
+                parentDoc.querySelectorAll(".price-source-cycle-result").forEach((result) => {
+                    result.remove();
+                });
+                parentWindow.sessionStorage.removeItem(TERMINAL_RESULT_KEY);
+            }
+
+            function syncTerminalResult(card) {
+                const visibleResult = card.querySelector(
+                    ".price-source-cycle-result.price-lists-toast-result"
+                );
+                if (visibleResult) {
+                    parentWindow.sessionStorage.setItem(
+                        TERMINAL_RESULT_KEY,
+                        visibleResult.outerHTML
+                    );
+                    return;
+                }
+                if (
+                    card.querySelector(".price-source-processing-marker") ||
+                    card.querySelector(".price-source-cycle-error") ||
+                    parentWindow[STARTING_KEY]
+                ) return;
+                const savedMarkup = parentWindow.sessionStorage.getItem(TERMINAL_RESULT_KEY);
+                const buttonContainer = card.querySelector(".st-key-process_price_source");
+                if (!savedMarkup || !buttonContainer) return;
+                const holder = parentDoc.createElement("div");
+                holder.innerHTML = savedMarkup;
+                const restored = holder.firstElementChild;
+                if (restored) buttonContainer.after(restored);
+            }
+
             function resetCompletedState() {
                 parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach((card) => {
                     const completeMarker = card.querySelector(
@@ -3896,6 +3936,7 @@ def install_price_source_processing_guard() -> None:
                         releaseDeferredProfileNavigation();
                         return;
                     }
+                    syncTerminalResult(card);
                     if (!completeMarker && processingMarker) {
                         parentWindow[STARTING_KEY] = false;
                         clearStartingTimers();
@@ -3973,9 +4014,6 @@ def install_price_source_processing_guard() -> None:
                     ? completeMarker.dataset.processingCycle || ""
                     : "";
                 card.classList.add("costerly-price-source-processing");
-                card.querySelectorAll(".price-source-cycle-result").forEach((result) => {
-                    result.remove();
-                });
                 // Do not let a Profile-tab click win the race before
                 // Streamlit has run the Extract callback and queued its worker.
                 // The server marker clears this immediately after submission.
@@ -4024,12 +4062,14 @@ def install_price_source_processing_guard() -> None:
 
             parentDoc.addEventListener("click", handleClick, true);
             parentDoc.addEventListener("click", preventPrematureProfileNavigation, true);
+            parentDoc.addEventListener("change", clearTerminalResultForNewFileSelection, true);
             const observer = new MutationObserver(resetCompletedState);
             observer.observe(parentDoc.body, {childList: true, subtree: true});
             resetCompletedState();
             parentWindow[CLEANUP_KEY] = () => {
                 parentDoc.removeEventListener("click", handleClick, true);
                 parentDoc.removeEventListener("click", preventPrematureProfileNavigation, true);
+                parentDoc.removeEventListener("change", clearTerminalResultForNewFileSelection, true);
                 observer.disconnect();
                 parentDoc.querySelectorAll(".st-key-price_source_add_card").forEach(removeLiveProgress);
                 clearStartingTimers();

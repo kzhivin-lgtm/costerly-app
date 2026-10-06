@@ -539,3 +539,17 @@ The workspace requirements are:
   line-price error.
 - Source Library label: show the extracted invoice number beneath the canonical
   supplier name when it is present, otherwise retain the uploaded file name.
+
+### Increment, 2026-10-06, terminal extraction dashboard lifecycle
+
+- Selecting a replacement file now clears the green terminal dashboard at the
+  selection event, not at the later Extract click. The same selection clears
+  any stale cycle error.
+- A successfully rendered terminal dashboard is retained in this browser tab's
+  session display cache. If a Streamlit rerender loses the in-memory notice
+  after the worker has completed, the same completed dashboard is restored.
+  The cache is display-only and is cleared with the next file selection.
+- The server records `server.price_source_ui_terminal_result` after it stores a
+  successful worker outcome in session state. This distinguishes a completed
+  backend cycle from a client-side display loss in later diagnostics.
+- Verified with focused Price Sources and Company Profile tests, 347 passed.

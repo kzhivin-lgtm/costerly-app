@@ -2943,11 +2943,12 @@ def _queue_price_source_processing(
     st.session_state.pop("_price_source_start_rejected", None)
 
 def _clear_price_source_url_for_files(uploader_key: str, url_key: str) -> None:
-    """Keep one document source active when the user selects files."""
+    """Start a new source selection as soon as files enter the uploader."""
     files = accepted_price_source_uploads(list(st.session_state.get(uploader_key) or []))
     if files:
         st.session_state[url_key] = ""
         st.session_state.pop("_price_source_notice", None)
+        st.session_state.pop("_price_source_error", None)
 
 
 def _clear_price_source_files_for_url(url_key: str) -> None:
@@ -3142,20 +3143,29 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
             }
         else:
             st.session_state._price_source_notice = result
+        if trace:
+            trace.event(
+                "server.price_source_ui_terminal_result",
+                metadata={
+                    "processing_cycle": pending.get("processing_cycle"),
+                    "source_id": getattr(result, "source_id", None),
+                    "outcome": "success",
+                },
+            )
     finally:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
 
 
 @st.fragment(run_every=1.0, parallel=True)
-def _render_price_source_processing_status(access: CompanyAccess) -> None:
+def _render_price_source_processing_status(access: CompanyAccess, *, trace=None) -> None:
     """Refresh only the terminal state while the worker runs in background."""
     if not st.session_state.get("_price_source_processing"):
         return
     pending = st.session_state.get("_price_source_pending") or {}
     future = pending.get("future")
     if isinstance(future, Future) and future.done():
-        _process_pending_price_source(access)
+        _process_pending_price_source(access, trace=trace)
         st.rerun(scope="app")
 
 
@@ -3237,7 +3247,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     _render_price_source_add(
         access, trace=trace, cycle_result=cycle_result, cycle_error=error,
     )
-    _render_price_source_processing_status(access)
+    _render_price_source_processing_status(access, trace=trace)
 
     action_notice = st.session_state.get("_price_source_action_notice")
     if isinstance(action_notice, dict):
