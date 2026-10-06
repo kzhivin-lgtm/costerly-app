@@ -133,6 +133,15 @@ def ocr_issuer_evidence_text(package: dict[str, Any]) -> str:
             parts.append(f"PAGE {page_number} OCR HEADER:\n" + "\n".join(headers))
         if footers:
             parts.append(f"PAGE {page_number} OCR FOOTER:\n" + "\n".join(footers))
+        # Direct-PDF OCR can return page Markdown without promoting the
+        # graphical masthead to a typed header block.  Preserve the first page
+        # as issuer evidence in that case.  ``issuer_identity_from_source_text``
+        # applies the hard ``לכבוד`` buyer boundary before it reads names or
+        # identifiers, so this does not turn a buyer in the body into a seller.
+        if position == 1 and not headers:
+            markdown = str(page.get("markdown") or "").strip()
+            if markdown:
+                parts.append(f"PAGE {page_number} OCR PAGE LEAD:\n{markdown}")
     return "\n\n".join(parts)[:40_000]
 
 
@@ -144,14 +153,25 @@ def prepare_price_source_text_layer(
     image_ocr: Callable[..., dict[str, Any]] = run_mistral_ocr,
     pdf_ocr: Callable[..., dict[str, Any]] = run_mistral_direct_pdf_evidence_ocr,
 ) -> PriceSourceTextLayer:
-    """Build the one auditable text layer consumed by Price extraction."""
+    """Build the auditable text layer consumed by Price extraction.
+
+    Digital PDFs retain their native text for price rows, but their graphical
+    masthead is always OCRed as independent issuer evidence.  Supplier identity
+    must never depend on whether a PDF happened to contain a text layer.
+    """
     suffix = Path(file_name).suffix.lower()
     if suffix in STRUCTURED_TABLE_SUFFIXES:
         return PriceSourceTextLayer(text=structured_text, strategy="structured_table")
     if suffix == ".pdf":
         embedded_text = extract_embedded_pdf_text(file_bytes)
         if len(embedded_text) >= PDF_EMBEDDED_TEXT_MIN_CHARS:
-            return PriceSourceTextLayer(text=embedded_text, strategy="pdf_embedded_text")
+            package = pdf_ocr(file_name=file_name, file_bytes=file_bytes)
+            return PriceSourceTextLayer(
+                text=embedded_text,
+                strategy="pdf_embedded_text_with_header_ocr",
+                ocr_package=package,
+                issuer_evidence_text=ocr_issuer_evidence_text(package),
+            )
         package = pdf_ocr(file_name=file_name, file_bytes=file_bytes)
         text = ocr_package_text(package)
         if not text:

@@ -40,7 +40,7 @@ def test_structured_table_bypasses_ocr():
     assert result.ocr_package is None
 
 
-def test_digital_pdf_uses_embedded_text_without_ocr():
+def test_digital_pdf_keeps_embedded_text_and_always_ocrs_issuer_header():
     document = fitz.open()
     page = document.new_page()
     for line in range(12):
@@ -48,14 +48,32 @@ def test_digital_pdf_uses_embedded_text_without_ocr():
     pdf_bytes = document.tobytes()
     document.close()
 
+    package = {
+        "pages": [
+            {
+                "page_number": 1,
+                "markdown": "# Invoice\nלכבוד: Buyer",
+                "blocks": [
+                    {"type": "header", "content": 'לבידי בוקטוס בע"מ\nח.פ. 514539998'},
+                ],
+            }
+        ],
+    }
+    calls = []
     result = prepare_price_source_text_layer(
         file_name="invoice.pdf",
         file_bytes=pdf_bytes,
-        pdf_ocr=lambda **_kwargs: (_ for _ in ()).throw(AssertionError("unexpected OCR")),
+        pdf_ocr=lambda **kwargs: calls.append(kwargs) or package,
     )
 
-    assert result.strategy == "pdf_embedded_text"
+    assert result.strategy == "pdf_embedded_text_with_header_ocr"
     assert "Digital supplier invoice" in result.text
+    assert calls[0]["file_name"] == "invoice.pdf"
+    assert result.ocr_package == package
+    assert issuer_identity_from_source_text(result.issuer_evidence_text) == {
+        "supplier_name": "לבידי בוקטוס",
+        "supplier_hp": "514539998",
+    }
 
 
 def test_scanned_pdf_uses_ocr_when_no_text_layer():
@@ -154,6 +172,25 @@ def test_ocr_issuer_evidence_keeps_header_and_footer_outside_markdown():
     assert issuer_identity_from_source_text(evidence) == {
         "supplier_name": "א.ש. פירוזל",
         "supplier_hp": "513453233",
+    }
+
+
+def test_ocr_issuer_evidence_uses_first_page_markdown_when_header_blocks_are_absent():
+    evidence = ocr_issuer_evidence_text(
+        {
+            "pages": [
+                {
+                    "page_number": 1,
+                    "markdown": 'לבידי בוקטוס בע"מ\nח.פ. 514539998\nלכבוד: Buyer\nע.מ. 337791438',
+                }
+            ]
+        }
+    )
+
+    assert "OCR PAGE LEAD" in evidence
+    assert issuer_identity_from_source_text(evidence) == {
+        "supplier_name": "לבידי בוקטוס",
+        "supplier_hp": "514539998",
     }
 
 

@@ -576,6 +576,17 @@ The workspace requirements are:
 - This is a display-only repair. It does not change source processing,
   supplier resolution, or catalog persistence.
 
+### Increment, 2026-10-06, PDF issuer-header OCR
+
+- Every PDF now follows a hybrid evidence path, including PDFs that contain a
+  usable native text layer. Native text remains the authoritative evidence for
+  price rows; the first PDF page is always OCRed so its graphical header and
+  footer can supply the seller's legal name and nine-digit identifier.
+- This removes the old 120-character native-text bypass, which could read an
+  invoice table but omit a graphical seller masthead. OCR issuer evidence is
+  resolved before the existing buyer-boundary guard, so data after `לכבוד`
+  remains ineligible to become a supplier.
+
 ### Checkpoint, 2026-10-06, permanent Price Source deletion
 
 - Production is on commits `a8e6280`, `e1f0086`, and `740bd62`. The SQL function
