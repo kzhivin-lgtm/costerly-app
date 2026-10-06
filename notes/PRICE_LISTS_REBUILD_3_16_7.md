@@ -469,6 +469,10 @@ The workspace requirements are:
 - The seven remaining purchasable Hardware rows are a verified acceptance
   checkpoint for issuer identification and consumable removal.
 - Pending, not implemented: Hardware matching must never use invoice quantity
-  as identity evidence. Distinct hardware SKU/function/series/capacity must
-  remain separate. This is a new Hardware-normalisation task, not a change to
-  accepted sheet-material merge rules.
+  as identity evidence. Exact SKU is a strong positive merge signal; matching
+  price is corroboration, not sufficient by itself. The normalised names must
+  have meaningful overlap under the other evidence. With no overlapping
+  meaning-bearing token, merge is forbidden even if the price agrees. Distinct
+  hardware SKU/function/series/capacity remain separate. This is a new
+  Hardware-normalisation task, not a change to accepted sheet-material merge
+  rules.
