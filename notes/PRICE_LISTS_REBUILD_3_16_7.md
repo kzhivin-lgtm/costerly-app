@@ -3,6 +3,19 @@
 Status: active. Stage 1 is the additive data contract. It does not change the
 current Price Lists UI or automatically modify any existing source.
 
+## Working contract, 2026-10-06
+
+- A completed and accepted work item is frozen. A later task must not alter
+  its code path, UI, timing, or data behaviour unless the user reports a
+  regression in that item or the active task has a demonstrated dependency on
+  it.
+- Before touching a frozen area, record the dependency, the protected
+  behaviour, and an end-to-end verification that proves it still works. A
+  speculative resilience or cleanup change is not sufficient reason.
+- Every implementation update names its scoped work item and the files it may
+  affect. Findings outside that scope become backlog entries, not opportunistic
+  patches.
+
 ## Decision
 
 `reference_operations` is the single global catalog of normalised work. It is
