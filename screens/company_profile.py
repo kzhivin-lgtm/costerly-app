@@ -3381,8 +3381,8 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                     )
                             with remove_col:
                                 st.button(
-                                    "Remove",
-                                    key=f"remove_price_source_{source_id}",
+                                    "Delete",
+                                    key=f"delete_price_source_{source_id}",
                                     use_container_width=True,
                                     on_click=_start_price_source_purge_action,
                                     args=(access, source_id),

@@ -195,6 +195,7 @@ def test_purge_price_source_uses_owned_transactional_rpc_and_deletes_storage(mon
     assert result == {
         "deleted_material_offers": 47,
         "deleted_operation_offers": 0,
+        "deleted_service_offers": 0,
         "deleted_rows": 12,
         "deleted_materials": 39,
         "deleted_supplier_aliases": 0,
@@ -218,6 +219,7 @@ def test_source_library_uses_modal_confirmed_optimistic_source_removal():
 
     assert "install_price_source_remove_guard" in source
     assert "_price_source_purging_ids" in source
+    assert "delete_price_source_" in source
     assert "on_click=_start_price_source_purge_action" in source
     assert "price-source-remove-modal" in guard
     assert "This permanently deletes the source" in guard

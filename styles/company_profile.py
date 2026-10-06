@@ -2148,7 +2148,7 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-view_price_source_"] a,
         .stApp:has(.company-profile-active)
-        [class*="st-key-remove_price_source_"] button {
+        [class*="st-key-delete_price_source_"] button {
             min-width: 72px !important;
             height: 40px !important;
             padding: 0 12px !important;
@@ -2156,7 +2156,7 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        [class*="st-key-remove_price_source_"] button {
+        [class*="st-key-delete_price_source_"] button {
             color: #7A3E3E !important;
             border-color: #D9B8B8 !important;
             background: #FFFDFD !important;

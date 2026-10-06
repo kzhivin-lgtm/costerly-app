@@ -15,10 +15,12 @@ as $$
 declare
     deleted_material_offer_count integer := 0;
     deleted_operation_offer_count integer := 0;
+    deleted_service_offer_count integer := 0;
     deleted_row_count integer := 0;
     deleted_material_count integer := 0;
     deleted_alias_count integer := 0;
     source_material_ids uuid[] := '{}'::uuid[];
+    source_row_ids uuid[] := '{}'::uuid[];
 begin
     if not exists (
         select 1
@@ -42,6 +44,12 @@ begin
     where material.company_id = p_company_id
       and material.created_from_source_id = p_source_id;
 
+    select coalesce(array_agg(row.row_id), '{}'::uuid[])
+    into source_row_ids
+    from public.company_price_source_rows row
+    where row.company_id = p_company_id
+      and row.source_id = p_source_id;
+
     delete from public.company_material_offers offer
     where offer.company_id = p_company_id
       and offer.source_id = p_source_id;
@@ -52,6 +60,11 @@ begin
       and offer.source_id = p_source_id;
     get diagnostics deleted_operation_offer_count = row_count;
 
+    delete from public.company_service_offers offer
+    where offer.company_id = p_company_id
+      and offer.source_id = p_source_id;
+    get diagnostics deleted_service_offer_count = row_count;
+
     delete from public.company_supplier_aliases alias
     where alias.company_id = p_company_id
       and alias.alias_kind = 'source_observed'
@@ -60,30 +73,24 @@ begin
 
     delete from public.material_identity_resolution_events event
     where event.company_id = p_company_id
-      and event.source_row_id in (
-          select row.row_id
-          from public.company_price_source_rows row
-          where row.company_id = p_company_id
-            and row.source_id = p_source_id
-      );
-
-    delete from public.material_identity_candidates candidate
-    where candidate.company_id = p_company_id
-      and candidate.source_row_id in (
-          select row.row_id
-          from public.company_price_source_rows row
-          where row.company_id = p_company_id
-            and row.source_id = p_source_id
-      );
+      and event.source_row_id = any(source_row_ids);
 
     delete from public.company_material_aliases alias
     where alias.company_id = p_company_id
-      and alias.source_row_id in (
-          select row.row_id
-          from public.company_price_source_rows row
-          where row.company_id = p_company_id
-            and row.source_id = p_source_id
-      );
+      and alias.source_row_id = any(source_row_ids);
+
+    -- The row and candidate tables retain optional references to one another.
+    -- Break the row-to-candidate side before deleting candidates, which still
+    -- retain a mandatory source-row reference.
+    update public.company_price_source_rows row
+    set identity_candidate_id = null
+    where row.company_id = p_company_id
+      and row.row_id = any(source_row_ids)
+      and row.identity_candidate_id is not null;
+
+    delete from public.material_identity_candidates candidate
+    where candidate.company_id = p_company_id
+      and candidate.source_row_id = any(source_row_ids);
 
     delete from public.company_price_source_rows row
     where row.company_id = p_company_id
@@ -127,6 +134,7 @@ begin
     return jsonb_build_object(
         'deleted_material_offers', deleted_material_offer_count,
         'deleted_operation_offers', deleted_operation_offer_count,
+        'deleted_service_offers', deleted_service_offer_count,
         'deleted_rows', deleted_row_count,
         'deleted_materials', deleted_material_count,
         'deleted_supplier_aliases', deleted_alias_count

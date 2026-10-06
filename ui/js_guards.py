@@ -4131,7 +4131,7 @@ def install_price_source_remove_guard() -> None:
             }
 
             function handleClick(event) {
-                const button = event.target.closest('[class*="st-key-remove_price_source_"] button');
+                const button = event.target.closest('[class*="st-key-delete_price_source_"] button');
                 if (!button || button.disabled) return;
                 if (button.dataset.priceSourceRemoveConfirmed === "true") {
                     delete button.dataset.priceSourceRemoveConfirmed;

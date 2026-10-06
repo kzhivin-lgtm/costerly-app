@@ -14,6 +14,9 @@ def test_purge_source_migration_is_transactional_and_deletes_source_owned_data()
     assert "begin;" in sql
     assert "commit;" in sql
     assert "create or replace function public.purge_company_price_source" in sql
+    assert "delete from public.company_service_offers" in sql
+    assert "set identity_candidate_id = null" in sql
+    assert "candidate.source_row_id = any(source_row_ids)" in sql
     assert "delete from public.company_material_offers" in sql
     assert "delete from public.company_supplier_operation_offers" in sql
     assert "delete from public.company_supplier_aliases" in sql

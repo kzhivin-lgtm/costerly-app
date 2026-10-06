@@ -2888,6 +2888,7 @@ def purge_price_source(access, source_id: str) -> dict[str, int | bool]:
     return {
         "deleted_material_offers": int(result.get("deleted_material_offers") or 0),
         "deleted_operation_offers": int(result.get("deleted_operation_offers") or 0),
+        "deleted_service_offers": int(result.get("deleted_service_offers") or 0),
         "deleted_rows": int(result.get("deleted_rows") or 0),
         "deleted_materials": int(result.get("deleted_materials") or 0),
         "deleted_supplier_aliases": int(result.get("deleted_supplier_aliases") or 0),
