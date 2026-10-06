@@ -2145,6 +2145,84 @@ def apply_company_profile_css() -> None:
             box-shadow: none;
         }
 
+        .stApp:has(.company-profile-active)
+        [class*="st-key-view_price_source_"] a,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-remove_price_source_"] button {
+            min-width: 72px !important;
+            height: 40px !important;
+            padding: 0 12px !important;
+            white-space: nowrap !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-remove_price_source_"] button {
+            color: #7A3E3E !important;
+            border-color: #D9B8B8 !important;
+            background: #FFFDFD !important;
+        }
+
+        .price-source-remove-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(33, 24, 39, 0.42);
+            backdrop-filter: blur(3px);
+        }
+
+        .price-source-remove-dialog {
+            width: min(480px, calc(100vw - 48px));
+            padding: 28px;
+            border: 1px solid #DDD5E3;
+            border-radius: 18px;
+            background: #FFFFFF;
+            box-shadow: 0 22px 60px rgba(42, 31, 44, 0.24);
+        }
+
+        .price-source-remove-title {
+            color: var(--color-text-strong);
+            font-size: 20px;
+            font-weight: 750;
+            line-height: 1.25;
+        }
+
+        .price-source-remove-copy {
+            margin-top: 10px;
+            color: var(--color-text-muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .price-source-remove-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .price-source-remove-action {
+            min-height: 40px;
+            padding: 0 16px;
+            border: 1px solid #CEC5D1;
+            border-radius: 10px;
+            background: #FFFFFF;
+            color: var(--color-text-strong);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 650;
+            cursor: pointer;
+        }
+
+        .price-source-remove-action--confirm {
+            border-color: #7F4BD1;
+            background: #7F4BD1;
+            color: #FFFFFF;
+        }
+
         .stApp:has(.company-profile-active) label,
         .stApp:has(.company-profile-active) [data-testid="stWidgetLabel"] p {
             color: var(--color-text-strong) !important;

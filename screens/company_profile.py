@@ -27,6 +27,7 @@ from ui.js_guards import (
     install_company_metrics_input_guard,
     install_price_source_notice_guard,
     install_price_source_processing_guard,
+    install_price_source_remove_guard,
     install_price_source_save_guard,
     install_upload_dragover_guard,
 )
@@ -42,7 +43,6 @@ from use_cases.price_sources import (
     PRICE_CATALOG_DEPARTMENTS,
     PriceSourceError,
     accepted_price_source_uploads,
-    purge_price_source,
     canonical_price_source_category,
     combine_price_source_files,
     create_price_source_download_url,
@@ -58,7 +58,10 @@ from use_cases.price_sources import (
     save_price_source_row,
     validate_price_source_upload_selection,
 )
-from use_cases.price_source_runtime import submit_price_source_job
+from use_cases.price_source_runtime import (
+    submit_price_source_job,
+    submit_price_source_purge_job,
+)
 from use_cases.machinery import (
     CNC_ESTIMATE_LEVEL_DEFAULT,
     CNC_ESTIMATE_LEVEL_KEY,
@@ -2108,26 +2111,56 @@ def _cancel_price_source_row_removal() -> None:
     st.session_state.pop("_price_source_action_location", None)
 
 
-def _cancel_price_source_removal() -> None:
-    st.session_state.pop("_removing_price_source_id", None)
-
-
-def _purge_price_source_action(access: CompanyAccess, source_id: str) -> None:
+def _start_price_source_purge_action(access: CompanyAccess, source_id: str) -> None:
+    """Hide a source immediately, then finish its irreversible purge in background."""
+    source_id = str(source_id)
+    pending = st.session_state.setdefault("_price_source_purge_pending", {})
+    if source_id in pending:
+        return
     try:
-        result = purge_price_source(access, source_id)
+        future = submit_price_source_purge_job(access=access, source_id=source_id)
     except Exception:
-        logger.exception("Price source removal failed")
+        logger.exception("Price source purge could not start")
         st.session_state._price_source_action_error = (
             "The source could not be removed. Try again"
         )
     else:
-        _clear_price_lists_snapshot()
-        st.session_state.pop("_removing_price_source_id", None)
-        st.session_state.pop("_price_source_notice", None)
-        storage_note = "" if result["storage_deleted"] else "; file cleanup is pending"
-        _set_price_source_action_notice(
-            f'{result["deleted_rows"]} rows removed with the source{storage_note}'
-        )
+        pending[source_id] = future
+        hidden = st.session_state.setdefault("_price_source_purging_ids", set())
+        hidden.add(source_id)
+
+
+def _process_pending_price_source_purges() -> bool:
+    """Complete optimistic source removals and restore a row only on failure."""
+    pending = st.session_state.get("_price_source_purge_pending") or {}
+    hidden = st.session_state.setdefault("_price_source_purging_ids", set())
+    changed = False
+    for source_id, future in list(pending.items()):
+        if not isinstance(future, Future) or not future.done():
+            continue
+        changed = True
+        pending.pop(source_id, None)
+        try:
+            result = future.result()
+        except Exception:
+            logger.exception("Price source purge failed source_id=%s", source_id)
+            hidden.discard(source_id)
+            st.session_state._price_source_action_error = (
+                "The source could not be removed. It is visible again. Try again"
+            )
+        else:
+            _clear_price_lists_snapshot()
+            hidden.discard(source_id)
+            st.session_state.pop("_price_source_notice", None)
+            storage_note = "" if result["storage_deleted"] else "; file cleanup is pending"
+            _set_price_source_action_notice(
+                f'Source removed, {result["deleted_rows"]} rows deleted{storage_note}'
+            )
+    if not pending:
+        st.session_state.pop("_price_source_purge_pending", None)
+    if not hidden:
+        st.session_state.pop("_price_source_purging_ids", None)
+    return changed
 
 
 def _save_price_source_row_action(
@@ -3161,6 +3194,9 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
 @st.fragment(run_every=1.0, parallel=True)
 def _render_price_source_processing_status(access: CompanyAccess, *, trace=None) -> None:
     """Refresh only the terminal state while the worker runs in background."""
+    purge_finished = _process_pending_price_source_purges()
+    if purge_finished:
+        st.rerun(scope="app")
     if not st.session_state.get("_price_source_processing"):
         return
     pending = st.session_state.get("_price_source_pending") or {}
@@ -3249,6 +3285,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         access, trace=trace, cycle_result=cycle_result, cycle_error=error,
     )
     _render_price_source_processing_status(access, trace=trace)
+    install_price_source_remove_guard()
 
     action_notice = st.session_state.get("_price_source_action_notice")
     if isinstance(action_notice, dict):
@@ -3279,11 +3316,19 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                 unsafe_allow_html=True,
             )
             with st.expander(f'Source library · {len(sources)}', expanded=False):
-                if not sources:
+                purging_source_ids = {
+                    str(source_id)
+                    for source_id in st.session_state.get("_price_source_purging_ids", set())
+                }
+                visible_sources = [
+                    source for source in sources
+                    if str(source.get("source_id")) not in purging_source_ids
+                ]
+                if not visible_sources:
                     st.info("No source documents yet.")
                 else:
                     with st.container(key="price_source_list_card"):
-                        header = st.columns([2.15, 1.15, 1.0, 0.7, 0.5, 0.55])
+                        header = st.columns([2.15, 1.1, 0.95, 0.55, 0.62, 0.72])
                         for column, label in zip(
                             header,
                             ("Supplier / source", "Document type", "Department", "Rows", "", ""),
@@ -3293,11 +3338,11 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                     f'<span class="price-source-row-label">{label}</span>',
                                     unsafe_allow_html=True,
                                 )
-                        for source in sources:
+                        for source in visible_sources:
                             source_id = str(source["source_id"])
                             summary = source.get("processing_summary") or {}
                             left, document_col, department_col, items_col, action_col, remove_col = st.columns(
-                                [2.15, 1.15, 1.0, 0.7, 0.5, 0.55],
+                                [2.15, 1.1, 0.95, 0.55, 0.62, 0.72],
                                 vertical_alignment="center",
                             )
                             with left:
@@ -3335,34 +3380,12 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                         use_container_width=True,
                                     )
                             with remove_col:
-                                if st.button(
+                                st.button(
                                     "Remove",
                                     key=f"remove_price_source_{source_id}",
                                     use_container_width=True,
-                                ):
-                                    st.session_state._removing_price_source_id = source_id
-                            if st.session_state.get("_removing_price_source_id") == source_id:
-                                warning_col, confirm_col, cancel_col = st.columns(
-                                    [4.8, 0.8, 0.7],
-                                    gap="small",
-                                    vertical_alignment="center",
-                                )
-                                warning_col.warning(
-                                    "Remove this source and all of its active prices?"
-                                )
-                                confirm_col.button(
-                                    "Remove",
-                                    key=f"confirm_remove_price_source_{source_id}",
-                                    type="primary",
-                                    on_click=_purge_price_source_action,
+                                    on_click=_start_price_source_purge_action,
                                     args=(access, source_id),
-                                    use_container_width=True,
-                                )
-                                cancel_col.button(
-                                    "Cancel",
-                                    key=f"cancel_remove_price_source_{source_id}",
-                                    on_click=_cancel_price_source_removal,
-                                    use_container_width=True,
                                 )
 
 

@@ -209,14 +209,18 @@ def test_purge_price_source_uses_owned_transactional_rpc_and_deletes_storage(mon
     ]
 
 
-def test_source_library_has_confirmed_whole_source_removal():
+def test_source_library_uses_modal_confirmed_optimistic_source_removal():
     from screens.company_profile import _render_price_lists
+    from ui.js_guards import install_price_source_remove_guard
 
     source = inspect.getsource(_render_price_lists)
+    guard = inspect.getsource(install_price_source_remove_guard)
 
-    assert "_removing_price_source_id" in source
-    assert "Remove this source and all of its active prices?" in source
-    assert "on_click=_purge_price_source_action" in source
+    assert "install_price_source_remove_guard" in source
+    assert "_price_source_purging_ids" in source
+    assert "on_click=_start_price_source_purge_action" in source
+    assert "price-source-remove-modal" in guard
+    assert "This permanently deletes the source" in guard
 
 
 def test_price_source_pdf_preview_renders_only_first_page():
@@ -1868,6 +1872,46 @@ def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
     assert submitted[0]["uploaded_file"].name == "prices-a.xlsx"
     assert isinstance(state["_price_source_pending"]["future"], Future)
     assert "_price_source_error" not in state
+
+
+def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch):
+    from screens import company_profile
+
+    class SessionState(dict):
+        def __getattr__(self, name):
+            return self[name]
+
+        def __setattr__(self, name, value):
+            self[name] = value
+
+    state = SessionState()
+    future = Future()
+    monkeypatch.setattr(company_profile.st, "session_state", state)
+    monkeypatch.setattr(
+        company_profile,
+        "submit_price_source_purge_job",
+        lambda **_kwargs: future,
+    )
+    cleared = []
+    monkeypatch.setattr(
+        company_profile,
+        "_clear_price_lists_snapshot",
+        lambda: cleared.append(True),
+    )
+
+    company_profile._start_price_source_purge_action(
+        SimpleNamespace(company_id="company-1"), "source-1"
+    )
+
+    assert state["_price_source_purging_ids"] == {"source-1"}
+    assert state["_price_source_purge_pending"]["source-1"] is future
+
+    future.set_result({"deleted_rows": 5, "storage_deleted": True})
+
+    assert company_profile._process_pending_price_source_purges() is True
+    assert cleared == [True]
+    assert "_price_source_purge_pending" not in state
+    assert state["_price_source_action_notice"]["message"] == "Source removed, 5 rows deleted"
 
 
 def test_price_source_file_selection_clears_the_supplier_url(monkeypatch):

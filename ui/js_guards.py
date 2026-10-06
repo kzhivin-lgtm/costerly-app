@@ -4086,6 +4086,77 @@ def install_price_source_processing_guard() -> None:
     )
 
 
+def install_price_source_remove_guard() -> None:
+    """Replace the fragile inline source confirmation with a real modal."""
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const CLEANUP_KEY = "__costerlyPriceSourceRemoveGuardCleanup";
+            if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
+
+            function closeModal() {
+                parentDoc.querySelector(".price-source-remove-modal")?.remove();
+            }
+
+            function showConfirmation(button) {
+                closeModal();
+                const modal = parentDoc.createElement("div");
+                modal.className = "price-source-remove-modal";
+                modal.innerHTML = (
+                    '<div class="price-source-remove-dialog" role="dialog" aria-modal="true" '
+                    + 'aria-labelledby="price-source-remove-title">'
+                    + '<div id="price-source-remove-title" class="price-source-remove-title">Delete source?</div>'
+                    + '<div class="price-source-remove-copy">This permanently deletes the source and all prices that exist only because of it. This cannot be undone.</div>'
+                    + '<div class="price-source-remove-actions">'
+                    + '<button type="button" class="price-source-remove-action" data-price-source-remove-cancel>Cancel</button>'
+                    + '<button type="button" class="price-source-remove-action price-source-remove-action--confirm" data-price-source-remove-confirm>Delete source</button>'
+                    + '</div></div>'
+                );
+                modal.querySelector("[data-price-source-remove-cancel]")
+                    .addEventListener("click", closeModal);
+                modal.querySelector("[data-price-source-remove-confirm]")
+                    .addEventListener("click", () => {
+                        closeModal();
+                        button.dataset.priceSourceRemoveConfirmed = "true";
+                        button.click();
+                    });
+                modal.addEventListener("click", (event) => {
+                    if (event.target === modal) closeModal();
+                });
+                parentDoc.body.appendChild(modal);
+                modal.querySelector("[data-price-source-remove-cancel]")?.focus();
+            }
+
+            function handleClick(event) {
+                const button = event.target.closest('[class*="st-key-remove_price_source_"] button');
+                if (!button || button.disabled) return;
+                if (button.dataset.priceSourceRemoveConfirmed === "true") {
+                    delete button.dataset.priceSourceRemoveConfirmed;
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                showConfirmation(button);
+            }
+
+            parentDoc.addEventListener("click", handleClick, true);
+            parentWindow[CLEANUP_KEY] = () => {
+                parentDoc.removeEventListener("click", handleClick, true);
+                closeModal();
+                delete parentWindow[CLEANUP_KEY];
+            };
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
 def install_price_source_save_guard() -> None:
     """Give a Review save immediate, unambiguous client-side feedback."""
     components.html(

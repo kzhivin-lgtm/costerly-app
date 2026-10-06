@@ -8,7 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 from db.supabase_client import get_supabase_client
-from use_cases.price_sources import PriceSourceError, process_price_source
+from use_cases.price_sources import PriceSourceError, process_price_source, purge_price_source
 
 
 _PRICE_SOURCE_EXECUTOR = ThreadPoolExecutor(
@@ -62,6 +62,29 @@ def submit_price_source_job(
     )
 
 
+def submit_price_source_purge_job(*, access, source_id: str, trace=None) -> Future:
+    """Purge one source away from the Streamlit click callback.
+
+    The UI can remove the source row immediately, while the server-owned
+    deletion finishes without making the browser wait for database and storage
+    round trips.
+    """
+    job_id = str(uuid4())
+    _trace_event(
+        trace,
+        "server.price_source_purge_submitted",
+        job_id=job_id,
+        source_id=source_id,
+    )
+    return _PRICE_SOURCE_EXECUTOR.submit(
+        _run_price_source_purge_job,
+        access=access,
+        source_id=source_id,
+        trace=trace,
+        job_id=job_id,
+    )
+
+
 def _run_price_source_job(
     *, access, uploaded_file, source_url: str, trace=None, job_id: str,
     owner_authorized: bool = False,
@@ -106,3 +129,34 @@ def _run_price_source_job(
         raise
     finally:
         lock.release()
+
+
+def _run_price_source_purge_job(*, access, source_id: str, trace=None, job_id: str):
+    started_at = time.perf_counter()
+    _trace_event(
+        trace,
+        "server.price_source_purge_worker_started",
+        job_id=job_id,
+        source_id=source_id,
+    )
+    try:
+        result = purge_price_source(access, source_id)
+        _trace_event(
+            trace,
+            "server.price_source_purge_worker_finished",
+            job_id=job_id,
+            source_id=source_id,
+            duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
+        )
+        return result
+    except Exception as exc:
+        _trace_event(
+            trace,
+            "server.price_source_purge_worker_finished",
+            status="error",
+            job_id=job_id,
+            source_id=source_id,
+            error_type=type(exc).__name__,
+            duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
+        )
+        raise
