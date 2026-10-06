@@ -22,7 +22,8 @@ instructions.
    from the issuer's letterhead or seller block, normally at the top of the
    document. Never use a recipient name, recipient VAT number, delivery name,
    or customer contact as supplier evidence.
-   supplier_hp is optional and must contain exactly the seller's nine decimal
+   `ח.פ.`, `ע.מ.`, `ע.פ.` and `H.P.` are equivalent labels for the seller's
+   single nine-digit business identifier. supplier_hp is optional and must contain exactly the seller's nine decimal
    digits, with no label, punctuation, or other text. If there are multiple
    nine-digit company numbers and the seller association is not explicit,
    return an empty supplier_hp. Never guess or use the recipient's number.

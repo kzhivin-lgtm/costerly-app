@@ -66,6 +66,8 @@ from use_cases.price_sources import (
     material_structural_key,
     price_rows_match_same_supplier_material,
     company_identity_blacklist,
+    issuer_identity_from_source_text,
+    repair_supplier_from_issuer_evidence,
     supplier_is_company_identity,
     supplier_operation_offer_matches_row,
     supplier_operation_offer_catalog_key,
@@ -525,6 +527,39 @@ def test_hardware_with_integral_screws_is_not_discarded_as_a_consumable():
     assert discard_price_source_consumables(prepared) == 0
 
 
+def test_bulk_low_value_screw_pack_is_discarded_even_if_model_calls_it_hardware():
+    result = _result()
+    screws = result["rows"][0]
+    screws.update({
+        "material_type": "Hardware",
+        "material_family": "screw",
+        "raw_description": "בורג סיבית FGV 4x40 (1000)",
+        "normalized_name": "Screw FGV 4x40 1000 pack",
+        "raw_price": 61.8,
+        "raw_unit": "pack",
+        "raw_package_quantity": 1000,
+    })
+
+    assert discard_price_source_consumables(result) == 1
+    assert result["rows"] == []
+
+
+def test_bulk_low_value_pack_supports_consumables_filter_without_hiding_fittings():
+    result = _result()
+    pack = result["rows"][0]
+    pack.update({
+        "material_type": "Hardware",
+        "material_family": "fastening kit",
+        "raw_description": "Fastening kit 100 pack",
+        "normalized_name": "Fastening kit 100 pack",
+        "raw_price": 100,
+        "raw_unit": "pack",
+        "raw_package_quantity": 100,
+    })
+
+    assert discard_price_source_consumables(result) == 1
+
+
 def test_drawer_runner_defaults_to_a_set_when_the_source_omits_the_unit():
     result = _result()
     runner = result["rows"][0]
@@ -638,6 +673,37 @@ def test_company_identity_is_an_exact_supplier_blacklist():
     assert not supplier_is_company_identity(
         "Wooden Hearts Supply", "", company_identity=identity,
     )
+
+
+def test_issuer_identity_reads_all_israeli_business_number_labels_before_buyer():
+    text = (
+        'א.ש. פירוזל בע"מ\nע.מ. 513453233\n'
+        'לכבוד: לב קגלס\nח.פ. 337791438'
+    )
+
+    assert issuer_identity_from_source_text(text) == {
+        "supplier_name": "א.ש. פירוזל",
+        "supplier_hp": "513453233",
+    }
+    assert issuer_identity_from_source_text("ע.פ. 123456789\nלכבוד: buyer")["supplier_hp"] == "123456789"
+    assert issuer_identity_from_source_text("H.P. 987654321\nלכבוד: buyer")["supplier_hp"] == "987654321"
+
+
+def test_issuer_header_repairs_a_buyer_selected_as_supplier():
+    result = _result()
+    result.update({"supplier_name": "לב קגלס", "supplier_hp": "337791438"})
+    company_identity = company_identity_blacklist({
+        "company_name": "לב קגלס",
+        "company_registration_number": "337791438",
+    })
+
+    assert repair_supplier_from_issuer_evidence(
+        result,
+        issuer_identity={"supplier_name": "א.ש. פירוזל", "supplier_hp": "513453233"},
+        company_identity=company_identity,
+    )
+    assert result["supplier_name"] == "א.ש. פירוזל"
+    assert result["supplier_hp"] == "513453233"
 
 
 def test_supplier_hp_defaults_to_exactly_nine_digits_or_empty():

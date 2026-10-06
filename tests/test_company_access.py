@@ -1265,7 +1265,7 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
         assert any(button.label == "Save Bank Details" for button in app.button)
         assert labels[:4] == [
             "Company name",
-            "Company registration number (H.P.)",
+            "Company registration number (ח.פ. / ע.פ. / ע.מ.)",
             "Company legal name (Hebrew)",
             "Company legal name (English)",
         ]
@@ -1542,12 +1542,16 @@ def test_price_source_notice_exposes_full_user_cycle_duration():
     assert notice == "1 row extracted · 1 recorded · 0 review · Agent 13.8 s · Full cycle 17.2 s · TC 0.015"
 
 
-def test_price_source_result_notice_persists_until_the_next_extract_attempt():
+def test_price_source_result_notice_persists_until_the_source_selection_changes():
     source = inspect.getsource(company_profile._render_price_lists)
+    queue_source = inspect.getsource(company_profile._queue_price_source_processing)
+    file_change_source = inspect.getsource(company_profile._clear_price_source_url_for_files)
 
     assert 'st.session_state.get("_price_source_notice")' in source
     assert "cycle_result=cycle_result" in source
     assert 'st.session_state.pop("_price_source_notice", None)' not in source
+    assert 'pop("_price_source_notice", None)' not in queue_source
+    assert 'pop("_price_source_notice", None)' in file_change_source
 
 
 def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():

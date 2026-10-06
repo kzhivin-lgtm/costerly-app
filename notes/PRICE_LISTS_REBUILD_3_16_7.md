@@ -395,3 +395,27 @@ The workspace requirements are:
   material merging remains deliberately out of scope.
 - Focused Price Sources and Company Profile checks: 330 passed.  Production
   acceptance remains required with two real invoices from the same supplier.
+
+### Increment, 2026-10-06, issuer evidence and clean Price Lists baseline
+
+- The terminal green extraction dashboard is session-scoped. It remains visible
+  while the owner moves between Profile tabs and through later reruns. It is
+  cleared only when a different file selection or supplier URL is chosen, and
+  is then replaced by the next terminal result.
+- OCR evidence before the Hebrew buyer boundary `לכבוד` is used as a local
+  issuer correction. `ח.פ.`, `ע.מ.`, `ע.פ.` and `H.P.` are equivalent labels
+  for one nine-digit supplier identity. When an agent selected the company as
+  buyer, a printed issuer header corrects it before the self-identity blacklist
+  can create an `Unknown supplier` source.
+- Consumable filtering no longer lets a screw/dowel pack through merely because
+  the model called it Hardware. A durable fitting marker still protects legs,
+  hinges, runners and brackets with integral screws. Bulk packs of at least 50
+  units priced at at most ILS 2 per packed unit are supporting consumables
+  evidence, never a reason to hide a recognisable durable fitting.
+- Company 610 Price Lists test data was permanently deleted with user
+  authorisation: source objects, source rows, material items/offers, suppliers,
+  aliases, Material Job offers, material-identity evidence, and Price Source
+  OCR/extraction usage events. Final verification returned zero rows and zero
+  source objects for every one of those scopes. The company profile and other
+  product domains were not touched.
+- Verification: focused Price Sources and Company Profile checks, 334 passed.

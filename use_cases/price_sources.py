@@ -103,6 +103,7 @@ _HARDWARE_MARKERS = (
     "ציר", "מסילה", "מגירה", "תושבת", "פלטת חיבור", "קליפ", "פרפר",
     "רגלית", "ידית", "לחצן",
 )
+_DURABLE_HARDWARE_MARKERS = tuple(marker for marker in _HARDWARE_MARKERS if marker != "hardware")
 _GLASS_MARKERS = ("glass", "זכוכית")
 _IDENTITY_DESCRIPTOR_MARKERS = {
     "construction": (
@@ -241,14 +242,26 @@ def discard_price_source_consumables(result: dict[str, Any]) -> int:
     discarded = 0
     for row in result.get("rows") or []:
         text = " ".join(str(row.get(key) or "") for key in ("raw_description", "normalized_name", "material_family")).casefold()
-        is_hardware = (
-            row.get("material_type") == "Hardware"
-            or any(marker in text for marker in _HARDWARE_MARKERS)
+        has_consumable_marker = any(marker in text for marker in _CONSUMABLE_MARKERS)
+        has_durable_hardware_marker = any(marker in text for marker in _DURABLE_HARDWARE_MARKERS)
+        try:
+            package_quantity = float(row.get("raw_package_quantity") or 0)
+            price_per_packed_item = float(row.get("raw_price") or 0) / package_quantity
+        except (TypeError, ValueError, ZeroDivisionError):
+            package_quantity = 0
+            price_per_packed_item = 0
+        # Quantity and unit price are supporting evidence, never the sole
+        # reason to hide a recognisable fitting. They catch unlabelled packs of
+        # small fixings while preserving brackets, legs, hinges and runners.
+        is_bulk_low_value_pack = (
+            package_quantity >= 50
+            and price_per_packed_item <= 2
+            and _normalized_unit(str(row.get("raw_unit") or "")) in {"pack", "piece"}
         )
         if (
             row.get("item_kind") == "material"
-            and not is_hardware
-            and any(marker in text for marker in _CONSUMABLE_MARKERS)
+            and not has_durable_hardware_marker
+            and (has_consumable_marker or is_bulk_low_value_pack)
         ):
             discarded += 1
             continue
@@ -431,6 +444,60 @@ def remove_company_identity_from_supplier_result(
     result["supplier_hp"] = ""
     result["_supplier_company_identity_rejected"] = True
     return True
+
+
+def issuer_identity_from_source_text(text: str) -> dict[str, str]:
+    """Read only unambiguous issuer identity printed before the buyer block.
+
+    Israeli invoices use several labels for one nine-digit supplier identifier:
+    ח.פ. (company), ע.מ. (authorised dealer), and ע.פ. (exempt dealer).  The
+    buyer marker ``לכבוד`` is a hard boundary, so a number after it is never
+    treated as issuer evidence.
+    """
+    header = re.split(r"לכבוד\s*:??", str(text or ""), maxsplit=1, flags=re.UNICODE)[0]
+    identifier_match = re.search(
+        r"(?:ח\s*[.׳\"״]?\s*פ\s*[.׳\"״]?|ע\s*[.׳\"״]?\s*[מפ]\s*[.׳\"״]?|"
+        r"h\s*\.??\s*p\s*\.??)\s*[:#-]?\s*(\d(?:[\s-]?\d){8})",
+        header,
+        flags=re.IGNORECASE | re.UNICODE,
+    )
+    supplier_hp = re.sub(r"\D", "", identifier_match.group(1)) if identifier_match else ""
+    supplier_name = ""
+    legal_name_match = re.search(
+        r"^\s*([^\n]{2,100}?)\s+בע\s*[\"״׳']?מ\s*\.?\s*$",
+        header,
+        flags=re.MULTILINE | re.UNICODE,
+    )
+    if legal_name_match:
+        supplier_name = legal_name_match.group(1).strip()
+    return {
+        "supplier_hp": supplier_hp if len(supplier_hp) == 9 else "",
+        "supplier_name": supplier_name,
+    }
+
+
+def repair_supplier_from_issuer_evidence(
+    result: dict[str, Any],
+    *,
+    issuer_identity: Mapping[str, str],
+    company_identity: Mapping[str, object] | None,
+) -> bool:
+    """Replace a buyer chosen by OCR with explicit issuer header evidence."""
+    issuer_hp = str(issuer_identity.get("supplier_hp") or "")
+    issuer_name = str(issuer_identity.get("supplier_name") or "")
+    model_selected_company = supplier_is_company_identity(
+        result.get("supplier_name"), result.get("supplier_hp"), company_identity=company_identity,
+    )
+    changed = False
+    if issuer_hp and (not str(result.get("supplier_hp") or "") or model_selected_company):
+        result["supplier_hp"] = issuer_hp
+        changed = True
+    if issuer_name and (not str(result.get("supplier_name") or "") or model_selected_company):
+        result["supplier_name"] = issuer_name
+        changed = True
+    if changed:
+        result["_supplier_issuer_evidence_repaired"] = True
+    return changed
 
 
 def _damerau_levenshtein(left: str, right: str) -> int:
@@ -2831,6 +2898,7 @@ def process_price_source(
 
     agent_started = time.perf_counter()
     _emit_marker(trace, "server.price_source_agent_started")
+    issuer_identity = issuer_identity_from_source_text(text_layer.text)
     result = run_price_source_agent(
         company_id=company_id,
         department=department,
@@ -2842,6 +2910,11 @@ def process_price_source(
         extracted_text=text_layer.text,
         import_id=source_id,
         trace=trace,
+    )
+    supplier_issuer_evidence_repaired = repair_supplier_from_issuer_evidence(
+        result,
+        issuer_identity=issuer_identity,
+        company_identity=company_identity,
     )
     supplier_company_identity_rejected = remove_company_identity_from_supplier_result(
         result, company_identity=company_identity,
@@ -2994,6 +3067,7 @@ def process_price_source(
             "total": len(result["rows"]),
             "document_number": result["document_number"],
             "supplier_hp": supplier_hp or None,
+            "supplier_issuer_evidence_repaired": supplier_issuer_evidence_repaired,
             "supplier_company_identity_rejected": supplier_company_identity_rejected,
             "source_origin": result["source_origin"],
             "price_context": result["price_context"],

@@ -2899,7 +2899,6 @@ def _queue_price_source_processing(
 ) -> None:
     """Capture the selected source before the Price Lists fragment reruns."""
     st.session_state.pop("_price_source_error", None)
-    st.session_state.pop("_price_source_notice", None)
     uploaded_files = accepted_price_source_uploads(
         list(st.session_state.get(uploader_key) or [])
     )
@@ -2941,7 +2940,6 @@ def _queue_price_source_processing(
     }
     st.session_state._price_source_processing = True
     st.session_state.pop("_price_source_error", None)
-    st.session_state.pop("_price_source_notice", None)
     st.session_state.pop("_price_source_start_rejected", None)
 
 def _clear_price_source_url_for_files(uploader_key: str, url_key: str) -> None:
@@ -2949,6 +2947,7 @@ def _clear_price_source_url_for_files(uploader_key: str, url_key: str) -> None:
     files = accepted_price_source_uploads(list(st.session_state.get(uploader_key) or []))
     if files:
         st.session_state[url_key] = ""
+        st.session_state.pop("_price_source_notice", None)
 
 
 def _clear_price_source_files_for_url(url_key: str) -> None:
@@ -2956,6 +2955,7 @@ def _clear_price_source_files_for_url(url_key: str) -> None:
     source_url = str(st.session_state.get(url_key) or "")
     if not source_url.strip():
         return
+    st.session_state.pop("_price_source_notice", None)
     next_uploader_version = int(
         st.session_state.get("_price_source_uploader_version") or 0
     ) + 1
@@ -3363,7 +3363,7 @@ def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
             company_name = _text_input(profile, "Company name", "company_name")
         with first_right:
             registration = _text_input(
-                profile, "Company registration number (H.P.)", "company_registration_number"
+                profile, "Company registration number (ח.פ. / ע.פ. / ע.מ.)", "company_registration_number"
             )
 
         legal_name_left, legal_name_right = st.columns(2)

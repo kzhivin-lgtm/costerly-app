@@ -29,7 +29,7 @@ from agents.schemas.price_source_schema import (
 )
 
 
-PRICE_SOURCE_PROMPT_VERSION = "price_source_v6_hardware_defaults"
+PRICE_SOURCE_PROMPT_VERSION = "price_source_v7_issuer_identity"
 PRICE_SOURCE_MAX_OUTPUT_TOKENS = 32_768
 
 
