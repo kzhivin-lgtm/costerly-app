@@ -445,10 +445,59 @@ def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+_LINE_TOTAL_REPAIR_REASONS = {
+    "line_total_inconsistent",
+    "unit_price_mismatch",
+}
+
+
+def _numbers_close(left: float, right: float) -> bool:
+    tolerance = max(0.01, abs(right) * 0.01)
+    return abs(left - right) <= tolerance
+
+
 def reconcile_price_source_arithmetic(result: dict[str, Any]) -> dict[str, Any]:
-    """Make price division deterministic while preserving the model's evidence choices."""
+    """Reconcile a row's quantity, unit price, and line total conservatively.
+
+    A table OCR can transpose numeric columns. We may derive a unit price from
+    ``line_total / quantity`` only for the distinctive, verifiable failure mode
+    where the extracted unit price is exactly the extracted quantity. That is
+    strong evidence that the quantity column was copied into the price field.
+    All other arithmetic conflicts remain in Review rather than guessing.
+    """
     for row in result.get("rows") or []:
-        if not isinstance(row, dict) or row.get("status") != "ready":
+        if not isinstance(row, dict) or row.get("status") == "excluded":
+            continue
+        raw_price = row.get("raw_price")
+        raw_quantity = row.get("raw_quantity")
+        raw_line_total = row.get("raw_line_total")
+        has_line_arithmetic = all(
+            isinstance(value, (int, float)) and value > 0
+            for value in (raw_price, raw_quantity, raw_line_total)
+        )
+        if has_line_arithmetic:
+            expected_total = float(raw_price) * float(raw_quantity)
+            if not _numbers_close(expected_total, float(raw_line_total)):
+                derived_unit_price = float(raw_line_total) / float(raw_quantity)
+                price_is_quantity = _numbers_close(float(raw_price), float(raw_quantity))
+                if price_is_quantity and not _numbers_close(
+                    derived_unit_price, float(raw_price)
+                ):
+                    row["raw_price"] = derived_unit_price
+                    raw_price = derived_unit_price
+                    reasons = set(row.get("reason_codes") or [])
+                    reasons.difference_update(_LINE_TOTAL_REPAIR_REASONS)
+                    reasons.add("unit_price_derived_from_line_total")
+                    row["reason_codes"] = sorted(reasons)
+                    if row.get("status") == "unresolved":
+                        row["status"] = "ready"
+                elif row.get("status") == "ready":
+                    row["status"] = "unresolved"
+                    row["reason_codes"] = sorted(
+                        set(row.get("reason_codes") or []) | {"line_total_inconsistent"}
+                    )
+
+        if row.get("status") != "ready":
             continue
         raw_price = row.get("raw_price")
         conversion_factor = row.get("conversion_factor")

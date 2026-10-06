@@ -490,3 +490,28 @@ The workspace requirements are:
 - Hardware catalog keys include supplier SKU when present. Thus rows such as
   `T766H750` and `B766H750` cannot collapse merely because their generic
   family and invoice quantity look similar.
+
+### Increment, 2026-10-06, line-price arithmetic
+
+- Price extraction now treats quantity, unit price and line total as a required
+  three-value relationship, independent of source language or table direction.
+  The prompt requires header-led column interpretation and arithmetic proof for
+  every priced row.
+- The deterministic fallback applies only to the proven transposition signature:
+  the extracted unit price equals the extracted quantity while `line total /
+  quantity` gives a different positive value. In that case the derived value is
+  preserved as the effective unit price with `unit_price_derived_from_line_total`.
+  Every other line-total conflict stays in Review. This prevents an unproven OCR
+  number from becoming a catalog price.
+- The arithmetic repair runs before active-row eligibility checks, so a repaired
+  row is still subject to the existing VAT and canonical-unit safeguards.
+- Verification: focused Price Sources checks, 139 passed.
+
+### Pending Price Sources follow-ups, recorded 2026-10-06
+
+- VAT for incomplete supplier-invoice captures: a line-only photo must be
+  catalogued with a clearly defined invoice VAT fallback even when its matching
+  totals page was not uploaded. This must not use a missing document total as a
+  line-price error.
+- Source Library label: show the extracted invoice number beneath the canonical
+  supplier name when it is present, otherwise retain the uploaded file name.

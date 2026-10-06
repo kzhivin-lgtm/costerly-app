@@ -2255,10 +2255,50 @@ def test_ready_price_arithmetic_is_reconciled_deterministically():
     assert validate_price_source_result(reconciled) is reconciled
 
 
+def test_line_total_repairs_only_the_proven_quantity_copied_as_price_failure():
+    result = _result(status="unresolved")
+    row = result["rows"][0]
+    row.update(
+        raw_price=20,
+        raw_quantity=20,
+        raw_line_total=52.5,
+        normalized_price=20 / 2.9768,
+        reason_codes=["line_total_inconsistent", "unit_price_mismatch"],
+    )
+
+    reconciled = reconcile_price_source_arithmetic(result)
+
+    assert row["status"] == "ready"
+    assert row["raw_price"] == pytest.approx(2.625)
+    assert row["normalized_price"] == pytest.approx(2.625 / 2.9768)
+    assert "unit_price_derived_from_line_total" in row["reason_codes"]
+    assert "line_total_inconsistent" not in row["reason_codes"]
+    assert validate_price_source_result(reconciled) is reconciled
+
+
+def test_ready_line_with_unproven_total_arithmetic_goes_to_review():
+    result = _result()
+    row = result["rows"][0]
+    row.update(raw_price=5, raw_quantity=57.5, raw_line_total=137.5)
+
+    reconciled = reconcile_price_source_arithmetic(result)
+
+    assert row["status"] == "unresolved"
+    assert "line_total_inconsistent" in row["reason_codes"]
+
+
 def test_prompt_preserves_item_vat_basis_and_excludes_document_totals():
     prompt = Path("agents/prompts/price_source_agent_prompt.md").read_text()
     assert "subtotal, VAT or tax total, grand total, and amount due" in prompt
     assert "Never add\n  or remove VAT from a product price" in prompt
+
+
+def test_prompt_requires_line_level_price_arithmetic_before_extraction():
+    prompt = Path("agents/prompts/price_source_agent_prompt.md").read_text()
+
+    assert "quantity × unit price = line total" in prompt
+    assert "line total ÷ quantity" in prompt
+    assert "never infer their meaning from visual column position alone" in prompt
 
 
 def test_prompt_requires_consistent_standalone_normalized_names():

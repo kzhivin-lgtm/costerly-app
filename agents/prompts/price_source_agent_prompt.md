@@ -172,7 +172,16 @@ fallback to generic metal profiles, rails, or other non-hardware material.
 
 ## Price semantics
 
-- Distinguish unit price from quantity and line total.
+- Distinguish the three line-level values before extracting a price: quantity,
+  unit price, and line total. Read the column headers in the source language,
+  never infer their meaning from visual column position alone. Verify every
+  priced row with `quantity × unit price = line total`, allowing only normal
+  currency rounding.
+- If a table is hard to read but quantity and line total are clear, derive the
+  effective unit price as `line total ÷ quantity` only when that arithmetic is
+  exact within normal currency rounding. Do not treat quantity as a unit price.
+  If the three values cannot be assigned consistently, leave the row unresolved
+  and state the arithmetic conflict in reason_codes.
 - A recent invoice, tax invoice, order confirmation, or quote may contain a
   customer-specific observed price, but delivery and document totals are never
   material unit prices.

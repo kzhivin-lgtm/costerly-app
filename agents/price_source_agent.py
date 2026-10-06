@@ -29,7 +29,7 @@ from agents.schemas.price_source_schema import (
 )
 
 
-PRICE_SOURCE_PROMPT_VERSION = "price_source_v7_issuer_identity"
+PRICE_SOURCE_PROMPT_VERSION = "price_source_v8_line_arithmetic"
 PRICE_SOURCE_MAX_OUTPUT_TOKENS = 32_768
 
 
@@ -112,8 +112,8 @@ def run_price_source_agent(
         raise RuntimeError("Price source processing returned invalid JSON.") from exc
     validated = validate_price_source_result(
         guard_price_source_document_totals(
-            reconcile_price_source_arithmetic(
-                guard_price_source_row_activation(
+            guard_price_source_row_activation(
+                reconcile_price_source_arithmetic(
                     apply_price_source_hardware_defaults(
                         apply_price_source_document_defaults(
                             normalize_price_source_row_identity_fields(
