@@ -507,6 +507,22 @@ The workspace requirements are:
   row is still subject to the existing VAT and canonical-unit safeguards.
 - Verification: focused Price Sources checks, 139 passed.
 
+### Increment, 2026-10-06, arithmetic recheck before Review
+
+- An invoice row whose initial `quantity × unit price` does not reconcile with
+  its line total now receives one independent arithmetic re-read against the
+  structured OCR source before it can remain in Review.
+- The re-read may alter only quantity, unit price and line total. Its result is
+  accepted only when those three values independently reconcile. It cannot
+  change supplier, material identity, unit, VAT or any other established
+  extraction decision.
+- If the re-read fails, times out, or still cannot prove the arithmetic, the
+  existing conservative path applies: a proven `price == quantity` transposition
+  can use `line total / quantity`; every other conflict remains in Review.
+- Recheck latency and provider usage are recorded as a separate
+  `price_source_arithmetic_recheck` event so it can be diagnosed separately
+  from OCR and the primary extraction call.
+
 ### Pending Price Sources follow-ups, recorded 2026-10-06
 
 - VAT for incomplete supplier-invoice captures: a line-only photo must be

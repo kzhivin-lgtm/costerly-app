@@ -3072,22 +3072,27 @@ def process_price_source(
         agent_started,
         extracted_rows=len(result.get("rows") or []),
     )
-    usage_event = result.pop("_agent_usage", None)
+    usage_events = result.pop("_agent_usage", None)
     extraction_diagnostics = price_source_extraction_diagnostics(
         result,
         text_layer_strategy=text_layer.strategy,
         text_layer_characters=len(text_layer.text),
         ocr_pages=len((text_layer.ocr_package or {}).get("pages") or []),
     )
-    if usage_event:
-        raw_usage = dict(usage_event.get("raw_usage") or {})
-        raw_usage["price_source_extraction"] = extraction_diagnostics
-        usage_event["raw_usage"] = raw_usage
+    if isinstance(usage_events, dict):
+        usage_events = [usage_events]
+    if isinstance(usage_events, list):
         usage_started = time.perf_counter()
-        try:
-            insert_agent_usage_event(client, usage_event)
-        except Exception:
-            logger.exception("Price source agent usage persistence failed")
+        for usage_event in usage_events:
+            if not isinstance(usage_event, dict):
+                continue
+            raw_usage = dict(usage_event.get("raw_usage") or {})
+            raw_usage["price_source_extraction"] = extraction_diagnostics
+            usage_event["raw_usage"] = raw_usage
+            try:
+                insert_agent_usage_event(client, usage_event)
+            except Exception:
+                logger.exception("Price source agent usage persistence failed")
         _emit_duration(trace, "server.price_source_usage_persist", usage_started)
     if not result.get("rows"):
         _emit_marker(trace, "server.price_source_agent_zero_rows", **extraction_diagnostics)

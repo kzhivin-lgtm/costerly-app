@@ -24,7 +24,11 @@ from agents.schemas.price_source_schema import (
     reconcile_price_source_arithmetic,
     validate_price_source_result,
 )
-from agents.price_source_agent import PRICE_SOURCE_MAX_OUTPUT_TOKENS
+from agents.price_source_agent import (
+    PRICE_SOURCE_MAX_OUTPUT_TOKENS,
+    _line_arithmetic_conflicts,
+    _merge_arithmetic_recheck,
+)
 from use_cases.price_sources import (
     discard_price_source_non_candidates,
     discard_price_source_consumables,
@@ -2285,6 +2289,49 @@ def test_ready_line_with_unproven_total_arithmetic_goes_to_review():
 
     assert row["status"] == "unresolved"
     assert "line_total_inconsistent" in row["reason_codes"]
+
+
+def test_arithmetic_recheck_repairs_only_a_consistent_second_reading():
+    result = _result(status="unresolved")
+    row = result["rows"][0]
+    row.update(raw_price=20, raw_quantity=20, raw_line_total=52.5)
+
+    conflicts = _line_arithmetic_conflicts(result)
+    repaired = _merge_arithmetic_recheck(
+        result,
+        [{
+            "source_row_number": 1,
+            "raw_quantity": 20,
+            "raw_price": 2.625,
+            "raw_line_total": 52.5,
+        }],
+    )
+
+    assert conflicts[0]["source_row_number"] == 1
+    assert repaired == 1
+    assert row["status"] == "ready"
+    assert row["raw_price"] == pytest.approx(2.625)
+    assert "unit_price_rechecked_from_source" in row["reason_codes"]
+
+
+def test_arithmetic_recheck_rejects_another_inconsistent_numeric_triple():
+    result = _result(status="unresolved")
+    row = result["rows"][0]
+    row.update(raw_price=20, raw_quantity=20, raw_line_total=52.5)
+
+    repaired = _merge_arithmetic_recheck(
+        result,
+        [{
+            "source_row_number": 1,
+            "raw_quantity": 20,
+            "raw_price": 3,
+            "raw_line_total": 52.5,
+        }],
+    )
+
+    assert repaired == 0
+    assert row["raw_price"] == 20
+    assert row["status"] == "unresolved"
 
 
 def test_prompt_preserves_item_vat_basis_and_excludes_document_totals():
