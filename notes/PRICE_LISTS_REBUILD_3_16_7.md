@@ -457,3 +457,18 @@ The workspace requirements are:
   structured issuer layer is used locally for deterministic supplier repair,
   so this change neither expands external disclosure nor alters material-row
   extraction semantics.
+
+### Checkpoint, 2026-10-06, Pirzul invoice supplier and consumables
+
+- Real image invoice `62336` completed with canonical supplier `א.ש. פירוזל`
+  and seller identifier `513453233`, repaired from the OCR header rather than
+  the buyer beneath `לכבוד`.
+- The 1,000-piece screw pack was excluded as a consumable. Zero-price lines
+  were discarded as non-candidates and the negative return line was retained
+  only as excluded provenance, with no catalog offer.
+- The seven remaining purchasable Hardware rows are a verified acceptance
+  checkpoint for issuer identification and consumable removal.
+- Pending, not implemented: Hardware matching must never use invoice quantity
+  as identity evidence. Distinct hardware SKU/function/series/capacity must
+  remain separate. This is a new Hardware-normalisation task, not a change to
+  accepted sheet-material merge rules.
