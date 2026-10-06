@@ -2857,14 +2857,14 @@ def remove_price_source_row(access, source_id: str, row_id: str) -> None:
     _refresh_price_source_summary(client, company_id, source_id)
 
 
-def archive_price_source(access, source_id: str) -> dict[str, int]:
-    """Remove one source from active company pricing while preserving its audit."""
+def purge_price_source(access, source_id: str) -> dict[str, int | bool]:
+    """Permanently remove one source and evidence that belongs only to it."""
     client = get_supabase_client()
     company_id = str(access.company_id)
     assert_company_owner(client, str(access.user_id), company_id)
-    _owned_price_source(client, company_id, source_id)
+    source = _owned_price_source(client, company_id, source_id)
     result = client.rpc(
-        "archive_company_price_source",
+        "purge_company_price_source",
         {
             "p_company_id": company_id,
             "p_source_id": source_id,
@@ -2874,9 +2874,24 @@ def archive_price_source(access, source_id: str) -> dict[str, int]:
         result = result[0] if result else {}
     if not isinstance(result, dict):
         result = {}
+    storage_deleted = True
+    storage_path = str(source.get("storage_path") or "")
+    prefix = f"storage://{PRICE_SOURCE_BUCKET}/{company_id}/"
+    if storage_path.startswith(prefix):
+        try:
+            client.storage.from_(PRICE_SOURCE_BUCKET).remove(
+                [storage_path.removeprefix(f"storage://{PRICE_SOURCE_BUCKET}/")]
+            )
+        except Exception:
+            storage_deleted = False
+            logger.exception("price_source_storage_purge_failed source_id=%s", source_id)
     return {
-        "archived_offers": int(result.get("archived_offers") or 0),
-        "archived_materials": int(result.get("archived_materials") or 0),
+        "deleted_material_offers": int(result.get("deleted_material_offers") or 0),
+        "deleted_operation_offers": int(result.get("deleted_operation_offers") or 0),
+        "deleted_rows": int(result.get("deleted_rows") or 0),
+        "deleted_materials": int(result.get("deleted_materials") or 0),
+        "deleted_supplier_aliases": int(result.get("deleted_supplier_aliases") or 0),
+        "storage_deleted": storage_deleted,
     }
 
 

@@ -553,3 +553,15 @@ The workspace requirements are:
   successful worker outcome in session state. This distinguishes a completed
   backend cycle from a client-side display loss in later diagnostics.
 - Verified with focused Price Sources and Company Profile tests, 347 passed.
+
+### Pending activation, 2026-10-06, permanent source removal
+
+- `Remove` now has a prepared `purge_company_price_source` implementation:
+  it deletes source-owned offers, source rows, source-observed supplier aliases,
+  resolver artifacts, orphan materials, and the owned Storage object. A material
+  still supported by another offer is preserved and detached from the deleted
+  source.
+- The application change must not be deployed before
+  `db/sql/2026_10_06_purge_company_price_source.sql` is applied to production,
+  because the new UI action invokes that RPC. Local verification: 352 focused
+  tests passed.

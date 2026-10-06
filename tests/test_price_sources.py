@@ -42,7 +42,7 @@ from use_cases.price_sources import (
     _validate_department,
     _validate_public_url,
     apply_legacy_price_benchmark,
-    archive_price_source,
+    purge_price_source,
     accepted_price_source_uploads,
     canonical_price_source_category,
     combine_price_source_files,
@@ -143,20 +143,41 @@ def test_price_source_download_url_is_direct_owned_and_attachment_scoped(monkeyp
     ]
 
 
-def test_archive_price_source_uses_owned_transactional_rpc(monkeypatch):
+def test_purge_price_source_uses_owned_transactional_rpc_and_deletes_storage(monkeypatch):
     calls = []
 
     class Rpc:
         def execute(self):
             return SimpleNamespace(
-                data={"archived_offers": 47, "archived_materials": 39}
+                data={
+                    "deleted_material_offers": 47,
+                    "deleted_rows": 12,
+                    "deleted_materials": 39,
+                }
             )
 
+    class Bucket:
+        def remove(self, paths):
+            calls.append(("storage.remove", paths))
+
+    class Storage:
+        @staticmethod
+        def from_(bucket):
+            assert bucket == "company-price-sources"
+            return Bucket()
+
     class Client:
+        storage = Storage()
+
         def table(self, name):
             assert name == "company_price_sources"
             return _CatalogQuery(
-                [{"source_id": "source-1", "company_id": "company-1", "status": "ready"}]
+                [{
+                    "source_id": "source-1",
+                    "company_id": "company-1",
+                    "status": "ready",
+                    "storage_path": "storage://company-price-sources/company-1/source-1.pdf",
+                }]
             )
 
         def rpc(self, name, values):
@@ -166,17 +187,25 @@ def test_archive_price_source_uses_owned_transactional_rpc(monkeypatch):
     monkeypatch.setattr("use_cases.price_sources.get_supabase_client", Client)
     monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
 
-    result = archive_price_source(
+    result = purge_price_source(
         SimpleNamespace(company_id="company-1", user_id="user-1"),
         "source-1",
     )
 
-    assert result == {"archived_offers": 47, "archived_materials": 39}
+    assert result == {
+        "deleted_material_offers": 47,
+        "deleted_operation_offers": 0,
+        "deleted_rows": 12,
+        "deleted_materials": 39,
+        "deleted_supplier_aliases": 0,
+        "storage_deleted": True,
+    }
     assert calls == [
         (
-            "archive_company_price_source",
+            "purge_company_price_source",
             {"p_company_id": "company-1", "p_source_id": "source-1"},
-        )
+        ),
+        ("storage.remove", ["company-1/source-1.pdf"]),
     ]
 
 
@@ -187,7 +216,7 @@ def test_source_library_has_confirmed_whole_source_removal():
 
     assert "_removing_price_source_id" in source
     assert "Remove this source and all of its active prices?" in source
-    assert "on_click=_archive_price_source_action" in source
+    assert "on_click=_purge_price_source_action" in source
 
 
 def test_price_source_pdf_preview_renders_only_first_page():

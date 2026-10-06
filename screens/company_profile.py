@@ -42,7 +42,7 @@ from use_cases.price_sources import (
     PRICE_CATALOG_DEPARTMENTS,
     PriceSourceError,
     accepted_price_source_uploads,
-    archive_price_source,
+    purge_price_source,
     canonical_price_source_category,
     combine_price_source_files,
     create_price_source_download_url,
@@ -2112,9 +2112,9 @@ def _cancel_price_source_removal() -> None:
     st.session_state.pop("_removing_price_source_id", None)
 
 
-def _archive_price_source_action(access: CompanyAccess, source_id: str) -> None:
+def _purge_price_source_action(access: CompanyAccess, source_id: str) -> None:
     try:
-        result = archive_price_source(access, source_id)
+        result = purge_price_source(access, source_id)
     except Exception:
         logger.exception("Price source removal failed")
         st.session_state._price_source_action_error = (
@@ -2124,8 +2124,9 @@ def _archive_price_source_action(access: CompanyAccess, source_id: str) -> None:
         _clear_price_lists_snapshot()
         st.session_state.pop("_removing_price_source_id", None)
         st.session_state.pop("_price_source_notice", None)
+        storage_note = "" if result["storage_deleted"] else "; file cleanup is pending"
         _set_price_source_action_notice(
-            f'{result["archived_offers"]} prices removed with the source'
+            f'{result["deleted_rows"]} rows removed with the source{storage_note}'
         )
 
 
@@ -3353,7 +3354,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                     "Remove",
                                     key=f"confirm_remove_price_source_{source_id}",
                                     type="primary",
-                                    on_click=_archive_price_source_action,
+                                    on_click=_purge_price_source_action,
                                     args=(access, source_id),
                                     use_container_width=True,
                                 )
