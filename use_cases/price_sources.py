@@ -231,6 +231,85 @@ def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str,
     )
 
 
+def _is_hardware_material(row: Mapping[str, Any]) -> bool:
+    return canonical_price_source_category(
+        str(row.get("material_type") or row.get("category") or "")
+    ) == "Hardware"
+
+
+def _hardware_name_tokens(row: Mapping[str, Any]) -> set[str]:
+    """Return comparable product words, never line quantity or SKU."""
+    text = _normalized_name(
+        str(
+            row.get("normalized_name")
+            or row.get("canonical_name")
+            or row.get("raw_description")
+            or row.get("source_description_key")
+            or ""
+        )
+    )
+    ignored = {
+        "hardware", "material", "materials", "item", "items", "piece", "pieces",
+        "unit", "units", "set", "pack", "mm", "cm",
+    }
+    return {
+        token for token in text.split()
+        if token not in ignored and not token.isdecimal() and len(token) > 1
+    }
+
+
+def _hardware_names_overlap(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    return bool(_hardware_name_tokens(left) & _hardware_name_tokens(right))
+
+
+def _hardware_rows_match_same_supplier(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    """Conservative Hardware identity inside one supplier lane.
+
+    Quantity is intentionally absent. It is an invoice-line fact, never item
+    identity. A printed SKU is strong evidence, but conflicting SKU values are
+    a hard boundary. When neither side has SKU, equal price and meaningful
+    product-name overlap are required.
+    """
+    left_sku = _normalized_name(str(left.get("raw_sku") or left.get("supplier_sku") or ""))
+    right_sku = _normalized_name(str(right.get("raw_sku") or right.get("supplier_sku") or ""))
+    if left_sku or right_sku:
+        return bool(left_sku and left_sku == right_sku and _hardware_names_overlap(left, right))
+    return bool(
+        _decimal_equal(left.get("raw_price") or left.get("source_price"), right.get("raw_price") or right.get("source_price"), "0.0001")
+        and _hardware_names_overlap(left, right)
+    )
+
+
+def material_catalog_key(row: Mapping[str, Any]) -> tuple[object, ...]:
+    """Return catalog identity, adding supplier SKU for Hardware only."""
+    category = canonical_price_source_category(
+        str(row.get("material_type") or row.get("category") or "")
+    )
+    structural = material_structural_key(row)
+    if category != "Hardware":
+        return (category, structural)
+    sku = _normalized_name(str(row.get("raw_sku") or row.get("supplier_sku") or ""))
+    if sku:
+        return (category, structural, f"sku:{sku}")
+    tokens = " ".join(sorted(_hardware_name_tokens(row)))
+    return (category, structural, f"name:{tokens}")
+
+
+def material_catalog_key_from_material(material: Mapping[str, Any]) -> tuple[object, ...]:
+    """Build the same key for persisted company material records."""
+    specifications = material.get("specifications") or {}
+    return material_catalog_key(
+        {
+            "category": material.get("category"),
+            "canonical_name": material.get("canonical_name") or material.get("normalized_name"),
+            "source_description_key": specifications.get("source_description_key"),
+            "supplier_sku": specifications.get("source_sku"),
+            "material_family": specifications.get("material_family") or "",
+            "identity_attributes": specifications,
+        }
+    )
+
+
 def material_source_description_key(row: Mapping[str, Any]) -> str:
     """Return stable source wording for same-supplier repeat matching."""
     return _normalized_name(str(row.get("raw_description") or ""))
@@ -1033,7 +1112,10 @@ def material_offer_matches_extracted_row(
     and every available structural size. Extra invoice words such as colour,
     line quantity or "split" cannot make a second company material.
     """
-    if not _decimal_equal(offer.get("source_price"), row.get("raw_price"), "0.0001"):
+    is_hardware = _is_hardware_material(material) or _is_hardware_material(row)
+    if not is_hardware and not _decimal_equal(
+        offer.get("source_price"), row.get("raw_price"), "0.0001"
+    ):
         return False
     if offer.get("calculation_unit"):
         offer_unit = _normalized_unit(str(offer.get("calculation_unit") or ""))
@@ -1055,6 +1137,15 @@ def material_offer_matches_extracted_row(
     )
     if offer.get("vat_included") is not vat_included:
         return False
+
+    if is_hardware:
+        specifications = material.get("specifications") or {}
+        material_evidence = {
+            "canonical_name": material.get("canonical_name") or material.get("normalized_name"),
+            "source_description_key": specifications.get("source_description_key"),
+            "supplier_sku": offer.get("supplier_sku") or specifications.get("source_sku"),
+        }
+        return _hardware_rows_match_same_supplier(material_evidence, row)
 
     specifications = material.get("specifications") or {}
     material_row = {
@@ -1198,6 +1289,14 @@ def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapp
         str(right.get("material_type") or "")
     ):
         return False
+    if _is_hardware_material(left) or _is_hardware_material(right):
+        # A repeated SKU with a changed price still refers to the same
+        # Hardware material across sources, but one source must not collapse
+        # two differently priced invoice lines into a single offer.
+        return bool(
+            _decimal_equal(left.get("raw_price"), right.get("raw_price"), "0.0001")
+            and _hardware_rows_match_same_supplier(left, right)
+        )
     if not _decimal_equal(left.get("raw_price"), right.get("raw_price"), "0.0001"):
         return False
     left_attributes = left.get("identity_attributes") or {}
@@ -1226,9 +1325,37 @@ def material_offer_matches_same_supplier_material(
     default_currency: str = "",
 ) -> bool:
     """Recognise a same-supplier material despite different decor or SKU."""
+    specifications = material.get("specifications") or {}
+    is_hardware = _is_hardware_material(material) or _is_hardware_material(row)
+    if is_hardware:
+        offer_unit = _normalized_unit(str(
+            offer.get("calculation_unit")
+            or offer.get("purchase_unit")
+            or offer.get("source_unit")
+            or ""
+        ))
+        row_unit = _normalized_unit(str(
+            row.get("calculation_unit") or row.get("purchase_unit") or row.get("raw_unit") or ""
+        ))
+        currency = str(row.get("raw_currency") or default_currency or "").strip().upper()
+        vat_included = (
+            True if row.get("raw_vat_mode") == "included"
+            else False if row.get("raw_vat_mode") == "excluded" else None
+        )
+        if (
+            offer_unit != row_unit
+            or str(offer.get("currency") or "").strip().upper() != currency
+            or offer.get("vat_included") is not vat_included
+        ):
+            return False
+        material_evidence = {
+            "canonical_name": material.get("canonical_name") or material.get("normalized_name"),
+            "source_description_key": specifications.get("source_description_key"),
+            "supplier_sku": offer.get("supplier_sku") or specifications.get("source_sku"),
+        }
+        return _hardware_rows_match_same_supplier(material_evidence, row)
     if not price_offer_matches_row(offer, row, default_currency=default_currency):
         return False
-    specifications = material.get("specifications") or {}
     material_row = {
         "material_type": material.get("category") or "",
         "material_family": specifications.get("material_family") or "",
@@ -3300,10 +3427,7 @@ def process_price_source(
                 )
 
         ready_material_keys = {
-            (
-                canonical_price_source_category(str(row["material_type"])),
-                material_structural_key(row),
-            )
+            material_catalog_key(row)
             for row in result["rows"]
             if row["status"] == "ready" and row["item_kind"] == "material"
         }
@@ -3320,16 +3444,9 @@ def process_price_source(
             for material in existing_material_rows
             if material.get("company_material_id")
         })
-        materials_by_key: dict[tuple[str, tuple[str, str, str, str, str, str]], dict] = {}
+        materials_by_key: dict[tuple[object, ...], dict] = {}
         for material in existing_material_rows:
-            specifications = material.get("specifications") or {}
-            key = (
-                canonical_price_source_category(str(material.get("category") or "")),
-                material_structural_key({
-                    "material_family": specifications.get("material_family") or "",
-                    "identity_attributes": specifications,
-                }),
-            )
+            key = material_catalog_key_from_material(material)
             if key in ready_material_keys and key not in materials_by_key:
                 materials_by_key[key] = material
 
@@ -3375,17 +3492,14 @@ def process_price_source(
                 )
 
         new_material_payloads: list[dict] = []
-        pending_material_rows: list[tuple[dict, tuple[str, tuple[str, str, str, str, str, str]]]] = []
-        pending_material_key_by_row_number: dict[int, tuple[str, tuple[str, str, str, str, str, str]]] = {}
+        pending_material_rows: list[tuple[dict, tuple[object, ...]]] = []
+        pending_material_key_by_row_number: dict[int, tuple[object, ...]] = {}
         for row in result["rows"]:
             if row["status"] != "ready" or row["item_kind"] != "material":
                 continue
             if int(row["source_row_number"]) in inferred_material_by_row_number:
                 continue
-            key = (
-                canonical_price_source_category(str(row["material_type"])),
-                material_structural_key(row),
-            )
+            key = material_catalog_key(row)
             if key in materials_by_key:
                 continue
             pending_match = next(
@@ -3406,6 +3520,8 @@ def process_price_source(
             }
             identity_attributes["material_family"] = str(row.get("material_family") or "")
             identity_attributes["source_description_key"] = material_source_description_key(row)
+            if _is_hardware_material(row) and str(row.get("raw_sku") or "").strip():
+                identity_attributes["source_sku"] = str(row["raw_sku"]).strip()
             new_material_payloads.append(
                 {
                     "company_id": company_id,
@@ -3431,13 +3547,7 @@ def process_price_source(
                 or []
             )
             for material in created_materials:
-                key = (
-                    canonical_price_source_category(str(material.get("category") or "")),
-                    material_structural_key({
-                        "material_family": (material.get("specifications") or {}).get("material_family") or "",
-                        "identity_attributes": material.get("specifications") or {},
-                    }),
-                )
+                key = material_catalog_key_from_material(material)
                 materials_by_key[key] = material
         _emit_duration(
             trace,
@@ -3459,7 +3569,6 @@ def process_price_source(
             operation_code = operation_code_by_row_number.get(int(row["source_row_number"]))
             operation_id = operation_ids_by_code.get(operation_code or "")
             if result_status == "ready" and row["item_kind"] == "material":
-                structural_key = material_structural_key(row)
                 sku = _normalized_name(str(row.get("raw_sku") or ""))
                 sku_offers = offers_by_sku.get((current_lane, sku), []) if sku else []
                 sku_materials = [
@@ -3473,8 +3582,8 @@ def process_price_source(
                         default_currency=str(result.get("currency") or ""),
                     )
                 ]
-                pending_or_structural_key = pending_material_key_by_row_number.get(
-                    int(row["source_row_number"]), (row_category, structural_key)
+                pending_or_catalog_key = pending_material_key_by_row_number.get(
+                    int(row["source_row_number"]), material_catalog_key(row)
                 )
                 existing = (
                     [sku_materials[0]]
@@ -3484,8 +3593,8 @@ def process_price_source(
                     ]
                     if int(row["source_row_number"]) in inferred_material_by_row_number
                     else [
-                        materials_by_key[pending_or_structural_key]
-                    ] if pending_or_structural_key in materials_by_key else []
+                        materials_by_key[pending_or_catalog_key]
+                    ] if pending_or_catalog_key in materials_by_key else []
                 )
                 if existing:
                     material_id = existing[0]["company_material_id"]

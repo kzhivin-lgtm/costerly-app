@@ -476,3 +476,17 @@ The workspace requirements are:
   hardware SKU/function/series/capacity remain separate. This is a new
   Hardware-normalisation task, not a change to accepted sheet-material merge
   rules.
+
+### Increment, 2026-10-06, Hardware merge evidence
+
+- Invoice quantity is excluded from all Hardware identity paths. It cannot
+  cause, prevent, or strengthen a merge.
+- A Hardware SKU is stored as supplier provenance and acts as a strong match
+  signal only when both values agree and product names still have meaningful
+  overlap. Conflicting SKU values are a hard boundary.
+- Without SKU, Hardware rows need both equal price and meaningful product-name
+  overlap. A changed supplier price for the same SKU updates that item's offer
+  rather than creates a new item.
+- Hardware catalog keys include supplier SKU when present. Thus rows such as
+  `T766H750` and `B766H750` cannot collapse merely because their generic
+  family and invoice quantity look similar.

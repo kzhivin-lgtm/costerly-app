@@ -63,6 +63,7 @@ from use_cases.price_sources import (
     material_offer_matches_same_supplier_description,
     material_offer_matches_same_supplier_material,
     material_offer_proves_unknown_family,
+    material_catalog_key,
     material_structural_key,
     price_rows_match_same_supplier_material,
     company_identity_blacklist,
@@ -765,6 +766,82 @@ def test_same_supplier_material_merge_keeps_perforated_and_price_or_thickness_di
     assert not price_rows_match_same_supplier_material(base, perforated)
     assert not price_rows_match_same_supplier_material(base, other_price)
     assert not price_rows_match_same_supplier_material(base, other_thickness)
+
+
+def test_hardware_merge_ignores_quantity_and_requires_same_sku_and_name_overlap():
+    base = _result()["rows"][0]
+    base.update(
+        {
+            "material_type": "Hardware",
+            "material_family": "hinge",
+            "normalized_name": "Blum hinge 110 soft close",
+            "raw_sku": "71B358E",
+            "raw_price": 14.08,
+            "raw_quantity": 10,
+        }
+    )
+    same_item = deepcopy(base)
+    same_item.update({"normalized_name": "Soft close Blum hinge 110", "raw_quantity": 1000})
+    other_sku = deepcopy(base)
+    other_sku["raw_sku"] = "17JH710"
+    unrelated_name = deepcopy(base)
+    unrelated_name["normalized_name"] = "Movento rail double 750"
+
+    assert price_rows_match_same_supplier_material(base, same_item)
+    assert not price_rows_match_same_supplier_material(base, other_sku)
+    assert not price_rows_match_same_supplier_material(base, unrelated_name)
+
+
+def test_hardware_catalog_key_keeps_different_sku_rows_separate():
+    base = _result()["rows"][0]
+    base.update(
+        {
+            "material_type": "Hardware",
+            "material_family": "rail",
+            "normalized_name": "Movento rail double 750",
+            "raw_sku": "T766H750",
+            "raw_price": 217.6,
+        }
+    )
+    other_sku = deepcopy(base)
+    other_sku["raw_sku"] = "B766H750"
+
+    assert material_catalog_key(base) != material_catalog_key(other_sku)
+
+
+def test_hardware_same_sku_keeps_identity_when_supplier_price_changes():
+    row = _result()["rows"][0]
+    row.update(
+        {
+            "material_type": "Hardware",
+            "normalized_name": "Blum hinge 110 soft close",
+            "raw_sku": "71B358E",
+            "raw_price": 15.4,
+            "raw_unit": "piece",
+            "purchase_unit": "piece",
+            "calculation_unit": "piece",
+            "raw_currency": "ILS",
+            "raw_vat_mode": "excluded",
+        }
+    )
+    offer = {
+        "supplier_sku": "71B358E",
+        "source_price": 14.08,
+        "source_unit": "piece",
+        "purchase_unit": "piece",
+        "calculation_unit": "piece",
+        "currency": "ILS",
+        "vat_included": False,
+    }
+    material = {
+        "category": "Hardware",
+        "canonical_name": "Blum hinge 110 soft close",
+        "specifications": {"source_sku": "71B358E"},
+    }
+
+    assert material_offer_matches_extracted_row(
+        offer, material, row, default_currency="ILS"
+    )
 
 
 def test_same_supplier_offer_merge_allows_sku_variants_but_needs_same_thickness():
