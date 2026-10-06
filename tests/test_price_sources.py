@@ -1930,6 +1930,26 @@ def test_price_source_file_selection_clears_the_supplier_url(monkeypatch):
     assert state["price_url"] == ""
 
 
+def test_price_source_selection_invalidates_the_server_terminal_result(monkeypatch):
+    from screens import company_profile
+
+    state = {
+        "price_upload": [_UploadedPhoto("prices.xlsx", b"first")],
+        "price_url": "https://supplier.example/prices",
+        "_price_source_selection_cycle": 4,
+        "_price_source_notice": {"summary": {"total": 2}},
+        "_price_source_error": "old error",
+    }
+    monkeypatch.setattr(company_profile.st, "session_state", state)
+
+    company_profile._clear_price_source_url_for_files("price_upload", "price_url")
+
+    assert state["price_url"] == ""
+    assert state["_price_source_selection_cycle"] == 5
+    assert "_price_source_notice" not in state
+    assert "_price_source_error" not in state
+
+
 def test_price_source_url_entry_replaces_existing_file_selection(monkeypatch):
     from screens import company_profile
 

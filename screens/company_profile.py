@@ -2980,9 +2980,17 @@ def _clear_price_source_url_for_files(uploader_key: str, url_key: str) -> None:
     """Start a new source selection as soon as files enter the uploader."""
     files = accepted_price_source_uploads(list(st.session_state.get(uploader_key) or []))
     if files:
+        _begin_price_source_selection()
         st.session_state[url_key] = ""
-        st.session_state.pop("_price_source_notice", None)
-        st.session_state.pop("_price_source_error", None)
+
+
+def _begin_price_source_selection() -> None:
+    """Invalidate the prior terminal dashboard before a new source runs."""
+    st.session_state["_price_source_selection_cycle"] = int(
+        st.session_state.get("_price_source_selection_cycle") or 0
+    ) + 1
+    st.session_state.pop("_price_source_notice", None)
+    st.session_state.pop("_price_source_error", None)
 
 
 def _clear_price_source_files_for_url(url_key: str) -> None:
@@ -2990,7 +2998,7 @@ def _clear_price_source_files_for_url(url_key: str) -> None:
     source_url = str(st.session_state.get(url_key) or "")
     if not source_url.strip():
         return
-    st.session_state.pop("_price_source_notice", None)
+    _begin_price_source_selection()
     next_uploader_version = int(
         st.session_state.get("_price_source_uploader_version") or 0
     ) + 1
@@ -3053,7 +3061,15 @@ def _render_price_source_add(
     processing_cycle = int(
         st.session_state.get("_price_source_processing_cycle") or 0
     )
+    selection_cycle = int(
+        st.session_state.get("_price_source_selection_cycle") or 0
+    )
     with st.container(key="price_source_add_card"):
+        st.markdown(
+            '<span class="price-source-selection-marker" '
+            f'data-selection-cycle="{selection_cycle}"></span>',
+            unsafe_allow_html=True,
+        )
         st.markdown(
             '<div class="company-logo-table-heading">Add price source</div>',
             unsafe_allow_html=True,
@@ -3144,11 +3160,13 @@ def _render_price_source_add(
                         processing_cycle=int(
                             cycle_result.get("processing_cycle") or processing_cycle
                         ),
+                        selection_cycle=selection_cycle,
                     )
                 elif cycle_error:
                     _render_price_source_cycle_error(
                         cycle_error,
                         processing_cycle=processing_cycle,
+                        selection_cycle=selection_cycle,
                     )
 
 def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
@@ -3230,11 +3248,17 @@ def _render_price_source_toast(message: str, *, duration_ms: int, kind: str) -> 
     install_price_source_notice_guard()
 
 
-def _render_price_source_cycle_result(message: str, *, processing_cycle: int) -> None:
+def _render_price_source_cycle_result(
+    message: str,
+    *,
+    processing_cycle: int,
+    selection_cycle: int,
+) -> None:
     """Keep the terminal extraction result directly below the upload controls."""
     st.markdown(
         '<div class="price-lists-toast price-lists-toast-result price-source-cycle-result" '
-        f'data-duration-ms="0" data-processing-cycle="{processing_cycle}"><span>'
+        f'data-duration-ms="0" data-processing-cycle="{processing_cycle}" '
+        f'data-selection-cycle="{selection_cycle}"><span>'
         + escape(message)
         + '</span><button type="button" aria-label="Dismiss">×</button></div>',
         unsafe_allow_html=True,
@@ -3242,10 +3266,16 @@ def _render_price_source_cycle_result(message: str, *, processing_cycle: int) ->
     install_price_source_notice_guard()
 
 
-def _render_price_source_cycle_error(message: str, *, processing_cycle: int) -> None:
+def _render_price_source_cycle_error(
+    message: str,
+    *,
+    processing_cycle: int,
+    selection_cycle: int,
+) -> None:
     st.markdown(
         '<div class="price-lists-toast price-source-cycle-result price-source-cycle-error" '
-        f'data-duration-ms="0" data-processing-cycle="{processing_cycle}"><span>'
+        f'data-duration-ms="0" data-processing-cycle="{processing_cycle}" '
+        f'data-selection-cycle="{selection_cycle}"><span>'
         + escape(message) + '</span>'
         '<button type="button" aria-label="Dismiss">×</button></div>',
         unsafe_allow_html=True,

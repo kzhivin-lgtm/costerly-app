@@ -1546,15 +1546,18 @@ def test_price_source_result_notice_persists_until_the_source_selection_changes(
     source = inspect.getsource(company_profile._render_price_lists)
     queue_source = inspect.getsource(company_profile._queue_price_source_processing)
     file_change_source = inspect.getsource(company_profile._clear_price_source_url_for_files)
+    selection_source = inspect.getsource(company_profile._begin_price_source_selection)
 
     assert 'st.session_state.get("_price_source_notice")' in source
     assert "cycle_result=cycle_result" in source
     assert 'st.session_state.pop("_price_source_notice", None)' not in source
     assert 'pop("_price_source_notice", None)' not in queue_source
-    assert 'pop("_price_source_notice", None)' in file_change_source
+    assert "_begin_price_source_selection()" in file_change_source
+    assert 'pop("_price_source_notice", None)' in selection_source
 
 
 def test_price_source_result_clears_on_source_selection_not_extract_click():
+    screen_source = Path("screens/company_profile.py").read_text()
     guard_source = Path("ui/js_guards.py").read_text()
 
     assert "clearTerminalResultForNewSelection" in guard_source
@@ -1562,6 +1565,8 @@ def test_price_source_result_clears_on_source_selection_not_extract_click():
     assert 'addEventListener("input", clearTerminalResultForNewSelection, true)' in guard_source
     assert 'card.querySelectorAll(".price-source-cycle-result")' not in guard_source
     assert "sessionStorage.removeItem(TERMINAL_RESULT_KEY)" in guard_source
+    assert "def _begin_price_source_selection" in screen_source
+    assert "_price_source_selection_cycle" in screen_source
 
 
 def test_price_source_terminal_result_has_a_browser_session_display_fallback():
@@ -1573,7 +1578,10 @@ def test_price_source_terminal_result_has_a_browser_session_display_fallback():
     assert "sessionStorage.setItem" in guard_source
     assert "sessionStorage.getItem(TERMINAL_RESULT_KEY)" in guard_source
     assert "function keepLatestTerminalResult(card)" in guard_source
+    assert "function currentSelectionCycle(card)" in guard_source
+    assert "terminalResultSelectionCycle(restored) !== currentSelectionCycle(card)" in guard_source
     assert 'data-processing-cycle="{processing_cycle}"' in screen_source
+    assert 'data-selection-cycle="{selection_cycle}"' in screen_source
 
 
 def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():

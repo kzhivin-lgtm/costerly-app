@@ -568,7 +568,10 @@ The workspace requirements are:
   The browser keeps only the highest cycle result, replacing stale restored
   markup rather than appending it. File and supplier-URL selection both clear
   the browser cache before the next Extract click.
-- Verification: focused Company Access and Price Sources checks, 348 passed.
+- A server-owned selection-cycle marker is now advanced before the next file
+  or URL source is processed. A cached dashboard from an earlier selection is
+  rejected even if the browser did not observe the file-input event.
+- Verification: focused Company Access and Price Sources checks, 349 passed.
   Production acceptance remains one manual check with two consecutive cycles.
 - This is a display-only repair. It does not change source processing,
   supplier resolution, or catalog persistence.

@@ -3904,10 +3904,26 @@ def install_price_source_processing_guard() -> None:
                 return Number.isFinite(cycle) ? cycle : 0;
             }
 
+            function currentSelectionCycle(card) {
+                const marker = card.querySelector(".price-source-selection-marker");
+                const cycle = Number(marker?.dataset.selectionCycle || "0");
+                return Number.isFinite(cycle) ? cycle : 0;
+            }
+
+            function terminalResultSelectionCycle(result) {
+                const cycle = Number(result.dataset.selectionCycle || "0");
+                return Number.isFinite(cycle) ? cycle : 0;
+            }
+
             function keepLatestTerminalResult(card) {
+                const selectionCycle = currentSelectionCycle(card);
                 const results = Array.from(card.querySelectorAll(
                     ".price-source-cycle-result.price-lists-toast-result"
-                ));
+                )).filter((result) => {
+                    if (terminalResultSelectionCycle(result) === selectionCycle) return true;
+                    result.remove();
+                    return false;
+                });
                 if (!results.length) return null;
                 const latest = results.reduce((newest, result) => (
                     terminalResultCycle(result) >= terminalResultCycle(newest)
@@ -3940,6 +3956,13 @@ def install_price_source_processing_guard() -> None:
                 const holder = parentDoc.createElement("div");
                 holder.innerHTML = savedMarkup;
                 const restored = holder.firstElementChild;
+                if (
+                    !restored
+                    || terminalResultSelectionCycle(restored) !== currentSelectionCycle(card)
+                ) {
+                    parentWindow.sessionStorage.removeItem(TERMINAL_RESULT_KEY);
+                    return;
+                }
                 if (restored) buttonContainer.after(restored);
             }
 
