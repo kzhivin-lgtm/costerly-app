@@ -2055,6 +2055,7 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
     assert cleared == [True]
     assert "_price_source_purge_pending" not in state
     assert "_price_source_action_notice" not in state
+    assert state["_price_source_library_open_once"] is True
 
 
 def test_price_source_file_selection_clears_the_supplier_url(monkeypatch):

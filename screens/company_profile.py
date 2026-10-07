@@ -2151,6 +2151,10 @@ def _process_pending_price_source_purges() -> bool:
         else:
             _clear_price_lists_snapshot()
             hidden.discard(source_id)
+            # A completed background purge must not collapse the library that
+            # the user is actively cleaning. This flag is consumed by the next
+            # full render only; subsequent manual expand/collapse is untouched.
+            st.session_state["_price_source_library_open_once"] = True
             st.session_state.pop("_price_source_notice", None)
             # The disappearing row is the only success acknowledgement for a
             # delete. Green terminal feedback is reserved for extraction runs.
@@ -3351,7 +3355,12 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                 '<span id="source-library" class="price-source-library-anchor"></span>',
                 unsafe_allow_html=True,
             )
-            with st.expander(f'Source library · {len(sources)}', expanded=False):
+            library_open_once = bool(
+                st.session_state.pop("_price_source_library_open_once", False)
+            )
+            with st.expander(
+                f'Source library · {len(sources)}', expanded=library_open_once
+            ):
                 purging_source_ids = {
                     str(source_id)
                     for source_id in st.session_state.get("_price_source_purging_ids", set())
