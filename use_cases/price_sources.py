@@ -1333,12 +1333,16 @@ def _compatible_optional_identity_attribute(
 
 
 def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
-    """Merge a supplier's decorative variants into one catalog material.
+    """Decide whether two rows describe one material for one supplier.
 
-    This is intentionally a same-supplier rule.  It needs the same effective
-    price, category, proven thickness and compatible material family.  SKU and
-    colour are only source evidence.  Any explicit construction difference,
-    such as perforated versus ordinary sheet, is a hard boundary.
+    Invoice prose is not a product key.  The relevant hierarchy is: same
+    supplier lane, same SKU when it is present (or same price when it is not),
+    then category, material family, a proven primary measurement such as
+    thickness, and explicit construction.  Quantity, decor and incidental
+    wording never participate.  Extracted dimensions are supporting evidence,
+    not a veto: an OCR/model may invent a second sheet dimension from a line
+    that literally contains only one span.  A proven construction distinction,
+    notably perforated versus ordinary sheet, remains a hard boundary.
     """
     if canonical_price_source_category(str(left.get("material_type") or "")) != canonical_price_source_category(
         str(right.get("material_type") or "")
@@ -1352,7 +1356,10 @@ def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapp
             _decimal_equal(left.get("raw_price"), right.get("raw_price"), "0.0001")
             and _hardware_rows_match_same_supplier(left, right)
         )
-    if not _decimal_equal(left.get("raw_price"), right.get("raw_price"), "0.0001"):
+    left_sku = _normalized_name(str(left.get("raw_sku") or left.get("supplier_sku") or ""))
+    right_sku = _normalized_name(str(right.get("raw_sku") or right.get("supplier_sku") or ""))
+    same_sku = bool(left_sku and left_sku == right_sku)
+    if not same_sku and not _decimal_equal(left.get("raw_price"), right.get("raw_price"), "0.0001"):
         return False
     left_attributes = left.get("identity_attributes") or {}
     right_attributes = right.get("identity_attributes") or {}
@@ -1366,11 +1373,6 @@ def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapp
         return False
     if not _compatible_optional_identity_attribute(left_attributes, right_attributes, "species"):
         return False
-    for field in ("width_mm", "length_mm", "diameter_mm"):
-        left_value = _identity_number(left_attributes, field)
-        right_value = _identity_number(right_attributes, field)
-        if left_value and right_value and left_value != right_value:
-            return False
     return True
 
 
@@ -1411,12 +1413,31 @@ def material_offer_matches_same_supplier_material(
             "supplier_sku": offer.get("supplier_sku") or specifications.get("source_sku"),
         }
         return _hardware_rows_match_same_supplier(material_evidence, row)
-    if not price_offer_matches_row(offer, row, default_currency=default_currency):
+    offer_unit = _normalized_unit(str(
+        offer.get("calculation_unit")
+        or offer.get("purchase_unit")
+        or offer.get("source_unit")
+        or ""
+    ))
+    row_unit = _normalized_unit(str(
+        row.get("calculation_unit") or row.get("purchase_unit") or row.get("raw_unit") or ""
+    ))
+    currency = str(row.get("raw_currency") or default_currency or "").strip().upper()
+    vat_included = (
+        True if row.get("raw_vat_mode") == "included"
+        else False if row.get("raw_vat_mode") == "excluded" else None
+    )
+    if (
+        offer_unit != row_unit
+        or str(offer.get("currency") or "").strip().upper() != currency
+        or offer.get("vat_included") is not vat_included
+    ):
         return False
     material_row = {
         "material_type": material.get("category") or "",
         "material_family": specifications.get("material_family") or "",
         "raw_price": offer.get("source_price"),
+        "raw_sku": offer.get("supplier_sku") or specifications.get("source_sku") or "",
         "identity_attributes": specifications,
     }
     return price_rows_match_same_supplier_material(material_row, row)

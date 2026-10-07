@@ -874,6 +874,7 @@ def test_same_supplier_material_merge_keeps_perforated_and_price_or_thickness_di
     base.update({
         "material_type": "Wood Sheets",
         "material_family": "plywood",
+        "raw_sku": "",
         "raw_price": 110,
         "identity_attributes": {**base["identity_attributes"], "thickness_mm": 17, "width_mm": 3100},
     })
@@ -887,6 +888,33 @@ def test_same_supplier_material_merge_keeps_perforated_and_price_or_thickness_di
     assert not price_rows_match_same_supplier_material(base, perforated)
     assert not price_rows_match_same_supplier_material(base, other_price)
     assert not price_rows_match_same_supplier_material(base, other_thickness)
+
+
+def test_same_supplier_material_merge_uses_sku_over_price_and_spurious_dimensions():
+    """A repeated supplier SKU survives price volatility and bad OCR geometry."""
+    first = _result()["rows"][0]
+    first.update({
+        "material_type": "Wood Sheets",
+        "material_family": "plywood",
+        "raw_sku": "27",
+        "raw_price": 110,
+        "identity_attributes": {
+            **first["identity_attributes"],
+            "thickness_mm": 17,
+            "width_mm": 3100,
+            "length_mm": 3100,
+            "construction": "twin",
+        },
+    })
+    repeated = deepcopy(first)
+    repeated.update({"raw_price": 117})
+    repeated["identity_attributes"].update({"width_mm": 3100, "length_mm": 2000})
+
+    assert price_rows_match_same_supplier_material(first, repeated)
+
+    perforated = deepcopy(repeated)
+    perforated["identity_attributes"]["construction"] = "perforated twin"
+    assert not price_rows_match_same_supplier_material(first, perforated)
 
 
 def test_hardware_merge_ignores_quantity_and_requires_same_sku_and_name_overlap():
@@ -1020,6 +1048,50 @@ def test_same_supplier_offer_merge_allows_sku_variants_but_needs_same_thickness(
     assert material_offer_matches_same_supplier_material(offer, material, row, default_currency="ILS")
     material["specifications"]["thickness_mm"] = 18
     assert not material_offer_matches_same_supplier_material(offer, material, row, default_currency="ILS")
+
+
+def test_same_supplier_offer_merge_reuses_canonical_material_for_conflicting_dimensions():
+    row = _result()["rows"][0]
+    row.update({
+        "material_type": "Wood Sheets",
+        "material_family": "plywood",
+        "raw_sku": "27",
+        "raw_price": 110,
+        "raw_unit": "sheet",
+        "purchase_unit": "sheet",
+        "calculation_unit": "sheet",
+        "raw_currency": "ILS",
+        "raw_vat_mode": "excluded",
+        "identity_attributes": {
+            **row["identity_attributes"],
+            "thickness_mm": 17,
+            "width_mm": 3100,
+            "length_mm": 2000,
+            "construction": "twin",
+        },
+    })
+    offer = {
+        "supplier_sku": "27",
+        "source_price": 110,
+        "source_unit": "sheet",
+        "purchase_unit": "sheet",
+        "calculation_unit": "sheet",
+        "currency": "ILS",
+        "vat_included": False,
+    }
+    material = {
+        "category": "Wood Sheets",
+        "specifications": {
+            "material_family": "plywood",
+            "source_sku": "27",
+            "thickness_mm": 17,
+            "width_mm": 3100,
+            "length_mm": 3100,
+            "construction": "twin",
+        },
+    }
+
+    assert material_offer_matches_same_supplier_material(offer, material, row, default_currency="ILS")
 
 
 def test_existing_supplier_offer_can_prove_an_unknown_brand_family():
