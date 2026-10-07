@@ -90,7 +90,12 @@ from use_cases.price_sources import (
     save_price_source_row,
     validate_price_source_upload_selection,
 )
-from use_cases.price_source_taxonomy import apply_material_taxonomy, job_operation_for_text, material_rule_for_text
+from use_cases.price_source_taxonomy import (
+    apply_material_taxonomy,
+    apply_operation_taxonomy,
+    job_operation_for_text,
+    material_rule_for_text,
+)
 
 
 def test_price_source_extraction_diagnostics_records_zero_row_evidence():
@@ -1357,6 +1362,8 @@ def test_bilingual_taxonomy_covers_all_material_departments(description, categor
     ("description", "operation_code"),
     [
         ("חיתוך + קנטים", "supplier_cut_and_edge_banding"),
+        ("פס חיתוך + קנט", "supplier_cut_and_edge_banding"),
+        ("חיתוך וקנת", "supplier_cut_and_edge_banding"),
         ("edge banding", "edge_banding"),
         ("CNC drilling", "cnc_vertical_drilling"),
         ("הרכבת גוף", "carcass_assembly"),
@@ -1364,6 +1371,36 @@ def test_bilingual_taxonomy_covers_all_material_departments(description, categor
 )
 def test_bilingual_material_jobs_dictionary_resolves_existing_operations(description, operation_code):
     assert job_operation_for_text(description.casefold()) == operation_code
+
+
+def test_explicit_cut_and_edge_work_overrides_an_incorrect_material_classification():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "item_kind": "material",
+        "material_type": "Wood Supplies",
+        "material_family": "edge banding",
+        "raw_description": "פס חיתוך + קנט 29.00",
+        "normalized_name": "Edge Banding Cutting Strip",
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["item_kind"] == "operation_service"
+    assert row["normalized_name"] == "Cutting and edge banding"
+    assert prepare_price_source_operation_rows(result) == {1: "supplier_cut_and_edge_banding"}
+
+
+def test_bare_edge_band_product_is_not_promoted_to_a_material_job():
+    row = _result()["rows"][0]
+    row.update({
+        "item_kind": "material",
+        "raw_description": "PVC edge band white 22 mm",
+        "normalized_name": "PVC edge band white",
+    })
+
+    assert apply_operation_taxonomy(row) is None
+    assert row["item_kind"] == "material"
 
 
 def test_identity_attributes_require_the_fixed_contract():

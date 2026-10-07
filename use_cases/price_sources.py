@@ -41,6 +41,7 @@ from use_cases.price_source_material_resolution import (
 )
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
+    apply_operation_taxonomy,
     job_operation_for_text,
     normalize_sheet_name,
 )
@@ -136,7 +137,13 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
     catalog matching. It has no supplier inputs or side effects.
     """
     for row in result.get("rows") or []:
-        if not isinstance(row, dict) or row.get("item_kind") != "material":
+        if not isinstance(row, dict):
+            continue
+        # An explicit paid-work phrase is more specific than the material
+        # dictionary. It must reach Material Jobs before a word such as "edge
+        # band" can classify it as a Wood Supplies product.
+        apply_operation_taxonomy(row)
+        if row.get("item_kind") != "material":
             continue
         apply_material_taxonomy(row)
         text = " ".join(
