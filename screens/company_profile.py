@@ -3027,6 +3027,24 @@ def _clear_price_source_files_for_url(url_key: str) -> None:
     st.session_state[f"price_source_url_{next_uploader_version}"] = source_url
 
 
+def _price_source_has_unsubmitted_selection() -> bool:
+    """Return whether an Extract click still owns a selected source.
+
+    A completed delete has to refresh the parent Price Lists fragment, otherwise
+    it can keep displaying the pre-delete catalog snapshot.  It must not do so
+    while a file or URL has been selected, because an app rerun would remount
+    the uploader before its Extract callback reads that selection.
+    """
+    uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
+    uploader_key = f"price_source_upload_{uploader_version}"
+    url_key = f"price_source_url_{uploader_version}"
+    files = accepted_price_source_uploads(
+        list(st.session_state.get(uploader_key) or [])
+    )
+    source_url = str(st.session_state.get(url_key) or "").strip()
+    return bool(files) or bool(source_url)
+
+
 def _price_source_notice_text(source: dict | None) -> str:
     if not source:
         return "Price source processed"
@@ -3243,11 +3261,17 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
 def _render_price_source_processing_status(access: CompanyAccess, *, trace=None) -> None:
     """Refresh only the terminal state while the worker runs in background."""
     purge_finished = _process_pending_price_source_purges()
-    # Do not force a full app rerun when a background deletion finishes.  It
-    # can race an Extract click, re-key the uploader, and discard the newly
-    # selected file before its callback captures it.  The next ordinary user
-    # interaction refreshes the cleared snapshot safely.
+    # Refresh the parent Price Lists fragment after a completed purge.  Without
+    # this, the already-rendered catalog remains visible even though the DB
+    # purge completed.  A selected file/URL is an exception: its Extract
+    # callback owns that selection, and an app rerun can remount the uploader
+    # before the callback consumes it.
     if purge_finished:
+        if (
+            not st.session_state.get("_price_source_processing")
+            and not _price_source_has_unsubmitted_selection()
+        ):
+            st.rerun(scope="app")
         return
     if not st.session_state.get("_price_source_processing"):
         return

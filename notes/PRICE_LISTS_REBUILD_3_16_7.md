@@ -866,10 +866,15 @@ The workspace requirements are:
    - Evidence: the prior background-purge fragment used `st.rerun(scope="app")`.
      The 2026-10-07 failed second cycle created no source and no agent/OCR event,
      consistent with its uploader state being re-keyed before callback capture.
+     The first mitigation suppressed that refresh entirely, which left the
+     already-rendered catalog visible after a successful purge even when all
+     offers were archived. The new guarded refresh runs only with no pending
+     upload/URL selection.
    - Acceptance: delete two sources in succession, immediately select a new
      file while a purge is still running, start extraction, and verify exactly
      one new server trace/source plus no visible records from either deleted
-     source.
+     source. Also delete the final source with no pending selection and verify
+     the rendered catalog reaches zero without a manual page refresh.
 
 5. **Cycle outcome terminology**
    - Status: in progress, local implementation pending production acceptance

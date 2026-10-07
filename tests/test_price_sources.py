@@ -2310,6 +2310,39 @@ def test_optimistic_source_purge_hides_all_source_owned_projections():
     ) == [{"source_id": "source-keep", "value": "visible"}]
 
 
+def test_completed_source_purge_refreshes_stale_catalog_without_discarding_selection(monkeypatch):
+    """A completed background purge must replace the old rendered snapshot.
+
+    The refresh is intentionally deferred while the uploader contains a file
+    or URL, because that selection belongs to the later Extract callback.
+    """
+    from screens import company_profile
+
+    class SessionState(dict):
+        def __getattr__(self, name):
+            return self[name]
+
+        def __setattr__(self, name, value):
+            self[name] = value
+
+    state = SessionState(_price_source_uploader_version=2)
+    monkeypatch.setattr(company_profile.st, "session_state", state)
+    monkeypatch.setattr(
+        company_profile,
+        "accepted_price_source_uploads",
+        lambda files: files,
+    )
+
+    assert company_profile._price_source_has_unsubmitted_selection() is False
+
+    state["price_source_upload_2"] = [object()]
+    assert company_profile._price_source_has_unsubmitted_selection() is True
+
+    state["price_source_upload_2"] = []
+    state["price_source_url_2"] = "https://supplier.example/prices"
+    assert company_profile._price_source_has_unsubmitted_selection() is True
+
+
 def test_price_source_file_selection_clears_the_supplier_url(monkeypatch):
     from screens import company_profile
 
