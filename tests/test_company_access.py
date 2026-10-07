@@ -1050,6 +1050,17 @@ def _render_price_lists_test():
     )
 
 
+def _wait_for_price_lists_projections(app: AppTest) -> AppTest:
+    """Advance the independent projection fragment without relying on timing."""
+    for _ in range(10):
+        time.sleep(0.01)
+        app.run()
+        markup = "\n".join(item.value for item in app.markdown)
+        if "price-lists-projection-loading" not in markup:
+            return app
+    pytest.fail("Price Lists projections did not finish in the test window")
+
+
 def _render_url_price_source_details_test():
     from types import SimpleNamespace
 
@@ -1739,7 +1750,9 @@ def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch)
         lambda _access: [review_row],
     )
 
-    app = AppTest.from_function(_render_price_lists_test).run()
+    app = _wait_for_price_lists_projections(
+        AppTest.from_function(_render_price_lists_test).run()
+    )
     markup = "\n".join(item.value for item in app.markdown)
 
     assert not app.exception
@@ -1799,7 +1812,9 @@ def test_price_review_pagination_reuses_the_tenant_snapshot(monkeypatch):
     monkeypatch.setattr(company_profile, "list_material_jobs", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_unresolved_price_source_rows", load_review)
 
-    app = AppTest.from_function(_render_price_lists_test).run()
+    app = _wait_for_price_lists_projections(
+        AppTest.from_function(_render_price_lists_test).run()
+    )
     assert calls == {"sources": 1, "catalog": 1, "review": 1}
     assert "Review item 1" in "\n".join(item.value for item in app.markdown)
 
@@ -1856,7 +1871,9 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
         ),
     )
 
-    app = AppTest.from_function(_render_price_lists_test).run()
+    app = _wait_for_price_lists_projections(
+        AppTest.from_function(_render_price_lists_test).run()
+    )
     next(button for button in app.button if button.label == "Review").click()
     app.run()
     next(field for field in app.text_input if field.label == "Material name").set_value(
@@ -1903,7 +1920,9 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     monkeypatch.setattr(company_profile, "list_material_jobs", lambda _access: [])
     monkeypatch.setattr(company_profile, "list_unresolved_price_source_rows", lambda _access: [])
 
-    app = AppTest.from_function(_render_price_lists_test).run()
+    app = _wait_for_price_lists_projections(
+        AppTest.from_function(_render_price_lists_test).run()
+    )
     markup = "\n".join(item.value for item in app.markdown)
 
     assert not app.exception
@@ -1924,6 +1943,29 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     assert source_library.proto.expanded is False
     assert "Multiple departments" in markup
     assert "Document type" in markup
+
+
+def test_price_lists_renders_upload_before_background_projections(monkeypatch):
+    pending = {
+        name: Future()
+        for name in ("sources", "catalog", "review", "material_jobs")
+    }
+    monkeypatch.setattr(
+        company_profile,
+        "submit_price_lists_projection_jobs",
+        lambda **_kwargs: pending,
+    )
+
+    app = AppTest.from_function(_render_price_lists_test).run()
+    markup = "\n".join(item.value for item in app.markdown)
+
+    assert not app.exception
+    assert "Add price source" in markup
+    assert any(button.label == "Extract prices" for button in app.button)
+    assert "Loading catalog…" in markup
+    assert "Loading Material Jobs…" in markup
+    assert "Loading Review…" in markup
+    assert "Loading Source Library…" in markup
 
 
 def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypatch):

@@ -4,16 +4,28 @@ from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Lock
 import time
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 from db.supabase_client import get_supabase_client
-from use_cases.price_sources import PriceSourceError, process_price_source, purge_price_source
+from use_cases.price_sources import (
+    PriceSourceError,
+    list_material_jobs,
+    list_price_catalog,
+    list_price_sources,
+    list_unresolved_price_source_rows,
+    process_price_source,
+    purge_price_source,
+)
 
 
 _PRICE_SOURCE_EXECUTOR = ThreadPoolExecutor(
     max_workers=2,
     thread_name_prefix="price-source-extraction",
+)
+_PRICE_LISTS_READ_EXECUTOR = ThreadPoolExecutor(
+    max_workers=4,
+    thread_name_prefix="price-lists-read",
 )
 _LOCKS_GUARD = Lock()
 _COMPANY_LOCKS: dict[str, Lock] = {}
@@ -83,6 +95,29 @@ def submit_price_source_purge_job(*, access, source_id: str, trace=None) -> Futu
         trace=trace,
         job_id=job_id,
     )
+
+
+def submit_price_lists_projection_jobs(
+    *,
+    access,
+    loaders: dict[str, Callable] | None = None,
+) -> dict[str, Future]:
+    """Start independent Price Lists reads without delaying the upload control.
+
+    These are read-only company-scoped projections. They intentionally use a
+    separate executor from extraction and deletion, so a slow catalog read
+    cannot delay an owner action or a source-processing worker.
+    """
+    resolved_loaders = loaders or {
+        "sources": list_price_sources,
+        "catalog": list_price_catalog,
+        "review": list_unresolved_price_source_rows,
+        "material_jobs": list_material_jobs,
+    }
+    return {
+        name: _PRICE_LISTS_READ_EXECUTOR.submit(loader, access)
+        for name, loader in resolved_loaders.items()
+    }
 
 
 def _run_price_source_job(

@@ -924,7 +924,7 @@ The workspace requirements are:
      evidence, but never alone proves a material category.
 
 3. **Price Lists first paint**
-   - Status: pending
+   - Status: implementation complete, production behavior check pending
    - Outcome: show the upload controls immediately, then load Catalog, Material
      Jobs, Review and Source Library independently in that visible cascade. Do not make the first
      interaction wait for the complete Price Lists snapshot.
@@ -932,6 +932,10 @@ The workspace requirements are:
      before drawing the upload card. Production read timing on 2026-10-07 was
      0.273 s for sources, 0.660 s for catalog, 0.323 s for Review and 0.536 s
      for Material Jobs, serially, before browser/render overhead.
+   - Implemented: upload renders before reads. Catalog, Material Jobs, Review,
+     and Source Library run as independent read-only background projections.
+     A projection arrival refreshes the screen only when no unsubmitted source
+     selection exists, so it cannot reset the uploader.
    - Acceptance: the upload control is interactive before the catalog response,
      and later data loading cannot duplicate or reorder page sections.
 

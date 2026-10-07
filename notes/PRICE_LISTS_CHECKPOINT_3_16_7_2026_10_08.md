@@ -110,10 +110,12 @@ evidence, not the completed authenticated acceptance matrix.
 2. **3.16.7.8 Bilingual brand catalog**: department-scoped aliases, initially
    Blum, Hettich, Egger, Sayerlack and Homag. Preserve brand, never let it alone
    classify an item.
-3. **3.16.7.9 Price Lists first paint**: controls interactive before projections,
-   then independently load Catalog, Material Jobs, Review, Source Library with
-   no duplication/reordering. Current serial read baseline: 0.273 s source,
-   0.660 s catalog, 0.323 s Review, 0.536 s Material Jobs, plus render time.
+3. **3.16.7.9 Price Lists first paint**: implementation complete, production
+   behavior check pending. Controls render before projections, then Catalog,
+   Material Jobs, Review and Source Library load through independent read-only
+   background tasks. A completed task does not refresh an active selection.
+   Current pre-change serial read baseline: 0.273 s source, 0.660 s catalog,
+   0.323 s Review, 0.536 s Material Jobs, plus render time.
 4. **3.16.7.10 Unified material-normalisation design**: requires explicit design
    approval before implementation. Define shared entity, primary spec,
    dimensions, technical grade, substrate, finish, construction, color, brand,

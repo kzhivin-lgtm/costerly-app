@@ -59,6 +59,7 @@ from use_cases.price_sources import (
     validate_price_source_upload_selection,
 )
 from use_cases.price_source_runtime import (
+    submit_price_lists_projection_jobs,
     submit_price_source_job,
     submit_price_source_purge_job,
 )
@@ -2095,6 +2096,57 @@ def _load_price_lists_snapshot(
 
 def _clear_price_lists_snapshot() -> None:
     _load_price_lists_snapshot.clear()
+    st.session_state.pop("_price_lists_projection_state", None)
+
+
+def _price_lists_projection_state(access: CompanyAccess) -> dict:
+    """Return the current tenant-scoped asynchronous Price Lists projections."""
+    identity = (str(access.company_id), str(access.user_id))
+    state = st.session_state.get("_price_lists_projection_state")
+    if isinstance(state, dict) and state.get("identity") == identity:
+        return state
+    state = {
+        "identity": identity,
+        "futures": submit_price_lists_projection_jobs(
+            access=access,
+            loaders={
+                "sources": list_price_sources,
+                "catalog": list_price_catalog,
+                "review": list_unresolved_price_source_rows,
+                "material_jobs": list_material_jobs,
+            },
+        ),
+        "results": {},
+        "errors": {},
+    }
+    st.session_state["_price_lists_projection_state"] = state
+    return state
+
+
+def _poll_price_lists_projections(access: CompanyAccess) -> tuple[dict, dict, dict]:
+    """Collect completed projections without making the upload wait for reads."""
+    state = _price_lists_projection_state(access)
+    futures = state["futures"]
+    results = state["results"]
+    errors = state["errors"]
+    for name, future in futures.items():
+        if name in results or name in errors or not future.done():
+            continue
+        try:
+            results[name] = future.result()
+        except Exception:
+            logger.exception("Price Lists projection failed projection=%s", name)
+            errors[name] = "Price Lists data could not be loaded. Try again."
+    return results, errors, futures
+
+
+def _render_price_lists_loading(label: str) -> None:
+    st.markdown(
+        '<div class="price-catalog-empty-row price-lists-projection-loading">'
+        + escape(f"Loading {label}…")
+        + "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def _set_price_review_page(page: int) -> None:
@@ -3342,39 +3394,17 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
 
     _process_pending_price_source(access, trace=trace)
 
-    try:
-        sources, catalog, review_rows, material_jobs = _load_price_lists_snapshot(
-            str(access.company_id),
-            str(access.user_id),
-            access,
-        )
-    except Exception:
-        logger.exception("Price source list failed")
-        st.info("Price Sources storage is not configured yet.")
-        return
-
-    purging_source_ids = {
-        str(source_id)
-        for source_id in st.session_state.get("_price_source_purging_ids", set())
-    }
-    # One optimistic boundary for every projection of a source.  The database
-    # purge may take seconds, but no source-owned item remains visible once the
-    # user has confirmed Delete.
-    sources = _without_purging_price_source_records(sources, purging_source_ids)
-    catalog = _without_purging_price_source_records(catalog, purging_source_ids)
-    review_rows = _without_purging_price_source_records(review_rows, purging_source_ids)
-    material_jobs = _without_purging_price_source_records(material_jobs, purging_source_ids)
-
     # Keep the dashboard in the upload card, so it cannot leave a detached
     # blank region after the processing marker is removed.
     notice_result = st.session_state.get("_price_source_notice")
     if isinstance(notice_result, dict):
         cycle_result = notice_result
     elif notice_result:
+        state = st.session_state.get("_price_lists_projection_state") or {}
         cycle_result = next(
             (
                 source
-                for source in sources
+                for source in (state.get("results", {}).get("sources") or [])
                 if str(source.get("source_id")) == str(notice_result)
             ),
             None,
@@ -3405,11 +3435,52 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     if action_error:
         st.error(action_error)
 
+    _render_price_lists_projections(access)
+    _refresh_price_lists_projections(access)
+
+
+@st.fragment
+def _render_price_lists_projections(access: CompanyAccess) -> None:
+    """Render the ordered projections as soon as each background read completes."""
+    results, errors, _futures = _poll_price_lists_projections(access)
+    purging_source_ids = {
+        str(source_id)
+        for source_id in st.session_state.get("_price_source_purging_ids", set())
+    }
+
+    def projection(name: str) -> list[dict] | None:
+        records = results.get(name)
+        if records is None:
+            return None
+        return _without_purging_price_source_records(records, purging_source_ids)
+
+    sources = projection("sources")
+    catalog = projection("catalog")
+    review_rows = projection("review")
+    material_jobs = projection("material_jobs")
+
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):
-            _render_price_catalog(access, catalog, sources)
-            _render_material_jobs(access, material_jobs)
-            _render_price_source_review_queue(access, review_rows)
+            if errors.get("catalog"):
+                st.info(errors["catalog"])
+            elif catalog is None:
+                _render_price_lists_loading("catalog")
+            else:
+                _render_price_catalog(access, catalog, sources or [])
+
+            if errors.get("material_jobs"):
+                st.info(errors["material_jobs"])
+            elif material_jobs is None:
+                _render_price_lists_loading("Material Jobs")
+            else:
+                _render_material_jobs(access, material_jobs)
+
+            if errors.get("review"):
+                st.info(errors["review"])
+            elif review_rows is None:
+                _render_price_lists_loading("Review")
+            else:
+                _render_price_source_review_queue(access, review_rows)
 
         with st.container(key="price_source_library_section"):
             st.markdown(
@@ -3420,10 +3491,15 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                 st.session_state.pop("_price_source_library_open_once", False)
             )
             with st.expander(
-                f'Source library · {len(sources)}', expanded=library_open_once
+                f'Source library · {len(sources) if sources is not None else "…"}',
+                expanded=library_open_once,
             ):
-                visible_sources = sources
-                if not visible_sources:
+                visible_sources = sources or []
+                if errors.get("sources"):
+                    st.info(errors["sources"])
+                elif sources is None:
+                    _render_price_lists_loading("Source Library")
+                elif not visible_sources:
                     st.info("No source documents yet.")
                 else:
                     with st.container(key="price_source_list_card"):
@@ -3490,6 +3566,17 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                                         on_click=_start_price_source_purge_action,
                                         args=(access, source_id),
                                     )
+
+
+@st.fragment(run_every=0.25, parallel=True)
+def _refresh_price_lists_projections(access: CompanyAccess) -> None:
+    """Refresh the page only when a background projection has new data."""
+    state = _price_lists_projection_state(access)
+    before = len(state["results"]) + len(state["errors"])
+    results, errors, _futures = _poll_price_lists_projections(access)
+    after = len(results) + len(errors)
+    if after > before and not _price_source_has_unsubmitted_selection():
+        st.rerun(scope="app")
 
 
 

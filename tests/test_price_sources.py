@@ -221,21 +221,23 @@ def test_purge_price_source_uses_owned_transactional_rpc_and_deletes_storage(mon
 
 
 def test_source_library_uses_modal_confirmed_optimistic_source_removal():
-    from screens.company_profile import _render_price_lists
+    from screens.company_profile import _render_price_lists, _render_price_lists_projections
     from ui.js_guards import install_price_source_remove_guard
 
     source = inspect.getsource(_render_price_lists)
+    projections = inspect.getsource(_render_price_lists_projections)
     guard = inspect.getsource(install_price_source_remove_guard)
 
     assert "install_price_source_remove_guard" in source
-    assert "_price_source_purging_ids" in source
-    assert "delete_price_source_" in source
-    assert "on_click=_start_price_source_purge_action" in source
+    assert "_render_price_lists_projections" in source
+    assert "_price_source_purging_ids" in projections
+    assert "delete_price_source_" in projections
+    assert "on_click=_start_price_source_purge_action" in projections
     assert "price-source-remove-modal" in guard
     assert "This permanently deletes the source" in guard
     assert "costerly-price-source-pending-delete" in guard
     assert 'st-key-price_source_row_' in guard
-    assert 'key=f"price_source_row_{source_id}"' in source
+    assert 'key=f"price_source_row_{source_id}"' in projections
 
 
 def test_price_source_pdf_preview_renders_only_first_page():
