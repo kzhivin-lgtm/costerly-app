@@ -1324,8 +1324,42 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        .st-key-price_source_list_card [data-testid="stHorizontalBlock"].costerly-price-source-pending-delete {
+        .st-key-price_source_list_card [class*="st-key-price_source_row_"].costerly-price-source-pending-delete {
             display: none !important;
+        }
+
+        .price-source-library-notice {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            width: 100%;
+            margin: 0 0 12px;
+            padding: 14px 18px;
+            border: 1px solid #B9DFCC;
+            border-radius: 12px;
+            background: #F5FCF7;
+            color: #17653A;
+            font-size: 14px;
+            font-weight: 650;
+        }
+
+        .price-source-library-notice button {
+            flex: 0 0 auto;
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            font-size: 19px;
+            line-height: 20px;
+        }
+
+        .price-source-library-notice.costerly-toast-hidden {
+            display: none;
         }
 
         .st-key-price_source_list_card [data-testid="stHorizontalBlock"]:first-child {

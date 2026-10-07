@@ -4186,7 +4186,7 @@ def install_price_source_remove_guard() -> None:
                         // its row before the Streamlit callback or background
                         // database work begins, so consecutive deletes remain
                         // immediate and visually deterministic.
-                        button.closest('[data-testid="stHorizontalBlock"]')
+                        button.closest('[class*="st-key-price_source_row_"]')
                             ?.classList.add("costerly-price-source-pending-delete");
                         button.dataset.priceSourceRemoveConfirmed = "true";
                         button.click();
@@ -4265,7 +4265,10 @@ def install_price_source_notice_guard() -> None:
         <script>
         (() => {
             const parentDoc = window.parent.document;
-            parentDoc.querySelectorAll(".price-lists-toast:not([data-costerly-toast-bound])")
+            parentDoc.querySelectorAll(
+                ".price-lists-toast:not([data-costerly-toast-bound]), "
+                + ".price-source-library-notice:not([data-costerly-toast-bound])"
+            )
                 .forEach((toast) => {
                     toast.dataset.costerlyToastBound = "true";
                     const dismiss = () => toast.classList.add("costerly-toast-hidden");

@@ -226,6 +226,8 @@ def test_source_library_uses_modal_confirmed_optimistic_source_removal():
     assert "price-source-remove-modal" in guard
     assert "This permanently deletes the source" in guard
     assert "costerly-price-source-pending-delete" in guard
+    assert 'st-key-price_source_row_' in guard
+    assert 'key=f"price_source_row_{source_id}"' in source
 
 
 def test_price_source_pdf_preview_renders_only_first_page():
@@ -2053,6 +2055,7 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
     assert cleared == [True]
     assert "_price_source_purge_pending" not in state
     assert state["_price_source_action_notice"]["message"] == "Source removed, 5 rows deleted"
+    assert state["_price_source_action_notice"]["kind"] == "source_removed"
 
 
 def test_price_source_file_selection_clears_the_supplier_url(monkeypatch):

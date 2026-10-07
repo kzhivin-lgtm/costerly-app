@@ -2154,7 +2154,8 @@ def _process_pending_price_source_purges() -> bool:
             st.session_state.pop("_price_source_notice", None)
             storage_note = "" if result["storage_deleted"] else "; file cleanup is pending"
             _set_price_source_action_notice(
-                f'Source removed, {result["deleted_rows"]} rows deleted{storage_note}'
+                f'Source removed, {result["deleted_rows"]} rows deleted{storage_note}',
+                kind="source_removed",
             )
     if not pending:
         st.session_state.pop("_price_source_purge_pending", None)
@@ -3231,9 +3232,10 @@ def _render_price_source_processing_status(access: CompanyAccess, *, trace=None)
         st.rerun(scope="app")
 
 
-def _set_price_source_action_notice(message: str) -> None:
+def _set_price_source_action_notice(message: str, *, kind: str = "saved") -> None:
     st.session_state._price_source_action_notice = {
         "message": message,
+        "kind": kind,
         "created_at": time.monotonic(),
     }
 
@@ -3326,14 +3328,21 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     install_price_source_remove_guard()
 
     action_notice = st.session_state.get("_price_source_action_notice")
+    source_removal_notice: dict | None = None
     if isinstance(action_notice, dict):
         age = time.monotonic() - float(action_notice.get("created_at") or 0)
         if age < 5:
-            _render_price_source_toast(
-                str(action_notice.get("message") or "Saved"),
-                duration_ms=max(1, int((5 - age) * 1000)),
-                kind="saved",
-            )
+            if action_notice.get("kind") == "source_removed":
+                source_removal_notice = {
+                    "message": str(action_notice.get("message") or "Source removed"),
+                    "duration_ms": max(1, int((5 - age) * 1000)),
+                }
+            else:
+                _render_price_source_toast(
+                    str(action_notice.get("message") or "Saved"),
+                    duration_ms=max(1, int((5 - age) * 1000)),
+                    kind="saved",
+                )
         else:
             st.session_state.pop("_price_source_action_notice", None)
     elif action_notice:
@@ -3353,6 +3362,15 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                 '<span id="source-library" class="price-source-library-anchor"></span>',
                 unsafe_allow_html=True,
             )
+            if source_removal_notice:
+                st.markdown(
+                    '<div class="price-source-library-notice" '
+                    f'data-duration-ms="{source_removal_notice["duration_ms"]}"><span>'
+                    + escape(source_removal_notice["message"])
+                    + '</span><button type="button" aria-label="Dismiss">×</button></div>',
+                    unsafe_allow_html=True,
+                )
+                install_price_source_notice_guard()
             with st.expander(f'Source library · {len(sources)}', expanded=False):
                 purging_source_ids = {
                     str(source_id)
@@ -3379,52 +3397,56 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                         for source in visible_sources:
                             source_id = str(source["source_id"])
                             summary = source.get("processing_summary") or {}
-                            left, document_col, department_col, items_col, action_col, remove_col = st.columns(
-                                [2.15, 1.1, 0.95, 0.55, 0.62, 0.72],
-                                vertical_alignment="center",
-                            )
-                            with left:
-                                st.markdown(
-                                    f'<span class="price-source-library-supplier" title="{escape(_price_source_supplier(source))}">'
-                                    f'{escape(_price_source_short_text(_price_source_supplier(source)))}</span>'
-                                    f'<span class="price-source-file" title="{escape(str(source.get("source_name") or ""))}">'
-                                    f'{escape(_price_source_short_text(source.get("source_name"), limit=32))}</span>',
-                                    unsafe_allow_html=True,
+                            # This keyed wrapper is the only DOM node the client may
+                            # hide optimistically. Do not target Streamlit's generic
+                            # horizontal blocks: they can contain unrelated page UI.
+                            with st.container(key=f"price_source_row_{source_id}"):
+                                left, document_col, department_col, items_col, action_col, remove_col = st.columns(
+                                    [2.15, 1.1, 0.95, 0.55, 0.62, 0.72],
+                                    vertical_alignment="center",
                                 )
-                            with document_col:
-                                st.markdown(
-                                    f'<span class="price-catalog-cell">{escape(_price_source_document_type_label(source.get("document_type")))}</span>',
-                                    unsafe_allow_html=True,
-                                )
-                            with department_col:
-                                department_label, _ = _price_source_classification(source)
-                                st.markdown(
-                                    f'<span class="price-catalog-cell">{escape(department_label)}</span>',
-                                    unsafe_allow_html=True,
-                                )
-                            with items_col:
-                                row_count = int(summary.get("total") or 0)
-                                st.markdown(
-                                    f'<span class="price-catalog-cell">{row_count}</span>',
-                                    unsafe_allow_html=True,
-                                )
-                            with action_col:
-                                source_url = _price_source_direct_url(access, source)
-                                if source_url:
-                                    st.link_button(
-                                        "View",
-                                        source_url,
-                                        key=f"view_price_source_{source_id}",
-                                        use_container_width=True,
+                                with left:
+                                    st.markdown(
+                                        f'<span class="price-source-library-supplier" title="{escape(_price_source_supplier(source))}">'
+                                        f'{escape(_price_source_short_text(_price_source_supplier(source)))}</span>'
+                                        f'<span class="price-source-file" title="{escape(str(source.get("source_name") or ""))}">'
+                                        f'{escape(_price_source_short_text(source.get("source_name"), limit=32))}</span>',
+                                        unsafe_allow_html=True,
                                     )
-                            with remove_col:
-                                st.button(
-                                    "Delete",
-                                    key=f"delete_price_source_{source_id}",
-                                    use_container_width=True,
-                                    on_click=_start_price_source_purge_action,
-                                    args=(access, source_id),
-                                )
+                                with document_col:
+                                    st.markdown(
+                                        f'<span class="price-catalog-cell">{escape(_price_source_document_type_label(source.get("document_type")))}</span>',
+                                        unsafe_allow_html=True,
+                                    )
+                                with department_col:
+                                    department_label, _ = _price_source_classification(source)
+                                    st.markdown(
+                                        f'<span class="price-catalog-cell">{escape(department_label)}</span>',
+                                        unsafe_allow_html=True,
+                                    )
+                                with items_col:
+                                    row_count = int(summary.get("total") or 0)
+                                    st.markdown(
+                                        f'<span class="price-catalog-cell">{row_count}</span>',
+                                        unsafe_allow_html=True,
+                                    )
+                                with action_col:
+                                    source_url = _price_source_direct_url(access, source)
+                                    if source_url:
+                                        st.link_button(
+                                            "View",
+                                            source_url,
+                                            key=f"view_price_source_{source_id}",
+                                            use_container_width=True,
+                                        )
+                                with remove_col:
+                                    st.button(
+                                        "Delete",
+                                        key=f"delete_price_source_{source_id}",
+                                        use_container_width=True,
+                                        on_click=_start_price_source_purge_action,
+                                        args=(access, source_id),
+                                    )
 
 
 
