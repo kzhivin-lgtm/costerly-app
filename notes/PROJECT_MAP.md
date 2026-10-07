@@ -111,6 +111,10 @@ This file explains where code belongs so the project stays understandable.
   source-library boundary, and scenario matrix.
 - `notes/PRICE_SOURCE_AGENT.md` stores the active 3.12.1 extraction contract and
   the accepted `d99a594` Price Lists interaction rollback checkpoint.
+- `notes/PRICE_LISTS_REBUILD_3_16_7.md` is the authoritative active Price Lists
+  rebuild contract and backlog. `notes/PRICE_LISTS_CHECKPOINT_3_16_7_2026_10_08.md`
+  records the latest verified ingestion checkpoint, protected behavior, and
+  prioritized continuation queue.
 - `notes/OBJECT_QUANTITY_AND_DETAIL_DRAFT_CHECKPOINT_3_15_24_2026_10_03.md`
   stores the canonical quantity, Object Detail draft/Approve architecture,
   rejected component-rerun path, Materials-zeroing root cause, migration, and

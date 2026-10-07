@@ -376,6 +376,15 @@ dates as MM/DD/YY and exposes document totals, per-row Material Type and VAT,
 agent duration, and compact TC without a currency sign. Provider-reported token
 usage, configured cost, model, and prompt version remain stored for audit.
 
+Photographed invoices have an additional price-integrity boundary. For JPEG,
+PNG, HEIC and TIFF sources, every priced row is visually re-read from an
+enlarged source-table crop before activation. This protects against a
+self-consistent OCR column shift, especially in RTL tables, where arithmetic
+alone may not expose the error. Digital PDFs retain the native text-layer path;
+XLSX and CSV retain the direct-cell path. A printed source price is never
+reconstructed from line total divided by quantity. A visually ambiguous image
+row remains unresolved rather than becoming an active offer.
+
 Price Catalog UI contract (3.10.1)
 
 The primary Price Lists presentation reads active `company_material_offers`

@@ -883,7 +883,7 @@ The workspace requirements are:
      remains `Already processed`.
 
 6. **Source-table arithmetic for photographed invoices**
-   - Status: in progress
+   - Status: implementation deployed, representative production evidence verified; broader acceptance pending
    - Decision, 2026-10-07: use the conservative, reversible path for image
      uploads only. Every priced row in JPEG, PNG, HEIC or TIFF is re-read from
      a source-table visual before it can become active. This is intentionally
@@ -901,6 +901,13 @@ The workspace requirements are:
      ILS 137.50 total; 0.52 and 2.63 remain exactly the printed prices; no
      column is reused as another column; and genuinely ambiguous mappings stay
      out of the active catalog.
+   - Verified production evidence, 2026-10-07: photo source
+     `IMAGE 2026-10-05 19:04:55.jpg`, invoice `63385`, stored the hinge
+     `956A1004WL` as quantity 5, ILS 27.50 and ILS 137.50. Its OCR took
+     0.444 s, the primary Price Source agent took 16.361 s, and the visual
+     verifier took 2.924 s. The recorded full cycle was 45.508 s. The visual
+     check adds about 2.6 s of model time compared with the immediately
+     preceding photo path, rather than the earlier suspected large regression.
 
 ### Pending P1
 
