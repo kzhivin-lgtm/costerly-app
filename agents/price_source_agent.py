@@ -76,8 +76,21 @@ def _numbers_close(left: float, right: float) -> bool:
     return abs(left - right) <= max(0.01, abs(right) * 0.01)
 
 
+def _is_fractional_hardware_piece(row: dict[str, Any], quantity: object) -> bool:
+    if (
+        str(row.get("material_type") or "") != "Hardware"
+        or str(row.get("raw_unit") or "").strip().casefold()
+        not in {"piece", "pc", "pcs", "unit", "each", "יח", "יחידה", "יחידות"}
+    ):
+        return False
+    try:
+        return float(quantity).is_integer() is False
+    except (TypeError, ValueError):
+        return False
+
+
 def _line_arithmetic_conflicts(result: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return active rows whose extracted price cannot explain their line total."""
+    """Return rows requiring a second, source-grounded arithmetic reading."""
     conflicts: list[dict[str, Any]] = []
     for row in result.get("rows") or []:
         if not isinstance(row, dict) or row.get("status") == "excluded":
@@ -90,7 +103,14 @@ def _line_arithmetic_conflicts(result: dict[str, Any]) -> list[dict[str, Any]]:
             for value in (quantity, price, total)
         ):
             continue
-        if not _numbers_close(float(quantity) * float(price), float(total)):
+        arithmetic_conflict = not _numbers_close(
+            float(quantity) * float(price), float(total)
+        )
+        # A discrete fitting cannot have 57.5 pieces. This catches a common
+        # right-to-left invoice failure where adjacent quantity and unit-price
+        # cells are concatenated into a self-consistent but false triple.
+        hardware_piece_fraction = _is_fractional_hardware_piece(row, quantity)
+        if arithmetic_conflict or hardware_piece_fraction:
             conflicts.append(
                 {
                     "source_row_number": row.get("source_row_number"),
@@ -99,6 +119,10 @@ def _line_arithmetic_conflicts(result: dict[str, Any]) -> list[dict[str, Any]]:
                     "raw_quantity": quantity,
                     "raw_price": price,
                     "raw_line_total": total,
+                    "recheck_reason": (
+                        "fractional_hardware_piece_quantity"
+                        if hardware_piece_fraction else "arithmetic_mismatch"
+                    ),
                 }
             )
     return conflicts
@@ -132,6 +156,8 @@ def _merge_arithmetic_recheck(
             continue
         if not _numbers_close(float(quantity) * float(price), float(total)):
             continue
+        if _is_fractional_hardware_piece(target, quantity):
+            continue
         target["raw_quantity"] = quantity
         target["raw_price"] = price
         target["raw_line_total"] = total
@@ -142,6 +168,29 @@ def _merge_arithmetic_recheck(
         target["reason_codes"] = sorted(reasons)
         repaired += 1
     return repaired
+
+
+def _mark_unrepaired_fractional_hardware_for_review(
+    result: dict[str, Any],
+    conflicts: list[dict[str, Any]],
+) -> None:
+    """Never activate a self-consistent but impossible fractional fitting row."""
+    rows_by_number = {
+        row.get("source_row_number"): row
+        for row in result.get("rows") or []
+        if isinstance(row, dict)
+    }
+    for conflict in conflicts:
+        if conflict.get("recheck_reason") != "fractional_hardware_piece_quantity":
+            continue
+        row = rows_by_number.get(conflict.get("source_row_number"))
+        if row is None or not _is_fractional_hardware_piece(row, row.get("raw_quantity")):
+            continue
+        row["status"] = "unresolved"
+        row["reason_codes"] = sorted(
+            set(row.get("reason_codes") or [])
+            | {"fractional_hardware_piece_quantity"}
+        )
 
 
 def _run_price_source_arithmetic_recheck(
@@ -160,8 +209,12 @@ def _run_price_source_arithmetic_recheck(
         "requested source rows from the supplied OCR text. For each row, identify "
         "quantity, unit price, and line total from headers and values in any language. "
         "Return a row only when quantity times unit price equals line total within "
-        "normal currency rounding. Do not guess, do not use document totals, and do "
-        "not return a row if the three values remain ambiguous."
+        "normal currency rounding. For Hebrew right-to-left invoices, read headers "
+        "and cells as a table, never concatenate adjacent quantity and price cells. "
+        "A fractional quantity for a discrete Hardware piece is a warning that the "
+        "first extraction may have swapped or concatenated columns. Do not guess, do "
+        "not use document totals, and do not return a row if the three values remain "
+        "ambiguous."
     )
     user_text = (
         f"Source name: {source_name}\n"
@@ -347,6 +400,7 @@ def run_price_source_agent(
                         "error_type": type(exc).__name__,
                     },
                 )
+    _mark_unrepaired_fractional_hardware_for_review(result, arithmetic_conflicts)
     validated = validate_price_source_result(
         guard_price_source_document_totals(
             guard_price_source_row_activation(

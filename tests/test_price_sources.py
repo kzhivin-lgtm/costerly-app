@@ -31,6 +31,7 @@ from agents.price_source_agent import (
     PRICE_SOURCE_MAX_OUTPUT_TOKENS,
     _apply_material_taxonomy_to_rows,
     _line_arithmetic_conflicts,
+    _mark_unrepaired_fractional_hardware_for_review,
     _merge_arithmetic_recheck,
 )
 from use_cases.price_sources import (
@@ -689,6 +690,31 @@ def test_proven_sheet_defaults_before_review_and_retains_3100_span():
     assert "missing_dimensions" not in row["reason_codes"]
     assert guarded is result
     assert validate_price_source_result(result) is result
+
+
+def test_sheet_identity_never_invents_a_second_side_from_star_notation():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "טווין 17 ממ 3100 טפ 2*",
+        "normalized_name": "Plywood twin 17 mm",
+        "material_type": "Wood Sheets",
+        "material_family": "plywood",
+        "raw_unit": "board",
+        "purchase_unit": "board",
+        "calculation_unit": "board",
+        "identity_attributes": {
+            "thickness_mm": 17,
+            "width_mm": 3100,
+            "length_mm": 2400,
+        },
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["raw_unit"] == row["purchase_unit"] == row["calculation_unit"] == "sheet"
+    assert row["identity_attributes"]["width_mm"] == 0
+    assert row["identity_attributes"]["length_mm"] == 3100
 
 
 def test_rows_without_a_name_or_positive_price_are_not_persisted_for_review():
@@ -2780,6 +2806,25 @@ def test_ready_line_with_unproven_total_arithmetic_goes_to_review():
 
     assert row["status"] == "unresolved"
     assert "line_total_inconsistent" in row["reason_codes"]
+
+
+def test_fractional_hardware_piece_requires_a_second_read_or_review():
+    result = _result()
+    row = result["rows"][0]
+    row.update(
+        material_type="Hardware",
+        raw_unit="piece",
+        raw_price=5,
+        raw_quantity=57.5,
+        raw_line_total=287.5,
+    )
+
+    conflicts = _line_arithmetic_conflicts(result)
+    _mark_unrepaired_fractional_hardware_for_review(result, conflicts)
+
+    assert conflicts[0]["recheck_reason"] == "fractional_hardware_piece_quantity"
+    assert row["status"] == "unresolved"
+    assert "fractional_hardware_piece_quantity" in row["reason_codes"]
 
 
 def test_arithmetic_recheck_repairs_only_a_consistent_second_reading():

@@ -219,10 +219,10 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
             else:
                 name = f"{name} {thickness_label}".strip()
         row["normalized_name"] = name
-        # A full wood sheet quoted as a piece is still the same purchasable sheet.
-        # Cut parts are represented by supplier Material Jobs, not by a second
-        # material unit.
-        if _normalized_unit(str(row.get("raw_unit") or "")) == "piece":
+        # A full wood sheet quoted as a piece, panel or board is still the same
+        # purchasable sheet. Cut parts are represented by supplier Material Jobs,
+        # not by a second material unit.
+        if _normalized_unit(str(row.get("raw_unit") or "")) in {"piece", "sheet"}:
             row["raw_unit"] = "sheet"
             row["purchase_unit"] = "sheet"
             row["calculation_unit"] = "sheet"
@@ -1041,6 +1041,10 @@ def _normalized_unit(value: str) -> str:
         "יחידות": "piece",
         "sheet": "sheet",
         "sheets": "sheet",
+        "panel": "sheet",
+        "panels": "sheet",
+        "board": "sheet",
+        "boards": "sheet",
     }
     return aliases.get(unit, unit)
 
@@ -1220,14 +1224,18 @@ def material_offer_matches_extracted_row(
     # remains a fallback only for that legacy case.
     if not material_row["material_family"]:
         material_row["material_family"] = str(material.get("canonical_name") or material.get("normalized_name") or "").split(" ")[0]
-    material_key = material_structural_key(material_row)
-    row_key = material_structural_key(row)
-    # Species was added after some private materials had already been stored.
-    # A proven contradiction blocks a match, while a missing legacy species is
-    # allowed to inherit the stronger same-supplier SKU/price evidence.
-    if material_key[:5] != row_key[:5] or material_key[6] != row_key[6]:
-        return False
-    return not material_key[5] or not row_key[5] or material_key[5] == row_key[5]
+    material_row.update(
+        {
+            "material_type": material.get("category") or row.get("material_type") or "",
+            "raw_price": offer.get("source_price"),
+            "raw_sku": offer.get("supplier_sku") or specifications.get("source_sku") or "",
+        }
+    )
+    # Delegate to the one same-supplier identity contract. It protects family,
+    # thickness, species and construction, while treating OCR-only secondary
+    # sheet dimensions as supporting evidence rather than a merge veto. Unit,
+    # currency, VAT and price were already proved above.
+    return price_rows_match_same_supplier_material(material_row, row)
 
 
 def material_offer_proves_unknown_family(

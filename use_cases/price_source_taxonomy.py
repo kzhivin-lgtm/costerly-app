@@ -132,6 +132,28 @@ _IDENTITY_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
 }
 
 
+def _literal_sheet_dimensions(text: str) -> tuple[int, int]:
+    """Return only dimensions actually written in the source line.
+
+    Some Israeli invoices use ``2* 3100`` or ``1* 3100`` beside sheet names.
+    The star is a sheet notation, not a second dimension. A second side is
+    accepted only from an explicit ``x`` or ``×`` separator. Otherwise retain
+    the single proven span and never invent a square 3100×3100 sheet.
+    """
+    explicit_pair = re.search(
+        r"(?<!\d)([1-5]\d{3})\s*(?:x|×)\s*([1-5]\d{3})(?!\d)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if explicit_pair:
+        return int(explicit_pair.group(1)), int(explicit_pair.group(2))
+    spans = [
+        int(value)
+        for value in re.findall(r"(?<!\d)([1-5]\d{3})(?!\d)", text)
+    ]
+    return (0, spans[0]) if spans else (0, 0)
+
+
 JOB_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("supplier_cut_and_edge_banding", (
         "cut and edge", "cutting and edge", "cut + edge", "cutting + edge",
@@ -343,19 +365,11 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
         field: attributes.get(field, default)
         for field, default in _IDENTITY_ATTRIBUTE_DEFAULTS.items()
     }
-    if rule.category == "Wood Sheets" and not (
-        attributes.get("width_mm") or attributes.get("length_mm")
-    ):
-        # In this supplier's sheet notation, an explicit thickness followed by
-        # one bare four-digit span, for example "17 ממ 3100", denotes a sheet
-        # dimension in mm. The rule is limited to text already proven as a
-        # wood sheet, so a line quantity cannot become a false dimension.
-        spans = [
-            int(value)
-            for value in re.findall(r"(?<!\d)([1-5]\d{3})(?!\d)", text)
-        ]
-        if spans:
-            attributes["length_mm"] = spans[0]
+    if rule.category == "Wood Sheets":
+        # Model-generated dimensions are not source evidence. Rebuild this
+        # pair from literal text so a single 3100 span cannot become 3100×3100
+        # or acquire an unrelated 2400 side.
+        attributes["width_mm"], attributes["length_mm"] = _literal_sheet_dimensions(text)
     row["identity_attributes"] = attributes
     row["material_type"] = rule.category
     row["material_family"] = rule.family

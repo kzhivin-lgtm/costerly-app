@@ -885,6 +885,13 @@ The workspace requirements are:
    - Outcome: show the extracted invoice number below the canonical supplier
      name when present, otherwise show the uploaded file name.
 
+2. **Bilingual supplier-brand catalog**
+   - Status: pending, explicitly deferred from the current arithmetic and merge fix
+   - Outcome: maintain department-scoped English/Hebrew brand aliases, beginning
+     with Hardware and sheet materials. A recognised brand such as Blum, Hettich,
+     Egger, Sayerlack or Homag remains in the canonical material name and
+     evidence, but never alone proves a material category.
+
 ### Deferred until Source ingestion is accepted
 
 1. **Estimation resolver**
