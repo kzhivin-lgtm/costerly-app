@@ -167,6 +167,11 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
                         )
                     break
         row["identity_attributes"] = attributes
+        # The local normalizer can add a literal construction marker after the
+        # taxonomy has formed its display name. Reapply the same deterministic
+        # taxonomy so the persisted Wood Sheets name carries that proven fact.
+        # This has no supplier inputs and is idempotent for every other row.
+        apply_material_taxonomy(row)
         has_sheet_evidence = (
             row.get("material_type") == "Wood Sheets"
             or "sheet" in text

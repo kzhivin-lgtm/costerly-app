@@ -44,7 +44,13 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         "plywood", "lumber core", "sanded plywood", "לביד", "דיקט", "סנדוויץ",
         "okume", "okoume", "אוקומה", "אוקמה", "twin", "טווין", "combi", "קומבי",
     )),
-    TaxonomyRule("Wood Sheets", "mdf", ("mdf", "מדי אף", "אמ די אף")),
+    TaxonomyRule("Wood Sheets", "mdf", (
+        "mdf", "m.d.f", "m d f",
+        # Hebrew invoices and OCR use both the spoken abbreviation and the
+        # compact printed form. Dotted and spaced forms cover OCR separating
+        # the letters without turning an unrelated Hebrew word into MDF.
+        "מדי אף", "אמ די אף", "מדפ", "מ.ד.פ", "מ ד פ",
+    )),
     TaxonomyRule("Wood Sheets", "particleboard", (
         "particleboard", "chipboard", "melamine board", "laminated board",
         "סיבית", "מלמין", "שבבית",
@@ -140,11 +146,16 @@ def job_operation_for_text(text: str) -> str | None:
 
 def _taxonomy_material_name(rule: TaxonomyRule, attributes: Mapping[str, Any]) -> str:
     """Build a canonical display name from facts proven by the source text."""
-    parts = [rule.family.title()]
+    family_name = "MDF" if rule.family == "mdf" else rule.family.title()
+    parts = [family_name]
     if attributes.get("species"):
         parts.append(str(attributes["species"]).title())
     if attributes.get("construction"):
-        parts.extend(str(attributes["construction"]).split())
+        construction = set(str(attributes["construction"]).split())
+        # Display order is fixed even though identity storage is order-free.
+        # “Twin perforated” reads as one construction, not two arbitrary tags.
+        parts.extend(token for token in ("twin", "perforated") if token in construction)
+        parts.extend(sorted(construction - {"twin", "perforated"}))
     try:
         thickness = float(attributes.get("thickness_mm") or 0)
     except (TypeError, ValueError):
@@ -175,6 +186,14 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     for field, values in ATTRIBUTE_RULES.items():
         for canonical, aliases in values:
             if _has_alias(text, aliases):
+                if field == "construction":
+                    # Construction facts compose. A Twin sheet may also be
+                    # perforated, and both distinctions belong to its merge
+                    # identity, rather than whichever alias appears first.
+                    attributes[field] = " ".join(sorted({
+                        *str(attributes.get(field) or "").split(), canonical,
+                    }))
+                    continue
                 attributes[field] = canonical
                 break
     row["identity_attributes"] = attributes
@@ -182,9 +201,13 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     row["material_family"] = rule.family
     current_name = str(row.get("normalized_name") or "").strip()
     canonical_name = _taxonomy_material_name(rule, attributes)
-    # A taxonomy rule is stronger than a model-only name from another material
-    # family.  For example, אוקמה proves plywood, so a hallucinated “Glass
-    # Aukma” name must never remain visible or block the row from activation.
+    # A literal Wood Sheets rule is the source of truth for its customer-facing
+    # identity. This prevents a model label such as “Acrylic Okoume” from
+    # surviving despite the source proving a plywood family. The source wording
+    # and every omitted decor/finish detail remain in raw_description and the
+    # structured attributes, so no evidence is lost.
+    # Other categories keep a usable model name unless it is visibly from a
+    # conflicting family, avoiding a wider display-name rewrite.
     has_conflicting_family_word = (
         rule.family != "glass"
         and any(word in current_name.casefold().split() for word in ("glass", "mirror"))
@@ -193,6 +216,7 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
         not current_name
         or current_name.casefold().startswith("unclassified")
         or has_conflicting_family_word
+        or rule.category == "Wood Sheets"
     ):
         row["normalized_name"] = canonical_name
     reasons = set(row.get("reason_codes") or [])

@@ -88,7 +88,7 @@ from use_cases.price_sources import (
     save_price_source_row,
     validate_price_source_upload_selection,
 )
-from use_cases.price_source_taxonomy import apply_material_taxonomy, job_operation_for_text
+from use_cases.price_source_taxonomy import apply_material_taxonomy, job_operation_for_text, material_rule_for_text
 
 
 def test_price_source_extraction_diagnostics_records_zero_row_evidence():
@@ -1031,7 +1031,7 @@ def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
 
     assert row["identity_attributes"]["construction"] == "perforated twin"
     assert row["identity_attributes"]["finish"] == "glossy"
-    assert row["normalized_name"] == "Twin plywood 17 mm perforated"
+    assert row["normalized_name"] == "Plywood twin perforated 17 mm"
 
 
 def test_sheet_normalization_replaces_wrong_glass_label_when_okoume_proves_plywood():
@@ -1082,6 +1082,54 @@ def test_sheet_taxonomy_removes_hallucinated_glass_and_resolves_known_okoume():
     assert row["normalized_name"] == "Plywood Okoume 5 mm"
     assert "Glass" not in row["normalized_name"]
     assert "unknown_product_term" not in row["reason_codes"]
+
+
+def test_sheet_taxonomy_replaces_model_acrylic_label_when_okoume_proves_plywood():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "אוקמה 5 ממ 3100 טפ 1*",
+        "normalized_name": "Acrylic 5 mm",
+        "material_type": "Other",
+        "material_family": "other",
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 5},
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["material_type"] == "Wood Sheets"
+    assert row["material_family"] == "plywood"
+    assert row["normalized_name"] == "Plywood Okoume 5 mm"
+
+
+def test_sheet_taxonomy_accepts_compact_hebrew_mdf_abbreviation():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "מדפ 19 יצוק לבן חלק ירוק",
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+        "status": "unresolved",
+        "reason_codes": ["unknown_product_term"],
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 19},
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["status"] == "ready"
+    assert row["material_type"] == "Wood Sheets"
+    assert row["material_family"] == "mdf"
+    assert row["normalized_name"] == "MDF 19 mm"
+
+
+@pytest.mark.parametrize("alias", ("MDF", "m.d.f", "m d f", "מדי אף", "אמ די אף", "מדפ", "מ.ד.פ", "מ ד פ"))
+def test_mdf_taxonomy_covers_safe_english_hebrew_and_ocr_variants(alias):
+    rule = material_rule_for_text(f"לוח {alias} 19 ממ".casefold())
+
+    assert rule is not None
+    assert rule.category == "Wood Sheets"
+    assert rule.family == "mdf"
 
 
 def test_hebrew_item_abbreviation_normalizes_before_sheet_rules():
