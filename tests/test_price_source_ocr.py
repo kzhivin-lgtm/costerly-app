@@ -7,6 +7,7 @@ from use_cases.price_source_ocr import (
     ocr_issuer_evidence_text,
     ocr_package_text,
     prepare_price_source_text_layer,
+    render_price_source_table_evidence,
 )
 from use_cases.price_sources import issuer_identity_from_source_text
 
@@ -113,6 +114,33 @@ def test_jpeg_uses_ocr_before_price_extraction():
     assert result.text == "PAGE 1:\nPhoto invoice"
     assert called[0]["file_name"] == "invoice.jpg"
     assert result.ocr_package["source_file_name"] == "invoice.jpg"
+
+
+def test_image_ocr_prepares_upscaled_table_evidence_for_arithmetic_rereads():
+    package = {
+        "pages": [{
+            "page_number": 1,
+            "markdown": "# Invoice",
+            "dimensions": {"width": 64, "height": 48},
+            "blocks": [{
+                "type": "table",
+                "top_left_x": 10,
+                "top_left_y": 10,
+                "bottom_right_x": 54,
+                "bottom_right_y": 34,
+            }],
+        }]
+    }
+
+    evidence = render_price_source_table_evidence(
+        image_bytes=_image_bytes(), ocr_package=package,
+    )
+
+    assert evidence is not None
+    with Image.open(BytesIO(evidence)) as image:
+        assert image.format == "PNG"
+        assert image.width > 100
+        assert image.height > 80
 
 
 def test_tiff_is_normalised_to_png_for_mistral_ocr():

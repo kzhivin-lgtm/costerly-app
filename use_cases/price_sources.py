@@ -3178,7 +3178,16 @@ def process_price_source(
         # A conflict recheck is not a second broad extraction. It may use the
         # original visual source only to verify the already-identified table
         # cells whose OCR reading is contradictory.
-        source_evidence_bytes=source_bytes,
+        source_evidence_bytes=text_layer.arithmetic_evidence_bytes or source_bytes,
+        source_evidence_name=(
+            f"{Path(source_name).stem}-invoice-table.png"
+            if text_layer.arithmetic_evidence_bytes is not None
+            else source_name
+        ),
+        # Digital PDFs retain a native text layer and structured tables retain
+        # cells directly. The conservative visual pass is reserved for photos
+        # and image uploads, where OCR geometry is the best price evidence.
+        require_source_table_verification=text_layer.strategy == "image_ocr",
         extracted_text=text_layer.text,
         import_id=source_id,
         trace=trace,

@@ -35,6 +35,7 @@ class PriceSourceTextLayer:
     strategy: str
     ocr_package: dict[str, Any] | None = None
     issuer_evidence_text: str = ""
+    arithmetic_evidence_bytes: bytes | None = None
 
 
 def _register_heif_decoder() -> None:
@@ -188,6 +189,62 @@ def ocr_issuer_evidence_text(package: dict[str, Any]) -> str:
     return "\n\n".join(parts)[:40_000]
 
 
+def render_price_source_table_evidence(
+    *,
+    image_bytes: bytes,
+    ocr_package: dict[str, Any],
+) -> bytes | None:
+    """Render the OCR table region at readable scale for a bounded reread."""
+    pages = ocr_package.get("pages") if isinstance(ocr_package, dict) else None
+    if not isinstance(pages, list) or len(pages) != 1:
+        return None
+    page = pages[0] if isinstance(pages[0], dict) else {}
+    dimensions = page.get("dimensions") if isinstance(page.get("dimensions"), dict) else {}
+    table_boxes = [
+        block
+        for block in (page.get("blocks") or [])
+        if isinstance(block, dict) and str(block.get("type") or "").casefold() == "table"
+    ]
+    if not table_boxes:
+        return None
+    try:
+        source_width = float(dimensions["width"])
+        source_height = float(dimensions["height"])
+        left = min(float(box["top_left_x"]) for box in table_boxes)
+        top = min(float(box["top_left_y"]) for box in table_boxes)
+        right = max(float(box["bottom_right_x"]) for box in table_boxes)
+        bottom = max(float(box["bottom_right_y"]) for box in table_boxes)
+    except (KeyError, TypeError, ValueError):
+        return None
+    if source_width <= 0 or source_height <= 0 or not (0 <= left < right <= source_width and 0 <= top < bottom <= source_height):
+        return None
+    image = open_price_source_image(image_bytes)
+    try:
+        scale_x = image.width / source_width
+        scale_y = image.height / source_height
+        padding_x = (right - left) * 0.06
+        padding_y = (bottom - top) * 0.18
+        crop = image.crop((
+            max(0, int((left - padding_x) * scale_x)),
+            max(0, int((top - padding_y) * scale_y)),
+            min(image.width, int((right + padding_x) * scale_x)),
+            min(image.height, int((bottom + padding_y) * scale_y)),
+        ))
+        if crop.width < 1 or crop.height < 1:
+            return None
+        scale = min(4, 2048 / max(crop.width, crop.height))
+        if scale > 1:
+            crop = crop.resize(
+                (round(crop.width * scale), round(crop.height * scale)),
+                Image.Resampling.LANCZOS,
+            )
+        output = BytesIO()
+        crop.save(output, format="PNG", optimize=True)
+        return output.getvalue()
+    finally:
+        image.close()
+
+
 def prepare_price_source_text_layer(
     *,
     file_name: str,
@@ -244,5 +301,9 @@ def prepare_price_source_text_layer(
             strategy="image_ocr",
             ocr_package=package,
             issuer_evidence_text=ocr_issuer_evidence_text(package),
+            arithmetic_evidence_bytes=render_price_source_table_evidence(
+                image_bytes=ocr_bytes,
+                ocr_package=package,
+            ),
         )
     return PriceSourceTextLayer(text=structured_text, strategy="source_text")

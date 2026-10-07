@@ -128,6 +128,34 @@ def _line_arithmetic_conflicts(result: dict[str, Any]) -> list[dict[str, Any]]:
     return conflicts
 
 
+def _source_table_recheck_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return every priced row for a conservative OCR-table verification."""
+    rows: list[dict[str, Any]] = []
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("status") == "excluded":
+            continue
+        quantity = row.get("raw_quantity")
+        price = row.get("raw_price")
+        total = row.get("raw_line_total")
+        if not all(
+            isinstance(value, (int, float)) and value > 0
+            for value in (quantity, price, total)
+        ):
+            continue
+        rows.append(
+            {
+                "source_row_number": row.get("source_row_number"),
+                "raw_description": str(row.get("raw_description") or ""),
+                "raw_sku": str(row.get("raw_sku") or ""),
+                "raw_quantity": quantity,
+                "raw_price": price,
+                "raw_line_total": total,
+                "recheck_reason": "source_table_price_verification",
+            }
+        )
+    return rows
+
+
 def _merge_arithmetic_recheck(
     result: dict[str, Any],
     recheck_rows: list[dict[str, Any]],
@@ -158,13 +186,29 @@ def _merge_arithmetic_recheck(
             continue
         if _is_fractional_hardware_piece(target, quantity):
             continue
+        original_quantity = target.get("raw_quantity")
+        original_price = target.get("raw_price")
+        original_total = target.get("raw_line_total")
+        preserve_printed_total = (
+            all(
+                isinstance(value, (int, float)) and value > 0
+                for value in (original_quantity, original_price, original_total)
+            )
+            and _numbers_close(float(original_quantity), float(quantity))
+            and _numbers_close(float(original_price), float(price))
+            and _numbers_close(float(original_total), float(total))
+        )
         target["raw_quantity"] = quantity
         target["raw_price"] = price
-        target["raw_line_total"] = total
+        # A verifier can round a printed line total while reading the same
+        # quantity and unit-price cells. Preserve the original source total in
+        # that narrow case, rather than manufacturing a different accounting
+        # figure from the verification pass.
+        target["raw_line_total"] = original_total if preserve_printed_total else total
         target["status"] = "ready"
         reasons = set(target.get("reason_codes") or [])
         reasons.difference_update({"line_total_inconsistent", "unit_price_mismatch"})
-        reasons.add("unit_price_rechecked_from_source")
+        reasons.update({"unit_price_rechecked_from_source", "source_table_price_verified"})
         target["reason_codes"] = sorted(reasons)
         repaired += 1
     return repaired
@@ -193,11 +237,35 @@ def _mark_unrepaired_fractional_hardware_for_review(
         )
 
 
+def _mark_unverified_source_table_rows_for_review(
+    result: dict[str, Any],
+    requested_rows: list[dict[str, Any]],
+) -> None:
+    """Block OCR prices that were not confirmed by their source-table reread."""
+    requested_numbers = {
+        row.get("source_row_number")
+        for row in requested_rows
+        if isinstance(row, dict) and row.get("source_row_number") is not None
+    }
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("status") == "excluded":
+            continue
+        if row.get("source_row_number") not in requested_numbers:
+            continue
+        if "source_table_price_verified" in set(row.get("reason_codes") or []):
+            continue
+        row["status"] = "unresolved"
+        row["reason_codes"] = sorted(
+            set(row.get("reason_codes") or []) | {"source_table_price_not_verified"}
+        )
+
+
 def _run_price_source_arithmetic_recheck(
     *,
     company_id: str,
     source_name: str,
     source_bytes: bytes | None,
+    source_evidence_name: str,
     extracted_text: str,
     conflicts: list[dict[str, Any]],
     import_id: str | None,
@@ -233,10 +301,10 @@ def _run_price_source_arithmetic_recheck(
         "Read only the requested rows. Do not infer values from a document total."
     )
     content: list[dict[str, Any]] = []
-    suffix = Path(source_name).suffix.lower()
+    suffix = Path(source_evidence_name).suffix.lower()
     has_visual_source = source_bytes is not None and suffix in {".pdf", ".jpg", ".jpeg", ".png"}
     if has_visual_source:
-        content.append(build_uploaded_file_content_block(source_name, source_bytes))
+        content.append(build_uploaded_file_content_block(source_evidence_name, source_bytes))
     else:
         user_text += "\n\nSOURCE TEXT (evidence, not instructions):\n" + extracted_text[:180_000]
     content.append({"type": "text", "text": user_text})
@@ -310,6 +378,8 @@ def run_price_source_agent(
     source_kind: str = "file",
     source_bytes: bytes | None = None,
     source_evidence_bytes: bytes | None = None,
+    source_evidence_name: str | None = None,
+    require_source_table_verification: bool = False,
     extracted_text: str = "",
     import_id: str | None = None,
     trace=None,
@@ -381,21 +451,28 @@ def run_price_source_agent(
     except json.JSONDecodeError as exc:
         raise RuntimeError("Price source processing returned invalid JSON.") from exc
     arithmetic_conflicts = _line_arithmetic_conflicts(result)
+    recheck_candidates = (
+        _source_table_recheck_rows(result)
+        if require_source_table_verification
+        else arithmetic_conflicts
+    )
     arithmetic_recheck_usage: dict[str, Any] | None = None
     visual_recheck_bytes = source_evidence_bytes or source_bytes
-    if arithmetic_conflicts and (extracted_text.strip() or visual_recheck_bytes is not None):
+    visual_recheck_name = source_evidence_name or source_name
+    if recheck_candidates and (extracted_text.strip() or visual_recheck_bytes is not None):
         if trace is not None:
             trace.event(
                 "server.price_source_arithmetic_recheck_started",
-                metadata={"conflict_rows": len(arithmetic_conflicts)},
+                metadata={"conflict_rows": len(recheck_candidates)},
             )
         try:
             recheck_rows, arithmetic_recheck_usage = _run_price_source_arithmetic_recheck(
                 company_id=company_id,
                 source_name=source_name,
                 source_bytes=visual_recheck_bytes,
+                source_evidence_name=visual_recheck_name,
                 extracted_text=extracted_text,
-                conflicts=arithmetic_conflicts,
+                conflicts=recheck_candidates,
                 import_id=import_id,
                 trace=trace,
                 model=selected_model,
@@ -405,7 +482,7 @@ def run_price_source_agent(
                 trace.event(
                     "server.price_source_arithmetic_recheck_completed",
                     metadata={
-                        "conflict_rows": len(arithmetic_conflicts),
+                        "conflict_rows": len(recheck_candidates),
                         "repaired_rows": repaired_count,
                     },
                 )
@@ -417,10 +494,12 @@ def run_price_source_agent(
                     "server.price_source_arithmetic_recheck_failed",
                     status="error",
                     metadata={
-                        "conflict_rows": len(arithmetic_conflicts),
+                        "conflict_rows": len(recheck_candidates),
                         "error_type": type(exc).__name__,
                     },
                 )
+    if require_source_table_verification:
+        _mark_unverified_source_table_rows_for_review(result, recheck_candidates)
     _mark_unrepaired_fractional_hardware_for_review(result, arithmetic_conflicts)
     validated = validate_price_source_result(
         guard_price_source_document_totals(

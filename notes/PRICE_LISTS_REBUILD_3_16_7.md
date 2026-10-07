@@ -884,11 +884,19 @@ The workspace requirements are:
 
 6. **Source-table arithmetic for photographed invoices**
    - Status: in progress
+   - Decision, 2026-10-07: use the conservative, reversible path for image
+     uploads only. Every priced row in JPEG, PNG, HEIC or TIFF is re-read from
+     a source-table visual before it can become active. This is intentionally
+     not limited to rows whose first arithmetic check detects a conflict,
+     because OCR can make a false but self-consistent triple. Digital PDFs keep
+     their native text-layer path and XLSX/CSV retain their direct-cell path.
+     Reassess the added call, latency and observed error rate after production
+     acceptance before considering a narrower policy.
    - Outcome: preserve printed quantity, unit-price cents and line total from
      their source-table cells. Normal currency rounding never changes a printed
-     price or sends a row to Review. A bounded visual re-read of the original
-     PDF/JPEG/PNG, not flattened OCR text, handles the known Hebrew RTL failure
-     where `5.00` and `27.50` become `57.50`.
+     price or sends a row to Review. The reread uses an enlarged OCR-table crop,
+     not flattened OCR text, handling the Hebrew RTL failure where `5.00` and
+     `27.50` become `57.50`.
    - Acceptance: the hinge `956A1004WL` is read as 5 pieces at ILS 27.50 with
      ILS 137.50 total; 0.52 and 2.63 remain exactly the printed prices; no
      column is reused as another column; and genuinely ambiguous mappings stay

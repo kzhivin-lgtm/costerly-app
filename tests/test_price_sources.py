@@ -2871,7 +2871,7 @@ def test_arithmetic_recheck_repairs_only_a_consistent_second_reading():
             "source_row_number": 1,
             "raw_quantity": 20,
             "raw_price": 2.63,
-            "raw_line_total": 52.5,
+            "raw_line_total": 52.6,
         }],
     )
 
@@ -2879,7 +2879,28 @@ def test_arithmetic_recheck_repairs_only_a_consistent_second_reading():
     assert repaired == 1
     assert row["status"] == "ready"
     assert row["raw_price"] == pytest.approx(2.63)
+    assert row["raw_line_total"] == pytest.approx(52.6)
     assert "unit_price_rechecked_from_source" in row["reason_codes"]
+
+
+def test_arithmetic_recheck_preserves_printed_total_when_price_and_quantity_match():
+    result = _result()
+    row = result["rows"][0]
+    row.update(raw_price=2.63, raw_quantity=20, raw_line_total=52.5)
+
+    repaired = _merge_arithmetic_recheck(
+        result,
+        [{
+            "source_row_number": 1,
+            "raw_quantity": 20,
+            "raw_price": 2.63,
+            "raw_line_total": 52.6,
+        }],
+    )
+
+    assert repaired == 1
+    assert row["raw_price"] == pytest.approx(2.63)
+    assert row["raw_line_total"] == pytest.approx(52.5)
 
 
 def test_arithmetic_recheck_rejects_another_inconsistent_numeric_triple():
@@ -3477,9 +3498,11 @@ def test_price_source_agent_disables_sdk_retries_for_background_cycles():
 def test_price_source_arithmetic_recheck_uses_runtime_trace_metadata_contract():
     source = Path("agents/price_source_agent.py").read_text()
 
-    assert 'metadata={"conflict_rows": len(arithmetic_conflicts)}' in source
+    assert 'metadata={"conflict_rows": len(recheck_candidates)}' in source
     assert 'status="error"' in source
     assert '"repaired_rows": repaired_count' in source
+    assert "require_source_table_verification" in source
+    assert "_source_table_recheck_rows(result)" in source
 
 
 def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():
@@ -3488,10 +3511,12 @@ def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():
 
     assert "source_bytes: bytes | None" in source
     assert "source_evidence_bytes: bytes | None" in source
+    assert "source_evidence_name: str | None" in source
     assert "The original visible table is authoritative" in source
     assert "build_uploaded_file_content_block(source_name, source_bytes)" in source
     assert "Never derive a price by dividing a total by quantity" in source
-    assert "source_evidence_bytes=source_bytes" in processing_source
+    assert "source_evidence_bytes=text_layer.arithmetic_evidence_bytes or source_bytes" in processing_source
+    assert 'require_source_table_verification=text_layer.strategy == "image_ocr"' in processing_source
 
 
 def test_price_source_runtime_marks_worker_boundaries(monkeypatch):
