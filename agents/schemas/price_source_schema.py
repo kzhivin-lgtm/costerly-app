@@ -125,6 +125,54 @@ def apply_price_source_hardware_defaults(result: dict[str, Any]) -> dict[str, An
     return result
 
 
+def apply_price_source_material_unit_defaults(result: dict[str, Any]) -> dict[str, Any]:
+    """Fill an omitted unit for a purchasable, discrete material line.
+
+    Invoice tables normally state quantity, unit price and line total once per
+    row, not "one piece" repeatedly. An omitted unit therefore defaults to the
+    item's natural purchase unit: ``sheet`` for sheet material and ``piece``
+    for another discrete item. A stated package, metre, area, mass or container
+    unit is preserved and never replaced by this rule.
+    """
+    unknown_units = {"", "unknown", "other", "unknown unit", "לא ברור"}
+    resolved_by_default = {
+        "missing_unit", "package_conversion_unresolved",
+        "missing_dimensions", "unclear_dimensions",
+    }
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("item_kind") != "material":
+            continue
+        category = str(row.get("material_type") or "")
+        default_unit = "sheet" if category in {"Wood Sheets", "Metal Sheets", "Glass"} else "piece"
+        changed = False
+        if str(row.get("raw_unit") or "").strip().casefold() in unknown_units:
+            row["raw_unit"] = default_unit
+            changed = True
+        for key in ("purchase_unit", "calculation_unit"):
+            if str(row.get(key) or "").strip().casefold() in unknown_units:
+                row[key] = default_unit
+                changed = True
+        if not changed:
+            continue
+        row["conversion_factor"] = 1
+        raw_price = row.get("raw_price")
+        if isinstance(raw_price, (int, float)) and raw_price > 0:
+            row["normalized_price"] = raw_price
+        previous_reasons = set(row.get("reason_codes") or [])
+        audit_reasons = {
+            reason for reason in previous_reasons
+            if reason.startswith(("taxonomy_", "hardware_unit_default_"))
+        }
+        remaining_reasons = previous_reasons - resolved_by_default - audit_reasons
+        reasons = remaining_reasons | {f"unit_default_{default_unit}"}
+        row["reason_codes"] = sorted(reasons)
+        # A default can cure an otherwise valid line. It cannot bypass an
+        # arithmetic, VAT, package or material-identity blocker.
+        if row.get("status") == "unresolved" and not remaining_reasons:
+            row["status"] = "ready"
+    return result
+
+
 def normalize_price_source_units(result: dict[str, Any]) -> dict[str, Any]:
     """Replace recognised source-language count units with canonical codes.
 

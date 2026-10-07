@@ -16,6 +16,7 @@ from PIL import Image
 from agents.schemas.price_source_schema import (
     apply_price_source_document_defaults,
     apply_price_source_hardware_defaults,
+    apply_price_source_material_unit_defaults,
     PriceSourceSchemaError,
     guard_price_source_document_totals,
     guard_price_source_row_activation,
@@ -28,6 +29,7 @@ from agents.schemas.price_source_schema import (
 )
 from agents.price_source_agent import (
     PRICE_SOURCE_MAX_OUTPUT_TOKENS,
+    _apply_material_taxonomy_to_rows,
     _line_arithmetic_conflicts,
     _merge_arithmetic_recheck,
 )
@@ -628,6 +630,59 @@ def test_drawer_runner_defaults_to_a_set_when_the_source_omits_the_unit():
     assert prepared["rows"][0]["purchase_unit"] == "set"
     assert prepared["rows"][0]["calculation_unit"] == "set"
     assert prepared["rows"][0]["normalized_price"] == 90
+
+
+def test_ordinary_material_defaults_to_piece_when_an_invoice_omits_the_unit():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "material_type": "Solid Wood",
+        "raw_unit": "unknown",
+        "purchase_unit": "unknown",
+        "calculation_unit": "unknown",
+        "conversion_factor": 0,
+        "normalized_price": 0,
+        "status": "unresolved",
+        "reason_codes": ["missing_unit"],
+    })
+
+    prepared = apply_price_source_material_unit_defaults(result)
+
+    assert row["status"] == "ready"
+    assert row["raw_unit"] == row["purchase_unit"] == row["calculation_unit"] == "piece"
+    assert row["conversion_factor"] == 1
+    assert row["normalized_price"] == row["raw_price"]
+
+
+def test_proven_sheet_defaults_before_review_and_retains_3100_span():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "טווין 17 ממ 3100 טפ",
+        "normalized_name": "Twin 17 mm",
+        "material_type": "Other",
+        "material_family": "other",
+        "raw_unit": "unknown",
+        "purchase_unit": "unknown",
+        "calculation_unit": "unknown",
+        "conversion_factor": 0,
+        "normalized_price": 0,
+        "status": "unresolved",
+        "reason_codes": ["missing_unit", "missing_dimensions"],
+        "identity_attributes": {"thickness_mm": 17},
+    })
+
+    _apply_material_taxonomy_to_rows(result)
+    apply_price_source_material_unit_defaults(result)
+    guarded = guard_price_source_row_activation(result)
+
+    assert row["status"] == "ready"
+    assert row["material_type"] == "Wood Sheets"
+    assert row["raw_unit"] == row["purchase_unit"] == row["calculation_unit"] == "sheet"
+    assert row["identity_attributes"]["length_mm"] == 3100
+    assert "missing_unit" not in row["reason_codes"]
+    assert "missing_dimensions" not in row["reason_codes"]
+    assert guarded is result
 
 
 def test_rows_without_a_name_or_positive_price_are_not_persisted_for_review():

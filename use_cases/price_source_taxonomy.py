@@ -96,7 +96,7 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
     ),
     "construction": (
         ("twin", ("twin", "טווין", "combi", "קומבי")),
-        ("perforated", ("perforated", "perforation", "מחורר", "מבוקע")),
+        ("perforated", ("perforated", "perforation", "מחורר", "מבוקע", "בקוע", "מנוקב")),
     ),
     "finish": (
         ("glossy", ("high gloss", "glossy", "gloss", "מבריק")),
@@ -196,6 +196,19 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
                     continue
                 attributes[field] = canonical
                 break
+    if rule.category == "Wood Sheets" and not (
+        attributes.get("width_mm") or attributes.get("length_mm")
+    ):
+        # In this supplier's sheet notation, an explicit thickness followed by
+        # one bare four-digit span, for example "17 ממ 3100", denotes a sheet
+        # dimension in mm. The rule is limited to text already proven as a
+        # wood sheet, so a line quantity cannot become a false dimension.
+        spans = [
+            int(value)
+            for value in re.findall(r"(?<!\d)([1-5]\d{3})(?!\d)", text)
+        ]
+        if spans:
+            attributes["length_mm"] = spans[0]
     row["identity_attributes"] = attributes
     row["material_type"] = rule.category
     row["material_family"] = rule.family

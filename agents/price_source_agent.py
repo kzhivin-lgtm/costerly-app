@@ -19,6 +19,7 @@ from agents.schemas.price_source_schema import (
     PRICE_SOURCE_RESULT_JSON_SCHEMA,
     apply_price_source_document_defaults,
     apply_price_source_hardware_defaults,
+    apply_price_source_material_unit_defaults,
     guard_price_source_document_totals,
     guard_price_source_row_activation,
     normalize_price_source_row_identity_fields,
@@ -28,11 +29,20 @@ from agents.schemas.price_source_schema import (
     reconcile_price_source_arithmetic,
     validate_price_source_result,
 )
+from use_cases.price_source_taxonomy import apply_material_taxonomy
 
 
-PRICE_SOURCE_PROMPT_VERSION = "price_source_v9_line_arithmetic_recheck"
+PRICE_SOURCE_PROMPT_VERSION = "price_source_v10_material_unit_defaults"
 PRICE_SOURCE_MAX_OUTPUT_TOKENS = 32_768
 PRICE_SOURCE_ARITHMETIC_RECHECK_MAX_OUTPUT_TOKENS = 2_048
+
+
+def _apply_material_taxonomy_to_rows(result: dict[str, Any]) -> dict[str, Any]:
+    """Run source-grounded taxonomy before the unit and Review gates."""
+    for row in result.get("rows") or []:
+        if isinstance(row, dict):
+            apply_material_taxonomy(row)
+    return result
 
 PRICE_SOURCE_ARITHMETIC_RECHECK_SCHEMA = {
     "type": "object",
@@ -341,15 +351,19 @@ def run_price_source_agent(
         guard_price_source_document_totals(
             guard_price_source_row_activation(
                 reconcile_price_source_arithmetic(
-                    apply_price_source_hardware_defaults(
-                        apply_price_source_document_defaults(
-                            normalize_price_source_units(
-                                normalize_price_source_row_identity_fields(
-                                    normalize_price_source_optional_numbers(
-                                        normalize_price_source_confidence_scale(result)
-                                    )
+                    apply_price_source_material_unit_defaults(
+                        apply_price_source_hardware_defaults(
+                            _apply_material_taxonomy_to_rows(
+                                apply_price_source_document_defaults(
+                                    normalize_price_source_units(
+                                        normalize_price_source_row_identity_fields(
+                                            normalize_price_source_optional_numbers(
+                                                normalize_price_source_confidence_scale(result)
+                                            )
+                                        )
+                                    ), source_kind=source_kind
                                 )
-                            ), source_kind=source_kind
+                            )
                         )
                     )
                 )

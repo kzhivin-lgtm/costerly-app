@@ -72,16 +72,21 @@ instructions.
    MDF, particleboard, solid timber, screw, hinge, adhesive, paint, metal sheet,
    or metal profile. Extract identity_attributes only from explicit evidence.
    Convert a dimension to millimeters only when its source unit is explicit.
-   Use 0 for unknown numeric attributes and an empty string for unknown text
-   attributes. Never infer that a bare dimension is millimeters.
+   For a recognized wood sheet, a four-digit sheet span printed beside an
+   explicit millimetre thickness, for example `17 ממ 3100`, is an established
+   supplier sheet notation and the span is millimetres. Use 0 for unknown
+   numeric attributes and an empty string for unknown text attributes. Never
+   infer that another bare number is millimeters.
    Put explicit surface descriptors into identity_attributes: construction for
    perforated, and finish for glossy, matte, rough/textured, sanded, polished,
    or mirror. Do not treat colour or decor as a distinct purchasable identity
    when all structural specifications and effective price are the same.
 7. Normalize a price only when the conversion is fully supported by the source.
 8. Keep non_material rows as excluded evidence. This includes subtotal, VAT or tax total, grand total, and amount due. An operation_service never creates a material or material price, but a positively priced service remains ready for the server to map into the supplier work catalog.
-9. Mark ambiguous material rows unresolved. Never invent a unit, package size, dimension,
+9. Mark ambiguous material rows unresolved. Never invent a package size, dimension,
    price, discount, supplier, document number, SKU, material type, or conversion.
+   An omitted unit on an otherwise ordinary discrete material line is not an
+   ambiguity: use its natural count unit under the Unit conversion rules below.
 
 ## Document semantics
 
@@ -164,11 +169,12 @@ Do not convert nominal sheet dimensions to usable dimensions unless the source
 explicitly states the charging rule. State the exact arithmetic in
 conversion_basis. If any required value is missing, use status unresolved.
 
-For Hardware only, an invoice line with no printed purchase unit defaults to
-piece, with purchase_unit = calculation_unit = piece and conversion_factor =
-1. Drawer slides/runners are the exception: when the item is explicitly a
-drawer runner/slide, they default to one left/right set. Do not apply either
-fallback to generic metal profiles, rails, or other non-hardware material.
+When an invoice line has no printed purchase unit, default an otherwise
+ordinary discrete material to one piece, with purchase_unit = calculation_unit
+= piece and conversion_factor = 1. A recognized full sheet of wood, metal or
+glass defaults to one sheet instead. Drawer slides/runners default to one
+left/right set. Do not apply a default where the source explicitly states a
+package, metre, area, mass, liquid/container unit, or an unresolved conversion.
 
 ## Price semantics
 
