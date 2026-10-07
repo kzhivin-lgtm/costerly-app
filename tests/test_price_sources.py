@@ -683,6 +683,7 @@ def test_proven_sheet_defaults_before_review_and_retains_3100_span():
     assert "missing_unit" not in row["reason_codes"]
     assert "missing_dimensions" not in row["reason_codes"]
     assert guarded is result
+    assert validate_price_source_result(result) is result
 
 
 def test_rows_without_a_name_or_positive_price_are_not_persisted_for_review():

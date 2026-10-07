@@ -114,6 +114,21 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
     ),
 }
 
+_IDENTITY_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
+    "thickness_mm": 0,
+    "width_mm": 0,
+    "length_mm": 0,
+    "diameter_mm": 0,
+    "species": "",
+    "substrate": "",
+    "surface": "",
+    "coating": "",
+    "colour": "",
+    "grade": "",
+    "construction": "",
+    "finish": "",
+}
+
 
 JOB_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("supplier_cut_and_edge_banding", ("cut and edge", "חיתוך וקנטים", "חיתוך + קנטים")),
@@ -178,7 +193,14 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     if not rule:
         return False
 
-    attributes = dict(row.get("identity_attributes") or {})
+    source_attributes = dict(row.get("identity_attributes") or {})
+    # Taxonomy is now deliberately applied before schema validation. Preserve
+    # the strict identity contract even when a rule clears an unsupported model
+    # guess or only proves one field.
+    attributes = {
+        field: source_attributes.get(field, default)
+        for field, default in _IDENTITY_ATTRIBUTE_DEFAULTS.items()
+    }
     # These descriptive fields participate in merge identity. Do not retain a
     # model guess that the source wording does not support.
     for field in ATTRIBUTE_RULES:
@@ -196,6 +218,10 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
                     continue
                 attributes[field] = canonical
                 break
+    attributes = {
+        field: attributes.get(field, default)
+        for field, default in _IDENTITY_ATTRIBUTE_DEFAULTS.items()
+    }
     if rule.category == "Wood Sheets" and not (
         attributes.get("width_mm") or attributes.get("length_mm")
     ):
