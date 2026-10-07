@@ -587,6 +587,20 @@ The workspace requirements are:
   resolved before the existing buyer-boundary guard, so data after `לכבוד`
   remains ineligible to become a supplier.
 
+### Hotfix, 2026-10-07, rendered PDF issuer band
+
+- Direct PDF OCR may represent a graphical masthead as an untranscribed image,
+  even when `extract_header` is requested. The seller then remains unknown
+  despite a successful OCR call.
+- PDFs with native row text now always render the generic upper-centre issuer
+  band of their first page at high resolution and OCR that PNG with the
+  evidence profile. This is one document-wide rule for every PDF, not a
+  supplier exception. The native PDF text remains the source for price rows.
+- OCR may reverse Hebrew two-letter business labels in visual order, for
+  example `ח.פ` as `פ.ח`. Issuer parsing accepts both visual orders for all
+  three Israeli seller identifiers (`ח.פ`, `ע.פ`, `ע.מ`) before validating the
+  required nine digits.
+
 ### Checkpoint, 2026-10-06, permanent Price Source deletion
 
 - Production is on commits `a8e6280`, `e1f0086`, and `740bd62`. The SQL function

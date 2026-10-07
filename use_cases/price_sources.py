@@ -547,13 +547,23 @@ def issuer_identity_from_source_text(text: str) -> dict[str, str]:
     treated as issuer evidence.
     """
     header = re.split(r"לכבוד\s*:??", str(text or ""), maxsplit=1, flags=re.UNICODE)[0]
+    identifier_label = (
+        r"(?:[חפ]\s*[.׳\"״]?\s*[פח]\s*[.׳\"״]?|"
+        r"(?:ע\s*[.׳\"״]?\s*[מפ]|[מפ]\s*[.׳\"״]?\s*ע)\s*[.׳\"״]?|"
+        r"h\s*\.??\s*p\s*\.??)"
+    )
+    # OCR visual-order output can reverse both the Hebrew label and the
+    # number/label order, for example ``514539998 פ.ח``.  Both forms refer to
+    # the same printed nine-digit seller identifier.
     identifier_match = re.search(
-        r"(?:ח\s*[.׳\"״]?\s*פ\s*[.׳\"״]?|ע\s*[.׳\"״]?\s*[מפ]\s*[.׳\"״]?|"
-        r"h\s*\.??\s*p\s*\.??)\s*[:#-]?\s*(\d(?:[\s-]?\d){8})",
+        rf"(?:{identifier_label}\s*[:#-]?\s*(?P<label_first>\d(?:[\s-]?\d){{8}})|"
+        rf"(?P<number_first>\d(?:[\s-]?\d){{8}})\s*[:#-]?\s*{identifier_label})",
         header,
         flags=re.IGNORECASE | re.UNICODE,
     )
-    supplier_hp = re.sub(r"\D", "", identifier_match.group(1)) if identifier_match else ""
+    supplier_hp = re.sub(
+        r"\D", "", (identifier_match.group("label_first") or identifier_match.group("number_first"))
+    ) if identifier_match else ""
     supplier_name = ""
     legal_name_match = re.search(
         r"^\s*([^\n]{2,100}?)\s+בע\s*[\"״׳']?מ\s*\.?\s*$",

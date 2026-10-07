@@ -729,6 +729,9 @@ def test_issuer_identity_reads_all_israeli_business_number_labels_before_buyer()
     }
     assert issuer_identity_from_source_text("ע.פ. 123456789\nלכבוד: buyer")["supplier_hp"] == "123456789"
     assert issuer_identity_from_source_text("H.P. 987654321\nלכבוד: buyer")["supplier_hp"] == "987654321"
+    assert issuer_identity_from_source_text('לבידי בוקטוס בע"מ\nפ.ח 514539998')["supplier_hp"] == "514539998"
+    assert issuer_identity_from_source_text('לבידי בוקטוס בע"מ\n514539998 פ.ח')["supplier_hp"] == "514539998"
+    assert issuer_identity_from_source_text("מ.ע. 123456789\nלכבוד: buyer")["supplier_hp"] == "123456789"
 
 
 def test_issuer_header_repairs_a_buyer_selected_as_supplier():

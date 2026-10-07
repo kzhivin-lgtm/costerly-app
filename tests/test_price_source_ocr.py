@@ -63,13 +63,18 @@ def test_digital_pdf_keeps_embedded_text_and_always_ocrs_issuer_header():
     result = prepare_price_source_text_layer(
         file_name="invoice.pdf",
         file_bytes=pdf_bytes,
-        pdf_ocr=lambda **kwargs: calls.append(kwargs) or package,
+        image_ocr=lambda **kwargs: calls.append(kwargs) or package,
+        pdf_ocr=lambda **_kwargs: (_ for _ in ()).throw(AssertionError("unexpected full-PDF OCR")),
     )
 
     assert result.strategy == "pdf_embedded_text_with_header_ocr"
     assert "Digital supplier invoice" in result.text
-    assert calls[0]["file_name"] == "invoice.pdf"
-    assert result.ocr_package == package
+    assert calls[0]["file_name"] == "invoice-issuer-header.png"
+    assert calls[0]["profile"] == "evidence"
+    assert calls[0]["file_bytes"].startswith(b"\x89PNG")
+    assert result.ocr_package["pages"] == package["pages"]
+    assert result.ocr_package["source_file_name"] == "invoice.pdf"
+    assert result.ocr_package["source_region"] == "first_page_issuer_header"
     assert issuer_identity_from_source_text(result.issuer_evidence_text) == {
         "supplier_name": "לבידי בוקטוס",
         "supplier_hp": "514539998",

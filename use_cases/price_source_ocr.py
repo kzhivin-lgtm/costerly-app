@@ -10,6 +10,7 @@ import fitz
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from agents.ocr_adapter import run_mistral_ocr
+from agents.ocr_contract import OCR_PROFILE_EVIDENCE
 from agents.ocr_rendering import run_mistral_direct_pdf_evidence_ocr
 
 
@@ -17,6 +18,15 @@ OCR_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".heic", ".heif"
 OCR_DOCUMENT_SUFFIXES = OCR_IMAGE_SUFFIXES | {".pdf"}
 STRUCTURED_TABLE_SUFFIXES = {".xlsx", ".csv"}
 PDF_EMBEDDED_TEXT_MIN_CHARS = 120
+# Supplier mastheads are normally centred near the top of an invoice.  This is
+# a document-layout rule, not a supplier-specific exception.  Cropping before
+# OCR prevents an embedded graphical masthead from being treated as a single
+# decorative image beside the invoice body.
+PDF_ISSUER_HEADER_LEFT_RATIO = 0.16
+PDF_ISSUER_HEADER_TOP_RATIO = 0.045
+PDF_ISSUER_HEADER_RIGHT_RATIO = 0.84
+PDF_ISSUER_HEADER_BOTTOM_RATIO = 0.23
+PDF_ISSUER_HEADER_SCALE = 4.0
 
 
 @dataclass(frozen=True)
@@ -72,6 +82,39 @@ def extract_embedded_pdf_text(file_bytes: bytes) -> str:
         return ""
     try:
         return "\n\n".join(page.get_text("text") for page in document).strip()[:180_000]
+    finally:
+        document.close()
+
+
+def render_pdf_issuer_header_image(file_bytes: bytes) -> bytes:
+    """Render the generic first-page supplier masthead as a high-detail PNG.
+
+    The native text layer is kept for invoice rows.  This deliberately renders
+    only the independent header band because a direct PDF OCR can preserve a
+    graphical masthead merely as an image, with no transcribed seller name or
+    business number.
+    """
+    try:
+        document = fitz.open(stream=file_bytes, filetype="pdf")
+    except Exception as exc:
+        raise ValueError("The PDF could not be opened for issuer OCR.") from exc
+    try:
+        if document.needs_pass or document.page_count < 1:
+            raise ValueError("The PDF has no readable first page for issuer OCR.")
+        page = document[0]
+        rect = page.rect
+        clip = fitz.Rect(
+            rect.x0 + rect.width * PDF_ISSUER_HEADER_LEFT_RATIO,
+            rect.y0 + rect.height * PDF_ISSUER_HEADER_TOP_RATIO,
+            rect.x0 + rect.width * PDF_ISSUER_HEADER_RIGHT_RATIO,
+            rect.y0 + rect.height * PDF_ISSUER_HEADER_BOTTOM_RATIO,
+        )
+        pixmap = page.get_pixmap(
+            matrix=fitz.Matrix(PDF_ISSUER_HEADER_SCALE, PDF_ISSUER_HEADER_SCALE),
+            clip=clip,
+            alpha=False,
+        )
+        return pixmap.tobytes("png")
     finally:
         document.close()
 
@@ -165,7 +208,14 @@ def prepare_price_source_text_layer(
     if suffix == ".pdf":
         embedded_text = extract_embedded_pdf_text(file_bytes)
         if len(embedded_text) >= PDF_EMBEDDED_TEXT_MIN_CHARS:
-            package = pdf_ocr(file_name=file_name, file_bytes=file_bytes)
+            header_bytes = render_pdf_issuer_header_image(file_bytes)
+            package = dict(image_ocr(
+                file_name=f"{Path(file_name).stem}-issuer-header.png",
+                file_bytes=header_bytes,
+                profile=OCR_PROFILE_EVIDENCE,
+            ))
+            package["source_file_name"] = file_name
+            package["source_region"] = "first_page_issuer_header"
             return PriceSourceTextLayer(
                 text=embedded_text,
                 strategy="pdf_embedded_text_with_header_ocr",
