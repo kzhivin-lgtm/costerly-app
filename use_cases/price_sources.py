@@ -3175,6 +3175,10 @@ def process_price_source(
         # The commercial agent receives an auditable text layer only.  This
         # keeps image/scanned-PDF interpretation in the dedicated OCR stage.
         source_bytes=None,
+        # A conflict recheck is not a second broad extraction. It may use the
+        # original visual source only to verify the already-identified table
+        # cells whose OCR reading is contradictory.
+        source_evidence_bytes=source_bytes,
         extracted_text=text_layer.text,
         import_id=source_id,
         trace=trace,

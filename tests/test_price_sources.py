@@ -3484,11 +3484,14 @@ def test_price_source_arithmetic_recheck_uses_runtime_trace_metadata_contract():
 
 def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():
     source = Path("agents/price_source_agent.py").read_text()
+    processing_source = Path("use_cases/price_sources.py").read_text()
 
     assert "source_bytes: bytes | None" in source
+    assert "source_evidence_bytes: bytes | None" in source
     assert "The original visible table is authoritative" in source
     assert "build_uploaded_file_content_block(source_name, source_bytes)" in source
     assert "Never derive a price by dividing a total by quantity" in source
+    assert "source_evidence_bytes=source_bytes" in processing_source
 
 
 def test_price_source_runtime_marks_worker_boundaries(monkeypatch):

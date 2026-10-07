@@ -309,6 +309,7 @@ def run_price_source_agent(
     source_name: str,
     source_kind: str = "file",
     source_bytes: bytes | None = None,
+    source_evidence_bytes: bytes | None = None,
     extracted_text: str = "",
     import_id: str | None = None,
     trace=None,
@@ -381,7 +382,8 @@ def run_price_source_agent(
         raise RuntimeError("Price source processing returned invalid JSON.") from exc
     arithmetic_conflicts = _line_arithmetic_conflicts(result)
     arithmetic_recheck_usage: dict[str, Any] | None = None
-    if arithmetic_conflicts and (extracted_text.strip() or source_bytes is not None):
+    visual_recheck_bytes = source_evidence_bytes or source_bytes
+    if arithmetic_conflicts and (extracted_text.strip() or visual_recheck_bytes is not None):
         if trace is not None:
             trace.event(
                 "server.price_source_arithmetic_recheck_started",
@@ -391,7 +393,7 @@ def run_price_source_agent(
             recheck_rows, arithmetic_recheck_usage = _run_price_source_arithmetic_recheck(
                 company_id=company_id,
                 source_name=source_name,
-                source_bytes=source_bytes,
+                source_bytes=visual_recheck_bytes,
                 extracted_text=extracted_text,
                 conflicts=arithmetic_conflicts,
                 import_id=import_id,
