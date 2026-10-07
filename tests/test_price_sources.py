@@ -2271,6 +2271,19 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
     assert state["_price_source_library_open_once"] is True
 
 
+def test_optimistic_source_purge_hides_all_source_owned_projections():
+    from screens import company_profile
+
+    records = [
+        {"source_id": "source-remove", "value": "hidden"},
+        {"source_id": "source-keep", "value": "visible"},
+    ]
+
+    assert company_profile._without_purging_price_source_records(
+        records, {"source-remove"}
+    ) == [{"source_id": "source-keep", "value": "visible"}]
+
+
 def test_price_source_file_selection_clears_the_supplier_url(monkeypatch):
     from screens import company_profile
 

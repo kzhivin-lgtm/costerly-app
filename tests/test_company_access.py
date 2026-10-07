@@ -1475,6 +1475,7 @@ def test_price_source_notice_exposes_all_rows_status_time_and_tc():
                 "new": 2,
                 "updated": 1,
                 "unchanged": 5,
+                "merged": 3,
                 "unresolved": 2,
                 "excluded": 0,
                 "agent_duration_seconds": 13.836,
@@ -1484,7 +1485,7 @@ def test_price_source_notice_exposes_all_rows_status_time_and_tc():
     )
 
     assert notice == (
-        "10 rows extracted · 2 recorded · 1 updated · 5 already in catalog · "
+        "10 rows extracted · 2 recorded · 1 updated · 3 merged · 5 already in catalog · "
         "2 review · Agent 13.8 s · TC 0.015"
     )
 

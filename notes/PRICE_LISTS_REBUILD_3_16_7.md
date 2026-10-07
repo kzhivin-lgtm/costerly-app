@@ -100,10 +100,14 @@ those eligible offers under an explicit project policy.
   referenced by another source. The selected source row disappears immediately;
   the irreversible storage/database work follows in the background. Failure
   restores that one row with an actionable error.
-- Optimistic deletion may affect only the keyed source row. It may never hide a
-  generic Streamlit container, duplicate the page, or alter other sources.
-  Its immediate disappearance is the only success acknowledgement. A visible
-  error is shown only if the irreversible deletion fails.
+- Optimistic deletion hides every UI projection owned by the confirmed source:
+  its Source Library row, catalog offers, Material Jobs and Review rows. It may
+  never hide a generic Streamlit container, duplicate the page, or alter other
+  sources. Its immediate disappearance is the only success acknowledgement. A
+  visible error is shown only if the irreversible deletion fails.
+- A background purge must never force a full app rerun. It may clear its read
+  cache after completion, but an Extract callback owns its selected file and
+  cannot be interrupted or re-keyed by unrelated deletion work.
 
 ### 6. Minimal Needs Review
 
@@ -850,6 +854,27 @@ The workspace requirements are:
      closure contract: text PDF, graphical/scanned PDF, photo, spreadsheet,
      repeat supplier, supplier-price change, cross-supplier offer, consecutive
      deletion, and dashboard persistence across Profile navigation.
+
+4. **Optimistic lifecycle interaction boundary**
+   - Status: in progress, local implementation pending production acceptance
+   - Outcome: Delete immediately removes all records belonging to that source
+     from every Price Lists projection, while database/storage cleanup remains
+     asynchronous. A completed background delete cannot reset an in-progress
+     file selection or prevent the next Extract cycle from reaching the server.
+   - Evidence: the prior background-purge fragment used `st.rerun(scope="app")`.
+     The 2026-10-07 failed second cycle created no source and no agent/OCR event,
+     consistent with its uploader state being re-keyed before callback capture.
+   - Acceptance: delete two sources in succession, immediately select a new
+     file while a purge is still running, start extraction, and verify exactly
+     one new server trace/source plus no visible records from either deleted
+     source.
+
+5. **Cycle outcome terminology**
+   - Status: in progress, local implementation pending production acceptance
+   - Outcome: a row collapsed into an offer staged earlier in the same source is
+     reported as `merged`; `already in catalog` is reserved for an equivalent
+     offer that pre-dated the current source. Exact repeat-source detection
+     remains `Already processed`.
 
 ### Pending P1
 

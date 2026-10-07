@@ -3292,12 +3292,14 @@ def process_price_source(
         new_count = 0
         updated_count = 0
         unchanged_count = 0
+        merged_count = 0
         status = "ready" if not unresolved_count else "partial"
         source_summary = {
             "ready": ready_count,
             "new": 0,
             "updated": 0,
             "unchanged": 0,
+            "merged": 0,
             "unresolved": unresolved_count,
             "excluded": excluded_count,
             "discarded_non_candidates": discarded_non_candidates,
@@ -3708,16 +3710,23 @@ def process_price_source(
                         material_ids_to_restore.add(str(material_id))
                     identity = (str(material_id), current_lane)
                     matching_offers = offers_by_identity.get(identity, [])
-                    if matching_offers and any(
+                    matches_existing_offer = matching_offers and any(
                         price_offer_matches_row(
                             offer,
                             row,
                             default_currency=str(result.get("currency") or ""),
                         )
                         for offer in matching_offers
-                    ):
+                    )
+                    if matches_existing_offer:
                         result_status = "unchanged"
-                        unchanged_count += 1
+                        if any(
+                            str(offer.get("source_id") or "") == str(source_id)
+                            for offer in matching_offers
+                        ):
+                            merged_count += 1
+                        else:
+                            unchanged_count += 1
                     else:
                         result_status = "updated" if matching_offers else "new"
                         if matching_offers:
@@ -3732,7 +3741,7 @@ def process_price_source(
                 )
                 identity = (str(operation_id), current_lane)
                 matching_operation_offers = operation_offers_by_identity.get(identity, [])
-                if any(
+                matches_existing_operation_offer = any(
                     supplier_operation_offer_matches_row(
                         offer,
                         row,
@@ -3740,9 +3749,16 @@ def process_price_source(
                         default_currency=str(result.get("currency") or ""),
                     )
                     for offer in matching_operation_offers
-                ):
+                )
+                if matches_existing_operation_offer:
                     result_status = "unchanged"
-                    unchanged_count += 1
+                    if any(
+                        str(offer.get("source_id") or "") == str(source_id)
+                        for offer in matching_operation_offers
+                    ):
+                        merged_count += 1
+                    else:
+                        unchanged_count += 1
                 else:
                     result_status = "new"
                     new_count += 1
@@ -3845,6 +3861,7 @@ def process_price_source(
                 )
                 operation_offers_by_identity[(str(operation_id), current_lane)] = [
                     {
+                        "source_id": source_id,
                         "source_price": row["raw_price"],
                         "pricing_basis": pricing_basis,
                         "source_unit_label": row["raw_unit"],
@@ -3938,6 +3955,7 @@ def process_price_source(
                 "new": new_count,
                 "updated": updated_count,
                 "unchanged": unchanged_count,
+                "merged": merged_count,
                 "material_identity": identity_summary,
                 "processing_duration_seconds": time.perf_counter() - process_started,
             }

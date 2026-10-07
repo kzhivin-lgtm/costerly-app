@@ -2165,6 +2165,25 @@ def _process_pending_price_source_purges() -> bool:
     return changed
 
 
+def _without_purging_price_source_records(
+    records: list[dict],
+    purging_source_ids: set[str],
+) -> list[dict]:
+    """Hide every record from an optimistically deleted source immediately.
+
+    A source deletion is intentionally asynchronous.  The catalog, review
+    queue, and material-job list must follow the same optimistic UI boundary
+    as Source Library rather than waiting for the database worker to finish.
+    """
+    if not purging_source_ids:
+        return records
+    return [
+        record
+        for record in records
+        if str(record.get("source_id") or "") not in purging_source_ids
+    ]
+
+
 def _save_price_source_row_action(
     access: CompanyAccess,
     source_id: str,
@@ -3013,11 +3032,12 @@ def _price_source_notice_text(source: dict | None) -> str:
         return "Price source processed"
     summary = source.get("processing_summary") or source.get("summary") or {}
     total = int(summary.get("total") or 0)
-    has_diff_counts = any(key in summary for key in ("new", "updated", "unchanged"))
+    has_diff_counts = any(key in summary for key in ("new", "updated", "unchanged", "merged"))
     ready = int(summary.get("ready") or 0)
     new = int(summary.get("new") or 0)
     updated = int(summary.get("updated") or 0)
     unchanged = int(summary.get("unchanged") or 0)
+    merged = int(summary.get("merged") or 0)
     unresolved = int(summary.get("unresolved") or 0)
     excluded = int(summary.get("excluded") or 0)
     if summary.get("exact_duplicate"):
@@ -3031,6 +3051,7 @@ def _price_source_notice_text(source: dict | None) -> str:
             f'{total} {"row" if total == 1 else "rows"} extracted',
             f"{new} recorded",
             f"{updated} updated",
+            f"{merged} merged",
             f"{unchanged} already in catalog",
             f"{unresolved} review",
         ]
@@ -3222,8 +3243,12 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
 def _render_price_source_processing_status(access: CompanyAccess, *, trace=None) -> None:
     """Refresh only the terminal state while the worker runs in background."""
     purge_finished = _process_pending_price_source_purges()
+    # Do not force a full app rerun when a background deletion finishes.  It
+    # can race an Extract click, re-key the uploader, and discard the newly
+    # selected file before its callback captures it.  The next ordinary user
+    # interaction refreshes the cleared snapshot safely.
     if purge_finished:
-        st.rerun(scope="app")
+        return
     if not st.session_state.get("_price_source_processing"):
         return
     pending = st.session_state.get("_price_source_pending") or {}
@@ -3304,6 +3329,18 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         st.info("Price Sources storage is not configured yet.")
         return
 
+    purging_source_ids = {
+        str(source_id)
+        for source_id in st.session_state.get("_price_source_purging_ids", set())
+    }
+    # One optimistic boundary for every projection of a source.  The database
+    # purge may take seconds, but no source-owned item remains visible once the
+    # user has confirmed Delete.
+    sources = _without_purging_price_source_records(sources, purging_source_ids)
+    catalog = _without_purging_price_source_records(catalog, purging_source_ids)
+    review_rows = _without_purging_price_source_records(review_rows, purging_source_ids)
+    material_jobs = _without_purging_price_source_records(material_jobs, purging_source_ids)
+
     # Keep the dashboard in the upload card, so it cannot leave a detached
     # blank region after the processing marker is removed.
     notice_result = st.session_state.get("_price_source_notice")
@@ -3361,14 +3398,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
             with st.expander(
                 f'Source library · {len(sources)}', expanded=library_open_once
             ):
-                purging_source_ids = {
-                    str(source_id)
-                    for source_id in st.session_state.get("_price_source_purging_ids", set())
-                }
-                visible_sources = [
-                    source for source in sources
-                    if str(source.get("source_id")) not in purging_source_ids
-                ]
+                visible_sources = sources
                 if not visible_sources:
                     st.info("No source documents yet.")
                 else:
