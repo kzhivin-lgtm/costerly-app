@@ -883,6 +883,22 @@ The workspace requirements are:
      offer that pre-dated the current source. Exact repeat-source detection
      remains `Already processed`.
 
+6. **Exact source-table arithmetic for photographed invoices**
+   - Status: pending
+   - Outcome: preserve the printed unit-price text and a separate exact
+     calculation price. When the printed price is rounded to cents but
+     `line total / quantity` proves a more precise value, use that exact value
+     for arithmetic and catalog pricing without inventing a different table
+     column. A conflicting row must remain Review rather than create an active
+     offer.
+   - Evidence: invoice `63385`, SKU `956A1004WL`, visibly reads quantity 5,
+     price ILS 27.50, total ILS 137.50, while the current source row has
+     `57.5 × 5 = 287.5`. Invoice `62336` also contains printed rounded prices
+     ILS 0.52 and 2.63 whose line totals prove 0.523 and 2.625 respectively.
+   - Acceptance: all four audited documents reconcile each retained row to its
+     own source-table total, no column is reused as another column, and a
+     genuine unresolved table mapping cannot enter the active catalog.
+
 ### Pending P1
 
 1. **Source Library invoice label**
@@ -896,6 +912,35 @@ The workspace requirements are:
      with Hardware and sheet materials. A recognised brand such as Blum, Hettich,
      Egger, Sayerlack or Homag remains in the canonical material name and
      evidence, but never alone proves a material category.
+
+3. **Price Lists first paint**
+   - Status: pending
+   - Outcome: show the upload controls immediately, then load catalog, Review,
+     Material Jobs and Source Library independently. Do not make the first
+     interaction wait for the complete Price Lists snapshot.
+   - Evidence: the present first render performs the four list projections
+     before drawing the upload card. Production read timing on 2026-10-07 was
+     0.273 s for sources, 0.660 s for catalog, 0.323 s for Review and 0.536 s
+     for Material Jobs, serially, before browser/render overhead.
+   - Acceptance: the upload control is interactive before the catalog response,
+     and later data loading cannot duplicate or reorder page sections.
+
+4. **Unified material-normalisation contract**
+   - Status: pending design approval, architecture scope
+   - Outcome: one structured material identity applies equally to Price Source,
+     company catalog, Israel Price List and Detection evidence. Canonical name
+     order is: entity, primary defining attribute, then up to four ordered
+     discriminating attributes, then an optional brand. Preserve source text as
+     evidence, never as the canonical identity.
+   - Required fields: entity/family, primary specification, dimensions,
+     technical grade or standard, material/substrate, finish or surface,
+     construction, colour, brand, plus source SKU only in the supplier lane.
+     AISI and other steel grades are technical grade/standard attributes, not
+     brands and not free text. Attributes absent from a source stay absent.
+   - Acceptance: one deterministic formatter produces readable canonical names
+     such as `MDF 10 mm, moisture-resistant, laminated one side, green, Egger`
+     from every input path, while preserving structured comparison fields for
+     matching rather than relying on name-word order.
 
 ### Deferred until Source ingestion is accepted
 
