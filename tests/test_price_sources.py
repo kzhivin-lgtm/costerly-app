@@ -2809,8 +2809,8 @@ def test_ready_price_arithmetic_is_reconciled_deterministically():
     assert validate_price_source_result(reconciled) is reconciled
 
 
-def test_line_total_repairs_only_the_proven_quantity_copied_as_price_failure():
-    result = _result(status="unresolved")
+def test_line_total_never_derives_a_more_precise_unit_price():
+    result = _result()
     row = result["rows"][0]
     row.update(
         raw_price=20,
@@ -2822,12 +2822,11 @@ def test_line_total_repairs_only_the_proven_quantity_copied_as_price_failure():
 
     reconciled = reconcile_price_source_arithmetic(result)
 
-    assert row["status"] == "ready"
-    assert row["raw_price"] == pytest.approx(2.625)
-    assert row["normalized_price"] == pytest.approx(2.625 / 2.9768)
-    assert "unit_price_derived_from_line_total" in row["reason_codes"]
-    assert "line_total_inconsistent" not in row["reason_codes"]
-    assert validate_price_source_result(reconciled) is reconciled
+    assert row["status"] == "unresolved"
+    assert row["raw_price"] == 20
+    assert "line_total_inconsistent" in row["reason_codes"]
+    assert "unit_price_derived_from_line_total" not in row["reason_codes"]
+    assert reconciled is result
 
 
 def test_ready_line_with_unproven_total_arithmetic_goes_to_review():
@@ -2871,7 +2870,7 @@ def test_arithmetic_recheck_repairs_only_a_consistent_second_reading():
         [{
             "source_row_number": 1,
             "raw_quantity": 20,
-            "raw_price": 2.625,
+            "raw_price": 2.63,
             "raw_line_total": 52.5,
         }],
     )
@@ -2879,7 +2878,7 @@ def test_arithmetic_recheck_repairs_only_a_consistent_second_reading():
     assert conflicts[0]["source_row_number"] == 1
     assert repaired == 1
     assert row["status"] == "ready"
-    assert row["raw_price"] == pytest.approx(2.625)
+    assert row["raw_price"] == pytest.approx(2.63)
     assert "unit_price_rechecked_from_source" in row["reason_codes"]
 
 
@@ -3481,6 +3480,15 @@ def test_price_source_arithmetic_recheck_uses_runtime_trace_metadata_contract():
     assert 'metadata={"conflict_rows": len(arithmetic_conflicts)}' in source
     assert 'status="error"' in source
     assert '"repaired_rows": repaired_count' in source
+
+
+def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():
+    source = Path("agents/price_source_agent.py").read_text()
+
+    assert "source_bytes: bytes | None" in source
+    assert "The original visible table is authoritative" in source
+    assert "build_uploaded_file_content_block(source_name, source_bytes)" in source
+    assert "Never derive a price by dividing a total by quantity" in source
 
 
 def test_price_source_runtime_marks_worker_boundaries(monkeypatch):

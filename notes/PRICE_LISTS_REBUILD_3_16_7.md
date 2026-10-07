@@ -625,12 +625,11 @@ The workspace requirements are:
   three-value relationship, independent of source language or table direction.
   The prompt requires header-led column interpretation and arithmetic proof for
   every priced row.
-- The deterministic fallback applies only to the proven transposition signature:
-  the extracted unit price equals the extracted quantity while `line total /
-  quantity` gives a different positive value. In that case the derived value is
-  preserved as the effective unit price with `unit_price_derived_from_line_total`.
-  Every other line-total conflict stays in Review. This prevents an unproven OCR
-  number from becoming a catalog price.
+- No unit price is derived from `line total / quantity`. Printed unit-price cents
+  and printed line totals are preserved, with normal currency rounding tolerated.
+  Every material mismatch remains in Review until a source-grounded visual reread
+  establishes the three table cells. This prevents an unproven OCR number from
+  becoming a catalog price.
 - The arithmetic repair runs before active-row eligibility checks, so a repaired
   row is still subject to the existing VAT and canonical-unit safeguards.
 - Verification: focused Price Sources checks, 139 passed.
@@ -883,21 +882,17 @@ The workspace requirements are:
      offer that pre-dated the current source. Exact repeat-source detection
      remains `Already processed`.
 
-6. **Exact source-table arithmetic for photographed invoices**
-   - Status: pending
-   - Outcome: preserve the printed unit-price text and a separate exact
-     calculation price. When the printed price is rounded to cents but
-     `line total / quantity` proves a more precise value, use that exact value
-     for arithmetic and catalog pricing without inventing a different table
-     column. A conflicting row must remain Review rather than create an active
-     offer.
-   - Evidence: invoice `63385`, SKU `956A1004WL`, visibly reads quantity 5,
-     price ILS 27.50, total ILS 137.50, while the current source row has
-     `57.5 × 5 = 287.5`. Invoice `62336` also contains printed rounded prices
-     ILS 0.52 and 2.63 whose line totals prove 0.523 and 2.625 respectively.
-   - Acceptance: all four audited documents reconcile each retained row to its
-     own source-table total, no column is reused as another column, and a
-     genuine unresolved table mapping cannot enter the active catalog.
+6. **Source-table arithmetic for photographed invoices**
+   - Status: in progress
+   - Outcome: preserve printed quantity, unit-price cents and line total from
+     their source-table cells. Normal currency rounding never changes a printed
+     price or sends a row to Review. A bounded visual re-read of the original
+     PDF/JPEG/PNG, not flattened OCR text, handles the known Hebrew RTL failure
+     where `5.00` and `27.50` become `57.50`.
+   - Acceptance: the hinge `956A1004WL` is read as 5 pieces at ILS 27.50 with
+     ILS 137.50 total; 0.52 and 2.63 remain exactly the printed prices; no
+     column is reused as another column; and genuinely ambiguous mappings stay
+     out of the active catalog.
 
 ### Pending P1
 
@@ -915,8 +910,8 @@ The workspace requirements are:
 
 3. **Price Lists first paint**
    - Status: pending
-   - Outcome: show the upload controls immediately, then load catalog, Review,
-     Material Jobs and Source Library independently. Do not make the first
+   - Outcome: show the upload controls immediately, then load Catalog, Material
+     Jobs, Review and Source Library independently in that visible cascade. Do not make the first
      interaction wait for the complete Price Lists snapshot.
    - Evidence: the present first render performs the four list projections
      before drawing the upload card. Production read timing on 2026-10-07 was
