@@ -44,13 +44,19 @@ production UI. A passing unit suite or one screenshot is not acceptance.
   family and structural attributes. Important distinguishing attributes include
   thickness, dimensions, construction and perforation. Colour, décor, OCR word
   order and a generic word such as `sheet` do not create a separate material.
-- Within one canonical supplier lane, matching material identity and equal
-  price, unit and VAT basis represent the same active offer. A new observation
-  with the same identity but a changed price updates or versions that supplier
-  offer. Quantity is never a duplicate criterion.
-- A supplier SKU is strong supporting evidence only inside that same supplier
-  lane. It never resolves an item across suppliers and never defeats conflicting
-  literal material evidence.
+- Within one canonical supplier lane, identity is decided from material-bearing
+  evidence, not invoice prose. The strong evidence hierarchy is: matching SKU
+  when present, otherwise matching price; then category/family, a proven primary
+  discriminator such as model, thickness or literal primary size, and explicit
+  construction such as `perforated`. A matching SKU may represent the same item
+  at a changed price, in which case the supplier offer is updated or versioned.
+  Quantity, décor, colour, word order and unproven extracted geometry never
+  create a second material. A literal contradiction in a primary discriminator
+  remains a boundary.
+- A supplier SKU is valid only inside its canonical supplier lane. It never
+  resolves an item across suppliers. It is paired with the material-bearing
+  evidence above, so a matching SKU cannot collapse a Twin sheet with its
+  explicit `perforated` variant.
 - The bilingual taxonomy may prove a category, but unfamiliar wording is kept
   as source evidence. It must not itself create an `Unknown material` when the
   literal evidence already proves a recognised family.
@@ -785,3 +791,72 @@ The workspace requirements are:
 - Verification: 148 focused Price Source and purge-migration tests passed after
   the dependency-order fix. This is a functional checkpoint, not completion of
   the full Price Lists rebuild.
+
+### Checkpoint, 2026-10-07, canonical supplier-sheet merge
+
+- Production sources `HashDoc_2_159930.pdf` (`30829`, source
+  `d288b292-558b-4ee1-a81c-1b06cb90aab1`) and `HashDoc_2_160146.pdf`
+  (`30912`, source `f96368da-2d18-4a40-859a-98e6b6ff2491`) resolved to the
+  frozen canonical supplier `לבידי בוקטוס`, H.P. `514539998`.
+- Ordinary Twin plywood, 17 mm, SKU `27`, ILS 110, is one canonical material
+  (`e2d45e1e-9d25-4d90-a9bd-b2f72e90c28b`) across three invoice rows. This
+  remains true although the extractor produced inconsistent secondary geometry
+  (`3100×3100` and `3100×2000`) for source wording that literally contains the
+  same primary `3100` span.
+- The material distinctions from the two documents are correct: ordinary Twin
+  17 mm, perforated Twin 17 mm, ordinary Okoume 5 mm, perforated Okoume 5 mm,
+  and MDF 19 mm. The perforated variants remain distinct despite equal prices.
+- The same-supplier merge contract is covered by deterministic tests for equal
+  SKU with changed price, conflicting secondary extracted dimensions, and the
+  `perforated` boundary. Focused verification: 177 Price Source tests passed.
+- The owner intentionally restarted from clean sources rather than running a
+  special repair for historical duplicate material cards. This checkpoint is
+  therefore evidence for the forward ingestion path, not a retroactive-data
+  migration.
+
+## Authoritative Price Source backlog, 2026-10-07
+
+### Actionable P0
+
+1. **Material Job classification and canonical persistence**
+   - Status: pending
+   - Outcome: a known supplier operation, including `פס חיתוך + קנט` / cut and
+     edge banding, always follows the Material Job path
+     (`reference_operation -> company supplier operation offer`) and never
+     creates a `Wood Supplies` material or material offer.
+   - Evidence: source `30829` persisted SKU `41`, ILS 17.5 as the material
+     `Edge Banding Cutting Strip`; source `30912` correctly classified the same
+     evidence as an operation service. This is a classifier/persistence
+     inconsistency, not a supplier or sheet-material merge defect.
+   - Acceptance: repeat documents reuse one canonical operation and supplier
+     operation offer, source rows retain the original wording and price, no
+     material card is created, and supplier-resolution and sheet-merge paths
+     remain unchanged.
+
+2. **VAT fallback for incomplete invoice captures**
+   - Status: pending, requires the already-recorded P0 policy decision before
+     implementation
+   - Outcome: determine the active VAT basis for a line-only invoice without
+     mistaking a missing totals page for a line-price error.
+
+3. **Production acceptance matrix for source ingestion closure**
+   - Status: pending, depends on the two items above
+   - Outcome: execute and record the authenticated production matrix in the
+     closure contract: text PDF, graphical/scanned PDF, photo, spreadsheet,
+     repeat supplier, supplier-price change, cross-supplier offer, consecutive
+     deletion, and dashboard persistence across Profile navigation.
+
+### Pending P1
+
+1. **Source Library invoice label**
+   - Status: pending
+   - Outcome: show the extracted invoice number below the canonical supplier
+     name when present, otherwise show the uploaded file name.
+
+### Deferred until Source ingestion is accepted
+
+1. **Estimation resolver**
+   - Status: deferred
+   - Outcome: select eligible supplier offers for one estimation under an
+     approved project policy. It must not modify source evidence, supplier
+     identity, catalog material identity or offer history.
