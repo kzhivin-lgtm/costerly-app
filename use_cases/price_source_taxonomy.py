@@ -138,6 +138,22 @@ def job_operation_for_text(text: str) -> str | None:
     return next((code for code, aliases in JOB_RULES if _has_alias(text, aliases)), None)
 
 
+def _taxonomy_material_name(rule: TaxonomyRule, attributes: Mapping[str, Any]) -> str:
+    """Build a canonical display name from facts proven by the source text."""
+    parts = [rule.family.title()]
+    if attributes.get("species"):
+        parts.append(str(attributes["species"]).title())
+    if attributes.get("construction"):
+        parts.extend(str(attributes["construction"]).split())
+    try:
+        thickness = float(attributes.get("thickness_mm") or 0)
+    except (TypeError, ValueError):
+        thickness = 0
+    if thickness:
+        parts.append(f"{int(thickness) if thickness.is_integer() else thickness} mm")
+    return " ".join(parts)
+
+
 def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     """Apply only literal bilingual evidence to one material row.
 
@@ -165,22 +181,33 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     row["material_type"] = rule.category
     row["material_family"] = rule.family
     current_name = str(row.get("normalized_name") or "").strip()
-    if not current_name or current_name.casefold().startswith("unclassified"):
-        parts = [rule.family.title()]
-        if attributes.get("species"):
-            parts.append(str(attributes["species"]).title())
-        if attributes.get("construction"):
-            parts.append(str(attributes["construction"]))
-        try:
-            thickness = float(attributes.get("thickness_mm") or 0)
-        except (TypeError, ValueError):
-            thickness = 0
-        if thickness:
-            parts.append(f"{int(thickness) if thickness.is_integer() else thickness} mm")
-        row["normalized_name"] = " ".join(parts)
-    row["reason_codes"] = sorted(
-        set(row.get("reason_codes") or []) | {f"taxonomy_{rule.category.casefold().replace(' ', '_')}"}
+    canonical_name = _taxonomy_material_name(rule, attributes)
+    # A taxonomy rule is stronger than a model-only name from another material
+    # family.  For example, אוקמה proves plywood, so a hallucinated “Glass
+    # Aukma” name must never remain visible or block the row from activation.
+    has_conflicting_family_word = (
+        rule.family != "glass"
+        and any(word in current_name.casefold().split() for word in ("glass", "mirror"))
     )
+    if (
+        not current_name
+        or current_name.casefold().startswith("unclassified")
+        or has_conflicting_family_word
+    ):
+        row["normalized_name"] = canonical_name
+    reasons = set(row.get("reason_codes") or [])
+    reasons.discard("unknown_product_term")
+    reasons.add(f"taxonomy_{rule.category.casefold().replace(' ', '_')}")
+    row["reason_codes"] = sorted(reasons)
+    # Do not override a real pricing, VAT, unit, or arithmetic blocker.  A
+    # row unresolved solely because the model did not recognise a term that
+    # the deterministic taxonomy does recognise is safe to continue.
+    if row.get("status") == "unresolved" and not (reasons & {
+        "missing_unit", "ambiguous_unit", "package_conversion_unresolved",
+        "line_total_inconsistent", "unit_price_mismatch", "vat_basis_unknown",
+        "document_total_mismatch", "ambiguous_material",
+    }):
+        row["status"] = "ready"
     return True
 
 

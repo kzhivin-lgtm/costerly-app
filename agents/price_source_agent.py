@@ -23,6 +23,7 @@ from agents.schemas.price_source_schema import (
     guard_price_source_row_activation,
     normalize_price_source_row_identity_fields,
     normalize_price_source_optional_numbers,
+    normalize_price_source_units,
     normalize_price_source_confidence_scale,
     reconcile_price_source_arithmetic,
     validate_price_source_result,
@@ -342,9 +343,11 @@ def run_price_source_agent(
                 reconcile_price_source_arithmetic(
                     apply_price_source_hardware_defaults(
                         apply_price_source_document_defaults(
-                            normalize_price_source_row_identity_fields(
-                                normalize_price_source_optional_numbers(
-                                    normalize_price_source_confidence_scale(result)
+                            normalize_price_source_units(
+                                normalize_price_source_row_identity_fields(
+                                    normalize_price_source_optional_numbers(
+                                        normalize_price_source_confidence_scale(result)
+                                    )
                                 )
                             ), source_kind=source_kind
                         )

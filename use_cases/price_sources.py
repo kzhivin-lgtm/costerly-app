@@ -1023,6 +1023,9 @@ def _normalized_unit(value: str) -> str:
         "units": "piece",
         "pcs": "piece",
         "pc": "piece",
+        "יח": "piece",
+        "יחידה": "piece",
+        "יחידות": "piece",
         "sheet": "sheet",
         "sheets": "sheet",
     }

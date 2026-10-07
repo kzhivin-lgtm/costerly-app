@@ -3634,6 +3634,10 @@ def install_price_source_file_selection_guard(
                 syncWarning();
             }
 
+            function clearTerminalResultOnSelection() {
+                parentWindow.__costerlyClearPriceSourceTerminalResult?.();
+            }
+
             function replaceFiles(input, files) {
                 if (files.length === input.files.length) return;
                 const transfer = new DataTransfer();
@@ -3732,6 +3736,7 @@ def install_price_source_file_selection_guard(
                 const uploader = input.closest(UPLOADER_SELECTOR);
                 if (!uploader) return;
                 const files = Array.from(input.files || []);
+                if (files.length) clearTerminalResultOnSelection();
                 const accepted = acceptedIncomingFiles(uploader, files);
                 // A single PDF is valid.  Streamlit can briefly retain a
                 // previous chip while replacing it, so never show the
@@ -3756,6 +3761,7 @@ def install_price_source_file_selection_guard(
                 if (!uploader || !event.dataTransfer) return;
 
                 const files = Array.from(event.dataTransfer.files || []);
+                if (files.length) clearTerminalResultOnSelection();
                 const accepted = acceptedIncomingFiles(uploader, files);
                 setWarning(files.length > 1 && accepted.length < files.length);
                 if (accepted.length === files.length) return;
@@ -3893,11 +3899,17 @@ def install_price_source_processing_guard() -> None:
                 // File or URL selection, not the Extract click, begins the next user
                 // cycle. The visible terminal dashboard must never describe a
                 // source the user has already replaced.
+                clearTerminalResult();
+            }
+
+            function clearTerminalResult() {
                 parentDoc.querySelectorAll(".price-source-cycle-result").forEach((result) => {
                     result.remove();
                 });
                 parentWindow.sessionStorage.removeItem(TERMINAL_RESULT_KEY);
             }
+
+            parentWindow.__costerlyClearPriceSourceTerminalResult = clearTerminalResult;
 
             function terminalResultCycle(result) {
                 const cycle = Number(result.dataset.processingCycle || "0");
@@ -4125,6 +4137,7 @@ def install_price_source_processing_guard() -> None:
                 delete parentWindow[STARTING_KEY];
                 delete parentWindow[DEFERRED_TAB_KEY];
                 delete parentWindow[REPLAYING_TAB_KEY];
+                delete parentWindow.__costerlyClearPriceSourceTerminalResult;
                 delete parentWindow[CLEANUP_KEY];
             };
         })();
@@ -4169,6 +4182,12 @@ def install_price_source_remove_guard() -> None:
                 modal.querySelector("[data-price-source-remove-confirm]")
                     .addEventListener("click", () => {
                         closeModal();
+                        // The source is already confirmed for deletion. Hide
+                        // its row before the Streamlit callback or background
+                        // database work begins, so consecutive deletes remain
+                        // immediate and visually deterministic.
+                        button.closest('[data-testid="stHorizontalBlock"]')
+                            ?.classList.add("costerly-price-source-pending-delete");
                         button.dataset.priceSourceRemoveConfirmed = "true";
                         button.click();
                     });

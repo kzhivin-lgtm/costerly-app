@@ -1323,6 +1323,11 @@ def apply_company_profile_css() -> None:
             border-bottom: 1px solid var(--color-border-soft);
         }
 
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_list_card [data-testid="stHorizontalBlock"].costerly-price-source-pending-delete {
+            display: none !important;
+        }
+
         .st-key-price_source_list_card [data-testid="stHorizontalBlock"]:first-child {
             min-height: 38px;
             background: #FAF8FC;

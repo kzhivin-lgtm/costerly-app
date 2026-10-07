@@ -124,6 +124,30 @@ def apply_price_source_hardware_defaults(result: dict[str, Any]) -> dict[str, An
             row["reason_codes"] = sorted(reasons)
     return result
 
+
+def normalize_price_source_units(result: dict[str, Any]) -> dict[str, Any]:
+    """Replace recognised source-language count units with canonical codes.
+
+    ``יח`` is the standard Hebrew abbreviation for one item.  It is useful in
+    raw OCR evidence, but it must not leak into the price UI or prevent the
+    later sheet-material normaliser from recognising a full sheet.
+    """
+    aliases = {
+        "יח": "piece",
+        "יח׳": "piece",
+        "יח'": "piece",
+        "יחידה": "piece",
+        "יחידות": "piece",
+        "each": "piece",
+    }
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict):
+            continue
+        raw_unit = str(row.get("raw_unit") or "").strip().casefold()
+        if raw_unit in aliases:
+            row["raw_unit"] = aliases[raw_unit]
+    return result
+
 PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,

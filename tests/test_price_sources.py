@@ -20,6 +20,7 @@ from agents.schemas.price_source_schema import (
     guard_price_source_document_totals,
     guard_price_source_row_activation,
     normalize_price_source_row_identity_fields,
+    normalize_price_source_units,
     normalize_price_source_optional_numbers,
     normalize_price_source_confidence_scale,
     reconcile_price_source_arithmetic,
@@ -224,6 +225,7 @@ def test_source_library_uses_modal_confirmed_optimistic_source_removal():
     assert "on_click=_start_price_source_purge_action" in source
     assert "price-source-remove-modal" in guard
     assert "This permanently deletes the source" in guard
+    assert "costerly-price-source-pending-delete" in guard
 
 
 def test_price_source_pdf_preview_renders_only_first_page():
@@ -1054,6 +1056,43 @@ def test_sheet_normalization_replaces_wrong_glass_label_when_okoume_proves_plywo
     assert row["purchase_unit"] == row["calculation_unit"] == "sheet"
 
 
+def test_sheet_taxonomy_removes_hallucinated_glass_and_resolves_known_okoume():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "אוקמה 5 ממ 3100 טפ 1*",
+        "normalized_name": "Glass Aukma 5 mm 3100 1-Pack",
+        "material_type": "Other",
+        "material_family": "other",
+        "status": "unresolved",
+        "reason_codes": ["unknown_product_term"],
+        "raw_unit": "piece",
+        "purchase_unit": "sheet",
+        "calculation_unit": "sheet",
+        "conversion_factor": 1,
+        "normalized_price": row["raw_price"],
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 5},
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["status"] == "ready"
+    assert row["normalized_name"] == "Plywood Okoume 5 mm"
+    assert "Glass" not in row["normalized_name"]
+    assert "unknown_product_term" not in row["reason_codes"]
+
+
+def test_hebrew_item_abbreviation_normalizes_before_sheet_rules():
+    result = _result()
+    row = result["rows"][0]
+    row.update({"raw_unit": "יח", "purchase_unit": "sheet", "calculation_unit": "sheet"})
+
+    normalize_price_source_units(result)
+    normalize_price_source_sheet_rows(result)
+
+    assert row["raw_unit"] == "sheet"
+
+
 def test_sheet_normalization_classifies_proved_hebrew_trade_families_without_supplier_logic():
     result = _result()
     row = result["rows"][0]
@@ -1848,6 +1887,7 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "function showLiveProgress(card, startedAtMs)" in source
     assert "function removeLiveProgress(card)" in source
     assert "clearTerminalResultForNewSelection" in source
+    assert "__costerlyClearPriceSourceTerminalResult" in source
     assert 'parentDoc.querySelectorAll(".price-source-cycle-result")' in source
     assert 'card.querySelectorAll(".price-source-cycle-result")' not in source
     assert "!completeMarker && processingMarker" in source
@@ -2097,6 +2137,7 @@ def test_price_source_file_guard_filters_before_streamlit_receives_selection():
     assert "acceptedIncomingFiles" in source
     assert "existing.every(isPhoto)" in source
     assert "if (files.length && !accepted.length)" in source
+    assert "clearTerminalResultOnSelection" in source
 
 
 def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
