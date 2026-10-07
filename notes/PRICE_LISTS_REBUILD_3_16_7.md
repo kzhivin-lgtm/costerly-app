@@ -601,6 +601,21 @@ The workspace requirements are:
   three Israeli seller identifiers (`ח.פ`, `ע.פ`, `ע.מ`) before validating the
   required nine digits.
 
+### Checkpoint, 2026-10-07, supplier resolution is frozen
+
+- Production acceptance: the two consecutive PDF sources `HashDoc_2_159930`
+  and `HashDoc_2_160146` both resolved to the same canonical company supplier
+  `לבידי בוקטוס`, H.P. `514539998`, and the same `supplier_id`. This proves
+  first recognition and subsequent canonical merge for the current four-invoice
+  supplier set.
+- Frozen supplier surface: PDF issuer-header OCR, issuer identity parsing,
+  buyer/company blacklist, canonical supplier matching, aliases and supplier
+  persistence. Material classification and material-offer matching must not
+  alter these paths. Any demonstrated cross-dependency requires a new explicit
+  decision before touching this checkpoint.
+- Next scope only: explain and correct `Unclassified sheet material` and
+  repeated sheet-material merging using the protected canonical supplier lane.
+
 ### Checkpoint, 2026-10-06, permanent Price Source deletion
 
 - Production is on commits `a8e6280`, `e1f0086`, and `740bd62`. The SQL function
