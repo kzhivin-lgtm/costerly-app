@@ -616,6 +616,38 @@ The workspace requirements are:
 - Next scope only: explain and correct `Unclassified sheet material` and
   repeated sheet-material merging using the protected canonical supplier lane.
 
+### In progress, 2026-10-07, wood-sheet classification and repeat merge
+
+- Diagnostic evidence: the current extractor returned `Other / other` for
+  Twin and Okume rows, even while retaining thickness, price, SKU and the
+  source trade wording. Existing matching therefore reuses rows in its
+  `Other` lane but exposes `Unclassified sheet material` in the catalog.
+- Scope is restricted to material normalisation and matching. The frozen
+  supplier checkpoint above is not a dependency of this work and must remain
+  untouched.
+
+### Increment, 2026-10-07, bilingual material taxonomy
+
+- Added a deterministic bilingual taxonomy layer after commercial extraction
+  and before catalog matching. It has no supplier inputs and cannot call or
+  alter issuer OCR, supplier identity parsing, buyer blacklist, aliasing or
+  canonical supplier persistence.
+- The first vocabulary covers all existing catalog areas rather than a Wood
+  exception: Wood Sheets, Solid Wood, Wood Supplies, Hardware, Glass, Metal
+  Sheets, Metal Profiles, Metal Supplies, Paints & Coatings, Coating Supplies,
+  plus the existing Material Jobs reference-operation vocabulary.
+- English and Hebrew aliases map to one canonical category/family. Unknown
+  wording is retained as source evidence, but cannot undo a category proven by
+  a different literal marker. Twin/Combi is a plywood construction attribute;
+  Okoume is a plywood species attribute, not a supplier brand or standalone
+  material family. Perforated remains a distinct construction boundary.
+- VAT legal-status inference is explicitly deferred. `ע.מ.` is a VAT-registered
+  dealer, `ע.פ.` is VAT-exempt, and `ח.פ.` identifies a company but does not by
+  itself prove a row's VAT treatment. No VAT rule changed in this increment.
+- Verification: `tests/test_price_sources.py` reports 161 passed. Added
+  bilingual regression cases across all catalog areas and existing Material
+  Jobs operation codes.
+
 ### Checkpoint, 2026-10-06, permanent Price Source deletion
 
 - Production is on commits `a8e6280`, `e1f0086`, and `740bd62`. The SQL function

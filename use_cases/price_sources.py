@@ -39,6 +39,11 @@ from use_cases.price_source_ocr import (
 from use_cases.price_source_material_resolution import (
     resolve_price_source_material_identities,
 )
+from use_cases.price_source_taxonomy import (
+    apply_material_taxonomy,
+    job_operation_for_text,
+    normalize_sheet_name,
+)
 
 
 PRICE_SOURCE_BUCKET = "company-price-sources"
@@ -125,10 +130,15 @@ class PriceSourceError(ValueError):
 
 
 def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
-    """Apply deterministic sheet-material evidence after OCR extraction."""
+    """Apply deterministic bilingual material taxonomy after extraction.
+
+    This normalisation intentionally runs after the commercial agent and before
+    catalog matching. It has no supplier inputs or side effects.
+    """
     for row in result.get("rows") or []:
         if not isinstance(row, dict) or row.get("item_kind") != "material":
             continue
+        apply_material_taxonomy(row)
         text = " ".join(
             str(row.get(key) or "")
             for key in ("raw_description", "normalized_name", "material_family")
@@ -141,7 +151,15 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
         for attribute, descriptors in _IDENTITY_DESCRIPTOR_MARKERS.items():
             for canonical, markers in descriptors:
                 if any(marker in source_text for marker in markers):
-                    attributes[attribute] = canonical
+                    if attribute == "construction" and attributes.get(attribute):
+                        # Construction is composable: Twin/Combi and
+                        # perforated describe different facts and must not
+                        # erase one another during normalisation.
+                        attributes[attribute] = " ".join(sorted({
+                            *str(attributes[attribute]).split(), canonical,
+                        }))
+                    else:
+                        attributes[attribute] = canonical
                     if canonical == "perforated":
                         row["normalized_name"] = re.sub(
                             r"\b(?:cut to size|split)\b", "perforated",
@@ -181,8 +199,7 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
         name = str(row.get("normalized_name") or "")
         # Category already conveys sheet form. Keep only identity-bearing words;
         # never lose a proven thickness.
-        name = re.sub(r"\b(?:sheet|sheets|panel|board|\d+\s*[- ]?sheet)\b", "", name, flags=re.I)
-        name = re.sub(r"\s+", " ", name).strip(" ,-")
+        name = normalize_sheet_name(name)
         if thickness:
             thickness_label = f"{int(thickness)} mm"
             if re.search(r"\b\d+(?:\.\d+)?\s*mm\b", name, flags=re.I):
@@ -204,7 +221,7 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str, str, str]:
+def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str, str, str, str]:
     """Return the deterministic private-material identity.
 
     The key deliberately ignores prose, SKU, colour and décor.  A supplier can
@@ -227,6 +244,7 @@ def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str,
         number("width_mm"),
         number("length_mm"),
         number("diameter_mm"),
+        _normalized_name(str(attributes.get("species") or "")),
         _normalized_name(str(attributes.get("construction") or "")),
     )
 
@@ -387,19 +405,7 @@ def discard_price_source_non_candidates(result: dict[str, Any]) -> int:
 def price_source_service_operation_code(row: Mapping[str, Any]) -> str | None:
     """Map an extracted supplier service to an existing reference operation."""
     text = " ".join(str(row.get(key) or "") for key in ("raw_description", "normalized_name", "material_family")).casefold()
-    if ("חיתוך" in text or "cut" in text) and ("קנט" in text or "edge" in text):
-        return "supplier_cut_and_edge_banding"
-    for markers, code in (
-        (("קנט", "edge"), "edge_banding"),
-        (("חיתוך", "cut"), "panel_saw_cutting"),
-        (("כרסום", "cnc", "router"), "cnc_router_profile_cutting"),
-        (("קידוח", "drill"), "cnc_vertical_drilling"),
-        (("חריץ", "groove", "dado"), "cnc_grooving"),
-        (("הרכב", "assembly"), "carcass_assembly"),
-    ):
-        if any(marker in text for marker in markers):
-            return code
-    return None
+    return job_operation_for_text(text)
 
 
 def prepare_price_source_operation_rows(result: dict[str, Any]) -> dict[int, str]:
@@ -1198,7 +1204,14 @@ def material_offer_matches_extracted_row(
     # remains a fallback only for that legacy case.
     if not material_row["material_family"]:
         material_row["material_family"] = str(material.get("canonical_name") or material.get("normalized_name") or "").split(" ")[0]
-    return material_structural_key(material_row) == material_structural_key(row)
+    material_key = material_structural_key(material_row)
+    row_key = material_structural_key(row)
+    # Species was added after some private materials had already been stored.
+    # A proven contradiction blocks a match, while a missing legacy species is
+    # allowed to inherit the stronger same-supplier SKU/price evidence.
+    if material_key[:5] != row_key[:5] or material_key[6] != row_key[6]:
+        return False
+    return not material_key[5] or not row_key[5] or material_key[5] == row_key[5]
 
 
 def material_offer_proves_unknown_family(
@@ -1300,6 +1313,17 @@ def _same_material_construction(
     return left == right
 
 
+def _compatible_optional_identity_attribute(
+    left_attributes: Mapping[str, Any],
+    right_attributes: Mapping[str, Any],
+    field: str,
+) -> bool:
+    """A proved difference is a boundary, an absent attribute is not."""
+    left = _normalized_name(str(left_attributes.get(field) or ""))
+    right = _normalized_name(str(right_attributes.get(field) or ""))
+    return not left or not right or left == right
+
+
 def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
     """Merge a supplier's decorative variants into one catalog material.
 
@@ -1331,6 +1355,8 @@ def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapp
     if not _compatible_material_family(left.get("material_family"), right.get("material_family")):
         return False
     if not _same_material_construction(left_attributes, right_attributes):
+        return False
+    if not _compatible_optional_identity_attribute(left_attributes, right_attributes, "species"):
         return False
     for field in ("width_mm", "length_mm", "diameter_mm"):
         left_value = _identity_number(left_attributes, field)

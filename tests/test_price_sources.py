@@ -87,6 +87,7 @@ from use_cases.price_sources import (
     save_price_source_row,
     validate_price_source_upload_selection,
 )
+from use_cases.price_source_taxonomy import apply_material_taxonomy, job_operation_for_text
 
 
 def test_price_source_extraction_diagnostics_records_zero_row_evidence():
@@ -777,6 +778,22 @@ def test_material_structural_key_ignores_sheet_wording_but_keeps_perforation():
     assert material_structural_key(base) != material_structural_key(perforated)
 
 
+def test_same_supplier_material_merge_keeps_proved_wood_species_separate():
+    first = _result()["rows"][0]
+    first.update({
+        "material_type": "Wood Sheets",
+        "material_family": "plywood",
+        "raw_price": 110,
+        "identity_attributes": {
+            **first["identity_attributes"], "thickness_mm": 17, "species": "okoume",
+        },
+    })
+    other_species = deepcopy(first)
+    other_species["identity_attributes"]["species"] = "birch"
+
+    assert not price_rows_match_same_supplier_material(first, other_species)
+
+
 def test_same_supplier_material_merge_allows_decor_and_sku_variants():
     first = _result()["rows"][0]
     first.update({
@@ -1008,12 +1025,12 @@ def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
 
     normalize_price_source_sheet_rows(result)
 
-    assert row["identity_attributes"]["construction"] == "perforated"
+    assert row["identity_attributes"]["construction"] == "perforated twin"
     assert row["identity_attributes"]["finish"] == "glossy"
     assert row["normalized_name"] == "Twin plywood 17 mm perforated"
 
 
-def test_sheet_normalization_refuses_an_unproved_glass_category():
+def test_sheet_normalization_replaces_wrong_glass_label_when_okoume_proves_plywood():
     result = _result()
     row = result["rows"][0]
     row.update({
@@ -1031,10 +1048,49 @@ def test_sheet_normalization_refuses_an_unproved_glass_category():
 
     normalize_price_source_sheet_rows(result)
 
-    assert row["material_type"] == "Other"
-    assert row["material_family"] == "other"
-    assert row["normalized_name"] == "Unclassified sheet material"
-    assert row["purchase_unit"] == row["calculation_unit"] == "piece"
+    assert row["material_type"] == "Wood Sheets"
+    assert row["material_family"] == "plywood"
+    assert row["identity_attributes"]["species"] == "okoume"
+    assert row["purchase_unit"] == row["calculation_unit"] == "sheet"
+
+
+def test_sheet_normalization_classifies_proved_hebrew_trade_families_without_supplier_logic():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "טווין 17 ממ 3100 טפ 2*",
+        "normalized_name": "Unclassified sheet material",
+        "material_type": "Other",
+        "material_family": "other",
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 17},
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["material_type"] == "Wood Sheets"
+    assert row["material_family"] == "plywood"
+    assert row["identity_attributes"]["construction"] == "twin"
+    assert row["normalized_name"] == "Plywood twin 17 mm"
+    assert "taxonomy_wood_sheets" in row["reason_codes"]
+
+
+def test_sheet_normalization_keeps_okume_perforated_separate_from_the_plain_family():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "אוקמה 5 ממ מבוקע 1*",
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 5},
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["material_type"] == "Wood Sheets"
+    assert row["material_family"] == "plywood"
+    assert row["normalized_name"] == "Plywood Okoume perforated 5 mm"
+    assert row["identity_attributes"]["construction"] == "perforated"
 
 
 def test_sheet_normalization_keeps_proved_glass_category():
@@ -1051,6 +1107,46 @@ def test_sheet_normalization_keeps_proved_glass_category():
 
     assert row["material_type"] == "Glass"
     assert row["normalized_name"] == "Glass 5 mm 3100 sheet"
+
+
+@pytest.mark.parametrize(
+    ("description", "category", "family"),
+    [
+        ("לוח MDF ירוק 17 ממ", "Wood Sheets", "mdf"),
+        ("oak planed timber 40 mm", "Solid Wood", "solid timber"),
+        ("ציר מטבח", "Hardware", "hinge"),
+        ("aluminium profile 30x30", "Metal Profiles", "metal profile"),
+        ("פח נירוסטה 2 ממ", "Metal Sheets", "metal sheet"),
+        ("powder coating black", "Paints & Coatings", "powder coating"),
+        ("לכה מט", "Paints & Coatings", "lacquer"),
+    ],
+)
+def test_bilingual_taxonomy_covers_all_material_departments(description, category, family):
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": description,
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == category
+    assert row["material_family"] == family
+
+
+@pytest.mark.parametrize(
+    ("description", "operation_code"),
+    [
+        ("חיתוך + קנטים", "supplier_cut_and_edge_banding"),
+        ("edge banding", "edge_banding"),
+        ("CNC drilling", "cnc_vertical_drilling"),
+        ("הרכבת גוף", "carcass_assembly"),
+    ],
+)
+def test_bilingual_material_jobs_dictionary_resolves_existing_operations(description, operation_code):
+    assert job_operation_for_text(description.casefold()) == operation_code
 
 
 def test_identity_attributes_require_the_fixed_contract():
