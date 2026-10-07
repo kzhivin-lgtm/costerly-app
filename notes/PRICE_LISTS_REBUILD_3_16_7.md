@@ -819,7 +819,7 @@ The workspace requirements are:
 ### Actionable P0
 
 1. **Material Job classification and canonical persistence**
-   - Status: pending
+   - Status: in progress, implementation `2c387a3`, production acceptance pending
    - Outcome: a known supplier operation, including `פס חיתוך + קנט` / cut and
      edge banding, always follows the Material Job path
      (`reference_operation -> company supplier operation offer`) and never
@@ -832,6 +832,11 @@ The workspace requirements are:
      operation offer, source rows retain the original wording and price, no
      material card is created, and supplier-resolution and sheet-merge paths
      remain unchanged.
+   - Implemented scope: exact Hebrew singular/plural and punctuation variants
+     for the combined cutting-and-edge-banding phrase now override an incorrect
+     material classification before material taxonomy runs. Hebrew final forms,
+     the joined conjunction `ו־`, and a one-character OCR error are normalised
+     only for multi-signal phrases. A bare edge-band product remains material.
 
 2. **VAT fallback for incomplete invoice captures**
    - Status: pending, requires the already-recorded P0 policy decision before
