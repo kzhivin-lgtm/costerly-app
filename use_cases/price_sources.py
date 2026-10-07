@@ -3229,11 +3229,12 @@ def process_price_source(
     )
     if isinstance(usage_events, dict):
         usage_events = [usage_events]
+    usage_records = [
+        event for event in (usage_events or []) if isinstance(event, dict)
+    ]
     if isinstance(usage_events, list):
         usage_started = time.perf_counter()
-        for usage_event in usage_events:
-            if not isinstance(usage_event, dict):
-                continue
+        for usage_event in usage_records:
             raw_usage = dict(usage_event.get("raw_usage") or {})
             raw_usage["price_source_extraction"] = extraction_diagnostics
             usage_event["raw_usage"] = raw_usage
@@ -3242,6 +3243,34 @@ def process_price_source(
             except Exception:
                 logger.exception("Price source agent usage persistence failed")
         _emit_duration(trace, "server.price_source_usage_persist", usage_started)
+    primary_usage = next(
+        (
+            event
+            for event in usage_records
+            if event.get("agent_name") == "price_source"
+        ),
+        None,
+    )
+    total_agent_duration = sum(
+        float(event.get("duration_seconds") or 0)
+        for event in usage_records
+        if isinstance(event.get("duration_seconds"), (int, float))
+    )
+    total_token_cost = sum(
+        float(event.get("total_cost_usd") or 0)
+        for event in usage_records
+        if isinstance(event.get("total_cost_usd"), (int, float))
+    )
+    total_input_tokens = sum(
+        int(event.get("input_tokens") or 0)
+        for event in usage_records
+        if isinstance(event.get("input_tokens"), (int, float))
+    )
+    total_output_tokens = sum(
+        int(event.get("output_tokens") or 0)
+        for event in usage_records
+        if isinstance(event.get("output_tokens"), (int, float))
+    )
     if not result.get("rows"):
         _emit_marker(trace, "server.price_source_agent_zero_rows", **extraction_diagnostics)
         raise PriceSourceError(
@@ -3371,14 +3400,12 @@ def process_price_source(
             "previous_source_id": (
                 str(previous_revision.get("source_id")) if previous_revision else None
             ),
-            "agent_duration_seconds": (
-                usage_event.get("duration_seconds") if usage_event else None
-            ),
-            "token_cost": usage_event.get("total_cost_usd") if usage_event else None,
-            "input_tokens": usage_event.get("input_tokens") if usage_event else None,
-            "output_tokens": usage_event.get("output_tokens") if usage_event else None,
-            "model": usage_event.get("model") if usage_event else None,
-            "prompt_version": usage_event.get("prompt_version") if usage_event else None,
+            "agent_duration_seconds": total_agent_duration or None,
+            "token_cost": total_token_cost or None,
+            "input_tokens": total_input_tokens or None,
+            "output_tokens": total_output_tokens or None,
+            "model": primary_usage.get("model") if primary_usage else None,
+            "prompt_version": primary_usage.get("prompt_version") if primary_usage else None,
             "text_layer": {
                 "strategy": text_layer.strategy,
                 "characters": len(text_layer.text),

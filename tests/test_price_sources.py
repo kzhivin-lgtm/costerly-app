@@ -3505,6 +3505,14 @@ def test_price_source_arithmetic_recheck_uses_runtime_trace_metadata_contract():
     assert "_source_table_recheck_rows(result)" in source
 
 
+def test_price_source_summary_aggregates_primary_and_table_verifier_timing():
+    source = Path("use_cases/price_sources.py").read_text()
+
+    assert "total_agent_duration = sum(" in source
+    assert '"agent_duration_seconds": total_agent_duration or None' in source
+    assert "primary_usage = next(" in source
+
+
 def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():
     source = Path("agents/price_source_agent.py").read_text()
     processing_source = Path("use_cases/price_sources.py").read_text()
