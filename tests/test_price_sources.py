@@ -874,7 +874,7 @@ def test_same_supplier_material_merge_allows_decor_and_sku_variants():
     assert price_rows_match_same_supplier_material(first, second)
 
 
-def test_same_supplier_material_merge_keeps_perforated_and_price_or_thickness_distinct():
+def test_same_supplier_material_merge_collapses_perforation_only_at_equal_price():
     base = _result()["rows"][0]
     base.update({
         "material_type": "Wood Sheets",
@@ -890,7 +890,7 @@ def test_same_supplier_material_merge_keeps_perforated_and_price_or_thickness_di
     other_thickness = deepcopy(base)
     other_thickness["identity_attributes"]["thickness_mm"] = 18
 
-    assert not price_rows_match_same_supplier_material(base, perforated)
+    assert price_rows_match_same_supplier_material(base, perforated)
     assert not price_rows_match_same_supplier_material(base, other_price)
     assert not price_rows_match_same_supplier_material(base, other_thickness)
 

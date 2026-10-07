@@ -42,21 +42,23 @@ production UI. A passing unit suite or one screenshot is not acceptance.
 
 - A material is normalised from literal source evidence into its department,
   family and structural attributes. Important distinguishing attributes include
-  thickness, dimensions, construction and perforation. Colour, décor, OCR word
+  thickness, dimensions and construction. Perforation is retained as evidence,
+  but may be collapsed under the same-price rule. Colour, décor, OCR word
   order and a generic word such as `sheet` do not create a separate material.
 - Within one canonical supplier lane, identity is decided from material-bearing
   evidence, not invoice prose. The strong evidence hierarchy is: matching SKU
   when present, otherwise matching price; then category/family, a proven primary
   discriminator such as model, thickness or literal primary size, and explicit
-  construction such as `perforated`. A matching SKU may represent the same item
+  construction. A matching SKU may represent the same item
   at a changed price, in which case the supplier offer is updated or versioned.
   Quantity, décor, colour, word order and unproven extracted geometry never
   create a second material. A literal contradiction in a primary discriminator
   remains a boundary.
 - A supplier SKU is valid only inside its canonical supplier lane. It never
   resolves an item across suppliers. It is paired with the material-bearing
-  evidence above, so a matching SKU cannot collapse a Twin sheet with its
-  explicit `perforated` variant.
+  evidence above. It cannot by itself collapse a different construction. A
+  plain and perforated sheet may collapse only when supplier, family, format,
+  thickness and price are identical.
 - The bilingual taxonomy may prove a category, but unfamiliar wording is kept
   as source evidence. It must not itself create an `Unknown material` when the
   literal evidence already proves a recognised family.

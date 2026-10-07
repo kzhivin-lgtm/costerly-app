@@ -238,7 +238,8 @@ def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str,
 
     The key deliberately ignores prose, SKU, colour and décor.  A supplier can
     write the same sheet in many ways, but thickness, dimensions and a proven
-    construction such as perforated are real catalog distinctions.
+    construction remain catalog distinctions. Perforation is retained in this
+    key so a differently-priced perforated offer can stay separate.
     """
     attributes = row.get("identity_attributes") or {}
 
@@ -1322,10 +1323,22 @@ def _same_material_construction(
     left_attributes: Mapping[str, Any],
     right_attributes: Mapping[str, Any],
 ) -> bool:
-    """Keep structural variants, notably perforated sheets, separate."""
-    left = _normalized_name(str(left_attributes.get("construction") or ""))
-    right = _normalized_name(str(right_attributes.get("construction") or ""))
+    """Compare construction, treating perforation as a conditional detail."""
+    left = _material_construction_identity(left_attributes)
+    right = _material_construction_identity(right_attributes)
     return left == right
+
+
+def _material_construction_identity(attributes: Mapping[str, Any]) -> str:
+    """Return construction markers that define a purchasable material.
+
+    Perforation may appear or disappear between invoice line spellings while
+    the supplier price, thickness and sheet family remain identical. This helper
+    only compares the remaining construction markers. The caller separately
+    requires the same price when perforation differs.
+    """
+    tokens = _normalized_name(str(attributes.get("construction") or "")).split()
+    return " ".join(token for token in tokens if token != "perforated")
 
 
 def _compatible_optional_identity_attribute(
@@ -1345,11 +1358,10 @@ def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapp
     Invoice prose is not a product key.  The relevant hierarchy is: same
     supplier lane, same SKU when it is present (or same price when it is not),
     then category, material family, a proven primary measurement such as
-    thickness, and explicit construction.  Quantity, decor and incidental
+    thickness, and construction. Quantity, decor and incidental
     wording never participate.  Extracted dimensions are supporting evidence,
     not a veto: an OCR/model may invent a second sheet dimension from a line
-    that literally contains only one span.  A proven construction distinction,
-    notably perforated versus ordinary sheet, remains a hard boundary.
+    that literally contains only one span.
     """
     if canonical_price_source_category(str(left.get("material_type") or "")) != canonical_price_source_category(
         str(right.get("material_type") or "")
@@ -1375,6 +1387,20 @@ def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapp
     if not left_thickness or left_thickness != right_thickness:
         return False
     if not _compatible_material_family(left.get("material_family"), right.get("material_family")):
+        return False
+    # A matching SKU usually survives ordinary supplier price changes.  Do not
+    # extend that latitude across a perforation difference: equal price is the
+    # required evidence for collapsing perforated and plain sheet lines.
+    left_is_perforated = "perforated" in _normalized_name(
+        str(left_attributes.get("construction") or "")
+    ).split()
+    right_is_perforated = "perforated" in _normalized_name(
+        str(right_attributes.get("construction") or "")
+    ).split()
+    if (
+        left_is_perforated != right_is_perforated
+        and not _decimal_equal(left.get("raw_price"), right.get("raw_price"), "0.0001")
+    ):
         return False
     if not _same_material_construction(left_attributes, right_attributes):
         return False
