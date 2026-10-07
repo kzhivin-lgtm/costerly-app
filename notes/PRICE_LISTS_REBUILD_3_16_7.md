@@ -16,6 +16,114 @@ current Price Lists UI or automatically modify any existing source.
   affect. Findings outside that scope become backlog entries, not opportunistic
   patches.
 
+## Closure contract, 2026-10-07
+
+This is the completion boundary for the source-ingestion tool. The tool is
+complete only after every P0 item below is accepted in the authenticated
+production UI. A passing unit suite or one screenshot is not acceptance.
+
+### 1. Supplier lane
+
+- Each document identifies the seller from issuer evidence, not the buyer.
+  Header and footer evidence, including OCR evidence, remain eligible for every
+  supported document format.
+- The active company's legal names and registration identifier are a blacklist:
+  they can never create a supplier from a seller invoice.
+- `ח.פ.`, `ע.פ.`, and `ע.מ.` with exactly nine digits are one supplier-identity
+  field. An exact seller identifier reuses the existing supplier lane. The
+  earliest accepted supplier name remains the canonical display name; source
+  spelling and aliases remain evidence rather than competing suppliers.
+- Material normalisation, offer matching, VAT work and UI changes may not alter
+  issuer OCR, buyer exclusion, supplier matching, aliases or canonical supplier
+  persistence. Those paths are frozen by the accepted 2026-10-07 supplier
+  checkpoint.
+
+### 2. Materials and supplier offers
+
+- A material is normalised from literal source evidence into its department,
+  family and structural attributes. Important distinguishing attributes include
+  thickness, dimensions, construction and perforation. Colour, décor, OCR word
+  order and a generic word such as `sheet` do not create a separate material.
+- Within one canonical supplier lane, matching material identity and equal
+  price, unit and VAT basis represent the same active offer. A new observation
+  with the same identity but a changed price updates or versions that supplier
+  offer. Quantity is never a duplicate criterion.
+- A supplier SKU is strong supporting evidence only inside that same supplier
+  lane. It never resolves an item across suppliers and never defeats conflicting
+  literal material evidence.
+- The bilingual taxonomy may prove a category, but unfamiliar wording is kept
+  as source evidence. It must not itself create an `Unknown material` when the
+  literal evidence already proves a recognised family.
+
+### 3. Same material from different suppliers, an explicit open decision
+
+The recommended policy is adopted for source ingestion: one canonical company
+material may retain several supplier-specific offers. Different suppliers and
+different prices are therefore not duplicates. Each offer retains supplier,
+source, unit, currency, VAT basis, observed date and provenance. The source
+tool never selects a best offer. The later Estimation resolver will select from
+those eligible offers under an explicit project policy.
+
+### 4. VAT and prices, current next P0 scope
+
+- Keep raw price, quantity, unit price, line total and VAT evidence separately.
+  Arithmetic may repair only a proven transposition, otherwise the row is
+  reviewed after its independent re-read.
+- The catalog presents ex-VAT and VAT-inclusive prices only when each value is
+  proven by source evidence or an accepted supplier/document VAT rule. A missing
+  totals page is not a line-price error.
+- Discounts are private source accounting evidence. When an explicit meaningful
+  discount proves the effective line price, persist the effective price. Do not
+  expose discounts in the catalog. Tiny rounding adjustments do not create a
+  discount or an error.
+- The precise fallback for a line-only invoice is an active P0 decision and
+  implementation task. Until it is accepted, an unproved VAT basis remains a
+  Review reason instead of being silently invented.
+
+### 5. Source lifecycle and final-cycle UI
+
+- PDF, XLSX, CSV, JPEG and PNG are supported. One PDF/spreadsheet is one source;
+  several selected photos may be one logical document. OCR and progress must
+  reach an observable terminal state, not an unbounded browser spinner.
+- The final extraction dashboard represents exactly the latest completed cycle.
+  It persists across Profile-tab navigation and ordinary rerenders, then clears
+  immediately when the user selects or drops a replacement file or enters a
+  replacement URL, before preview generation.
+- `Delete source` is permanent: it deletes source-owned rows, offers, aliases,
+  resolver artifacts and orphan materials, while preserving materials still
+  referenced by another source. The selected source row disappears immediately;
+  the irreversible storage/database work follows in the background. Failure
+  restores that one row with an actionable error.
+- Optimistic deletion may affect only the keyed source row. It may never hide a
+  generic Streamlit container, duplicate the page, or alter other sources.
+  Its immediate disappearance is the only success acknowledgement. A visible
+  error is shown only if the irreversible deletion fails.
+
+### 6. Minimal Needs Review
+
+- Review contains only a real activation blocker: unproved price arithmetic,
+  VAT basis, unit/conversion, required material distinction or a true category
+  ambiguity. Known taxonomy and supplier defaults must resolve before Review.
+- Each row exposes one concise reason and one bounded correction action. Review
+  is not a second catalog, and non-blocking confidence language is not shown.
+
+### 7. Production acceptance matrix
+
+P0 acceptance requires representative authenticated production runs for: a
+text-layer PDF, a graphical/scanned PDF, a photographed JPEG/PNG invoice, a
+spreadsheet, repeat documents from one supplier, matching material with a
+changed supplier price, two suppliers offering the same material, source
+deletion of two sources in succession, and a final-cycle dashboard surviving a
+Profile-tab visit. Every run records source, OCR, agent, persistence and
+terminal timing so a failed run can be diagnosed at the earliest missing stage.
+
+### After closure: Estimation resolver, separate task
+
+The next task consumes active supplier offers for one estimation cycle. It may
+choose eligible offers using an approved project policy, but must not change
+source evidence, supplier identity, catalog material identity or historical
+offer records. It is deliberately not a gate for completing source ingestion.
+
 ## Decision
 
 `reference_operations` is the single global catalog of normalised work. It is

@@ -85,7 +85,11 @@ contract: retain source supplier spelling and aliases, link an operation-service
 row to the existing global `reference_operations` catalog, and persist private
 supplier operation offers separately from material offers. No existing source
 or material offer is reclassified automatically. Detailed contract:
-`notes/PRICE_LISTS_REBUILD_3_16_7.md`.
+`notes/PRICE_LISTS_REBUILD_3_16_7.md`. The 2026-10-07 closure contract makes
+supplier resolution, material and offer merging, VAT evidence, source lifecycle,
+final-cycle UI, permanent deletion, and minimal Needs Review the P0 completion
+scope. A later Estimation resolver consumes accepted offers only and is not a
+reason to reopen frozen supplier ingestion behavior.
 
 ACTIVE, IMPLEMENTATION CHECKPOINT `5f6360f`, P0, 3.15.24 canonical object quantity and durable Object Detail route:
 make item quantity editable on File Review, Objects, and Object Detail. All
@@ -529,7 +533,10 @@ cause from the local screenshot alone.
   current Estimation results. Continue with Revision A migration review and the
   read-only Admin parameter library.
 
-- 3.12.1 Price Source Agent accuracy: active, P1. Improve real supplier-source
+- 3.12.1 Price Source Agent accuracy: historical tracking, superseded by active
+  3.16.7 for current implementation and acceptance. Preserve the following
+  revision history as evidence, but record all new Source Agent work only under
+  `notes/PRICE_LISTS_REBUILD_3_16_7.md`. Improve real supplier-source
   extraction, material-type classification, unit normalization, confidence,
   and ready-versus-unresolved decisions while protecting the accepted 3.10.1
   Price Catalog UI checkpoint `d18b533`. The approved v3 candidate adds row-level

@@ -4265,10 +4265,7 @@ def install_price_source_notice_guard() -> None:
         <script>
         (() => {
             const parentDoc = window.parent.document;
-            parentDoc.querySelectorAll(
-                ".price-lists-toast:not([data-costerly-toast-bound]), "
-                + ".price-source-library-notice:not([data-costerly-toast-bound])"
-            )
+            parentDoc.querySelectorAll(".price-lists-toast:not([data-costerly-toast-bound])")
                 .forEach((toast) => {
                     toast.dataset.costerlyToastBound = "true";
                     const dismiss = () => toast.classList.add("costerly-toast-hidden");

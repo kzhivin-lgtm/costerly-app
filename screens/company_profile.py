@@ -2152,11 +2152,8 @@ def _process_pending_price_source_purges() -> bool:
             _clear_price_lists_snapshot()
             hidden.discard(source_id)
             st.session_state.pop("_price_source_notice", None)
-            storage_note = "" if result["storage_deleted"] else "; file cleanup is pending"
-            _set_price_source_action_notice(
-                f'Source removed, {result["deleted_rows"]} rows deleted{storage_note}',
-                kind="source_removed",
-            )
+            # The disappearing row is the only success acknowledgement for a
+            # delete. Green terminal feedback is reserved for extraction runs.
     if not pending:
         st.session_state.pop("_price_source_purge_pending", None)
     if not hidden:
@@ -3232,10 +3229,9 @@ def _render_price_source_processing_status(access: CompanyAccess, *, trace=None)
         st.rerun(scope="app")
 
 
-def _set_price_source_action_notice(message: str, *, kind: str = "saved") -> None:
+def _set_price_source_action_notice(message: str) -> None:
     st.session_state._price_source_action_notice = {
         "message": message,
-        "kind": kind,
         "created_at": time.monotonic(),
     }
 
@@ -3328,21 +3324,14 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     install_price_source_remove_guard()
 
     action_notice = st.session_state.get("_price_source_action_notice")
-    source_removal_notice: dict | None = None
     if isinstance(action_notice, dict):
         age = time.monotonic() - float(action_notice.get("created_at") or 0)
         if age < 5:
-            if action_notice.get("kind") == "source_removed":
-                source_removal_notice = {
-                    "message": str(action_notice.get("message") or "Source removed"),
-                    "duration_ms": max(1, int((5 - age) * 1000)),
-                }
-            else:
-                _render_price_source_toast(
-                    str(action_notice.get("message") or "Saved"),
-                    duration_ms=max(1, int((5 - age) * 1000)),
-                    kind="saved",
-                )
+            _render_price_source_toast(
+                str(action_notice.get("message") or "Saved"),
+                duration_ms=max(1, int((5 - age) * 1000)),
+                kind="saved",
+            )
         else:
             st.session_state.pop("_price_source_action_notice", None)
     elif action_notice:
@@ -3362,15 +3351,6 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
                 '<span id="source-library" class="price-source-library-anchor"></span>',
                 unsafe_allow_html=True,
             )
-            if source_removal_notice:
-                st.markdown(
-                    '<div class="price-source-library-notice" '
-                    f'data-duration-ms="{source_removal_notice["duration_ms"]}"><span>'
-                    + escape(source_removal_notice["message"])
-                    + '</span><button type="button" aria-label="Dismiss">×</button></div>',
-                    unsafe_allow_html=True,
-                )
-                install_price_source_notice_guard()
             with st.expander(f'Source library · {len(sources)}', expanded=False):
                 purging_source_ids = {
                     str(source_id)

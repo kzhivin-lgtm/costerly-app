@@ -2054,8 +2054,7 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
     assert company_profile._process_pending_price_source_purges() is True
     assert cleared == [True]
     assert "_price_source_purge_pending" not in state
-    assert state["_price_source_action_notice"]["message"] == "Source removed, 5 rows deleted"
-    assert state["_price_source_action_notice"]["kind"] == "source_removed"
+    assert "_price_source_action_notice" not in state
 
 
 def test_price_source_file_selection_clears_the_supplier_url(monkeypatch):
