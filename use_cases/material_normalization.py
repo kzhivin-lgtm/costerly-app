@@ -40,10 +40,14 @@ SECONDARY_ATTRIBUTE_ORDER: tuple[str, ...] = (
 )
 
 _ENTITY_DISPLAY_OVERRIDES = {
+    "abs sheet": "ABS Sheet",
     "mdf": "MDF",
     "hdf": "HDF",
     "osb": "OSB",
     "pvc": "PVC",
+    "pvc sheet": "PVC Sheet",
+    "petg sheet": "PETG Sheet",
+    "pmma sheet": "PMMA Sheet",
 }
 
 

@@ -59,7 +59,7 @@ whole source phrase and the price-table context.
 | Wood | plywood, MDF, particleboard, HDF, OSB, laminated panel, solid timber, veneer, edge banding | thickness or timber section | dimensions, species, substrate, construction, finish, colour |
 | Hardware | hinge, mounting plate, drawer slide, handle, leg, lift, connector | model or proven series | opening angle, load/length, finish, handedness |
 | Metal | sheet, profile, tube, angle, channel, flat/round bar, rod, wire | section or thickness | metal type, technical grade including AISI, wall thickness, finish |
-| Glass | glass, mirror | thickness | dimensions, tempering, edge process, finish |
+| Glass & Plastics | glass, mirror, acrylic/PMMA, ABS, polycarbonate, PETG, PVC, plastic sheet, vinyl film, aluminium composite panel, sandwich panel | thickness or product form | dimensions, core, fire class, tempering, edge process, finish |
 | Coating | paint, lacquer, primer, powder coating, stain, filler, hardener, thinner | system/product type | substrate, sheen, colour, chemistry |
 | Material Jobs | cutting and edge banding, machining, metalwork, glasswork, finishing, assembly | reference operation | supplier-proved billing basis and scope only |
 

@@ -2112,7 +2112,7 @@ def test_price_source_output_budget_supports_large_supplier_pages():
     assert PRICE_SOURCE_MAX_OUTPUT_TOKENS >= 32_768
 
 
-def test_price_catalog_uses_three_stable_user_facing_departments():
+def test_price_catalog_uses_four_stable_user_facing_departments():
     assert PRICE_CATALOG_DEPARTMENTS["Wood Sheets"] == "Wood"
     assert PRICE_CATALOG_DEPARTMENTS["Wood Supplies"] == "Wood"
     assert PRICE_CATALOG_DEPARTMENTS["Hardware"] == "Wood"
@@ -2122,6 +2122,8 @@ def test_price_catalog_uses_three_stable_user_facing_departments():
     assert PRICE_CATALOG_DEPARTMENTS["Metal Supplies"] == "Metal"
     assert PRICE_CATALOG_DEPARTMENTS["Paints & Coatings"] == "Finishing"
     assert PRICE_CATALOG_DEPARTMENTS["Coating Supplies"] == "Finishing"
+    assert PRICE_CATALOG_DEPARTMENTS["Glass"] == "Glass & Plastics"
+    assert PRICE_CATALOG_DEPARTMENTS["Plastics & Composites"] == "Glass & Plastics"
 
 
 def test_legacy_material_types_are_canonicalized_without_splitting_filters():

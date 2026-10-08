@@ -1706,6 +1706,15 @@ def test_price_catalog_renders_material_first_grouped_table():
     assert "SRC-12345678" not in markup
 
 
+def test_empty_catalog_and_material_jobs_do_not_render_sections():
+    screen_source = Path("screens/company_profile.py").read_text()
+
+    assert 'if not catalog:\n        return' in screen_source
+    assert 'if not jobs:\n        return' in screen_source
+    assert 'elif catalog:\n                _render_price_catalog' in screen_source
+    assert 'elif material_jobs:\n                _render_material_jobs' in screen_source
+
+
 def test_price_catalog_edit_opens_row_level_price_and_unit_form(monkeypatch):
     monkeypatch.setattr(
         company_profile,
@@ -1952,12 +1961,11 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     assert "Add price source" in markup
     assert "Attach files or provide a link to a pricing page" not in markup
     assert "One PDF, XLSX or CSV" not in markup
-    assert "Material prices" in markup
+    assert "Material prices" not in markup
     expander_labels = [item.proto.label for item in app.expander]
-    assert "Wood · 0 prices" in expander_labels
-    assert "Metal · 0 prices" in expander_labels
-    assert "Coating · 0 prices" in expander_labels
-    assert markup.count('class="price-catalog-empty-row"') == 4
+    assert not any("· 0 prices" in label for label in expander_labels)
+    assert "Material Jobs · 0 jobs" not in expander_labels
+    assert 'class="price-catalog-empty-row"' not in markup
     assert any(button.label == "Extract prices" for button in app.button)
     assert not any(field.label == "Department (optional)" for field in app.selectbox)
     assert not any(field.label == "Search" for field in app.text_input)

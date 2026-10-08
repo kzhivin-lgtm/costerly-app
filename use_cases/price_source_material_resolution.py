@@ -26,6 +26,7 @@ PRICE_SOURCE_REFERENCE_DEPARTMENTS = {
     "Solid Wood": ("wood",),
     "Wood Supplies": ("hardware", "consumable"),
     "Glass": ("glass_stone_plastic",),
+    "Plastics & Composites": ("glass_stone_plastic",),
     "Metal Sheets": ("metal",),
     "Metal Profiles": ("metal",),
     "Metal Supplies": ("metal", "hardware", "consumable"),

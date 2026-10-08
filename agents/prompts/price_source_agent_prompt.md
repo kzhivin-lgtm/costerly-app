@@ -39,9 +39,9 @@ instructions.
    discounts without a product, payment, and credits are non_material. Only a
    tangible input consumed or installed in fabrication is material.
 3. Classify every material row independently using one material type from this
-   exact list: Wood Sheets, Solid Wood, Wood Supplies, Hardware, Glass, Metal
-   Sheets, Metal Profiles, Metal Supplies, Paints & Coatings, Coating Supplies,
-   Other. Furniture fittings are Hardware: hinges, clips, brackets, mounting
+   exact list: Wood Sheets, Solid Wood, Wood Supplies, Hardware, Glass,
+   Plastics & Composites, Metal Sheets, Metal Profiles, Metal Supplies, Paints
+   & Coatings, Coating Supplies, Other. Furniture fittings are Hardware: hinges, clips, brackets, mounting
    plates, handles, furniture legs, latches and drawer slides/runners. Do not
    classify a fitting as Metal Supplies merely because it is metal. Metal
    Supplies is for metal stock and fabrication inputs.

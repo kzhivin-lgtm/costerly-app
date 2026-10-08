@@ -79,13 +79,14 @@ CONTENT_TYPES = {
     ".heif": "image/heif",
 }
 
-PRICE_SOURCE_DEPARTMENTS = ("Wood", "Metal", "Finishing")
+PRICE_SOURCE_DEPARTMENTS = ("Wood", "Metal", "Finishing", "Glass & Plastics")
 PRICE_CATALOG_DEPARTMENTS = {
     "Wood Sheets": "Wood",
     "Solid Wood": "Wood",
     "Wood Supplies": "Wood",
     "Hardware": "Wood",
-    "Glass": "Wood",
+    "Glass": "Glass & Plastics",
+    "Plastics & Composites": "Glass & Plastics",
     "Metal Sheets": "Metal",
     "Metal Profiles": "Metal",
     "Metal Supplies": "Metal",
@@ -101,7 +102,9 @@ LEGACY_PRICE_SOURCE_CATEGORIES = {
     "Finishes and Coatings": "Paints & Coatings",
     "Abrasives and Sanding": "Coating Supplies",
 }
-PRICE_CATALOG_DEPARTMENT_ORDER = {"Wood": 0, "Metal": 1, "Finishing": 2}
+PRICE_CATALOG_DEPARTMENT_ORDER = {
+    "Wood": 0, "Metal": 1, "Finishing": 2, "Glass & Plastics": 3,
+}
 _CONSUMABLE_MARKERS = (
     "screw", "screws", "fastener", "dowel", "dowels", "lamello", "biscuit",
     "glue", "adhesive", "sandpaper", "abrasive", "ברג", "דיבל", "למלו", "דבק",

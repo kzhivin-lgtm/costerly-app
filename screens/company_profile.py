@@ -2316,13 +2316,17 @@ def _remove_price_source_row_action(
 
 
 def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: list[dict]) -> None:
+    # A loaded empty department must not take vertical space.  Review and
+    # Source Library are deliberately rendered by their own projections below.
+    if not catalog:
+        return
     department = "All departments"
     material_type = "All material types"
     supplier = "All suppliers"
     if catalog:
         department_column, type_column, supplier_column = st.columns(3)
         department_options = ["All departments"] + [
-            item for item in ("Wood", "Metal", "Finishing")
+            item for item in ("Wood", "Metal", "Finishing", "Glass & Plastics")
             if any(row.get("department") == item for row in catalog)
         ]
         with department_column:
@@ -2372,25 +2376,24 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
     for row in visible:
         departments.setdefault(str(row["department"]), []).append(row)
 
-    department_labels = {"Wood": "Wood", "Metal": "Metal", "Finishing": "Coating"}
+    department_labels = {
+        "Wood": "Wood", "Metal": "Metal", "Finishing": "Coating",
+        "Glass & Plastics": "Glass & Plastics",
+    }
     sources_by_id = {str(source["source_id"]): source for source in sources}
     st.markdown(
         '<div class="price-catalog-title price-catalog-title-main"><span>Material prices</span>'
         f'<span>{len(visible)} active {"price" if len(visible) == 1 else "prices"}</span></div>',
         unsafe_allow_html=True,
     )
-    for department_name in ("Wood", "Metal", "Finishing"):
+    for department_name in ("Wood", "Metal", "Finishing", "Glass & Plastics"):
         rows = departments.get(department_name) or []
+        if not rows:
+            continue
         with st.expander(
             f'{department_labels[department_name]} · {_price_catalog_count(len(rows))}',
             expanded=True,
         ):
-            if not rows:
-                st.markdown(
-                    '<div class="price-catalog-empty-row">No active prices</div>',
-                    unsafe_allow_html=True,
-                )
-                continue
             _render_price_catalog_grid_header("Material")
             for row in rows:
                 source_id = str(row.get("source_id") or "")
@@ -2803,17 +2806,13 @@ def _render_price_source_review_queue(
 
 
 def _render_material_jobs(access: CompanyAccess, jobs: list[dict]) -> None:
-    """Render Material Jobs as the fourth top-level Price Lists department."""
+    """Render the independent Material Jobs projection when it has rows."""
+    if not jobs:
+        return
     with st.container(key="material_jobs_section"):
         with st.expander(
             f'Material Jobs · {_material_jobs_count(len(jobs))}', expanded=True
         ):
-            if not jobs:
-                st.markdown(
-                    '<div class="price-catalog-empty-row">No active jobs</div>',
-                    unsafe_allow_html=True,
-                )
-                return
             _render_price_catalog_grid_header("Job")
             for job in jobs:
                 job_id = str(job.get("operation_offer_id") or job.get("source_row_id") or "job")
@@ -3528,14 +3527,14 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
                 st.info(errors["catalog"])
             elif catalog is None:
                 _render_price_lists_loading("catalog")
-            else:
+            elif catalog:
                 _render_price_catalog(access, catalog, sources or [])
 
             if errors.get("material_jobs"):
                 st.info(errors["material_jobs"])
             elif material_jobs is None:
                 _render_price_lists_loading("Material Jobs")
-            else:
+            elif material_jobs:
                 _render_material_jobs(access, material_jobs)
 
             if errors.get("review"):

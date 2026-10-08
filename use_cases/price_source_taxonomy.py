@@ -97,6 +97,39 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         "לוח מצופה", "לוח למינציה",
     )),
     TaxonomyRule("Glass", "glass", ("glass", "mirror", "זכוכית", "מראה")),
+    TaxonomyRule("Plastics & Composites", "acrylic sheet", (
+        "acrylic", "pmma", "plexiglas", "perspex", "acrylite", "optix",
+        "פרספקס", "אקריל", "אקריליק", "פלקסיגלס",
+    )),
+    TaxonomyRule("Plastics & Composites", "abs sheet", (
+        "abs", "איי בי אס", "א ב ס",
+    )),
+    TaxonomyRule("Plastics & Composites", "polycarbonate sheet", (
+        "polycarbonate", "palsun", "tuffak", "פוליקרבונט", "פלסן",
+    )),
+    TaxonomyRule("Plastics & Composites", "petg sheet", (
+        "petg", "vivak", "ויוואק",
+    )),
+    TaxonomyRule("Plastics & Composites", "pvc sheet", (
+        "foam pvc", "foamed pvc", "rigid pvc", "palight", "pvc", "פי וי סי", "פלייט",
+    )),
+    TaxonomyRule("Plastics & Composites", "plastic sheet", (
+        "hdpe", "polypropylene", "pp sheet", "ptfe", "hips", "plastic sheet",
+        "לוח פלסטיק", "פוליפרופילן", "פוליאתילן",
+    )),
+    TaxonomyRule("Plastics & Composites", "vinyl film", (
+        "vinyl film", "vinyl wrap", "oracal", "orajet", "oraguard",
+        "מדבקת ויניל", "יריעת ויניל", "אורקל",
+    )),
+    TaxonomyRule("Plastics & Composites", "aluminium composite panel", (
+        "aluminium composite", "aluminum composite", "acp", "acm", "alucobond",
+        "dibond", "alucore", "alucodual", "alubond", "reynobond",
+        "אלוקובונד", "דיבונד", "לוח קומפוזיט אלומיניום", "פנל אלומיניום מרוכב",
+    )),
+    TaxonomyRule("Plastics & Composites", "composite sandwich panel", (
+        "sandwich panel", "honeycomb panel", "frp", "carbon fibre laminate",
+        "panel sandwich", "פנל סנדוויץ", "לוח סנדוויץ", "לוח מרוכב", "כוורת אלומיניום",
+    )),
     TaxonomyRule("Solid Wood", "solid timber", (
         "solid wood", "timber", "lumber", "plank", "board", "beam", "batten", "slat",
         "עץ מלא", "קורה", "קורות", "קרש", "קרשים", "לוח עץ", "סרגל", "לטה", "לוחות עץ",
@@ -193,6 +226,32 @@ BRAND_RULES: tuple[BrandRule, ...] = (
     BrandRule("AkzoNobel", ("Paints & Coatings", "Coating Supplies"), ("akzonobel", "akzo nobel", "אקזו נובל")),
     BrandRule("Tambour", ("Paints & Coatings", "Coating Supplies"), ("tambour", "טמבור")),
     BrandRule("Nirlat", ("Paints & Coatings", "Coating Supplies"), ("nirlat", "נירלט")),
+    # Plastics, films and composite panels. The first three are particularly
+    # relevant in Israel because Palram manufactures these material families
+    # locally; each product brand remains distinct when printed on a source.
+    BrandRule("Palram", ("Plastics & Composites",), ("palram", "פלרם")),
+    BrandRule("PALSUN", ("Plastics & Composites",), ("palsun", "פלסן")),
+    BrandRule("PALIGHT", ("Plastics & Composites",), ("palight", "פלייט")),
+    BrandRule("PALCLEAR", ("Plastics & Composites",), ("palclear", "פלקר")),
+    BrandRule("PALGLAS", ("Plastics & Composites",), ("palglas", "פלגלס")),
+    BrandRule("PLEXIGLAS", ("Plastics & Composites",), ("plexiglas", "פרספקס", "פלקסיגלס")),
+    BrandRule("Perspex", ("Plastics & Composites",), ("perspex",)),
+    BrandRule("ACRYLITE", ("Plastics & Composites",), ("acrylite",)),
+    BrandRule("PLASKOLITE", ("Plastics & Composites",), ("plaskolite",)),
+    BrandRule("OPTIX", ("Plastics & Composites",), ("optix",)),
+    BrandRule("TUFFAK", ("Plastics & Composites",), ("tuffak",)),
+    BrandRule("VIVAK", ("Plastics & Composites",), ("vivak", "ויוואק")),
+    BrandRule("VYCOM", ("Plastics & Composites",), ("vycom",)),
+    BrandRule("ORAFOL", ("Plastics & Composites",), ("orafol", "אורפול")),
+    BrandRule("ORACAL", ("Plastics & Composites",), ("oracal", "oracle", "אורקל")),
+    BrandRule("ORAJET", ("Plastics & Composites",), ("orajet", "אוראג'ט")),
+    BrandRule("ORAGUARD", ("Plastics & Composites",), ("oraguard", "אוראגארד")),
+    BrandRule("ALUCOBOND", ("Plastics & Composites",), ("alucobond", "אלוקובונד")),
+    BrandRule("DIBOND", ("Plastics & Composites",), ("dibond", "דיבונד")),
+    BrandRule("ALUCORE", ("Plastics & Composites",), ("alucore", "אלוקור")),
+    BrandRule("ALUCODUAL", ("Plastics & Composites",), ("alucodual", "אלוקודואל")),
+    BrandRule("ALUBOND", ("Plastics & Composites",), ("alubond", "אלובונד")),
+    BrandRule("Reynobond", ("Plastics & Composites",), ("reynobond", "ריינובונד")),
 )
 
 
@@ -210,6 +269,17 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("pine", ("pine", "אורן")),
         ("oak", ("oak", "אלון")),
         ("poplar", ("poplar", "צפצפה")),
+        ("beech", ("beech", "בוק", "אשור")),
+        ("ash", ("ash", "מילה")),
+        ("maple", ("maple", "מייפל")),
+        ("walnut", ("walnut", "אגוז")),
+        ("spruce", ("spruce", "אשוחית")),
+        ("fir", ("fir", "אשוח")),
+        ("cedar", ("cedar", "ארז")),
+        ("teak", ("teak", "טיק")),
+        ("acacia", ("acacia", "שיטה")),
+        ("mahogany", ("mahogany", "מהגוני")),
+        ("bamboo", ("bamboo", "במבוק")),
     ),
     "construction": (
         ("twin", ("twin", "טווין", "combi", "קומבי")),

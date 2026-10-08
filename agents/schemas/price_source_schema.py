@@ -52,6 +52,7 @@ PRICE_SOURCE_CATEGORIES = (
     "Wood Supplies",
     "Hardware",
     "Glass",
+    "Plastics & Composites",
     "Metal Sheets",
     "Metal Profiles",
     "Metal Supplies",
@@ -146,7 +147,9 @@ def apply_price_source_material_unit_defaults(result: dict[str, Any]) -> dict[st
         if not isinstance(row, dict) or row.get("item_kind") != "material":
             continue
         category = str(row.get("material_type") or "")
-        default_unit = "sheet" if category in {"Wood Sheets", "Metal Sheets", "Glass"} else "piece"
+        default_unit = "sheet" if category in {
+            "Wood Sheets", "Metal Sheets", "Glass", "Plastics & Composites",
+        } else "piece"
         changed = False
         if str(row.get("raw_unit") or "").strip().casefold() in unknown_units:
             row["raw_unit"] = default_unit
