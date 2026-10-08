@@ -9,7 +9,8 @@ index. The old 3.12.1 record in `notes/TODO.md` is historical only.
 
 - Work number: `3.16.7`
 - Branch: `main`
-- Latest Price Source commits: `37342bb`, `c50765e`, `2fda016`, `834ee68`
+- Latest Price Source commits: `82d2380`, `83ce68b`, `860fabb`, `1272487`,
+  `9a117c7`, `76873f8`
 - Recovery archives exist under `backups/` for each recent price change. They
   are rollback inputs, not production acceptance.
 
@@ -33,8 +34,10 @@ index. The old 3.12.1 record in `notes/TODO.md` is historical only.
    persistence. PDF text layers and XLSX/CSV cells keep their native paths.
    Visual ambiguity means Review, not activation. Currency rounding noise does
    not rewrite printed price.
-6. **VAT**: retain evidenced basis. A missing totals page is not price failure.
-   Legal entity labels do not currently infer VAT.
+6. **VAT**: source totals win. Otherwise use seller legal identifier, canonical
+   supplier history, then the Israeli supplier-price default. Persist both VAT
+   basis and rate, so a partial page displays its VAT-inclusive price. The
+   statutory fallback is 17% before 2025-01-01 and 18% from that date.
 7. **Delete/UI**: deletion removes visible source-owned records immediately;
    storage/database cleanup follows independently. Background completion cannot
    reset active upload, discard selection, duplicate sections, or collapse
@@ -61,9 +64,29 @@ table verifier 2.924 s, full cycle 45.508 s. The verifier added roughly 2.6 s
 of model time versus the immediately preceding photo path, not the suspected
 large latency regression.
 
-The final checkpoint suite reports `400 passed, 25 warnings` across Price
+The final checkpoint suite reports `405 passed, 25 warnings` across Price
 Source, OCR and company-access tests. This is representative production
 evidence, not the completed authenticated acceptance matrix.
+
+### Supplementary production checkpoint, 2026-10-08
+
+Production source `10d81812-92e0-433b-bf87-325e653c85da`, invoice `66536`,
+dated 2024-12-31, is the verified VAT and Review-state acceptance sample:
+
+- canonical supplier history supplied VAT-excluded basis and the persisted
+  rate is 17%; no document-total page was required;
+- all 14 material rows are active, with zero Review rows;
+- 9 offers are new and 5 existing offers are updated, which is the expected
+  same-supplier merge result rather than loss of source lines;
+- the displayed-price case ILS 2.63 x 30 = ILS 78.75 is accepted as normal
+  hidden-third-decimal rounding. The printed price remains ILS 2.63;
+- `סכין חותך זכוכית` is a glass-cutting tool/consumable and is excluded before
+  material or offer creation. It must never classify as Glass.
+
+The state transition is now deterministic: after the persistence layer has a
+canonical supplier and VAT fact, every unresolved row is re-evaluated against
+real price, unit and material blockers. Agent wording for missing supplier or
+VAT evidence cannot by itself leave a valid row in Review.
 
 ## Authoritative continuation backlog
 
@@ -76,9 +99,11 @@ evidence, not the completed authenticated acceptance matrix.
      must reuse one operation and preserve source wording and price.
 
 2. **3.16.7.2 VAT fallback for incomplete invoices**
-   - Status: pending policy decision
-   - Define line-only invoice VAT handling without treating absent totals as a
-     price mismatch. Do not infer from legal entity labels.
+   - Status: representative production acceptance verified
+   - Supplier invoices resolve VAT by current-document evidence, seller legal
+     identity, supplier history, then the Israeli default. Partial pages retain
+     a date-appropriate rate and do not enter Review only because totals are
+     absent. Broader matrix evidence remains under 3.16.7.3.
 
 3. **3.16.7.3 Source-ingestion acceptance matrix**
    - Status: pending, after items 1 and 2
@@ -101,7 +126,9 @@ evidence, not the completed authenticated acceptance matrix.
    - Status: representative production evidence verified, broader acceptance
      pending
    - Keep conservative image-only verification until measured acceptance data
-     shows narrowing is safe.
+     shows narrowing is safe. Printed two-decimal price versus line total may
+     differ by ordinary currency rounding, capped at ILS 1 per line, without
+     deriving or replacing the printed price.
 
 ### P1: improvements after P0 closure
 

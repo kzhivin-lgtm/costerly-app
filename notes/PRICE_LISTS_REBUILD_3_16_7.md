@@ -80,10 +80,15 @@ those eligible offers under an explicit project policy.
 - The catalog presents ex-VAT and VAT-inclusive prices only when each value is
   proven by source evidence or an accepted supplier/document VAT rule. A missing
   totals page is not a line-price error.
+- For supplier invoices, VAT resolution is: current document totals and VAT
+  basis, then seller legal identifier, then one consistent canonical supplier
+  history, then the Israel default. The rate follows the document date when
+  totals do not prove one: 17% before 2025-01-01 and 18% from that date.
 - Discounts are private source accounting evidence. When an explicit meaningful
   discount proves the effective line price, persist the effective price. Do not
-  expose discounts in the catalog. Tiny rounding adjustments do not create a
-  discount or an error.
+  expose discounts in the catalog. A displayed two-decimal unit price may differ
+  from its line total by normal currency rounding. Allow half an agora per unit,
+  capped at ILS 1 per line; do not derive or replace the printed unit price.
 - VAT resolution order for supplier prices is fixed: explicit current-document
   basis, seller legal identifier in the issuer header (`ע.מ.`, `עוסק מורשה`,
   `ח.פ.` or `חברה בע"מ` with a nine-digit identifier), one consistent basis
