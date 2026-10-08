@@ -84,9 +84,14 @@ those eligible offers under an explicit project policy.
   discount proves the effective line price, persist the effective price. Do not
   expose discounts in the catalog. Tiny rounding adjustments do not create a
   discount or an error.
-- The precise fallback for a line-only invoice is an active P0 decision and
-  implementation task. Until it is accepted, an unproved VAT basis remains a
-  Review reason instead of being silently invented.
+- VAT resolution order for supplier prices is fixed: explicit current-document
+  basis, seller legal identifier in the issuer header (`ע.מ.`, `עוסק מורשה`,
+  `ח.פ.` or `חברה בע"מ` with a nine-digit identifier), one consistent basis
+  in canonical supplier history, then the Israel supplier-price default.
+  The final default is VAT-excluded and is persisted as
+  `vat_inferred_supplier_default`, not silently treated as source evidence.
+  Missing totals alone must never send an otherwise valid supplier line to
+  Review.
 
 ### 5. Source lifecycle and final-cycle UI
 

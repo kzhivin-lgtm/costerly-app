@@ -233,31 +233,32 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def apply_incomplete_invoice_vat_default(result: dict[str, Any]) -> str:
-    """Give supplier invoice lines a usable VAT basis when their totals page is absent.
-
-    The invoice remains auditable: explicit source VAT always arrives before this
-    function and wins.  This is a price-list product policy, not a claim that a
-    particular uploaded page itself printed the tax amount.
-    """
-    if str(result.get("vat_mode") or "unknown") in {"included", "excluded", "mixed"}:
-        return "explicit"
-    if str(result.get("document_type") or "") not in {"invoice", "tax_invoice"}:
-        return "unknown"
-    result["vat_mode"] = "excluded"
+def apply_vat_basis_to_unknown_rows(
+    result: dict[str, Any], *, vat_mode: str, reason_code: str,
+) -> bool:
+    """Apply a confirmed or policy VAT basis to only rows lacking one."""
+    document_mode = str(result.get("vat_mode") or "unknown")
+    if document_mode in {"included", "excluded"}:
+        vat_mode = document_mode
+    if vat_mode not in {"included", "excluded"}:
+        return False
+    if document_mode == "unknown":
+        result["vat_mode"] = vat_mode
+    changed = False
     for row in result.get("rows") or []:
         if not isinstance(row, dict) or row.get("raw_vat_mode") != "unknown":
             continue
-        row["raw_vat_mode"] = "excluded"
+        changed = True
+        row["raw_vat_mode"] = vat_mode
         reasons = set(row.get("reason_codes") or [])
         reasons.difference_update({"vat_basis_unknown", "unknown_vat"})
-        reasons.add("vat_inferred_invoice_default")
+        reasons.add(reason_code)
         row["reason_codes"] = sorted(reasons)
         if row.get("status") == "unresolved" and not (
-            reasons - {"vat_inferred_invoice_default", "below_auto_activation_threshold"}
+            reasons - {reason_code, "below_auto_activation_threshold"}
         ):
             row["status"] = "ready"
-    return "inferred_invoice_default"
+    return changed
 
 
 def apply_known_supplier_vat_basis(
@@ -269,24 +270,48 @@ def apply_known_supplier_vat_basis(
     document that explicitly states its VAT basis always wins, and conflicting
     supplier history is not guessed.
     """
-    if str(result.get("vat_mode") or "unknown") != "unknown":
-        return "explicit"
-    if vat_mode not in {"included", "excluded"}:
+    return (
+        "inferred_supplier_history"
+        if apply_vat_basis_to_unknown_rows(
+            result,
+            vat_mode=vat_mode,
+            reason_code="vat_inferred_from_supplier_history",
+        )
+        else "explicit" if str(result.get("vat_mode") or "unknown") in {"included", "excluded"}
+        else "unknown"
+    )
+
+
+def supplier_legal_identifier_vat_basis(
+    text: str, *, supplier_hp: str,
+) -> str:
+    """Recognise an Israeli seller legal identifier that carries VAT liability."""
+    if not re.fullmatch(r"\d{9}", re.sub(r"\D", "", supplier_hp or "")):
         return "unknown"
-    result["vat_mode"] = vat_mode
-    for row in result.get("rows") or []:
-        if not isinstance(row, dict) or row.get("raw_vat_mode") != "unknown":
-            continue
-        row["raw_vat_mode"] = vat_mode
-        reasons = set(row.get("reason_codes") or [])
-        reasons.difference_update({"vat_basis_unknown", "unknown_vat"})
-        reasons.add("vat_inferred_from_supplier_history")
-        row["reason_codes"] = sorted(reasons)
-        if row.get("status") == "unresolved" and not (
-            reasons - {"vat_inferred_from_supplier_history", "below_auto_activation_threshold"}
-        ):
-            row["status"] = "ready"
-    return "inferred_supplier_history"
+    # Only the seller header participates.  The buyer block can contain its own
+    # nine-digit identifier and must never provide a seller tax classification.
+    seller_header = re.split(r"לכבוד|bill\s*to|customer", text or "", maxsplit=1, flags=re.I)[0]
+    marker = re.compile(
+        r"(?:ע\s*\.?\s*מ\s*\.?|עוסק\s+מורשה|ח\s*\.?\s*פ\s*\.?|"
+        r"חברה\s+בע[\"׳']?מ|h\s*\.?\s*p\s*\.?)",
+        flags=re.I | re.UNICODE,
+    )
+    return "excluded" if marker.search(seller_header) else "unknown"
+
+
+def apply_supplier_vat_default(result: dict[str, Any]) -> str:
+    """Product policy: supplier material prices default to VAT-excluded."""
+    if str(result.get("source_origin") or "supplier") != "supplier":
+        return "unknown"
+    return (
+        "inferred_supplier_default"
+        if apply_vat_basis_to_unknown_rows(
+            result,
+            vat_mode="excluded",
+            reason_code="vat_inferred_supplier_default",
+        )
+        else "explicit"
+    )
 
 
 def known_supplier_vat_basis(client, *, company_id: str, supplier_id: str) -> str:
@@ -3341,7 +3366,10 @@ def process_price_source(
     if not str(result.get("document_number") or "").strip():
         result["document_number"] = invoice_number_from_source_text(text_layer.text)
     normalize_price_source_sheet_rows(result)
-    vat_basis = apply_incomplete_invoice_vat_default(result)
+    # VAT is decided after the canonical supplier has been resolved below.
+    # That preserves the priority: explicit current evidence, seller legal
+    # identifier, known supplier history, then the product-wide default.
+    vat_basis = "unknown"
     discarded_non_candidates = discard_price_source_non_candidates(result)
     discarded_consumables = discard_price_source_consumables(result)
     operation_code_by_row_number = prepare_price_source_operation_rows(result)
@@ -3506,11 +3534,29 @@ def process_price_source(
                     .execute()
                 ).data[0]
             supplier_id = supplier_row["supplier_id"]
-            # A partial or non-invoice supplier document can omit all VAT
-            # evidence. Once this is the canonical supplier, reuse its one
-            # established billing basis instead of putting otherwise usable
-            # rows into Review. A conflicting history deliberately remains
-            # unresolved for human review.
+        current_vat_mode = str(result.get("vat_mode") or "unknown")
+        if current_vat_mode in {"included", "excluded"}:
+            apply_vat_basis_to_unknown_rows(
+                result,
+                vat_mode=current_vat_mode,
+                reason_code="vat_inferred_from_document",
+            )
+            vat_basis = "explicit"
+        else:
+            legal_vat_basis = supplier_legal_identifier_vat_basis(
+                text_layer.text,
+                supplier_hp=supplier_hp,
+            )
+            legal_vat_inference = apply_known_supplier_vat_basis(
+                result,
+                vat_mode=legal_vat_basis,
+            )
+            if legal_vat_inference != "unknown":
+                vat_basis = "inferred_supplier_legal_identifier"
+        if vat_basis == "unknown" and supplier_id:
+            # A partial supplier document can omit all VAT evidence. Once this
+            # is the canonical supplier, reuse its one established billing
+            # basis before falling through to the system default.
             supplier_vat_basis = known_supplier_vat_basis(
                 client,
                 company_id=company_id,
@@ -3522,6 +3568,8 @@ def process_price_source(
             )
             if supplier_vat_inference != "unknown":
                 vat_basis = supplier_vat_inference
+        if vat_basis == "unknown":
+            vat_basis = apply_supplier_vat_default(result)
         existing_invoice_source = find_invoice_source(
             client,
             company_id=company_id,

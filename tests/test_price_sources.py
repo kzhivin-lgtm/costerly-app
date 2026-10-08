@@ -3570,26 +3570,6 @@ def test_price_source_summary_aggregates_primary_and_table_verifier_timing():
     assert "primary_usage = next(" in source
 
 
-def test_incomplete_invoice_vat_defaults_to_excluded_without_review_blocker():
-    from use_cases.price_sources import apply_incomplete_invoice_vat_default
-
-    result = {
-        "document_type": "invoice",
-        "vat_mode": "unknown",
-        "rows": [{
-            "raw_vat_mode": "unknown",
-            "status": "unresolved",
-            "reason_codes": ["vat_basis_unknown", "unknown_vat"],
-        }],
-    }
-
-    assert apply_incomplete_invoice_vat_default(result) == "inferred_invoice_default"
-    assert result["vat_mode"] == "excluded"
-    assert result["rows"][0]["raw_vat_mode"] == "excluded"
-    assert result["rows"][0]["status"] == "ready"
-    assert "unknown_vat" not in result["rows"][0]["reason_codes"]
-
-
 def test_known_supplier_vat_basis_resolves_a_partial_document_without_review_blocker():
     from use_cases.price_sources import apply_known_supplier_vat_basis
 
@@ -3617,6 +3597,35 @@ def test_known_supplier_vat_basis_does_not_override_current_document_evidence():
 
     assert apply_known_supplier_vat_basis(result, vat_mode="excluded") == "explicit"
     assert result["vat_mode"] == "included"
+
+
+def test_supplier_legal_identifier_marks_osek_murshe_as_vat_excluded():
+    from use_cases.price_sources import supplier_legal_identifier_vat_basis
+
+    assert supplier_legal_identifier_vat_basis(
+        "א.ש. פירזול בע\"מ ע.מ. 513453233\nלכבוד: לב קגלס 337791438",
+        supplier_hp="513453233",
+    ) == "excluded"
+
+
+def test_supplier_vat_default_activates_unknown_rows_without_supplier_history():
+    from use_cases.price_sources import apply_supplier_vat_default
+
+    result = {
+        "source_origin": "supplier",
+        "vat_mode": "unknown",
+        "rows": [{
+            "raw_vat_mode": "unknown",
+            "status": "unresolved",
+            "reason_codes": ["vat_basis_unknown"],
+        }],
+    }
+
+    assert apply_supplier_vat_default(result) == "inferred_supplier_default"
+    assert result["vat_mode"] == "excluded"
+    assert result["rows"][0]["raw_vat_mode"] == "excluded"
+    assert result["rows"][0]["status"] == "ready"
+    assert result["rows"][0]["reason_codes"] == ["vat_inferred_supplier_default"]
 
 
 def test_invoice_source_identity_requires_supplier_and_invoice_number():
