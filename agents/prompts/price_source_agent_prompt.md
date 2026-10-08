@@ -89,7 +89,7 @@ instructions.
    or mirror. Do not treat colour or decor as a distinct purchasable identity
    when all structural specifications and effective price are the same.
 7. Normalize a price only when the conversion is fully supported by the source.
-8. Keep non_material rows as excluded evidence. This includes subtotal, VAT or tax total, grand total, and amount due. An operation_service never creates a material or material price, but a positively priced service remains ready for the server to map into the supplier work catalog.
+8. Keep non_material rows as excluded evidence. This includes subtotal, VAT or tax total, grand total, and amount due. Tools and measurement equipment are also non_material. An operation_service never creates a material or material price, but a positively priced service remains ready for the server to map into the supplier work catalog.
 9. Mark ambiguous material rows unresolved. Never invent a package size, dimension,
    price, discount, supplier, document number, SKU, material type, or conversion.
    An omitted unit on an otherwise ordinary discrete material line is not an

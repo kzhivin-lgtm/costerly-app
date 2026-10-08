@@ -97,17 +97,18 @@ source row → reference operation → company supplier operation offer
 It never creates a company material or material offer. The first production
 acceptance case is `פס חיתוך + קנט`.
 
-## Pending consumables boundary
+## Consumables boundary
 
-The owner requested an explicit small-hardware exclusion boundary. This is a
-commercial rule, not a taxonomy rule: a mounting or connector plate remains
-Hardware by entity even when it is excluded from the purchasable catalog.
-Proposed policy awaiting owner confirmation: after source-price arithmetic is
-verified, exclude only a discrete Hardware line whose ex-VAT unit price is at
-most ILS 10 and whose source explicitly proves a package or line quantity of
-at least 10. The raw source row remains audit evidence with an exclusion
-reason. Stock metal, sheets, Material Jobs and a distinct low-cost single
-fitting are outside this policy.
+The owner set an entity-based boundary, with no price threshold. A mounting or
+connector plate remains Hardware by entity but is excluded from the
+purchasable catalog, as are fasteners, nuts, washers, dowels, clips, plastic
+inserts, plastic feet, abrasives, tools, measurement equipment, cable and
+suspension fixings. Hinges, handles, drawer slides, gas lifts, door closures
+and other durable or visible fittings remain catalog candidates regardless of
+price or package count. An explicit package of at least ten items is only a
+supporting exclusion signal for otherwise-generic Hardware; it never excludes
+a recognised durable fitting. The raw source row remains audit evidence with
+an exclusion reason.
 
 ## Delivery sequence
 

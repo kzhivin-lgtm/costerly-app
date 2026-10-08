@@ -638,6 +638,65 @@ def test_bulk_low_value_pack_supports_consumables_filter_without_hiding_fittings
     assert discard_price_source_consumables(result) == 1
 
 
+def test_durable_hardware_pack_is_retained_without_a_price_threshold():
+    result = _result()
+    hinge = result["rows"][0]
+    hinge.update({
+        "material_type": "Hardware",
+        "material_family": "hinge",
+        "raw_description": "Soft-close cabinet hinge, 20-piece pack",
+        "normalized_name": "Hinge",
+        "raw_price": 8,
+        "raw_unit": "pack",
+        "raw_package_quantity": 20,
+    })
+
+    assert discard_price_source_consumables(result) == 0
+    assert result["rows"] == [hinge]
+
+
+@pytest.mark.parametrize(
+    ("description", "family"),
+    [
+        ("Metal mounting plate for cabinet hinge", "mounting plate"),
+        ("Plastic adjustable furniture leg 80 mm", "furniture leg"),
+        ("Pliers for assembly", "tool"),
+        ("Cable suspension kit", "hardware"),
+    ],
+)
+def test_small_hardware_and_tools_are_excluded_by_entity_not_price(description, family):
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "material_type": "Hardware",
+        "material_family": family,
+        "raw_description": description,
+        "normalized_name": description,
+        "raw_price": 200,
+        "raw_unit": "piece",
+        "raw_package_quantity": 0,
+    })
+
+    assert discard_price_source_consumables(result) == 1
+    assert result["rows"] == []
+
+
+def test_nonplastic_furniture_leg_remains_a_catalog_hardware_candidate():
+    result = _result()
+    leg = result["rows"][0]
+    leg.update({
+        "material_type": "Hardware",
+        "material_family": "furniture leg",
+        "raw_description": "Adjustable aluminium furniture leg 120 mm",
+        "normalized_name": "Furniture Leg 120 mm",
+        "raw_price": 12,
+        "raw_unit": "piece",
+    })
+
+    assert discard_price_source_consumables(result) == 0
+    assert result["rows"] == [leg]
+
+
 def test_drawer_runner_defaults_to_a_set_when_the_source_omits_the_unit():
     result = _result()
     runner = result["rows"][0]

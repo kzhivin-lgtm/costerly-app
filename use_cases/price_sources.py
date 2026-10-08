@@ -106,19 +106,40 @@ PRICE_CATALOG_DEPARTMENT_ORDER = {
     "Wood": 0, "Metal": 1, "Finishing": 2, "Glass & Plastics": 3,
 }
 _CONSUMABLE_MARKERS = (
-    "screw", "screws", "fastener", "dowel", "dowels", "lamello", "biscuit",
-    "glue", "adhesive", "sandpaper", "abrasive", "ברג", "דיבל", "למלו", "דבק",
-    "glass cutter", "glass cutting knife", "סכין חותך זכוכית",
-    "חותך זכוכית", "נייר לטש", "נייר שיוף", "שוחק",
+    # Small fixings and installation consumables. They remain source evidence
+    # but are intentionally not company price-list materials.
+    "screw", "screws", "bolt", "nuts", "nut", "washer", "fastener", "fastening kit",
+    "dowel", "dowels", "lamello", "biscuit", "anchor", "rivet", "cable tie",
+    "mounting plate", "connector plate", "fixing plate", "hinge plate", "mounting bracket",
+    "bracket", "clip", "plastic insert", "plastic foot", "plastic leg", "shelf pin",
+    "glue", "adhesive", "sandpaper", "abrasive", "sanding disc", "sanding belt",
+    # Tools and measurement equipment are never material-price candidates.
+    "glass cutter", "glass cutting knife", "pliers", "screwdriver", "ruler", "tape measure",
+    "drill bit", "cutter blade", "utility knife",
+    # Cables, ropes and suspension fixings are installation consumables here,
+    # not structural Metal stock.
+    "wire rope", "suspension cable", "cable suspension", "hanging cable", "hanging kit", "cable hanger",
+    "בורג", "אום", "אומים", "שייבה", "דיבל", "למלו", "דבק", "עוגן", "ניט",
+    "פלטת חיבור", "פלטת הרכבה", "פלטה לציר", "תושבת", "קליפ", "פין מדף",
+    "רגלית פלסטיק", "רגל פלסטיק", "תותב פלסטיק", "נייר לטש", "נייר שיוף", "שוחק",
+    "סכין חותך זכוכית", "חותך זכוכית", "פלייר", "מברג", "סרגל", "סרט מדידה",
+    "מקדח", "להב", "כבל תליה", "חוט תליה", "וו תליה", "מתלה כבל",
 )
-_HARDWARE_MARKERS = (
-    "hinge", "drawer slide", "drawer runner", "drawer rail", "runner",
-    "bracket", "mounting plate", "mounting bracket", "clip", "latch",
-    "handle", "knob", "furniture leg", "plinth leg", "hardware",
-    "ציר", "מסילה", "מגירה", "תושבת", "פלטת חיבור", "קליפ", "פרפר",
-    "רגלית", "ידית", "לחצן",
+_CATALOG_HARDWARE_MARKERS = (
+    # These are durable or visible furniture components. Their package count
+    # must never turn them into consumables.
+    "hinge", "drawer slide", "drawer runner", "drawer rail", "undermount", "runner",
+    "handle", "knob", "gas lift", "gas strut", "lift mechanism", "door closure",
+    "furniture leg", "plinth leg", "adjustable leg", "leveling foot",
+    "ציר", "מסילה", "מגירה", "ידית", "כפתור", "בוכנת גז", "קפיץ גז",
+    "מנגנון קלפה", "מנגנון הרמה", "סוגר דלת", "רגלית", "רגל מתכווננת",
 )
-_DURABLE_HARDWARE_MARKERS = tuple(marker for marker in _HARDWARE_MARKERS if marker != "hardware")
+_HARDWARE_EXCLUSION_OVERRIDES = (
+    "mounting plate", "connector plate", "fixing plate", "hinge plate", "mounting bracket",
+    "bracket", "clip", "plastic insert", "plastic foot", "plastic leg", "shelf pin",
+    "פלטת חיבור", "פלטת הרכבה", "פלטה לציר", "תושבת", "קליפ", "פין מדף",
+    "רגלית פלסטיק", "רגל פלסטיק", "תותב פלסטיק",
+)
 _GLASS_MARKERS = ("glass", "זכוכית")
 _IDENTITY_DESCRIPTOR_MARKERS = {
     "construction": (
@@ -607,31 +628,48 @@ def material_source_description_key(row: Mapping[str, Any]) -> str:
 
 
 def discard_price_source_consumables(result: dict[str, Any]) -> int:
-    """Discard low-value consumables before any private row or offer is stored."""
+    """Discard known small consumables before any private row or offer is stored.
+
+    This is deliberately entity-based, not price-based. A low-cost hinge is
+    still a fitting worth pricing, while a mounting plate, screw or tool is
+    not. An explicit pack of at least ten items only resolves otherwise-generic
+    Hardware in favour of exclusion, and never overrides a durable component.
+    """
     retained: list[dict[str, Any]] = []
     discarded = 0
     for row in result.get("rows") or []:
         text = " ".join(str(row.get(key) or "") for key in ("raw_description", "normalized_name", "material_family")).casefold()
         has_consumable_marker = any(marker in text for marker in _CONSUMABLE_MARKERS)
-        has_durable_hardware_marker = any(marker in text for marker in _DURABLE_HARDWARE_MARKERS)
+        has_catalog_hardware_marker = any(marker in text for marker in _CATALOG_HARDWARE_MARKERS)
+        has_hardware_exclusion_override = any(
+            marker in text for marker in _HARDWARE_EXCLUSION_OVERRIDES
+        )
+        # Invoice wording freely moves “plastic” before or after the leg/foot
+        # noun. Treat the co-occurrence as one low-value furniture component,
+        # while an aluminium or steel furniture leg remains durable Hardware.
+        has_plastic_leg_or_foot = (
+            ("plastic" in text and ("leg" in text or "foot" in text))
+            or ("פלסטיק" in text and ("רגל" in text or "רגלית" in text))
+        )
         try:
             package_quantity = float(row.get("raw_package_quantity") or 0)
-            price_per_packed_item = float(row.get("raw_price") or 0) / package_quantity
-        except (TypeError, ValueError, ZeroDivisionError):
+        except (TypeError, ValueError):
             package_quantity = 0
-            price_per_packed_item = 0
-        # Quantity and unit price are supporting evidence, never the sole
-        # reason to hide a recognisable fitting. They catch unlabelled packs of
-        # small fixings while preserving brackets, legs, hinges and runners.
-        is_bulk_low_value_pack = (
-            package_quantity >= 50
-            and price_per_packed_item <= 2
-            and _normalized_unit(str(row.get("raw_unit") or "")) in {"pack", "piece"}
+        is_generic_bulk_hardware_pack = (
+            str(row.get("material_type") or "") == "Hardware"
+            and package_quantity >= 10
+            and not has_catalog_hardware_marker
         )
         if (
             row.get("item_kind") == "material"
-            and not has_durable_hardware_marker
-            and (has_consumable_marker or is_bulk_low_value_pack)
+            and (
+                has_hardware_exclusion_override
+                or has_plastic_leg_or_foot
+                or (
+                    not has_catalog_hardware_marker
+                    and (has_consumable_marker or is_generic_bulk_hardware_pack)
+                )
+            )
         ):
             discarded += 1
             continue
