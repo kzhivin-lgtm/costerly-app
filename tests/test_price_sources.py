@@ -3557,6 +3557,35 @@ def test_incomplete_invoice_vat_defaults_to_excluded_without_review_blocker():
     assert "unknown_vat" not in result["rows"][0]["reason_codes"]
 
 
+def test_known_supplier_vat_basis_resolves_a_partial_document_without_review_blocker():
+    from use_cases.price_sources import apply_known_supplier_vat_basis
+
+    result = {
+        "document_type": "delivery_note",
+        "vat_mode": "unknown",
+        "rows": [{
+            "raw_vat_mode": "unknown",
+            "status": "unresolved",
+            "reason_codes": ["vat_basis_unknown", "unknown_vat"],
+        }],
+    }
+
+    assert apply_known_supplier_vat_basis(result, vat_mode="excluded") == "inferred_supplier_history"
+    assert result["vat_mode"] == "excluded"
+    assert result["rows"][0]["raw_vat_mode"] == "excluded"
+    assert result["rows"][0]["status"] == "ready"
+    assert "vat_basis_unknown" not in result["rows"][0]["reason_codes"]
+
+
+def test_known_supplier_vat_basis_does_not_override_current_document_evidence():
+    from use_cases.price_sources import apply_known_supplier_vat_basis
+
+    result = {"vat_mode": "included", "rows": []}
+
+    assert apply_known_supplier_vat_basis(result, vat_mode="excluded") == "explicit"
+    assert result["vat_mode"] == "included"
+
+
 def test_invoice_source_identity_requires_supplier_and_invoice_number():
     from use_cases.price_sources import invoice_number_from_source_text, normalize_invoice_number
 

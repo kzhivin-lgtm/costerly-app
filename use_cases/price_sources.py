@@ -260,6 +260,53 @@ def apply_incomplete_invoice_vat_default(result: dict[str, Any]) -> str:
     return "inferred_invoice_default"
 
 
+def apply_known_supplier_vat_basis(
+    result: dict[str, Any], *, vat_mode: str,
+) -> str:
+    """Reuse one established supplier VAT basis for a document with no VAT evidence.
+
+    This intentionally runs only after canonical supplier resolution.  A current
+    document that explicitly states its VAT basis always wins, and conflicting
+    supplier history is not guessed.
+    """
+    if str(result.get("vat_mode") or "unknown") != "unknown":
+        return "explicit"
+    if vat_mode not in {"included", "excluded"}:
+        return "unknown"
+    result["vat_mode"] = vat_mode
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("raw_vat_mode") != "unknown":
+            continue
+        row["raw_vat_mode"] = vat_mode
+        reasons = set(row.get("reason_codes") or [])
+        reasons.difference_update({"vat_basis_unknown", "unknown_vat"})
+        reasons.add("vat_inferred_from_supplier_history")
+        row["reason_codes"] = sorted(reasons)
+        if row.get("status") == "unresolved" and not (
+            reasons - {"vat_inferred_from_supplier_history", "below_auto_activation_threshold"}
+        ):
+            row["status"] = "ready"
+    return "inferred_supplier_history"
+
+
+def known_supplier_vat_basis(client, *, company_id: str, supplier_id: str) -> str:
+    """Return a single proven VAT basis from active sources for one supplier."""
+    sources = (
+        client.table("company_price_sources")
+        .select("vat_mode")
+        .eq("company_id", company_id)
+        .eq("supplier_id", supplier_id)
+        .neq("status", "archived")
+        .execute()
+    ).data or []
+    modes = {
+        str(source.get("vat_mode") or "")
+        for source in sources
+        if str(source.get("vat_mode") or "") in {"included", "excluded"}
+    }
+    return next(iter(modes)) if len(modes) == 1 else "unknown"
+
+
 def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str, str, str, str]:
     """Return the deterministic private-material identity.
 
@@ -3459,6 +3506,22 @@ def process_price_source(
                     .execute()
                 ).data[0]
             supplier_id = supplier_row["supplier_id"]
+            # A partial or non-invoice supplier document can omit all VAT
+            # evidence. Once this is the canonical supplier, reuse its one
+            # established billing basis instead of putting otherwise usable
+            # rows into Review. A conflicting history deliberately remains
+            # unresolved for human review.
+            supplier_vat_basis = known_supplier_vat_basis(
+                client,
+                company_id=company_id,
+                supplier_id=str(supplier_id),
+            )
+            supplier_vat_inference = apply_known_supplier_vat_basis(
+                result,
+                vat_mode=supplier_vat_basis,
+            )
+            if supplier_vat_inference != "unknown":
+                vat_basis = supplier_vat_inference
         existing_invoice_source = find_invoice_source(
             client,
             company_id=company_id,
