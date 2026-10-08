@@ -1647,6 +1647,29 @@ def test_price_review_marks_only_blocking_fields_and_omits_redundant_heading():
     assert '"Edit active price"' not in screen_source
 
 
+def test_catalog_displays_vat_for_partial_invoice_with_no_total_block():
+    excluding, including = company_profile._price_source_amounts(
+        {
+            "normalized_price": 100,
+            "normalized_unit": "sheet",
+            "currency": "ILS",
+            "vat_included": False,
+        },
+        value_key="normalized_price",
+        unit_key="normalized_unit",
+        source={
+            "document_date": "2024-05-30",
+            "processing_summary": {
+                "document_subtotal": 0,
+                "document_vat_amount": 0,
+            },
+        },
+    )
+
+    assert excluding == "₪100 / sheet"
+    assert including == "₪117 / sheet"
+
+
 def test_catalog_source_and_library_view_use_direct_source_links():
     screen_source = Path("screens/company_profile.py").read_text()
     price_source_use_case = Path("use_cases/price_sources.py").read_text()

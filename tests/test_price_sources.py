@@ -59,6 +59,7 @@ from use_cases.price_sources import (
     list_unresolved_price_source_rows,
     prepare_internal_estimate_row_defaults,
     price_source_material_types,
+    price_source_vat_rate,
     price_source_family_identity,
     price_source_semantic_fingerprint,
     supplier_service_pricing_basis,
@@ -3626,6 +3627,20 @@ def test_supplier_vat_default_activates_unknown_rows_without_supplier_history():
     assert result["rows"][0]["raw_vat_mode"] == "excluded"
     assert result["rows"][0]["status"] == "ready"
     assert result["rows"][0]["reason_codes"] == ["vat_inferred_supplier_default"]
+
+
+def test_partial_invoice_uses_statutory_vat_rate_for_its_document_date():
+    assert price_source_vat_rate(document_date="2024-12-31") == (0.17, "document_date")
+    assert price_source_vat_rate(document_date="2025-01-01") == (0.18, "document_date")
+    assert price_source_vat_rate(document_date="") == (0.18, "current_default")
+
+
+def test_document_totals_override_statutory_vat_rate():
+    assert price_source_vat_rate(
+        document_date="2026-10-08",
+        document_subtotal=100,
+        document_vat_amount=17,
+    ) == (0.17, "document_totals")
 
 
 def test_canonical_supplier_resolution_releases_only_stale_supplier_review_rows():

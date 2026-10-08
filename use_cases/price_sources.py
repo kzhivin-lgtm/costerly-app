@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from html.parser import HTMLParser
@@ -60,6 +60,11 @@ SUPPLIER_PAGE_HEADERS = {
 }
 LEGACY_EXTREME_RATIO = 3.0
 LEGACY_CONFIDENCE_PENALTY = 15.0
+# Israeli VAT became 18% on 2025-01-01. A source-proved rate always wins;
+# this is only the statutory fallback for an incomplete invoice page.
+ISRAEL_VAT_RATE_BEFORE_2025 = 0.17
+ISRAEL_VAT_RATE_CURRENT = 0.18
+ISRAEL_VAT_RATE_CHANGE_DATE = date(2025, 1, 1)
 SUPPORTED_SUFFIXES = {".pdf", ".xlsx", ".csv", *OCR_IMAGE_SUFFIXES}
 CONTENT_TYPES = {
     ".pdf": "application/pdf",
@@ -312,6 +317,48 @@ def apply_supplier_vat_default(result: dict[str, Any]) -> str:
         )
         else "explicit"
     )
+
+
+def price_source_vat_rate(
+    *,
+    document_date: object = None,
+    document_subtotal: object = None,
+    document_vat_amount: object = None,
+) -> tuple[float, str]:
+    """Return the VAT rate and provenance for a supplier price source.
+
+    Invoice totals are the primary evidence. A partial invoice page has no
+    totals, so supplier prices use the statutory rate for its document date,
+    falling back to the current rate only if the date is unavailable.
+    """
+    try:
+        subtotal = float(document_subtotal or 0)
+        vat_amount = float(document_vat_amount or 0)
+    except (TypeError, ValueError):
+        subtotal = vat_amount = 0
+    if subtotal > 0 and vat_amount > 0:
+        return vat_amount / subtotal, "document_totals"
+
+    parsed_date = None
+    if isinstance(document_date, datetime):
+        parsed_date = document_date.date()
+    elif isinstance(document_date, date):
+        parsed_date = document_date
+    elif str(document_date or "").strip():
+        try:
+            parsed_date = datetime.fromisoformat(
+                str(document_date).strip().replace("Z", "+00:00")
+            ).date()
+        except ValueError:
+            pass
+    if parsed_date is not None:
+        return (
+            ISRAEL_VAT_RATE_BEFORE_2025
+            if parsed_date < ISRAEL_VAT_RATE_CHANGE_DATE
+            else ISRAEL_VAT_RATE_CURRENT,
+            "document_date",
+        )
+    return ISRAEL_VAT_RATE_CURRENT, "current_default"
 
 
 def known_supplier_vat_basis(client, *, company_id: str, supplier_id: str) -> str:
@@ -3638,6 +3685,11 @@ def process_price_source(
                 vat_basis = supplier_vat_inference
         if vat_basis == "unknown":
             vat_basis = apply_supplier_vat_default(result)
+        vat_rate, vat_rate_origin = price_source_vat_rate(
+            document_date=result.get("document_date"),
+            document_subtotal=result.get("document_subtotal"),
+            document_vat_amount=result.get("document_vat_amount"),
+        )
         supplier_identity_rows_resolved = (
             resolve_rows_after_supplier_identity(result) if supplier_id else 0
         )
@@ -3699,6 +3751,8 @@ def process_price_source(
             "document_vat_amount": result["document_vat_amount"],
             "document_total": result["document_total"],
             "vat_basis": vat_basis,
+            "vat_rate": vat_rate,
+            "vat_rate_origin": vat_rate_origin,
             "material_types": material_types,
             "semantic_sha256": semantic_sha256,
             "template_sha256": template_sha256,

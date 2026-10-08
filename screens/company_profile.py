@@ -53,6 +53,7 @@ from use_cases.price_sources import (
     load_price_source_bytes,
     load_price_source_rows,
     process_price_source,
+    price_source_vat_rate,
     remove_price_source_row,
     render_price_source_preview,
     save_price_source_row,
@@ -1856,14 +1857,23 @@ def _price_catalog_value(row: dict) -> str:
 
 
 def _price_source_vat_rate(source: dict | None) -> float | None:
-    """Use a document's proved VAT totals, never a guessed invoice rate."""
+    """Use the shared VAT contract for both complete and partial invoices."""
     summary = (source or {}).get("processing_summary") or {}
     try:
-        subtotal = float(summary.get("document_subtotal") or 0)
-        vat = float(summary.get("document_vat_amount") or 0)
+        persisted_rate = float(summary.get("vat_rate") or 0)
+    except (TypeError, ValueError):
+        persisted_rate = 0
+    if persisted_rate > 0:
+        return persisted_rate
+    try:
+        rate, _origin = price_source_vat_rate(
+            document_date=(source or {}).get("document_date"),
+            document_subtotal=summary.get("document_subtotal"),
+            document_vat_amount=summary.get("document_vat_amount"),
+        )
     except (TypeError, ValueError):
         return None
-    return vat / subtotal if subtotal > 0 and vat >= 0 else None
+    return rate
 
 
 def _price_source_amounts(
