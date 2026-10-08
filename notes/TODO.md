@@ -12,6 +12,14 @@ reverted. Before reopening, approve the object-local OCR evidence contract,
 storage format and single-pass OCR profile, then test it without altering
 Detection, quantity, deferred Naming or Preview publication.
 
+DEFERRED, P2, USER REQUEST, Legal template research: review
+https://github.com/General-Legal/legal-templates/ and identify reusable clauses,
+document structures, drafting patterns, or process safeguards for Costerly's
+future legal work. Recommend only evidence-backed adaptations that fit the
+existing Terms, Privacy, Customer Content, and consent-release model. Do not
+copy or implement templates automatically, and do not reopen the closed 3.11.1
+legal release. Trigger: owner explicitly starts a new legal work block.
+
 COMPLETED AND OWNER-ACCEPTED, 3.16.1 Partners workspace foundation: Partner is the required top-level entity.
 Organizations use one company-scoped identity with Partner and Client roles;
 one organization may hold both roles. A Project belongs to one Partner and may
