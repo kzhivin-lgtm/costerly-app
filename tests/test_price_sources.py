@@ -972,6 +972,21 @@ def test_issuer_identity_prefers_labelled_hp_after_a_preceding_phone_number():
     }
 
 
+def test_issuer_identity_accepts_a_single_unlabelled_valid_header_id():
+    header = "ספק לדוגמה בע\"מ\nמספר חברה 513453233\nלכבוד: buyer 337791438"
+
+    assert issuer_identity_from_source_text(header) == {
+        "supplier_hp": "513453233",
+        "supplier_name": "ספק לדוגמה",
+    }
+
+
+def test_issuer_identity_does_not_guess_between_unlabelled_header_ids():
+    header = "ספק לדוגמה בע\"מ\n513453233 514539998\nלכבוד: buyer"
+
+    assert issuer_identity_from_source_text(header)["supplier_hp"] == ""
+
+
 def test_material_structural_key_ignores_sheet_wording_but_keeps_perforation():
     base = _result()["rows"][0]
     base.update({

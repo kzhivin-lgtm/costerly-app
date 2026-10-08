@@ -861,6 +861,18 @@ def remove_company_identity_from_supplier_result(
     return True
 
 
+def _is_valid_israeli_registration_number(value: str) -> bool:
+    """Return whether a nine-digit Israeli ID passes its Mod-10 check digit."""
+    digits = re.sub(r"\D", "", str(value or ""))
+    if not re.fullmatch(r"[1-9]\d{8}", digits):
+        return False
+    total = 0
+    for index, digit in enumerate(digits):
+        product = int(digit) * (1 if index % 2 == 0 else 2)
+        total += product if product < 10 else product - 9
+    return total % 10 == 0
+
+
 def issuer_identity_from_source_text(text: str) -> dict[str, str]:
     """Read only unambiguous issuer identity printed before the buyer block.
 
@@ -871,7 +883,9 @@ def issuer_identity_from_source_text(text: str) -> dict[str, str]:
     """
     header = re.split(r"לכבוד\s*:??", str(text or ""), maxsplit=1, flags=re.UNICODE)[0]
     identifier_label = (
-        r"(?:[חפ]\s*[.׳\"״]?\s*[פח]\s*[.׳\"״]?|"
+        # Do not read the ``ע\"מ`` suffix inside a seller name as the
+        # separate ``ע.מ.`` registration label.
+        r"(?<![\u0590-\u05FF])(?:[חפ]\s*[.׳\"״]?\s*[פח]\s*[.׳\"״]?|"
         r"(?:ע\s*[.׳\"״]?\s*[מפ]|[מפ]\s*[.׳\"״]?\s*ע)\s*[.׳\"״]?|"
         r"h\s*\.??\s*p\s*\.??)"
     )
@@ -902,6 +916,26 @@ def issuer_identity_from_source_text(text: str) -> dict[str, str]:
             if re.fullmatch(r"[1-9]\d{8}", candidate):
                 supplier_hp = candidate
                 break
+    # A number does not need a printed legal-form label to be a seller ID.
+    # Some suppliers print only the nine-digit registration number in their
+    # header.  Accept that form only when there is exactly one plausible
+    # Israeli ID candidate before the buyer block: it must pass the standard
+    # check-digit rule, must not begin with zero (telephone numbering), and
+    # cannot sit beside a phone/fax marker.  Multiple unlabelled candidates
+    # remain ambiguous rather than silently becoming a supplier key.
+    if not supplier_hp:
+        unlabelled_candidates: list[str] = []
+        for number_match in re.finditer(r"(?<!\d)(?P<number>\d(?:[\s-]?\d){8})(?!\d)", header):
+            candidate = re.sub(r"\D", "", number_match.group("number"))
+            prefix = header[max(0, number_match.start() - 20):number_match.start()]
+            if (
+                re.fullmatch(r"[1-9]\d{8}", candidate)
+                and _is_valid_israeli_registration_number(candidate)
+                and not re.search(r"(?:טל(?:פון)?|פקס|phone|fax)\s*[:.]?\s*$", prefix, flags=re.IGNORECASE)
+            ):
+                unlabelled_candidates.append(candidate)
+        if len(set(unlabelled_candidates)) == 1:
+            supplier_hp = unlabelled_candidates[0]
     supplier_name = ""
     legal_name_match = re.search(
         r"^\s*([^\n]{2,100}?)\s+בע\s*[\"״׳']?מ\s*\.?\s*$",
