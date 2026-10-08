@@ -170,8 +170,8 @@ VAT evidence cannot by itself leave a valid row in Review.
      invoice-number, VAT, source-deletion or cycle-result paths.
 
 8. **3.16.7.12 Stable Price Lists loading and deletion feedback**
-   - Status: pending, owner-selected next UI task after the current extraction
-     result is assessed.
+   - Status: active. Extraction-accounting portion is implemented under
+     3.17.1.2; stable loading and deletion interaction remain pending.
    - Outcome: source deletion must neither collapse Source Library nor move the
      viewport. Consecutive confirmed deletes must remain actionable while the
      database worker finishes. Use one minimal in-place `Updating…` state when
@@ -189,6 +189,16 @@ VAT evidence cannot by itself leave a valid row in Review.
      price-table line read from every source. Rows excluded in an early
      consumables/non-candidate pass count as `excluded`; they must not vanish
      from the total merely because no source-row record or offer is persisted.
+
+9. **3.17.1.2 Hardware taxonomy and complete extraction accounting**
+   - Status: implementation verified locally, authenticated production
+     acceptance pending.
+   - Outcome: preserve every extracted table row in cycle accounting, including
+     rows excluded before persistence. Classify `push-to-open` and butterfly
+     catches as Hardware door closures, not hinges. Classify plinth clips as
+     Hardware pieces, not drawer-slide sets.
+   - Protected dependency: supplier resolution, invoice matching, VAT and
+     merge logic are out of scope.
 
 ### P1: improvements after P0 closure
 

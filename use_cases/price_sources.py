@@ -3794,6 +3794,10 @@ def process_price_source(
     # That preserves the priority: explicit current evidence, seller legal
     # identifier, known supplier history, then the product-wide default.
     vat_basis = "unknown"
+    # Keep the original table count before early exclusion. Source evidence is
+    # intentionally not persisted for consumables and non-candidates, but the
+    # terminal result must still account for every row the extraction read.
+    extracted_row_count = len(result.get("rows") or [])
     discarded_non_candidates = discard_price_source_non_candidates(result)
     discarded_consumables = discard_price_source_consumables(result)
     operation_code_by_row_number = prepare_price_source_operation_rows(result)
@@ -4035,7 +4039,14 @@ def process_price_source(
         )
         ready_count = sum(row["status"] == "ready" for row in result["rows"])
         unresolved_count = sum(row["status"] == "unresolved" for row in result["rows"])
-        excluded_count = sum(row["status"] == "excluded" for row in result["rows"])
+        persisted_excluded_count = sum(
+            row["status"] == "excluded" for row in result["rows"]
+        )
+        excluded_count = (
+            persisted_excluded_count
+            + discarded_non_candidates
+            + discarded_consumables
+        )
         new_count = 0
         updated_count = 0
         unchanged_count = 0
@@ -4052,7 +4063,7 @@ def process_price_source(
             "discarded_non_candidates": discarded_non_candidates,
             "discarded_consumables": discarded_consumables,
             "operation_services": len(operation_code_by_row_number),
-            "total": len(result["rows"]),
+            "total": extracted_row_count,
             "document_number": result["document_number"],
             "page_count": 1,
             "pages": [{"source_page_id": source_page_id, "source_name": source_name}],
@@ -4754,13 +4765,38 @@ def process_price_source(
                 .eq("source_id", source_id)
                 .execute().data or []
             )
-            source_summary["total"] = len(aggregate_rows)
+            previous_summary = dict(
+                (existing_invoice_source or {}).get("processing_summary") or {}
+            )
+            previous_discarded_non_candidates = int(
+                previous_summary.get("discarded_non_candidates") or 0
+            )
+            previous_discarded_consumables = int(
+                previous_summary.get("discarded_consumables") or 0
+            )
+            source_summary["discarded_non_candidates"] = (
+                previous_discarded_non_candidates + discarded_non_candidates
+            )
+            source_summary["discarded_consumables"] = (
+                previous_discarded_consumables + discarded_consumables
+            )
+            # An invoice can arrive one photo at a time. Persist the count of
+            # every table line across its pages, not only rows retained in the
+            # price catalog.
+            source_summary["total"] = int(previous_summary.get("total") or 0) + extracted_row_count
+            source_summary["ready"] = sum(
+                row.get("result_status") == "ready" for row in aggregate_rows
+            )
             source_summary["unresolved"] = sum(
                 row.get("result_status") == "unresolved" for row in aggregate_rows
             )
             source_summary["excluded"] = sum(
                 row.get("result_status") == "excluded" for row in aggregate_rows
-            )
+            ) + source_summary["discarded_non_candidates"] + source_summary["discarded_consumables"]
+            for key in ("new", "updated", "unchanged", "merged", "operation_services"):
+                source_summary[key] = int(previous_summary.get(key) or 0) + int(
+                    source_summary.get(key) or 0
+                )
         if vat_basis == "explicit" and supplier_id:
             source_summary["supplier_vat_sources_confirmed"] = confirm_supplier_vat_history(
                 client,

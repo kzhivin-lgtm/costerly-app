@@ -1501,6 +1501,32 @@ def test_price_source_notice_exposes_all_rows_status_time_and_tc():
     )
 
 
+def test_price_source_notice_counts_rows_excluded_before_persistence():
+    notice = company_profile._price_source_notice_text(
+        {
+            "processing_summary": {
+                "total": 21,
+                "ready": 5,
+                "new": 5,
+                "updated": 0,
+                "unchanged": 0,
+                "merged": 0,
+                "unresolved": 1,
+                "excluded": 15,
+                "discarded_consumables": 14,
+                "discarded_non_candidates": 1,
+                "agent_duration_seconds": 10.0,
+                "token_cost": 0.0,
+            }
+        }
+    )
+
+    assert notice == (
+        "21 rows extracted · 5 recorded · 0 updated · 0 merged · "
+        "0 already in catalog · 1 review · 15 excluded · Agent 10.0 s · TC 0.000"
+    )
+
+
 def test_exact_duplicate_notice_reports_cached_unchanged_result_without_agent_cost():
     notice = company_profile._price_source_notice_text(
         {

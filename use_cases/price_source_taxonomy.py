@@ -45,6 +45,22 @@ class BrandRule:
 # the same canonical category/family.
 MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
     # Wood, furniture fittings first so a metal hinge never becomes Metal.
+    # A push-to-open catch is a closure, never a hinge. Keep it before the
+    # broad hinge rule because supplier wording can mention a hinge-compatible
+    # door or glass door in the same line.
+    TaxonomyRule("Hardware", "door closure", (
+        "push-to-open", "push to open", "push latch", "push catch", "touch latch",
+        "butterfly latch", "butterfly catch", "פתיחה בלחיצה", "תופסן לחיצה",
+        "לחיצה פרפר",
+    )),
+    # Plinth clips are small hardware components, not drawer runners. The
+    # distinct family is retained so the universal hardware-unit rule assigns
+    # a piece, while actual rails continue to use a left/right set.
+    TaxonomyRule("Hardware", "plinth clip", (
+        "plinth clip", "plinth socket", "socle clip", "plinth fitting",
+        "toe kick clip", "תופסן סוקל", "תופסן לסוקל", "תופסן סוקל",
+        "תופחן סוקל",
+    )),
     TaxonomyRule("Hardware", "drawer slide", (
         "drawer slide", "drawer runner", "drawer rail", "undermount", "runner",
         "ball bearing slide", "concealed slide", "soft close slide", "telescopic slide",

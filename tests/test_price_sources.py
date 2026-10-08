@@ -762,6 +762,58 @@ def test_drawer_runner_is_a_set_even_when_invoice_uses_piece_as_count_unit():
     assert prepared["rows"][0]["calculation_unit"] == "set"
 
 
+@pytest.mark.parametrize(
+    "description",
+    (
+        "Push-to-open butterfly latch for aluminium door",
+        "תופסן לחיצה פרפר לדלת אלומיניום",
+    ),
+)
+def test_push_to_open_is_a_door_closure_not_a_hinge(description):
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": description,
+        "normalized_name": "Hinge for aluminium door",
+        "material_type": "Hardware",
+        "material_family": "hinge",
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == "Hardware"
+    assert row["material_family"] == "door closure"
+
+
+@pytest.mark.parametrize(
+    "description",
+    (
+        "Plinth clip for cabinet toe kick",
+        "תופסן סוקל לארון",
+        "תופחן סוקל לארון",
+    ),
+)
+def test_plinth_clip_is_a_piece_not_a_drawer_runner_set(description):
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": description,
+        "normalized_name": "Drawer runner",
+        "material_type": "Other",
+        "material_family": "other",
+        "raw_unit": "unknown",
+        "purchase_unit": "unknown",
+        "calculation_unit": "unknown",
+        "conversion_factor": 0,
+        "normalized_price": 0,
+    })
+
+    assert apply_material_taxonomy(row) is True
+    prepared = apply_price_source_hardware_defaults(result)
+
+    assert prepared["rows"][0]["material_family"] == "plinth clip"
+    assert prepared["rows"][0]["purchase_unit"] == "piece"
+    assert prepared["rows"][0]["calculation_unit"] == "piece"
+
+
 def test_ordinary_material_defaults_to_piece_when_an_invoice_omits_the_unit():
     result = _result()
     row = result["rows"][0]
