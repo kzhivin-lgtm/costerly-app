@@ -3083,6 +3083,11 @@ def _queue_price_source_processing(
     st.session_state._price_source_pending = {
         "future": future,
         "processing_cycle": processing_cycle,
+        # The completion banner belongs to this exact selection, not to a
+        # mutable selection counter read after a fragment rerender.
+        "selection_cycle": int(
+            st.session_state.get("_price_source_selection_cycle") or 0
+        ),
         "user_cycle_started_at": time.perf_counter(),
         "user_cycle_started_at_epoch_ms": int(time.time() * 1000),
     }
@@ -3301,7 +3306,9 @@ def _render_price_source_add(
                         processing_cycle=int(
                             cycle_result.get("processing_cycle") or processing_cycle
                         ),
-                        selection_cycle=selection_cycle,
+                        selection_cycle=int(
+                            cycle_result.get("selection_cycle") or selection_cycle
+                        ),
                     )
                 elif cycle_error:
                     _render_price_source_cycle_error(
@@ -3341,6 +3348,7 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
                 "source_id": getattr(result, "source_id", None),
                 "summary": summary,
                 "processing_cycle": pending.get("processing_cycle"),
+                "selection_cycle": pending.get("selection_cycle"),
             }
         else:
             st.session_state._price_source_notice = result
@@ -3372,6 +3380,9 @@ def _restore_active_price_source_processing(access: CompanyAccess) -> None:
     st.session_state._price_source_pending = {
         "future": active.future,
         "processing_cycle": processing_cycle,
+        "selection_cycle": int(
+            st.session_state.get("_price_source_selection_cycle") or 0
+        ),
         "user_cycle_started_at": active.started_at,
         "user_cycle_started_at_epoch_ms": active.started_at_epoch_ms,
     }

@@ -333,8 +333,14 @@ def supplier_legal_identifier_vat_basis(
 
 
 def apply_supplier_vat_default(result: dict[str, Any]) -> str:
-    """Product policy: supplier material prices default to VAT-excluded."""
-    if str(result.get("source_origin") or "supplier") != "supplier":
+    """Product policy: an uploaded supplier source defaults to VAT-excluded.
+
+    OCR can fail to classify an otherwise valid supplier invoice as
+    ``source_origin == unknown``. That uncertainty must not defeat the VAT
+    default: the source has already entered the supplier-price workflow. Only
+    an explicit internal estimate is outside this policy.
+    """
+    if str(result.get("source_origin") or "").strip() == "company_internal":
         return "unknown"
     return (
         "inferred_supplier_default"

@@ -2529,6 +2529,7 @@ def test_price_source_add_renders_an_explicit_server_completion_marker():
 
     assert "price-source-processing-complete-marker" in source
     assert 'data-processing-cycle="{processing_cycle}"' in source
+    assert 'cycle_result.get("selection_cycle") or selection_cycle' in source
 
 
 def test_price_source_uploader_installs_dragover_guard():
@@ -2614,6 +2615,7 @@ def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
             _UploadedPhoto("prices-b.xlsx", b"second"),
         ],
         price_url="",
+        _price_source_selection_cycle=7,
     )
     monkeypatch.setattr(company_profile.st, "session_state", state)
     submitted = []
@@ -2630,6 +2632,7 @@ def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
     assert state["_price_source_processing"] is True
     assert [item.name for item in submitted[0]["uploaded_files"]] == ["prices-a.xlsx"]
     assert isinstance(state["_price_source_pending"]["future"], Future)
+    assert state["_price_source_pending"]["selection_cycle"] == 7
     assert "_price_source_error" not in state
 
 
@@ -4034,6 +4037,33 @@ def test_supplier_vat_default_activates_unknown_rows_without_supplier_history():
     assert result["rows"][0]["raw_vat_mode"] == "excluded"
     assert result["rows"][0]["status"] == "ready"
     assert result["rows"][0]["reason_codes"] == ["vat_inferred_supplier_default"]
+
+
+def test_supplier_vat_default_does_not_require_model_supplier_origin():
+    from use_cases.price_sources import apply_supplier_vat_default
+
+    result = {
+        "source_origin": "unknown",
+        "vat_mode": "unknown",
+        "rows": [{
+            "raw_vat_mode": "unknown",
+            "status": "unresolved",
+            "reason_codes": ["vat_basis_unknown"],
+        }],
+    }
+
+    assert apply_supplier_vat_default(result) == "inferred_supplier_default"
+    assert result["vat_mode"] == "excluded"
+    assert result["rows"][0]["raw_vat_mode"] == "excluded"
+    assert result["rows"][0]["status"] == "ready"
+
+
+def test_supplier_vat_default_keeps_company_internal_costs_unclassified():
+    from use_cases.price_sources import apply_supplier_vat_default
+
+    result = {"source_origin": "company_internal", "vat_mode": "unknown", "rows": []}
+
+    assert apply_supplier_vat_default(result) == "unknown"
 
 
 def test_partial_invoice_uses_statutory_vat_rate_for_its_document_date():
