@@ -105,7 +105,8 @@ PRICE_CATALOG_DEPARTMENT_ORDER = {"Wood": 0, "Metal": 1, "Finishing": 2}
 _CONSUMABLE_MARKERS = (
     "screw", "screws", "fastener", "dowel", "dowels", "lamello", "biscuit",
     "glue", "adhesive", "sandpaper", "abrasive", "ברג", "דיבל", "למלו", "דבק",
-    "נייר לטש", "נייר שיוף", "שוחק",
+    "glass cutter", "glass cutting knife", "סכין חותך זכוכית",
+    "חותך זכוכית", "נייר לטש", "נייר שיוף", "שוחק",
 )
 _HARDWARE_MARKERS = (
     "hinge", "drawer slide", "drawer runner", "drawer rail", "runner",

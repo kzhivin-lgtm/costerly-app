@@ -279,10 +279,12 @@ def _mark_unverified_source_table_rows_for_review(
         if "source_table_price_verified" in set(row.get("reason_codes") or []):
             continue
         if _line_total_rounding_compatible(row):
-            row["reason_codes"] = sorted(
-                set(row.get("reason_codes") or [])
-                | {"source_table_price_rounding_tolerated"}
-            )
+            reasons = set(row.get("reason_codes") or [])
+            reasons.difference_update({
+                "arithmetic_mismatch", "line_total_inconsistent", "unit_price_mismatch",
+            })
+            reasons.add("source_table_price_rounding_tolerated")
+            row["reason_codes"] = sorted(reasons)
             continue
         row["status"] = "unresolved"
         row["reason_codes"] = sorted(

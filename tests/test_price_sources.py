@@ -565,6 +565,20 @@ def test_consumables_are_discarded_and_supplier_services_map_before_persistence(
     ) == "supplier_defined"
 
 
+def test_glass_cutter_is_a_tool_consumable_not_a_glass_material():
+    result = _result()
+    cutter = result["rows"][0]
+    cutter.update({
+        "material_type": "Glass",
+        "material_family": "glass",
+        "raw_description": "סכין חותך זכוכית נפט",
+        "normalized_name": "Glass cutter knife",
+    })
+
+    assert discard_price_source_consumables(result) == 1
+    assert result["rows"] == []
+
+
 def test_hardware_with_integral_screws_is_not_discarded_as_a_consumable():
     result = _result()
     hardware = result["rows"][0]
@@ -2902,16 +2916,23 @@ def test_ready_line_with_unproven_total_arithmetic_goes_to_review():
 def test_two_decimal_price_with_hidden_thousandth_is_not_sent_to_review():
     result = _result()
     row = result["rows"][0]
-    row.update(raw_price=2.63, raw_quantity=30, raw_line_total=78.75)
+    row.update(
+        raw_price=2.63,
+        raw_quantity=30,
+        raw_line_total=78.75,
+        status="unresolved",
+        reason_codes=["arithmetic_mismatch"],
+    )
 
     _mark_unverified_source_table_rows_for_review(
         result,
         [{"source_row_number": row["source_row_number"]}],
     )
 
-    assert row["status"] == "ready"
+    assert row["status"] == "unresolved"
     assert "source_table_price_not_verified" not in row["reason_codes"]
     assert "source_table_price_rounding_tolerated" in row["reason_codes"]
+    assert "arithmetic_mismatch" not in row["reason_codes"]
 
 
 def test_large_arithmetic_difference_is_not_hidden_by_rounding_tolerance():
