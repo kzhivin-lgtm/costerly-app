@@ -468,6 +468,9 @@ def _result(*, status: str = "ready", confidence: float = 96) -> dict:
                     "width_mm": 1220,
                     "length_mm": 2440,
                     "diameter_mm": 0,
+                    "primary_attribute": "10 mm",
+                    "brand": "",
+                    "brand_basis": "unknown",
                     "species": "birch",
                     "substrate": "plywood",
                     "surface": "",
@@ -925,6 +928,25 @@ def test_same_supplier_material_merge_keeps_proved_wood_species_separate():
     assert not price_rows_match_same_supplier_material(first, other_species)
 
 
+def test_same_supplier_material_merge_keeps_two_proved_brands_separate_but_tolerates_absence():
+    first = _result()["rows"][0]
+    first.update({
+        "material_type": "Wood Sheets",
+        "material_family": "plywood",
+        "raw_price": 110,
+        "identity_attributes": {
+            **first["identity_attributes"], "thickness_mm": 17, "brand": "EGGER",
+        },
+    })
+    other_brand = deepcopy(first)
+    other_brand["identity_attributes"]["brand"] = "Kronospan"
+    no_brand = deepcopy(first)
+    no_brand["identity_attributes"]["brand"] = ""
+
+    assert not price_rows_match_same_supplier_material(first, other_brand)
+    assert price_rows_match_same_supplier_material(first, no_brand)
+
+
 def test_same_supplier_material_merge_allows_decor_and_sku_variants():
     first = _result()["rows"][0]
     first.update({
@@ -1230,7 +1252,7 @@ def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
 
     assert row["identity_attributes"]["construction"] == "perforated twin"
     assert row["identity_attributes"]["finish"] == "glossy"
-    assert row["normalized_name"] == "Plywood twin perforated 17 mm"
+    assert row["normalized_name"] == "Plywood 17 mm twin perforated"
 
 
 def test_sheet_normalization_replaces_wrong_glass_label_when_okoume_proves_plywood():
@@ -1278,7 +1300,7 @@ def test_sheet_taxonomy_removes_hallucinated_glass_and_resolves_known_okoume():
     normalize_price_source_sheet_rows(result)
 
     assert row["status"] == "ready"
-    assert row["normalized_name"] == "Plywood Okoume 5 mm"
+    assert row["normalized_name"] == "Plywood 5 mm Okoume"
     assert "Glass" not in row["normalized_name"]
     assert "unknown_product_term" not in row["reason_codes"]
 
@@ -1298,7 +1320,7 @@ def test_sheet_taxonomy_replaces_model_acrylic_label_when_okoume_proves_plywood(
 
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "plywood"
-    assert row["normalized_name"] == "Plywood Okoume 5 mm"
+    assert row["normalized_name"] == "Plywood 5 mm Okoume"
 
 
 def test_sheet_taxonomy_accepts_compact_hebrew_mdf_abbreviation():
@@ -1358,7 +1380,7 @@ def test_sheet_normalization_classifies_proved_hebrew_trade_families_without_sup
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "plywood"
     assert row["identity_attributes"]["construction"] == "twin"
-    assert row["normalized_name"] == "Plywood twin 17 mm"
+    assert row["normalized_name"] == "Plywood 17 mm twin"
     assert "taxonomy_wood_sheets" in row["reason_codes"]
 
 
@@ -1377,7 +1399,7 @@ def test_sheet_normalization_keeps_okume_perforated_separate_from_the_plain_fami
 
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "plywood"
-    assert row["normalized_name"] == "Plywood Okoume perforated 5 mm"
+    assert row["normalized_name"] == "Plywood 5 mm Okoume perforated"
     assert row["identity_attributes"]["construction"] == "perforated"
 
 
@@ -1424,6 +1446,41 @@ def test_bilingual_taxonomy_covers_all_material_departments(description, categor
     assert row["material_family"] == family
 
 
+def test_taxonomy_preserves_a_category_scoped_brand_and_sheet_primary_attribute():
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": "EGGER plywood 17 mm 3100",
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == "Wood Sheets"
+    assert row["identity_attributes"]["brand"] == "EGGER"
+    assert row["identity_attributes"]["primary_attribute"] == "17 mm"
+    assert row["normalized_name"].startswith("Plywood 17 mm EGGER")
+
+
+def test_taxonomy_keeps_aisi_as_grade_and_profile_section_as_primary_attribute():
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": "stainless steel profile AISI 304 40x40 mm",
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == "Metal Profiles"
+    assert row["identity_attributes"]["grade"] == "AISI 304"
+    assert row["identity_attributes"]["primary_attribute"] == "40×40 mm"
+
+
+def test_brand_never_classifies_a_material_without_generic_evidence():
+    assert material_rule_for_text("EGGER U999") is None
+
+
 @pytest.mark.parametrize(
     ("description", "operation_code"),
     [
@@ -1433,6 +1490,8 @@ def test_bilingual_taxonomy_covers_all_material_departments(description, categor
         ("edge banding", "edge_banding"),
         ("CNC drilling", "cnc_vertical_drilling"),
         ("הרכבת גוף", "carcass_assembly"),
+        ("עבודת חיתוך לייזר", "sheet_laser_cutting"),
+        ("powder coating service", "powder_coating_application"),
     ],
 )
 def test_bilingual_material_jobs_dictionary_resolves_existing_operations(description, operation_code):
@@ -3049,7 +3108,7 @@ def test_prompt_requires_line_level_price_arithmetic_before_extraction():
 def test_prompt_requires_consistent_standalone_normalized_names():
     prompt = Path("agents/prompts/price_source_agent_prompt.md").read_text()
 
-    assert "product family, material or subtype, dimensions or" in prompt
+    assert "entity, its primary attribute, brand, then" in prompt
     assert "same term and\n   capitalization" in prompt
     assert "when viewed outside the source document" in prompt
 

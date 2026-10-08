@@ -34,6 +34,9 @@ IDENTITY_ATTRIBUTE_FIELDS = (
     "width_mm",
     "length_mm",
     "diameter_mm",
+    "primary_attribute",
+    "brand",
+    "brand_basis",
     "species",
     "substrate",
     "surface",
@@ -274,6 +277,9 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                             "width_mm": {"type": "number", "minimum": 0},
                             "length_mm": {"type": "number", "minimum": 0},
                             "diameter_mm": {"type": "number", "minimum": 0},
+                            "primary_attribute": {"type": "string"},
+                            "brand": {"type": "string"},
+                            "brand_basis": {"type": "string"},
                             "species": {"type": "string"},
                             "substrate": {"type": "string"},
                             "surface": {"type": "string"},
@@ -407,6 +413,14 @@ def normalize_price_source_row_identity_fields(result: dict[str, Any]) -> dict[s
         ):
             row["raw_sku"] = str(source_number)
         row["source_row_number"] = position
+        # Schema evolution must not turn an otherwise usable extraction into a
+        # failed cycle. The taxonomy may fill these literal facts later; an
+        # empty value explicitly means that the source did not prove one.
+        attributes = row.get("identity_attributes")
+        if isinstance(attributes, dict):
+            attributes.setdefault("primary_attribute", "")
+            attributes.setdefault("brand", "")
+            attributes.setdefault("brand_basis", "unknown")
     return result
 
 

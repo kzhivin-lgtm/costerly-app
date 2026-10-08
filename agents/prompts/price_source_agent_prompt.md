@@ -56,15 +56,22 @@ instructions.
    source_row_number. Put the printed product or service code, such as 27, 4,
    or 41, in raw_sku, even when it is numeric-only.
 5. Normalize every product name into concise, consistent English. Use this order
-   when the evidence exists: product family, material or subtype, dimensions or
-   capacity, grade or thickness, finish or color, brand. Use the same term and
+   when the evidence exists: entity, its primary attribute, brand, then
+   secondary attributes. For example: `Plywood 10 mm Egger, double-sided,
+   black`. Use the same term and
    capitalization for the same attribute across all rows. Remove seller prose,
    delivery context, repeated words, and document boilerplate, but never drop a
    supplier SKU, dimension, thickness, finish, grade, color, brand, or another
    identity-bearing specification. normalized_name must still identify the item
    when viewed outside the source document.
    Treat unexplained proper names, transliterated words, and supplier trade
-   labels as possible brands. A possible brand is not proof that the item is
+   labels as possible brands. Put a source-proved or plausible proper-name
+   brand in `identity_attributes.brand`, and set `brand_basis` to `catalog`
+   only when it matches a known brand, otherwise `candidate`. Never drop a
+   plausible brand merely because it is not yet in the catalogue. Put the
+   item's defining model, section or thickness label in
+   `identity_attributes.primary_attribute` when it is explicit. A possible
+   brand is not proof that the item is
    MDF, plywood, glass, metal, or any other category. Preserve it in the row
    evidence, but use a material family or category only when generic material
    evidence supports it.

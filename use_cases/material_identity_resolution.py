@@ -18,6 +18,7 @@ HARD_SPECIFICATION_KEYS = frozenset(
         "height_mm",
         "depth_mm",
         "grade",
+        "brand",
         "species",
         "material",
         "chemistry",

@@ -19,6 +19,20 @@ class TaxonomyRule:
     aliases: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class BrandRule:
+    """A recognised manufacturer, deliberately scoped to proven categories.
+
+    A brand is preservation evidence, never category evidence.  For example,
+    the word ``Blum`` cannot turn unrelated source text into Hardware; it can
+    only be retained after ordinary wording already proved a Hardware family.
+    """
+
+    brand: str
+    categories: tuple[str, ...]
+    aliases: tuple[str, ...]
+
+
 # Keep the four product areas represented by the existing catalog categories:
 # Wood (sheets, solid timber, supplies and fittings), Metal, Coating and the
 # separate Material Jobs lane.  English and Hebrew aliases resolve to exactly
@@ -41,6 +55,15 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         "furniture leg", "cabinet leg", "plinth leg", "adjustable leg", "gas lift",
         "רגלית", "רגל מתכווננת", "בוכנת גז", "בוכנה", "מנגנון קלפה",
     )),
+    TaxonomyRule("Hardware", "furniture connector", (
+        "connector", "cabinet connector", "cam lock", "confirmat", "dowel",
+        "bolt", "furniture screw", "מחבר", "מחברי רהיט", "אקסצנטרי",
+        "דיבל", "בורג רהיטים",
+    )),
+    TaxonomyRule("Hardware", "lift mechanism", (
+        "lift mechanism", "flap lift", "stay lift", "gas strut", "gas spring",
+        "מנגנון קלפה", "מנגנון הרמה", "בוכנת גז", "קפיץ גז",
+    )),
     # Wood sheets. Twin and Okoume prove plywood, but are attributes, not brands.
     TaxonomyRule("Wood Sheets", "plywood", (
         "plywood", "lumber core", "sanded plywood", "לביד", "לבידים", "דיקט", "סנדוויץ", "סנדויץ",
@@ -58,16 +81,21 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         "סיבית", "מלמין", "שבבית",
     )),
     TaxonomyRule("Wood Sheets", "hardboard", ("hardboard", "hdf", "מזונית", "הארדבורד")),
+    TaxonomyRule("Wood Sheets", "osb", ("osb", "oriented strand board", "או אס בי", "לוח שבבי עץ")),
+    TaxonomyRule("Wood Sheets", "laminated panel", (
+        "laminated panel", "laminated mdf", "laminated plywood", "פורמייקה",
+        "לוח מצופה", "לוח למינציה",
+    )),
     TaxonomyRule("Glass", "glass", ("glass", "mirror", "זכוכית", "מראה")),
     TaxonomyRule("Solid Wood", "solid timber", (
         "solid wood", "timber", "lumber", "plank", "board", "beam", "batten", "slat",
         "עץ מלא", "קורה", "קורות", "קרש", "קרשים", "לוח עץ", "סרגל", "לטה", "לוחות עץ",
     )),
     TaxonomyRule("Wood Supplies", "veneer", ("veneer", "פורניר")),
-    TaxonomyRule("Wood Supplies", "edge banding", ("edge band", "edgeband", "קנט", "קנטים")),
+    TaxonomyRule("Wood Supplies", "edge banding", ("edge band", "edge banding", "edgeband", "קנט", "קנטים")),
     # Metal.
     TaxonomyRule("Metal Profiles", "metal profile", (
-        "metal profile", "aluminium profile", "aluminum profile", "tube", "pipe", "angle", "channel",
+        "metal profile", "aluminium profile", "aluminum profile", "profile", "tube", "pipe", "angle", "channel",
         "פרופיל", "פרופילי", "אלומיניום", "צינור", "זווית", "זוויתן", "תעלה",
     )),
     TaxonomyRule("Metal Sheets", "metal sheet", (
@@ -83,8 +111,28 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
     TaxonomyRule("Paints & Coatings", "primer", ("primer", "יסוד", "פריימר")),
     TaxonomyRule("Paints & Coatings", "powder coating", ("powder coat", "powder coating", "צביעה בתנור")),
     TaxonomyRule("Coating Supplies", "coating material", (
-        "stain", "wood filler", "putty", "hardener", "thinner", "מרק", "שפכטל", "מדלל",
+        "stain", "wood filler", "putty", "hardener", "thinner", "sealer", "catalyst",
+        "מרק", "שפכטל", "מדלל", "מקשה", "סילר", "זרז",
     )),
+)
+
+
+# The initial curated catalogue contains brands encountered in the product
+# domain and brands whose official product ranges prove their department. It is
+# intentionally a dictionary, not a fuzzy proper-name detector. Unknown proper
+# names remain raw source evidence until they are reviewed and added here.
+BRAND_RULES: tuple[BrandRule, ...] = (
+    BrandRule("Blum", ("Hardware",), ("blum", "בלום")),
+    BrandRule("Hettich", ("Hardware",), ("hettich", "הטיך", "הטיש")),
+    BrandRule("Häfele", ("Hardware",), ("hafele", "häfele", "הפלה")),
+    BrandRule("Grass", ("Hardware",), ("grass", "גראס")),
+    BrandRule("FGV", ("Hardware",), ("fgv",)),
+    BrandRule("EGGER", ("Wood Sheets",), ("egger", "אגר")),
+    BrandRule("Kronospan", ("Wood Sheets",), ("kronospan", "קרונוספן")),
+    BrandRule("Finsa", ("Wood Sheets",), ("finsa", "פינסה")),
+    BrandRule("Sayerlack", ("Paints & Coatings", "Coating Supplies"), ("sayerlack", "סיירלאק")),
+    BrandRule("Milesi", ("Paints & Coatings", "Coating Supplies"), ("milesi", "מילזי", "מילסי")),
+    BrandRule("Renner", ("Paints & Coatings", "Coating Supplies"), ("renner", "רנר")),
 )
 
 
@@ -109,6 +157,8 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("mirror", ("mirror", "mirrored", "מראה")),
     ),
     "grade": (
+        ("stainless", ("stainless", "נירוסטה", "נירוסט")),
+        ("galvanized", ("galvanized", "zinc coated", "מגולוון", "מגלוון")),
         ("treated", ("treated", "impregnated", "מטופל", "מחוטא")),
         ("kiln-dried", ("kiln dried", "dried", "יבש", "מיובש")),
         ("rough-sawn", ("rough sawn", "unplaned", "לא מוקצע", "מנוסר")),
@@ -121,6 +171,9 @@ _IDENTITY_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
     "width_mm": 0,
     "length_mm": 0,
     "diameter_mm": 0,
+    "primary_attribute": "",
+    "brand": "",
+    "brand_basis": "unknown",
     "species": "",
     "substrate": "",
     "surface": "",
@@ -160,12 +213,35 @@ JOB_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
         "חיתוך וקנט", "חיתוך וקנטים", "חיתוך + קנט", "חיתוך + קנטים",
         "פס חיתוך וקנט", "פס חיתוך + קנט",
     )),
-    ("edge_banding", ("edge band", "edgeband", "קנט", "קנטים")),
+    ("edge_banding", ("edge band", "edge banding", "edgeband", "קנט", "קנטים")),
     ("cnc_vertical_drilling", ("drilling", "drill", "קידוח")),
     ("cnc_grooving", ("groove", "dado", "חריץ")),
     ("cnc_router_profile_cutting", ("router", "כרסום")),
     ("panel_saw_cutting", ("cutting", "panel saw", "חיתוך", "ניסור")),
-    ("carcass_assembly", ("assembly", "הרכבה", "הרכב")),
+    ("carcass_assembly", ("assembly", "הרכבה", "הרכבת", "הרכב")),
+    ("metal_profile_cutting", ("metal profile cutting", "tube cutting", "profile cutting", "חיתוך פרופיל", "חיתוך צינור")),
+    ("sheet_laser_cutting", ("laser cutting", "laser cut", "חיתוך לייזר")),
+    ("sheet_shearing", ("sheet shearing", "guillotine cutting", "חיתוך גיליוטינה")),
+    ("metal_drilling", ("metal drilling", "קידוח מתכת")),
+    ("metal_milling", ("metal milling", "כרסום מתכת")),
+    ("metal_punching", ("metal punching", "ניקוב מתכת")),
+    ("sheet_metal_bending", ("sheet bending", "press brake", "כיפוף פח")),
+    ("metal_profile_bending", ("profile bending", "tube bending", "כיפוף פרופיל", "כיפוף צינור")),
+    ("mig_mag_welding", ("mig welding", "mag welding", "mig mag", "רתכת mig", "ריתוך mig")),
+    ("tig_welding", ("tig welding", "רתכת tig", "ריתוך tig")),
+    ("metal_grinding", ("metal grinding", "grinding weld", "השחזת מתכת", "ליטוש ריתוך")),
+    ("metal_polishing", ("metal polishing", "polishing metal", "ליטוש מתכת")),
+    ("metal_assembly", ("metal assembly", "הרכבת מתכת")),
+    ("glass_cutting", ("glass cutting", "mirror cutting", "חיתוך זכוכית", "חיתוך מראה")),
+    ("glass_edge_processing", ("glass polishing", "glass edge", "ליטוש זכוכית", "עיבוד קצה זכוכית")),
+    ("glass_drilling", ("glass drilling", "קידוח זכוכית")),
+    ("glass_tempering", ("glass tempering", "חיסום זכוכית")),
+    ("finish_surface_preparation", ("surface preparation", "finish preparation", "הכנה לצבע", "הכנת שטח")),
+    ("wood_staining", ("wood staining", "staining service", "ביצוע בייץ", "צביעת בייץ")),
+    ("wood_priming", ("wood priming", "priming service", "צביעת יסוד")),
+    ("wood_lacquering", ("wood lacquering", "lacquering service", "צביעת לכה")),
+    ("wet_spray_painting", ("spray painting", "wet painting", "צביעה רטובה", "צביעה בהתזה")),
+    ("powder_coating_application", ("powder coating service", "powder painting", "צביעה באבקה", "צביעה בתנור")),
 )
 
 # These phrases are unambiguously paid work even when the commercial model
@@ -181,6 +257,29 @@ FORCED_OPERATION_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("cnc_grooving", ("grooving service", "grooving work", "עבודת חריץ", "שירות חריץ")),
     ("cnc_router_profile_cutting", ("router service", "routing service", "עבודת כרסום", "שירות כרסום")),
     ("carcass_assembly", ("assembly service", "assembly work", "עבודת הרכבה", "שירות הרכבה")),
+    ("metal_profile_cutting", ("metal profile cutting service", "tube cutting service", "עבודת חיתוך פרופיל", "שירות חיתוך צינור")),
+    ("sheet_laser_cutting", ("laser cutting service", "laser cutting work", "עבודת חיתוך לייזר", "שירות חיתוך לייזר")),
+    ("sheet_shearing", ("sheet shearing service", "guillotine cutting service", "עבודת חיתוך גיליוטינה")),
+    ("metal_drilling", ("metal drilling service", "עבודת קידוח מתכת", "שירות קידוח מתכת")),
+    ("metal_milling", ("metal milling service", "עבודת כרסום מתכת", "שירות כרסום מתכת")),
+    ("metal_punching", ("metal punching service", "עבודת ניקוב מתכת", "שירות ניקוב מתכת")),
+    ("sheet_metal_bending", ("sheet bending service", "press brake service", "עבודת כיפוף פח", "שירות כיפוף פח")),
+    ("metal_profile_bending", ("profile bending service", "tube bending service", "עבודת כיפוף פרופיל", "שירות כיפוף צינור")),
+    ("mig_mag_welding", ("mig welding service", "mag welding service", "עבודת ריתוך mig", "שירות ריתוך mig")),
+    ("tig_welding", ("tig welding service", "עבודת ריתוך tig", "שירות ריתוך tig")),
+    ("metal_grinding", ("metal grinding service", "עבודת השחזת מתכת", "שירות ליטוש ריתוך")),
+    ("metal_polishing", ("metal polishing service", "עבודת ליטוש מתכת", "שירות ליטוש מתכת")),
+    ("metal_assembly", ("metal assembly service", "עבודת הרכבת מתכת", "שירות הרכבת מתכת")),
+    ("glass_cutting", ("glass cutting service", "mirror cutting service", "עבודת חיתוך זכוכית", "שירות חיתוך זכוכית")),
+    ("glass_edge_processing", ("glass edge processing service", "עבודת ליטוש זכוכית", "שירות עיבוד זכוכית")),
+    ("glass_drilling", ("glass drilling service", "עבודת קידוח זכוכית", "שירות קידוח זכוכית")),
+    ("glass_tempering", ("glass tempering service", "עבודת חיסום זכוכית", "שירות חיסום זכוכית")),
+    ("finish_surface_preparation", ("surface preparation service", "עבודת הכנה לצבע", "שירות הכנת שטח")),
+    ("wood_staining", ("wood staining service", "עבודת בייץ", "שירות צביעת בייץ")),
+    ("wood_priming", ("wood priming service", "עבודת צביעת יסוד", "שירות צביעת יסוד")),
+    ("wood_lacquering", ("wood lacquering service", "עבודת צביעת לכה", "שירות צביעת לכה")),
+    ("wet_spray_painting", ("spray painting service", "wet painting service", "עבודת צביעה רטובה", "שירות צביעה בהתזה")),
+    ("powder_coating_application", ("powder coating service", "powder painting service", "עבודת צביעה באבקה", "שירות צביעה בתנור")),
 )
 
 
@@ -261,7 +360,12 @@ def _has_alias(text: str, aliases: tuple[str, ...]) -> bool:
     canonical_text = _canonical_taxonomy_text(text)
     for alias in aliases:
         canonical_alias = _canonical_taxonomy_text(alias)
-        if canonical_alias and canonical_alias in canonical_text:
+        # A taxonomy token must not match inside another word. In particular,
+        # ``stain`` in ``stainless`` is not coating evidence.
+        if canonical_alias and re.search(
+            rf"(?<!\w){re.escape(canonical_alias)}(?!\w)", canonical_text,
+            flags=re.UNICODE,
+        ):
             return True
         if _compound_alias_matches(canonical_text, canonical_alias):
             return True
@@ -272,13 +376,116 @@ def material_rule_for_text(text: str) -> TaxonomyRule | None:
     return next((rule for rule in MATERIAL_RULES if _has_alias(text, rule.aliases)), None)
 
 
+def brand_for_text(text: str, *, category: str) -> str:
+    """Return a curated brand only after the material category is proven."""
+    return next(
+        (
+            rule.brand for rule in BRAND_RULES
+            if category in rule.categories and _has_alias(text, rule.aliases)
+        ),
+        "",
+    )
+
+
+_BRAND_CANDIDATE_NOISE = frozenset({
+    "aluminium", "aluminum", "assembly", "black", "blue", "box", "closure",
+    "door", "drawer", "front", "glass", "grey", "high", "hinge", "internal",
+    "large", "left", "mdf", "metal", "okoume", "particleboard", "plywood",
+    "profile", "pure", "right", "sheet", "small", "stainless", "transparent",
+    "twin", "white", "wood",
+})
+
+
+def _brand_candidate_from_text(text: str) -> str:
+    """Keep an unlisted Latin proper-name candidate without classifying by it.
+
+    The catalog is deliberately incomplete. A final two-word title-cased or
+    uppercase run such as ``Mario Box`` is useful brand evidence, while
+    ordinary title-cased product prose such as ``Glass Door`` is not. The
+    candidate remains low-confidence metadata and never changes a category.
+    """
+    tokens = re.findall(r"\b[A-Za-z][A-Za-z0-9-]*\b", str(text or ""))
+    runs: list[list[str]] = []
+    current: list[str] = []
+    for token in tokens:
+        is_proper = (
+            (len(token) > 1 and token.isupper())
+            or (len(token) > 1 and token[0].isupper())
+        )
+        if is_proper:
+            current.append(token)
+            continue
+        if current:
+            runs.append(current)
+            current = []
+    if current:
+        runs.append(current)
+    for run in reversed(runs):
+        for index, token in enumerate(run):
+            if token.casefold() in _BRAND_CANDIDATE_NOISE:
+                continue
+            candidate = run[index:index + 2]
+            return " ".join(candidate)
+    return ""
+
+
+def _explicit_technical_grade(text: str) -> str:
+    """Extract standards and alloy grades, never treating them as brands."""
+    match = re.search(
+        r"\b(?:aisi\s*[- ]?)?(?:304l?|316l?|201|430|s[0-9]{3}|st\s*[- ]?37|"
+        r"al\s*[- ]?(?:6061|6063|5083))\b",
+        str(text or ""),
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    value = match.group(0).upper().replace("-", " ")
+    if value.startswith("AISI"):
+        digits = re.sub(r"\D", "", value)
+        return f"AISI {digits}" if digits else ""
+    return re.sub(r"\s+", "", value)
+
+
+def _explicit_profile_primary_attribute(text: str) -> str:
+    """Use an explicit profile section as the primary display attribute."""
+    match = re.search(
+        r"(?<!\d)(\d{1,3}(?:\.\d+)?)\s*(?:x|×)\s*(\d{1,3}(?:\.\d+)?)\s*(?:mm|מ[\"״']?מ)?",
+        str(text or ""),
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    return f"{match.group(1)}×{match.group(2)} mm"
+
+
 def job_operation_for_text(text: str) -> str | None:
-    return next((code for code, aliases in JOB_RULES if _has_alias(text, aliases)), None)
+    matches = [
+        (len(_canonical_taxonomy_text(alias)), code)
+        for code, aliases in JOB_RULES
+        for alias in aliases
+        if _has_alias(text, (alias,))
+    ]
+    return max(matches, default=(0, ""))[1] or None
 
 
 def forced_operation_for_text(text: str) -> str | None:
     """Return a service code only for wording that cannot denote stock."""
-    return next((code for code, aliases in FORCED_OPERATION_RULES if _has_alias(text, aliases)), None)
+    matches = [
+        (len(_canonical_taxonomy_text(alias)), code)
+        for code, aliases in FORCED_OPERATION_RULES
+        for alias in aliases
+        if _has_alias(text, (alias,))
+    ]
+    return max(matches, default=(0, ""))[1] or None
+
+
+def _explicit_thickness_mm(text: str) -> float:
+    match = re.search(
+        r"(?<!\d)(\d{1,3}(?:\.\d+)?)\s*(?:mm|מ[\"״']?מ)(?!\w)",
+        str(text or ""),
+        flags=re.IGNORECASE,
+    )
+    return float(match.group(1)) if match else 0
 
 
 def apply_operation_taxonomy(row: dict[str, Any]) -> str | None:
@@ -306,6 +513,10 @@ def _taxonomy_material_name(rule: TaxonomyRule, attributes: Mapping[str, Any]) -
     """Build a canonical display name from facts proven by the source text."""
     family_name = "MDF" if rule.family == "mdf" else rule.family.title()
     parts = [family_name]
+    if attributes.get("primary_attribute"):
+        parts.append(str(attributes["primary_attribute"]))
+    if attributes.get("brand"):
+        parts.append(str(attributes["brand"]))
     if attributes.get("species"):
         parts.append(str(attributes["species"]).title())
     if attributes.get("construction"):
@@ -318,7 +529,7 @@ def _taxonomy_material_name(rule: TaxonomyRule, attributes: Mapping[str, Any]) -
         thickness = float(attributes.get("thickness_mm") or 0)
     except (TypeError, ValueError):
         thickness = 0
-    if thickness:
+    if thickness and not attributes.get("primary_attribute"):
         parts.append(f"{int(thickness) if thickness.is_integer() else thickness} mm")
     return " ".join(parts)
 
@@ -361,6 +572,35 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
                     continue
                 attributes[field] = canonical
                 break
+    catalog_brand = brand_for_text(text, category=rule.category)
+    existing_brand = str(attributes.get("brand") or "").strip()
+    if catalog_brand:
+        attributes["brand"] = catalog_brand
+        attributes["brand_basis"] = "catalog"
+    elif existing_brand:
+        # The extractor can retain a source-proved brand that has not reached
+        # our curated catalogue yet. It is a candidate, never a category cue.
+        attributes["brand"] = existing_brand
+        attributes["brand_basis"] = "candidate"
+    elif candidate_brand := _brand_candidate_from_text(str(row.get("raw_description") or "")):
+        attributes["brand"] = candidate_brand
+        attributes["brand_basis"] = "candidate"
+    literal_thickness = _explicit_thickness_mm(text)
+    if literal_thickness:
+        attributes["thickness_mm"] = literal_thickness
+    if rule.category == "Wood Sheets":
+        try:
+            thickness = float(attributes.get("thickness_mm") or 0)
+        except (TypeError, ValueError):
+            thickness = 0
+        if thickness:
+            attributes["primary_attribute"] = (
+                f"{int(thickness) if thickness.is_integer() else thickness} mm"
+            )
+    elif rule.category == "Metal Profiles":
+        attributes["primary_attribute"] = _explicit_profile_primary_attribute(text)
+    if technical_grade := _explicit_technical_grade(text):
+        attributes["grade"] = technical_grade
     attributes = {
         field: attributes.get(field, default)
         for field, default in _IDENTITY_ATTRIBUTE_DEFAULTS.items()

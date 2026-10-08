@@ -24,6 +24,12 @@ construction, finish, colour and other source-proved qualifiers. SKU is stored
 only in the supplier lane. AISI and other steel marks are technical grade, not
 brands.
 
+`brand_basis` is explicit: `catalog` for a category-scoped curated match,
+`candidate` for a plausible source proper name not yet curated, and `unknown`
+when no brand evidence exists. The brand catalogue improves recognition but is
+never a whitelist. A candidate is preserved, cannot select a category, and is
+reviewable for later catalogue curation.
+
 Canonical display order is:
 
 ```text
@@ -33,6 +39,34 @@ Plywood 10 mm Egger, double-sided, black
 
 Absent source evidence stays absent. Matching uses structured attributes, not
 the display string or source word order.
+
+## Classification and compact-display matrix
+
+Classification is entity-first. An unknown adjective, trade word or OCR token
+never turns a row into `Unclassified` when the entity is otherwise proven.
+Conversely, a word such as `glass` is not enough to turn a hinge or hardware
+profile into a glass material. Its product role must be determined from the
+whole source phrase and the price-table context.
+
+| Department | Entity families | Primary attribute | Bounded secondary attributes |
+| --- | --- | --- | --- |
+| Wood | plywood, MDF, particleboard, HDF, OSB, laminated panel, solid timber, veneer, edge banding | thickness or timber section | dimensions, species, substrate, construction, finish, colour |
+| Hardware | hinge, mounting plate, drawer slide, handle, leg, lift, connector | model or proven series | opening angle, load/length, finish, handedness |
+| Metal | sheet, profile, tube, angle, channel, flat/round bar, rod, wire | section or thickness | metal type, technical grade including AISI, wall thickness, finish |
+| Glass | glass, mirror | thickness | dimensions, tempering, edge process, finish |
+| Coating | paint, lacquer, primer, powder coating, stain, filler, hardener, thinner | system/product type | substrate, sheen, colour, chemistry |
+| Material Jobs | cutting and edge banding, machining, metalwork, glasswork, finishing, assembly | reference operation | supplier-proved billing basis and scope only |
+
+The formatter emits at most one entity, one primary attribute, one brand and
+up to four identity-bearing secondary attributes. Boilerplate, duplicated
+adjectives, seller prose, generic positional words, source SKU and incidental
+marketing names are excluded from the display but remain raw evidence. No
+formatter may discard a proven model, dimension, grade, brand or price-class
+attribute.
+
+For same-supplier material identity, two known but different brands are a
+boundary. One missing brand is uncertainty, not a forced split. Supplier SKU
+remains a supplier-lane signal and is never a display field or global identity.
 
 ## Material Jobs
 

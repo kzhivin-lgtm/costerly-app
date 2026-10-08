@@ -476,13 +476,13 @@ def resolve_rows_after_supplier_identity(result: dict[str, Any]) -> int:
     return resolved
 
 
-def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str, str, str, str]:
+def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str, str, str, str, str]:
     """Return the deterministic private-material identity.
 
-    The key deliberately ignores prose, SKU, colour and décor.  A supplier can
-    write the same sheet in many ways, but thickness, dimensions and a proven
-    construction remain catalog distinctions. Perforation is retained in this
-    key so a differently-priced perforated offer can stay separate.
+    The key deliberately ignores prose, SKU, colour and décor. A supplier can
+    write the same sheet in many ways, but thickness, dimensions, a proven
+    brand and construction remain catalog distinctions. Perforation is retained
+    so a differently-priced perforated offer can stay separate.
     """
     attributes = row.get("identity_attributes") or {}
 
@@ -500,6 +500,7 @@ def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str,
         number("width_mm"),
         number("length_mm"),
         number("diameter_mm"),
+        _normalized_name(str(attributes.get("brand") or "")),
         _normalized_name(str(attributes.get("species") or "")),
         _normalized_name(str(attributes.get("construction") or "")),
     )
@@ -1656,6 +1657,10 @@ def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapp
     if not _same_material_construction(left_attributes, right_attributes):
         return False
     if not _compatible_optional_identity_attribute(left_attributes, right_attributes, "species"):
+        return False
+    # An omitted brand is uncertainty. Two different source-proved brands are
+    # an explicit identity boundary, even when supplier, SKU and price align.
+    if not _compatible_optional_identity_attribute(left_attributes, right_attributes, "brand"):
         return False
     return True
 
