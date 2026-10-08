@@ -250,7 +250,7 @@ def apply_incomplete_invoice_vat_default(result: dict[str, Any]) -> str:
             continue
         row["raw_vat_mode"] = "excluded"
         reasons = set(row.get("reason_codes") or [])
-        reasons.discard("vat_basis_unknown")
+        reasons.difference_update({"vat_basis_unknown", "unknown_vat"})
         reasons.add("vat_inferred_invoice_default")
         row["reason_codes"] = sorted(reasons)
         if row.get("status") == "unresolved" and not (

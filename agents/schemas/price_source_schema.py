@@ -101,13 +101,13 @@ def apply_price_source_hardware_defaults(result: dict[str, Any]) -> dict[str, An
         ):
             continue
         row["material_type"] = "Hardware"
-        default_unit = (
-            "set" if any(marker in text for marker in _DRAWER_RUNNER_MARKERS)
-            else "piece"
-        )
+        is_drawer_runner = any(marker in text for marker in _DRAWER_RUNNER_MARKERS)
+        default_unit = "set" if is_drawer_runner else "piece"
         changed = False
         for key in ("purchase_unit", "calculation_unit"):
-            if row.get(key) in {"", "unknown", "other", None}:
+            # Drawer runners are sold and estimated as a left/right set. A
+            # printed count-unit describes quantity, not a single rail.
+            if is_drawer_runner or row.get(key) in {"", "unknown", "other", None}:
                 row[key] = default_unit
                 changed = True
         if str(row.get("raw_unit") or "").strip().casefold() in {"", "unknown", "other"}:

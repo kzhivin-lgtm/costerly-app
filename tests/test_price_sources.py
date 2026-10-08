@@ -642,6 +642,26 @@ def test_drawer_runner_defaults_to_a_set_when_the_source_omits_the_unit():
     assert prepared["rows"][0]["normalized_price"] == 90
 
 
+def test_drawer_runner_is_a_set_even_when_invoice_uses_piece_as_count_unit():
+    result = _result()
+    runner = result["rows"][0]
+    runner.update({
+        "material_type": "Hardware",
+        "material_family": "drawer runner",
+        "raw_description": "Drawer runner 600 mm",
+        "normalized_name": "Drawer runner 600 mm",
+        "raw_unit": "piece",
+        "purchase_unit": "piece",
+        "calculation_unit": "piece",
+    })
+
+    prepared = apply_price_source_hardware_defaults(result)
+
+    assert prepared["rows"][0]["raw_unit"] == "piece"
+    assert prepared["rows"][0]["purchase_unit"] == "set"
+    assert prepared["rows"][0]["calculation_unit"] == "set"
+
+
 def test_ordinary_material_defaults_to_piece_when_an_invoice_omits_the_unit():
     result = _result()
     row = result["rows"][0]
@@ -3526,7 +3546,7 @@ def test_incomplete_invoice_vat_defaults_to_excluded_without_review_blocker():
         "rows": [{
             "raw_vat_mode": "unknown",
             "status": "unresolved",
-            "reason_codes": ["vat_basis_unknown"],
+            "reason_codes": ["vat_basis_unknown", "unknown_vat"],
         }],
     }
 
@@ -3534,6 +3554,7 @@ def test_incomplete_invoice_vat_defaults_to_excluded_without_review_blocker():
     assert result["vat_mode"] == "excluded"
     assert result["rows"][0]["raw_vat_mode"] == "excluded"
     assert result["rows"][0]["status"] == "ready"
+    assert "unknown_vat" not in result["rows"][0]["reason_codes"]
 
 
 def test_invoice_source_identity_requires_supplier_and_invoice_number():
