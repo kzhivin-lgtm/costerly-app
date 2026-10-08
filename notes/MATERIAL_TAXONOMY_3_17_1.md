@@ -54,6 +54,12 @@ Conversely, a word such as `glass` is not enough to turn a hinge or hardware
 profile into a glass material. Its product role must be determined from the
 whole source phrase and the price-table context.
 
+Metal is a stock or structural-metal lane only: sheet, tube, profile, angle,
+channel, bar, rod, wire and solid structural section. A fastening, furniture
+or mounting part remains Hardware even when it is made from steel or
+aluminium. In particular, a mounting, connector or hinge plate is Hardware;
+only a source-proven stock plate such as `steel plate` is Metal.
+
 | Department | Entity families | Primary attribute | Bounded secondary attributes |
 | --- | --- | --- | --- |
 | Wood | plywood, MDF, particleboard, HDF, OSB, laminated panel, solid timber, veneer, edge banding | thickness or timber section | dimensions, species, substrate, construction, finish, colour |
@@ -90,6 +96,18 @@ source row → reference operation → company supplier operation offer
 
 It never creates a company material or material offer. The first production
 acceptance case is `פס חיתוך + קנט`.
+
+## Pending consumables boundary
+
+The owner requested an explicit small-hardware exclusion boundary. This is a
+commercial rule, not a taxonomy rule: a mounting or connector plate remains
+Hardware by entity even when it is excluded from the purchasable catalog.
+Proposed policy awaiting owner confirmation: after source-price arithmetic is
+verified, exclude only a discrete Hardware line whose ex-VAT unit price is at
+most ILS 10 and whose source explicitly proves a package or line quantity of
+at least 10. The raw source row remains audit evidence with an exclusion
+reason. Stock metal, sheets, Material Jobs and a distinct low-cost single
+fitting are outside this policy.
 
 ## Delivery sequence
 

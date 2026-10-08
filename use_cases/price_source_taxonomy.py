@@ -47,54 +47,67 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
     # Wood, furniture fittings first so a metal hinge never becomes Metal.
     TaxonomyRule("Hardware", "drawer slide", (
         "drawer slide", "drawer runner", "drawer rail", "undermount", "runner",
+        "ball bearing slide", "concealed slide", "soft close slide", "telescopic slide",
         "movento", "tandem", "telescopic runner",
         "מסילת מגירה", "מסילה למגירה", "מסילה תחתית", "מסילה כפולה",
-        "מסילות מגירה", "מסילות", "מובנטו", "טנדם", "טלסקופית",
+        "מסילה טלסקופית", "מסילה נסתרת", "מסילה כדורים", "מסילות מגירה",
+        "מסילות", "מובנטו", "טנדם", "טלסקופית",
     )),
-    TaxonomyRule("Hardware", "hinge", ("hinge", "hinges", "ציר", "צירים", "צירי")),
+    TaxonomyRule("Hardware", "hinge", (
+        "hinge", "hinges", "concealed hinge", "cup hinge", "soft close hinge",
+        "piano hinge", "pivot hinge", "ציר", "צירים", "צירי", "ציר ספר",
+        "ציר נסתר", "ציר קלפה", "ציר טריקה שקטה",
+    )),
     TaxonomyRule("Hardware", "door closure", (
         "door closure", "door closer", "glass door closure", "glass door hinge",
         "glass hinge", "סוגר דלת", "ציר לזכוכית", "ציר דלת זכוכית",
     )),
     TaxonomyRule("Hardware", "mounting plate", (
-        "mounting plate", "mounting bracket", "bracket", "clip", "latch",
-        "פלטת חיבור", "תושבת", "קליפ", "סוגר",
+        "mounting plate", "connector plate", "fixing plate", "hinge plate",
+        "mounting bracket", "bracket", "clip", "latch", "shelf support", "shelf pin",
+        "corner bracket", "פלטת חיבור", "פלטת הרכבה", "פלטה לציר", "תושבת", "קליפ",
+        "סוגר", "תומך מדף", "פין מדף", "זוויתן לרהיט",
     )),
-    TaxonomyRule("Hardware", "handle", ("handle", "knob", "pull", "drawer handle", "ידית", "ידיות", "כפתור", "כפתורים")),
+    TaxonomyRule("Hardware", "handle", (
+        "handle", "knob", "pull", "drawer handle", "cabinet handle", "profile handle",
+        "ידית", "ידיות", "כפתור", "כפתורים", "ידית פרופיל",
+    )),
     TaxonomyRule("Hardware", "furniture leg", (
-        "furniture leg", "cabinet leg", "plinth leg", "adjustable leg", "gas lift",
-        "רגלית", "רגל מתכווננת", "בוכנת גז", "בוכנה", "מנגנון קלפה",
+        "furniture leg", "cabinet leg", "plinth leg", "adjustable leg", "leveling foot",
+        "רגלית", "רגל מתכווננת", "רגל לארון", "רגל מטבח",
     )),
     TaxonomyRule("Hardware", "furniture connector", (
         "connector", "cabinet connector", "cam lock", "confirmat", "dowel",
-        "bolt", "furniture screw", "מחבר", "מחברי רהיט", "אקסצנטרי",
-        "דיבל", "בורג רהיטים",
+        "bolt", "furniture screw", "minifix", "connector bolt", "cam fitting",
+        "מחבר", "מחברי רהיט", "אקסצנטרי", "דיבל", "בורג רהיטים", "מיני פיקס",
     )),
     TaxonomyRule("Hardware", "lift mechanism", (
         "lift mechanism", "flap lift", "stay lift", "gas strut", "gas spring",
-        "מנגנון קלפה", "מנגנון הרמה", "בוכנת גז", "קפיץ גז",
+        "soft close damper", "magnetic catch", "מנגנון קלפה", "מנגנון הרמה",
+        "בוכנת גז", "קפיץ גז", "בולם טריקה", "תופסן מגנטי",
     )),
     # Wood sheets. Twin and Okoume prove plywood, but are attributes, not brands.
     TaxonomyRule("Wood Sheets", "plywood", (
-        "plywood", "lumber core", "sanded plywood", "לביד", "לבידים", "דיקט", "סנדוויץ", "סנדויץ",
+        "plywood", "lumber core", "sanded plywood", "blockboard", "marine plywood",
+        "לביד", "לבידים", "דיקט", "סנדוויץ", "סנדויץ", "לביד ימי", "לוח לבוד",
         "okume", "okoume", "אוקומה", "אוקמה", "twin", "טווין", "combi", "קומבי",
     )),
     TaxonomyRule("Wood Sheets", "mdf", (
-        "mdf", "m.d.f", "m d f",
+        "mdf", "m.d.f", "m d f", "moisture resistant mdf", "fire retardant mdf",
         # Hebrew invoices and OCR use both the spoken abbreviation and the
         # compact printed form. Dotted and spaced forms cover OCR separating
         # the letters without turning an unrelated Hebrew word into MDF.
-        "מדי אף", "אמ די אף", "מדפ", "מ.ד.פ", "מ ד פ",
+        "מדי אף", "אמ די אף", "מדפ", "מ.ד.פ", "מ ד פ", "mdf ירוק", "מדפ ירוק",
     )),
     TaxonomyRule("Wood Sheets", "particleboard", (
-        "particleboard", "chipboard", "melamine board", "laminated board",
-        "סיבית", "מלמין", "שבבית",
+        "particleboard", "chipboard", "melamine board", "laminated board", "ldsp",
+        "סיבית", "מלמין", "שבבית", "לוח מלמין",
     )),
     TaxonomyRule("Wood Sheets", "hardboard", ("hardboard", "hdf", "מזונית", "הארדבורד")),
     TaxonomyRule("Wood Sheets", "osb", ("osb", "oriented strand board", "או אס בי", "לוח שבבי עץ")),
     TaxonomyRule("Wood Sheets", "laminated panel", (
-        "laminated panel", "laminated mdf", "laminated plywood", "פורמייקה",
-        "לוח מצופה", "לוח למינציה",
+        "laminated panel", "laminated mdf", "laminated plywood", "formica panel", "פורמייקה",
+        "לוח מצופה", "לוח למינציה", "לוח פורמייקה",
     )),
     TaxonomyRule("Glass", "glass", ("glass", "mirror", "זכוכית", "מראה")),
     TaxonomyRule("Plastics & Composites", "acrylic sheet", (
@@ -132,30 +145,44 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
     )),
     TaxonomyRule("Solid Wood", "solid timber", (
         "solid wood", "timber", "lumber", "plank", "board", "beam", "batten", "slat",
-        "עץ מלא", "קורה", "קורות", "קרש", "קרשים", "לוח עץ", "סרגל", "לטה", "לוחות עץ",
+        "butcher block", "glulam", "finger joint", "עץ מלא", "קורה", "קורות", "קרש", "קרשים",
+        "לוח עץ", "סרגל", "לטה", "לוחות עץ", "בוצ׳ר", "בוצר", "עץ גושני", "קורות מודבקות",
     )),
-    TaxonomyRule("Wood Supplies", "veneer", ("veneer", "פורניר")),
-    TaxonomyRule("Wood Supplies", "edge banding", ("edge band", "edge banding", "edgeband", "קנט", "קנטים")),
+    TaxonomyRule("Wood Supplies", "veneer", ("veneer", "wood veneer", "פורניר", "שכבת פורניר")),
+    TaxonomyRule("Wood Supplies", "edge banding", ("edge band", "edge banding", "edgeband", "abs edge", "קנט", "קנטים", "פס קנט")),
     # Metal.
+    TaxonomyRule("Metal Profiles", "metal tube", (
+        "square tube", "rectangular tube", "round tube", "steel tube", "metal tube", "pipe",
+        "צינור", "צינור מרובע", "צינור מלבני", "צינור עגול", "צינור פלדה",
+    )),
+    TaxonomyRule("Metal Profiles", "metal angle", (
+        "steel angle", "metal angle", "angle iron", "l angle", "זווית", "זוויתן", "פרופיל זווית",
+    )),
+    TaxonomyRule("Metal Profiles", "metal channel", (
+        "metal channel", "steel channel", "u channel", "c channel", "תעלה", "פרופיל u", "פרופיל c",
+    )),
     TaxonomyRule("Metal Profiles", "metal profile", (
-        "metal profile", "aluminium profile", "aluminum profile", "profile", "tube", "pipe", "angle", "channel",
-        "פרופיל", "פרופילי", "אלומיניום", "צינור", "זווית", "זוויתן", "תעלה",
+        "metal profile", "aluminium profile", "aluminum profile", "profile", "extrusion",
+        "פרופיל", "פרופילי", "פרופיל אלומיניום", "פרופיל מתכת",
     )),
     TaxonomyRule("Metal Sheets", "metal sheet", (
-        "sheet metal", "steel sheet", "aluminium sheet", "aluminum sheet", "plate", "metal plate",
-        "פח", "פחים", "פלטת מתכת", "פלטות מתכת", "לוח אלומיניום", "נירוסטה",
+        "sheet metal", "steel sheet", "aluminium sheet", "aluminum sheet", "stainless sheet",
+        "steel plate", "aluminium plate", "aluminum plate", "פח", "פחים", "לוח אלומיניום", "פח נירוסטה",
     )),
     TaxonomyRule("Metal Supplies", "metal bar", (
-        "round bar", "flat bar", "solid bar", "rod", "wire", "מוט", "פס שטוח", "חוט",
+        "round bar", "flat bar", "solid bar", "rod", "wire", "rebar", "metal strip",
+        "מוט", "פס שטוח", "חוט", "מוט עגול", "ברזל בניין", "פס מתכת",
     )),
     # Coating.
-    TaxonomyRule("Paints & Coatings", "paint", ("paint", "colour paint", "צבע", "צבעים", "צבע יסוד")),
-    TaxonomyRule("Paints & Coatings", "lacquer", ("lacquer", "varnish", "לכה", "לכות")),
-    TaxonomyRule("Paints & Coatings", "primer", ("primer", "יסוד", "פריימר")),
-    TaxonomyRule("Paints & Coatings", "powder coating", ("powder coat", "powder coating", "צביעה בתנור")),
+    TaxonomyRule("Paints & Coatings", "powder coating", ("powder coat", "powder coating", "אבקת צבע", "צביעה בתנור")),
+    TaxonomyRule("Paints & Coatings", "epoxy coating", ("epoxy paint", "epoxy coating", "אפוקסי", "צבע אפוקסי")),
+    TaxonomyRule("Paints & Coatings", "polyurethane coating", ("polyurethane", "pu coating", "פוליאוריתן", "צבע פוליאוריתן")),
+    TaxonomyRule("Paints & Coatings", "primer", ("primer", "undercoat", "יסוד", "פריימר", "צבע יסוד")),
+    TaxonomyRule("Paints & Coatings", "lacquer", ("lacquer", "varnish", "clear coat", "לכה", "לכות", "לכה שקופה")),
+    TaxonomyRule("Paints & Coatings", "paint", ("paint", "colour paint", "acrylic paint", "צבע", "צבעים", "צבע אקרילי")),
     TaxonomyRule("Coating Supplies", "coating material", (
-        "stain", "wood filler", "putty", "hardener", "thinner", "sealer", "catalyst",
-        "מרק", "שפכטל", "מדלל", "מקשה", "סילר", "זרז",
+        "stain", "wood stain", "wood filler", "putty", "hardener", "thinner", "sealer", "catalyst",
+        "wood oil", "wax", "מרק", "שפכטל", "מדלל", "מקשה", "סילר", "זרז", "בייץ", "שמן עץ", "ווקס",
     )),
 )
 
@@ -280,6 +307,9 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("acacia", ("acacia", "שיטה")),
         ("mahogany", ("mahogany", "מהגוני")),
         ("bamboo", ("bamboo", "במבוק")),
+        ("cherry", ("cherry", "דובדבן")),
+        ("olive", ("olive", "זית")),
+        ("eucalyptus", ("eucalyptus", "אקליפטוס")),
     ),
     "construction": (
         ("twin", ("twin", "טווין", "combi", "קומבי")),
@@ -292,10 +322,15 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("sanded", ("sanded", "sanding", "שיוף", "משויף")),
         ("polished", ("polished", "polish", "מלוטש")),
         ("mirror", ("mirror", "mirrored", "מראה")),
+        ("brushed", ("brushed", "brush finish", "מברש", "מוברש")),
+        ("natural", ("natural", "טבעי", "טבעית")),
     ),
     "coating": (
         ("melamine", ("melamine", "מלמין")),
         ("laminated", ("laminated", "laminate", "למינציה", "מצופה")),
+        ("formica", ("formica", "פורמייקה", "פורמיקה")),
+        ("veneer", ("veneer", "פורניר")),
+        ("polymer", ("polymer", "פולימר")),
     ),
     "colour": (
         ("white", ("white", "לבן", "לבנה")),
@@ -304,14 +339,24 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("green", ("green", "ירוק", "ירוקה")),
         ("red", ("red", "אדום", "אדומה")),
         ("blue", ("blue", "כחול", "כחולה")),
+        ("brown", ("brown", "חום", "חומה")),
+        ("beige", ("beige", "בז׳", "בז")),
     ),
     "grade": (
         ("stainless", ("stainless", "נירוסטה", "נירוסט")),
         ("galvanized", ("galvanized", "zinc coated", "מגולוון", "מגלוון")),
         ("treated", ("treated", "impregnated", "מטופל", "מחוטא")),
+        ("moisture-resistant", ("moisture resistant", "water resistant", "mr mdf", "דוחה לחות", "עמיד לחות")),
+        ("fire-retardant", ("fire retardant", "fire resistant", "fr mdf", "מעכב בעירה", "חסין אש")),
+        ("marine", ("marine plywood", "marine grade", "לביד ימי")),
         ("kiln-dried", ("kiln dried", "dried", "יבש", "מיובש")),
         ("rough-sawn", ("rough sawn", "unplaned", "לא מוקצע", "מנוסר")),
         ("planed", ("planed", "מוקצע")),
+        ("aluminium", ("aluminium", "aluminum", "אלומיניום")),
+        ("carbon-steel", ("carbon steel", "mild steel", "פלדה", "ברזל")),
+        ("brass", ("brass", "פליז")),
+        ("bronze", ("bronze", "ברונזה")),
+        ("copper", ("copper", "נחושת")),
     ),
 }
 
@@ -350,8 +395,11 @@ JOB_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("cnc_vertical_drilling", ("drilling", "drill", "קידוח")),
     ("cnc_grooving", ("groove", "dado", "חריץ")),
     ("cnc_router_profile_cutting", ("router", "כרסום")),
+    ("cnc_panel_processing", ("cnc cutting", "cnc routing", "cnc machining", "עיבוד cnc", "כרסום cnc")),
     ("panel_saw_cutting", ("cutting", "panel saw", "חיתוך", "ניסור")),
     ("carcass_assembly", ("assembly", "הרכבה", "הרכבת", "הרכב")),
+    ("wood_planing", ("planing service", "wood planing", "הקצעה")),
+    ("veneer_pressing", ("veneer pressing", "veneer press", "כבישת פורניר", "הדבקת פורניר")),
     ("metal_profile_cutting", ("metal profile cutting", "tube cutting", "profile cutting", "חיתוך פרופיל", "חיתוך צינור")),
     ("sheet_laser_cutting", ("laser cutting", "laser cut", "חיתוך לייזר")),
     ("sheet_shearing", ("sheet shearing", "guillotine cutting", "חיתוך גיליוטינה")),
@@ -375,6 +423,7 @@ JOB_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("wood_lacquering", ("wood lacquering", "lacquering service", "צביעת לכה")),
     ("wet_spray_painting", ("spray painting", "wet painting", "צביעה רטובה", "צביעה בהתזה")),
     ("powder_coating_application", ("powder coating service", "powder painting", "צביעה באבקה", "צביעה בתנור")),
+    ("wet_spray_painting", ("spray booth", "spray lacquer", "צביעה בהתזה", "צביעה באקדח")),
 )
 
 # These phrases are unambiguously paid work even when the commercial model
@@ -389,7 +438,10 @@ FORCED_OPERATION_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("cnc_vertical_drilling", ("drilling service", "drilling work", "עבודת קידוח", "שירות קידוח")),
     ("cnc_grooving", ("grooving service", "grooving work", "עבודת חריץ", "שירות חריץ")),
     ("cnc_router_profile_cutting", ("router service", "routing service", "עבודת כרסום", "שירות כרסום")),
+    ("cnc_panel_processing", ("cnc cutting service", "cnc routing service", "עיבוד cnc", "שירות cnc")),
     ("carcass_assembly", ("assembly service", "assembly work", "עבודת הרכבה", "שירות הרכבה")),
+    ("wood_planing", ("planing service", "wood planing service", "עבודת הקצעה", "שירות הקצעה")),
+    ("veneer_pressing", ("veneer pressing service", "עבודת הדבקת פורניר", "שירות כבישת פורניר")),
     ("metal_profile_cutting", ("metal profile cutting service", "tube cutting service", "עבודת חיתוך פרופיל", "שירות חיתוך צינור")),
     ("sheet_laser_cutting", ("laser cutting service", "laser cutting work", "עבודת חיתוך לייזר", "שירות חיתוך לייזר")),
     ("sheet_shearing", ("sheet shearing service", "guillotine cutting service", "עבודת חיתוך גיליוטינה")),
@@ -557,6 +609,11 @@ def _brand_candidate_from_text(text: str) -> str:
         runs.append(current)
     for run in reversed(runs):
         for index, token in enumerate(run):
+            # Product codes are SKU evidence, not a candidate manufacturer.
+            # Keeping one in the identity would recreate the same material
+            # merely because an invoice has an unknown stock code.
+            if any(character.isdigit() for character in token):
+                continue
             if token.casefold() in _BRAND_CANDIDATE_NOISE:
                 continue
             candidate = run[index:index + 2]
@@ -672,6 +729,10 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     # They remain in raw evidence, but never identity, merge or display.
     for field in (*ATTRIBUTE_RULES, "surface"):
         attributes.pop(field, None)
+    # Display identity must be reconstructed from source evidence as well.
+    # A previous model phrase can be helpful context in raw evidence, but it
+    # must not keep arbitrary prose alive as an identity attribute.
+    attributes["primary_attribute"] = ""
     for field, values in ATTRIBUTE_RULES.items():
         for canonical, aliases in values:
             if _has_alias(text, aliases):
@@ -701,7 +762,10 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     literal_thickness = _explicit_thickness_mm(text)
     if literal_thickness:
         attributes["thickness_mm"] = literal_thickness
-    if rule.category == "Wood Sheets":
+    sheet_categories = {
+        "Wood Sheets", "Metal Sheets", "Glass", "Plastics & Composites",
+    }
+    if rule.category in sheet_categories:
         try:
             thickness = float(attributes.get("thickness_mm") or 0)
         except (TypeError, ValueError):
@@ -724,7 +788,7 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     if technical_grade := _explicit_technical_grade(text):
         attributes["grade"] = technical_grade
     attributes = normalize_identity_attributes(attributes)
-    if rule.category == "Wood Sheets":
+    if rule.category in sheet_categories:
         # Model-generated dimensions are not source evidence. Rebuild this
         # pair from literal text so a single 3100 span cannot become 3100×3100
         # or acquire an unrelated 2400 side.
@@ -732,24 +796,12 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     row["identity_attributes"] = attributes
     row["material_type"] = rule.category
     row["material_family"] = rule.family
-    current_name = str(row.get("normalized_name") or "").strip()
     canonical_name = _taxonomy_material_name(rule, attributes)
-    # A literal Wood Sheets rule is the source of truth for its customer-facing
-    # identity. This prevents a model label such as “Acrylic Okoume” from
-    # surviving despite the source proving a plywood family. Other categories
-    # retain an already-readable model name until the formatter has source
-    # evidence for every relevant entity family.
-    has_conflicting_family_word = (
-        rule.family != "glass"
-        and any(word in current_name.casefold().split() for word in ("glass", "mirror"))
-    )
-    if (
-        not current_name
-        or current_name.casefold().startswith("unclassified")
-        or has_conflicting_family_word
-        or rule.category == "Wood Sheets"
-    ):
-        row["normalized_name"] = canonical_name
+    # Every ingestion route converges on this compact canonical form. Raw
+    # supplier prose remains intact in ``raw_description`` for evidence, but
+    # secondary non-attributes can neither leak into the catalog nor split a
+    # material identity downstream.
+    row["normalized_name"] = canonical_name
     reasons = set(row.get("reason_codes") or [])
     reasons.discard("unknown_product_term")
     reasons.add(f"taxonomy_{rule.category.casefold().replace(' ', '_')}")

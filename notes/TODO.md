@@ -109,6 +109,11 @@ brand aliases and a Material Job route to reference operation plus supplier
 operation offer, never a material offer. It must preserve the frozen 3.16.7
 supplier, VAT, source lifecycle and UI paths. Contract:
 `notes/MATERIAL_TAXONOMY_3_17_1.md`.
+Pending owner decision within this work: whether low-cost discrete Hardware is
+excluded as small consumables. Proposed policy is verified unit price at most
+ILS 10 ex-VAT plus explicit package or line quantity at least 10. It must run
+after arithmetic verification and must not reclassify the item away from
+Hardware.
 
 ACTIVE, IMPLEMENTATION CHECKPOINT `5f6360f`, P0, 3.15.24 canonical object quantity and durable Object Detail route:
 make item quantity editable on File Review, Objects, and Object Detail. All

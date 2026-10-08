@@ -1416,7 +1416,7 @@ def test_sheet_normalization_keeps_proved_glass_category():
     normalize_price_source_sheet_rows(result)
 
     assert row["material_type"] == "Glass"
-    assert row["normalized_name"] == "Glass 5 mm 3100 sheet"
+    assert row["normalized_name"] == "Glass 5 mm"
 
 
 @pytest.mark.parametrize(
@@ -1429,6 +1429,19 @@ def test_sheet_normalization_keeps_proved_glass_category():
         ("פח נירוסטה 2 ממ", "Metal Sheets", "metal sheet"),
         ("powder coating black", "Paints & Coatings", "powder coating"),
         ("לכה מט", "Paints & Coatings", "lacquer"),
+        ("לוח MDF ירוק עמיד לחות 17 ממ", "Wood Sheets", "mdf"),
+        ("לוח סיבית מלמין 18 ממ", "Wood Sheets", "particleboard"),
+        ("עץ גושני אלון מוקצע 40 ממ", "Solid Wood", "solid timber"),
+        ("ציר נסתר טריקה שקטה", "Hardware", "hinge"),
+        ("פלטת חיבור מתכת לציר", "Hardware", "mounting plate"),
+        ("מסילה כדורים למגירה 550 ממ", "Hardware", "drawer slide"),
+        ("צינור אלומיניום 40x40 ממ", "Metal Profiles", "metal tube"),
+        ("זוויתן פלדה 30x30 ממ", "Metal Profiles", "metal angle"),
+        ("פח מגולוון 2 ממ", "Metal Sheets", "metal sheet"),
+        ("steel plate 8 mm", "Metal Sheets", "metal sheet"),
+        ("מוט פליז עגול 8 ממ", "Metal Supplies", "metal bar"),
+        ("צבע אפוקסי שחור", "Paints & Coatings", "epoxy coating"),
+        ("שמן עץ טבעי", "Coating Supplies", "coating material"),
     ],
 )
 def test_bilingual_taxonomy_covers_all_material_departments(description, category, family):
@@ -1508,6 +1521,24 @@ def test_taxonomy_preserves_an_unknown_proper_name_as_brand_candidate():
     assert row["identity_attributes"]["brand_basis"] == "candidate"
 
 
+def test_proven_family_discards_unknown_secondary_prose_and_clears_unknown_review():
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": "לוח MDF ירוק עמיד לחות 17 ממ פריט ספק מיוחד QX-999",
+        "normalized_name": "Unclassified special supplier material QX-999",
+        "material_type": "Other",
+        "material_family": "other",
+        "status": "unresolved",
+        "reason_codes": ["unknown_product_term"],
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["status"] == "ready"
+    assert row["material_type"] == "Wood Sheets"
+    assert row["normalized_name"] == "MDF 17 mm, moisture-resistant, green"
+    assert "unknown_product_term" not in row["reason_codes"]
+
+
 def test_taxonomy_keeps_aisi_as_grade_and_profile_section_as_primary_attribute():
     row = _result()["rows"][0]
     row.update({
@@ -1558,6 +1589,9 @@ def test_glass_door_closure_is_hardware_not_glass_and_keeps_compact_brand_candid
         ("הרכבת גוף", "carcass_assembly"),
         ("עבודת חיתוך לייזר", "sheet_laser_cutting"),
         ("powder coating service", "powder_coating_application"),
+        ("עיבוד CNC לחזיתות", "cnc_panel_processing"),
+        ("שירות הקצעה", "wood_planing"),
+        ("עבודת הדבקת פורניר", "veneer_pressing"),
     ],
 )
 def test_bilingual_material_jobs_dictionary_resolves_existing_operations(description, operation_code):
