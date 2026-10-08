@@ -946,6 +946,19 @@ def test_issuer_header_repairs_a_buyer_selected_as_supplier():
     assert result["supplier_hp"] == "513453233"
 
 
+def test_issuer_header_replaces_a_different_model_supplier_name():
+    result = _result()
+    result.update({"supplier_name": "א.ש. פירוזל", "supplier_hp": ""})
+
+    assert repair_supplier_from_issuer_evidence(
+        result,
+        issuer_identity={"supplier_name": "יעד פירזול 1984", "supplier_hp": "511029340"},
+        company_identity=None,
+    )
+    assert result["supplier_name"] == "יעד פירזול 1984"
+    assert result["supplier_hp"] == "511029340"
+
+
 def test_supplier_hp_defaults_to_exactly_nine_digits_or_empty():
     result = _result()
     result["supplier_hp"] = "514-539-998"
@@ -3958,6 +3971,15 @@ def test_document_total_repairs_an_ocr_misread_vat_amount():
     assert origin == "document_total_reconciled"
 
 
+def test_document_totals_snap_rounding_noise_to_the_statutory_vat_rate():
+    assert price_source_vat_rate(
+        document_date="2024-12-08",
+        document_subtotal=68.41,
+        document_vat_amount=11.63,
+        document_total=80.00,
+    ) == (0.17, "document_total_reconciled")
+
+
 def test_implausible_isolated_vat_amount_falls_back_to_statutory_rate():
     assert price_source_vat_rate(
         document_date="2024-03-31",
@@ -4037,6 +4059,7 @@ def test_invoice_source_identity_requires_supplier_and_invoice_number():
     assert normalize_invoice_number("") == ""
     assert invoice_number_from_source_text("חשבונית מס: 62336") == "62336"
     assert invoice_number_from_source_text("Tax Invoice No. 62336") == "62336"
+    assert invoice_number_from_source_text("חשבונית מס - קבלה: DT.24016853") == "DT.24016853"
 
 
 def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():

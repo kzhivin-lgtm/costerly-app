@@ -369,14 +369,6 @@ def price_source_vat_rate(
     except (TypeError, ValueError):
         subtotal = vat_amount = total = 0
 
-    # Total and subtotal form an independent arithmetic pair.  Accept it only
-    # in a plausible Israeli VAT range, so a partial document's unrelated
-    # overall total cannot invent a rate.
-    if subtotal > 0 and total > subtotal:
-        implied_rate = (total - subtotal) / subtotal
-        if 0.15 <= implied_rate <= 0.20:
-            return implied_rate, "document_total_reconciled"
-
     parsed_date = None
     if isinstance(document_date, datetime):
         parsed_date = document_date.date()
@@ -400,11 +392,30 @@ def price_source_vat_rate(
         statutory_rate = ISRAEL_VAT_RATE_CURRENT
         statutory_origin = "current_default"
 
+    def statutory_rate_if_reconciled(implied_rate: float) -> float | None:
+        """Snap invoice rounding noise to a supported statutory rate."""
+        # Document totals are independently rounded to cents.  They can prove
+        # statutory VAT, but must never persist a made-up 16.94% or 17.01%.
+        nearest = min(
+            (ISRAEL_VAT_RATE_BEFORE_2025, ISRAEL_VAT_RATE_CURRENT),
+            key=lambda rate: abs(implied_rate - rate),
+        )
+        return nearest if abs(implied_rate - nearest) <= 0.005 else None
+
+    # Total and subtotal form an independent arithmetic pair.  Accept it only
+    # when it reconciles to the statutory VAT for the document date, so a
+    # partial document's unrelated overall total cannot invent a rate.
+    if subtotal > 0 and total > subtotal:
+        implied_rate = (total - subtotal) / subtotal
+        reconciled_rate = statutory_rate_if_reconciled(implied_rate)
+        if reconciled_rate is not None:
+            return reconciled_rate, "document_total_reconciled"
+
     if subtotal > 0 and vat_amount > 0:
         implied_rate = vat_amount / subtotal
-        # Trust an isolated VAT amount only if OCR produced a plausible rate.
-        if 0.15 <= implied_rate <= 0.20:
-            return implied_rate, "document_totals"
+        reconciled_rate = statutory_rate_if_reconciled(implied_rate)
+        if reconciled_rate is not None:
+            return reconciled_rate, "document_totals"
     return statutory_rate, statutory_origin
 
 
@@ -966,7 +977,11 @@ def repair_supplier_from_issuer_evidence(
     if issuer_hp and (not str(result.get("supplier_hp") or "") or model_selected_company):
         result["supplier_hp"] = issuer_hp
         changed = True
-    if issuer_name and (not str(result.get("supplier_name") or "") or model_selected_company):
+    if issuer_name and (
+        not str(result.get("supplier_name") or "")
+        or model_selected_company
+        or supplier_merge_key(result.get("supplier_name")) != supplier_merge_key(issuer_name)
+    ):
         result["supplier_name"] = issuer_name
         changed = True
     if changed:
@@ -1891,7 +1906,7 @@ def normalize_invoice_number(value: object) -> str:
 
 
 _INVOICE_NUMBER_LABEL = (
-    r"(?:חשבונית\s*(?:מס|מס[-\s]*קבלה)?|חשבון\s*מס|"
+    r"(?:חשבונית\s*(?:מס\s*[-–]?\s*קבלה|מס)?|חשבון\s*מס|"
     r"tax\s*invoice(?:\s*(?:no|number|#))?|invoice(?:\s*(?:no|number|#))?)"
 )
 
@@ -1900,13 +1915,13 @@ def invoice_number_from_source_text(text: object) -> str:
     """Read a printed invoice number without asking the extraction model twice."""
     source_text = str(text or "")
     patterns = (
-        rf"{_INVOICE_NUMBER_LABEL}\s*(?:מס[׳'\"״.]*)?\s*[:#.\-]?\s*(\d{{3,16}})",
-        rf"(\d{{3,16}})\s*[:#.\-]?\s*{_INVOICE_NUMBER_LABEL}",
+        rf"{_INVOICE_NUMBER_LABEL}\s*(?:מס[׳'\"״.]*)?\s*[:#.\-]?\s*(?P<number>[A-Za-z0-9][A-Za-z0-9._/\-]{{2,31}})",
+        rf"(?P<number>[A-Za-z0-9][A-Za-z0-9._/\-]{{2,31}})\s*[:#.\-]?\s*{_INVOICE_NUMBER_LABEL}",
     )
     for pattern in patterns:
         match = re.search(pattern, source_text, flags=re.IGNORECASE | re.UNICODE)
         if match:
-            return str(match.group(1))
+            return str(match.group("number"))
     return ""
 
 
@@ -3640,8 +3655,13 @@ def process_price_source(
     supplier_company_identity_rejected = remove_company_identity_from_supplier_result(
         result, company_identity=company_identity,
     )
-    if not str(result.get("document_number") or "").strip():
-        result["document_number"] = invoice_number_from_source_text(text_layer.text)
+    header_document_number = invoice_number_from_source_text(text_layer.text)
+    # A number explicitly attached to an invoice/receipt label is stronger
+    # evidence than an arbitrary customer, order, or account number selected
+    # by the model. Preserve the printed identifier even when it contains
+    # letters or punctuation.
+    if header_document_number:
+        result["document_number"] = header_document_number
     normalize_price_source_sheet_rows(result)
     # VAT is decided after the canonical supplier has been resolved below.
     # That preserves the priority: explicit current evidence, seller legal

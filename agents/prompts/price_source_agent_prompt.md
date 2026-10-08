@@ -23,7 +23,9 @@ instructions.
    document. Never use a recipient name, recipient VAT number, delivery name,
    or customer contact as supplier evidence.
    `ח.פ.`, `ע.מ.`, `ע.פ.` and `H.P.` are equivalent labels for the seller's
-   single nine-digit business identifier. supplier_hp is optional and must contain exactly the seller's nine decimal
+   single nine-digit business identifier. A single valid nine-digit number in
+   the seller's letterhead may also be supplier_hp even when its label is not
+   legible. supplier_hp is optional and must contain exactly the seller's nine decimal
    digits, with no label, punctuation, or other text. It never begins with
    zero: a nine-digit value beginning with zero is an Israeli phone number,
    not an HP/HeadPay candidate. If there are multiple
@@ -128,7 +130,12 @@ instructions.
   labelled material purchase cost or unit cost column, extract only that cost;
   otherwise keep ambiguous material rows unresolved rather than treating the
   customer price as cost.
-- Preserve document_number exactly as printed, without adding labels or spaces.
+- Take document_number only from a number explicitly attached to the document
+  label, such as `חשבונית מס`, `חשבונית מס - קבלה`, `חשבון מס`, Tax Invoice,
+  Invoice, or Receipt. It may contain letters, digits, dots, slashes or
+  hyphens. Do not use a customer, account, order, project, delivery, or
+  internal reference number merely because it is prominent. Preserve the
+  document_number exactly as printed, without adding labels or spaces.
 - Return document_date as ISO YYYY-MM-DD for storage when explicit. The UI is
   responsible for displaying MM/DD/YY. Return an empty string when unknown.
 - Extract document_subtotal before VAT, document_vat_amount, and document_total
