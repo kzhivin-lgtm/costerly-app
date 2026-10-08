@@ -1498,6 +1498,26 @@ def test_brand_never_classifies_a_material_without_generic_evidence():
     assert material_rule_for_text("EGGER U999") is None
 
 
+def test_glass_door_closure_is_hardware_not_glass_and_keeps_compact_brand_candidate():
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": "Glass door closure white 550 mm Pure high internal front Mario Box",
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+        "identity_attributes": {
+            **row["identity_attributes"], "primary_attribute": "", "brand": "",
+        },
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == "Hardware"
+    assert row["material_family"] == "door closure"
+    assert row["identity_attributes"]["primary_attribute"] == "550 mm"
+    assert row["identity_attributes"]["brand"] == "Mario Box"
+    assert row["normalized_name"] == "Door Closure 550 mm Mario Box"
+
+
 @pytest.mark.parametrize(
     ("description", "operation_code"),
     [

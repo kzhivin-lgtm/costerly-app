@@ -46,6 +46,10 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         "מסילות מגירה", "מסילות", "מובנטו", "טנדם", "טלסקופית",
     )),
     TaxonomyRule("Hardware", "hinge", ("hinge", "hinges", "ציר", "צירים", "צירי")),
+    TaxonomyRule("Hardware", "door closure", (
+        "door closure", "door closer", "glass door closure", "glass door hinge",
+        "glass hinge", "סוגר דלת", "ציר לזכוכית", "ציר דלת זכוכית",
+    )),
     TaxonomyRule("Hardware", "mounting plate", (
         "mounting plate", "mounting bracket", "bracket", "clip", "latch",
         "פלטת חיבור", "תושבת", "קליפ", "סוגר",
@@ -298,6 +302,7 @@ _HEBREW_FINAL_FORMS = str.maketrans({
 })
 _TAXONOMY_NOISE_RE = re.compile(r"[\u0591-\u05c7'\"׳״`.,;:/\\|()[\]{}+=*_\-]+")
 _TAXONOMY_CONNECTORS = {"and", "plus", "with", "ו"}
+_OCR_NEAR_COLLISIONS = frozenset({frozenset({"glass", "gloss"})})
 
 
 def _canonical_taxonomy_text(value: object) -> str:
@@ -353,6 +358,7 @@ def _compound_alias_matches(text: str, alias: str) -> bool:
         # match too. Single-word aliases never use this fallback.
         if not any(
             len(alias_token) >= 3
+            and frozenset({token, alias_token}) not in _OCR_NEAR_COLLISIONS
             and _edit_distance_at_most_one(token, alias_token)
             for token in text_tokens
         ):
@@ -603,6 +609,15 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
             )
     elif rule.category == "Metal Profiles":
         attributes["primary_attribute"] = _explicit_profile_primary_attribute(text)
+    elif rule.category == "Hardware" and not str(attributes.get("primary_attribute") or "").strip():
+        try:
+            first_dimension = _explicit_thickness_mm(text)
+        except (TypeError, ValueError):
+            first_dimension = 0
+        if first_dimension:
+            attributes["primary_attribute"] = (
+                f"{int(first_dimension) if first_dimension.is_integer() else first_dimension} mm"
+            )
     if technical_grade := _explicit_technical_grade(text):
         attributes["grade"] = technical_grade
     attributes = {
