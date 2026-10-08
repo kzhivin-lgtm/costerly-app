@@ -1091,6 +1091,28 @@ def _damerau_levenshtein(left: str, right: str) -> int:
     return previous[-1]
 
 
+def _supplier_name_script(value: str) -> str:
+    """Return the script family used by a normalized supplier name."""
+    if re.search(r"[\u0590-\u05FF]", value):
+        return "hebrew"
+    if re.search(r"[a-z]", value, flags=re.I):
+        return "latin"
+    return "other"
+
+
+def _issuer_header_name_matches(left: str, right: str) -> bool:
+    """Allow only small same-script OCR errors in a legal issuer header."""
+    if left == right:
+        return True
+    if not left or not right or _supplier_name_script(left) != _supplier_name_script(right):
+        return False
+    longest = max(len(left), len(right))
+    # One transcription error is normal in a short name, two in a longer
+    # legal name. A wider proportional threshold can merge distinct companies.
+    max_distance = 1 if longest <= 10 else 2
+    return _damerau_levenshtein(left, right) <= max_distance
+
+
 def match_existing_supplier(
     supplier_name: str,
     candidates: Sequence[Mapping[str, Any]],
@@ -1122,19 +1144,22 @@ def match_existing_supplier(
     if not incoming:
         return None
     # A legal name taken directly from the issuer letterhead is stronger than
-    # an OCR/model name similarity. It may join an exact canonical spelling,
-    # but never a merely similar supplier. This prevents distinct companies
-    # such as "YAAD PIRZUL 1984" and "א.ש. פירוזל" from collapsing when the
-    # ID is blurred or omitted.
+    # an OCR/model name similarity. Permit only one or two same-script OCR
+    # errors, never broad transliteration or shared-name matching. This keeps
+    # a typo from creating a duplicate while separating "YAAD PIRZUL 1984"
+    # from "א.ש. פירוזל" when an ID is blurred or omitted.
     if issuer_evidence_name and incoming == supplier_merge_key(issuer_evidence_name):
-        exact_matches = [
+        header_matches = [
             candidate for candidate in candidates
-            if supplier_merge_key(candidate.get("supplier_name") or candidate.get("normalized_name")) == incoming
+            if _issuer_header_name_matches(
+                incoming,
+                supplier_merge_key(candidate.get("supplier_name") or candidate.get("normalized_name")),
+            )
         ]
         return min(
-            exact_matches,
+            header_matches,
             key=lambda candidate: (str(candidate.get("created_at") or "~"), str(candidate.get("supplier_id") or "")),
-        ) if exact_matches else None
+        ) if len(header_matches) == 1 else None
     scored = []
     for candidate in candidates:
         core = supplier_merge_key(candidate.get("supplier_name") or candidate.get("normalized_name"))

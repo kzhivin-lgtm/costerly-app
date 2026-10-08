@@ -907,6 +907,21 @@ def test_issuer_header_name_does_not_fuzzy_merge_a_different_legal_supplier():
     ) is None
 
 
+def test_issuer_header_name_merges_a_small_same_script_ocr_typo():
+    candidates = [{
+        "supplier_id": "pirzul-a-sh",
+        "supplier_name": "א.ש. פירוזל",
+        "supplier_hp": "513453233",
+        "created_at": "2026-10-05T09:57:00+00:00",
+    }]
+
+    assert match_existing_supplier(
+        "א.ש. פירזול",
+        candidates,
+        issuer_evidence_name="א.ש. פירזול",
+    )["supplier_id"] == "pirzul-a-sh"
+
+
 def test_company_identity_is_an_exact_supplier_blacklist():
     identity = company_identity_blacklist({
         "company_name": "Wooden Heart",
