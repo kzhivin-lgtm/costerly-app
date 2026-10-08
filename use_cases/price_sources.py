@@ -875,18 +875,33 @@ def issuer_identity_from_source_text(text: str) -> dict[str, str]:
         r"(?:ע\s*[.׳\"״]?\s*[מפ]|[מפ]\s*[.׳\"״]?\s*ע)\s*[.׳\"״]?|"
         r"h\s*\.??\s*p\s*\.??)"
     )
-    # OCR visual-order output can reverse both the Hebrew label and the
-    # number/label order, for example ``514539998 פ.ח``.  Both forms refer to
-    # the same printed nine-digit seller identifier.
-    identifier_match = re.search(
-        rf"(?:{identifier_label}\s*[:#-]?\s*(?P<label_first>\d(?:[\s-]?\d){{8}})|"
-        rf"(?P<number_first>\d(?:[\s-]?\d){{8}})\s*[:#-]?\s*{identifier_label})",
+    # Prefer the conventional label-then-number form.  It is common for a
+    # phone/fax number to appear immediately before a genuine ``ע.מ.`` label;
+    # a single mixed-order regexp would then incorrectly bind that phone to the
+    # label and never reach the real identifier after it.
+    supplier_hp = ""
+    for identifier_match in re.finditer(
+        rf"{identifier_label}\s*[:#-]?\s*(?P<number>\d(?:[\s-]?\d){{8}})",
         header,
         flags=re.IGNORECASE | re.UNICODE,
-    )
-    supplier_hp = re.sub(
-        r"\D", "", (identifier_match.group("label_first") or identifier_match.group("number_first"))
-    ) if identifier_match else ""
+    ):
+        candidate = re.sub(r"\D", "", identifier_match.group("number"))
+        if re.fullmatch(r"[1-9]\d{8}", candidate):
+            supplier_hp = candidate
+            break
+    # OCR visual-order output can reverse the Hebrew label and number, for
+    # example ``514539998 פ.ח``.  Consider this only after ordinary header
+    # forms, so a preceding phone number cannot steal the label.
+    if not supplier_hp:
+        for identifier_match in re.finditer(
+            rf"(?P<number>\d(?:[\s-]?\d){{8}})\s*[:#-]?\s*{identifier_label}",
+            header,
+            flags=re.IGNORECASE | re.UNICODE,
+        ):
+            candidate = re.sub(r"\D", "", identifier_match.group("number"))
+            if re.fullmatch(r"[1-9]\d{8}", candidate):
+                supplier_hp = candidate
+                break
     supplier_name = ""
     legal_name_match = re.search(
         r"^\s*([^\n]{2,100}?)\s+בע\s*[\"״׳']?מ\s*\.?\s*$",
@@ -896,7 +911,7 @@ def issuer_identity_from_source_text(text: str) -> dict[str, str]:
     if legal_name_match:
         supplier_name = legal_name_match.group(1).strip()
     return {
-        "supplier_hp": supplier_hp if re.fullmatch(r"[1-9]\d{8}", supplier_hp) else "",
+        "supplier_hp": supplier_hp,
         "supplier_name": supplier_name,
     }
 

@@ -983,6 +983,17 @@ The workspace requirements are:
      from every input path, while preserving structured comparison fields for
      matching rather than relying on name-word order.
 
+5. **Profile first-navigation after deployment**
+   - Status: pending diagnosis, P1, no work number assigned.
+   - Symptom: immediately after a new deployment, the first click from the
+     main workspace to Profile shows a transient grey screen, returns to
+     Upload, and only the second click opens Profile/Price Lists.
+   - Outcome: the first Profile click reaches the requested profile tab. It
+     may not be consumed by startup, session recovery, or a fragment rerun.
+   - Acceptance: authenticated production first-navigation after deployment,
+     including direct Price Lists access, succeeds with one click and without
+     a transient return to Upload.
+
 ### Deferred until Source ingestion is accepted
 
 1. **Estimation resolver**

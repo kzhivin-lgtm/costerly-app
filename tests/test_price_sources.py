@@ -963,6 +963,15 @@ def test_issuer_identity_rejects_phone_like_leading_zero_numbers():
     assert issuer_identity_from_source_text("ח.פ. 036811752\nלכבוד: buyer")["supplier_hp"] == ""
 
 
+def test_issuer_identity_prefers_labelled_hp_after_a_preceding_phone_number():
+    header = "פקס. 03-6811752 ע.מ. 513453233\nא.ש. פירוזל בע\"מ\nלכבוד: buyer"
+
+    assert issuer_identity_from_source_text(header) == {
+        "supplier_hp": "513453233",
+        "supplier_name": "א.ש. פירוזל",
+    }
+
+
 def test_material_structural_key_ignores_sheet_wording_but_keeps_perforation():
     base = _result()["rows"][0]
     base.update({
