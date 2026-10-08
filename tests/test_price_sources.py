@@ -994,6 +994,15 @@ def test_issuer_identity_accepts_a_single_unlabelled_valid_header_id():
     }
 
 
+def test_issuer_identity_reads_an_english_ltd_seller_header():
+    header = "YAAD PIRZUL 1984 LTD.\n511029340\nלכבוד: buyer 337791438"
+
+    assert issuer_identity_from_source_text(header) == {
+        "supplier_hp": "511029340",
+        "supplier_name": "YAAD PIRZUL 1984",
+    }
+
+
 def test_issuer_identity_does_not_guess_between_unlabelled_header_ids():
     header = "ספק לדוגמה בע\"מ\n513453233 514539998\nלכבוד: buyer"
 

@@ -948,13 +948,19 @@ def issuer_identity_from_source_text(text: str) -> dict[str, str]:
         if len(set(unlabelled_candidates)) == 1:
             supplier_hp = unlabelled_candidates[0]
     supplier_name = ""
-    legal_name_match = re.search(
+    legal_name_patterns = (
         r"^\s*([^\n]{2,100}?)\s+בע\s*[\"״׳']?מ\s*\.?\s*$",
-        header,
-        flags=re.MULTILINE | re.UNICODE,
+        r"^\s*([A-Za-z][A-Za-z0-9 &'.,\-]{1,100}?)\s+(?:ltd\.?|limited)\s*$",
     )
-    if legal_name_match:
-        supplier_name = legal_name_match.group(1).strip()
+    for legal_name_pattern in legal_name_patterns:
+        legal_name_match = re.search(
+            legal_name_pattern,
+            header,
+            flags=re.MULTILINE | re.IGNORECASE | re.UNICODE,
+        )
+        if legal_name_match:
+            supplier_name = legal_name_match.group(1).strip()
+            break
     return {
         "supplier_hp": supplier_hp,
         "supplier_name": supplier_name,
