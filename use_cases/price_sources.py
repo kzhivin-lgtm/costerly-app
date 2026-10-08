@@ -332,6 +332,59 @@ def known_supplier_vat_basis(client, *, company_id: str, supplier_id: str) -> st
     return next(iter(modes)) if len(modes) == 1 else "unknown"
 
 
+_SUPPLIER_IDENTITY_BLOCKING_REASONS = {
+    "ambiguous_material",
+    "ambiguous_unit",
+    "document_total_mismatch",
+    "line_total_inconsistent",
+    "material_type_other",
+    "material_type_unresolved",
+    "missing_unit",
+    "operation_type_unresolved",
+    "package_conversion_unresolved",
+    "source_table_price_not_verified",
+    "unit_price_mismatch",
+    "unknown_material_family",
+    "unsupported_material",
+}
+
+
+def resolve_rows_after_supplier_identity(result: dict[str, Any]) -> int:
+    """Remove the agent's stale supplier blocker after server canonicalisation.
+
+    The agent sees only OCR evidence and can legitimately mark a seller unknown.
+    The persistence layer can later establish the canonical supplier from an
+    existing HP/name lane.  That later fact must re-evaluate the row rather
+    than retaining the agent's pre-resolution Review status.
+    """
+    resolved = 0
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict):
+            continue
+        reasons = set(row.get("reason_codes") or [])
+        if "supplier_unidentified" not in reasons:
+            continue
+        reasons.remove("supplier_unidentified")
+        row["reason_codes"] = sorted(reasons)
+        if row.get("status") != "unresolved":
+            continue
+        has_pricing_basis = (
+            row.get("item_kind") in {"material", "operation_service"}
+            and float(row.get("raw_price") or 0) > 0
+            and float(row.get("normalized_price") or 0) > 0
+            and str(row.get("raw_currency") or result.get("currency") or "").strip()
+            and row.get("raw_vat_mode") in {"included", "excluded"}
+            and row.get("purchase_unit") not in {"", "unknown", "other"}
+            and row.get("calculation_unit") not in {"", "unknown", "other"}
+            and float(row.get("conversion_factor") or 0) > 0
+            and str(row.get("normalized_name") or "").strip()
+        )
+        if has_pricing_basis and not (reasons & _SUPPLIER_IDENTITY_BLOCKING_REASONS):
+            row["status"] = "ready"
+            resolved += 1
+    return resolved
+
+
 def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str, str, str, str]:
     """Return the deterministic private-material identity.
 
@@ -3570,6 +3623,9 @@ def process_price_source(
                 vat_basis = supplier_vat_inference
         if vat_basis == "unknown":
             vat_basis = apply_supplier_vat_default(result)
+        supplier_identity_rows_resolved = (
+            resolve_rows_after_supplier_identity(result) if supplier_id else 0
+        )
         existing_invoice_source = find_invoice_source(
             client,
             company_id=company_id,
@@ -3621,6 +3677,7 @@ def process_price_source(
             "supplier_hp": supplier_hp or None,
             "supplier_issuer_evidence_repaired": supplier_issuer_evidence_repaired,
             "supplier_company_identity_rejected": supplier_company_identity_rejected,
+            "supplier_identity_rows_resolved": supplier_identity_rows_resolved,
             "source_origin": result["source_origin"],
             "price_context": result["price_context"],
             "document_subtotal": result["document_subtotal"],

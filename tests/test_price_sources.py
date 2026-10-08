@@ -3628,6 +3628,50 @@ def test_supplier_vat_default_activates_unknown_rows_without_supplier_history():
     assert result["rows"][0]["reason_codes"] == ["vat_inferred_supplier_default"]
 
 
+def test_canonical_supplier_resolution_releases_only_stale_supplier_review_rows():
+    from use_cases.price_sources import resolve_rows_after_supplier_identity
+
+    result = {
+        "currency": "ILS",
+        "rows": [
+            {
+                "item_kind": "material",
+                "raw_price": 79,
+                "normalized_price": 79,
+                "raw_currency": "ILS",
+                "raw_vat_mode": "excluded",
+                "purchase_unit": "set",
+                "calculation_unit": "set",
+                "conversion_factor": 1,
+                "normalized_name": "Drawer runner Blum",
+                "status": "unresolved",
+                "reason_codes": [
+                    "supplier_unidentified", "taxonomy_hardware", "vat_inferred_from_supplier_history",
+                ],
+            },
+            {
+                "item_kind": "material",
+                "raw_price": 2.63,
+                "normalized_price": 2.63,
+                "raw_currency": "ILS",
+                "raw_vat_mode": "excluded",
+                "purchase_unit": "piece",
+                "calculation_unit": "piece",
+                "conversion_factor": 1,
+                "normalized_name": "Mounting plate",
+                "status": "unresolved",
+                "reason_codes": ["supplier_unidentified", "source_table_price_not_verified"],
+            },
+        ],
+    }
+
+    assert resolve_rows_after_supplier_identity(result) == 1
+    assert result["rows"][0]["status"] == "ready"
+    assert "supplier_unidentified" not in result["rows"][0]["reason_codes"]
+    assert result["rows"][1]["status"] == "unresolved"
+    assert "supplier_unidentified" not in result["rows"][1]["reason_codes"]
+
+
 def test_invoice_source_identity_requires_supplier_and_invoice_number():
     from use_cases.price_sources import invoice_number_from_source_text, normalize_invoice_number
 
