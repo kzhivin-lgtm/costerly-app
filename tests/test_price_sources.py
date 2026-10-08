@@ -583,6 +583,27 @@ def test_glass_cutter_is_a_tool_consumable_not_a_glass_material():
     assert result["rows"] == []
 
 
+def test_hebrew_shelf_hanger_never_becomes_mdf_and_is_excluded_as_a_small_fitting():
+    from use_cases.price_source_taxonomy import apply_material_taxonomy
+
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "מתלה ת.מדף סמו\"מ 7818/001",
+        "normalized_name": "MDF",
+        "material_type": "Wood Sheets",
+        "material_family": "mdf",
+        "raw_price": 11.6,
+        "raw_unit": "piece",
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == "Hardware"
+    assert row["material_family"] == "mounting plate"
+    assert discard_price_source_consumables(result) == 1
+    assert result["rows"] == []
+
+
 def test_hardware_with_integral_screws_is_not_discarded_as_a_consumable():
     result = _result()
     hardware = result["rows"][0]

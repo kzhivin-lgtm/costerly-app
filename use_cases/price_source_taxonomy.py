@@ -65,8 +65,9 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
     TaxonomyRule("Hardware", "mounting plate", (
         "mounting plate", "connector plate", "fixing plate", "hinge plate",
         "mounting bracket", "bracket", "clip", "latch", "shelf support", "shelf pin",
-        "corner bracket", "פלטת חיבור", "פלטת הרכבה", "פלטה לציר", "תושבת", "קליפ",
-        "סוגר", "תומך מדף", "פין מדף", "זוויתן לרהיט",
+        "shelf hanger", "shelf bracket", "corner bracket", "פלטת חיבור", "פלטת הרכבה",
+        "פלטה לציר", "תושבת", "קליפ", "סוגר", "תומך מדף", "מתלה מדף",
+        "מתלה ת מדף", "פין מדף", "זוויתן לרהיט",
     )),
     TaxonomyRule("Hardware", "handle", (
         "handle", "knob", "pull", "drawer handle", "cabinet handle", "profile handle",
