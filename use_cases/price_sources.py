@@ -433,29 +433,24 @@ def _is_transient_identity_reason(reason: object, subject: str) -> bool:
 
 
 def resolve_rows_after_supplier_identity(result: dict[str, Any]) -> int:
-    """Remove the agent's stale supplier blocker after server canonicalisation.
+    """Re-evaluate unresolved rows after server canonicalisation.
 
-    The agent sees only OCR evidence and can legitimately mark a seller unknown.
-    The persistence layer can later establish the canonical supplier from an
-    existing HP/name lane.  That later fact must re-evaluate the row rather
-    than retaining the agent's pre-resolution Review status.
+    The agent sees only OCR evidence and can legitimately leave a row
+    unresolved before a canonical supplier and VAT basis exist. The persistence
+    layer establishes those facts afterwards. Every unresolved row must then be
+    checked against actual price blockers, not only the rows carrying a
+    particular agent spelling for "supplier unknown".
     """
     resolved = 0
     for row in result.get("rows") or []:
         if not isinstance(row, dict):
             continue
         reasons = set(row.get("reason_codes") or [])
-        had_supplier_alias = any(
-            _is_transient_identity_reason(reason, "supplier") for reason in reasons
-        )
         if row.get("raw_vat_mode") in {"included", "excluded"}:
             reasons = {
                 reason for reason in reasons
                 if not _is_transient_identity_reason(reason, "vat")
             }
-        if not had_supplier_alias:
-            row["reason_codes"] = sorted(reasons)
-            continue
         reasons = {
             reason for reason in reasons
             if not _is_transient_identity_reason(reason, "supplier")

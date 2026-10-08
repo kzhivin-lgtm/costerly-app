@@ -3709,15 +3709,32 @@ def test_canonical_supplier_resolution_releases_only_stale_supplier_review_rows(
                 "status": "unresolved",
                 "reason_codes": ["supplier_unidentified", "source_table_price_not_verified"],
             },
+            {
+                "item_kind": "material",
+                "raw_price": 2.63,
+                "normalized_price": 2.63,
+                "raw_currency": "ILS",
+                "raw_vat_mode": "excluded",
+                "purchase_unit": "piece",
+                "calculation_unit": "piece",
+                "conversion_factor": 1,
+                "normalized_name": "Mounting plate Blum",
+                "status": "unresolved",
+                "reason_codes": [
+                    "source_table_price_rounding_tolerated",
+                    "vat_inferred_from_supplier_history",
+                ],
+            },
         ],
     }
 
-    assert resolve_rows_after_supplier_identity(result) == 1
+    assert resolve_rows_after_supplier_identity(result) == 2
     assert result["rows"][0]["status"] == "ready"
     assert "missing_supplier_evidence" not in result["rows"][0]["reason_codes"]
     assert "unknown_vat_mode" not in result["rows"][0]["reason_codes"]
     assert result["rows"][1]["status"] == "unresolved"
     assert "supplier_unidentified" not in result["rows"][1]["reason_codes"]
+    assert result["rows"][2]["status"] == "ready"
 
 
 def test_invoice_source_identity_requires_supplier_and_invoice_number():
