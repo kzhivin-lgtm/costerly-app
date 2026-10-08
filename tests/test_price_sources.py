@@ -3661,7 +3661,8 @@ def test_canonical_supplier_resolution_releases_only_stale_supplier_review_rows(
                 "normalized_name": "Drawer runner Blum",
                 "status": "unresolved",
                 "reason_codes": [
-                    "unknown_supplier", "missing_vat_mode", "taxonomy_hardware",
+                    "supplier_identification_missing", "unknown_vat_mode",
+                    "taxonomy_hardware",
                     "vat_inferred_from_supplier_history",
                 ],
             },
@@ -3683,8 +3684,8 @@ def test_canonical_supplier_resolution_releases_only_stale_supplier_review_rows(
 
     assert resolve_rows_after_supplier_identity(result) == 1
     assert result["rows"][0]["status"] == "ready"
-    assert "unknown_supplier" not in result["rows"][0]["reason_codes"]
-    assert "missing_vat_mode" not in result["rows"][0]["reason_codes"]
+    assert "supplier_identification_missing" not in result["rows"][0]["reason_codes"]
+    assert "unknown_vat_mode" not in result["rows"][0]["reason_codes"]
     assert result["rows"][1]["status"] == "unresolved"
     assert "supplier_unidentified" not in result["rows"][1]["reason_codes"]
 

@@ -398,10 +398,12 @@ _SUPPLIER_IDENTITY_BLOCKING_REASONS = {
 _VAT_UNKNOWN_REASON_CODES = {
     "missing_vat_mode",
     "unknown_vat",
+    "unknown_vat_mode",
     "vat_basis_unknown",
 }
 _SUPPLIER_UNKNOWN_REASON_CODES = {
     "missing_supplier",
+    "supplier_identification_missing",
     "supplier_unidentified",
     "unknown_supplier",
 }
