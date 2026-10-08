@@ -30,6 +30,12 @@ when no brand evidence exists. The brand catalogue improves recognition but is
 never a whitelist. A candidate is preserved, cannot select a category, and is
 reviewable for later catalogue curation.
 
+An entry in the catalogue has one English canonical name. Latin spelling,
+Hebrew transliteration and safe OCR variants are input aliases only. Thus
+`אגר` and `EGGER` persist and display as `EGGER`; they are not two brands or
+two UI localisations. Supplier/distributor names are never added as brand
+aliases unless they are a proven product manufacturer or product-system brand.
+
 Canonical display order is:
 
 ```text
@@ -58,11 +64,15 @@ whole source phrase and the price-table context.
 | Material Jobs | cutting and edge banding, machining, metalwork, glasswork, finishing, assembly | reference operation | supplier-proved billing basis and scope only |
 
 The formatter emits at most one entity, one primary attribute, one brand and
-up to four identity-bearing secondary attributes. Boilerplate, duplicated
-adjectives, seller prose, generic positional words, source SKU and incidental
-marketing names are excluded from the display but remain raw evidence. No
-formatter may discard a proven model, dimension, grade, brand or price-class
-attribute.
+up to four identity-bearing secondary attributes. This is an allowlist, not a
+word-shortening heuristic: a token enters structured identity only when it is
+an attribute of that material or operation. Boilerplate, duplicated
+adjectives, seller prose, generic positional words, source SKU, incidental
+marketing names and every other non-attribute word are excluded from the
+normalised record. They remain only in immutable raw source evidence for audit
+or later agent context. They never participate in matching, merge, catalog
+storage, Estimation resolution or the canonical display. No formatter may
+discard a proven model, dimension, grade, brand or price-class attribute.
 
 For same-supplier material identity, two known but different brands are a
 boundary. One missing brand is uncertainty, not a forced split. Supplier SKU

@@ -1341,7 +1341,7 @@ def test_sheet_taxonomy_accepts_compact_hebrew_mdf_abbreviation():
     assert row["status"] == "ready"
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "mdf"
-    assert row["normalized_name"] == "MDF 19 mm"
+    assert row["normalized_name"] == "MDF 19 mm, white"
 
 
 @pytest.mark.parametrize("alias", ("MDF", "m.d.f", "m d f", "מדי אף", "אמ די אף", "מדפ", "מ.ד.פ", "מ ד פ"))
@@ -1462,6 +1462,35 @@ def test_taxonomy_preserves_a_category_scoped_brand_and_sheet_primary_attribute(
     assert row["normalized_name"].startswith("Plywood 17 mm EGGER")
 
 
+@pytest.mark.parametrize(
+    ("description", "category", "brand"),
+    [
+        ("לביד אגר 17 ממ", "Wood Sheets", "EGGER"),
+        ("לוח MDF קרונוספן 18 ממ", "Wood Sheets", "Kronospan"),
+        ("ציר טיטוס 110 מעלות", "Hardware", "Titus"),
+        ("מסילת מגירה אקורייד 550 ממ", "Hardware", "Accuride"),
+        ("פרופיל קליל 40x40", "Metal Profiles", "Klil"),
+        ("זכוכית פילקינגטון 6 ממ", "Glass", "Pilkington"),
+        ("לכה טמבור מט", "Paints & Coatings", "Tambour"),
+    ],
+)
+def test_taxonomy_normalizes_hebrew_brand_aliases_to_one_english_canonical_name(
+    description, category, brand,
+):
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": description,
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == category
+    assert row["identity_attributes"]["brand"] == brand
+    assert row["identity_attributes"]["brand_basis"] == "catalog"
+
+
 def test_taxonomy_preserves_an_unknown_proper_name_as_brand_candidate():
     row = _result()["rows"][0]
     row.update({
@@ -1515,7 +1544,7 @@ def test_glass_door_closure_is_hardware_not_glass_and_keeps_compact_brand_candid
     assert row["material_family"] == "door closure"
     assert row["identity_attributes"]["primary_attribute"] == "550 mm"
     assert row["identity_attributes"]["brand"] == "Mario Box"
-    assert row["normalized_name"] == "Door Closure 550 mm Mario Box"
+    assert row["normalized_name"] == "Door Closure 550 mm Mario Box, white"
 
 
 @pytest.mark.parametrize(

@@ -11,6 +11,12 @@ from dataclasses import dataclass
 import re
 from typing import Any, Mapping
 
+from use_cases.material_normalization import (
+    IDENTITY_ATTRIBUTE_DEFAULTS,
+    canonical_display_name,
+    normalize_identity_attributes,
+)
+
 
 @dataclass(frozen=True)
 class TaxonomyRule:
@@ -121,30 +127,83 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
 )
 
 
-# The initial curated catalogue contains brands encountered in the product
-# domain and brands whose official product ranges prove their department. It is
-# intentionally a dictionary, not a fuzzy proper-name detector. Unknown proper
-# names remain raw source evidence until they are reviewed and added here.
+# The curated catalogue is deliberately multilingual. Each entry has one
+# English canonical display name and recognises Latin spelling, Israeli Hebrew
+# transliteration, and only safe OCR variants. It is still not a fuzzy
+# proper-name detector: an unknown name is preserved as candidate evidence,
+# rather than being silently lost or permitted to select a material category.
+#
+# Israeli distributors are not listed merely because they sell a brand. These
+# are product manufacturers or product-system brands. A supplier name belongs
+# to supplier matching, not material identity.
 BRAND_RULES: tuple[BrandRule, ...] = (
+    # Hardware and furniture fittings.
     BrandRule("Blum", ("Hardware",), ("blum", "בלום")),
     BrandRule("Hettich", ("Hardware",), ("hettich", "הטיך", "הטיש")),
-    BrandRule("Häfele", ("Hardware",), ("hafele", "häfele", "הפלה")),
+    BrandRule("Häfele", ("Hardware",), ("hafele", "häfele", "haefele", "הפלה", "האפהלה")),
     BrandRule("Grass", ("Hardware",), ("grass", "גראס")),
     BrandRule("FGV", ("Hardware",), ("fgv",)),
-    BrandRule("Salice", ("Hardware",), ("salice", "סליצה")),
+    BrandRule("Salice", ("Hardware",), ("salice", "סליצה", "סליצ'ה")),
+    BrandRule("Titus", ("Hardware",), ("titus", "טיטוס")),
+    BrandRule("Sugatsune", ("Hardware",), ("sugatsune", "סוגאטסונה", "סוגצונה")),
+    BrandRule("Accuride", ("Hardware",), ("accuride", "אקורייד", "אקיורייד")),
+    BrandRule("DTC", ("Hardware",), ("dtc",)),
+    BrandRule("Kesseböhmer", ("Hardware",), ("kessebohmer", "kesseböhmer", "קסבוהמר")),
+    BrandRule("Vauth-Sagel", ("Hardware",), ("vauth sagel", "vauth-sagel", "וואט סאגל")),
+    BrandRule("Vibo", ("Hardware",), ("vibo", "ויבו")),
+    BrandRule("Emuca", ("Hardware",), ("emuca", "אמוקה")),
+    BrandRule("Lamello", ("Hardware",), ("lamello", "למלו")),
+    # Wood sheet manufacturers. Hebrew names are input aliases, not display.
     BrandRule("EGGER", ("Wood Sheets",), ("egger", "אגר")),
     BrandRule("Kronospan", ("Wood Sheets",), ("kronospan", "קרונוספן")),
     BrandRule("Finsa", ("Wood Sheets",), ("finsa", "פינסה")),
-    BrandRule("SWISS KRONO", ("Wood Sheets",), ("swiss krono", "swisskrono", "סוויס קרונו")),
+    BrandRule("SWISS KRONO", ("Wood Sheets",), ("swiss krono", "swisskrono", "סוויס קרונו", "שוויץ קרונו")),
+    BrandRule("Pfleiderer", ("Wood Sheets",), ("pfleiderer", "פפליידרר", "פליידרר")),
+    BrandRule("Kaindl", ("Wood Sheets",), ("kaindl", "קאינדל")),
+    BrandRule("Sonae Arauco", ("Wood Sheets",), ("sonae arauco", "סונאה אראוקו")),
+    BrandRule("Arauco", ("Wood Sheets",), ("arauco", "אראוקו")),
+    BrandRule("Unilin", ("Wood Sheets",), ("unilin", "יונילין")),
+    BrandRule("Kastamonu", ("Wood Sheets",), ("kastamonu", "קסטמונו")),
+    # Edge systems are branded wood supplies, rather than sheet manufacturers.
+    BrandRule("REHAU", ("Wood Supplies",), ("rehau", "רהאו")),
+    BrandRule("Döllken", ("Wood Supplies",), ("dollken", "döllken", "דולקן")),
+    BrandRule("Ostermann", ("Wood Supplies",), ("ostermann", "אוסטרמן")),
+    # Metals. AISI is deliberately not here: it is a grade, not a brand.
     BrandRule("Outokumpu", ("Metal Sheets", "Metal Profiles"), ("outokumpu", "אאוטוקומפו")),
+    BrandRule("SSAB", ("Metal Sheets", "Metal Profiles"), ("ssab",)),
+    BrandRule("ArcelorMittal", ("Metal Sheets", "Metal Profiles"), ("arcelormittal", "ארסלור מיטאל")),
+    BrandRule("Novelis", ("Metal Sheets", "Metal Profiles"), ("novelis", "נובליס")),
+    BrandRule("Hydro", ("Metal Sheets", "Metal Profiles"), ("norsk hydro", "hydro aluminium", "הידרו")),
+    BrandRule("Aluprof", ("Metal Profiles",), ("aluprof", "אלופרוף")),
+    BrandRule("Schüco", ("Metal Profiles",), ("schuco", "schüco", "שוקו")),
+    BrandRule("Klil", ("Metal Profiles",), ("klil", "קליל")),
+    # Flat and architectural glass.
     BrandRule("Guardian", ("Glass",), ("guardian", "גרדיאן")),
+    BrandRule("Pilkington", ("Glass",), ("pilkington", "פילקינגטון")),
+    BrandRule("AGC", ("Glass",), ("agc",)),
+    BrandRule("Saint-Gobain", ("Glass",), ("saint gobain", "saint-gobain", "סנט גוביין")),
+    BrandRule("Şişecam", ("Glass",), ("sisecam", "şişecam", "שישקאם")),
+    # Coating manufacturers, including durable Israeli paint brands.
     BrandRule("Sayerlack", ("Paints & Coatings", "Coating Supplies"), ("sayerlack", "סיירלאק")),
     BrandRule("Milesi", ("Paints & Coatings", "Coating Supplies"), ("milesi", "מילזי", "מילסי")),
     BrandRule("Renner", ("Paints & Coatings", "Coating Supplies"), ("renner", "רנר")),
+    BrandRule("Sirca", ("Paints & Coatings", "Coating Supplies"), ("sirca", "סירקה")),
+    BrandRule("ICA", ("Paints & Coatings", "Coating Supplies"), ("ica",)),
+    BrandRule("Sherwin-Williams", ("Paints & Coatings", "Coating Supplies"), ("sherwin williams", "sherwin-williams", "שרווין וויליאמס")),
+    BrandRule("AkzoNobel", ("Paints & Coatings", "Coating Supplies"), ("akzonobel", "akzo nobel", "אקזו נובל")),
+    BrandRule("Tambour", ("Paints & Coatings", "Coating Supplies"), ("tambour", "טמבור")),
+    BrandRule("Nirlat", ("Paints & Coatings", "Coating Supplies"), ("nirlat", "נירלט")),
 )
 
 
 ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
+    "substrate": (
+        ("plywood", ("plywood", "לביד", "דיקט", "סנדוויץ", "סנדויץ")),
+        ("mdf", ("mdf", "m.d.f", "m d f", "מדי אף", "אמ די אף", "מדפ", "מ.ד.פ", "מ ד פ")),
+        ("particleboard", ("particleboard", "chipboard", "סיבית", "שבבית")),
+        ("hdf", ("hdf", "hardboard", "מזונית", "הארדבורד")),
+        ("osb", ("osb", "oriented strand board", "או אס בי")),
+    ),
     "species": (
         ("okoume", ("okume", "okoume", "אוקומה", "אוקמה")),
         ("birch", ("birch", "בירץ", "ליבנה")),
@@ -164,6 +223,18 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("polished", ("polished", "polish", "מלוטש")),
         ("mirror", ("mirror", "mirrored", "מראה")),
     ),
+    "coating": (
+        ("melamine", ("melamine", "מלמין")),
+        ("laminated", ("laminated", "laminate", "למינציה", "מצופה")),
+    ),
+    "colour": (
+        ("white", ("white", "לבן", "לבנה")),
+        ("black", ("black", "שחור", "שחורה")),
+        ("grey", ("grey", "gray", "אפור", "אפורה")),
+        ("green", ("green", "ירוק", "ירוקה")),
+        ("red", ("red", "אדום", "אדומה")),
+        ("blue", ("blue", "כחול", "כחולה")),
+    ),
     "grade": (
         ("stainless", ("stainless", "נירוסטה", "נירוסט")),
         ("galvanized", ("galvanized", "zinc coated", "מגולוון", "מגלוון")),
@@ -174,23 +245,7 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
     ),
 }
 
-_IDENTITY_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
-    "thickness_mm": 0,
-    "width_mm": 0,
-    "length_mm": 0,
-    "diameter_mm": 0,
-    "primary_attribute": "",
-    "brand": "",
-    "brand_basis": "unknown",
-    "species": "",
-    "substrate": "",
-    "surface": "",
-    "coating": "",
-    "colour": "",
-    "grade": "",
-    "construction": "",
-    "finish": "",
-}
+_IDENTITY_ATTRIBUTE_DEFAULTS = IDENTITY_ATTRIBUTE_DEFAULTS
 
 
 def _literal_sheet_dimensions(text: str) -> tuple[int, int]:
@@ -520,28 +575,8 @@ def apply_operation_taxonomy(row: dict[str, Any]) -> str | None:
 
 
 def _taxonomy_material_name(rule: TaxonomyRule, attributes: Mapping[str, Any]) -> str:
-    """Build a compact canonical display from structured, proven facts only."""
-    family_name = "MDF" if rule.family == "mdf" else rule.family.title()
-    parts = [family_name]
-    if attributes.get("primary_attribute"):
-        parts.append(str(attributes["primary_attribute"]))
-    if attributes.get("brand"):
-        parts.append(str(attributes["brand"]))
-    secondary: list[str] = []
-    for field in (
-        "grade", "species", "construction", "finish", "surface",
-        "coating", "colour",
-    ):
-        value = str(attributes.get(field) or "").strip()
-        if not value or _canonical_taxonomy_text(value) == _canonical_taxonomy_text(rule.family):
-            continue
-        if field == "species":
-            value = value.title()
-        if value not in secondary:
-            secondary.append(value)
-        if len(secondary) == 4:
-            break
-    return " ".join(parts) + (f", {', '.join(secondary)}" if secondary else "")
+    """Build the shared compact display from structured, proven facts only."""
+    return canonical_display_name(rule.family, attributes)
 
 
 def apply_material_taxonomy(row: dict[str, Any]) -> bool:
@@ -561,13 +596,11 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     # Taxonomy is now deliberately applied before schema validation. Preserve
     # the strict identity contract even when a rule clears an unsupported model
     # guess or only proves one field.
-    attributes = {
-        field: source_attributes.get(field, default)
-        for field, default in _IDENTITY_ATTRIBUTE_DEFAULTS.items()
-    }
-    # These descriptive fields participate in merge identity. Do not retain a
-    # model guess that the source wording does not support.
-    for field in ATTRIBUTE_RULES:
+    attributes = normalize_identity_attributes(source_attributes)
+    # A structured field must be explicitly source-proved. The normalizer does
+    # not keep stale agent guesses merely because they are grammatical words.
+    # They remain in raw evidence, but never identity, merge or display.
+    for field in (*ATTRIBUTE_RULES, "surface"):
         attributes.pop(field, None)
     for field, values in ATTRIBUTE_RULES.items():
         for canonical, aliases in values:
@@ -620,10 +653,7 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
             )
     if technical_grade := _explicit_technical_grade(text):
         attributes["grade"] = technical_grade
-    attributes = {
-        field: attributes.get(field, default)
-        for field, default in _IDENTITY_ATTRIBUTE_DEFAULTS.items()
-    }
+    attributes = normalize_identity_attributes(attributes)
     if rule.category == "Wood Sheets":
         # Model-generated dimensions are not source evidence. Rebuild this
         # pair from literal text so a single 3100 span cannot become 3100×3100
