@@ -251,7 +251,7 @@ def apply_vat_basis_to_unknown_rows(
         changed = True
         row["raw_vat_mode"] = vat_mode
         reasons = set(row.get("reason_codes") or [])
-        reasons.difference_update({"vat_basis_unknown", "unknown_vat"})
+        reasons.difference_update(_VAT_UNKNOWN_REASON_CODES)
         reasons.add(reason_code)
         row["reason_codes"] = sorted(reasons)
         if row.get("status") == "unresolved" and not (
@@ -333,6 +333,7 @@ def known_supplier_vat_basis(client, *, company_id: str, supplier_id: str) -> st
 
 
 _SUPPLIER_IDENTITY_BLOCKING_REASONS = {
+    "arithmetic_mismatch",
     "ambiguous_material",
     "ambiguous_unit",
     "document_total_mismatch",
@@ -346,6 +347,16 @@ _SUPPLIER_IDENTITY_BLOCKING_REASONS = {
     "unit_price_mismatch",
     "unknown_material_family",
     "unsupported_material",
+}
+_VAT_UNKNOWN_REASON_CODES = {
+    "missing_vat_mode",
+    "unknown_vat",
+    "vat_basis_unknown",
+}
+_SUPPLIER_UNKNOWN_REASON_CODES = {
+    "missing_supplier",
+    "supplier_unidentified",
+    "unknown_supplier",
 }
 
 
@@ -362,9 +373,13 @@ def resolve_rows_after_supplier_identity(result: dict[str, Any]) -> int:
         if not isinstance(row, dict):
             continue
         reasons = set(row.get("reason_codes") or [])
-        if "supplier_unidentified" not in reasons:
+        had_supplier_alias = bool(reasons & _SUPPLIER_UNKNOWN_REASON_CODES)
+        if row.get("raw_vat_mode") in {"included", "excluded"}:
+            reasons.difference_update(_VAT_UNKNOWN_REASON_CODES)
+        if not had_supplier_alias:
+            row["reason_codes"] = sorted(reasons)
             continue
-        reasons.remove("supplier_unidentified")
+        reasons.difference_update(_SUPPLIER_UNKNOWN_REASON_CODES)
         row["reason_codes"] = sorted(reasons)
         if row.get("status") != "unresolved":
             continue
