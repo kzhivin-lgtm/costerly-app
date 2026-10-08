@@ -1252,7 +1252,7 @@ def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
 
     assert row["identity_attributes"]["construction"] == "perforated twin"
     assert row["identity_attributes"]["finish"] == "glossy"
-    assert row["normalized_name"] == "Plywood 17 mm twin perforated"
+    assert row["normalized_name"] == "Plywood 17 mm, perforated twin, glossy"
 
 
 def test_sheet_normalization_replaces_wrong_glass_label_when_okoume_proves_plywood():
@@ -1300,7 +1300,7 @@ def test_sheet_taxonomy_removes_hallucinated_glass_and_resolves_known_okoume():
     normalize_price_source_sheet_rows(result)
 
     assert row["status"] == "ready"
-    assert row["normalized_name"] == "Plywood 5 mm Okoume"
+    assert row["normalized_name"] == "Plywood 5 mm, Okoume"
     assert "Glass" not in row["normalized_name"]
     assert "unknown_product_term" not in row["reason_codes"]
 
@@ -1320,7 +1320,7 @@ def test_sheet_taxonomy_replaces_model_acrylic_label_when_okoume_proves_plywood(
 
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "plywood"
-    assert row["normalized_name"] == "Plywood 5 mm Okoume"
+    assert row["normalized_name"] == "Plywood 5 mm, Okoume"
 
 
 def test_sheet_taxonomy_accepts_compact_hebrew_mdf_abbreviation():
@@ -1380,7 +1380,7 @@ def test_sheet_normalization_classifies_proved_hebrew_trade_families_without_sup
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "plywood"
     assert row["identity_attributes"]["construction"] == "twin"
-    assert row["normalized_name"] == "Plywood 17 mm twin"
+    assert row["normalized_name"] == "Plywood 17 mm, twin"
     assert "taxonomy_wood_sheets" in row["reason_codes"]
 
 
@@ -1399,7 +1399,7 @@ def test_sheet_normalization_keeps_okume_perforated_separate_from_the_plain_fami
 
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "plywood"
-    assert row["normalized_name"] == "Plywood 5 mm Okoume perforated"
+    assert row["normalized_name"] == "Plywood 5 mm, Okoume, perforated"
     assert row["identity_attributes"]["construction"] == "perforated"
 
 

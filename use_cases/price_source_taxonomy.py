@@ -510,28 +510,28 @@ def apply_operation_taxonomy(row: dict[str, Any]) -> str | None:
 
 
 def _taxonomy_material_name(rule: TaxonomyRule, attributes: Mapping[str, Any]) -> str:
-    """Build a canonical display name from facts proven by the source text."""
+    """Build a compact canonical display from structured, proven facts only."""
     family_name = "MDF" if rule.family == "mdf" else rule.family.title()
     parts = [family_name]
     if attributes.get("primary_attribute"):
         parts.append(str(attributes["primary_attribute"]))
     if attributes.get("brand"):
         parts.append(str(attributes["brand"]))
-    if attributes.get("species"):
-        parts.append(str(attributes["species"]).title())
-    if attributes.get("construction"):
-        construction = set(str(attributes["construction"]).split())
-        # Display order is fixed even though identity storage is order-free.
-        # “Twin perforated” reads as one construction, not two arbitrary tags.
-        parts.extend(token for token in ("twin", "perforated") if token in construction)
-        parts.extend(sorted(construction - {"twin", "perforated"}))
-    try:
-        thickness = float(attributes.get("thickness_mm") or 0)
-    except (TypeError, ValueError):
-        thickness = 0
-    if thickness and not attributes.get("primary_attribute"):
-        parts.append(f"{int(thickness) if thickness.is_integer() else thickness} mm")
-    return " ".join(parts)
+    secondary: list[str] = []
+    for field in (
+        "grade", "species", "construction", "finish", "surface",
+        "coating", "colour",
+    ):
+        value = str(attributes.get(field) or "").strip()
+        if not value or _canonical_taxonomy_text(value) == _canonical_taxonomy_text(rule.family):
+            continue
+        if field == "species":
+            value = value.title()
+        if value not in secondary:
+            secondary.append(value)
+        if len(secondary) == 4:
+            break
+    return " ".join(parts) + (f", {', '.join(secondary)}" if secondary else "")
 
 
 def apply_material_taxonomy(row: dict[str, Any]) -> bool:
@@ -617,11 +617,9 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     canonical_name = _taxonomy_material_name(rule, attributes)
     # A literal Wood Sheets rule is the source of truth for its customer-facing
     # identity. This prevents a model label such as “Acrylic Okoume” from
-    # surviving despite the source proving a plywood family. The source wording
-    # and every omitted decor/finish detail remain in raw_description and the
-    # structured attributes, so no evidence is lost.
-    # Other categories keep a usable model name unless it is visibly from a
-    # conflicting family, avoiding a wider display-name rewrite.
+    # surviving despite the source proving a plywood family. Other categories
+    # retain an already-readable model name until the formatter has source
+    # evidence for every relevant entity family.
     has_conflicting_family_word = (
         rule.family != "glass"
         and any(word in current_name.casefold().split() for word in ("glass", "mirror"))
