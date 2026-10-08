@@ -169,6 +169,23 @@ VAT evidence cannot by itself leave a valid row in Review.
    - Protected dependency: this is taxonomy-only. It must not alter supplier,
      invoice-number, VAT, source-deletion or cycle-result paths.
 
+8. **3.16.7.12 Stable Price Lists loading and deletion feedback**
+   - Status: pending, owner-selected next UI task after the current extraction
+     result is assessed.
+   - Outcome: source deletion must neither collapse Source Library nor move the
+     viewport. Consecutive confirmed deletes must remain actionable while the
+     database worker finishes. Use one minimal in-place `Updating…` state when
+     interactions must be temporarily unavailable, rather than rerender jumps
+     or per-section status copy.
+   - Initial loading must show one `Loading catalog…` state with a spinner.
+     It must not sequentially display `Loading Material Jobs`, `Loading
+     Review`, or `Loading Source Library`. Preserve independent background
+     reads and fast upload controls, but keep the visual transition singular
+     and stable.
+   - Acceptance: delete two adjacent sources rapidly without losing the second
+     click, collapsing the library or changing scroll position. On cold entry,
+     see one loading state only, then the final ordered view.
+
 ### P1: improvements after P0 closure
 
 1. **3.16.7.7 Source Library invoice label**: document number under supplier,
