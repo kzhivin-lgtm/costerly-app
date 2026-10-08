@@ -35,6 +35,7 @@ from use_cases.price_source_taxonomy import apply_material_taxonomy
 PRICE_SOURCE_PROMPT_VERSION = "price_source_v10_material_unit_defaults"
 PRICE_SOURCE_MAX_OUTPUT_TOKENS = 32_768
 PRICE_SOURCE_ARITHMETIC_RECHECK_MAX_OUTPUT_TOKENS = 2_048
+MAX_LINE_TOTAL_ROUNDING_TOLERANCE = 1.0
 
 
 def _apply_material_taxonomy_to_rows(result: dict[str, Any]) -> dict[str, Any]:
@@ -156,6 +157,29 @@ def _source_table_recheck_rows(result: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def _line_total_rounding_compatible(row: dict[str, Any]) -> bool:
+    """Allow a printed two-decimal price to reconcile with a rounded total.
+
+    Invoices may calculate from a hidden third decimal, then display price to
+    two decimals. The permitted difference is half a cent per unit, capped at
+    one shekel for a line. This is enough for real monetary rounding without
+    accepting a materially different OCR price.
+    """
+    quantity = row.get("raw_quantity")
+    price = row.get("raw_price")
+    total = row.get("raw_line_total")
+    if not all(
+        isinstance(value, (int, float)) and value > 0
+        for value in (quantity, price, total)
+    ):
+        return False
+    tolerance = min(
+        MAX_LINE_TOTAL_ROUNDING_TOLERANCE,
+        max(0.01, float(quantity) * 0.005 + 0.005),
+    )
+    return abs(float(quantity) * float(price) - float(total)) <= tolerance
+
+
 def _merge_arithmetic_recheck(
     result: dict[str, Any],
     recheck_rows: list[dict[str, Any]],
@@ -253,6 +277,12 @@ def _mark_unverified_source_table_rows_for_review(
         if row.get("source_row_number") not in requested_numbers:
             continue
         if "source_table_price_verified" in set(row.get("reason_codes") or []):
+            continue
+        if _line_total_rounding_compatible(row):
+            row["reason_codes"] = sorted(
+                set(row.get("reason_codes") or [])
+                | {"source_table_price_rounding_tolerated"}
+            )
             continue
         row["status"] = "unresolved"
         row["reason_codes"] = sorted(

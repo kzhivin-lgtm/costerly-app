@@ -31,6 +31,7 @@ from agents.price_source_agent import (
     PRICE_SOURCE_MAX_OUTPUT_TOKENS,
     _apply_material_taxonomy_to_rows,
     _line_arithmetic_conflicts,
+    _mark_unverified_source_table_rows_for_review,
     _mark_unrepaired_fractional_hardware_for_review,
     _merge_arithmetic_recheck,
 )
@@ -2896,6 +2897,35 @@ def test_ready_line_with_unproven_total_arithmetic_goes_to_review():
 
     assert row["status"] == "unresolved"
     assert "line_total_inconsistent" in row["reason_codes"]
+
+
+def test_two_decimal_price_with_hidden_thousandth_is_not_sent_to_review():
+    result = _result()
+    row = result["rows"][0]
+    row.update(raw_price=2.63, raw_quantity=30, raw_line_total=78.75)
+
+    _mark_unverified_source_table_rows_for_review(
+        result,
+        [{"source_row_number": row["source_row_number"]}],
+    )
+
+    assert row["status"] == "ready"
+    assert "source_table_price_not_verified" not in row["reason_codes"]
+    assert "source_table_price_rounding_tolerated" in row["reason_codes"]
+
+
+def test_large_arithmetic_difference_is_not_hidden_by_rounding_tolerance():
+    result = _result()
+    row = result["rows"][0]
+    row.update(raw_price=2.63, raw_quantity=30, raw_line_total=77.5)
+
+    _mark_unverified_source_table_rows_for_review(
+        result,
+        [{"source_row_number": row["source_row_number"]}],
+    )
+
+    assert row["status"] == "unresolved"
+    assert "source_table_price_not_verified" in row["reason_codes"]
 
 
 def test_fractional_hardware_piece_requires_a_second_read_or_review():
