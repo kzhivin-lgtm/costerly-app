@@ -44,7 +44,6 @@ from use_cases.price_sources import (
     PriceSourceError,
     accepted_price_source_uploads,
     canonical_price_source_category,
-    combine_price_source_files,
     create_price_source_download_url,
     list_material_jobs,
     list_price_catalog,
@@ -57,11 +56,13 @@ from use_cases.price_sources import (
     remove_price_source_row,
     render_price_source_preview,
     save_price_source_row,
+    split_price_source_uploads,
     validate_price_source_upload_selection,
 )
 from use_cases.price_source_runtime import (
     active_price_source_job,
     submit_price_lists_projection_jobs,
+    submit_price_source_batch_job,
     submit_price_source_job,
     submit_price_source_purge_job,
 )
@@ -3065,13 +3066,19 @@ def _queue_price_source_processing(
     ) + 1
     st.session_state._price_source_processing_cycle = processing_cycle
     try:
-        uploaded_file = combine_price_source_files(uploaded_files)
-        future = submit_price_source_job(
-            access=access,
-            uploaded_file=uploaded_file,
-            source_url=source_url,
-            trace=trace,
-        )
+        if uploaded_files:
+            future = submit_price_source_batch_job(
+                access=access,
+                uploaded_files=split_price_source_uploads(uploaded_files),
+                trace=trace,
+            )
+        else:
+            future = submit_price_source_job(
+                access=access,
+                uploaded_file=None,
+                source_url=source_url,
+                trace=trace,
+            )
     except Exception as exc:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
@@ -3149,6 +3156,7 @@ def _price_source_notice_text(source: dict | None) -> str:
     merged = int(summary.get("merged") or 0)
     unresolved = int(summary.get("unresolved") or 0)
     excluded = int(summary.get("excluded") or 0)
+    source_count = int(summary.get("source_count") or 0)
     if summary.get("exact_duplicate"):
         parts = ["Already processed"]
         if unchanged:
@@ -3170,6 +3178,8 @@ def _price_source_notice_text(source: dict | None) -> str:
             f"{ready} recorded",
             f"{unresolved} review",
         ]
+    if source_count > 1:
+        parts.insert(0, f"{source_count} sources processed")
     if excluded:
         parts.append(f"{excluded} excluded")
     duration = summary.get("agent_duration_seconds")
@@ -3178,6 +3188,9 @@ def _price_source_notice_text(source: dict | None) -> str:
     full_cycle = summary.get("full_cycle_duration_seconds")
     if isinstance(full_cycle, (int, float)):
         parts.append(f"Full cycle {full_cycle:.1f} s")
+    failed_source_count = int(summary.get("failed_source_count") or 0)
+    if failed_source_count:
+        parts.append(f"{failed_source_count} failed")
     parts.append(_price_source_tc(summary.get("token_cost")))
     return " · ".join(parts)
 
@@ -3224,8 +3237,9 @@ def _render_price_source_add(
                     on_change=_clear_price_source_url_for_files,
                     args=(uploader_key, url_key),
                     help=(
-                        "Upload one PDF or spreadsheet, or select several JPEG/PNG photos "
-                        "that belong to the same document"
+                        "Upload one PDF or spreadsheet, or select several JPEG/PNG photos. "
+                        "Photos are processed separately and joined only when supplier and "
+                        "invoice number match."
                     ),
                 )
                 accepted_files = accepted_price_source_uploads(list(uploaded_files or []))
@@ -3323,13 +3337,14 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     else:
         _clear_price_lists_snapshot()
         st.session_state._price_source_uploader_version = uploader_version + 1
-        if hasattr(result, "source_id") and hasattr(result, "summary"):
-            result.summary["full_cycle_duration_seconds"] = (
+        if hasattr(result, "summary"):
+            summary = dict(result.summary)
+            summary["full_cycle_duration_seconds"] = (
                 time.perf_counter() - float(pending.get("user_cycle_started_at") or time.perf_counter())
             )
             st.session_state._price_source_notice = {
-                "source_id": result.source_id,
-                "summary": result.summary,
+                "source_id": getattr(result, "source_id", None),
+                "summary": summary,
                 "processing_cycle": pending.get("processing_cycle"),
             }
         else:

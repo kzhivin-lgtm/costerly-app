@@ -91,6 +91,7 @@ from use_cases.price_sources import (
     render_price_source_pdf_preview,
     render_price_source_preview,
     save_price_source_row,
+    split_price_source_uploads,
     validate_price_source_upload_selection,
 )
 from use_cases.price_source_taxonomy import (
@@ -2226,7 +2227,7 @@ def test_legacy_material_types_are_canonicalized_without_splitting_filters():
     assert PRICE_CATALOG_DEPARTMENTS["Metal"] == "Metal"
 
 
-def test_four_ordered_photos_become_one_pdf_source():
+def test_four_photos_remain_independent_source_inputs():
     photos = []
     colors = (
         (255, 255, 255),
@@ -2239,12 +2240,12 @@ def test_four_ordered_photos_become_one_pdf_source():
         Image.new("RGB", (16, 16), color).save(output, format="PNG")
         photos.append(_UploadedPhoto(f"page-{index}.png", output.getvalue()))
 
-    combined = combine_price_source_files(photos)
+    inputs = split_price_source_uploads(photos)
 
-    assert combined.name == "photo-document-4-pages.pdf"
-    assert combined.getvalue().startswith(b"%PDF")
-    with fitz.open(stream=combined.getvalue(), filetype="pdf") as document:
-        assert document.page_count == 4
+    assert [item.name for item in inputs] == [
+        "page-1.png", "page-2.png", "page-3.png", "page-4.png",
+    ]
+    assert [item.getvalue() for item in inputs] == [item.getvalue() for item in photos]
 
 
 def test_price_source_uploader_accepts_multiple_files_before_backend_validation():
@@ -2535,7 +2536,7 @@ def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
     submitted = []
     monkeypatch.setattr(
         company_profile,
-        "submit_price_source_job",
+        "submit_price_source_batch_job",
         lambda **kwargs: submitted.append(kwargs) or Future(),
     )
 
@@ -2544,7 +2545,7 @@ def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
     )
 
     assert state["_price_source_processing"] is True
-    assert submitted[0]["uploaded_file"].name == "prices-a.xlsx"
+    assert [item.name for item in submitted[0]["uploaded_files"]] == ["prices-a.xlsx"]
     assert isinstance(state["_price_source_pending"]["future"], Future)
     assert "_price_source_error" not in state
 
@@ -4057,6 +4058,39 @@ def test_price_source_submission_queues_without_request_thread_network_io(monkey
 
     assert isinstance(future, Future)
     assert executor.kwargs["owner_authorized"] is False
+
+
+def test_price_source_batch_processes_each_photo_independently_in_selection_order(monkeypatch):
+    from use_cases import price_source_runtime
+    from use_cases.price_sources import PriceSourceProcessResult
+
+    processed = []
+    monkeypatch.setattr(price_source_runtime, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(
+        price_source_runtime,
+        "process_price_source",
+        lambda _access, **kwargs: (
+            processed.append(kwargs["uploaded_file"].name)
+            or PriceSourceProcessResult(
+                source_id=kwargs["uploaded_file"].name,
+                summary={"total": 1, "ready": 1, "new": 1},
+            )
+        ),
+    )
+
+    result = price_source_runtime._run_price_source_batch_job(
+        access=SimpleNamespace(company_id="batch-company"),
+        uploaded_files=(
+            SimpleNamespace(name="invoice-a.jpg"),
+            SimpleNamespace(name="invoice-b.jpg"),
+        ),
+        job_id="batch-diagnostic",
+    )
+
+    assert processed == ["invoice-a.jpg", "invoice-b.jpg"]
+    assert [item.source_id for item in result.results] == ["invoice-a.jpg", "invoice-b.jpg"]
+    assert result.summary["source_count"] == 2
+    assert result.summary["total"] == 2
 
 
 def test_price_source_failure_message_keeps_actionable_exception_detail_bounded():

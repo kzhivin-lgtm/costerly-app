@@ -998,19 +998,19 @@ logger = logging.getLogger(__name__)
 
 
 def validate_price_source_upload_selection(files: list) -> None:
-    """Reject multi-file selections that cannot represent one logical document."""
+    """Allow one document or a batch consisting entirely of image files."""
     selected = [item for item in files if item is not None]
     if len(selected) <= 1:
         return
     suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
     if any(suffix not in OCR_IMAGE_SUFFIXES for suffix in suffixes):
         raise PriceSourceError(
-            "Select one PDF or spreadsheet, or several photos from the same document"
+            "Select one PDF or spreadsheet, or several JPEG/PNG photos"
         )
 
 
 def accepted_price_source_uploads(files: list) -> list:
-    """Apply the one-document MVP contract to a native multi-file selection."""
+    """Keep a single document or an image-only batch from a native selection."""
     selected = [item for item in files if item is not None]
     if len(selected) <= 1:
         return selected
@@ -1193,6 +1193,24 @@ def combine_price_source_files(files: list) -> object | None:
         name=f"photo-document-{len(selected)}-pages.pdf",
         data=output.getvalue(),
     )
+
+
+def split_price_source_uploads(files: list) -> list[CombinedPriceSource]:
+    """Freeze every selected upload as an independent extraction input.
+
+    Photos are intentionally *not* assembled into a PDF here.  A photo can be
+    one page of an invoice, but it can just as easily be an unrelated invoice
+    dropped into the same selection.  Each one must therefore retain its own
+    OCR and arithmetic verification.  ``process_price_source`` later joins
+    pages only after it has established the same canonical supplier and
+    invoice number.
+    """
+    selected = accepted_price_source_uploads(files)
+    validate_price_source_upload_selection(selected)
+    return [
+        CombinedPriceSource(name=str(item.name), data=item.getvalue())
+        for item in selected
+    ]
 
 
 def _emit_duration(trace, name: str, started_at: float, **metadata: object) -> None:

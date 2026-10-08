@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
+import logging
 from threading import Lock
 import time
 from typing import Any, Callable
@@ -11,6 +12,7 @@ from uuid import uuid4
 from db.supabase_client import get_supabase_client
 from use_cases.price_sources import (
     PriceSourceError,
+    PriceSourceProcessResult,
     list_material_jobs,
     list_price_catalog,
     list_price_sources,
@@ -18,6 +20,9 @@ from use_cases.price_sources import (
     process_price_source,
     purge_price_source,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 _PRICE_SOURCE_EXECUTOR = ThreadPoolExecutor(
@@ -41,6 +46,36 @@ class ActivePriceSourceJob:
     job_id: str
     started_at: float
     started_at_epoch_ms: int
+
+
+@dataclass(frozen=True)
+class PriceSourceBatchProcessResult:
+    """Terminal outcome for one user-submitted batch of independent files."""
+
+    results: tuple[PriceSourceProcessResult, ...]
+    failed_source_names: tuple[str, ...]
+
+    @property
+    def summary(self) -> dict[str, object]:
+        numeric_keys = (
+            "ready", "new", "updated", "unchanged", "merged", "unresolved",
+            "excluded", "discarded_non_candidates", "discarded_consumables",
+            "operation_services", "total", "agent_duration_seconds", "token_cost",
+            "input_tokens", "output_tokens",
+        )
+        summary: dict[str, object] = {
+            "source_count": len(self.results),
+            "failed_source_count": len(self.failed_source_names),
+            "failed_source_names": list(self.failed_source_names),
+        }
+        for key in numeric_keys:
+            summary[key] = sum(
+                float(result.summary.get(key) or 0)
+                for result in self.results
+            )
+        for key in ("ready", "new", "updated", "unchanged", "merged", "unresolved", "excluded", "discarded_non_candidates", "discarded_consumables", "operation_services", "total", "input_tokens", "output_tokens"):
+            summary[key] = int(summary[key])
+        return summary
 
 
 _COMPANY_ACTIVE_JOBS: dict[str, ActivePriceSourceJob] = {}
@@ -110,6 +145,55 @@ def submit_price_source_job(
             trace=trace,
             job_id=job_id,
             owner_authorized=False,
+        )
+        _COMPANY_ACTIVE_JOBS[company_id] = ActivePriceSourceJob(
+            future=future,
+            job_id=job_id,
+            started_at=started_at,
+            started_at_epoch_ms=int(time.time() * 1000),
+        )
+    future.add_done_callback(
+        lambda completed: _clear_active_price_source_job(company_id, completed)
+    )
+    return future
+
+
+def submit_price_source_batch_job(
+    *,
+    access,
+    uploaded_files: list,
+    trace=None,
+) -> Future:
+    """Queue several file inputs as one company-scoped batch.
+
+    A batch remains serial inside one company lock.  This avoids the race in
+    which two photos of the same invoice both decide that no aggregate source
+    exists, then create two sources.  Different companies can still use the
+    executor independently.
+    """
+    if not uploaded_files:
+        raise PriceSourceError("Add at least one file.")
+    company_id = str(access.company_id)
+    with _ACTIVE_JOBS_GUARD:
+        previous = _COMPANY_ACTIVE_JOBS.get(company_id)
+        if previous is not None and not previous.future.done():
+            raise PriceSourceError(
+                "Another price extraction is already running. Try again when it finishes."
+            )
+        job_id = str(uuid4())
+        started_at = time.perf_counter()
+        _trace_event(
+            trace,
+            "server.price_source_batch_submitted",
+            job_id=job_id,
+            source_count=len(uploaded_files),
+        )
+        future = _PRICE_SOURCE_EXECUTOR.submit(
+            _run_price_source_batch_job,
+            access=access,
+            uploaded_files=tuple(uploaded_files),
+            trace=trace,
+            job_id=job_id,
         )
         _COMPANY_ACTIVE_JOBS[company_id] = ActivePriceSourceJob(
             future=future,
@@ -212,6 +296,77 @@ def _run_price_source_job(
         )
         raise
     finally:
+        lock.release()
+
+
+def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: str):
+    """Process each file separately while preserving invoice-page merge safety."""
+    started_at = time.perf_counter()
+    company_id = str(access.company_id)
+    lock = _company_lock(company_id)
+    _trace_event(
+        trace,
+        "server.price_source_batch_worker_started",
+        job_id=job_id,
+        source_count=len(uploaded_files),
+    )
+    if not lock.acquire(blocking=False):
+        _trace_event(trace, "server.price_source_lock_rejected", status="error", job_id=job_id)
+        raise PriceSourceError(
+            "Another price extraction is already running. Try again when it finishes."
+        )
+    results: list[PriceSourceProcessResult] = []
+    failed_source_names: list[str] = []
+    try:
+        _trace_event(trace, "server.price_source_lock_acquired", job_id=job_id)
+        client = get_supabase_client()
+        for index, uploaded_file in enumerate(uploaded_files, start=1):
+            source_name = str(getattr(uploaded_file, "name", "source"))
+            try:
+                result = process_price_source(
+                    access,
+                    department="",
+                    uploaded_file=uploaded_file,
+                    source_url="",
+                    trace=trace,
+                    client=client,
+                    owner_authorized=False,
+                )
+                results.append(result)
+                _trace_event(
+                    trace,
+                    "server.price_source_batch_source_finished",
+                    job_id=job_id,
+                    source_index=index,
+                    source_name=source_name,
+                )
+            except Exception as exc:
+                logger.exception("Price source batch input failed: %s", source_name)
+                failed_source_names.append(source_name)
+                _trace_event(
+                    trace,
+                    "server.price_source_batch_source_finished",
+                    status="error",
+                    job_id=job_id,
+                    source_index=index,
+                    source_name=source_name,
+                    error_type=type(exc).__name__,
+                )
+        if not results:
+            raise PriceSourceError("No selected source could be processed.")
+        return PriceSourceBatchProcessResult(
+            results=tuple(results),
+            failed_source_names=tuple(failed_source_names),
+        )
+    finally:
+        _trace_event(
+            trace,
+            "server.price_source_batch_worker_finished",
+            job_id=job_id,
+            duration_ms=round((time.perf_counter() - started_at) * 1000, 3),
+            processed_source_count=len(results),
+            failed_source_count=len(failed_source_names),
+        )
         lock.release()
 
 
