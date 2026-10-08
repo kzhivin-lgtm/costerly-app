@@ -1462,6 +1462,23 @@ def test_taxonomy_preserves_a_category_scoped_brand_and_sheet_primary_attribute(
     assert row["normalized_name"].startswith("Plywood 17 mm EGGER")
 
 
+def test_taxonomy_preserves_an_unknown_proper_name_as_brand_candidate():
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": "Plywood 17 mm Mario Box double sided",
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+        "identity_attributes": {
+            **row["identity_attributes"], "brand": "", "brand_basis": "unknown",
+        },
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["identity_attributes"]["brand"] == "Mario Box"
+    assert row["identity_attributes"]["brand_basis"] == "candidate"
+
+
 def test_taxonomy_keeps_aisi_as_grade_and_profile_section_as_primary_attribute():
     row = _result()["rows"][0]
     row.update({
