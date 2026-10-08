@@ -99,6 +99,17 @@ final-cycle UI, permanent deletion, and minimal Needs Review the P0 completion
 scope. A later Estimation resolver consumes accepted offers only and is not a
 reason to reopen frozen supplier ingestion behavior.
 
+ACTIVE, P0, USER REQUEST, 3.17.1 Unified material taxonomy, identity, brands,
+and Material Jobs: establish one bilingual, structured normalisation contract
+for Price Source, company catalog, Israel Price List, Detection and Material
+Jobs. Canonical display order is entity, primary attribute, brand, then ordered
+secondary attributes. Supplier SKU remains supplier-scoped evidence only. The
+work includes Hebrew/English aliases, OCR-tolerant variants, department-scoped
+brand aliases and a Material Job route to reference operation plus supplier
+operation offer, never a material offer. It must preserve the frozen 3.16.7
+supplier, VAT, source lifecycle and UI paths. Contract:
+`notes/MATERIAL_TAXONOMY_3_17_1.md`.
+
 ACTIVE, IMPLEMENTATION CHECKPOINT `5f6360f`, P0, 3.15.24 canonical object quantity and durable Object Detail route:
 make item quantity editable on File Review, Objects, and Object Detail. All
 three screens share `rfq_detected_objects.quantity` as the canonical record;

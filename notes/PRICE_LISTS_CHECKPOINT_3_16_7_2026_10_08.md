@@ -93,7 +93,7 @@ VAT evidence cannot by itself leave a valid row in Review.
 ### P0: close source ingestion with authenticated production evidence
 
 1. **3.16.7.1 Material Job classification and persistence**
-   - Status: implementation exists, production acceptance pending
+   - Status: moved to active 3.17.1
    - Ensure `פס חיתוך + קנט` and equivalent supplier operation text produces a
      supplier operation offer, never a Wood Supplies material. Repeat evidence
      must reuse one operation and preserve source wording and price.
@@ -134,20 +134,14 @@ VAT evidence cannot by itself leave a valid row in Review.
 
 1. **3.16.7.7 Source Library invoice label**: document number under supplier,
    filename only when number is absent.
-2. **3.16.7.8 Bilingual brand catalog**: department-scoped aliases, initially
-   Blum, Hettich, Egger, Sayerlack and Homag. Preserve brand, never let it alone
-   classify an item.
+2. **3.16.7.8 Bilingual brand catalog**: moved to active 3.17.1.
 3. **3.16.7.9 Price Lists first paint**: implementation complete, production
    behavior check pending. Controls render before projections, then Catalog,
    Material Jobs, Review and Source Library load through independent read-only
    background tasks. A completed task does not refresh an active selection.
    Current pre-change serial read baseline: 0.273 s source, 0.660 s catalog,
    0.323 s Review, 0.536 s Material Jobs, plus render time.
-4. **3.16.7.10 Unified material-normalisation design**: requires explicit design
-   approval before implementation. Define shared entity, primary spec,
-   dimensions, technical grade, substrate, finish, construction, color, brand,
-   and supplier-only SKU, then one canonical formatter for Price Source,
-   company catalog, Israel Price List and Detection.
+4. **3.16.7.10 Unified material-normalisation design**: moved to active 3.17.1.
 
 ### Deferred
 
