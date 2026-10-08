@@ -4066,17 +4066,14 @@ def test_price_source_batch_processes_each_photo_independently_in_selection_orde
 
     processed = []
     monkeypatch.setattr(price_source_runtime, "get_supabase_client", lambda: object())
-    monkeypatch.setattr(
-        price_source_runtime,
-        "process_price_source",
-        lambda _access, **kwargs: (
-            processed.append(kwargs["uploaded_file"].name)
-            or PriceSourceProcessResult(
-                source_id=kwargs["uploaded_file"].name,
-                summary={"total": 1, "ready": 1, "new": 1},
-            )
-        ),
-    )
+    def process(_access, **kwargs):
+        processed.append((kwargs["uploaded_file"].name, kwargs["batch_source_ids"].copy()))
+        return PriceSourceProcessResult(
+            source_id=kwargs["uploaded_file"].name,
+            summary={"total": 1, "ready": 1, "new": 1},
+        )
+
+    monkeypatch.setattr(price_source_runtime, "process_price_source", process)
 
     result = price_source_runtime._run_price_source_batch_job(
         access=SimpleNamespace(company_id="batch-company"),
@@ -4087,10 +4084,20 @@ def test_price_source_batch_processes_each_photo_independently_in_selection_orde
         job_id="batch-diagnostic",
     )
 
-    assert processed == ["invoice-a.jpg", "invoice-b.jpg"]
+    assert processed == [
+        ("invoice-a.jpg", set()),
+        ("invoice-b.jpg", {"invoice-a.jpg"}),
+    ]
     assert [item.source_id for item in result.results] == ["invoice-a.jpg", "invoice-b.jpg"]
     assert result.summary["source_count"] == 2
     assert result.summary["total"] == 2
+
+
+def test_price_source_keeps_string_usage_cost_in_source_summary(monkeypatch):
+    source = Path("use_cases/price_sources.py").read_text()
+
+    assert 'float(event.get("total_cost_usd"))' in source
+    assert '"token_cost": total_token_cost or None' in source
 
 
 def test_price_source_failure_message_keeps_actionable_exception_detail_bounded():

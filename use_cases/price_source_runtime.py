@@ -320,6 +320,7 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
     try:
         _trace_event(trace, "server.price_source_lock_acquired", job_id=job_id)
         client = get_supabase_client()
+        prior_batch_source_ids: set[str] = set()
         for index, uploaded_file in enumerate(uploaded_files, start=1):
             source_name = str(getattr(uploaded_file, "name", "source"))
             try:
@@ -331,8 +332,10 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
                     trace=trace,
                     client=client,
                     owner_authorized=False,
+                    batch_source_ids=prior_batch_source_ids,
                 )
                 results.append(result)
+                prior_batch_source_ids.add(str(result.source_id))
                 _trace_event(
                     trace,
                     "server.price_source_batch_source_finished",

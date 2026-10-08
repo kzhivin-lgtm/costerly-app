@@ -3382,6 +3382,7 @@ def process_price_source(
     trace=None,
     client=None,
     owner_authorized: bool = False,
+    batch_source_ids: set[str] | None = None,
 ) -> PriceSourceProcessResult:
     """Process and persist one source. Ambiguous rows stay non-active."""
     process_started = time.perf_counter()
@@ -3633,11 +3634,13 @@ def process_price_source(
         for event in usage_records
         if isinstance(event.get("duration_seconds"), (int, float))
     )
-    total_token_cost = sum(
-        float(event.get("total_cost_usd") or 0)
-        for event in usage_records
-        if isinstance(event.get("total_cost_usd"), (int, float))
-    )
+    token_cost_values: list[float] = []
+    for event in usage_records:
+        try:
+            token_cost_values.append(float(event.get("total_cost_usd")))
+        except (TypeError, ValueError):
+            continue
+    total_token_cost = sum(token_cost_values) if token_cost_values else None
     total_input_tokens = sum(
         int(event.get("input_tokens") or 0)
         for event in usage_records
@@ -4280,6 +4283,9 @@ def process_price_source(
                         if any(
                             str(offer.get("source_id") or "") == str(source_id)
                             for offer in matching_offers
+                        ) or any(
+                            str(offer.get("source_id") or "") in (batch_source_ids or set())
+                            for offer in matching_offers
                         ):
                             merged_count += 1
                         else:
@@ -4311,6 +4317,9 @@ def process_price_source(
                     result_status = "unchanged"
                     if any(
                         str(offer.get("source_id") or "") == str(source_id)
+                        for offer in matching_operation_offers
+                    ) or any(
+                        str(offer.get("source_id") or "") in (batch_source_ids or set())
                         for offer in matching_operation_offers
                     ):
                         merged_count += 1
