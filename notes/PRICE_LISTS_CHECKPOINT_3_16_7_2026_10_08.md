@@ -185,6 +185,10 @@ VAT evidence cannot by itself leave a valid row in Review.
    - Acceptance: delete two adjacent sources rapidly without losing the second
      click, collapsing the library or changing scroll position. On cold entry,
      see one loading state only, then the final ordered view.
+   - Extraction accounting: the terminal result must account for every
+     price-table line read from every source. Rows excluded in an early
+     consumables/non-candidate pass count as `excluded`; they must not vanish
+     from the total merely because no source-row record or offer is persisted.
 
 ### P1: improvements after P0 closure
 
