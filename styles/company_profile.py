@@ -2128,6 +2128,10 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_source_library_section [data-testid="stExpander"] > details[open] > summary {
             border-radius: 17px 17px 0 0 !important;
+            border-color: var(--color-border-soft) !important;
+            border-bottom: 1px solid var(--color-border-soft) !important;
+            box-shadow: none !important;
+            outline: none !important;
         }
 
         .stApp:has(.company-profile-active)

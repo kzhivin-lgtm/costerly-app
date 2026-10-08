@@ -233,6 +233,33 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def apply_incomplete_invoice_vat_default(result: dict[str, Any]) -> str:
+    """Give supplier invoice lines a usable VAT basis when their totals page is absent.
+
+    The invoice remains auditable: explicit source VAT always arrives before this
+    function and wins.  This is a price-list product policy, not a claim that a
+    particular uploaded page itself printed the tax amount.
+    """
+    if str(result.get("vat_mode") or "unknown") in {"included", "excluded", "mixed"}:
+        return "explicit"
+    if str(result.get("document_type") or "") not in {"invoice", "tax_invoice"}:
+        return "unknown"
+    result["vat_mode"] = "excluded"
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict) or row.get("raw_vat_mode") != "unknown":
+            continue
+        row["raw_vat_mode"] = "excluded"
+        reasons = set(row.get("reason_codes") or [])
+        reasons.discard("vat_basis_unknown")
+        reasons.add("vat_inferred_invoice_default")
+        row["reason_codes"] = sorted(reasons)
+        if row.get("status") == "unresolved" and not (
+            reasons - {"vat_inferred_invoice_default", "below_auto_activation_threshold"}
+        ):
+            row["status"] = "ready"
+    return "inferred_invoice_default"
+
+
 def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str, str, str, str]:
     """Return the deterministic private-material identity.
 
@@ -1508,6 +1535,58 @@ def price_source_supplier_name(result: dict) -> str:
     if result.get("source_origin") == "company_internal":
         return ""
     return str(result.get("supplier_name") or "").strip()
+
+
+def normalize_invoice_number(value: object) -> str:
+    """Compare invoice numbers across OCR punctuation and layout noise."""
+    return re.sub(r"[^0-9a-z]+", "", str(value or "").casefold())
+
+
+_INVOICE_NUMBER_LABEL = (
+    r"(?:חשבונית\s*(?:מס|מס[-\s]*קבלה)?|חשבון\s*מס|"
+    r"tax\s*invoice(?:\s*(?:no|number|#))?|invoice(?:\s*(?:no|number|#))?)"
+)
+
+
+def invoice_number_from_source_text(text: object) -> str:
+    """Read a printed invoice number without asking the extraction model twice."""
+    source_text = str(text or "")
+    patterns = (
+        rf"{_INVOICE_NUMBER_LABEL}\s*(?:מס[׳'\"״.]*)?\s*[:#.\-]?\s*(\d{{3,16}})",
+        rf"(\d{{3,16}})\s*[:#.\-]?\s*{_INVOICE_NUMBER_LABEL}",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, source_text, flags=re.IGNORECASE | re.UNICODE)
+        if match:
+            return str(match.group(1))
+    return ""
+
+
+def find_invoice_source(
+    client,
+    *,
+    company_id: str,
+    supplier_id: str | None,
+    document_number: object,
+) -> dict | None:
+    """Return the one aggregate source for a supplier invoice, if identifiable."""
+    normalized_number = normalize_invoice_number(document_number)
+    if not supplier_id or not normalized_number:
+        return None
+    candidates = (
+        client.table("company_price_sources")
+        .select("source_id,processing_summary,created_at")
+        .eq("company_id", company_id)
+        .eq("supplier_id", supplier_id)
+        .neq("status", "archived")
+        .execute().data or []
+    )
+    matches = [
+        candidate for candidate in candidates
+        if normalize_invoice_number((candidate.get("processing_summary") or {}).get("document_number"))
+        == normalized_number
+    ]
+    return min(matches, key=lambda item: str(item.get("created_at") or "")) if matches else None
 
 
 def price_source_extraction_diagnostics(
@@ -2969,6 +3048,13 @@ def purge_price_source(access, source_id: str) -> dict[str, int | bool]:
     company_id = str(access.company_id)
     assert_company_owner(client, str(access.user_id), company_id)
     source = _owned_price_source(client, company_id, source_id)
+    page_rows = (
+        client.table("company_price_source_pages")
+        .select("storage_path")
+        .eq("company_id", company_id)
+        .eq("source_id", source_id)
+        .execute().data or []
+    )
     result = client.rpc(
         "purge_company_price_source",
         {
@@ -2981,13 +3067,18 @@ def purge_price_source(access, source_id: str) -> dict[str, int | bool]:
     if not isinstance(result, dict):
         result = {}
     storage_deleted = True
-    storage_path = str(source.get("storage_path") or "")
+    storage_paths = {
+        str(source.get("storage_path") or ""),
+        *(str(page.get("storage_path") or "") for page in page_rows),
+    }
     prefix = f"storage://{PRICE_SOURCE_BUCKET}/{company_id}/"
-    if storage_path.startswith(prefix):
+    paths_to_remove = [
+        path.removeprefix(f"storage://{PRICE_SOURCE_BUCKET}/")
+        for path in storage_paths if path.startswith(prefix)
+    ]
+    if paths_to_remove:
         try:
-            client.storage.from_(PRICE_SOURCE_BUCKET).remove(
-                [storage_path.removeprefix(f"storage://{PRICE_SOURCE_BUCKET}/")]
-            )
+            client.storage.from_(PRICE_SOURCE_BUCKET).remove(paths_to_remove)
         except Exception:
             storage_deleted = False
             logger.exception("price_source_storage_purge_failed source_id=%s", source_id)
@@ -3200,7 +3291,10 @@ def process_price_source(
     supplier_company_identity_rejected = remove_company_identity_from_supplier_result(
         result, company_identity=company_identity,
     )
+    if not str(result.get("document_number") or "").strip():
+        result["document_number"] = invoice_number_from_source_text(text_layer.text)
     normalize_price_source_sheet_rows(result)
+    vat_basis = apply_incomplete_invoice_vat_default(result)
     discarded_non_candidates = discard_price_source_non_candidates(result)
     discarded_consumables = discard_price_source_consumables(result)
     operation_code_by_row_number = prepare_price_source_operation_rows(result)
@@ -3271,7 +3365,7 @@ def process_price_source(
         for event in usage_records
         if isinstance(event.get("output_tokens"), (int, float))
     )
-    if not result.get("rows"):
+    if not result.get("rows") and not normalize_invoice_number(result.get("document_number")):
         _emit_marker(trace, "server.price_source_agent_zero_rows", **extraction_diagnostics)
         raise PriceSourceError(
             "No priced rows were extracted from this source. "
@@ -3314,6 +3408,9 @@ def process_price_source(
     )
 
     superseded_offer_ids: list[str] = []
+    source_is_new = True
+    source_page_id: str | None = None
+    inserted_rows: list[dict[str, Any]] = []
     try:
         database_started = time.perf_counter()
         _emit_marker(trace, "server.price_source_database_started")
@@ -3362,6 +3459,31 @@ def process_price_source(
                     .execute()
                 ).data[0]
             supplier_id = supplier_row["supplier_id"]
+        existing_invoice_source = find_invoice_source(
+            client,
+            company_id=company_id,
+            supplier_id=str(supplier_id) if supplier_id else None,
+            document_number=result.get("document_number"),
+        )
+        source_is_new = existing_invoice_source is None
+        if not result.get("rows") and source_is_new:
+            raise PriceSourceError(
+                "This invoice page has no priced rows and does not match an existing invoice."
+            )
+        if existing_invoice_source:
+            source_id = str(existing_invoice_source["source_id"])
+        source_page_id = str(uuid4())
+        existing_row_numbers = (
+            client.table("company_price_source_rows")
+            .select("source_row_number")
+            .eq("company_id", company_id)
+            .eq("source_id", source_id)
+            .execute().data or []
+        ) if not source_is_new else []
+        source_row_offset = max(
+            (int(row.get("source_row_number") or 0) for row in existing_row_numbers),
+            default=0,
+        )
         ready_count = sum(row["status"] == "ready" for row in result["rows"])
         unresolved_count = sum(row["status"] == "unresolved" for row in result["rows"])
         excluded_count = sum(row["status"] == "excluded" for row in result["rows"])
@@ -3383,6 +3505,8 @@ def process_price_source(
             "operation_services": len(operation_code_by_row_number),
             "total": len(result["rows"]),
             "document_number": result["document_number"],
+            "page_count": 1,
+            "pages": [{"source_page_id": source_page_id, "source_name": source_name}],
             "supplier_hp": supplier_hp or None,
             "supplier_issuer_evidence_repaired": supplier_issuer_evidence_repaired,
             "supplier_company_identity_rejected": supplier_company_identity_rejected,
@@ -3391,6 +3515,7 @@ def process_price_source(
             "document_subtotal": result["document_subtotal"],
             "document_vat_amount": result["document_vat_amount"],
             "document_total": result["document_total"],
+            "vat_basis": vat_basis,
             "material_types": material_types,
             "semantic_sha256": semantic_sha256,
             "template_sha256": template_sha256,
@@ -3414,8 +3539,7 @@ def process_price_source(
                 "ocr_model": (text_layer.ocr_package or {}).get("model"),
             },
         }
-        client.table("company_price_sources").insert(
-            {
+        source_record = {
                 "source_id": source_id,
                 "company_id": company_id,
                 "supplier_id": supplier_id,
@@ -3435,6 +3559,34 @@ def process_price_source(
                 "processing_summary": source_summary,
                 "created_by": str(access.user_id),
                 "processed_at": datetime.now(timezone.utc).isoformat(),
+            }
+        if source_is_new:
+            client.table("company_price_sources").insert(source_record).execute()
+        else:
+            previous_summary = dict(existing_invoice_source.get("processing_summary") or {})
+            pages = list(previous_summary.get("pages") or [])
+            pages.append({"source_page_id": source_page_id, "source_name": source_name})
+            source_summary["pages"] = pages
+            source_summary["page_count"] = len(pages)
+            client.table("company_price_sources").update(
+                {
+                    "processing_summary": source_summary,
+                    "processed_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+            ).eq("company_id", company_id).eq("source_id", source_id).execute()
+        client.table("company_price_source_pages").insert(
+            {
+                "source_page_id": source_page_id,
+                "company_id": company_id,
+                "source_id": source_id,
+                "source_name": source_name,
+                "source_kind": source_kind,
+                "source_url": resolved_url,
+                "storage_path": f"storage://{PRICE_SOURCE_BUCKET}/{object_path}",
+                "mime_type": mime_type,
+                "source_sha256": source_digest,
+                "created_by": str(access.user_id),
             }
         ).execute()
         _emit_duration(trace, "server.price_source_database_source_record", source_record_started)
@@ -3745,6 +3897,7 @@ def process_price_source(
         operation_offer_intents: list[dict[str, Any]] = []
         prior_offer_ids_to_supersede: set[str] = set()
         for row in result["rows"]:
+            persisted_row_number = source_row_offset + int(row["source_row_number"])
             row_category = canonical_price_source_category(str(row["material_type"]))
             material_id = None
             result_status = row["status"]
@@ -3840,8 +3993,9 @@ def process_price_source(
             source_row_payloads.append(
                 {
                     "source_id": source_id,
+                    "source_page_id": source_page_id,
                     "company_id": company_id,
-                    "source_row_number": row["source_row_number"],
+                    "source_row_number": persisted_row_number,
                     "raw_description": row["raw_description"],
                     "raw_sku": row["raw_sku"] or None,
                     "raw_price": row["raw_price"],
@@ -3886,7 +4040,7 @@ def process_price_source(
                     else:
                         prior_offer_ids_to_supersede.add(str(previous_offer["offer_id"]))
                 offer_intent = {
-                    "source_row_number": row["source_row_number"],
+                    "source_row_number": persisted_row_number,
                     "status": "active",
                     "payload": {
                         "company_id": company_id,
@@ -3919,7 +4073,7 @@ def process_price_source(
                 )
                 operation_offer_intents.append(
                     {
-                        "source_row_number": row["source_row_number"],
+                        "source_row_number": persisted_row_number,
                         "operation_id": operation_id,
                         "raw_service_name": row["raw_description"] or row["normalized_name"],
                         "supplier_sku": row["raw_sku"] or None,
@@ -4034,6 +4188,21 @@ def process_price_source(
                 "processing_duration_seconds": time.perf_counter() - process_started,
             }
         )
+        if not source_is_new:
+            aggregate_rows = (
+                client.table("company_price_source_rows")
+                .select("result_status")
+                .eq("company_id", company_id)
+                .eq("source_id", source_id)
+                .execute().data or []
+            )
+            source_summary["total"] = len(aggregate_rows)
+            source_summary["unresolved"] = sum(
+                row.get("result_status") == "unresolved" for row in aggregate_rows
+            )
+            source_summary["excluded"] = sum(
+                row.get("result_status") == "excluded" for row in aggregate_rows
+            )
         client.table("company_price_sources").update(
             {"processing_summary": source_summary}
         ).eq("company_id", company_id).eq("source_id", source_id).execute()
@@ -4056,14 +4225,22 @@ def process_price_source(
     except Exception:
         cleanup_started = time.perf_counter()
         try:
-            client.table("company_material_offers").delete().eq("source_id", source_id).execute()
+            inserted_row_ids = [str(row.get("row_id")) for row in inserted_rows if row.get("row_id")]
+            if source_is_new:
+                client.table("company_material_offers").delete().eq("source_id", source_id).execute()
+            elif inserted_row_ids:
+                client.table("company_material_offers").delete().in_("source_row_id", inserted_row_ids).execute()
             for offer_id in superseded_offer_ids:
                 client.table("company_material_offers").update({"status": "active"}).eq(
                     "offer_id", offer_id
                 ).execute()
-            client.table("company_price_source_rows").delete().eq("source_id", source_id).execute()
-            client.table("company_material_items").delete().eq("created_from_source_id", source_id).execute()
-            client.table("company_price_sources").delete().eq("source_id", source_id).execute()
+            if source_is_new:
+                client.table("company_price_source_rows").delete().eq("source_id", source_id).execute()
+                client.table("company_material_items").delete().eq("created_from_source_id", source_id).execute()
+                client.table("company_price_sources").delete().eq("source_id", source_id).execute()
+            elif source_page_id:
+                client.table("company_price_source_rows").delete().eq("source_page_id", source_page_id).execute()
+                client.table("company_price_source_pages").delete().eq("source_page_id", source_page_id).execute()
         except Exception:
             pass
         client.storage.from_(PRICE_SOURCE_BUCKET).remove([object_path])

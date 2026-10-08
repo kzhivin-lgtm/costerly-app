@@ -180,6 +180,8 @@ def test_purge_price_source_uses_owned_transactional_rpc_and_deletes_storage(mon
         storage = Storage()
 
         def table(self, name):
+            if name == "company_price_source_pages":
+                return _CatalogQuery([])
             assert name == "company_price_sources"
             return _CatalogQuery(
                 [{
@@ -3513,6 +3515,34 @@ def test_price_source_summary_aggregates_primary_and_table_verifier_timing():
     assert "total_agent_duration = sum(" in source
     assert '"agent_duration_seconds": total_agent_duration or None' in source
     assert "primary_usage = next(" in source
+
+
+def test_incomplete_invoice_vat_defaults_to_excluded_without_review_blocker():
+    from use_cases.price_sources import apply_incomplete_invoice_vat_default
+
+    result = {
+        "document_type": "invoice",
+        "vat_mode": "unknown",
+        "rows": [{
+            "raw_vat_mode": "unknown",
+            "status": "unresolved",
+            "reason_codes": ["vat_basis_unknown"],
+        }],
+    }
+
+    assert apply_incomplete_invoice_vat_default(result) == "inferred_invoice_default"
+    assert result["vat_mode"] == "excluded"
+    assert result["rows"][0]["raw_vat_mode"] == "excluded"
+    assert result["rows"][0]["status"] == "ready"
+
+
+def test_invoice_source_identity_requires_supplier_and_invoice_number():
+    from use_cases.price_sources import invoice_number_from_source_text, normalize_invoice_number
+
+    assert normalize_invoice_number("Invoice 62-336") == "invoice62336"
+    assert normalize_invoice_number("") == ""
+    assert invoice_number_from_source_text("חשבונית מס: 62336") == "62336"
+    assert invoice_number_from_source_text("Tax Invoice No. 62336") == "62336"
 
 
 def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():

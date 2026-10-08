@@ -2025,6 +2025,35 @@ def _price_source_document_type_label(value: object) -> str:
     return labels.get(str(value or ""), "Source document")
 
 
+def _price_source_invoice_label(source: dict) -> str:
+    """Prefer the business invoice identifier over an opaque upload filename."""
+    summary = source.get("processing_summary") or source.get("summary") or {}
+    document_number = str(summary.get("document_number") or "").strip()
+    return document_number or str(source.get("source_name") or "")
+
+
+def _price_source_file_format_label(source: dict) -> str:
+    mime_type = str(source.get("mime_type") or "").casefold()
+    known = {
+        "application/pdf": "PDF",
+        "image/jpeg": "JPG",
+        "image/png": "PNG",
+        "image/tiff": "TIFF",
+        "image/heic": "HEIC",
+        "text/csv": "CSV",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+        "text/html": "URL",
+    }
+    if mime_type in known:
+        return known[mime_type]
+    suffix = Path(str(source.get("source_name") or "")).suffix.lstrip(".").upper()
+    return suffix or ("URL" if source.get("source_kind") == "url" else "File")
+
+
+def _price_source_document_label(source: dict) -> str:
+    return f"{_price_source_document_type_label(source.get('document_type'))}, {_price_source_file_format_label(source)}"
+
+
 def _price_source_tc(value: object) -> str:
     try:
         number = float(value)
@@ -3528,13 +3557,13 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
                                     st.markdown(
                                         f'<span class="price-source-library-supplier" title="{escape(_price_source_supplier(source))}">'
                                         f'{escape(_price_source_short_text(_price_source_supplier(source)))}</span>'
-                                        f'<span class="price-source-file" title="{escape(str(source.get("source_name") or ""))}">'
-                                        f'{escape(_price_source_short_text(source.get("source_name"), limit=32))}</span>',
+                                        f'<span class="price-source-file" title="{escape(_price_source_invoice_label(source))}">'
+                                        f'{escape(_price_source_short_text(_price_source_invoice_label(source), limit=32))}</span>',
                                         unsafe_allow_html=True,
                                     )
                                 with document_col:
                                     st.markdown(
-                                        f'<span class="price-catalog-cell">{escape(_price_source_document_type_label(source.get("document_type")))}</span>',
+                                        f'<span class="price-catalog-cell">{escape(_price_source_document_label(source))}</span>',
                                         unsafe_allow_html=True,
                                     )
                                 with department_col:

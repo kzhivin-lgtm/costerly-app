@@ -852,7 +852,7 @@ The workspace requirements are:
      only for multi-signal phrases. A bare edge-band product remains material.
 
 2. **VAT fallback for incomplete invoice captures**
-   - Status: pending, policy approved 2026-10-08
+   - Status: implementation in progress, policy approved 2026-10-08
    - Outcome: determine the active VAT basis for a line-only invoice without
      mistaking a missing totals page for a line-price error. Explicit invoice
      VAT evidence wins. A page belonging to an existing invoice inherits its
@@ -924,7 +924,7 @@ The workspace requirements are:
 ### Pending P1
 
 1. **Source Library invoice label**
-   - Status: pending
+   - Status: implementation in progress
    - Outcome: show the extracted invoice number below the canonical supplier
      name when present, otherwise show the uploaded file name.
 
