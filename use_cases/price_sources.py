@@ -1096,6 +1096,7 @@ def match_existing_supplier(
     candidates: Sequence[Mapping[str, Any]],
     *,
     supplier_hp: str = "",
+    issuer_evidence_name: str = "",
 ) -> Mapping[str, Any] | None:
     """Return the canonical supplier for a safe OCR-level match.
 
@@ -1120,6 +1121,20 @@ def match_existing_supplier(
     incoming = supplier_merge_key(supplier_name)
     if not incoming:
         return None
+    # A legal name taken directly from the issuer letterhead is stronger than
+    # an OCR/model name similarity. It may join an exact canonical spelling,
+    # but never a merely similar supplier. This prevents distinct companies
+    # such as "YAAD PIRZUL 1984" and "א.ש. פירוזל" from collapsing when the
+    # ID is blurred or omitted.
+    if issuer_evidence_name and incoming == supplier_merge_key(issuer_evidence_name):
+        exact_matches = [
+            candidate for candidate in candidates
+            if supplier_merge_key(candidate.get("supplier_name") or candidate.get("normalized_name")) == incoming
+        ]
+        return min(
+            exact_matches,
+            key=lambda candidate: (str(candidate.get("created_at") or "~"), str(candidate.get("supplier_id") or "")),
+        ) if exact_matches else None
     scored = []
     for candidate in candidates:
         core = supplier_merge_key(candidate.get("supplier_name") or candidate.get("normalized_name"))
@@ -3881,7 +3896,10 @@ def process_price_source(
                 .execute()
             ).data or []
             matched_supplier = match_existing_supplier(
-                supplier_name, existing_suppliers, supplier_hp=supplier_hp,
+                supplier_name,
+                existing_suppliers,
+                supplier_hp=supplier_hp,
+                issuer_evidence_name=str(issuer_identity.get("supplier_name") or ""),
             )
             canonical_supplier_name = clean_supplier_name(
                 (matched_supplier or {}).get("supplier_name") or supplier_name

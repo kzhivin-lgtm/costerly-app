@@ -892,6 +892,21 @@ def test_supplier_merge_uses_hp_before_unreliable_ocr_name():
     assert match_existing_supplier("Unreadable OCR issuer", candidates, supplier_hp="513453233")["supplier_id"] == "first"
 
 
+def test_issuer_header_name_does_not_fuzzy_merge_a_different_legal_supplier():
+    candidates = [{
+        "supplier_id": "pirzul-a-sh",
+        "supplier_name": "א.ש. פירוזל",
+        "supplier_hp": "513453233",
+        "created_at": "2026-10-05T09:57:00+00:00",
+    }]
+
+    assert match_existing_supplier(
+        "יעד פירזול 1984",
+        candidates,
+        issuer_evidence_name="יעד פירזול 1984",
+    ) is None
+
+
 def test_company_identity_is_an_exact_supplier_blacklist():
     identity = company_identity_blacklist({
         "company_name": "Wooden Heart",
