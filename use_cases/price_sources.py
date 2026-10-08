@@ -256,7 +256,10 @@ def apply_vat_basis_to_unknown_rows(
         changed = True
         row["raw_vat_mode"] = vat_mode
         reasons = set(row.get("reason_codes") or [])
-        reasons.difference_update(_VAT_UNKNOWN_REASON_CODES)
+        reasons = {
+            reason for reason in reasons
+            if not _is_transient_identity_reason(reason, "vat")
+        }
         reasons.add(reason_code)
         row["reason_codes"] = sorted(reasons)
         if row.get("status") == "unresolved" and not (
@@ -409,6 +412,26 @@ _SUPPLIER_UNKNOWN_REASON_CODES = {
 }
 
 
+def _is_transient_identity_reason(reason: object, subject: str) -> bool:
+    """Identify agent wording for a missing VAT or supplier identity fact.
+
+    These are provisional OCR-agent observations. Once the server supplies a
+    canonical fact, wording such as ``missing_supplier_evidence`` must not keep
+    an otherwise valid price in Review. Genuine commercial blockers are kept in
+    ``_SUPPLIER_IDENTITY_BLOCKING_REASONS`` and never pass through here.
+    """
+    code = str(reason or "").strip().casefold()
+    known = (
+        _VAT_UNKNOWN_REASON_CODES if subject == "vat"
+        else _SUPPLIER_UNKNOWN_REASON_CODES if subject == "supplier"
+        else set()
+    )
+    if code in known:
+        return True
+    tokens = {token for token in code.split("_") if token}
+    return subject in tokens and bool(tokens & {"missing", "unknown", "unidentified"})
+
+
 def resolve_rows_after_supplier_identity(result: dict[str, Any]) -> int:
     """Remove the agent's stale supplier blocker after server canonicalisation.
 
@@ -422,13 +445,21 @@ def resolve_rows_after_supplier_identity(result: dict[str, Any]) -> int:
         if not isinstance(row, dict):
             continue
         reasons = set(row.get("reason_codes") or [])
-        had_supplier_alias = bool(reasons & _SUPPLIER_UNKNOWN_REASON_CODES)
+        had_supplier_alias = any(
+            _is_transient_identity_reason(reason, "supplier") for reason in reasons
+        )
         if row.get("raw_vat_mode") in {"included", "excluded"}:
-            reasons.difference_update(_VAT_UNKNOWN_REASON_CODES)
+            reasons = {
+                reason for reason in reasons
+                if not _is_transient_identity_reason(reason, "vat")
+            }
         if not had_supplier_alias:
             row["reason_codes"] = sorted(reasons)
             continue
-        reasons.difference_update(_SUPPLIER_UNKNOWN_REASON_CODES)
+        reasons = {
+            reason for reason in reasons
+            if not _is_transient_identity_reason(reason, "supplier")
+        }
         row["reason_codes"] = sorted(reasons)
         if row.get("status") != "unresolved":
             continue
