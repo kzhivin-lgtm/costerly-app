@@ -456,14 +456,20 @@ def apply_price_source_document_defaults(
     """Apply the approved Israeli currency and VAT defaults to missing evidence."""
     currency = str(result.get("currency") or "").strip().upper() or "ILS"
     result["currency"] = currency
-    # HP is an Israeli company identifier, exactly nine digits.  It is useful
+    # HP is an Israeli company identifier, exactly nine digits and never has a
+    # leading zero.  Israeli phone numbers commonly do, so a leading zero is
+    # a hard exclusion rather than a weak supplier-match candidate.
     # only when the model can tie it to the seller, so malformed or annotated
     # text becomes unknown rather than a false supplier-match key.
     hp_raw = str(result.get("supplier_hp") or "").strip()
     hp_digits = re.sub(r"\D", "", hp_raw)
     result["supplier_hp"] = (
         hp_digits
-        if len(hp_digits) == 9 and re.fullmatch(r"[\s\d().-]+", hp_raw)
+        if (
+            len(hp_digits) == 9
+            and not hp_digits.startswith("0")
+            and re.fullmatch(r"[\s\d().-]+", hp_raw)
+        )
         else ""
     )
     rows = [row for row in result.get("rows") or [] if isinstance(row, dict)]
@@ -634,7 +640,7 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
     if result["vat_mode"] not in VAT_MODES:
         raise PriceSourceSchemaError("unsupported VAT mode")
     if not isinstance(result["supplier_hp"], str) or (
-        result["supplier_hp"] and not re.fullmatch(r"\d{9}", result["supplier_hp"])
+        result["supplier_hp"] and not re.fullmatch(r"[1-9]\d{8}", result["supplier_hp"])
     ):
         raise PriceSourceSchemaError("supplier HP must be exactly nine digits")
     for key in ("document_subtotal", "document_vat_amount", "document_total"):

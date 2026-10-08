@@ -1858,19 +1858,14 @@ def _price_catalog_value(row: dict) -> str:
 
 
 def _price_source_vat_rate(source: dict | None) -> float | None:
-    """Use the shared VAT contract for both complete and partial invoices."""
+    """Recompute VAT from source evidence, including legacy source summaries."""
     summary = (source or {}).get("processing_summary") or {}
-    try:
-        persisted_rate = float(summary.get("vat_rate") or 0)
-    except (TypeError, ValueError):
-        persisted_rate = 0
-    if persisted_rate > 0:
-        return persisted_rate
     try:
         rate, _origin = price_source_vat_rate(
             document_date=(source or {}).get("document_date"),
             document_subtotal=summary.get("document_subtotal"),
             document_vat_amount=summary.get("document_vat_amount"),
+            document_total=summary.get("document_total"),
         )
     except (TypeError, ValueError):
         return None

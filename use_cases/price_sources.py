@@ -319,7 +319,7 @@ def supplier_legal_identifier_vat_basis(
     text: str, *, supplier_hp: str,
 ) -> str:
     """Recognise an Israeli seller legal identifier that carries VAT liability."""
-    if not re.fullmatch(r"\d{9}", re.sub(r"\D", "", supplier_hp or "")):
+    if not re.fullmatch(r"[1-9]\d{8}", re.sub(r"\D", "", supplier_hp or "")):
         return "unknown"
     # Only the seller header participates.  The buyer block can contain its own
     # nine-digit identifier and must never provide a seller tax classification.
@@ -352,20 +352,30 @@ def price_source_vat_rate(
     document_date: object = None,
     document_subtotal: object = None,
     document_vat_amount: object = None,
+    document_total: object = None,
 ) -> tuple[float, str]:
     """Return the VAT rate and provenance for a supplier price source.
 
-    Invoice totals are the primary evidence. A partial invoice page has no
-    totals, so supplier prices use the statutory rate for its document date,
-    falling back to the current rate only if the date is unavailable.
+    A consistent subtotal and total are the strongest document evidence.  OCR
+    can misread an isolated VAT amount, so it must not override their implied
+    rate. A partial invoice page has no totals, so supplier prices use the
+    statutory rate for its document date, falling back to the current rate
+    only if the date is unavailable.
     """
     try:
         subtotal = float(document_subtotal or 0)
         vat_amount = float(document_vat_amount or 0)
+        total = float(document_total or 0)
     except (TypeError, ValueError):
-        subtotal = vat_amount = 0
-    if subtotal > 0 and vat_amount > 0:
-        return vat_amount / subtotal, "document_totals"
+        subtotal = vat_amount = total = 0
+
+    # Total and subtotal form an independent arithmetic pair.  Accept it only
+    # in a plausible Israeli VAT range, so a partial document's unrelated
+    # overall total cannot invent a rate.
+    if subtotal > 0 and total > subtotal:
+        implied_rate = (total - subtotal) / subtotal
+        if 0.15 <= implied_rate <= 0.20:
+            return implied_rate, "document_total_reconciled"
 
     parsed_date = None
     if isinstance(document_date, datetime):
@@ -380,13 +390,22 @@ def price_source_vat_rate(
         except ValueError:
             pass
     if parsed_date is not None:
-        return (
+        statutory_rate = (
             ISRAEL_VAT_RATE_BEFORE_2025
             if parsed_date < ISRAEL_VAT_RATE_CHANGE_DATE
-            else ISRAEL_VAT_RATE_CURRENT,
-            "document_date",
+            else ISRAEL_VAT_RATE_CURRENT
         )
-    return ISRAEL_VAT_RATE_CURRENT, "current_default"
+        statutory_origin = "document_date"
+    else:
+        statutory_rate = ISRAEL_VAT_RATE_CURRENT
+        statutory_origin = "current_default"
+
+    if subtotal > 0 and vat_amount > 0:
+        implied_rate = vat_amount / subtotal
+        # Trust an isolated VAT amount only if OCR produced a plausible rate.
+        if 0.15 <= implied_rate <= 0.20:
+            return implied_rate, "document_totals"
+    return statutory_rate, statutory_origin
 
 
 def known_supplier_vat_basis(client, *, company_id: str, supplier_id: str) -> str:
@@ -802,7 +821,7 @@ def company_identity_blacklist(profile: Mapping[str, Any] | None) -> dict[str, o
     registration = re.sub(r"\D", "", str(profile.get("company_registration_number") or ""))
     return {
         "names": sorted(name for name in names if name),
-        "hp": registration if len(registration) == 9 else "",
+        "hp": registration if re.fullmatch(r"[1-9]\d{8}", registration) else "",
     }
 
 
@@ -877,7 +896,7 @@ def issuer_identity_from_source_text(text: str) -> dict[str, str]:
     if legal_name_match:
         supplier_name = legal_name_match.group(1).strip()
     return {
-        "supplier_hp": supplier_hp if len(supplier_hp) == 9 else "",
+        "supplier_hp": supplier_hp if re.fullmatch(r"[1-9]\d{8}", supplier_hp) else "",
         "supplier_name": supplier_name,
     }
 
@@ -942,7 +961,7 @@ def match_existing_supplier(
     ambiguous-match behaviour.
     """
     normalized_hp = re.sub(r"[^a-z0-9]", "", str(supplier_hp or "").casefold())
-    if normalized_hp:
+    if re.fullmatch(r"[1-9]\d{8}", normalized_hp):
         hp_matches = [
             candidate for candidate in candidates
             if re.sub(r"[^a-z0-9]", "", str(candidate.get("supplier_hp") or "").casefold())
@@ -3785,6 +3804,7 @@ def process_price_source(
             document_date=result.get("document_date"),
             document_subtotal=result.get("document_subtotal"),
             document_vat_amount=result.get("document_vat_amount"),
+            document_total=result.get("document_total"),
         )
         supplier_identity_rows_resolved = (
             resolve_rows_after_supplier_identity(result) if supplier_id else 0

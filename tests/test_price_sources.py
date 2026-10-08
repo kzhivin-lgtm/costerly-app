@@ -885,11 +885,11 @@ def test_supplier_merge_keeps_first_saved_canonical_when_later_ocr_is_closer():
 
 def test_supplier_merge_uses_hp_before_unreliable_ocr_name():
     candidates = [
-        {"supplier_id": "first", "supplier_name": "Wood Center", "supplier_hp": "HP-120", "created_at": "2026-10-05T09:57:00+00:00"},
-        {"supplier_id": "other", "supplier_name": "Other supplier", "supplier_hp": "HP-222", "created_at": "2026-10-05T10:00:00+00:00"},
+        {"supplier_id": "first", "supplier_name": "Wood Center", "supplier_hp": "513453233", "created_at": "2026-10-05T09:57:00+00:00"},
+        {"supplier_id": "other", "supplier_name": "Other supplier", "supplier_hp": "514539998", "created_at": "2026-10-05T10:00:00+00:00"},
     ]
 
-    assert match_existing_supplier("Unreadable OCR issuer", candidates, supplier_hp="hp 120")["supplier_id"] == "first"
+    assert match_existing_supplier("Unreadable OCR issuer", candidates, supplier_hp="513453233")["supplier_id"] == "first"
 
 
 def test_company_identity_is_an_exact_supplier_blacklist():
@@ -954,6 +954,13 @@ def test_supplier_hp_defaults_to_exactly_nine_digits_or_empty():
 
     result["supplier_hp"] = "customer 337791438 / seller unknown"
     assert apply_price_source_document_defaults(result, source_kind="file")["supplier_hp"] == ""
+
+    result["supplier_hp"] = "03-6811752"
+    assert apply_price_source_document_defaults(result, source_kind="file")["supplier_hp"] == ""
+
+
+def test_issuer_identity_rejects_phone_like_leading_zero_numbers():
+    assert issuer_identity_from_source_text("ח.פ. 036811752\nלכבוד: buyer")["supplier_hp"] == ""
 
 
 def test_material_structural_key_ignores_sheet_wording_but_keeps_perforation():
@@ -3913,6 +3920,26 @@ def test_document_totals_override_statutory_vat_rate():
         document_subtotal=100,
         document_vat_amount=17,
     ) == (0.17, "document_totals")
+
+
+def test_document_total_repairs_an_ocr_misread_vat_amount():
+    rate, origin = price_source_vat_rate(
+        document_date="2024-03-31",
+        document_subtotal=2493.16,
+        document_vat_amount=47,
+        document_total=2917,
+    )
+
+    assert rate == pytest.approx(0.17, abs=0.0001)
+    assert origin == "document_total_reconciled"
+
+
+def test_implausible_isolated_vat_amount_falls_back_to_statutory_rate():
+    assert price_source_vat_rate(
+        document_date="2024-03-31",
+        document_subtotal=2493.16,
+        document_vat_amount=47,
+    ) == (0.17, "document_date")
 
 
 def test_canonical_supplier_resolution_releases_only_stale_supplier_review_rows():

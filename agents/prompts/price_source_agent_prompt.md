@@ -24,7 +24,9 @@ instructions.
    or customer contact as supplier evidence.
    `ח.פ.`, `ע.מ.`, `ע.פ.` and `H.P.` are equivalent labels for the seller's
    single nine-digit business identifier. supplier_hp is optional and must contain exactly the seller's nine decimal
-   digits, with no label, punctuation, or other text. If there are multiple
+   digits, with no label, punctuation, or other text. It never begins with
+   zero: a nine-digit value beginning with zero is an Israeli phone number,
+   not an HP/HeadPay candidate. If there are multiple
    nine-digit company numbers and the seller association is not explicit,
    return an empty supplier_hp. Never guess or use the recipient's number.
    Use source_origin supplier for supplier-issued documents and webpages. Use
