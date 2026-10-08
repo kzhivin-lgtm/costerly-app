@@ -306,6 +306,12 @@ The workspace requirements are:
 - `company_suppliers.supplier_hp` is additive evidence from an invoice's HP or
   HeadPay number. Exact company-private HP wins supplier matching before OCR
   text, while the first accepted supplier remains the canonical display name.
+- Supplier legal-form evidence is retained independently from the nine-digit
+  identifier. Explicit `ח.פ.`, `ע.מ.`, `ע.פ.`, and normalised company suffixes
+  `בע"מ`/`בעמ`/`baam` become respectively `company`, `osek_murshe`,
+  `osek_patur`, or `company` evidence. A person-like supplier display name is
+  only a weak sole-trader hint: it must never choose `murshe` versus `patur`,
+  override an explicit legal-form label, or decide a supplier merge.
 - New sheet-material rows persist a deterministic structural identity: material
   family, proven thickness and dimensions, and proven construction. It ignores
   `sheet`, colour, décor, OCR word order and SKU. `perforated` remains a real
@@ -761,8 +767,10 @@ The workspace requirements are:
   Okoume is a plywood species attribute, not a supplier brand or standalone
   material family. Perforated remains a distinct construction boundary.
 - VAT legal-status inference is explicitly deferred. `ע.מ.` is a VAT-registered
-  dealer, `ע.פ.` is VAT-exempt, and `ח.פ.` identifies a company but does not by
-  itself prove a row's VAT treatment. No VAT rule changed in this increment.
+  dealer, `ע.פ.` is VAT-exempt, and `ח.פ.`/`בע"מ` identify a company but do not
+  by themselves prove a row's VAT treatment. The legal-form labels are retained
+  now so the approved incomplete-invoice VAT policy can consume them without
+  re-reading supplier text.
 - Verification: `tests/test_price_sources.py` reports 161 passed. Added
   bilingual regression cases across all catalog areas and existing Material
   Jobs operation codes.
@@ -844,10 +852,14 @@ The workspace requirements are:
      only for multi-signal phrases. A bare edge-band product remains material.
 
 2. **VAT fallback for incomplete invoice captures**
-   - Status: pending, requires the already-recorded P0 policy decision before
-     implementation
+   - Status: pending, policy approved 2026-10-08
    - Outcome: determine the active VAT basis for a line-only invoice without
-     mistaking a missing totals page for a line-price error.
+     mistaking a missing totals page for a line-price error. Explicit invoice
+     VAT evidence wins. A page belonging to an existing invoice inherits its
+     invoice VAT basis, then a canonical supplier's previously proven taxable
+     basis. Otherwise apply the configured Israeli VAT rate as `inferred`, not
+     Review. Explicit `ע.פ.` is the sole automatic zero-VAT exception. Later
+     totals-page evidence reconciles and replaces inferred values.
 
 3. **Production acceptance matrix for source ingestion closure**
    - Status: pending, depends on the two items above
@@ -915,6 +927,11 @@ The workspace requirements are:
    - Status: pending
    - Outcome: show the extracted invoice number below the canonical supplier
      name when present, otherwise show the uploaded file name.
+
+   - Extension: an invoice source is an aggregate keyed by canonical supplier
+     plus normalised non-empty invoice number. Any number of files/pages may
+     arrive in any order and append to that source. A file without a matching
+     invoice number remains a distinct source.
 
 2. **Bilingual supplier-brand catalog**
    - Status: pending, explicitly deferred from the current arithmetic and merge fix
