@@ -9,8 +9,8 @@ index. The old 3.12.1 record in `notes/TODO.md` is historical only.
 
 - Work number: `3.16.7`
 - Branch: `main`
-- Latest Price Source commits: `82d2380`, `83ce68b`, `860fabb`, `1272487`,
-  `9a117c7`, `76873f8`
+- Latest Price Source commits: `c6d289b`, `97c3c73`, `69da191`, `2528ad6`,
+  `6d77806`, `41bedd1`, `62920ad`, `5905a4e`
 - Recovery archives exist under `backups/` for each recent price change. They
   are rollback inputs, not production acceptance.
 
@@ -51,6 +51,36 @@ index. The old 3.12.1 record in `notes/TODO.md` is historical only.
     structured identity: entity, primary attribute, up to four discriminating
     attributes, optional brand. AISI and steel grades are technical attributes;
     SKU stays supplier-scoped.
+
+### Implementation checkpoint, 2026-10-08, supplier and invoice identity
+
+This is a code-and-data-contract checkpoint, pending the next authenticated
+four-photo acceptance run. It is not a claim that the entire Price Lists work
+is accepted.
+
+- A valid nine-digit seller legal identifier is decisive. Phone-like values
+  beginning with zero are rejected. The recognised forms are `ח.פ.`, `ע.מ.`,
+  `ע.פ.` and H.P.; `בע"מ` remains seller-header and company-form evidence.
+- An issuer header without a readable identifier may join exactly one existing
+  legal supplier when its same-script normalised name differs by at most one
+  OCR edit for a short name or two for a longer name. Cross-script fuzzy merge
+  and shared-word merge are forbidden. This prevents both duplicate suppliers
+  from a one-letter OCR error and a false merge between ASh Pirzul and YAAD
+  PIRZUL 1984.
+- Explicit invoice labels determine the document number, including
+  `חשבונית מס - קבלה`; invoice identifiers can contain letters, digits and
+  punctuation. An internal customer number is never substituted merely because
+  it looks numeric.
+- A supplier-source row with no VAT evidence defaults to VAT-excluded even if
+  OCR called its origin `unknown`. A later explicit document for that canonical
+  supplier confirms the inferred basis. Explicit `company_internal` sources
+  remain outside this default.
+- The extraction result remembers the selection that started its worker. A
+  later fragment rerender cannot make the successful second-cycle result look
+  stale and remove the green result panel.
+- Verification at this checkpoint: `tests/test_price_sources.py` and
+  `tests/test_company_access.py`, 460 passed, 25 warnings; `git diff --check`
+  passed. The production four-source rerun is still required.
 
 ## Verified current evidence
 
@@ -99,7 +129,7 @@ VAT evidence cannot by itself leave a valid row in Review.
      must reuse one operation and preserve source wording and price.
 
 2. **3.16.7.2 VAT fallback for incomplete invoices**
-   - Status: representative production acceptance verified
+   - Status: implementation checkpoint complete, production recheck pending
    - Supplier invoices resolve VAT by current-document evidence, seller legal
      identity, supplier history, then the Israeli default. Partial pages retain
      a date-appropriate rate and do not enter Review only because totals are
@@ -126,9 +156,18 @@ VAT evidence cannot by itself leave a valid row in Review.
    - Status: representative production evidence verified, broader acceptance
      pending
    - Keep conservative image-only verification until measured acceptance data
-     shows narrowing is safe. Printed two-decimal price versus line total may
+   shows narrowing is safe. Printed two-decimal price versus line total may
      differ by ordinary currency rounding, capped at ILS 1 per line, without
-     deriving or replacing the printed price.
+   deriving or replacing the printed price.
+
+7. **3.17.1.1 Shelf-support taxonomy boundary**
+   - Status: active, before next four-source rerun
+   - Outcome: `מתלה מדף` and abbreviated/OCR variants are Hardware shelf
+     supports, never MDF or Wood Sheets. Under the approved consumables
+     boundary, a generic shelf support is excluded from the purchasable catalog
+     while its source evidence remains available for audit.
+   - Protected dependency: this is taxonomy-only. It must not alter supplier,
+     invoice-number, VAT, source-deletion or cycle-result paths.
 
 ### P1: improvements after P0 closure
 

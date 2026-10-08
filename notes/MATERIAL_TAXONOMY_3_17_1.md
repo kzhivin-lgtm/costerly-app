@@ -122,6 +122,16 @@ an exclusion reason.
 5. Run representative source, catalog, global-catalog and Detection cases;
    confirm no 3.16.7 regression.
 
+### Active acceptance repair, 3.17.1.1
+
+The photographed YAAD PIRZUL source exposes the Hebrew shelf-support phrase
+`מתלה ת.מדף`. It must resolve from literal source evidence to Hardware rather
+than MDF, even when the extraction model supplies an MDF label. As a generic
+shelf-support/fastening item it follows the approved consumables exclusion
+boundary: source evidence is retained, but it does not create a purchasable
+catalog material or offer. This is a narrow taxonomy regression test, not a
+supplier, invoice, VAT or merge change.
+
 ## Acceptance
 
 - One literal source line has one structured identity and the same canonical
