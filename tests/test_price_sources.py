@@ -2115,6 +2115,39 @@ def test_price_source_processing_uses_callback_without_manual_rerun():
     assert "_process_pending_price_source(access, trace=trace)" in lists_source
 
 
+def test_reloaded_price_list_session_reattaches_to_active_extraction(monkeypatch):
+    from screens import company_profile
+
+    class SessionState(dict):
+        def __getattr__(self, name):
+            return self[name]
+
+        def __setattr__(self, name, value):
+            self[name] = value
+
+    future = Future()
+    state = SessionState(_price_source_processing_cycle=2)
+    monkeypatch.setattr(company_profile.st, "session_state", state)
+    monkeypatch.setattr(
+        company_profile,
+        "active_price_source_job",
+        lambda _company_id: SimpleNamespace(
+            future=future,
+            started_at=123.0,
+            started_at_epoch_ms=456000,
+        ),
+    )
+
+    company_profile._restore_active_price_source_processing(
+        SimpleNamespace(company_id="company-1")
+    )
+
+    assert state["_price_source_processing"] is True
+    assert state["_price_source_pending"]["future"] is future
+    assert state["_price_source_pending"]["processing_cycle"] == 3
+    assert state["_price_source_pending"]["user_cycle_started_at_epoch_ms"] == 456000
+
+
 def test_price_source_processing_guard_restores_client_mutations_after_completion():
     from ui.js_guards import install_price_source_processing_guard
 

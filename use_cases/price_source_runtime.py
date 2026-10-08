@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 from threading import Lock
 import time
 from typing import Any, Callable
@@ -29,6 +30,20 @@ _PRICE_LISTS_READ_EXECUTOR = ThreadPoolExecutor(
 )
 _LOCKS_GUARD = Lock()
 _COMPANY_LOCKS: dict[str, Lock] = {}
+_ACTIVE_JOBS_GUARD = Lock()
+
+
+@dataclass(frozen=True)
+class ActivePriceSourceJob:
+    """One submitted extraction, retained while a browser session may reload."""
+
+    future: Future
+    job_id: str
+    started_at: float
+    started_at_epoch_ms: int
+
+
+_COMPANY_ACTIVE_JOBS: dict[str, ActivePriceSourceJob] = {}
 
 
 def _trace_event(
@@ -48,6 +63,22 @@ def _company_lock(company_id: str) -> Lock:
         return _COMPANY_LOCKS.setdefault(company_id, Lock())
 
 
+def active_price_source_job(company_id: str) -> ActivePriceSourceJob | None:
+    """Return a live company extraction so a reloaded UI can reattach to it."""
+    with _ACTIVE_JOBS_GUARD:
+        active = _COMPANY_ACTIVE_JOBS.get(str(company_id))
+        if active is None or active.future.done():
+            return None
+        return active
+
+
+def _clear_active_price_source_job(company_id: str, future: Future) -> None:
+    with _ACTIVE_JOBS_GUARD:
+        active = _COMPANY_ACTIVE_JOBS.get(company_id)
+        if active is not None and active.future is future:
+            _COMPANY_ACTIVE_JOBS.pop(company_id, None)
+
+
 def submit_price_source_job(
     *,
     access,
@@ -61,17 +92,35 @@ def submit_price_source_job(
     # extraction look as though it never reached the server. Authorization is
     # still enforced by ``process_price_source`` in the worker before it can
     # create or change any company data.
-    job_id = str(uuid4())
-    _trace_event(trace, "server.price_source_job_submitted", job_id=job_id)
-    return _PRICE_SOURCE_EXECUTOR.submit(
-        _run_price_source_job,
-        access=access,
-        uploaded_file=uploaded_file,
-        source_url=source_url,
-        trace=trace,
-        job_id=job_id,
-        owner_authorized=False,
+    company_id = str(access.company_id)
+    with _ACTIVE_JOBS_GUARD:
+        previous = _COMPANY_ACTIVE_JOBS.get(company_id)
+        if previous is not None and not previous.future.done():
+            raise PriceSourceError(
+                "Another price extraction is already running. Try again when it finishes."
+            )
+        job_id = str(uuid4())
+        started_at = time.perf_counter()
+        _trace_event(trace, "server.price_source_job_submitted", job_id=job_id)
+        future = _PRICE_SOURCE_EXECUTOR.submit(
+            _run_price_source_job,
+            access=access,
+            uploaded_file=uploaded_file,
+            source_url=source_url,
+            trace=trace,
+            job_id=job_id,
+            owner_authorized=False,
+        )
+        _COMPANY_ACTIVE_JOBS[company_id] = ActivePriceSourceJob(
+            future=future,
+            job_id=job_id,
+            started_at=started_at,
+            started_at_epoch_ms=int(time.time() * 1000),
+        )
+    future.add_done_callback(
+        lambda completed: _clear_active_price_source_job(company_id, completed)
     )
+    return future
 
 
 def submit_price_source_purge_job(*, access, source_id: str, trace=None) -> Future:

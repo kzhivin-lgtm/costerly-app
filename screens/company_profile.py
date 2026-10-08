@@ -59,6 +59,7 @@ from use_cases.price_sources import (
     validate_price_source_upload_selection,
 )
 from use_cases.price_source_runtime import (
+    active_price_source_job,
     submit_price_lists_projection_jobs,
     submit_price_source_job,
     submit_price_source_purge_job,
@@ -3338,6 +3339,28 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
         st.session_state.pop("_price_source_pending", None)
 
 
+def _restore_active_price_source_processing(access: CompanyAccess) -> None:
+    """Reattach a reloaded browser session to its still-running server job."""
+    if st.session_state.get("_price_source_processing"):
+        return
+    active = active_price_source_job(str(access.company_id))
+    if active is None:
+        return
+    processing_cycle = int(
+        st.session_state.get("_price_source_processing_cycle") or 0
+    ) + 1
+    st.session_state._price_source_processing_cycle = processing_cycle
+    st.session_state._price_source_pending = {
+        "future": active.future,
+        "processing_cycle": processing_cycle,
+        "user_cycle_started_at": active.started_at,
+        "user_cycle_started_at_epoch_ms": active.started_at_epoch_ms,
+    }
+    st.session_state._price_source_processing = True
+    st.session_state.pop("_price_source_error", None)
+    st.session_state.pop("_price_source_start_rejected", None)
+
+
 @st.fragment(run_every=1.0, parallel=True)
 def _render_price_source_processing_status(access: CompanyAccess, *, trace=None) -> None:
     """Refresh only the terminal state while the worker runs in background."""
@@ -3421,6 +3444,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         st.info("Price sources are available to the company owner.")
         return
 
+    _restore_active_price_source_processing(access)
     _process_pending_price_source(access, trace=trace)
 
     # Keep the dashboard in the upload card, so it cannot leave a detached
