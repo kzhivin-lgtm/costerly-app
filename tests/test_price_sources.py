@@ -3925,6 +3925,58 @@ def test_known_supplier_vat_basis_does_not_override_current_document_evidence():
     assert result["vat_mode"] == "included"
 
 
+def test_explicit_supplier_invoice_confirms_prior_defaulted_vat_sources():
+    from use_cases.price_sources import confirm_supplier_vat_history, known_supplier_vat_basis
+
+    client = _MutableClient({
+        "company_price_sources": [
+            {
+                "source_id": "partial-source",
+                "company_id": "company-1",
+                "supplier_id": "supplier-1",
+                "status": "ready",
+                "vat_mode": "excluded",
+                "processing_summary": {"vat_basis": "inferred_supplier_default"},
+            },
+            {
+                "source_id": "confirmed-source",
+                "company_id": "company-1",
+                "supplier_id": "supplier-1",
+                "status": "ready",
+                "vat_mode": "excluded",
+                "processing_summary": {"vat_basis": "explicit"},
+            },
+        ],
+        "company_price_source_rows": [
+            {
+                "row_id": "row-1",
+                "company_id": "company-1",
+                "source_id": "partial-source",
+                "raw_vat_included": False,
+                "reason_codes": ["vat_inferred_supplier_default"],
+            },
+        ],
+    })
+
+    assert confirm_supplier_vat_history(
+        client,
+        company_id="company-1",
+        supplier_id="supplier-1",
+        confirmation_source_id="confirmed-source",
+        vat_mode="excluded",
+    ) == 1
+    assert client.tables["company_price_sources"][0]["processing_summary"] == {
+        "vat_basis": "confirmed_supplier_history",
+        "vat_confirmation_source_id": "confirmed-source",
+    }
+    assert client.tables["company_price_source_rows"][0]["reason_codes"] == [
+        "vat_confirmed_by_supplier_document",
+    ]
+    assert known_supplier_vat_basis(
+        client, company_id="company-1", supplier_id="supplier-1",
+    ) == "excluded"
+
+
 def test_supplier_legal_identifier_marks_osek_murshe_as_vat_excluded():
     from use_cases.price_sources import supplier_legal_identifier_vat_basis
 

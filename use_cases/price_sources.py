@@ -420,10 +420,10 @@ def price_source_vat_rate(
 
 
 def known_supplier_vat_basis(client, *, company_id: str, supplier_id: str) -> str:
-    """Return a single proven VAT basis from active sources for one supplier."""
+    """Return a single document-confirmed VAT basis for one supplier."""
     sources = (
         client.table("company_price_sources")
-        .select("vat_mode")
+        .select("vat_mode,processing_summary")
         .eq("company_id", company_id)
         .eq("supplier_id", supplier_id)
         .neq("status", "archived")
@@ -432,9 +432,84 @@ def known_supplier_vat_basis(client, *, company_id: str, supplier_id: str) -> st
     modes = {
         str(source.get("vat_mode") or "")
         for source in sources
-        if str(source.get("vat_mode") or "") in {"included", "excluded"}
+        if str((source.get("processing_summary") or {}).get("vat_basis") or "")
+        in {"explicit", "confirmed_supplier_history"}
+        and str(source.get("vat_mode") or "") in {"included", "excluded"}
     }
     return next(iter(modes)) if len(modes) == 1 else "unknown"
+
+
+def confirm_supplier_vat_history(
+    client,
+    *,
+    company_id: str,
+    supplier_id: str,
+    confirmation_source_id: str,
+    vat_mode: str,
+) -> int:
+    """Promote prior defaulted supplier sources after explicit VAT evidence.
+
+    A default keeps a first partial invoice usable. It is not proof. When a
+    later invoice from the same canonical supplier explicitly carries VAT,
+    preserve the old prices but upgrade their provenance to confirmed.
+    """
+    if vat_mode not in {"included", "excluded"}:
+        return 0
+    sources = (
+        client.table("company_price_sources")
+        .select("source_id,vat_mode,processing_summary")
+        .eq("company_id", company_id)
+        .eq("supplier_id", supplier_id)
+        .neq("status", "archived")
+        .execute()
+    ).data or []
+    confirmed = 0
+    inferred_bases = {
+        "inferred_supplier_default",
+        "inferred_supplier_history",
+        "inferred_supplier_legal_identifier",
+    }
+    for source in sources:
+        source_id = str(source.get("source_id") or "")
+        summary = dict(source.get("processing_summary") or {})
+        if (
+            not source_id
+            or source_id == confirmation_source_id
+            or str(source.get("vat_mode") or "") != vat_mode
+            or str(summary.get("vat_basis") or "") not in inferred_bases
+        ):
+            continue
+        summary.update({
+            "vat_basis": "confirmed_supplier_history",
+            "vat_confirmation_source_id": confirmation_source_id,
+        })
+        client.table("company_price_sources").update(
+            {"processing_summary": summary}
+        ).eq("company_id", company_id).eq("source_id", source_id).execute()
+        rows = (
+            client.table("company_price_source_rows")
+            .select("row_id,reason_codes,raw_vat_included")
+            .eq("company_id", company_id)
+            .eq("source_id", source_id)
+            .execute()
+        ).data or []
+        for row in rows:
+            expected_vat_included = vat_mode == "included"
+            if row.get("raw_vat_included") != expected_vat_included:
+                continue
+            reasons = set(row.get("reason_codes") or [])
+            if not any(reason.startswith("vat_inferred_") for reason in reasons):
+                continue
+            reasons = {
+                reason for reason in reasons
+                if not reason.startswith("vat_inferred_")
+            }
+            reasons.add("vat_confirmed_by_supplier_document")
+            client.table("company_price_source_rows").update(
+                {"reason_codes": sorted(reasons)}
+            ).eq("company_id", company_id).eq("row_id", row["row_id"]).execute()
+        confirmed += 1
+    return confirmed
 
 
 _SUPPLIER_IDENTITY_BLOCKING_REASONS = {
@@ -4636,6 +4711,14 @@ def process_price_source(
             )
             source_summary["excluded"] = sum(
                 row.get("result_status") == "excluded" for row in aggregate_rows
+            )
+        if vat_basis == "explicit" and supplier_id:
+            source_summary["supplier_vat_sources_confirmed"] = confirm_supplier_vat_history(
+                client,
+                company_id=company_id,
+                supplier_id=str(supplier_id),
+                confirmation_source_id=source_id,
+                vat_mode=str(result.get("vat_mode") or ""),
             )
         client.table("company_price_sources").update(
             {"processing_summary": source_summary}
