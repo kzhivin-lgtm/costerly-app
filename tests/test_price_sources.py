@@ -2501,6 +2501,7 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     assert "costerly-single-document-selection" in source
     assert "costerly-file-count-2" in source
     assert "grid-column: 2 / span 2;" in source
+    assert "justify-self: stretch !important;" in source
     assert "grid-template-columns: minmax(0, 280px) !important" in source
     assert "grid-auto-rows: 132px !important" in source
     assert "width: 55px !important" in source

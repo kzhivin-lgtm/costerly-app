@@ -879,6 +879,13 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileChip"] {
             min-width: 0 !important;
+            width: 100% !important;
+            justify-self: stretch !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileChips"] > div > div {
+            grid-column: span 2;
         }
 
         .stApp:has(.company-profile-active)
@@ -897,10 +904,18 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
         [data-testid="stFileUploader"].costerly-file-count-2
+        [data-testid="stFileChips"] > div > div:nth-child(1),
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-file-count-2
         [data-testid="stFileChip"]:nth-child(1) {
             grid-column: 2 / span 2;
         }
 
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-file-count-2
+        [data-testid="stFileChips"] > div > div:nth-child(2),
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
         [data-testid="stFileUploader"].costerly-file-count-2
