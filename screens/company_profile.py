@@ -2543,18 +2543,22 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
 
 
 def _price_source_review_reason(row: dict) -> str:
-    return "Unit" if _price_source_review_field(row) == "unit" else "Price"
-
-
-def _price_source_review_field(row: dict) -> str:
-    """Map every unresolved evidence case to its one editable Review field."""
-    unit_reasons = {
-        "missing_unit",
-        "ambiguous_unit",
-        "package_conversion_unresolved",
+    labels = {
+        "vat_basis_unknown": "VAT basis required",
+        "material_type_unresolved": "Material type required",
+        "package_conversion_unresolved": "Package quantity required",
+        "missing_unit": "Estimation unit required",
+        "ambiguous_unit": "Estimation unit required",
+        "operation_type_unresolved": "Service type required",
+        "document_total_mismatch": "Document totals do not match",
+        "extreme_legacy_price_difference": "Price differs significantly from the saved price",
+        "internal_price_lane_pending": "Confirm internal material cost",
+        "below_auto_activation_threshold": "Review required",
     }
-    reason_codes = set(row.get("reason_codes") or [])
-    return "unit" if reason_codes & unit_reasons else "price"
+    for reason in row.get("reason_codes") or []:
+        if reason in labels:
+            return labels[reason]
+    return "Review required"
 
 
 def _render_price_source_row_editor(
@@ -2616,7 +2620,6 @@ def _render_price_source_row_editor(
         "purchase_unit": purchase_unit,
         "conversion_factor": conversion_factor,
     }
-    review_field = _price_source_review_field(row) if review_only else ""
     with st.form(f"price_source_row_form_{source_id}_{row_id}", border=False):
         if not review_only:
             name_col, type_col = st.columns([1.7, 1])
@@ -2638,31 +2641,17 @@ def _render_price_source_row_editor(
             [1, 1, 0.52, 0.62], gap="small"
         )
         with price_col:
-            price_label = f"Source price ({'incl' if fixed_values['vat_mode'] == 'included' else 'ex'} VAT)"
-            if review_field == "price":
-                st.markdown(
-                    '<span class="price-source-review-required-label">'
-                    f"{price_label}</span>",
-                    unsafe_allow_html=True,
-                )
             raw_price = st.text_input(
-                price_label,
+                f"Source price ({'incl' if fixed_values['vat_mode'] == 'included' else 'ex'} VAT)",
                 value=str(row.get("raw_price") or 0).replace(".", ","),
                 key=field_keys["raw_price"],
-                label_visibility="collapsed" if review_field == "price" else "visible",
             )
         with calculation_unit_col:
-            if review_field == "unit":
-                st.markdown(
-                    '<span class="price-source-review-required-label">Estimation unit</span>',
-                    unsafe_allow_html=True,
-                )
             selected_calculation_unit = st.selectbox(
                 "Estimation unit",
                 units,
                 index=units.index(calculation_unit),
                 key=field_keys["calculation_unit"],
-                label_visibility="collapsed" if review_field == "unit" else "visible",
             )
         with save_col:
             st.markdown(
