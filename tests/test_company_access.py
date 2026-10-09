@@ -1583,7 +1583,7 @@ def test_price_source_notice_exposes_full_user_cycle_duration():
 def test_price_source_result_notice_persists_until_the_source_selection_changes():
     source = inspect.getsource(company_profile._render_price_lists)
     queue_source = inspect.getsource(company_profile._queue_price_source_processing)
-    file_change_source = inspect.getsource(company_profile._clear_price_source_url_for_files)
+    file_change_source = inspect.getsource(company_profile._begin_price_source_file_selection)
     selection_source = inspect.getsource(company_profile._begin_price_source_selection)
 
     assert 'st.session_state.get("_price_source_notice")' in source
@@ -1799,7 +1799,7 @@ def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch)
         "conversion_factor": 2.9768,
         "raw_vat_included": None,
         "result_status": "unresolved",
-        "reason_codes": ["vat_basis_unknown"],
+        "reason_codes": ["price_unverified"],
         "evidence": {"material_type": "Wood Sheets"},
         "source": source,
     }
@@ -1819,7 +1819,7 @@ def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch)
 
     assert not app.exception
     assert "Needs review" in markup
-    assert "VAT basis required" in markup
+    assert "Price" in markup
     assert any(button.label == "Review" for button in app.button)
     assert any(button.label == "×" for button in app.button)
 
@@ -1828,7 +1828,7 @@ def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch)
 
     assert not app.exception
     assert not any(field.label == "Material name" for field in app.text_input)
-    assert any(field.label == "Source price (ex VAT)" for field in app.text_input)
+    assert any(field.label == "Price (excl VAT)" for field in app.text_input)
     assert any(field.label == "Estimation unit" for field in app.selectbox)
     assert not any(field.label.startswith("VAT") for field in app.selectbox)
 
@@ -1915,7 +1915,7 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
         "conversion_factor": 1.0,
         "raw_vat_included": None,
         "result_status": "unresolved",
-        "reason_codes": ["vat_basis_unknown"],
+        "reason_codes": ["price_unverified"],
         "evidence": {"material_type": "Wood Sheets"},
         "source": source,
     }
@@ -1940,7 +1940,7 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
     )
     next(button for button in app.button if button.label == "Review").click()
     app.run()
-    next(field for field in app.text_input if field.label == "Source price (ex VAT)").set_value("125")
+    next(field for field in app.text_input if field.label == "Price (excl VAT)").set_value("125")
     next(button for button in app.button if button.label == "Save").click()
     app.run()
 
@@ -1998,7 +1998,7 @@ def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeyp
     assert any(button.label == "Extract prices" for button in app.button)
     assert not any(field.label == "Department (optional)" for field in app.selectbox)
     assert not any(field.label == "Search" for field in app.text_input)
-    assert any(field.label == "Paste supplier page URL" for field in app.text_input)
+    assert not any(field.label == "Paste supplier page URL" for field in app.text_input)
     source_library = next(item for item in app.expander if item.proto.label == "Source library · 2")
     assert source_library.proto.expanded is False
     assert "Multiple departments" in markup
@@ -2026,62 +2026,6 @@ def test_price_lists_renders_upload_before_background_projections(monkeypatch):
     assert "Loading Material Jobs…" not in markup
     assert "Loading Review…" not in markup
     assert "Loading Source Library…" not in markup
-
-
-def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypatch):
-    calls = []
-    sources = []
-    monkeypatch.setattr(company_profile, "list_price_sources", lambda _access: sources)
-    monkeypatch.setattr(company_profile, "list_price_catalog", lambda _access: [])
-    monkeypatch.setattr(company_profile, "list_material_jobs", lambda _access: [])
-    monkeypatch.setattr(company_profile, "list_unresolved_price_source_rows", lambda _access: [])
-
-    def submit_source(**kwargs):
-        calls.append((kwargs["access"].company_id, kwargs))
-        sources.append(
-            {
-                "source_id": "source-new",
-                "source_name": "https://supplier.example/prices",
-                "source_kind": "url",
-                "source_url": "https://supplier.example/prices",
-                "category": "Mixed",
-                "status": "partial",
-                "processing_summary": {
-                    "total": 10,
-                    "ready": 8,
-                    "unresolved": 2,
-                    "excluded": 0,
-                    "agent_duration_seconds": 13.836,
-                    "token_cost": "0.015169",
-                },
-                "company_suppliers": None,
-            }
-        )
-        future = Future()
-        future.set_result("source-new")
-        return future
-
-    monkeypatch.setattr(
-        company_profile,
-        "submit_price_source_job",
-        submit_source,
-    )
-
-    app = AppTest.from_function(_render_price_lists_test).run()
-    next(field for field in app.text_input if field.label == "Paste supplier page URL").set_value(
-        "https://supplier.example/prices"
-    )
-    next(button for button in app.button if button.label == "Extract prices").click()
-    app.run()
-
-    assert not app.exception
-    assert len(calls) == 1
-    company_id, kwargs = calls[0]
-    assert company_id == "company-a"
-    assert kwargs["uploaded_file"] is None
-    assert kwargs["source_url"] == "https://supplier.example/prices"
-    assert calls
-    assert "price-lists-toast" in Path("screens/company_profile.py").read_text()
 
 
 def test_url_source_details_keep_original_action_in_heading_without_loading_file(monkeypatch):

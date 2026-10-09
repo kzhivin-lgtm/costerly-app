@@ -571,6 +571,18 @@ def apply_company_profile_css() -> None:
             text-transform: uppercase;
         }
 
+        .price-source-upload-heading {
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: var(--color-text-strong);
+            font-family: var(--font-mono) !important;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
         .stApp:has(.company-profile-active) .st-key-company_logo_body {
             padding: var(--profile-action-gap) 28px 28px;
         }
@@ -751,7 +763,7 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) .st-key-price_source_add_body {
-            padding: 20px 24px 24px;
+            padding: 20px 24px 16px;
         }
 
         .stApp:has(.company-profile-active)
@@ -777,9 +789,10 @@ def apply_company_profile_css() -> None:
         > [data-testid="stVerticalBlock"] {
             min-height: 180px;
             justify-content: flex-start;
-            gap: 22px !important;
+            gap: 14px !important;
             transform: none;
         }
+
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"] section {

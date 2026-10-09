@@ -250,16 +250,25 @@ VAT evidence cannot by itself leave a valid row in Review.
 
 ### P1: improvements after P0 closure
 
-1. **3.16.7.7 Source Library invoice label**: document number under supplier,
+1. **3.16.7.13 File-only upload control**: local verification complete,
+   production visual acceptance pending. New Price Sources are uploaded files
+   only; the supplier-page URL entry is retired. `Add price source` belongs to
+   the right upload-control column, while terminal success and error notices
+   render below the two-column control grid so they do not stretch or displace
+   the uploader. Existing stored URL sources retain their original-view action.
+   A site screenshot follows the normal image OCR path: it can extract only
+   visible table and identity evidence, never hidden page data or links.
+
+2. **3.16.7.7 Source Library invoice label**: document number under supplier,
    filename only when number is absent.
-2. **3.16.7.8 Bilingual brand catalog**: moved to active 3.17.1.
-3. **3.16.7.9 Price Lists first paint**: implementation complete, production
+3. **3.16.7.8 Bilingual brand catalog**: moved to active 3.17.1.
+4. **3.16.7.9 Price Lists first paint**: implementation complete, production
    behavior check pending. Controls render before projections, then Catalog,
    Material Jobs, Review and Source Library load through independent read-only
    background tasks. A completed task does not refresh an active selection.
    Current pre-change serial read baseline: 0.273 s source, 0.660 s catalog,
    0.323 s Review, 0.536 s Material Jobs, plus render time.
-4. **3.16.7.10 Unified material-normalisation design**: moved to active 3.17.1.
+5. **3.16.7.10 Unified material-normalisation design**: moved to active 3.17.1.
 
 ### Deferred
 

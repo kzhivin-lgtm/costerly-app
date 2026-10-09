@@ -3124,7 +3124,6 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
 def _queue_price_source_processing(
     access: CompanyAccess,
     uploader_key: str,
-    url_key: str,
     trace=None,
 ) -> None:
     """Capture the selected source before the Price Lists fragment reruns."""
@@ -3132,11 +3131,10 @@ def _queue_price_source_processing(
     uploaded_files = accepted_price_source_uploads(
         list(st.session_state.get(uploader_key) or [])
     )
-    source_url = str(st.session_state.get(url_key) or "")
     try:
         validate_price_source_upload_selection(uploaded_files)
-        if (not uploaded_files) == (not source_url.strip()):
-            raise PriceSourceError("Add one file or one supplier URL.")
+        if not uploaded_files:
+            raise PriceSourceError("Add at least one file.")
     except PriceSourceError as exc:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
@@ -3149,19 +3147,11 @@ def _queue_price_source_processing(
     ) + 1
     st.session_state._price_source_processing_cycle = processing_cycle
     try:
-        if uploaded_files:
-            future = submit_price_source_batch_job(
-                access=access,
-                uploaded_files=split_price_source_uploads(uploaded_files),
-                trace=trace,
-            )
-        else:
-            future = submit_price_source_job(
-                access=access,
-                uploaded_file=None,
-                source_url=source_url,
-                trace=trace,
-            )
+        future = submit_price_source_batch_job(
+            access=access,
+            uploaded_files=split_price_source_uploads(uploaded_files),
+            trace=trace,
+        )
     except Exception as exc:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
@@ -3183,12 +3173,11 @@ def _queue_price_source_processing(
     st.session_state.pop("_price_source_error", None)
     st.session_state.pop("_price_source_start_rejected", None)
 
-def _clear_price_source_url_for_files(uploader_key: str, url_key: str) -> None:
+def _begin_price_source_file_selection(uploader_key: str) -> None:
     """Start a new source selection as soon as files enter the uploader."""
     files = accepted_price_source_uploads(list(st.session_state.get(uploader_key) or []))
     if files:
         _begin_price_source_selection()
-        st.session_state[url_key] = ""
 
 
 def _begin_price_source_selection() -> None:
@@ -3200,35 +3189,20 @@ def _begin_price_source_selection() -> None:
     st.session_state.pop("_price_source_error", None)
 
 
-def _clear_price_source_files_for_url(url_key: str) -> None:
-    """Replace an existing file selection when the user enters a supplier URL."""
-    source_url = str(st.session_state.get(url_key) or "")
-    if not source_url.strip():
-        return
-    _begin_price_source_selection()
-    next_uploader_version = int(
-        st.session_state.get("_price_source_uploader_version") or 0
-    ) + 1
-    st.session_state["_price_source_uploader_version"] = next_uploader_version
-    st.session_state[f"price_source_url_{next_uploader_version}"] = source_url
-
-
 def _price_source_has_unsubmitted_selection() -> bool:
     """Return whether an Extract click still owns a selected source.
 
     A completed delete has to refresh the parent Price Lists fragment, otherwise
     it can keep displaying the pre-delete catalog snapshot.  It must not do so
-    while a file or URL has been selected, because an app rerun would remount
+    while a file has been selected, because an app rerun would remount
     the uploader before its Extract callback reads that selection.
     """
     uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
     uploader_key = f"price_source_upload_{uploader_version}"
-    url_key = f"price_source_url_{uploader_version}"
     files = accepted_price_source_uploads(
         list(st.session_state.get(uploader_key) or [])
     )
-    source_url = str(st.session_state.get(url_key) or "").strip()
-    return bool(files) or bool(source_url)
+    return bool(files)
 
 
 def _price_source_notice_text(source: dict | None) -> str:
@@ -3303,14 +3277,9 @@ def _render_price_source_add(
             f'data-selection-cycle="{selection_cycle}"></span>',
             unsafe_allow_html=True,
         )
-        st.markdown(
-            '<div class="company-logo-table-heading">Add price source</div>',
-            unsafe_allow_html=True,
-        )
         with st.container(key="price_source_add_body"):
             uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
             uploader_key = f"price_source_upload_{uploader_version}"
-            url_key = f"price_source_url_{uploader_version}"
             # This component writes an iframe. Install it before the columns so
             # the subsequent dashboard remains in the right control column.
             install_price_source_processing_guard()
@@ -3322,8 +3291,8 @@ def _render_price_source_add(
                     key=uploader_key,
                     disabled=processing,
                     label_visibility="collapsed",
-                    on_change=_clear_price_source_url_for_files,
-                    args=(uploader_key, url_key),
+                    on_change=_begin_price_source_file_selection,
+                    args=(uploader_key,),
                     help=(
                         "Upload up to 6 files in any supported format. Each file is processed "
                         "separately and is merged only when supplier and invoice number match."
@@ -3347,13 +3316,9 @@ def _render_price_source_add(
                     file_previews=file_previews
                 )
             with details_column:
-                source_url = st.text_input(
-                    "Paste supplier page URL",
-                    placeholder="https://supplier.example/prices",
-                    key=url_key,
-                    disabled=processing,
-                    on_change=_clear_price_source_files_for_url,
-                    args=(url_key,),
+                st.markdown(
+                    '<div class="price-source-upload-heading">Add price source</div>',
+                    unsafe_allow_html=True,
                 )
                 if processing:
                     pending = st.session_state.get("_price_source_pending") or {}
@@ -3377,32 +3342,31 @@ def _render_price_source_add(
                             '<span class="price-source-start-rejected-marker"></span>',
                             unsafe_allow_html=True,
                         )
-                source_selected = bool(accepted_files) ^ bool(source_url.strip())
                 st.button(
                     "Extracting prices" if processing else "Extract prices",
                     key="process_price_source",
                     type="primary",
                     use_container_width=True,
-                    disabled=processing or not source_selected,
+                    disabled=processing or not accepted_files,
                     on_click=_queue_price_source_processing,
-                    args=(access, uploader_key, url_key, trace),
+                    args=(access, uploader_key, trace),
                 )
-                if cycle_result:
-                    _render_price_source_cycle_result(
-                        _price_source_notice_text(cycle_result),
-                        processing_cycle=int(
-                            cycle_result.get("processing_cycle") or processing_cycle
-                        ),
-                        selection_cycle=int(
-                            cycle_result.get("selection_cycle") or selection_cycle
-                        ),
-                    )
-                elif cycle_error:
-                    _render_price_source_cycle_error(
-                        cycle_error,
-                        processing_cycle=processing_cycle,
-                        selection_cycle=selection_cycle,
-                    )
+            if cycle_result:
+                _render_price_source_cycle_result(
+                    _price_source_notice_text(cycle_result),
+                    processing_cycle=int(
+                        cycle_result.get("processing_cycle") or processing_cycle
+                    ),
+                    selection_cycle=int(
+                        cycle_result.get("selection_cycle") or selection_cycle
+                    ),
+                )
+            elif cycle_error:
+                _render_price_source_cycle_error(
+                    cycle_error,
+                    processing_cycle=processing_cycle,
+                    selection_cycle=selection_cycle,
+                )
 
 def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     if not st.session_state.get("_price_source_processing"):
