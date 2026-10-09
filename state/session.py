@@ -8,6 +8,12 @@ from streamlit.errors import StreamlitSecretNotFoundError
 
 _APP_BOOT_ID = uuid4().hex
 
+# A Streamlit widget callback runs before this script body. When a deployment
+# replaces the Python process, the first header click can therefore set a new
+# destination and then immediately lose it to the stale-session reset below.
+# Preserve only destinations that do not depend on a transient workflow ID.
+_DEPLOY_SAFE_NAVIGATION_SCREENS = frozenset({"upload", "account", "admin", "projects"})
+
 
 def get_secret(name: str, default: str) -> str:
     try:
@@ -29,8 +35,11 @@ def get_company_id() -> str:
 
 def init_state() -> None:
     if st.session_state.get("_app_boot_id") not in {None, _APP_BOOT_ID}:
+        pending_screen = str(st.session_state.get("screen") or "")
         for key in list(st.session_state.keys()):
             del st.session_state[key]
+        if pending_screen in _DEPLOY_SAFE_NAVIGATION_SCREENS:
+            st.session_state.screen = pending_screen
 
     st.session_state._app_boot_id = _APP_BOOT_ID
 

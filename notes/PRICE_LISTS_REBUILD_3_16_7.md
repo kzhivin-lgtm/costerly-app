@@ -983,16 +983,21 @@ The workspace requirements are:
      from every input path, while preserving structured comparison fields for
      matching rather than relying on name-word order.
 
-5. **Profile first-navigation after deployment**
-   - Status: pending diagnosis, P1, no work number assigned.
-   - Symptom: immediately after a new deployment, the first click from the
-     main workspace to Profile shows a transient grey screen, returns to
-     Upload, and only the second click opens Profile/Price Lists.
-   - Outcome: the first Profile click reaches the requested profile tab. It
-     may not be consumed by startup, session recovery, or a fragment rerun.
-   - Acceptance: authenticated production first-navigation after deployment,
-     including direct Price Lists access, succeeds with one click and without
-     a transient return to Upload.
+5. **3.16.7.13 First header navigation after deployment**
+   - Status: implementation verified locally, production acceptance pending.
+   - [verified] This affects every shared header destination, not Profile
+     alone. A Streamlit header callback runs before `init_state()`. On a new
+     Python process, the former unconditional session reset then erased its
+     newly selected destination. Production trace `58bcb442-35e0-4623-af2a-
+     ab3b857e8182` recorded `upload_to_admin`, followed by a server run on
+     `upload` and a transition timeout; the next `upload_to_projects` click
+     succeeded after browser-session restoration.
+   - Outcome: preserve only the safe header destinations, Upload, Profile,
+     Admin and Projects, across a deployment reset. Transient workflow routes
+     and all prior workflow data remain reset.
+   - Acceptance: authenticated production first navigation after deployment,
+     for Profile, Admin and Projects, succeeds with one click and no transient
+     return to Upload.
 
 ### Deferred until Source ingestion is accepted
 
