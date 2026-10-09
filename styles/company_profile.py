@@ -1331,14 +1331,20 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active) .price-lists-projection-loading {
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            gap: 16px;
+            min-height: 42vh;
+            width: 100%;
+            color: #215CBA;
+            font-size: 22px;
+            font-weight: 650;
         }
 
         .stApp:has(.company-profile-active) .price-lists-projection-spinner {
-            width: 14px;
-            height: 14px;
-            border: 2px solid #D6CBE2;
-            border-top-color: var(--color-primary);
+            width: 30px;
+            height: 30px;
+            border: 4px solid #D5E5FA;
+            border-top-color: #2F76B7;
             border-radius: 50%;
             animation: price-lists-projection-spin 0.8s linear infinite;
         }
@@ -2547,19 +2553,6 @@ def apply_company_profile_css() -> None:
             transform: translateY(0) scale(0.995);
         }
 
-        .stApp:has(.company-profile-active) .price-source-form-control-spacer {
-            display: block;
-            height: 20px;
-            visibility: hidden;
-        }
-
-        .stApp:has(.company-profile-active)
-        [class*="st-key-price_source_row_form_"] [data-testid="stFormSubmitButton"],
-        .stApp:has(.company-profile-active)
-        [class*="st-key-price_source_supplier_form_"] [data-testid="stFormSubmitButton"] {
-            padding-top: 0 !important;
-        }
-
         .stApp:has(.company-profile-active)
         [class*="st-key-save_price_row_"] button,
         .stApp:has(.company-profile-active)
@@ -2574,6 +2567,20 @@ def apply_company_profile_css() -> None:
             margin-top: 0 !important;
             padding: 0 12px !important;
             font-size: 15px !important;
+        }
+
+        .stApp:has(.company-profile-active) .price-source-form-control-spacer {
+            display: block;
+            height: 20px;
+            visibility: hidden;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-save_price_row_"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] button {
+            position: relative;
+            top: -2px;
         }
 
         .stApp:has(.company-profile-active)
@@ -2620,26 +2627,6 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-cancel_price_source_supplier_"] button:hover p {
             color: var(--color-text-strong) !important;
-        }
-
-        .stApp:has(.company-profile-active)
-        [class*="st-key-price_source_row_form_"] [data-testid="stNumberInput"] button {
-            display: none !important;
-        }
-
-        .stApp:has(.company-profile-active)
-        [class*="st-key-price_source_row_form_"] input[type="number"] {
-            appearance: textfield;
-            -moz-appearance: textfield;
-            padding-right: 16px !important;
-        }
-
-        .stApp:has(.company-profile-active)
-        [class*="st-key-price_source_row_form_"] input[type="number"]::-webkit-inner-spin-button,
-        .stApp:has(.company-profile-active)
-        [class*="st-key-price_source_row_form_"] input[type="number"]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
         }
 
         .stApp:has(.company-profile-active)

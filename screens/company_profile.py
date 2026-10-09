@@ -2291,6 +2291,12 @@ def _save_price_source_row_action(
 ) -> None:
     values = dict(fixed_values)
     values.update({name: st.session_state.get(key) for name, key in field_keys.items()})
+    raw_price = values.get("raw_price")
+    if isinstance(raw_price, str):
+        # The compact editor is deliberately a plain input. Accept the decimal
+        # separator used by the current locale, then let the domain service own
+        # the positive-number validation.
+        values["raw_price"] = raw_price.strip().replace(" ", "").replace(",", ".")
     try:
         save_price_source_row(access, source_id, row_id, values)
     except PriceSourceError as exc:
@@ -2600,11 +2606,9 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
             [1, 1, 0.52, 0.62], gap="small"
         )
         with price_col:
-            raw_price = st.number_input(
+            raw_price = st.text_input(
                 "Source price",
-                min_value=0.0,
-                value=float(row.get("raw_price") or 0),
-                step=0.01,
+                value=str(row.get("raw_price") or 0).replace(".", ","),
                 key=field_keys["raw_price"],
             )
         with calculation_unit_col:
@@ -2680,7 +2684,7 @@ def _render_price_source_supplier_settings(access: CompanyAccess, source: dict) 
         vat_mode = "excluded"
     with st.form(f"price_source_supplier_form_{source_id}", border=False):
         name_col, hp_col, vat_col, save_col, cancel_col = st.columns(
-            [1.55, 0.60, 0.50, 0.60, 0.70], gap="small"
+            [1.45, 0.65, 0.55, 0.60, 0.70], gap="small"
         )
         with name_col:
             st.text_input(
@@ -2699,15 +2703,10 @@ def _render_price_source_supplier_settings(access: CompanyAccess, source: dict) 
                 "VAT",
                 ("excluded", "included"),
                 index=("excluded", "included").index(vat_mode),
-                format_func=lambda value: "Ex VAT" if value == "excluded" else "Incl. VAT",
+                format_func=lambda value: "Ex" if value == "excluded" else "Inc",
                 key=field_keys["vat_mode"],
             )
         with save_col:
-            st.markdown(
-                '<span class="price-source-form-control-spacer" '
-                'aria-hidden="true">&nbsp;</span>',
-                unsafe_allow_html=True,
-            )
             st.form_submit_button(
                 "Save", type="primary", key=f"save_price_source_supplier_{source_id}",
                 on_click=_save_price_source_supplier_settings_action,
@@ -2715,11 +2714,6 @@ def _render_price_source_supplier_settings(access: CompanyAccess, source: dict) 
                 use_container_width=True,
             )
         with cancel_col:
-            st.markdown(
-                '<span class="price-source-form-control-spacer" '
-                'aria-hidden="true">&nbsp;</span>',
-                unsafe_allow_html=True,
-            )
             st.form_submit_button(
                 "Cancel", key=f"cancel_price_source_supplier_{source_id}",
                 on_click=_cancel_price_source_supplier_settings,

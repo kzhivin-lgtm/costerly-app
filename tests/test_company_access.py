@@ -1768,7 +1768,8 @@ def test_price_catalog_edit_opens_row_level_price_and_unit_form(monkeypatch):
     app.run()
 
     assert not app.exception
-    assert any(field.label == "Source price" for field in app.number_input)
+    assert any(field.label == "Source price" for field in app.text_input)
+    assert not any(field.label == "Source price" for field in app.number_input)
     assert any(field.label == "Estimation unit" for field in app.selectbox)
     assert not any(field.label == "Source unit" for field in app.text_input)
     assert not any(field.label == "Currency" for field in app.text_input)

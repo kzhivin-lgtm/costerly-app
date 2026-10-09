@@ -2535,7 +2535,8 @@ def test_price_catalog_geometry_patch_stays_scoped_to_agreed_controls():
     assert "height: 52px !important;" in style_source
     assert "background: var(--button-secondary-bg-hover) !important;" in style_source
     assert "price-source-form-control-spacer" in style_source
-    assert 'input[type="number"]::-webkit-inner-spin-button' in style_source
+    assert 'value=str(row.get("raw_price") or 0).replace(".", ",")' in screen_source
+    assert "st.number_input(\n                \"Source price\"" not in screen_source
     assert 'category != "Other"' in screen_source
     assert "border-radius: 18px 18px 0 0;" in style_source
     assert ".st-key-price_review_pagination" in style_source
