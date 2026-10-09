@@ -32,7 +32,7 @@ from agents.price_source_agent import (
     _apply_material_taxonomy_to_rows,
     _line_arithmetic_conflicts,
     _mark_unverified_source_table_rows_for_review,
-    _mark_unrepaired_fractional_hardware_for_review,
+    _mark_unrepaired_fractional_discrete_purchase_for_review,
     _merge_arithmetic_recheck,
 )
 from use_cases.price_sources import (
@@ -3494,7 +3494,7 @@ def test_large_arithmetic_difference_is_not_hidden_by_rounding_tolerance():
     assert "source_table_price_not_verified" in row["reason_codes"]
 
 
-def test_fractional_hardware_piece_requires_a_second_read_or_review():
+def test_fractional_discrete_purchase_requires_a_second_read_or_review():
     result = _result()
     row = result["rows"][0]
     row.update(
@@ -3506,11 +3506,19 @@ def test_fractional_hardware_piece_requires_a_second_read_or_review():
     )
 
     conflicts = _line_arithmetic_conflicts(result)
-    _mark_unrepaired_fractional_hardware_for_review(result, conflicts)
+    _mark_unrepaired_fractional_discrete_purchase_for_review(result, conflicts)
 
-    assert conflicts[0]["recheck_reason"] == "fractional_hardware_piece_quantity"
+    assert conflicts[0]["recheck_reason"] == "fractional_discrete_purchase_quantity"
     assert row["status"] == "unresolved"
-    assert "fractional_hardware_piece_quantity" in row["reason_codes"]
+    assert "fractional_discrete_purchase_quantity" in row["reason_codes"]
+
+
+def test_fractional_continuous_purchase_remains_valid():
+    result = _result()
+    row = result["rows"][0]
+    row.update(raw_unit="m3", raw_price=450, raw_quantity=0.35, raw_line_total=157.5)
+
+    assert _line_arithmetic_conflicts(result) == []
 
 
 def test_arithmetic_recheck_repairs_only_a_consistent_second_reading():
