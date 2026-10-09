@@ -77,19 +77,12 @@ def _numbers_close(left: float, right: float) -> bool:
     return abs(left - right) <= max(0.01, abs(right) * 0.01)
 
 
-_CONTINUOUS_PURCHASE_UNITS = {
-    "m", "meter", "metre", "linear_m", "lm", "מטר", "מ\"א",
-    "m2", "m²", "sqm", "sq_m", "מ\"ר",
-    "m3", "m³", "cbm", "cubic_m", "מ\"ק",
-    "ml", "liter", "litre", "l", "ליטר",
-    "g", "gram", "kg", "kilogram", "ton", "tonne", "גרם", "ק\"ג", "טון",
-}
-
-
-def _is_fractional_discrete_purchase_quantity(row: dict[str, Any], quantity: object) -> bool:
-    """A fractional purchase is valid only for a continuous source unit."""
-    raw_unit = str(row.get("raw_unit") or "").strip().casefold()
-    if not raw_unit or raw_unit in _CONTINUOUS_PURCHASE_UNITS:
+def _is_fractional_hardware_piece(row: dict[str, Any], quantity: object) -> bool:
+    if (
+        str(row.get("material_type") or "") != "Hardware"
+        or str(row.get("raw_unit") or "").strip().casefold()
+        not in {"piece", "pc", "pcs", "unit", "each", "יח", "יחידה", "יחידות"}
+    ):
         return False
     try:
         return float(quantity).is_integer() is False
@@ -114,13 +107,11 @@ def _line_arithmetic_conflicts(result: dict[str, Any]) -> list[dict[str, Any]]:
         arithmetic_conflict = not _numbers_close(
             float(quantity) * float(price), float(total)
         )
-        # A discrete purchase cannot have 57.5 pieces or 26.25 sets. This
-        # catches a common right-to-left invoice failure where adjacent
-        # quantity and unit-price cells are concatenated into a
-        # self-consistent but false triple. Length, area, volume, mass and
-        # liquids remain explicitly eligible for fractional quantities.
-        fractional_discrete_quantity = _is_fractional_discrete_purchase_quantity(row, quantity)
-        if arithmetic_conflict or fractional_discrete_quantity:
+        # A discrete fitting cannot have 57.5 pieces. This catches a common
+        # right-to-left invoice failure where adjacent quantity and unit-price
+        # cells are concatenated into a self-consistent but false triple.
+        hardware_piece_fraction = _is_fractional_hardware_piece(row, quantity)
+        if arithmetic_conflict or hardware_piece_fraction:
             conflicts.append(
                 {
                     "source_row_number": row.get("source_row_number"),
@@ -130,8 +121,8 @@ def _line_arithmetic_conflicts(result: dict[str, Any]) -> list[dict[str, Any]]:
                     "raw_price": price,
                     "raw_line_total": total,
                     "recheck_reason": (
-                        "fractional_discrete_purchase_quantity"
-                        if fractional_discrete_quantity else "arithmetic_mismatch"
+                        "fractional_hardware_piece_quantity"
+                        if hardware_piece_fraction else "arithmetic_mismatch"
                     ),
                 }
             )
@@ -217,7 +208,7 @@ def _merge_arithmetic_recheck(
             continue
         if not _numbers_close(float(quantity) * float(price), float(total)):
             continue
-        if _is_fractional_discrete_purchase_quantity(target, quantity):
+        if _is_fractional_hardware_piece(target, quantity):
             continue
         original_quantity = target.get("raw_quantity")
         original_price = target.get("raw_price")
@@ -247,26 +238,26 @@ def _merge_arithmetic_recheck(
     return repaired
 
 
-def _mark_unrepaired_fractional_discrete_purchase_for_review(
+def _mark_unrepaired_fractional_hardware_for_review(
     result: dict[str, Any],
     conflicts: list[dict[str, Any]],
 ) -> None:
-    """Never activate a self-consistent but impossible fractional purchase row."""
+    """Never activate a self-consistent but impossible fractional fitting row."""
     rows_by_number = {
         row.get("source_row_number"): row
         for row in result.get("rows") or []
         if isinstance(row, dict)
     }
     for conflict in conflicts:
-        if conflict.get("recheck_reason") != "fractional_discrete_purchase_quantity":
+        if conflict.get("recheck_reason") != "fractional_hardware_piece_quantity":
             continue
         row = rows_by_number.get(conflict.get("source_row_number"))
-        if row is None or not _is_fractional_discrete_purchase_quantity(row, row.get("raw_quantity")):
+        if row is None or not _is_fractional_hardware_piece(row, row.get("raw_quantity")):
             continue
         row["status"] = "unresolved"
         row["reason_codes"] = sorted(
             set(row.get("reason_codes") or [])
-            | {"fractional_discrete_purchase_quantity"}
+            | {"fractional_hardware_piece_quantity"}
         )
 
 
@@ -594,7 +585,7 @@ def run_price_source_agent(
                 )
     if require_source_table_verification:
         _mark_unverified_source_table_rows_for_review(result, recheck_candidates)
-    _mark_unrepaired_fractional_discrete_purchase_for_review(result, arithmetic_conflicts)
+    _mark_unrepaired_fractional_hardware_for_review(result, arithmetic_conflicts)
     validated = validate_price_source_result(
         guard_price_source_document_totals(
             guard_price_source_row_activation(

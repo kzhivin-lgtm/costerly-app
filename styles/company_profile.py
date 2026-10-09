@@ -2634,10 +2634,8 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) .price-source-review-required-label {
             display: block;
-            height: 20px;
-            line-height: 20px;
-            margin: 0;
-            padding: 0;
+            min-height: 20px;
+            margin-bottom: 0.25rem;
             color: #C53C4C;
             font-family: var(--font-heading);
             font-size: 0.9rem;

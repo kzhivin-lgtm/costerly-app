@@ -263,17 +263,6 @@ VAT evidence cannot by itself leave a valid row in Review.
      including invoice `62336`, and activates prices only after source-table
      confirmation. A second schema failure remains an explicit source failure.
 
-12. **3.16.7.15 Review-label alignment and discrete quantity guard**
-   - Status: implemented locally, production acceptance pending.
-   - Outcome: Price Review renders a fixed-height, red `Price ex VAT` label
-     without an extra vertical gap. Fractional quantities remain valid only
-     for continuous units: length, area, volume, mass and liquid. Discrete
-     units such as piece, set, sheet, panel, pack, box and carton cannot be
-     activated with a fractional quantity and stay in Price Review instead.
-   - Scope boundary: this increment deliberately does not alter OCR,
-     table-verification, composite-PDF routing or the schema-retry fallback.
-   - Acceptance: `26.25 set` cannot become an active price; `0.35 m3` can.
-
 ### P1: improvements after P0 closure
 
 1. **3.16.7.7 Source Library invoice label**: document number under supplier,
