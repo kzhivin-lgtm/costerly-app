@@ -33,9 +33,6 @@ from db.repositories import insert_agent_usage_event
 from db.supabase_client import get_supabase_client
 from use_cases.price_source_ocr import (
     OCR_IMAGE_SUFFIXES,
-    PriceSourceTextLayer,
-    ocr_issuer_evidence_text,
-    ocr_package_text,
     open_price_source_image,
     prepare_price_source_text_layer,
 )
@@ -1275,21 +1272,6 @@ class CombinedPriceSource:
 
 
 @dataclass(frozen=True)
-class RoutedPriceSourceUpload:
-    """One independently processable unit from a selected physical upload.
-
-    Most uploads remain one unit. A PDF bundle becomes page units only after
-    its existing text/OCR pass proves more than one issuer/invoice pair.
-    """
-
-    uploaded_file: CombinedPriceSource
-    text_layer: PriceSourceTextLayer | None = None
-    bundle_page_number: int | None = None
-    bundle_page_count: int | None = None
-    force_standalone_source: bool = False
-
-
-@dataclass(frozen=True)
 class PriceSourceProcessResult:
     source_id: str
     summary: dict[str, object]
@@ -1503,125 +1485,6 @@ def split_price_source_uploads(files: list) -> list[CombinedPriceSource]:
         CombinedPriceSource(name=str(item.name), data=item.getvalue())
         for item in selected
     ]
-
-
-def _pdf_page_texts_for_invoice_routing(
-    *,
-    file_bytes: bytes,
-    text_layer: PriceSourceTextLayer,
-) -> list[tuple[str, str, dict | None]]:
-    """Return per-page body and issuer evidence from the already selected path."""
-    import fitz
-
-    document = fitz.open(stream=file_bytes, filetype="pdf")
-    try:
-        if document.needs_pass or document.page_count < 1:
-            return []
-        native_pages = [page.get_text("text").strip() for page in document]
-    finally:
-        document.close()
-
-    ocr_pages = list((text_layer.ocr_package or {}).get("pages") or [])
-    if text_layer.strategy == "pdf_ocr" and len(ocr_pages) == len(native_pages):
-        total_seconds = float((text_layer.ocr_package or {}).get("processing_seconds") or 0)
-        per_page_seconds = total_seconds / max(1, len(ocr_pages))
-        records: list[tuple[str, str, dict | None]] = []
-        for page in ocr_pages:
-            page_package = dict(text_layer.ocr_package or {})
-            page_package["pages"] = [page]
-            page_package["processing_seconds"] = per_page_seconds
-            page_text = ocr_package_text(page_package)
-            issuer_text = ocr_issuer_evidence_text(page_package) or page_text
-            records.append((page_text, issuer_text, page_package))
-        return records
-
-    # Digital invoices retain native page text. The normal fast path already
-    # OCRs only the first masthead, so do not introduce N additional OCR calls
-    # merely to decide whether this PDF is a manually assembled bundle.
-    return [(page_text, page_text, None) for page_text in native_pages]
-
-
-def route_price_source_pdf_bundle(uploaded_file) -> list[RoutedPriceSourceUpload]:
-    """Split a multi-invoice PDF only when page evidence proves it is a bundle.
-
-    A scan-like producer or a page count is never enough. The router needs at
-    least two distinct pairs of invoice number plus seller identity. Otherwise
-    the original file and text layer proceed through the established fast path.
-    """
-    source_name = str(uploaded_file.name)
-    if Path(source_name).suffix.lower() != ".pdf":
-        return [RoutedPriceSourceUpload(uploaded_file)]
-    source_bytes = uploaded_file.getvalue()
-
-    try:
-        import fitz
-
-        document = fitz.open(stream=source_bytes, filetype="pdf")
-        try:
-            page_count = int(document.page_count or 0)
-        finally:
-            document.close()
-    except Exception:
-        return [RoutedPriceSourceUpload(CombinedPriceSource(source_name, source_bytes))]
-    if page_count < 2:
-        return [RoutedPriceSourceUpload(CombinedPriceSource(source_name, source_bytes))]
-
-    text_layer = prepare_price_source_text_layer(
-        file_name=source_name,
-        file_bytes=source_bytes,
-    )
-    page_records = _pdf_page_texts_for_invoice_routing(
-        file_bytes=source_bytes,
-        text_layer=text_layer,
-    )
-    proven_pairs: set[tuple[str, str]] = set()
-    page_pairs: list[tuple[str, str] | None] = []
-    for page_text, issuer_text, _page_package in page_records:
-        invoice_number = normalize_invoice_number(invoice_number_from_source_text(page_text))
-        issuer = issuer_identity_from_source_text(issuer_text)
-        supplier_hp = re.sub(r"\D", "", str(issuer.get("supplier_hp") or ""))
-        supplier_name = supplier_merge_key(str(issuer.get("supplier_name") or ""))
-        supplier_key = f"hp:{supplier_hp}" if supplier_hp else f"name:{supplier_name}" if supplier_name else ""
-        if invoice_number and supplier_key:
-            pair = (supplier_key, invoice_number)
-            proven_pairs.add(pair)
-            page_pairs.append(pair)
-        else:
-            page_pairs.append(None)
-    if len(proven_pairs) < 2 or len(page_records) != page_count:
-        return [RoutedPriceSourceUpload(
-            CombinedPriceSource(source_name, source_bytes),
-            text_layer=text_layer,
-        )]
-
-    document = fitz.open(stream=source_bytes, filetype="pdf")
-    try:
-        routed: list[RoutedPriceSourceUpload] = []
-        stem = Path(source_name).stem
-        for index, (page_text, issuer_text, page_package) in enumerate(page_records):
-            page_document = fitz.open()
-            try:
-                page_document.insert_pdf(document, from_page=index, to_page=index)
-                page_bytes = page_document.tobytes(garbage=4, deflate=True)
-            finally:
-                page_document.close()
-            page_name = f"{stem}-page-{index + 1:03d}.pdf"
-            page_layer = PriceSourceTextLayer(
-                text=page_text,
-                strategy=f"{text_layer.strategy}_bundle_page",
-                ocr_package=page_package,
-                issuer_evidence_text=issuer_text,
-            )
-            routed.append(RoutedPriceSourceUpload(
-                CombinedPriceSource(page_name, page_bytes),
-                text_layer=page_layer,
-                bundle_page_number=index + 1,
-                bundle_page_count=page_count,
-                force_standalone_source=page_pairs[index] is None,
-            ))
-        return routed
-    finally:
-        document.close()
 
 
 def _emit_duration(trace, name: str, started_at: float, **metadata: object) -> None:
@@ -3955,10 +3818,6 @@ def process_price_source(
     client=None,
     owner_authorized: bool = False,
     batch_source_ids: set[str] | None = None,
-    precomputed_text_layer: PriceSourceTextLayer | None = None,
-    bundle_page_number: int | None = None,
-    bundle_page_count: int | None = None,
-    allow_invoice_merge: bool = True,
 ) -> PriceSourceProcessResult:
     """Process and persist one source. Ambiguous rows stay non-active."""
     process_started = time.perf_counter()
@@ -4053,7 +3912,7 @@ def process_price_source(
     text_layer_started = time.perf_counter()
     _emit_marker(trace, "server.price_source_text_layer_started", suffix=suffix)
     try:
-        text_layer = precomputed_text_layer or prepare_price_source_text_layer(
+        text_layer = prepare_price_source_text_layer(
             file_name=source_name,
             file_bytes=source_bytes,
             structured_text=structured_text,
@@ -4388,15 +4247,11 @@ def process_price_source(
         supplier_identity_rows_resolved = (
             resolve_rows_after_supplier_identity(result) if supplier_id else 0
         )
-        existing_invoice_source = (
-            find_invoice_source(
-                client,
-                company_id=company_id,
-                supplier_id=str(supplier_id) if supplier_id else None,
-                document_number=result.get("document_number"),
-            )
-            if allow_invoice_merge
-            else None
+        existing_invoice_source = find_invoice_source(
+            client,
+            company_id=company_id,
+            supplier_id=str(supplier_id) if supplier_id else None,
+            document_number=result.get("document_number"),
         )
         source_is_new = existing_invoice_source is None
         if not result.get("rows") and source_is_new:
@@ -4449,9 +4304,6 @@ def process_price_source(
             "document_number": result["document_number"],
             "page_count": 1,
             "pages": [{"source_page_id": source_page_id, "source_name": source_name}],
-            "bundle_page_number": bundle_page_number,
-            "bundle_page_count": bundle_page_count,
-            "invoice_merge_allowed": allow_invoice_merge,
             "supplier_hp": supplier_hp or None,
             "supplier_issuer_evidence_repaired": supplier_issuer_evidence_repaired,
             "supplier_company_identity_rejected": supplier_company_identity_rejected,
