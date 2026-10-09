@@ -1768,8 +1768,8 @@ def test_price_catalog_edit_opens_row_level_price_and_unit_form(monkeypatch):
     app.run()
 
     assert not app.exception
-    assert any(field.label == "Source price" for field in app.text_input)
-    assert not any(field.label == "Source price" for field in app.number_input)
+    assert any(field.label == "Source price (ex VAT)" for field in app.text_input)
+    assert not any(field.label == "Source price (ex VAT)" for field in app.number_input)
     assert any(field.label == "Estimation unit" for field in app.selectbox)
     assert not any(field.label == "Source unit" for field in app.text_input)
     assert not any(field.label == "Currency" for field in app.text_input)
@@ -1827,7 +1827,8 @@ def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch)
     app.run()
 
     assert not app.exception
-    assert any(field.label == "Material name" for field in app.text_input)
+    assert not any(field.label == "Material name" for field in app.text_input)
+    assert any(field.label == "Source price (ex VAT)" for field in app.text_input)
     assert any(field.label == "Estimation unit" for field in app.selectbox)
     assert not any(field.label.startswith("VAT") for field in app.selectbox)
 
@@ -1939,9 +1940,7 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
     )
     next(button for button in app.button if button.label == "Review").click()
     app.run()
-    next(field for field in app.text_input if field.label == "Material name").set_value(
-        "Birch plywood 12 mm"
-    )
+    next(field for field in app.text_input if field.label == "Source price (ex VAT)").set_value("125")
     next(button for button in app.button if button.label == "Save").click()
     app.run()
 
@@ -1953,7 +1952,9 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
         "source-review",
         "row-review",
     )
-    assert values["normalized_name"] == "Birch plywood 12 mm"
+    assert values["normalized_name"] == "Birch plywood 10 mm"
+    assert values["material_type"] == "Wood Sheets"
+    assert values["raw_price"] == "125"
     assert values["vat_mode"] == "excluded"
     assert "Saved" in Path("screens/company_profile.py").read_text()
 

@@ -469,6 +469,7 @@ def _result(*, status: str = "ready", confidence: float = 96) -> dict:
                     "thickness_mm": 10,
                     "width_mm": 1220,
                     "length_mm": 2440,
+                    "depth_mm": 0,
                     "diameter_mm": 0,
                     "primary_attribute": "10 mm",
                     "brand": "",
@@ -1837,6 +1838,30 @@ def test_glass_door_closure_is_hardware_not_glass_and_keeps_compact_brand_candid
     assert row["identity_attributes"]["primary_attribute"] == "550 mm"
     assert row["identity_attributes"]["brand"] == "Mario Box"
     assert row["normalized_name"] == "Door Closure 550 mm Mario Box, white"
+
+
+@pytest.mark.parametrize(
+    ("description", "expected_depth"),
+    [
+        ("Movento drawer runner 75 cm Blum", 750),
+        ('מסילה למגירה 55 ס"מ בלום', 550),
+    ],
+)
+def test_drawer_slide_uses_explicit_nominal_depth_as_primary_attribute(description, expected_depth):
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": description,
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == "Hardware"
+    assert row["material_family"] == "drawer slide"
+    assert row["identity_attributes"]["depth_mm"] == expected_depth
+    assert row["identity_attributes"]["primary_attribute"] == f"{expected_depth} mm"
+    assert row["normalized_name"] == f"Drawer Slide {expected_depth} mm Blum"
 
 
 @pytest.mark.parametrize(
@@ -4379,10 +4404,12 @@ def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():
     assert "source_bytes: bytes | None" in source
     assert "source_evidence_bytes: bytes | None" in source
     assert "source_evidence_name: str | None" in source
+    assert "source_original_evidence_bytes: bytes | None" in source
     assert "The original visible table is authoritative" in source
     assert "build_uploaded_file_content_block(source_name, source_bytes)" in source
     assert "Never derive a price by dividing a total by quantity" in source
     assert "source_evidence_bytes=text_layer.arithmetic_evidence_bytes or source_bytes" in processing_source
+    assert "source_original_evidence_bytes=source_bytes" in processing_source
     assert 'require_source_table_verification=text_layer.strategy == "image_ocr"' in processing_source
 
 

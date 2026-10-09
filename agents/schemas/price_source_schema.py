@@ -33,6 +33,7 @@ IDENTITY_ATTRIBUTE_FIELDS = (
     "thickness_mm",
     "width_mm",
     "length_mm",
+    "depth_mm",
     "diameter_mm",
     "primary_attribute",
     "brand",
@@ -279,6 +280,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                             "thickness_mm": {"type": "number", "minimum": 0},
                             "width_mm": {"type": "number", "minimum": 0},
                             "length_mm": {"type": "number", "minimum": 0},
+                            "depth_mm": {"type": "number", "minimum": 0},
                             "diameter_mm": {"type": "number", "minimum": 0},
                             "primary_attribute": {"type": "string"},
                             "brand": {"type": "string"},
@@ -665,11 +667,11 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         attributes = row["identity_attributes"]
         if not isinstance(attributes, dict) or set(attributes) != set(IDENTITY_ATTRIBUTE_FIELDS):
             raise PriceSourceSchemaError("identity attributes do not match the contract")
-        for key in ("thickness_mm", "width_mm", "length_mm", "diameter_mm"):
+        for key in ("thickness_mm", "width_mm", "length_mm", "depth_mm", "diameter_mm"):
             if not isinstance(attributes[key], (int, float)) or attributes[key] < 0:
                 raise PriceSourceSchemaError(f"{key} must be a non-negative number")
         for key in set(IDENTITY_ATTRIBUTE_FIELDS) - {
-            "thickness_mm", "width_mm", "length_mm", "diameter_mm"
+            "thickness_mm", "width_mm", "length_mm", "depth_mm", "diameter_mm"
         }:
             if not isinstance(attributes[key], str):
                 raise PriceSourceSchemaError(f"{key} must be a string")

@@ -303,6 +303,7 @@ def _run_price_source_arithmetic_recheck(
     import_id: str | None,
     trace,
     model: str,
+    retry_on_empty: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Independently re-read only ambiguous table rows before Review.
 
@@ -327,6 +328,16 @@ def _run_price_source_arithmetic_recheck(
         "not use document totals, and do not return a row if the three values remain "
         "ambiguous."
     )
+    if retry_on_empty:
+        # An empty schema-valid answer is not evidence that the printed cells
+        # were unreadable. Retry once, only for the same bounded rows, with an
+        # explicit visual-reading instruction. This is deliberately not a
+        # second extraction pass and never promotes an unproven triple.
+        prompt += (
+            " A previous bounded read returned no usable rows. This is one final "
+            "verification attempt: inspect the visible quantity, unit-price and "
+            "line-total cells for each requested row before returning an empty list."
+        )
     user_text = (
         f"Source name: {source_name}\n"
         f"Rows requiring a second arithmetic reading:\n{json.dumps(conflicts, ensure_ascii=False)}\n\n"
@@ -366,7 +377,11 @@ def _run_price_source_arithmetic_recheck(
     if getattr(response, "stop_reason", None) == "max_tokens":
         return [], build_agent_usage_event(
             agent_name="price_source_arithmetic_recheck",
-            operation="company_price_source_arithmetic_recheck",
+            operation=(
+                "company_price_source_arithmetic_recheck_retry"
+                if retry_on_empty
+                else "company_price_source_arithmetic_recheck"
+            ),
             company_id=company_id,
             run_id=import_id,
             file_name=source_name,
@@ -386,7 +401,11 @@ def _run_price_source_arithmetic_recheck(
     rows = payload.get("rows") if isinstance(payload, dict) else []
     usage_event = build_agent_usage_event(
         agent_name="price_source_arithmetic_recheck",
-        operation="company_price_source_arithmetic_recheck",
+        operation=(
+            "company_price_source_arithmetic_recheck_retry"
+            if retry_on_empty
+            else "company_price_source_arithmetic_recheck"
+        ),
         company_id=company_id,
         run_id=import_id,
         file_name=source_name,
@@ -411,6 +430,7 @@ def run_price_source_agent(
     source_bytes: bytes | None = None,
     source_evidence_bytes: bytes | None = None,
     source_evidence_name: str | None = None,
+    source_original_evidence_bytes: bytes | None = None,
     require_source_table_verification: bool = False,
     extracted_text: str = "",
     import_id: str | None = None,
@@ -488,7 +508,7 @@ def run_price_source_agent(
         if require_source_table_verification
         else arithmetic_conflicts
     )
-    arithmetic_recheck_usage: dict[str, Any] | None = None
+    arithmetic_recheck_usage: list[dict[str, Any]] = []
     visual_recheck_bytes = source_evidence_bytes or source_bytes
     visual_recheck_name = source_evidence_name or source_name
     if recheck_candidates and (extracted_text.strip() or visual_recheck_bytes is not None):
@@ -498,7 +518,7 @@ def run_price_source_agent(
                 metadata={"conflict_rows": len(recheck_candidates)},
             )
         try:
-            recheck_rows, arithmetic_recheck_usage = _run_price_source_arithmetic_recheck(
+            recheck_rows, usage_event = _run_price_source_arithmetic_recheck(
                 company_id=company_id,
                 source_name=source_name,
                 source_bytes=visual_recheck_bytes,
@@ -509,6 +529,28 @@ def run_price_source_agent(
                 trace=trace,
                 model=selected_model,
             )
+            arithmetic_recheck_usage.append(usage_event)
+            retry_bytes = source_original_evidence_bytes or visual_recheck_bytes
+            retry_name = source_name if source_original_evidence_bytes is not None else visual_recheck_name
+            if not recheck_rows and retry_bytes is not None:
+                if trace is not None:
+                    trace.event(
+                        "server.price_source_arithmetic_recheck_retry_started",
+                        metadata={"conflict_rows": len(recheck_candidates)},
+                    )
+                recheck_rows, retry_usage_event = _run_price_source_arithmetic_recheck(
+                    company_id=company_id,
+                    source_name=source_name,
+                    source_bytes=retry_bytes,
+                    source_evidence_name=retry_name,
+                    extracted_text=extracted_text,
+                    conflicts=recheck_candidates,
+                    import_id=import_id,
+                    trace=trace,
+                    model=selected_model,
+                    retry_on_empty=True,
+                )
+                arithmetic_recheck_usage.append(retry_usage_event)
             repaired_count = _merge_arithmetic_recheck(result, recheck_rows)
             if trace is not None:
                 trace.event(
@@ -573,7 +615,7 @@ def run_price_source_agent(
     )
     validated["_agent_usage"] = [
         main_usage_event,
-        *([arithmetic_recheck_usage] if arithmetic_recheck_usage else []),
+        *arithmetic_recheck_usage,
     ]
     if trace is not None:
         first_token = diagnostics.get("time_to_first_token_seconds")

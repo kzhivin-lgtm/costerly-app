@@ -2553,7 +2553,13 @@ def _price_source_review_reason(row: dict) -> str:
     return "Review required"
 
 
-def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: dict) -> None:
+def _render_price_source_row_editor(
+    access: CompanyAccess,
+    source: dict,
+    row: dict,
+    *,
+    review_only: bool = False,
+) -> None:
     source_id = str(source["source_id"])
     row_id = str(row["row_id"])
     material_type = _price_source_row_material_type(row, source)
@@ -2586,13 +2592,20 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
     field_keys = {
         name: f"price_row_{name}_{source_id}_{row_id}"
         for name in (
-            "normalized_name",
-            "material_type",
             "raw_price",
             "calculation_unit",
         )
     }
+    if not review_only:
+        field_keys.update({
+            name: f"price_row_{name}_{source_id}_{row_id}"
+            for name in ("normalized_name", "material_type")
+        })
     fixed_values = {
+        # Review resolves price evidence only. The catalog identity remains
+        # immutable here, so a typo correction cannot silently split a merge.
+        "normalized_name": str(row.get("normalized_name") or row.get("raw_description") or ""),
+        "material_type": material_type,
         "raw_currency": str(row.get("raw_currency") or source.get("currency") or "ILS"),
         "vat_mode": vat_mode if vat_mode in {"included", "excluded"} else "excluded",
         "raw_unit": raw_unit,
@@ -2600,27 +2613,28 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
         "conversion_factor": conversion_factor,
     }
     with st.form(f"price_source_row_form_{source_id}_{row_id}", border=False):
-        name_col, type_col = st.columns([1.7, 1])
-        with name_col:
-            normalized_name = st.text_input(
-                "Material name",
-                value=str(row.get("normalized_name") or row.get("raw_description") or ""),
-                key=field_keys["normalized_name"],
-            )
-        with type_col:
-            selected_type = material_type if material_type in categories else categories[0]
-            selected_type = st.selectbox(
-                "Material type",
-                categories,
-                index=categories.index(selected_type),
-                key=field_keys["material_type"],
-            )
+        if not review_only:
+            name_col, type_col = st.columns([1.7, 1])
+            with name_col:
+                st.text_input(
+                    "Material name",
+                    value=str(row.get("normalized_name") or row.get("raw_description") or ""),
+                    key=field_keys["normalized_name"],
+                )
+            with type_col:
+                selected_type = material_type if material_type in categories else categories[0]
+                st.selectbox(
+                    "Material type",
+                    categories,
+                    index=categories.index(selected_type),
+                    key=field_keys["material_type"],
+                )
         price_col, calculation_unit_col, save_col, cancel_col = st.columns(
             [1, 1, 0.52, 0.62], gap="small"
         )
         with price_col:
             raw_price = st.text_input(
-                "Source price",
+                f"Source price ({'incl' if fixed_values['vat_mode'] == 'included' else 'ex'} VAT)",
                 value=str(row.get("raw_price") or 0).replace(".", ","),
                 key=field_keys["raw_price"],
             )
@@ -2829,7 +2843,7 @@ def _render_price_source_review_queue(
                     st.session_state.get("_editing_price_source_row") == target
                     and st.session_state.get("_price_source_action_location") == "review"
                 ):
-                    _render_price_source_row_editor(access, source, row)
+                    _render_price_source_row_editor(access, source, row, review_only=True)
 
         if page_count > 1:
             with st.container(key="price_review_pagination"):

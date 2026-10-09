@@ -3991,6 +3991,10 @@ def process_price_source(
             if text_layer.arithmetic_evidence_bytes is not None
             else source_name
         ),
+        # The first bounded recheck sees the enlarged OCR table crop. Only if
+        # it returns no rows at all may the agent inspect the original photo
+        # once, for those same conflict rows.
+        source_original_evidence_bytes=source_bytes,
         # Digital PDFs retain a native text layer and structured tables retain
         # cells directly. The conservative visual pass is reserved for photos
         # and image uploads, where OCR geometry is the best price evidence.

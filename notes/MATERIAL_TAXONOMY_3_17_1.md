@@ -132,6 +132,20 @@ boundary: source evidence is retained, but it does not create a purchasable
 catalog material or offer. This is a narrow taxonomy regression test, not a
 supplier, invoice, VAT or merge change.
 
+### Active acceptance repair, 3.17.1.2
+
+Drawer slides carry an explicit `depth_mm` identity attribute. A literal
+nominal length such as `75 cm`, `750 mm` or `55 ס"מ` is normalised to
+millimetres, becomes the primary attribute, and therefore participates in
+matching and compact display, for example `Drawer Slide 750 mm Blum`. A bare
+number inside a SKU is not treated as a dimension.
+
+Price Review resolves source-price evidence only. Its normal action may change
+the source price and estimation unit, but not material name or category. This
+preserves the existing identity and prevents a Review typo from splitting a
+future merge. Reclassification remains a separate future action with an
+explicit merge consequence.
+
 ## Acceptance
 
 - One literal source line has one structured identity and the same canonical

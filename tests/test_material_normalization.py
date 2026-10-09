@@ -20,6 +20,7 @@ def test_identity_normalizer_retains_only_domain_attributes_not_source_prose():
         "thickness_mm": 17,
         "width_mm": 0,
         "length_mm": 0,
+        "depth_mm": 0,
         "diameter_mm": 0,
         "primary_attribute": "17 mm",
         "brand": "EGGER",

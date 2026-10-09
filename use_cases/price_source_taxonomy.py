@@ -697,6 +697,27 @@ def _explicit_thickness_mm(text: str) -> float:
     return float(match.group(1)) if match else 0
 
 
+def _drawer_slide_depth_mm(text: str) -> float:
+    """Return a drawer runner's explicit nominal depth in millimetres.
+
+    This is intentionally narrower than generic dimension parsing. A bare
+    number in a supplier SKU is not a depth, while a stated 55/75/76 cm runner
+    length is the identity-defining attribute for this Hardware family.
+    """
+    match = re.search(
+        r"(?<!\d)(\d{2,4}(?:\.\d+)?)\s*"
+        r"(mm|cm|מ[\"״']?מ|ס[\"״']?מ)(?!\w)",
+        str(text or ""),
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return 0
+    value = float(match.group(1))
+    unit = match.group(2).casefold()
+    depth = value * 10 if unit in {"cm", 'ס"מ', "ס׳מ", "ס״מ", "סמ"} else value
+    return depth if 250 <= depth <= 1_200 else 0
+
+
 def apply_operation_taxonomy(row: dict[str, Any]) -> str | None:
     """Repair a material-vs-service model error from literal source wording.
 
@@ -793,6 +814,13 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
             )
     elif rule.category == "Metal Profiles":
         attributes["primary_attribute"] = _explicit_profile_primary_attribute(text)
+    elif rule.family == "drawer slide":
+        depth = _drawer_slide_depth_mm(text)
+        if depth:
+            attributes["depth_mm"] = depth
+            attributes["primary_attribute"] = (
+                f"{int(depth) if depth.is_integer() else depth} mm"
+            )
     elif rule.category == "Hardware" and not str(attributes.get("primary_attribute") or "").strip():
         try:
             first_dimension = _explicit_thickness_mm(text)

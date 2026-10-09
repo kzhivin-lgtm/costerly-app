@@ -20,6 +20,7 @@ IDENTITY_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
     "thickness_mm": 0,
     "width_mm": 0,
     "length_mm": 0,
+    "depth_mm": 0,
     "diameter_mm": 0,
     "primary_attribute": "",
     "brand": "",
