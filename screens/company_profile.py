@@ -3407,22 +3407,32 @@ def _render_price_source_add(
                     on_click=_queue_price_source_processing,
                     args=(access, uploader_key, trace),
                 )
-                if cycle_result:
-                    _render_price_source_cycle_result(
-                        _price_source_notice_text(cycle_result),
-                        processing_cycle=int(
-                            cycle_result.get("processing_cycle") or processing_cycle
-                        ),
-                        selection_cycle=int(
-                            cycle_result.get("selection_cycle") or selection_cycle
-                        ),
-                    )
-                elif cycle_error:
-                    _render_price_source_cycle_error(
-                        cycle_error,
-                        processing_cycle=processing_cycle,
-                        selection_cycle=selection_cycle,
-                    )
+                # The terminal area exists in every state. The processing
+                # guard inserts its live progress immediately before it, and
+                # success/error renders inside it. Reserving the same space
+                # keeps the primary action on one fixed vertical axis.
+                with st.container(key="price_source_terminal_slot"):
+                    if cycle_result:
+                        _render_price_source_cycle_result(
+                            _price_source_notice_text(cycle_result),
+                            processing_cycle=int(
+                                cycle_result.get("processing_cycle") or processing_cycle
+                            ),
+                            selection_cycle=int(
+                                cycle_result.get("selection_cycle") or selection_cycle
+                            ),
+                        )
+                    elif cycle_error:
+                        _render_price_source_cycle_error(
+                            cycle_error,
+                            processing_cycle=processing_cycle,
+                            selection_cycle=selection_cycle,
+                        )
+                    else:
+                        st.markdown(
+                            '<span class="price-source-terminal-slot-marker"></span>',
+                            unsafe_allow_html=True,
+                        )
 
 def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     if not st.session_state.get("_price_source_processing"):

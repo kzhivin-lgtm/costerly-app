@@ -1622,6 +1622,20 @@ def test_price_source_terminal_result_has_a_browser_session_display_fallback():
     assert 'data-selection-cycle="{selection_cycle}"' in screen_source
 
 
+def test_price_source_terminal_slot_keeps_extract_position_stable():
+    screen_source = Path("screens/company_profile.py").read_text()
+    style_source = Path("styles/company_profile.py").read_text()
+    guard_source = Path("ui/js_guards.py").read_text()
+
+    assert 'st.container(key="price_source_terminal_slot")' in screen_source
+    assert "price-source-terminal-slot-marker" in screen_source
+    assert ".st-key-price_source_terminal_slot" in style_source
+    assert "min-height: 92px" in style_source
+    assert 'card.querySelector(".st-key-price_source_terminal_slot")' in guard_source
+    assert "terminalSlot.before(progress)" in guard_source
+    assert "terminalSlot.replaceChildren(restored)" in guard_source
+
+
 def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():
     screen_source = Path("screens/company_profile.py").read_text()
     css = Path("styles/company_profile.py").read_text()

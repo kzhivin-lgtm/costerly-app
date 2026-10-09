@@ -3837,7 +3837,10 @@ def install_price_source_processing_guard() -> None:
                     '<span class="price-source-live-progress-time">0 s elapsed</span>' +
                     '<span class="price-source-live-progress-track"><span></span></span>';
                 const buttonContainer = card.querySelector(".st-key-process_price_source");
-                if (buttonContainer) {
+                const terminalSlot = card.querySelector(".st-key-price_source_terminal_slot");
+                if (terminalSlot) {
+                    terminalSlot.before(progress);
+                } else if (buttonContainer) {
                     buttonContainer.after(progress);
                 } else {
                     card.appendChild(progress);
@@ -3953,7 +3956,12 @@ def install_price_source_processing_guard() -> None:
                     parentWindow.sessionStorage.removeItem(TERMINAL_RESULT_KEY);
                     return;
                 }
-                if (restored) buttonContainer.after(restored);
+                const terminalSlot = card.querySelector(".st-key-price_source_terminal_slot");
+                if (restored && terminalSlot) {
+                    terminalSlot.replaceChildren(restored);
+                } else if (restored) {
+                    buttonContainer.after(restored);
+                }
             }
 
             function resetCompletedState() {
