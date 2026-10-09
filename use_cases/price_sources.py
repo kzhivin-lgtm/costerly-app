@@ -1162,6 +1162,7 @@ def match_existing_supplier(
     *,
     supplier_hp: str = "",
     issuer_evidence_name: str = "",
+    aliases_by_supplier_id: Mapping[str, Sequence[str]] | None = None,
 ) -> Mapping[str, Any] | None:
     """Return the canonical supplier for a safe OCR-level match.
 
@@ -1191,12 +1192,21 @@ def match_existing_supplier(
     # errors, never broad transliteration or shared-name matching. This keeps
     # a typo from creating a duplicate while separating "YAAD PIRZUL 1984"
     # from "א.ש. פירוזל" when an ID is blurred or omitted.
+    def candidate_names(candidate: Mapping[str, Any]) -> list[str]:
+        supplier_id = str(candidate.get("supplier_id") or "")
+        aliases = (aliases_by_supplier_id or {}).get(supplier_id, ())
+        return [
+            str(value)
+            for value in (candidate.get("supplier_name"), candidate.get("normalized_name"), *aliases)
+            if str(value or "").strip()
+        ]
+
     if issuer_evidence_name and incoming == supplier_merge_key(issuer_evidence_name):
         header_matches = [
             candidate for candidate in candidates
-            if _issuer_header_name_matches(
-                incoming,
-                supplier_merge_key(candidate.get("supplier_name") or candidate.get("normalized_name")),
+            if any(
+                _issuer_header_name_matches(incoming, supplier_merge_key(name))
+                for name in candidate_names(candidate)
             )
         ]
         return min(
@@ -1205,11 +1215,13 @@ def match_existing_supplier(
         ) if len(header_matches) == 1 else None
     scored = []
     for candidate in candidates:
-        core = supplier_merge_key(candidate.get("supplier_name") or candidate.get("normalized_name"))
-        if not core:
+        cores = [supplier_merge_key(name) for name in candidate_names(candidate)]
+        cores = [core for core in cores if core]
+        if not cores:
             continue
-        distance = _damerau_levenshtein(incoming, core)
-        if distance <= supplier_merge_max_distance(max(len(incoming), len(core))):
+        distance = min(_damerau_levenshtein(incoming, core) for core in cores)
+        closest_core = min(cores, key=lambda core: _damerau_levenshtein(incoming, core))
+        if distance <= supplier_merge_max_distance(max(len(incoming), len(closest_core))):
             scored.append((distance, candidate))
     if not scored:
         return None
@@ -1224,6 +1236,29 @@ def match_existing_supplier(
     best_distance = scored[0][0]
     best = [candidate for distance, candidate in scored if distance == best_distance]
     return best[0] if len(best) == 1 else None
+
+
+def _supplier_aliases_by_id(client, company_id: str) -> dict[str, list[str]]:
+    """Return every private historic spelling retained for supplier matching."""
+    try:
+        aliases = (
+            client.table("company_supplier_aliases")
+            .select("supplier_id,alias_name")
+            .eq("company_id", company_id)
+            .execute()
+        ).data or []
+    except Exception:
+        # The table is additive. A partially migrated development database must
+        # retain canonical-name and HP matching instead of rejecting ingestion.
+        logger.exception("Supplier alias lookup failed")
+        return {}
+    grouped: dict[str, list[str]] = {}
+    for alias in aliases:
+        supplier_id = str(alias.get("supplier_id") or "")
+        alias_name = str(alias.get("alias_name") or "").strip()
+        if supplier_id and alias_name:
+            grouped.setdefault(supplier_id, []).append(alias_name)
+    return grouped
 
 
 @dataclass(frozen=True)
@@ -2589,8 +2624,8 @@ def list_price_sources(access) -> list[dict]:
         client.table("company_price_sources")
         .select(
             "source_id,source_name,source_kind,source_url,storage_path,mime_type,"
-            "category,document_type,document_date,currency,vat_mode,status,"
-            "processing_summary,created_at,processed_at,company_suppliers(supplier_name)"
+            "supplier_id,category,document_type,document_date,currency,vat_mode,status,"
+            "processing_summary,created_at,processed_at,company_suppliers(supplier_name,supplier_hp)"
         )
         .eq("company_id", str(access.company_id))
         .neq("status", "archived")
@@ -2900,6 +2935,167 @@ def _owned_price_source(client, company_id: str, source_id: str) -> dict:
     if not rows or rows[0].get("status") == "archived":
         raise PriceSourceError("Price source not found")
     return rows[0]
+
+
+def save_price_source_supplier_settings(access, source_id: str, values: Mapping[str, Any]) -> dict:
+    """Apply canonical supplier settings from any one of its source documents.
+
+    A source is only an access point. Supplier name, HeadPay and VAT are
+    canonical supplier facts, therefore the last explicit owner correction
+    applies to every source and active offer in that supplier lane. Historic
+    spellings remain aliases so a later OCR document still rejoins the same
+    supplier after a deliberate rename.
+    """
+    client = get_supabase_client()
+    company_id = str(access.company_id)
+    assert_company_owner(client, str(access.user_id), company_id)
+    source = _owned_price_source(client, company_id, source_id)
+    requested_name = " ".join(str(values.get("supplier_name") or "").split())
+    if not requested_name:
+        raise PriceSourceError("Enter a canonical supplier name")
+    requested_key = supplier_merge_key(requested_name)
+    if not requested_key:
+        raise PriceSourceError("Enter a readable canonical supplier name")
+    requested_hp = re.sub(r"\D", "", str(values.get("supplier_hp") or ""))
+    if requested_hp and not re.fullmatch(r"[1-9]\d{8}", requested_hp):
+        raise PriceSourceError("HeadPay must contain exactly nine digits and cannot start with zero")
+    vat_mode = str(values.get("vat_mode") or "")
+    if vat_mode not in {"included", "excluded"}:
+        raise PriceSourceError("Choose whether VAT is included")
+
+    suppliers = (
+        client.table("company_suppliers")
+        .select("supplier_id,supplier_name,normalized_name,supplier_hp,categories,created_at")
+        .eq("company_id", company_id)
+        .execute()
+    ).data or []
+    supplier_id = str(source.get("supplier_id") or "")
+    current_supplier = next(
+        (candidate for candidate in suppliers if str(candidate.get("supplier_id") or "") == supplier_id),
+        None,
+    )
+    if current_supplier is None:
+        matched = match_existing_supplier(
+            requested_name,
+            suppliers,
+            supplier_hp=requested_hp,
+            aliases_by_supplier_id=_supplier_aliases_by_id(client, company_id),
+        )
+        if matched:
+            current_supplier = matched
+            supplier_id = str(matched["supplier_id"])
+            client.table("company_price_sources").update(
+                {"supplier_id": supplier_id, "updated_at": datetime.now(timezone.utc).isoformat()}
+            ).eq("company_id", company_id).eq("source_id", source_id).execute()
+        else:
+            current_supplier = client.table("company_suppliers").insert(
+                {
+                    "company_id": company_id,
+                    "supplier_name": requested_name,
+                    "normalized_name": requested_key,
+                    "supplier_hp": requested_hp or None,
+                    "categories": [],
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+            ).execute().data[0]
+            supplier_id = str(current_supplier["supplier_id"])
+            client.table("company_price_sources").update(
+                {"supplier_id": supplier_id, "updated_at": datetime.now(timezone.utc).isoformat()}
+            ).eq("company_id", company_id).eq("source_id", source_id).execute()
+
+    for candidate in suppliers:
+        if str(candidate.get("supplier_id") or "") == supplier_id:
+            continue
+        if supplier_merge_key(candidate.get("supplier_name") or candidate.get("normalized_name")) == requested_key:
+            raise PriceSourceError("That canonical supplier name already belongs to another supplier")
+        if requested_hp and str(candidate.get("supplier_hp") or "") == requested_hp:
+            raise PriceSourceError("That HeadPay already belongs to another supplier")
+
+    aliases = (
+        client.table("company_supplier_aliases")
+        .select("supplier_id,alias_name,normalized_name")
+        .eq("company_id", company_id)
+        .execute()
+    ).data or []
+    former_name = str(current_supplier.get("supplier_name") or "").strip()
+    former_alias_key = _normalized_name(former_name)
+    if former_name and former_alias_key:
+        alias_owner = next(
+            (alias for alias in aliases if str(alias.get("normalized_name") or "") == former_alias_key),
+            None,
+        )
+        if alias_owner and str(alias_owner.get("supplier_id") or "") != supplier_id:
+            raise PriceSourceError("The previous supplier name is already an alias for another supplier")
+        if alias_owner is None:
+            client.table("company_supplier_aliases").insert(
+                {
+                    "company_id": company_id,
+                    "supplier_id": supplier_id,
+                    "alias_name": former_name,
+                    "normalized_name": former_alias_key,
+                    "alias_kind": "manual",
+                    "source_id": None,
+                }
+            ).execute()
+
+    client.table("company_suppliers").update(
+        {
+            "supplier_name": requested_name,
+            "normalized_name": requested_key,
+            "supplier_hp": requested_hp or None,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    ).eq("company_id", company_id).eq("supplier_id", supplier_id).execute()
+
+    supplier_sources = (
+        client.table("company_price_sources")
+        .select("source_id,document_date,processing_summary")
+        .eq("company_id", company_id)
+        .eq("supplier_id", supplier_id)
+        .neq("status", "archived")
+        .execute()
+    ).data or []
+    vat_included = vat_mode == "included"
+    for supplier_source in supplier_sources:
+        supplier_source_id = str(supplier_source["source_id"])
+        summary = dict(supplier_source.get("processing_summary") or {})
+        vat_rate, vat_rate_origin = price_source_vat_rate(
+            document_date=supplier_source.get("document_date"),
+            document_subtotal=summary.get("document_subtotal"),
+            document_vat_amount=summary.get("document_vat_amount"),
+            document_total=summary.get("document_total"),
+        )
+        summary.update(
+            {
+                "vat_basis": "manual_supplier_override",
+                "vat_rate": vat_rate,
+                "vat_rate_origin": vat_rate_origin,
+                "supplier_settings_source_id": source_id,
+            }
+        )
+        client.table("company_price_source_rows").update(
+            {"raw_vat_included": vat_included}
+        ).eq("company_id", company_id).eq("source_id", supplier_source_id).execute()
+        client.table("company_price_sources").update(
+            {
+                "vat_mode": vat_mode,
+                "processing_summary": summary,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ).eq("company_id", company_id).eq("source_id", supplier_source_id).execute()
+    client.table("company_material_offers").update(
+        {"vat_included": vat_included}
+    ).eq("company_id", company_id).eq("supplier_id", supplier_id).execute()
+    client.table("company_supplier_operation_offers").update(
+        {"vat_included": vat_included}
+    ).eq("company_id", company_id).eq("supplier_id", supplier_id).execute()
+    return {
+        "supplier_id": supplier_id,
+        "supplier_name": requested_name,
+        "supplier_hp": requested_hp,
+        "vat_mode": vat_mode,
+        "source_count": len(supplier_sources),
+    }
 
 
 def _refresh_price_source_summary(client, company_id: str, source_id: str) -> None:
@@ -3967,11 +4163,13 @@ def process_price_source(
                 .eq("company_id", company_id)
                 .execute()
             ).data or []
+            supplier_aliases = _supplier_aliases_by_id(client, company_id)
             matched_supplier = match_existing_supplier(
                 supplier_name,
                 existing_suppliers,
                 supplier_hp=supplier_hp,
                 issuer_evidence_name=str(issuer_identity.get("supplier_name") or ""),
+                aliases_by_supplier_id=supplier_aliases,
             )
             canonical_supplier_name = clean_supplier_name(
                 (matched_supplier or {}).get("supplier_name") or supplier_name

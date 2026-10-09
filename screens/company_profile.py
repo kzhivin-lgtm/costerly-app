@@ -56,6 +56,7 @@ from use_cases.price_sources import (
     remove_price_source_row,
     render_price_source_preview,
     save_price_source_row,
+    save_price_source_supplier_settings,
     split_price_source_uploads,
     validate_price_source_upload_selection,
 )
@@ -2286,8 +2287,10 @@ def _save_price_source_row_action(
     source_id: str,
     row_id: str,
     field_keys: dict[str, str],
+    fixed_values: dict[str, object],
 ) -> None:
-    values = {name: st.session_state.get(key) for name, key in field_keys.items()}
+    values = dict(fixed_values)
+    values.update({name: st.session_state.get(key) for name, key in field_keys.items()})
     try:
         save_price_source_row(access, source_id, row_id, values)
     except PriceSourceError as exc:
@@ -2300,6 +2303,33 @@ def _save_price_source_row_action(
         st.session_state.pop("_editing_price_source_row", None)
         st.session_state.pop("_price_source_action_location", None)
         _set_price_source_action_notice("Saved")
+
+
+def _open_price_source_supplier_settings(source_id: str) -> None:
+    st.session_state["_editing_price_source_supplier"] = source_id
+
+
+def _cancel_price_source_supplier_settings() -> None:
+    st.session_state.pop("_editing_price_source_supplier", None)
+
+
+def _save_price_source_supplier_settings_action(
+    access: CompanyAccess,
+    source_id: str,
+    field_keys: dict[str, str],
+) -> None:
+    values = {name: st.session_state.get(key) for name, key in field_keys.items()}
+    try:
+        save_price_source_supplier_settings(access, source_id, values)
+    except PriceSourceError as exc:
+        st.session_state._price_source_action_error = str(exc)
+    except Exception:
+        logger.exception("Supplier settings save failed")
+        st.session_state._price_source_action_error = "The supplier settings could not be saved. Try again"
+    else:
+        _clear_price_lists_snapshot()
+        st.session_state.pop("_editing_price_source_supplier", None)
+        _set_price_source_action_notice("Supplier settings updated")
 
 
 def _remove_price_source_row_action(
@@ -2517,38 +2547,34 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
     vat_mode = (
         "included" if row.get("raw_vat_included") is True
         else "excluded" if row.get("raw_vat_included") is False
-        else "unknown"
+        else str(source.get("vat_mode") or "excluded")
     )
-    blocking_reasons = set(row.get("reason_codes") or [])
-    vat_label = "VAT :red[*]" if "vat_basis_unknown" in blocking_reasons else "VAT"
-    factor_label = (
-        "Estimation units per purchase unit :red[*]"
-        if "package_conversion_unresolved" in blocking_reasons
-        else "Estimation units per purchase unit"
-    )
-    purchase_unit_label = (
-        "Purchase unit :red[*]"
-        if purchase_unit not in units
-        else "Purchase unit"
-    )
-    calculation_unit_label = (
-        "Estimation unit :red[*]"
-        if calculation_unit not in units or "missing_unit" in blocking_reasons or "ambiguous_unit" in blocking_reasons
-        else "Estimation unit"
-    )
+    if calculation_unit not in units:
+        calculation_unit = purchase_unit if purchase_unit in units else "piece"
+    if purchase_unit not in units:
+        purchase_unit = calculation_unit
+    raw_unit = str(row.get("raw_unit") or purchase_unit)
+    try:
+        conversion_factor = float(row.get("conversion_factor") or 1)
+    except (TypeError, ValueError):
+        conversion_factor = 1
+    if conversion_factor <= 0:
+        conversion_factor = 1
     field_keys = {
         name: f"price_row_{name}_{source_id}_{row_id}"
         for name in (
             "normalized_name",
             "material_type",
             "raw_price",
-            "raw_currency",
-            "vat_mode",
-            "raw_unit",
-            "purchase_unit",
             "calculation_unit",
-            "conversion_factor",
         )
+    }
+    fixed_values = {
+        "raw_currency": str(row.get("raw_currency") or source.get("currency") or "ILS"),
+        "vat_mode": vat_mode if vat_mode in {"included", "excluded"} else "excluded",
+        "raw_unit": raw_unit,
+        "purchase_unit": purchase_unit,
+        "conversion_factor": conversion_factor,
     }
     with st.form(f"price_source_row_form_{source_id}_{row_id}", border=False):
         name_col, type_col = st.columns([1.7, 1])
@@ -2566,7 +2592,9 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
                 index=categories.index(selected_type),
                 key=field_keys["material_type"],
             )
-        price_col, currency_col, vat_col = st.columns([1.1, 0.65, 1])
+        price_col, calculation_unit_col, save_col, cancel_col = st.columns(
+            [1.1, 1, 0.35, 0.43], gap="small"
+        )
         with price_col:
             raw_price = st.number_input(
                 "Source price",
@@ -2575,88 +2603,20 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
                 step=0.01,
                 key=field_keys["raw_price"],
             )
-        with currency_col:
-            raw_currency = st.text_input(
-                "Currency",
-                value=str(row.get("raw_currency") or source.get("currency") or "ILS"),
-                max_chars=3,
-                key=field_keys["raw_currency"],
-            )
-        with vat_col:
-            selected_vat = st.selectbox(
-                vat_label,
-                ("excluded", "included", "unknown"),
-                index=("excluded", "included", "unknown").index(vat_mode),
-                format_func=lambda value: {
-                    "excluded": "Not included",
-                    "included": "Included",
-                    "unknown": "Choose VAT basis",
-                }[value],
-                key=field_keys["vat_mode"],
-            )
-        source_unit_col, purchase_unit_col, calculation_unit_col, factor_col = st.columns(
-            [1, 1, 1, 1.25]
-        )
-        with source_unit_col:
-            raw_unit = st.text_input(
-                "Source unit",
-                value=str(row.get("raw_unit") or ""),
-                key=field_keys["raw_unit"],
-            )
-        with purchase_unit_col:
-            purchase_options = [""] + units
-            purchase_container = (
-                f"price_source_required_input_{source_id}_{row_id}_purchase"
-                if purchase_unit not in units
-                else f"price_source_input_{source_id}_{row_id}_purchase"
-            )
-            with st.container(key=purchase_container):
-                selected_purchase_unit = st.selectbox(
-                    purchase_unit_label,
-                    purchase_options,
-                    index=purchase_options.index(purchase_unit) if purchase_unit in purchase_options else 0,
-                    format_func=lambda value: value or "Choose purchase unit",
-                    key=field_keys["purchase_unit"],
-                )
         with calculation_unit_col:
-            calculation_options = [""] + units
-            calculation_required = (
-                calculation_unit not in units
-                or "missing_unit" in blocking_reasons
-                or "ambiguous_unit" in blocking_reasons
+            selected_calculation_unit = st.selectbox(
+                "Estimation unit",
+                units,
+                index=units.index(calculation_unit),
+                key=field_keys["calculation_unit"],
             )
-            calculation_container = (
-                f"price_source_required_input_{source_id}_{row_id}_calculation"
-                if calculation_required
-                else f"price_source_input_{source_id}_{row_id}_calculation"
-            )
-            with st.container(key=calculation_container):
-                selected_calculation_unit = st.selectbox(
-                    calculation_unit_label,
-                    calculation_options,
-                    index=calculation_options.index(calculation_unit) if calculation_unit in calculation_options else 0,
-                    format_func=lambda value: value or "Choose estimation unit",
-                    key=field_keys["calculation_unit"],
-                )
-        with factor_col:
-            conversion_factor = st.number_input(
-                factor_label,
-                min_value=0.0,
-                value=float(row.get("conversion_factor") or 1),
-                step=0.01,
-                key=field_keys["conversion_factor"],
-            )
-        save_col, cancel_col, _ = st.columns([1, 0.82, 4], gap="small")
         save_col.form_submit_button(
-            "Save",
-            type="primary",
-            key=f"save_price_row_{source_id}_{row_id}",
+            "Save", type="primary", key=f"save_price_row_{source_id}_{row_id}",
             on_click=_save_price_source_row_action,
-            args=(access, source_id, row_id, field_keys),
+            args=(access, source_id, row_id, field_keys, fixed_values),
         )
         cancel_col.form_submit_button(
-            "Cancel",
-            key=f"cancel_price_row_{source_id}_{row_id}",
+            "Cancel", key=f"cancel_price_row_{source_id}_{row_id}",
             on_click=_cancel_price_source_row_edit,
         )
     install_price_source_save_guard()
@@ -2685,6 +2645,54 @@ def _render_price_source_row_remove_confirmation(
         key=f"cancel_remove_price_row_{source_id}_{row_id}",
         on_click=_cancel_price_source_row_removal,
     )
+
+
+def _render_price_source_supplier_settings(access: CompanyAccess, source: dict) -> None:
+    """Render the canonical supplier card from any of that supplier's sources."""
+    source_id = str(source["source_id"])
+    supplier = source.get("company_suppliers") or {}
+    if isinstance(supplier, list):
+        supplier = supplier[0] if supplier else {}
+    field_keys = {
+        name: f"price_source_supplier_{name}_{source_id}"
+        for name in ("supplier_name", "supplier_hp", "vat_mode")
+    }
+    vat_mode = str(source.get("vat_mode") or "excluded")
+    if vat_mode not in {"included", "excluded"}:
+        vat_mode = "excluded"
+    with st.form(f"price_source_supplier_form_{source_id}", border=False):
+        name_col, hp_col, vat_col, save_col, cancel_col = st.columns(
+            [1.45, 0.85, 0.72, 0.38, 0.48], gap="small"
+        )
+        with name_col:
+            st.text_input(
+                "Canonical supplier",
+                value=str(supplier.get("supplier_name") or _price_source_supplier(source)),
+                key=field_keys["supplier_name"],
+            )
+        with hp_col:
+            st.text_input(
+                "HeadPay",
+                value=str(supplier.get("supplier_hp") or ""),
+                key=field_keys["supplier_hp"],
+            )
+        with vat_col:
+            st.selectbox(
+                "VAT",
+                ("excluded", "included"),
+                index=("excluded", "included").index(vat_mode),
+                format_func=lambda value: "Not included" if value == "excluded" else "Included",
+                key=field_keys["vat_mode"],
+            )
+        save_col.form_submit_button(
+            "Save", type="primary", key=f"save_price_source_supplier_{source_id}",
+            on_click=_save_price_source_supplier_settings_action,
+            args=(access, source_id, field_keys),
+        )
+        cancel_col.form_submit_button(
+            "Cancel", key=f"cancel_price_source_supplier_{source_id}",
+            on_click=_cancel_price_source_supplier_settings,
+        )
 
 
 def _render_price_source_review_queue(
@@ -3590,7 +3598,7 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
                     st.info("No source documents yet.")
                 else:
                     with st.container(key="price_source_list_card"):
-                        header = st.columns([2.15, 1.1, 0.95, 0.55, 0.62, 0.72])
+                        header = st.columns([2.15, 1.1, 0.95, 0.55, 0.62, 0.62, 0.72])
                         for column, label in zip(
                             header,
                             ("Supplier / source", "Document type", "Department", "Rows", "", ""),
@@ -3607,8 +3615,8 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
                             # hide optimistically. Do not target Streamlit's generic
                             # horizontal blocks: they can contain unrelated page UI.
                             with st.container(key=f"price_source_row_{source_id}"):
-                                left, document_col, department_col, items_col, action_col, remove_col = st.columns(
-                                    [2.15, 1.1, 0.95, 0.55, 0.62, 0.72],
+                                left, document_col, department_col, items_col, action_col, settings_col, remove_col = st.columns(
+                                    [2.15, 1.1, 0.95, 0.55, 0.62, 0.62, 0.72],
                                     vertical_alignment="center",
                                 )
                                 with left:
@@ -3645,6 +3653,14 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
                                             key=f"view_price_source_{source_id}",
                                             use_container_width=True,
                                         )
+                                with settings_col:
+                                    st.button(
+                                        "Edit",
+                                        key=f"edit_price_source_supplier_{source_id}",
+                                        use_container_width=True,
+                                        on_click=_open_price_source_supplier_settings,
+                                        args=(source_id,),
+                                    )
                                 with remove_col:
                                     st.button(
                                         "Delete",
@@ -3653,6 +3669,8 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
                                         on_click=_start_price_source_purge_action,
                                         args=(access, source_id),
                                     )
+                            if st.session_state.get("_editing_price_source_supplier") == source_id:
+                                _render_price_source_supplier_settings(access, source)
 
 
 @st.fragment(run_every=0.25, parallel=True)

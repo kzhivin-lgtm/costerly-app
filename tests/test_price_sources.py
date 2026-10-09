@@ -92,6 +92,7 @@ from use_cases.price_sources import (
     render_price_source_pdf_preview,
     render_price_source_preview,
     save_price_source_row,
+    save_price_source_supplier_settings,
     split_price_source_uploads,
     validate_price_source_upload_selection,
 )
@@ -993,6 +994,21 @@ def test_supplier_merge_uses_hp_before_unreliable_ocr_name():
     ]
 
     assert match_existing_supplier("Unreadable OCR issuer", candidates, supplier_hp="513453233")["supplier_id"] == "first"
+
+
+def test_supplier_alias_survives_a_deliberate_canonical_rename():
+    candidates = [{
+        "supplier_id": "supplier-1",
+        "supplier_name": "12345",
+        "supplier_hp": "513453233",
+        "created_at": "2026-10-05T09:57:00+00:00",
+    }]
+
+    assert match_existing_supplier(
+        "א.ש. פירוזל",
+        candidates,
+        aliases_by_supplier_id={"supplier-1": ["א.ש. פירוזל בע\"מ"]},
+    )["supplier_id"] == "supplier-1"
 
 
 def test_issuer_header_name_does_not_fuzzy_merge_a_different_legal_supplier():
@@ -3159,6 +3175,51 @@ def test_review_activate_and_remove_row_are_auditable(monkeypatch):
     assert tables["company_price_source_rows"][0]["result_status"] == "excluded"
     assert tables["company_material_offers"][0]["status"] == "archived"
     assert "removed_by_user" in tables["company_price_source_rows"][0]["reason_codes"]
+
+
+def test_supplier_settings_apply_from_any_source_to_the_entire_supplier_lane(monkeypatch):
+    tables = {
+        "company_price_sources": [
+            {
+                "source_id": "source-1", "company_id": "company-1", "supplier_id": "supplier-1",
+                "status": "ready", "document_date": "2024-05-30", "processing_summary": {},
+            },
+            {
+                "source_id": "source-2", "company_id": "company-1", "supplier_id": "supplier-1",
+                "status": "ready", "document_date": "2024-06-01", "processing_summary": {},
+            },
+        ],
+        "company_suppliers": [{
+            "supplier_id": "supplier-1", "company_id": "company-1", "supplier_name": "א.ש. פירוזל",
+            "normalized_name": "אשפירוזל", "supplier_hp": "513453233", "categories": [],
+        }],
+        "company_supplier_aliases": [],
+        "company_price_source_rows": [
+            {"row_id": "row-1", "company_id": "company-1", "source_id": "source-1", "raw_vat_included": False},
+            {"row_id": "row-2", "company_id": "company-1", "source_id": "source-2", "raw_vat_included": False},
+        ],
+        "company_material_offers": [{"offer_id": "offer-1", "company_id": "company-1", "supplier_id": "supplier-1", "vat_included": False}],
+        "company_supplier_operation_offers": [{"operation_offer_id": "operation-1", "company_id": "company-1", "supplier_id": "supplier-1", "vat_included": False}],
+    }
+    client = _MutableClient(tables)
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+    access = SimpleNamespace(company_id="company-1", user_id="user-1")
+
+    saved = save_price_source_supplier_settings(
+        access,
+        "source-2",
+        {"supplier_name": "A.S. Pirzul", "supplier_hp": "513453233", "vat_mode": "included"},
+    )
+
+    assert saved["source_count"] == 2
+    assert tables["company_suppliers"][0]["supplier_name"] == "A.S. Pirzul"
+    assert tables["company_suppliers"][0]["supplier_hp"] == "513453233"
+    assert tables["company_supplier_aliases"][0]["alias_name"] == "א.ש. פירוזל"
+    assert all(source["vat_mode"] == "included" for source in tables["company_price_sources"])
+    assert all(row["raw_vat_included"] is True for row in tables["company_price_source_rows"])
+    assert tables["company_material_offers"][0]["vat_included"] is True
+    assert tables["company_supplier_operation_offers"][0]["vat_included"] is True
 
 
 def test_reviewed_internal_price_supersedes_only_its_recurring_internal_lane(monkeypatch):

@@ -1664,11 +1664,12 @@ def test_cnc_estimate_reserve_copy_is_plain_and_directional():
     assert "Level 3 is the standard setting" in source
 
 
-def test_price_review_marks_only_blocking_fields_and_omits_redundant_heading():
+def test_price_review_editor_keeps_only_the_compact_material_fields():
     screen_source = Path("screens/company_profile.py").read_text()
 
-    assert '"VAT :red[*]" if "vat_basis_unknown"' in screen_source
-    assert 'if "package_conversion_unresolved" in blocking_reasons' in screen_source
+    assert '"Estimation unit"' in screen_source
+    assert '"VAT :red[*]" if "vat_basis_unknown"' not in screen_source
+    assert '"Estimation units per purchase unit' not in screen_source
     assert 'class="price-source-editor-title"' not in screen_source
     assert '"Edit active price"' not in screen_source
 
@@ -1768,8 +1769,10 @@ def test_price_catalog_edit_opens_row_level_price_and_unit_form(monkeypatch):
 
     assert not app.exception
     assert any(field.label == "Source price" for field in app.number_input)
-    assert any(field.label == "Source unit" for field in app.text_input)
     assert any(field.label == "Estimation unit" for field in app.selectbox)
+    assert not any(field.label == "Source unit" for field in app.text_input)
+    assert not any(field.label == "Currency" for field in app.text_input)
+    assert not any(field.label == "VAT" for field in app.selectbox)
 
 
 def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch):
@@ -1824,7 +1827,8 @@ def test_unresolved_prices_render_as_visible_row_level_review_queue(monkeypatch)
 
     assert not app.exception
     assert any(field.label == "Material name" for field in app.text_input)
-    assert any(field.label.startswith("VAT") for field in app.selectbox)
+    assert any(field.label == "Estimation unit" for field in app.selectbox)
+    assert not any(field.label.startswith("VAT") for field in app.selectbox)
 
 
 def test_price_review_pagination_reuses_the_tenant_snapshot(monkeypatch):
@@ -1936,9 +1940,6 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
     app.run()
     next(field for field in app.text_input if field.label == "Material name").set_value(
         "Birch plywood 12 mm"
-    )
-    next(field for field in app.selectbox if field.label.startswith("VAT")).set_value(
-        "excluded"
     )
     next(button for button in app.button if button.label == "Save").click()
     app.run()

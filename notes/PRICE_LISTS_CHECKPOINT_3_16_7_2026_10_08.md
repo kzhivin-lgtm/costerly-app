@@ -213,6 +213,16 @@ VAT evidence cannot by itself leave a valid row in Review.
      or 750 mm, is a required primary identity attribute, equivalent to sheet
      thickness. It must be parsed as millimetres and used for comparison and
      merge, never reduced to an arbitrary `width` value or optional prose.
+   - Supplier settings, 2026-10-09: every Source exposes the same canonical
+     supplier card. Saving canonical supplier name, HeadPay or VAT from any
+     one source updates the entire supplier lane, including its sources,
+     material offers and Material Jobs. No source is privileged as a parent.
+     The former canonical name becomes a private manual alias, and ingestion
+     matches incoming OCR against all retained aliases as well as HeadPay.
+   - Compact price card, 2026-10-09: the row editor contains only Material
+     name, Material type, Source price and Estimation unit. VAT, currency,
+     source/purchase units and conversion are source-level or persisted
+     defaults, not routine row-level controls.
 
 ### P1: improvements after P0 closure
 
