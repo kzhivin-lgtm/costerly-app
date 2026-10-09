@@ -1137,6 +1137,23 @@ def apply_company_profile_css() -> None:
             box-shadow: 0 0 0 3px rgba(217, 75, 82, 0.12) !important;
         }
 
+        /* Browser drag events may apply an invalid-state text colour. Keep
+           the upload instruction readable and consistent in both states. */
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section.costerly-upload-dragover [data-testid="stFileUploaderDropzoneInstructions"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section.costerly-upload-dragover [data-testid="stFileUploaderDropzoneInstructions"] *,
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section.costerly-upload-invalid-dragover [data-testid="stFileUploaderDropzoneInstructions"],
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body [data-testid="stFileUploader"]
+        section.costerly-upload-invalid-dragover [data-testid="stFileUploaderDropzoneInstructions"] * {
+            color: var(--color-text-strong) !important;
+        }
+
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stButton"] button {
             min-height: 52px !important;

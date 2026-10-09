@@ -236,7 +236,7 @@ def test_source_library_uses_modal_confirmed_optimistic_source_removal():
 
     assert "install_price_source_remove_guard" in source
     assert "_render_price_lists_projections" in source
-    assert "_price_source_purging_ids" in projections
+    assert "_price_source_hidden_ids" in projections
     assert "delete_price_source_" in projections
     assert "on_click=_start_price_source_purge_action" in projections
     assert "price-source-remove-modal" in guard
@@ -2795,6 +2795,7 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
 
     assert company_profile._process_pending_price_source_purges() is True
     assert "_price_source_purge_pending" not in state
+    assert state["_price_source_deleted_ids"] == {"source-1"}
     assert "_price_source_action_notice" not in state
     assert state["_price_source_library_open_once"] is True
     assert state["_price_lists_projection_state"]["results"]["sources"] == [
@@ -2803,6 +2804,23 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
     assert state["_price_lists_projection_state"]["results"]["catalog"] == [
         {"source_id": "source-keep"}
     ]
+
+
+def test_completed_source_purge_hides_late_projection_results(monkeypatch):
+    from screens import company_profile
+
+    monkeypatch.setattr(
+        company_profile.st,
+        "session_state",
+        {"_price_source_deleted_ids": {"source-1"}},
+    )
+
+    hidden_ids = company_profile._price_source_hidden_ids()
+
+    assert hidden_ids == {"source-1"}
+    assert company_profile._without_purging_price_source_records(
+        [{"source_id": "source-1"}, {"source_id": "source-keep"}], hidden_ids
+    ) == [{"source_id": "source-keep"}]
 
 
 def test_optimistic_source_purge_hides_all_source_owned_projections():

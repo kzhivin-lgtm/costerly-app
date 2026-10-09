@@ -2241,6 +2241,10 @@ def _process_pending_price_source_purges() -> bool:
                 "The source could not be removed. It is visible again. Try again"
             )
         else:
+            # Keep this boundary for the rest of the browser session. A
+            # projection that began before the purge can finish after this
+            # callback and must never reintroduce its deleted records.
+            st.session_state.setdefault("_price_source_deleted_ids", set()).add(source_id)
             hidden.discard(source_id)
             state = st.session_state.get("_price_lists_projection_state") or {}
             # Do not force a full app rerun once the database worker returns.
@@ -2280,6 +2284,15 @@ def _without_purging_price_source_records(
         for record in records
         if str(record.get("source_id") or "") not in purging_source_ids
     ]
+
+
+def _price_source_hidden_ids() -> set[str]:
+    """Return source IDs hidden by an active or completed session purge."""
+    return {
+        str(source_id)
+        for key in ("_price_source_purging_ids", "_price_source_deleted_ids")
+        for source_id in st.session_state.get(key, set())
+    }
 
 
 def _save_price_source_row_action(
@@ -3560,16 +3573,13 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
 def _render_price_lists_projections(access: CompanyAccess) -> None:
     """Render the ordered projections as soon as each background read completes."""
     results, errors, _futures = _poll_price_lists_projections(access)
-    purging_source_ids = {
-        str(source_id)
-        for source_id in st.session_state.get("_price_source_purging_ids", set())
-    }
+    hidden_source_ids = _price_source_hidden_ids()
 
     def projection(name: str) -> list[dict] | None:
         records = results.get(name)
         if records is None:
             return None
-        return _without_purging_price_source_records(records, purging_source_ids)
+        return _without_purging_price_source_records(records, hidden_source_ids)
 
     sources = projection("sources")
     catalog = projection("catalog")
