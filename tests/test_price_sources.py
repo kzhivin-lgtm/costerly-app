@@ -2823,12 +2823,36 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
     assert state["_price_source_deleted_ids"] == {"source-1"}
     assert "_price_source_action_notice" not in state
     assert state["_price_source_library_open_once"] is True
-    assert state["_price_lists_projection_state"]["results"]["sources"] == [
-        {"source_id": "source-keep"}
-    ]
+    assert "_price_lists_projection_state" not in state
+    assert state["_price_source_purge_reconcile_requested"] is True
+
+
+def test_multiple_source_purges_reconcile_only_after_the_last_worker_finishes(monkeypatch):
+    from screens import company_profile
+
+    first, last = Future(), Future()
+    state = {
+        "_price_source_purge_pending": {"source-1": first, "source-2": last},
+        "_price_source_purging_ids": {"source-1", "source-2"},
+        "_price_lists_projection_state": {
+            "results": {"catalog": [{"source_id": "source-1"}, {"source_id": "source-2"}]},
+            "errors": {},
+        },
+    }
+    monkeypatch.setattr(company_profile.st, "session_state", state)
+
+    first.set_result({"deleted_rows": 1, "storage_deleted": True})
+    assert company_profile._process_pending_price_source_purges() is True
+    assert "_price_lists_projection_state" in state
     assert state["_price_lists_projection_state"]["results"]["catalog"] == [
-        {"source_id": "source-keep"}
+        {"source_id": "source-2"}
     ]
+    assert "_price_source_purge_reconcile_requested" not in state
+
+    last.set_result({"deleted_rows": 1, "storage_deleted": True})
+    assert company_profile._process_pending_price_source_purges() is True
+    assert "_price_lists_projection_state" not in state
+    assert state["_price_source_purge_reconcile_requested"] is True
 
 
 def test_completed_source_purge_hides_late_projection_results(monkeypatch):

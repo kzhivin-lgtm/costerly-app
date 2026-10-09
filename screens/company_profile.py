@@ -2262,6 +2262,14 @@ def _process_pending_price_source_purges() -> bool:
             # delete. Green terminal feedback is reserved for extraction runs.
     if not pending:
         st.session_state.pop("_price_source_purge_pending", None)
+        if changed:
+            # Optimistic filtering is enough while adjacent deletes are still
+            # being confirmed. Once the final worker finishes, it is not an
+            # authoritative projection: offers and review rows can have been
+            # changed by a different completed purge. Discard it as one
+            # batch and load the final database state on the next app render.
+            _clear_price_lists_snapshot()
+            st.session_state["_price_source_purge_reconcile_requested"] = True
     if not hidden:
         st.session_state.pop("_price_source_purging_ids", None)
     return changed
@@ -3477,7 +3485,20 @@ def _render_price_source_processing_status(access: CompanyAccess, *, trace=None)
     purge_finished = _process_pending_price_source_purges()
     # A completed purge has already updated the live snapshot in place. A full
     # app rerun would collapse Source Library and restart every projection.
+    # The last completed purge is the exception: it needs exactly one
+    # authoritative reconciliation, after every queued delete has settled.
+    if (
+        st.session_state.get("_price_source_purge_reconcile_requested")
+        and not _price_source_has_unsubmitted_selection()
+    ):
+        st.session_state.pop("_price_source_purge_reconcile_requested", None)
+        st.rerun(scope="app")
     if purge_finished:
+        # Keep a requested reconciliation pending while the user is choosing
+        # an upload. The next safe fragment pass will perform it; do not clear
+        # their unsubmitted selection merely to repaint the projections.
+        if not _price_source_has_unsubmitted_selection():
+            st.rerun(scope="app")
         return
     if not st.session_state.get("_price_source_processing"):
         return

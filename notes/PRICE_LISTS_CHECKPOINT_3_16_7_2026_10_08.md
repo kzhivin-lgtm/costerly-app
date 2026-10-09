@@ -190,6 +190,12 @@ VAT evidence cannot by itself leave a valid row in Review.
      app rerun. A confirmed delete preserves the open Source Library and the
      current scroll location. The initial page shows only `Loading catalog…`
      with a spinner until all independent projections are ready.
+   - Reconciliation repair, 2026-10-09: optimistic filtering is provisional
+     while one or more purge workers remain pending. After the final worker
+     settles, discard every cached projection and perform exactly one
+     authoritative reload. This prevents a zero-row Source Library from being
+     displayed next to stale Catalog or Review rows after rapid consecutive
+     deletes.
    - Extraction accounting: the terminal result must account for every
      price-table line read from every source. Rows excluded in an early
      consumables/non-candidate pass count as `excluded`; they must not vanish
