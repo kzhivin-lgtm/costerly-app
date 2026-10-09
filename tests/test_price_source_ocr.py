@@ -4,12 +4,17 @@ import fitz
 from PIL import Image
 
 from use_cases.price_source_ocr import (
+    PriceSourceTextLayer,
     ocr_issuer_evidence_text,
     ocr_package_text,
     prepare_price_source_text_layer,
     render_price_source_table_evidence,
 )
-from use_cases.price_sources import issuer_identity_from_source_text
+from use_cases.price_sources import (
+    CombinedPriceSource,
+    issuer_identity_from_source_text,
+    route_price_source_pdf_bundle,
+)
 
 
 def _ocr_package(markdown: str) -> dict:
@@ -99,6 +104,95 @@ def test_scanned_pdf_uses_ocr_when_no_text_layer():
     assert result.strategy == "pdf_ocr"
     assert result.text == "PAGE 1:\nInvoice row"
     assert called[0]["file_name"] == "scan.pdf"
+
+
+def _bundle_pdf(*pages: str) -> bytes:
+    document = fitz.open()
+    for page_text in pages:
+        page = document.new_page()
+        for line_number, line in enumerate(page_text.splitlines(), start=1):
+            page.insert_text((72, 72 + line_number * 18), line)
+    result = document.tobytes()
+    document.close()
+    return result
+
+
+def test_multi_invoice_pdf_router_splits_only_proven_distinct_issuer_invoice_pairs(monkeypatch):
+    import use_cases.price_sources as price_sources
+
+    pdf_bytes = _bundle_pdf(
+        "Alpha Ltd\nH.P. 514539998\nTax Invoice No: AL-100",
+        "Beta Ltd\nH.P. 513452333\nTax Invoice No: BE-200",
+    )
+    monkeypatch.setattr(
+        price_sources,
+        "prepare_price_source_text_layer",
+        lambda **_kwargs: PriceSourceTextLayer(text="unused", strategy="pdf_embedded_text_with_header_ocr"),
+    )
+
+    routed = route_price_source_pdf_bundle(
+        CombinedPriceSource(name="scanned-bundle.pdf", data=pdf_bytes)
+    )
+
+    assert [item.uploaded_file.name for item in routed] == [
+        "scanned-bundle-page-001.pdf",
+        "scanned-bundle-page-002.pdf",
+    ]
+    assert [item.bundle_page_number for item in routed] == [1, 2]
+    assert all(item.bundle_page_count == 2 for item in routed)
+
+
+def test_multi_page_single_invoice_pdf_router_preserves_the_existing_fast_path(monkeypatch):
+    import use_cases.price_sources as price_sources
+
+    pdf_bytes = _bundle_pdf(
+        "Alpha Ltd\nH.P. 514539998\nTax Invoice No: AL-100",
+        "Alpha Ltd\nH.P. 514539998\nTax Invoice No: AL-100",
+    )
+    text_layer = PriceSourceTextLayer(text="full document", strategy="pdf_embedded_text_with_header_ocr")
+    monkeypatch.setattr(price_sources, "prepare_price_source_text_layer", lambda **_kwargs: text_layer)
+
+    routed = route_price_source_pdf_bundle(
+        CombinedPriceSource(name="one-invoice.pdf", data=pdf_bytes)
+    )
+
+    assert len(routed) == 1
+    assert routed[0].uploaded_file.name == "one-invoice.pdf"
+    assert routed[0].text_layer is text_layer
+
+
+def test_scanned_multi_invoice_pdf_router_reuses_its_per_page_ocr_evidence(monkeypatch):
+    import use_cases.price_sources as price_sources
+
+    pdf_bytes = _bundle_pdf("scanned page", "another scanned page")
+    text_layer = PriceSourceTextLayer(
+        text="full scan",
+        strategy="pdf_ocr",
+        ocr_package={
+            "processing_seconds": 2.0,
+            "pages": [
+                {
+                    "page_number": 1,
+                    "markdown": "Tax Invoice No: AL-100",
+                    "blocks": [{"type": "header", "content": "Alpha Ltd\nH.P. 514539998"}],
+                },
+                {
+                    "page_number": 2,
+                    "markdown": "Tax Invoice No: BE-200",
+                    "blocks": [{"type": "header", "content": "Beta Ltd\nH.P. 513452333"}],
+                },
+            ],
+        },
+    )
+    monkeypatch.setattr(price_sources, "prepare_price_source_text_layer", lambda **_kwargs: text_layer)
+
+    routed = route_price_source_pdf_bundle(
+        CombinedPriceSource(name="scan-bundle.pdf", data=pdf_bytes)
+    )
+
+    assert len(routed) == 2
+    assert [item.text_layer.ocr_package["processing_seconds"] for item in routed] == [1.0, 1.0]
+    assert all(len(item.text_layer.ocr_package["pages"]) == 1 for item in routed)
 
 
 def test_jpeg_uses_ocr_before_price_extraction():
