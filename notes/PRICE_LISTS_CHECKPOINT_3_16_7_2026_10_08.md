@@ -222,7 +222,26 @@ VAT evidence cannot by itself leave a valid row in Review.
    - Compact price card, 2026-10-09: the row editor contains only Material
      name, Material type, Source price and Estimation unit. VAT, currency,
      source/purchase units and conversion are source-level or persisted
-     defaults, not routine row-level controls.
+   defaults, not routine row-level controls.
+
+10. **3.16.7.13 Multi-invoice PDF router and compact Review reason**
+   - Status: implemented locally, owner acceptance pending.
+   - Outcome: a PDF stays on the current single-document path unless its
+     already-prepared native text or direct-PDF OCR proves at least two
+     distinct `(issuer identity, invoice number)` pairs. Only then it is split
+     in memory into one-page PDF inputs. The existing supplier plus invoice
+     merge contract groups pages of the same invoice, while distinct proven
+     invoices become distinct Source Library records.
+   - Cost boundary: the router never invokes OCR only to classify a PDF. It
+     reuses the text/OCR pass required for extraction. A normal generated PDF
+     and a multi-page single invoice keep the fast path unchanged.
+   - Safety boundary: page count, scan-like metadata and filename are hints at
+     most, never a routing decision. A page without a proven separate identity
+     cannot cause a batch-adjacency merge.
+   - Review contract: Source Review exposes only `Price` and `Unit`. The
+     reason is exactly one of those words and the corresponding editable label
+     is red. Name, category and supplier identity remain immutable in Review,
+     so correcting evidence cannot split a catalog merge.
 
 ### P1: improvements after P0 closure
 
