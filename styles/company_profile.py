@@ -799,7 +799,7 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) .price-source-upload-heading {
-            margin-bottom: 0;
+            margin-bottom: 12px;
         }
 
 

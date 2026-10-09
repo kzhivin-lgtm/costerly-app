@@ -2516,7 +2516,7 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                 supplier_name = str(row.get("supplier_name") or "Unknown supplier")
                 source = sources_by_id.get(source_id) or {}
                 with st.container(key=f"price_catalog_row_{row_id}"):
-                    remove_col, material_col, category_col, supplier_col, net_price_col, gross_price_col, date_col, edit_col, source_col = _price_catalog_grid_columns()
+                    remove_col, material_col, category_col, supplier_col, net_price_col, gross_price_col, date_col, source_col, edit_col = _price_catalog_grid_columns()
                     if remove_col.button("×", key=f"catalog_remove_{row_id}"):
                         st.session_state._removing_price_source_row = (source_id, row_id)
                         st.session_state._price_source_action_location = "catalog"
@@ -2555,10 +2555,6 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         f'<span class="price-catalog-cell price-catalog-cell-nowrap">{_price_catalog_date(row.get("updated_at"))}</span>',
                         unsafe_allow_html=True,
                     )
-                    if edit_col.button("Edit", key=f"catalog_edit_{row_id}"):
-                        st.session_state.pop("_selected_price_source_id", None)
-                        st.session_state._editing_price_source_row = (source_id, row_id)
-                        st.session_state._price_source_action_location = "catalog"
                     source_url = _price_source_direct_url(access, source)
                     if source_url:
                         _render_price_source_action(
@@ -2566,6 +2562,10 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                             source_url=source_url,
                             key=f"catalog_{row_id}",
                         )
+                    if edit_col.button("Edit", key=f"catalog_edit_{row_id}"):
+                        st.session_state.pop("_selected_price_source_id", None)
+                        st.session_state._editing_price_source_row = (source_id, row_id)
+                        st.session_state._price_source_action_location = "catalog"
 
                     target = (source_id, row_id)
                     if (
@@ -2841,7 +2841,7 @@ def _render_price_source_review_queue(
             header = st.columns([0.24, 1.55, 0.78, 0.9, 0.82, 0.82, 0.68, 0.38, 0.72])
             for column, label in zip(
                 header,
-                ("", "Material", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Reason", "Source", ""),
+                ("", "Material", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Reason", "", "Review"),
             ):
                 if label:
                     column.markdown(
@@ -2967,7 +2967,7 @@ def _render_material_jobs(access: CompanyAccess, jobs: list[dict]) -> None:
             for job in jobs:
                 job_id = str(job.get("operation_offer_id") or job.get("source_row_id") or "job")
                 with st.container(key=f"price_catalog_row_job_{job_id}"):
-                    _, name_col, category_col, supplier_col, net_price_col, gross_price_col, date_col, _, source_col = _price_catalog_grid_columns()
+                    _, name_col, category_col, supplier_col, net_price_col, gross_price_col, date_col, source_col, _ = _price_catalog_grid_columns()
                     operation_name = str(job.get("operation_name") or "Material job")
                     original_name = str(job.get("raw_service_name") or "")
                     name_col.markdown(
@@ -3597,7 +3597,11 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
 
     _restore_active_price_source_processing(access)
     _process_pending_price_source(access, trace=trace)
-    _process_pending_price_source_row_saves()
+    if _process_pending_price_source_row_saves():
+        # A confirmed Review save changes both Review and Catalog projections.
+        # Rebuild the app surface once so no old rows or client-side hiding
+        # classes survive around the new active offer.
+        st.rerun(scope="app")
 
     # Keep the dashboard in the upload card, so it cannot leave a detached
     # blank region after the processing marker is removed.
