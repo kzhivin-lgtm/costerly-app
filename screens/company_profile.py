@@ -3280,9 +3280,8 @@ def _render_price_source_add(
                     on_change=_clear_price_source_url_for_files,
                     args=(uploader_key, url_key),
                     help=(
-                        "Upload one PDF or spreadsheet, or select several JPEG/PNG photos. "
-                        "Photos are processed separately and joined only when supplier and "
-                        "invoice number match."
+                        "Upload up to 6 files in any supported format. Each file is processed "
+                        "separately and is merged only when supplier and invoice number match."
                     ),
                 )
                 accepted_files = accepted_price_source_uploads(list(uploaded_files or []))

@@ -51,7 +51,6 @@ from use_cases.price_sources import (
     purge_price_source,
     accepted_price_source_uploads,
     canonical_price_source_category,
-    combine_price_source_files,
     create_price_source_download_url,
     extract_spreadsheet_text,
     fetch_public_page,
@@ -2479,7 +2478,7 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     assert 'section:has([data-testid="stFileChips"]) > div' in (
         price_source_dropzone_rules
     )
-    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in source
+    assert "grid-template-columns: repeat(6, minmax(0, 1fr))" in source
     assert "grid-auto-rows: 74px" in source
     assert "height: 156px !important" in source
     assert "max-height: 156px !important" in source
@@ -2500,6 +2499,8 @@ def test_price_source_dropzone_only_hides_native_prompt_while_empty():
     assert "z-index: 4 !important" in delete_rule
     assert "pointer-events: auto !important" in delete_rule
     assert "costerly-single-document-selection" in source
+    assert "costerly-file-count-2" in source
+    assert "grid-column: 2 / span 2;" in source
     assert "grid-template-columns: minmax(0, 280px) !important" in source
     assert "grid-auto-rows: 132px !important" in source
     assert "width: 55px !important" in source
@@ -2674,59 +2675,43 @@ def test_price_source_uploader_installs_dragover_guard():
     assert guard_source.count("components.html(") == 1
     assert "render_price_source_preview" in source
     assert "costerly-upload-invalid-dragover" in guard_source
-    assert "costerly-single-document-selection" in guard_source
+    assert "costerly-file-count-6" in guard_source
     assert "event.stopImmediatePropagation()" in guard_source
     assert "if (!event.relatedTarget)" in guard_source
 
 
-def test_mixed_selection_keeps_only_the_first_file():
-    first = _UploadedPhoto("invoice.pdf", b"%PDF")
-    selected = accepted_price_source_uploads(
-        [first, _UploadedPhoto("page.png", b"png")]
-    )
+def test_mixed_selection_preserves_every_file_for_independent_processing():
+    files = [
+        _UploadedPhoto("invoice.pdf", b"%PDF"),
+        _UploadedPhoto("page.jpg", b"jpg"),
+        _UploadedPhoto("page.png", b"png"),
+        _UploadedPhoto("prices.xlsx", b"sheet"),
+        _UploadedPhoto("prices.csv", b"a,b"),
+        _UploadedPhoto("page.heic", b"heic"),
+    ]
 
-    assert selected == [first]
-    combined = combine_price_source_files(selected)
-    assert combined.name == first.name
-    assert combined.getvalue() == first.getvalue()
-
-
-def test_photo_led_mixed_selection_keeps_all_photo_pages_only():
-    first = _UploadedPhoto("page-1.jpg", b"first")
-    second = _UploadedPhoto("page-2.png", b"second")
-
-    assert accepted_price_source_uploads(
-        [first, _UploadedPhoto("prices.xlsx", b"sheet"), second]
-    ) == [first, second]
+    assert accepted_price_source_uploads(files) == files
+    assert [item.name for item in split_price_source_uploads(files)] == [item.name for item in files]
 
 
-def test_multiple_spreadsheets_keep_only_the_first_file():
-    first = _UploadedPhoto("prices-a.xlsx", b"first")
+def test_batch_rejects_more_than_six_files_before_processing_is_queued():
+    with pytest.raises(PriceSourceError, match="no more than 6"):
+        validate_price_source_upload_selection(
+            [_UploadedPhoto(f"page-{index}.png", b"image") for index in range(7)]
+        )
 
-    assert accepted_price_source_uploads(
-        [first, _UploadedPhoto("prices-b.xlsx", b"second")]
-    ) == [first]
 
-
-def test_multiple_photos_are_valid_as_one_document_before_processing_is_queued():
+def test_supported_mixed_batch_is_valid_before_processing_is_queued():
     validate_price_source_upload_selection(
         [
-            _UploadedPhoto("page-1.jpg", b"first"),
-            _UploadedPhoto("page-2.png", b"second"),
-        ]
-    )
-
-
-def test_multiple_tiff_and_heic_photos_are_valid_as_one_document_before_processing_is_queued():
-    validate_price_source_upload_selection(
-        [
+            _UploadedPhoto("invoice.pdf", b"pdf"),
             _UploadedPhoto("page-1.tiff", b"first"),
             _UploadedPhoto("page-2.heic", b"second"),
         ]
     )
 
 
-def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
+def test_mixed_batch_queues_every_selected_file(monkeypatch):
     from screens import company_profile
 
     class SessionState(dict):
@@ -2757,7 +2742,9 @@ def test_multiple_spreadsheets_queue_only_the_first_file(monkeypatch):
     )
 
     assert state["_price_source_processing"] is True
-    assert [item.name for item in submitted[0]["uploaded_files"]] == ["prices-a.xlsx"]
+    assert [item.name for item in submitted[0]["uploaded_files"]] == [
+        "prices-a.xlsx", "prices-b.xlsx"
+    ]
     assert isinstance(state["_price_source_pending"]["future"], Future)
     assert state["_price_source_pending"]["selection_cycle"] == 7
     assert "_price_source_error" not in state
@@ -2914,14 +2901,13 @@ def test_price_source_url_entry_replaces_existing_file_selection(monkeypatch):
     assert "price_source_upload_5" not in state
 
 
-def test_price_source_file_guard_filters_before_streamlit_receives_selection():
+def test_price_source_file_guard_caps_mixed_batch_before_streamlit_receives_selection():
     from ui.js_guards import install_price_source_file_selection_guard
 
     source = inspect.getsource(install_price_source_file_selection_guard)
 
-    assert "files.every(isPhoto)" in source
-    assert "files.filter(isPhoto)" in source
-    assert "return files.slice(0, 1)" in source
+    assert "const MAX_FILES = 6;" in source
+    assert "return files.slice(0, MAX_FILES);" in source
     assert "new DataTransfer()" in source
     assert 'parentDoc.addEventListener("change", handleChange, true)' in source
     assert 'parentDoc.addEventListener("drop", handleDrop, true)' in source
@@ -2929,21 +2915,20 @@ def test_price_source_file_guard_filters_before_streamlit_receives_selection():
     assert "event.stopImmediatePropagation()" in source
     assert 'new DragEvent("drop"' in source
     assert "__costerlyAcceptedPriceSourceDrop" in source
-    assert "Upload one PDF, XLSX or CSV at a time · JPG/PNG can be combined" in source
+    assert "A batch can contain no more than 6 files" in source
     assert "costerly-selection-warning" in source
     assert "renderedFiles(uploader)" in source
     assert 'stFileChipName' in source
     assert "nativeFiles.length ? nativeFiles : renderedFiles(uploader)" in source
-    assert "costerly-photo-selection" in source
+    assert "costerly-file-count-${count}" in source
     assert "costerly-single-document-selection" in source
-    assert "transient empty DOM" in source
     assert "stFileChipDeleteBtn" in source
     assert "emptyWarningTimer" in source
     assert "}, 5000)" in source
     assert "FILE_PREVIEWS" in source
     assert "costerly-file-preview" in source
     assert "acceptedIncomingFiles" in source
-    assert "existing.every(isPhoto)" in source
+    assert "MAX_FILES - existing.length" in source
     assert "if (files.length && !accepted.length)" in source
     assert "clearTerminalResultOnSelection" in source
 

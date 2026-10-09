@@ -49,6 +49,7 @@ from use_cases.price_source_taxonomy import (
 
 PRICE_SOURCE_BUCKET = "company-price-sources"
 MAX_SOURCE_BYTES = 50 * 1024 * 1024
+MAX_PRICE_SOURCE_BATCH_FILES = 6
 WORDPRESS_ACCEPTED_RETRY_DELAYS_SECONDS = (1, 2, 3)
 SUPPLIER_PAGE_HEADERS = {
     "User-Agent": (
@@ -1280,31 +1281,22 @@ logger = logging.getLogger(__name__)
 
 
 def validate_price_source_upload_selection(files: list) -> None:
-    """Allow one document or a batch consisting entirely of image files."""
+    """Allow up to six independently processed supported source files."""
     selected = [item for item in files if item is not None]
-    if len(selected) <= 1:
-        return
     suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
-    if any(suffix not in OCR_IMAGE_SUFFIXES for suffix in suffixes):
+    if len(selected) > MAX_PRICE_SOURCE_BATCH_FILES:
         raise PriceSourceError(
-            "Select one PDF or spreadsheet, or several JPEG/PNG photos"
+            f"Select no more than {MAX_PRICE_SOURCE_BATCH_FILES} files at a time"
+        )
+    if any(suffix not in SUPPORTED_SUFFIXES for suffix in suffixes):
+        raise PriceSourceError(
+            "Use PDF, XLSX, CSV, JPEG, PNG, TIFF, HEIC or HEIF files"
         )
 
 
 def accepted_price_source_uploads(files: list) -> list:
-    """Keep a single document or an image-only batch from a native selection."""
-    selected = [item for item in files if item is not None]
-    if len(selected) <= 1:
-        return selected
-    suffixes = [Path(str(item.name)).suffix.lower() for item in selected]
-    photo_suffixes = OCR_IMAGE_SUFFIXES
-    if suffixes[0] in photo_suffixes:
-        return [
-            item
-            for item, suffix in zip(selected, suffixes, strict=True)
-            if suffix in photo_suffixes
-        ]
-    return selected[:1]
+    """Keep every selected file so batch routing can process it independently."""
+    return [item for item in files if item is not None]
 
 
 def render_price_source_pdf_preview(

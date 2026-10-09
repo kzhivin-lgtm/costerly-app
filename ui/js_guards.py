@@ -3524,7 +3524,7 @@ def install_upload_dragover_guard(*, file_previews: list[dict[str, str]] | None 
                     event.preventDefault();
                     window.clearTimeout(clearTimer);
                     const uploader = dropzone.closest('[data-testid="stFileUploader"]');
-                    if (uploader && uploader.classList.contains('costerly-single-document-selection')) {
+                    if (uploader && uploader.classList.contains('costerly-file-count-6')) {
                         setInvalidDragover(dropzone);
                         event.stopImmediatePropagation();
                         return;
@@ -3569,14 +3569,7 @@ def install_price_source_file_selection_guard(
     markup_only: bool = False,
     file_previews: list[dict[str, str]] | None = None,
 ) -> str | None:
-    """Keep the Price Source picker in one-document MVP mode.
-
-    Several photos may form one document. PDF and spreadsheet selections retain
-    only their first file. In a mixed selection, the first file chooses the
-    route: photo-first keeps all photos, while document-first keeps only that
-    document. Filtering happens during the capture phase so Streamlit receives
-    the accepted FileList rather than briefly rendering rejected files.
-    """
+    """Keep every supported batch entry, capped at six independent sources."""
     markup = r"""
         <script>
         (() => {
@@ -3586,18 +3579,14 @@ def install_price_source_file_selection_guard(
             const WARNING_KEY = "__costerlyPriceSourceSelectionWarning";
             const UPLOADER_SELECTOR =
                 ".st-key-price_source_add_body [data-testid='stFileUploader']";
-            const PHOTO_PATTERN = /\.(jpe?g|png)$/i;
+            const MAX_FILES = 6;
             const WARNING_CLASS = "costerly-selection-warning";
             const WARNING_COPY =
-                "Upload one PDF, XLSX or CSV at a time · JPG/PNG can be combined";
+                "A batch can contain no more than 6 files";
             const FILE_PREVIEWS = __FILE_PREVIEWS__;
             let emptyWarningTimer = null;
 
             if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
-
-            function isPhoto(file) {
-                return PHOTO_PATTERN.test(String(file && file.name || ""));
-            }
 
             function renderedFiles(uploader) {
                 return Array.from(
@@ -3606,16 +3595,13 @@ def install_price_source_file_selection_guard(
             }
 
             function acceptedFiles(files) {
-                if (files.length <= 1) return files;
-                if (isPhoto(files[0])) return files.filter(isPhoto);
-                return files.slice(0, 1);
+                return files.slice(0, MAX_FILES);
             }
 
             function acceptedIncomingFiles(uploader, files) {
                 const existing = renderedFiles(uploader);
                 if (!existing.length) return acceptedFiles(files);
-                if (existing.every(isPhoto)) return files.filter(isPhoto);
-                return [];
+                return files.slice(0, Math.max(0, MAX_FILES - existing.length));
             }
 
             function syncWarning() {
@@ -3655,13 +3641,12 @@ def install_price_source_file_selection_guard(
                 const nativeFiles = Array.from(input && input.files || []);
                 const files = nativeFiles.length ? nativeFiles : renderedFiles(uploader);
                 uploader.classList.toggle(
-                    "costerly-photo-selection",
-                    files.length > 0 && files.every(isPhoto)
-                );
-                uploader.classList.toggle(
                     "costerly-single-document-selection",
-                    files.length === 1 && !files.every(isPhoto)
+                    files.length === 1
                 );
+                for (let count = 1; count <= MAX_FILES; count += 1) {
+                    uploader.classList.toggle(`costerly-file-count-${count}`, files.length === count);
+                }
                 let previewCount = 0;
                 const chips = Array.from(uploader.querySelectorAll('[data-testid="stFileChip"]'));
                 chips.forEach((chip, index) => {
@@ -3685,12 +3670,8 @@ def install_price_source_file_selection_guard(
                     }
                 });
                 uploader.classList.toggle(
-                    "costerly-has-document-preview",
-                    files.length === 1 && !files.every(isPhoto) && previewCount > 0
-                );
-                uploader.classList.toggle(
-                    "costerly-has-photo-previews",
-                    files.length > 0 && files.every(isPhoto) && previewCount > 0
+                    "costerly-has-file-previews",
+                    files.length > 0 && previewCount > 0
                 );
             }
 
@@ -3738,9 +3719,6 @@ def install_price_source_file_selection_guard(
                 const files = Array.from(input.files || []);
                 if (files.length) clearTerminalResultOnSelection();
                 const accepted = acceptedIncomingFiles(uploader, files);
-                // A single PDF is valid.  Streamlit can briefly retain a
-                // previous chip while replacing it, so never show the
-                // multi-file warning merely because of that transient state.
                 setWarning(files.length > 1 && accepted.length < files.length);
                 if (files.length && !accepted.length) {
                     replaceFiles(input, []);

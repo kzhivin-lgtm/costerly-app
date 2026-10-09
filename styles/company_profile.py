@@ -821,7 +821,7 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body [data-testid="stFileUploader"]
         section:not(:has([data-testid="stFileChips"]))::after {
-            content: "Upload file or photos\\A PDF, XLSX, CSV or multiple photos";
+            content: "Upload up to 6 files\\A PDF, XLSX, CSV or photos";
             position: absolute;
             left: 16px;
             right: 16px;
@@ -869,7 +869,7 @@ def apply_company_profile_css() -> None:
         .st-key-price_source_add_body [data-testid="stFileChips"] > div {
             width: 100% !important;
             display: grid !important;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(6, minmax(0, 1fr));
             grid-auto-rows: 74px;
             gap: 8px !important;
         }
@@ -885,12 +885,27 @@ def apply_company_profile_css() -> None:
         .st-key-price_source_add_body [data-testid="stFileChip"] {
             position: relative;
             display: grid !important;
+            grid-column: span 2;
             grid-template-columns: minmax(0, 1fr) !important;
             grid-template-rows: 24px minmax(0, 1fr) !important;
             place-items: center !important;
             height: 74px;
             padding: 7px 18px 6px 7px !important;
             border-radius: 10px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-file-count-2
+        [data-testid="stFileChip"]:nth-child(1) {
+            grid-column: 2 / span 2;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_body
+        [data-testid="stFileUploader"].costerly-file-count-2
+        [data-testid="stFileChip"]:nth-child(2) {
+            grid-column: 4 / span 2;
         }
 
         .stApp:has(.company-profile-active)
@@ -977,7 +992,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
-        [data-testid="stFileUploader"].costerly-has-document-preview
+        [data-testid="stFileUploader"].costerly-single-document-selection.costerly-has-file-previews
         [data-testid="stFileChip"] > div:first-child {
             width: 96px !important;
             height: 60px !important;
@@ -989,7 +1004,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
-        [data-testid="stFileUploader"].costerly-has-document-preview
+        [data-testid="stFileUploader"].costerly-single-document-selection.costerly-has-file-previews
         [data-testid="stFileChip"] > div:first-child svg {
             display: none !important;
         }
@@ -1004,14 +1019,14 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
-        [data-testid="stFileUploader"].costerly-has-photo-previews
+        [data-testid="stFileUploader"].costerly-has-file-previews:not(.costerly-single-document-selection)
         [data-testid="stFileChip"] {
             grid-template-rows: 38px minmax(0, 1fr) !important;
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
-        [data-testid="stFileUploader"].costerly-has-photo-previews
+        [data-testid="stFileUploader"].costerly-has-file-previews:not(.costerly-single-document-selection)
         [data-testid="stFileChip"] > div:first-child {
             width: 50px !important;
             height: 36px !important;
@@ -1021,14 +1036,14 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
-        [data-testid="stFileUploader"].costerly-has-photo-previews
+        [data-testid="stFileUploader"].costerly-has-file-previews:not(.costerly-single-document-selection)
         [data-testid="stFileChip"] > div:first-child svg {
             display: none !important;
         }
 
         .stApp:has(.company-profile-active)
         .st-key-price_source_add_body
-        [data-testid="stFileUploader"].costerly-has-photo-previews
+        [data-testid="stFileUploader"].costerly-has-file-previews:not(.costerly-single-document-selection)
         .costerly-file-preview {
             object-fit: cover;
         }
