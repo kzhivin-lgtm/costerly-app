@@ -27,6 +27,7 @@ from agents.price_source_agent import run_price_source_agent
 from agents.schemas.price_source_schema import (
     CANONICAL_UNIT_CODES,
     PRICE_SOURCE_CATEGORIES,
+    PriceSourceSchemaError,
 )
 from db.company_access import assert_company_owner
 from db.repositories import insert_agent_usage_event
@@ -4115,19 +4116,19 @@ def process_price_source(
     issuer_identity = issuer_identity_from_source_text(
         text_layer.issuer_evidence_text or text_layer.text
     )
-    result = run_price_source_agent(
-        company_id=company_id,
-        department=department,
-        source_name=source_name,
-        source_kind=source_kind,
+    agent_request = {
+        "company_id": company_id,
+        "department": department,
+        "source_name": source_name,
+        "source_kind": source_kind,
         # The commercial agent receives an auditable text layer only.  This
         # keeps image/scanned-PDF interpretation in the dedicated OCR stage.
-        source_bytes=None,
+        "source_bytes": None,
         # A conflict recheck is not a second broad extraction. It may use the
         # original visual source only to verify the already-identified table
         # cells whose OCR reading is contradictory.
-        source_evidence_bytes=text_layer.arithmetic_evidence_bytes or source_bytes,
-        source_evidence_name=(
+        "source_evidence_bytes": text_layer.arithmetic_evidence_bytes or source_bytes,
+        "source_evidence_name": (
             f"{Path(source_name).stem}-invoice-table.png"
             if text_layer.arithmetic_evidence_bytes is not None
             else source_name
@@ -4135,15 +4136,29 @@ def process_price_source(
         # The first bounded recheck sees the enlarged OCR table crop. Only if
         # it returns no rows at all may the agent inspect the original photo
         # once, for those same conflict rows.
-        source_original_evidence_bytes=source_bytes,
-        # Digital PDFs retain a native text layer and structured tables retain
-        # cells directly. The conservative visual pass is reserved for photos
-        # and image uploads, where OCR geometry is the best price evidence.
-        require_source_table_verification=text_layer.strategy == "image_ocr",
-        extracted_text=text_layer.text,
-        import_id=source_id,
-        trace=trace,
-    )
+        "source_original_evidence_bytes": source_bytes,
+        # Native-text PDFs retain structured cells. A scanned PDF is visual
+        # evidence just like a photo and needs the same conservative table
+        # confirmation before a price is activated.
+        "require_source_table_verification": text_layer.strategy in {
+            "image_ocr", "pdf_ocr", "pdf_ocr_bundle_page",
+        },
+        "extracted_text": text_layer.text,
+        "import_id": source_id,
+        "trace": trace,
+    }
+    try:
+        result = run_price_source_agent(**agent_request)
+    except PriceSourceSchemaError as exc:
+        # A schema violation is a response-format failure, not evidence that
+        # the source page is invalid. One bounded retry preserves a fully
+        # OCR-read invoice page while keeping terminal failures explicit.
+        if trace is not None:
+            trace.event(
+                "server.price_source_agent_schema_retry_started",
+                metadata={"error_type": type(exc).__name__},
+            )
+        result = run_price_source_agent(**agent_request, schema_retry=True)
     supplier_issuer_evidence_repaired = repair_supplier_from_issuer_evidence(
         result,
         issuer_identity=issuer_identity,

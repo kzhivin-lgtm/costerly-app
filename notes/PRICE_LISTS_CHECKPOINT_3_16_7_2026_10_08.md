@@ -249,6 +249,20 @@ VAT evidence cannot by itself leave a valid row in Review.
      is red. Name, category and supplier identity remain immutable in Review,
      so correcting evidence cannot split a catalog merge.
 
+11. **3.16.7.14 Composite-PDF reliability repair**
+   - Status: implemented locally, production acceptance pending.
+   - Evidence: the four-page scanned composite source proved the router split
+     each page. OCR read `62336` on page 2, but its extraction then failed
+     post-response schema validation and was never persisted. Page 1 also
+     activated an OCR-selected line-total value as a unit price because the
+     scanned-PDF path did not request the existing visual table verifier.
+   - Outcome: a `PriceSourceSchemaError` receives one schema-contract retry
+     for that page only. Scanned PDF pages now use the same source-table price
+     confirmation gate as photos. Native-text PDFs retain their fast path.
+   - Acceptance: the same four-page upload produces four source records,
+     including invoice `62336`, and activates prices only after source-table
+     confirmation. A second schema failure remains an explicit source failure.
+
 ### P1: improvements after P0 closure
 
 1. **3.16.7.7 Source Library invoice label**: document number under supplier,
