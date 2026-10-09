@@ -261,14 +261,20 @@ VAT evidence cannot by itself leave a valid row in Review.
 
 2. **3.16.7.7 Source Library invoice label**: document number under supplier,
    filename only when number is absent.
-3. **3.16.7.8 Bilingual brand catalog**: moved to active 3.17.1.
+3. **3.16.7.8 Bilingual brand catalog**: complete for Price Source. Hebrew,
+   English and safe OCR aliases resolve to the English canonical brand within
+   the established entity, primary-attribute, brand, secondary-attribute
+   order. Any later extension to another product surface is global work, not
+   Price Source backlog.
 4. **3.16.7.9 Price Lists first paint**: implementation complete, production
    behavior check pending. Controls render before projections, then Catalog,
    Material Jobs, Review and Source Library load through independent read-only
    background tasks. A completed task does not refresh an active selection.
    Current pre-change serial read baseline: 0.273 s source, 0.660 s catalog,
    0.323 s Review, 0.536 s Material Jobs, plus render time.
-5. **3.16.7.10 Unified material-normalisation design**: moved to active 3.17.1.
+5. **3.16.7.10 Unified material-normalisation design**: complete for Price
+   Source. Do not reopen this page for taxonomy work without a reproducible
+   Price Source failure.
 
 ### Deferred
 
