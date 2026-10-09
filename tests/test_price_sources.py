@@ -2667,8 +2667,8 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "function removeLiveProgress(card)" in source
     assert "clearTerminalResultForNewSelection" in source
     assert "__costerlyClearPriceSourceTerminalResult" in source
-    assert 'parentDoc.querySelectorAll(".price-source-cycle-result")' in source
-    assert 'card.querySelectorAll(".price-source-cycle-result")' not in source
+    assert "Streamlit owns the rendered terminal node" in source
+    assert "result.remove()" not in source
     assert "!completeMarker && processingMarker" in source
     assert "event.stopImmediatePropagation()" in source
     assert 'card.classList.contains("costerly-price-source-processing")' in source

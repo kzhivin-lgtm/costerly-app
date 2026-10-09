@@ -1607,34 +1607,29 @@ def test_price_source_result_clears_on_source_selection_not_extract_click():
     assert "_price_source_selection_cycle" in screen_source
 
 
-def test_price_source_terminal_result_has_a_browser_session_display_fallback():
+def test_price_source_terminal_result_is_owned_by_server_render_state():
     guard_source = Path("ui/js_guards.py").read_text()
     screen_source = Path("screens/company_profile.py").read_text()
 
     assert 'const TERMINAL_RESULT_KEY = "__costerlyPriceSourceTerminalResult"' in guard_source
     assert "function syncTerminalResult(card)" in guard_source
     assert "sessionStorage.setItem" in guard_source
-    assert "sessionStorage.getItem(TERMINAL_RESULT_KEY)" in guard_source
+    assert "sessionStorage.getItem(TERMINAL_RESULT_KEY)" not in guard_source
     assert "function keepLatestTerminalResult(card)" in guard_source
     assert "function currentSelectionCycle(card)" in guard_source
-    assert "terminalResultSelectionCycle(restored) !== currentSelectionCycle(card)" in guard_source
+    assert "replaceChildren(restored)" not in guard_source
     assert 'data-processing-cycle="{processing_cycle}"' in screen_source
     assert 'data-selection-cycle="{selection_cycle}"' in screen_source
 
 
-def test_price_source_terminal_slot_keeps_extract_position_stable():
+def test_price_source_markers_keep_extract_position_stable_without_client_dom_removal():
     screen_source = Path("screens/company_profile.py").read_text()
     style_source = Path("styles/company_profile.py").read_text()
     guard_source = Path("ui/js_guards.py").read_text()
 
-    assert 'st.container(key="price_source_terminal_slot")' in screen_source
-    assert "price-source-terminal-slot-marker" in screen_source
-    assert ".st-key-price_source_terminal_slot" in style_source
-    assert "min-height: 92px" in style_source
-    assert 'card.querySelector(".st-key-price_source_terminal_slot")' in guard_source
-    assert "terminalSlot.before(progress)" in guard_source
-    assert "terminalSlot.replaceChildren(restored)" in guard_source
     assert ".price-source-processing-complete-marker" in style_source
+    assert "result.remove()" not in guard_source
+    assert "replaceChildren(restored)" not in guard_source
 
 
 def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():

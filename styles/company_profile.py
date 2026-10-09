@@ -799,20 +799,7 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) .price-source-upload-heading {
-            margin-bottom: 28px;
-        }
-
-        /* The terminal result always owns the same place below Extract.
-           Without this slot, inserting the live/progress result changes the
-           column height and makes the primary action visibly jump. */
-        .stApp:has(.company-profile-active)
-        .st-key-price_source_terminal_slot {
-            min-height: 92px;
-        }
-
-        .stApp:has(.company-profile-active)
-        .st-key-price_source_terminal_slot [data-testid="stElementContainer"]:has(.price-source-terminal-slot-marker) {
-            min-height: 92px;
+            margin-bottom: 0;
         }
 
 
@@ -1331,9 +1318,6 @@ def apply_company_profile_css() -> None:
             border-color: #B9DFCC;
             background: #F5FCF7;
             box-shadow: 0 8px 22px rgba(33, 91, 55, 0.12);
-        }
-        .st-key-price_source_terminal_slot .price-source-cycle-result {
-            margin: 0;
         }
         .price-source-cycle-error {
             border-color: #F1C5C5;

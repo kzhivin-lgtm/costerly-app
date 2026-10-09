@@ -3837,10 +3837,7 @@ def install_price_source_processing_guard() -> None:
                     '<span class="price-source-live-progress-time">0 s elapsed</span>' +
                     '<span class="price-source-live-progress-track"><span></span></span>';
                 const buttonContainer = card.querySelector(".st-key-process_price_source");
-                const terminalSlot = card.querySelector(".st-key-price_source_terminal_slot");
-                if (terminalSlot) {
-                    terminalSlot.before(progress);
-                } else if (buttonContainer) {
+                if (buttonContainer) {
                     buttonContainer.after(progress);
                 } else {
                     card.appendChild(progress);
@@ -3884,9 +3881,10 @@ def install_price_source_processing_guard() -> None:
             }
 
             function clearTerminalResult() {
-                parentDoc.querySelectorAll(".price-source-cycle-result").forEach((result) => {
-                    result.remove();
-                });
+                // Streamlit owns the rendered terminal node. Removing it in
+                // browser code races React reconciliation and can produce
+                // NotFoundError/removeChild. The server selection callback
+                // clears its state on the next render.
                 parentWindow.sessionStorage.removeItem(TERMINAL_RESULT_KEY);
             }
 
@@ -3912,20 +3910,13 @@ def install_price_source_processing_guard() -> None:
                 const selectionCycle = currentSelectionCycle(card);
                 const results = Array.from(card.querySelectorAll(
                     ".price-source-cycle-result.price-lists-toast-result"
-                )).filter((result) => {
-                    if (terminalResultSelectionCycle(result) === selectionCycle) return true;
-                    result.remove();
-                    return false;
-                });
+                )).filter((result) => terminalResultSelectionCycle(result) === selectionCycle);
                 if (!results.length) return null;
                 const latest = results.reduce((newest, result) => (
                     terminalResultCycle(result) >= terminalResultCycle(newest)
                         ? result
                         : newest
                 ));
-                results.forEach((result) => {
-                    if (result !== latest) result.remove();
-                });
                 return latest;
             }
 
@@ -3937,30 +3928,6 @@ def install_price_source_processing_guard() -> None:
                         visibleResult.outerHTML
                     );
                     return;
-                }
-                if (
-                    card.querySelector(".price-source-processing-marker") ||
-                    card.querySelector(".price-source-cycle-error") ||
-                    parentWindow[STARTING_KEY]
-                ) return;
-                const savedMarkup = parentWindow.sessionStorage.getItem(TERMINAL_RESULT_KEY);
-                const buttonContainer = card.querySelector(".st-key-process_price_source");
-                if (!savedMarkup || !buttonContainer) return;
-                const holder = parentDoc.createElement("div");
-                holder.innerHTML = savedMarkup;
-                const restored = holder.firstElementChild;
-                if (
-                    !restored
-                    || terminalResultSelectionCycle(restored) !== currentSelectionCycle(card)
-                ) {
-                    parentWindow.sessionStorage.removeItem(TERMINAL_RESULT_KEY);
-                    return;
-                }
-                const terminalSlot = card.querySelector(".st-key-price_source_terminal_slot");
-                if (restored && terminalSlot) {
-                    terminalSlot.replaceChildren(restored);
-                } else if (restored) {
-                    buttonContainer.after(restored);
                 }
             }
 
