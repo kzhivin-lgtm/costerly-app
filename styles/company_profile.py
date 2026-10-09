@@ -1332,10 +1332,11 @@ def apply_company_profile_css() -> None:
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 16px;
-            min-height: 42vh;
+            gap: 14px;
+            min-height: 32px;
+            margin: 30px 0 !important;
             width: 100%;
-            color: #215CBA;
+            color: var(--color-text-strong);
             font-size: 22px;
             font-weight: 650;
         }
@@ -2580,7 +2581,15 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-cancel_price_row_"] button {
             position: relative;
-            top: -2px;
+            top: -10px;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-save_price_source_supplier_"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_source_supplier_"] button {
+            position: relative;
+            top: 32px;
         }
 
         .stApp:has(.company-profile-active)
