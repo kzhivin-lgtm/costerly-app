@@ -2699,8 +2699,31 @@ def test_review_save_is_optimistic_and_keeps_the_original_source_action():
     assert 'help="Open source"' in inspect.getsource(company_profile._render_price_source_action)
     assert "submit_price_source_row_save_job(" in save_action
     assert 'pending[target] = future' in save_action
+    assert '"_price_source_catalog_update_pending"' in save_action
+    assert '"_price_source_catalog_refresh_started"' in completion
     assert '_set_price_source_action_notice("Saved")' not in completion
     assert '"The price could not be saved. It is visible again. Try again"' in completion
+
+
+def test_review_save_hides_stale_catalog_until_authoritative_refresh():
+    from screens import company_profile
+
+    source = inspect.getsource(company_profile._render_price_lists_projections)
+
+    assert '"_price_source_catalog_update_pending"' in source
+    assert '"_price_source_catalog_refresh_started"' in source
+    assert "_render_price_lists_loading()" in source
+    assert source.index("_price_source_catalog_update_pending") < source.index(
+        'with st.container(key="price_catalog_shell")'
+    )
+
+
+def test_review_action_has_no_redundant_column_header():
+    from screens import company_profile
+
+    source = inspect.getsource(company_profile._render_price_source_review_queue)
+
+    assert '"", "Review"' not in source
 
 
 def test_price_source_add_renders_an_explicit_server_completion_marker():
@@ -4126,7 +4149,7 @@ def test_price_source_processing_collects_completed_future_from_status_fragment(
 
     assert "future.done()" in source
     assert "future.result()" in source
-    assert "run_every=1.0" in status_source
+    assert "run_every=0.25" in status_source
     assert "st.rerun(scope=\"app\")" in status_source
 
 
@@ -4481,6 +4504,31 @@ def test_price_source_submission_queues_without_request_thread_network_io(monkey
 
     assert isinstance(future, Future)
     assert executor.kwargs["owner_authorized"] is False
+
+
+def test_review_save_uses_its_own_latency_sensitive_executor(monkeypatch):
+    from use_cases import price_source_runtime
+
+    class Executor:
+        def __init__(self):
+            self.args = None
+
+        def submit(self, *args):
+            self.args = args
+            return Future()
+
+    executor = Executor()
+    monkeypatch.setattr(price_source_runtime, "_PRICE_SOURCE_SAVE_EXECUTOR", executor)
+
+    future = price_source_runtime.submit_price_source_row_save_job(
+        access=SimpleNamespace(company_id="company-1", user_id="owner-1"),
+        source_id="source-1",
+        row_id="row-1",
+        values={"raw_price": "20"},
+    )
+
+    assert isinstance(future, Future)
+    assert executor.args[0] is price_source_runtime.save_price_source_row
 
 
 def test_price_source_batch_processes_each_photo_independently_in_selection_order(monkeypatch):

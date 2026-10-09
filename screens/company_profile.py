@@ -2344,6 +2344,10 @@ def _save_price_source_row_action(
         st.session_state._price_source_action_error = "The price could not be saved. Try again"
     else:
         pending[target] = future
+        # Hide stale projections immediately after Review is confirmed. The
+        # write is still running, so do not refresh until it has completed.
+        st.session_state["_price_source_catalog_update_pending"] = True
+        st.session_state.pop("_price_source_catalog_refresh_started", None)
         st.session_state.pop("_editing_price_source_row", None)
         st.session_state.pop("_price_source_action_location", None)
 
@@ -2364,6 +2368,7 @@ def _process_pending_price_source_row_saves() -> bool:
             continue
         changed = True
         pending.pop(target, None)
+        save_succeeded = False
         try:
             future.result()
         except PriceSourceError as exc:
@@ -2374,10 +2379,15 @@ def _process_pending_price_source_row_saves() -> bool:
                 "The price could not be saved. It is visible again. Try again"
             )
         else:
+            save_succeeded = True
             _clear_price_lists_snapshot()
+            st.session_state["_price_source_catalog_refresh_started"] = True
             # The review row has already disappeared optimistically. A second
             # success toast arrives late and adds no information, so reserve
             # feedback here for write failures only.
+        if not save_succeeded:
+            st.session_state.pop("_price_source_catalog_update_pending", None)
+            st.session_state.pop("_price_source_catalog_refresh_started", None)
     if not pending:
         st.session_state.pop("_price_source_row_save_pending", None)
     return changed
@@ -2841,7 +2851,7 @@ def _render_price_source_review_queue(
             header = st.columns([0.24, 1.55, 0.78, 0.9, 0.82, 0.82, 0.68, 0.38, 0.72])
             for column, label in zip(
                 header,
-                ("", "Material", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Reason", "", "Review"),
+                ("", "Material", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Reason", "", ""),
             ):
                 if label:
                     column.markdown(
@@ -3507,7 +3517,7 @@ def _restore_active_price_source_processing(access: CompanyAccess) -> None:
     st.session_state.pop("_price_source_start_rejected", None)
 
 
-@st.fragment(run_every=1.0, parallel=True)
+@st.fragment(run_every=0.25, parallel=True)
 def _render_price_source_processing_status(access: CompanyAccess, *, trace=None) -> None:
     """Refresh only the terminal state while the worker runs in background."""
     purge_finished = _process_pending_price_source_purges()
@@ -3665,6 +3675,15 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
     review_rows = projection("review")
     material_jobs = projection("material_jobs")
 
+    # A Review save was accepted but its write has not finished. Keep the
+    # obsolete catalog out of view and use the normal catalog loading state.
+    if (
+        st.session_state.get("_price_source_catalog_update_pending")
+        and not st.session_state.get("_price_source_catalog_refresh_started")
+    ):
+        _render_price_lists_loading()
+        return
+
     # Keep the first visible load deliberate and calm. The upload card above
     # remains usable, while all four independent reads finish in background.
     # Rendering individual section loaders caused the page to jump and made
@@ -3675,6 +3694,9 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
     ):
         _render_price_lists_loading()
         return
+
+    st.session_state.pop("_price_source_catalog_update_pending", None)
+    st.session_state.pop("_price_source_catalog_refresh_started", None)
 
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):

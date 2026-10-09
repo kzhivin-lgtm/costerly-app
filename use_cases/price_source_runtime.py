@@ -30,6 +30,10 @@ _PRICE_SOURCE_EXECUTOR = ThreadPoolExecutor(
     max_workers=2,
     thread_name_prefix="price-source-extraction",
 )
+_PRICE_SOURCE_SAVE_EXECUTOR = ThreadPoolExecutor(
+    max_workers=2,
+    thread_name_prefix="price-source-save",
+)
 _PRICE_LISTS_READ_EXECUTOR = ThreadPoolExecutor(
     max_workers=4,
     thread_name_prefix="price-lists-read",
@@ -240,7 +244,9 @@ def submit_price_source_row_save_job(
     *, access, source_id: str, row_id: str, values: dict,
 ) -> Future:
     """Persist a reviewed row after its UI action has completed optimistically."""
-    return _PRICE_SOURCE_EXECUTOR.submit(
+    # A human Review Save is short and latency-sensitive. It must not wait
+    # behind OCR extraction or source deletion in the ingestion executor.
+    return _PRICE_SOURCE_SAVE_EXECUTOR.submit(
         save_price_source_row,
         access,
         source_id,
