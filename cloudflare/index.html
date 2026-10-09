@@ -553,6 +553,33 @@
             if (runId && readyRunIds.has(runId)) return;
             if (runId) readyRunIds.add(runId);
             const screen = event.data.screen || "unknown";
+            const droppedHeaderTarget = pendingTransitions.find((item) => (
+              screen === "upload" &&
+              !item.routeRecoveryAttempted &&
+              ["account", "admin", "projects"].includes(item.targetScreen)
+            ));
+            if (droppedHeaderTarget) {
+              // On a fresh Streamlit process the browser can emit the header
+              // click while the old websocket is being replaced. The outer
+              // transition is recorded, but its callback never reaches the
+              // new Python session, which renders Upload. Recover only this
+              // proven mismatch by requesting the safe durable route once.
+              droppedHeaderTarget.routeRecoveryAttempted = true;
+              mark("browser.transition_route_recovery", {
+                status: "unknown",
+                metadata: {
+                  transition: droppedHeaderTarget.name,
+                  transition_id: droppedHeaderTarget.id,
+                  expected_screen: droppedHeaderTarget.targetScreen,
+                  received_screen: screen,
+                },
+              });
+              const recoveryUrl = new URL(frame.src);
+              routeKeys.forEach((key) => recoveryUrl.searchParams.delete(key));
+              recoveryUrl.searchParams.set("screen", droppedHeaderTarget.targetScreen);
+              frame.src = recoveryUrl.toString();
+              return;
+            }
             syncOuterRoute(event.data.route || {}, screen);
             const serverBuildVersion = String(
               event.data.buildVersion ||

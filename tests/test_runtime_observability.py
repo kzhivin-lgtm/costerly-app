@@ -25,6 +25,17 @@ def test_streamlit_and_cloudflare_build_versions_match():
     assert "COSTERLY_BUILD_VERSION" not in app_source
 
 
+def test_wrapper_recovers_only_a_dropped_safe_header_target_after_deploy():
+    wrapper = (ROOT / "cloudflare/index.html").read_text()
+
+    assert 'screen === "upload"' in wrapper
+    assert '["account", "admin", "projects"].includes(item.targetScreen)' in wrapper
+    assert "!item.routeRecoveryAttempted" in wrapper
+    assert 'mark("browser.transition_route_recovery"' in wrapper
+    assert 'recoveryUrl.searchParams.set("screen", droppedHeaderTarget.targetScreen)' in wrapper
+    assert "frame.src = recoveryUrl.toString();" in wrapper
+
+
 def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monkeypatch):
     captured = []
     monkeypatch.setattr(runtime, "_enqueue", captured.append)

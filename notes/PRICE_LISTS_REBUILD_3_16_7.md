@@ -984,7 +984,7 @@ The workspace requirements are:
      matching rather than relying on name-word order.
 
 5. **3.16.7.13 First header navigation after deployment**
-   - Status: implementation verified locally, production acceptance pending.
+   - Status: implementation revised locally, production acceptance pending.
    - [verified] This affects every shared header destination, not Profile
      alone. A Streamlit header callback runs before `init_state()`. On a new
      Python process, the former unconditional session reset then erased its
@@ -995,6 +995,12 @@ The workspace requirements are:
    - Outcome: preserve only the safe header destinations, Upload, Profile,
      Admin and Projects, across a deployment reset. Transient workflow routes
      and all prior workflow data remain reset.
+   - 2026-10-09 follow-up: production trace proved a second cold-start race.
+     The browser recorded `upload_to_profile`, while the new Python process
+     confirmed `upload` because the header callback never reached it. The
+     wrapper now detects only that proven safe-target mismatch and reloads the
+     iframe once with its durable target route, rather than accepting Upload
+     and waiting for a transition timeout.
    - Acceptance: authenticated production first navigation after deployment,
      for Profile, Admin and Projects, succeeds with one click and no transient
      return to Upload.
