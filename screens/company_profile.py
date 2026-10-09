@@ -2114,6 +2114,16 @@ def _price_source_direct_url(access: CompanyAccess, source: dict) -> str | None:
     return url
 
 
+def _render_price_source_action(container, *, source_url: str, key: str) -> None:
+    """Render the one compact source action used by every material row."""
+    container.link_button(
+        "↗",
+        source_url,
+        key=f"source_action_{key}",
+        help="Open source",
+    )
+
+
 @st.cache_data(ttl=60, show_spinner=False)
 def _load_price_lists_snapshot(
     company_id: str,
@@ -2551,11 +2561,10 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         st.session_state._price_source_action_location = "catalog"
                     source_url = _price_source_direct_url(access, source)
                     if source_url:
-                        source_col.link_button(
-                            "Source",
-                            source_url,
-                            key=f"catalog_source_{row_id}",
-                            use_container_width=True,
+                        _render_price_source_action(
+                            source_col,
+                            source_url=source_url,
+                            key=f"catalog_{row_id}",
                         )
 
                     target = (source_id, row_id)
@@ -2899,11 +2908,10 @@ def _render_price_source_review_queue(
                 )
                 source_url = _price_source_direct_url(access, source)
                 if source_url:
-                    source_col.link_button(
-                        "↗",
-                        source_url,
-                        key=f"review_source_{row_id}",
-                        help="Open source",
+                    _render_price_source_action(
+                        source_col,
+                        source_url=source_url,
+                        key=f"review_{row_id}",
                     )
                 if review_col.button("Review", key=f"review_price_{row_id}"):
                     st.session_state.pop("_selected_price_source_id", None)
@@ -2999,11 +3007,10 @@ def _render_material_jobs(access: CompanyAccess, jobs: list[dict]) -> None:
                     )
                     source_url = _price_source_direct_url(access, job.get("source") or {})
                     if source_url:
-                        source_col.link_button(
-                            "Source",
-                            source_url,
-                            key=f"material_job_source_{job_id}",
-                            use_container_width=True,
+                        _render_price_source_action(
+                            source_col,
+                            source_url=source_url,
+                            key=f"material_job_{job_id}",
                         )
 
 

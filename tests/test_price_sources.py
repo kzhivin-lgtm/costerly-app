@@ -2692,9 +2692,9 @@ def test_review_save_is_optimistic_and_keeps_the_original_source_action():
     save_action = inspect.getsource(company_profile._save_price_source_row_action)
     completion = inspect.getsource(company_profile._process_pending_price_source_row_saves)
 
-    assert 'source_col.link_button(' in source
-    assert '"↗"' in source
-    assert 'help="Open source"' in source
+    assert "_render_price_source_action(" in source
+    assert '"↗"' in inspect.getsource(company_profile._render_price_source_action)
+    assert 'help="Open source"' in inspect.getsource(company_profile._render_price_source_action)
     assert "submit_price_source_row_save_job(" in save_action
     assert 'pending[target] = future' in save_action
     assert '_set_price_source_action_notice("Saved")' not in completion

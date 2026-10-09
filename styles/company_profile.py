@@ -798,6 +798,10 @@ def apply_company_profile_css() -> None:
             transform: none;
         }
 
+        .stApp:has(.company-profile-active) .price-source-upload-heading {
+            margin-bottom: 28px;
+        }
+
         /* The terminal result always owns the same place below Extract.
            Without this slot, inserting the live/progress result changes the
            column height and makes the primary action visibly jump. */
@@ -1808,10 +1812,6 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-catalog_edit_"] [data-testid="stButton"] button,
         .stApp:has(.company-profile-active)
-        [class*="st-key-catalog_source_"] [data-testid="stButton"] button,
-        .stApp:has(.company-profile-active)
-        [class*="st-key-catalog_source_"] [data-testid="stLinkButton"] a,
-        .stApp:has(.company-profile-active)
         [class*="st-key-edit_price_row_"] [data-testid="stButton"] button {
             width: 100% !important;
             height: 32px !important;
@@ -1826,7 +1826,7 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        [class*="st-key-review_source_"] [data-testid="stLinkButton"] a {
+        [class*="st-key-source_action_"] [data-testid="stLinkButton"] a {
             width: 36px !important;
             min-width: 36px !important;
             height: 36px !important;
@@ -1895,10 +1895,6 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-catalog_edit_"] [data-testid="stButton"] button p,
         .stApp:has(.company-profile-active)
-        [class*="st-key-catalog_source_"] [data-testid="stButton"] button p,
-        .stApp:has(.company-profile-active)
-        [class*="st-key-catalog_source_"] [data-testid="stLinkButton"] a p,
-        .stApp:has(.company-profile-active)
         [class*="st-key-edit_price_row_"] [data-testid="stButton"] button p {
             overflow: visible !important;
             font-size: inherit !important;
@@ -1908,7 +1904,7 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        [class*="st-key-review_source_"] [data-testid="stLinkButton"] a p,
+        [class*="st-key-source_action_"] [data-testid="stLinkButton"] a p,
         .stApp:has(.company-profile-active)
         [class*="st-key-review_price_"] [data-testid="stButton"] button p {
             overflow: visible !important;
