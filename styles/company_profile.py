@@ -763,7 +763,12 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active) .st-key-price_source_add_body {
-            padding: 20px 24px 16px;
+            padding: 16px 24px;
+        }
+
+        .stApp:has(.company-profile-active)
+        .st-key-price_source_add_card [data-testid="stElementContainer"]:has(.price-source-selection-marker) {
+            display: none !important;
         }
 
         .stApp:has(.company-profile-active)

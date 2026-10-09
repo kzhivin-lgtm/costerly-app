@@ -55,7 +55,6 @@ from use_cases.price_sources import (
     price_source_vat_rate,
     remove_price_source_row,
     render_price_source_preview,
-    save_price_source_row,
     save_price_source_supplier_settings,
     split_price_source_uploads,
     validate_price_source_upload_selection,
@@ -66,6 +65,7 @@ from use_cases.price_source_runtime import (
     submit_price_source_batch_job,
     submit_price_source_job,
     submit_price_source_purge_job,
+    submit_price_source_row_save_job,
 )
 from use_cases.machinery import (
     CNC_ESTIMATE_LEVEL_DEFAULT,
@@ -2316,18 +2316,59 @@ def _save_price_source_row_action(
         # separator used by the current locale, then let the domain service own
         # the positive-number validation.
         values["raw_price"] = raw_price.strip().replace(" ", "").replace(",", ".")
+    target = (str(source_id), str(row_id))
+    pending = st.session_state.setdefault("_price_source_row_save_pending", {})
+    if target in pending:
+        return
     try:
-        save_price_source_row(access, source_id, row_id, values)
+        future = submit_price_source_row_save_job(
+            access=access,
+            source_id=source_id,
+            row_id=row_id,
+            values=values,
+        )
     except PriceSourceError as exc:
         st.session_state._price_source_action_error = str(exc)
     except Exception:
         logger.exception("Price source row save failed")
         st.session_state._price_source_action_error = "The price could not be saved. Try again"
     else:
-        _clear_price_lists_snapshot()
+        pending[target] = future
         st.session_state.pop("_editing_price_source_row", None)
         st.session_state.pop("_price_source_action_location", None)
-        _set_price_source_action_notice("Saved")
+
+
+def _price_source_saving_row_targets() -> set[tuple[str, str]]:
+    return {
+        (str(source_id), str(row_id))
+        for source_id, row_id in (st.session_state.get("_price_source_row_save_pending") or {})
+    }
+
+
+def _process_pending_price_source_row_saves() -> bool:
+    """Finish optimistic Review saves and restore a row only on failure."""
+    pending = st.session_state.get("_price_source_row_save_pending") or {}
+    changed = False
+    for target, future in list(pending.items()):
+        if not isinstance(future, Future) or not future.done():
+            continue
+        changed = True
+        pending.pop(target, None)
+        try:
+            future.result()
+        except PriceSourceError as exc:
+            st.session_state._price_source_action_error = str(exc)
+        except Exception:
+            logger.exception("Price source row save failed target=%s", target)
+            st.session_state._price_source_action_error = (
+                "The price could not be saved. It is visible again. Try again"
+            )
+        else:
+            _clear_price_lists_snapshot()
+            _set_price_source_action_notice("Saved")
+    if not pending:
+        st.session_state.pop("_price_source_row_save_pending", None)
+    return changed
 
 
 def _open_price_source_supplier_settings(source_id: str) -> None:
@@ -2772,6 +2813,13 @@ def _render_price_source_review_queue(
 ) -> None:
     if not review_rows:
         return
+    saving_rows = _price_source_saving_row_targets()
+    review_rows = [
+        row for row in review_rows
+        if (str(row.get("source_id") or ""), str(row.get("row_id") or "")) not in saving_rows
+    ]
+    if not review_rows:
+        return
     with st.container(key="price_source_review_queue"):
         st.markdown(
             '<div class="price-catalog-title"><span>Needs review</span>'
@@ -2779,16 +2827,16 @@ def _render_price_source_review_queue(
             unsafe_allow_html=True,
         )
         with st.container(key="price_review_header"):
-            header = st.columns([0.24, 1.72, 0.85, 1.0, 0.88, 0.88, 1.05, 0.6])
+            header = st.columns([0.24, 1.55, 0.78, 0.9, 0.82, 0.82, 0.68, 0.55, 0.55])
             for column, label in zip(
                 header,
-                ("", "Material", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Reason", ""),
+                ("", "Material", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Reason", "Source", ""),
             ):
                 if label:
                     column.markdown(
                         f'<span class="price-source-row-label">{label}</span>',
                         unsafe_allow_html=True,
-                    )
+        )
         page_size = 5
         page_count = max(1, (len(review_rows) + page_size - 1) // page_size)
         page = min(max(int(st.session_state.get("price_review_page", 0)), 0), page_count - 1)
@@ -2800,8 +2848,8 @@ def _render_price_source_review_queue(
             row_id = str(row["row_id"])
             target = (source_id, row_id)
             with st.container(key=f"price_review_row_{row_id}"):
-                remove_col, item_col, category_col, supplier_col, net_price_col, gross_price_col, reason_col, review_col = st.columns(
-                    [0.24, 1.72, 0.85, 1.0, 0.88, 0.88, 1.05, 0.6],
+                remove_col, item_col, category_col, supplier_col, net_price_col, gross_price_col, reason_col, source_col, review_col = st.columns(
+                    [0.24, 1.55, 0.78, 0.9, 0.82, 0.82, 0.68, 0.55, 0.55],
                     vertical_alignment="center",
                 )
                 if remove_col.button("×", key=f"review_remove_{row_id}"):
@@ -2847,6 +2895,14 @@ def _render_price_source_review_queue(
                     f'<span class="price-source-needs-review">{escape(_price_source_review_reason(row))}</span>',
                     unsafe_allow_html=True,
                 )
+                source_url = _price_source_direct_url(access, source)
+                if source_url:
+                    source_col.link_button(
+                        "Source",
+                        source_url,
+                        key=f"review_source_{row_id}",
+                        use_container_width=True,
+                    )
                 if review_col.button("Review", key=f"review_price_{row_id}"):
                     st.session_state.pop("_selected_price_source_id", None)
                     st.session_state._editing_price_source_row = target
@@ -3351,22 +3407,22 @@ def _render_price_source_add(
                     on_click=_queue_price_source_processing,
                     args=(access, uploader_key, trace),
                 )
-            if cycle_result:
-                _render_price_source_cycle_result(
-                    _price_source_notice_text(cycle_result),
-                    processing_cycle=int(
-                        cycle_result.get("processing_cycle") or processing_cycle
-                    ),
-                    selection_cycle=int(
-                        cycle_result.get("selection_cycle") or selection_cycle
-                    ),
-                )
-            elif cycle_error:
-                _render_price_source_cycle_error(
-                    cycle_error,
-                    processing_cycle=processing_cycle,
-                    selection_cycle=selection_cycle,
-                )
+                if cycle_result:
+                    _render_price_source_cycle_result(
+                        _price_source_notice_text(cycle_result),
+                        processing_cycle=int(
+                            cycle_result.get("processing_cycle") or processing_cycle
+                        ),
+                        selection_cycle=int(
+                            cycle_result.get("selection_cycle") or selection_cycle
+                        ),
+                    )
+                elif cycle_error:
+                    _render_price_source_cycle_error(
+                        cycle_error,
+                        processing_cycle=processing_cycle,
+                        selection_cycle=selection_cycle,
+                    )
 
 def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     if not st.session_state.get("_price_source_processing"):
@@ -3446,6 +3502,7 @@ def _restore_active_price_source_processing(access: CompanyAccess) -> None:
 def _render_price_source_processing_status(access: CompanyAccess, *, trace=None) -> None:
     """Refresh only the terminal state while the worker runs in background."""
     purge_finished = _process_pending_price_source_purges()
+    save_finished = _process_pending_price_source_row_saves()
     # A completed purge has already updated the live snapshot in place. A full
     # app rerun would collapse Source Library and restart every projection.
     if (
@@ -3455,6 +3512,10 @@ def _render_price_source_processing_status(access: CompanyAccess, *, trace=None)
         st.session_state.pop("_price_source_purge_reconcile_requested", None)
         st.rerun(scope="app")
     if purge_finished:
+        if not _price_source_has_unsubmitted_selection():
+            st.rerun(scope="app")
+        return
+    if save_finished:
         if not _price_source_has_unsubmitted_selection():
             st.rerun(scope="app")
         return
@@ -3527,6 +3588,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
 
     _restore_active_price_source_processing(access)
     _process_pending_price_source(access, trace=trace)
+    _process_pending_price_source_row_saves()
 
     # Keep the dashboard in the upload card, so it cannot leave a detached
     # blank region after the processing marker is removed.

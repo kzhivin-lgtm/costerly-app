@@ -1927,13 +1927,20 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
         "list_unresolved_price_source_rows",
         lambda _access: [review_row],
     )
-    monkeypatch.setattr(
-        company_profile,
-        "save_price_source_row",
-        lambda access, source_id, row_id, values: saved.append(
-            (access.company_id, source_id, row_id, values)
-        ),
-    )
+    def submit_review_save(**kwargs):
+        saved.append(
+            (
+                kwargs["access"].company_id,
+                kwargs["source_id"],
+                kwargs["row_id"],
+                kwargs["values"],
+            )
+        )
+        future = Future()
+        future.set_result({"row_id": kwargs["row_id"]})
+        return future
+
+    monkeypatch.setattr(company_profile, "submit_price_source_row_save_job", submit_review_save)
 
     app = _wait_for_price_lists_projections(
         AppTest.from_function(_render_price_lists_test).run()

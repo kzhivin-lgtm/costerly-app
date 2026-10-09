@@ -2683,6 +2683,20 @@ def test_price_source_save_guard_shows_saving_state_immediately():
     assert 'label.textContent = "Saving"' in source
 
 
+def test_review_save_is_optimistic_and_keeps_the_original_source_action():
+    from screens import company_profile
+
+    source = inspect.getsource(company_profile._render_price_source_review_queue)
+    save_action = inspect.getsource(company_profile._save_price_source_row_action)
+    completion = inspect.getsource(company_profile._process_pending_price_source_row_saves)
+
+    assert 'source_col.link_button(' in source
+    assert '"Source"' in source
+    assert "submit_price_source_row_save_job(" in save_action
+    assert 'pending[target] = future' in save_action
+    assert '"The price could not be saved. It is visible again. Try again"' in completion
+
+
 def test_price_source_add_renders_an_explicit_server_completion_marker():
     from screens.company_profile import _render_price_source_add
 

@@ -58,6 +58,10 @@ screen.
 - Async work must be idempotent from the user's perspective. A double click,
   refresh, or retry must not create duplicate companies, RFQs, estimates, or
   writes.
+- When a mutation has a safe local outcome, show that outcome immediately and
+  persist it in the background. Keep enough local state to restore the prior
+  item with a clear error if persistence fails. Do not make the user wait for a
+  database round trip merely to see an already determined interface change.
 
 ## Form interaction states
 

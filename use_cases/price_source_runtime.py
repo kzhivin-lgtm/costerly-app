@@ -19,6 +19,7 @@ from use_cases.price_sources import (
     list_unresolved_price_source_rows,
     process_price_source,
     purge_price_source,
+    save_price_source_row,
 )
 
 
@@ -232,6 +233,19 @@ def submit_price_source_purge_job(*, access, source_id: str, trace=None) -> Futu
         source_id=source_id,
         trace=trace,
         job_id=job_id,
+    )
+
+
+def submit_price_source_row_save_job(
+    *, access, source_id: str, row_id: str, values: dict,
+) -> Future:
+    """Persist a reviewed row after its UI action has completed optimistically."""
+    return _PRICE_SOURCE_EXECUTOR.submit(
+        save_price_source_row,
+        access,
+        source_id,
+        row_id,
+        values,
     )
 
 

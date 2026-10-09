@@ -254,10 +254,13 @@ VAT evidence cannot by itself leave a valid row in Review.
    production visual acceptance pending. New Price Sources are uploaded files
    only; the supplier-page URL entry is retired. `Add price source` belongs to
    the right upload-control column, while terminal success and error notices
-   render below the two-column control grid so they do not stretch or displace
-   the uploader. Existing stored URL sources retain their original-view action.
+   render directly below the right-column button within the uploader's fixed
+   geometry. Existing stored URL sources retain their original-view action.
    A site screenshot follows the normal image OCR path: it can extract only
    visible table and identity evidence, never hidden page data or links.
+   Review rows expose that original through `Source`. A Review Save hides the
+   row immediately, persists in the background, and restores it with an error
+   only if the write fails.
 
 2. **3.16.7.7 Source Library invoice label**: document number under supplier,
    filename only when number is absent.
