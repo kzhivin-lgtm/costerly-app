@@ -2547,18 +2547,50 @@ def apply_company_profile_css() -> None:
             transform: translateY(0) scale(0.995);
         }
 
-        .stApp:has(.company-profile-active)
-        [class*="st-key-save_price_row_"] button,
-        .stApp:has(.company-profile-active)
-        [class*="st-key-cancel_price_row_"] button {
-            height: 45px !important;
-            min-height: 45px !important;
-            max-height: 45px !important;
-            margin-top: 0 !important;
+        .stApp:has(.company-profile-active) .price-source-form-control-spacer {
+            display: block;
+            height: 20px;
+            visibility: hidden;
         }
 
         .stApp:has(.company-profile-active)
-        [class*="st-key-cancel_price_row_"] button {
+        [class*="st-key-price_source_row_form_"] [data-testid="stFormSubmitButton"],
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_supplier_form_"] [data-testid="stFormSubmitButton"] {
+            padding-top: 0 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-save_price_row_"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-save_price_source_supplier_"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_source_supplier_"] button {
+            height: 52px !important;
+            min-height: 52px !important;
+            max-height: 52px !important;
+            margin-top: 0 !important;
+            padding: 0 12px !important;
+            font-size: 15px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-save_price_row_"] button p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] button p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-save_price_source_supplier_"] button p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_source_supplier_"] button p {
+            font-size: 15px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_row_"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_source_supplier_"] button {
             border-color: var(--button-secondary-border) !important;
             background: var(--button-secondary-bg-hover) !important;
             box-shadow: none !important;
@@ -2566,12 +2598,16 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        [class*="st-key-cancel_price_row_"] button p {
+        [class*="st-key-cancel_price_row_"] button p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_source_supplier_"] button p {
             color: var(--button-secondary-text) !important;
         }
 
         .stApp:has(.company-profile-active)
-        [class*="st-key-cancel_price_row_"] button:hover {
+        [class*="st-key-cancel_price_row_"] button:hover,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_source_supplier_"] button:hover {
             border-color: var(--button-secondary-border) !important;
             background: var(--button-secondary-bg-hover) !important;
             box-shadow: none !important;
@@ -2580,8 +2616,30 @@ def apply_company_profile_css() -> None:
         }
 
         .stApp:has(.company-profile-active)
-        [class*="st-key-cancel_price_row_"] button:hover p {
+        [class*="st-key-cancel_price_row_"] button:hover p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-cancel_price_source_supplier_"] button:hover p {
             color: var(--color-text-strong) !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_row_form_"] [data-testid="stNumberInput"] button {
+            display: none !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_row_form_"] input[type="number"] {
+            appearance: textfield;
+            -moz-appearance: textfield;
+            padding-right: 16px !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_row_form_"] input[type="number"]::-webkit-inner-spin-button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_row_form_"] input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
 
         .stApp:has(.company-profile-active)

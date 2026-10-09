@@ -2532,8 +2532,11 @@ def test_price_catalog_geometry_patch_stays_scoped_to_agreed_controls():
     assert 'key=f"save_price_row_{source_id}_{row_id}"' in screen_source
     assert 'key=f"cancel_price_row_{source_id}_{row_id}"' in screen_source
     assert 'st.container(key="price_review_pagination")' in screen_source
-    assert "height: 45px !important;" in style_source
+    assert "height: 52px !important;" in style_source
     assert "background: var(--button-secondary-bg-hover) !important;" in style_source
+    assert "price-source-form-control-spacer" in style_source
+    assert 'input[type="number"]::-webkit-inner-spin-button' in style_source
+    assert 'category != "Other"' in screen_source
     assert "border-radius: 18px 18px 0 0;" in style_source
     assert ".st-key-price_review_pagination" in style_source
     assert "padding: 0 0 var(--space-3) var(--space-4);" in style_source

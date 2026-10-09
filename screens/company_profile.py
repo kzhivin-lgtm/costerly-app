@@ -2538,7 +2538,11 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
     source_id = str(source["source_id"])
     row_id = str(row["row_id"])
     material_type = _price_source_row_material_type(row, source)
-    categories = list(PRICE_SOURCE_CATEGORIES)
+    # "Other" is an ingestion fallback, not a category a person can select in
+    # the catalog. Active catalog rows must be assigned to one of the real lanes.
+    categories = [
+        category for category in PRICE_SOURCE_CATEGORIES if category != "Other"
+    ]
     units = [item for item in sorted(CANONICAL_UNIT_CODES) if item not in {"other", "unknown"}]
     purchase_unit = str(row.get("purchase_unit") or row.get("raw_unit") or "")
     calculation_unit = str(
@@ -2593,7 +2597,7 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
                 key=field_keys["material_type"],
             )
         price_col, calculation_unit_col, save_col, cancel_col = st.columns(
-            [1.1, 1, 0.35, 0.43], gap="small"
+            [1, 1, 0.52, 0.62], gap="small"
         )
         with price_col:
             raw_price = st.number_input(
@@ -2610,15 +2614,29 @@ def _render_price_source_row_editor(access: CompanyAccess, source: dict, row: di
                 index=units.index(calculation_unit),
                 key=field_keys["calculation_unit"],
             )
-        save_col.form_submit_button(
-            "Save", type="primary", key=f"save_price_row_{source_id}_{row_id}",
-            on_click=_save_price_source_row_action,
-            args=(access, source_id, row_id, field_keys, fixed_values),
-        )
-        cancel_col.form_submit_button(
-            "Cancel", key=f"cancel_price_row_{source_id}_{row_id}",
-            on_click=_cancel_price_source_row_edit,
-        )
+        with save_col:
+            st.markdown(
+                '<span class="price-source-form-control-spacer" '
+                'aria-hidden="true">&nbsp;</span>',
+                unsafe_allow_html=True,
+            )
+            st.form_submit_button(
+                "Save", type="primary", key=f"save_price_row_{source_id}_{row_id}",
+                on_click=_save_price_source_row_action,
+                args=(access, source_id, row_id, field_keys, fixed_values),
+                use_container_width=True,
+            )
+        with cancel_col:
+            st.markdown(
+                '<span class="price-source-form-control-spacer" '
+                'aria-hidden="true">&nbsp;</span>',
+                unsafe_allow_html=True,
+            )
+            st.form_submit_button(
+                "Cancel", key=f"cancel_price_row_{source_id}_{row_id}",
+                on_click=_cancel_price_source_row_edit,
+                use_container_width=True,
+            )
     install_price_source_save_guard()
 
 
@@ -2662,7 +2680,7 @@ def _render_price_source_supplier_settings(access: CompanyAccess, source: dict) 
         vat_mode = "excluded"
     with st.form(f"price_source_supplier_form_{source_id}", border=False):
         name_col, hp_col, vat_col, save_col, cancel_col = st.columns(
-            [1.45, 0.85, 0.72, 0.38, 0.48], gap="small"
+            [1.55, 0.60, 0.50, 0.60, 0.70], gap="small"
         )
         with name_col:
             st.text_input(
@@ -2681,18 +2699,32 @@ def _render_price_source_supplier_settings(access: CompanyAccess, source: dict) 
                 "VAT",
                 ("excluded", "included"),
                 index=("excluded", "included").index(vat_mode),
-                format_func=lambda value: "Not included" if value == "excluded" else "Included",
+                format_func=lambda value: "Ex VAT" if value == "excluded" else "Incl. VAT",
                 key=field_keys["vat_mode"],
             )
-        save_col.form_submit_button(
-            "Save", type="primary", key=f"save_price_source_supplier_{source_id}",
-            on_click=_save_price_source_supplier_settings_action,
-            args=(access, source_id, field_keys),
-        )
-        cancel_col.form_submit_button(
-            "Cancel", key=f"cancel_price_source_supplier_{source_id}",
-            on_click=_cancel_price_source_supplier_settings,
-        )
+        with save_col:
+            st.markdown(
+                '<span class="price-source-form-control-spacer" '
+                'aria-hidden="true">&nbsp;</span>',
+                unsafe_allow_html=True,
+            )
+            st.form_submit_button(
+                "Save", type="primary", key=f"save_price_source_supplier_{source_id}",
+                on_click=_save_price_source_supplier_settings_action,
+                args=(access, source_id, field_keys),
+                use_container_width=True,
+            )
+        with cancel_col:
+            st.markdown(
+                '<span class="price-source-form-control-spacer" '
+                'aria-hidden="true">&nbsp;</span>',
+                unsafe_allow_html=True,
+            )
+            st.form_submit_button(
+                "Cancel", key=f"cancel_price_source_supplier_{source_id}",
+                on_click=_cancel_price_source_supplier_settings,
+                use_container_width=True,
+            )
 
 
 def _render_price_source_review_queue(
