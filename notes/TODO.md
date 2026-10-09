@@ -85,7 +85,8 @@ or assigning the Partner must move the project to the matching real Partner
 without changing its immutable estimate versions, proposal files, totals, or
 approval history. Trigger: resume Projects and Final Approval completion work.
 
-ACTIVE, P0, USER REQUEST, 3.16.7 Price Lists rebuild: replace the legacy
+COMPLETED, OWNER-ACCEPTED, P0, USER REQUEST, 3.16.7 Price Lists rebuild:
+replace the legacy
 material-only Price Source flow with a source-first tool that keeps materials,
 Material Jobs, excluded consumables, supplier identity, VAT,
 review, and durable extraction state distinct. Stage 1 is the additive data
@@ -96,8 +97,13 @@ or material offer is reclassified automatically. Detailed contract:
 `notes/PRICE_LISTS_REBUILD_3_16_7.md`. The 2026-10-07 closure contract makes
 supplier resolution, material and offer merging, VAT evidence, source lifecycle,
 final-cycle UI, permanent deletion, and minimal Needs Review the P0 completion
-scope. A later Estimation resolver consumes accepted offers only and is not a
-reason to reopen frozen supplier ingestion behavior.
+scope. Owner accepted the ordinary-source extraction path on 2026-10-09.
+Supported JPEG, PNG, PDF and mixed batches retain independent source handling
+and merge only on the canonical supplier plus invoice identity. Price and Unit
+are the only Review reasons. The scanned multi-invoice-PDF router remains
+explicitly deferred in `notes/PRICE_LISTS_CHECKPOINT_3_16_7_2026_10_08.md`.
+A later Estimation resolver consumes accepted offers only and is not a reason
+to reopen frozen supplier ingestion behavior.
 
 ACTIVE, P0, USER REQUEST, 3.17.1 Unified material taxonomy, identity, brands,
 and Material Jobs: establish one bilingual, structured normalisation contract

@@ -2,15 +2,14 @@
 
 ## Authority and state
 
-This is the full checkpoint for the active Price Lists rebuild. The detailed
-contract and active Price Lists backlog remain
+This is the full checkpoint for the owner-accepted Price Lists rebuild. The
+detailed contract and historical Price Lists backlog remain
 `notes/PRICE_LISTS_REBUILD_3_16_7.md`; this document is its verified handoff
 index. The old 3.12.1 record in `notes/TODO.md` is historical only.
 
 - Work number: `3.16.7`
 - Branch: `main`
-- Latest Price Source commits: `c6d289b`, `97c3c73`, `69da191`, `2528ad6`,
-  `6d77806`, `41bedd1`, `62920ad`, `5905a4e`
+- Closing Price Source commits: `5025c4a`, `e811bb9`, `b342886`, `e54635b`
 - Recovery archives exist under `backups/` for each recent price change. They
   are rollback inputs, not production acceptance.
 
@@ -51,6 +50,32 @@ index. The old 3.12.1 record in `notes/TODO.md` is historical only.
     structured identity: entity, primary attribute, up to four discriminating
     attributes, optional brand. AISI and steel grades are technical attributes;
     SKU stays supplier-scoped.
+
+### Owner-accepted extraction checkpoint, 2026-10-09
+
+Status: closed for ordinary Price Source ingestion. This is the owner
+acceptance boundary, not a claim that the future taxonomy work is finished.
+
+- Supported uploads are JPEG, PNG, HEIC, TIFF, PDF, XLSX and CSV, including a
+  mixed selection of up to six files. Each selected file is independently
+  extracted. Sources merge only when canonical supplier and invoice identifier
+  match, never because files were submitted together.
+- The accepted source lifecycle covers seller identity, arbitrary labelled
+  invoice identifiers, VAT default and retrospective confirmation, material
+  versus Material Job separation, source deletion, and durable final-cycle
+  results.
+- Price Review is intentionally narrow. Its only reasons are `Price` and
+  `Unit`; the input label for the required field is red. `Estimation unit`
+  remains the unit label.
+- Rapid confirmed deletes reconcile the visible catalog, Review and source
+  projections after the database operations complete. Excluded lines remain
+  counted in the terminal cycle result rather than disappearing before user
+  accounting.
+- The Price List header route has been observed to open directly after deploy.
+  Its one-time recovery remains a protected behavior, not an invitation to
+  modify Upload or authentication.
+- Not accepted or included: router handling for a scanned PDF containing
+  multiple unrelated invoices. That bounded experiment is deferred below.
 
 ### Implementation checkpoint, 2026-10-08, supplier and invoice identity
 
@@ -170,8 +195,7 @@ VAT evidence cannot by itself leave a valid row in Review.
      invoice-number, VAT, source-deletion or cycle-result paths.
 
 8. **3.16.7.12 Stable Price Lists loading and deletion feedback**
-   - Status: active. Extraction-accounting portion is implemented under
-     3.17.1.2; stable loading and deletion interaction remain pending.
+   - Status: owner accepted as part of the 2026-10-09 closure.
    - Outcome: source deletion must neither collapse Source Library nor move the
      viewport. Consecutive confirmed deletes must remain actionable while the
      database worker finishes. Use one minimal in-place `Updating…` state when
@@ -196,8 +220,8 @@ VAT evidence cannot by itself leave a valid row in Review.
      from the total merely because no source-row record or offer is persisted.
 
 9. **3.17.1.2 Hardware taxonomy and complete extraction accounting**
-   - Status: implementation verified locally, authenticated production
-     acceptance pending.
+   - Status: Price Source portions accepted under 3.16.7. The broader taxonomy
+     moves forward only within 3.17.1.
    - Outcome: preserve every extracted table row in cycle accounting, including
      rows excluded before persistence. Classify `push-to-open` and butterfly
      catches as Hardware door closures, not hinges. Classify plinth clips as
@@ -272,7 +296,7 @@ price arithmetic or UI. Do not modify upload/auth while improving first paint.
 Do not merge via quantity or use SKU as cross-supplier display identity. Do not
 retroactively reclassify history without an approved repair plan.
 
-Resume at **3.16.7.1, Material Job production acceptance**, unless the owner
-explicitly selects another P0 item. Inspect the authoritative Price Lists
-backlog first, preserve the protected contract above, and perform the smallest
-representative acceptance scenario.
+Do not resume routine Price Source extraction tuning without new reproducible
+evidence. The next approved product block is **3.17.1, Unified material
+taxonomy, identity, brands and Material Jobs**. It must preserve this closed
+3.16.7 contract.
