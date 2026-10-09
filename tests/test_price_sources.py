@@ -2674,17 +2674,15 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert 'card.classList.contains("costerly-price-source-processing")' in source
 
 
-def test_price_source_save_guard_shows_saving_state_immediately():
-    from ui.js_guards import install_price_source_save_guard
+def test_review_editor_opens_from_a_server_callback_without_save_dom_guard():
+    from screens import company_profile
 
-    source = inspect.getsource(install_price_source_save_guard)
+    source = inspect.getsource(company_profile._render_price_source_review_queue)
 
-    assert "costerly-price-source-saving" in source
-    assert 'label.textContent = "Saving"' in source
-    assert "costerly-price-review-saving" in source
-    assert "st-key-price_review_row_" in source
-    assert "costerly-price-review-queue-empty" in source
-    assert "hasAnotherVisibleRow" in source
+    assert "on_click=_open_price_source_row_review" in source
+    assert "install_price_source_save_guard" not in Path(
+        "screens/company_profile.py"
+    ).read_text()
 
 
 def test_review_save_is_optimistic_and_keeps_the_original_source_action():

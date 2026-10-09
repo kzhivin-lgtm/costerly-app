@@ -1343,28 +1343,6 @@ def apply_company_profile_css() -> None:
             color: var(--color-text);
         }
 
-        .stApp:has(.company-profile-active)
-        [class*="st-key-save_price_row_"] button.costerly-price-source-saving {
-            opacity: 1 !important;
-            background: var(--color-accent) !important;
-            color: #FFFFFF !important;
-            pointer-events: none;
-        }
-
-        .stApp:has(.company-profile-active)
-        [class*="st-key-save_price_row_"] button.costerly-price-source-saving p::before {
-            content: "";
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            margin-right: 8px;
-            vertical-align: -2px;
-            border: 2px solid rgba(255, 255, 255, 0.42);
-            border-top-color: #FFFFFF;
-            border-radius: 50%;
-            animation: price-source-button-spin 700ms linear infinite;
-        }
-
         .price-lists-toast.costerly-toast-hidden {
             pointer-events: none;
             opacity: 0;
@@ -1905,14 +1883,6 @@ def apply_company_profile_css() -> None:
             background: #FFFFFF;
             box-shadow: 0 0 0 1px var(--color-border-soft),
                         0 12px 34px rgba(42, 31, 44, 0.06);
-        }
-
-        .stApp:has(.company-profile-active) .costerly-price-review-saving {
-            display: none !important;
-        }
-
-        .stApp:has(.company-profile-active) .costerly-price-review-queue-empty {
-            display: none !important;
         }
 
         .stApp:has(.company-profile-active)

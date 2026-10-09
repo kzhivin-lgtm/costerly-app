@@ -4193,67 +4193,6 @@ def install_price_source_remove_guard() -> None:
     )
 
 
-def install_price_source_save_guard() -> None:
-    """Give a Review save immediate, unambiguous client-side feedback."""
-    components.html(
-        """
-        <script>
-        (() => {
-            const parentWindow = window.parent;
-            const parentDoc = parentWindow.document;
-            const CLEANUP_KEY = "__costerlyPriceSourceSaveGuardCleanup";
-            if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
-
-            function handleClick(event) {
-                const button = event.target.closest('[class*="st-key-save_price_row_"] button');
-                if (!button || button.classList.contains("costerly-price-source-saving")) return;
-                button.classList.add("costerly-price-source-saving");
-                button.setAttribute("aria-busy", "true");
-                const label = button.querySelector("p");
-                if (label) label.textContent = "Saving";
-                // The server callback still owns validation and persistence,
-                // but the reviewed row has an unambiguous local outcome.
-                // Hide it in this browser event turn instead of making the
-                // user wait for Streamlit's rerun. A failed write rerenders
-                // the row together with its error message.
-                button.closest('[class*="st-key-price_review_row_"]')
-                    ?.classList.add("costerly-price-review-saving");
-                const reviewRow = button.closest('[class*="st-key-price_review_row_"]');
-                const reviewQueue = reviewRow?.closest(".st-key-price_source_review_queue");
-                const hasAnotherVisibleRow = Array.from(
-                    reviewQueue?.querySelectorAll('[class*="st-key-price_review_row_"]') || []
-                ).some((row) => (
-                    row !== reviewRow
-                    && !row.classList.contains("costerly-price-review-saving")
-                ));
-                // A lone saved row must not leave an empty Needs Review
-                // heading and table chrome behind while the new Catalog
-                // projection is being fetched.
-                if (reviewQueue && !hasAnotherVisibleRow) {
-                    reviewQueue.classList.add("costerly-price-review-queue-empty");
-                }
-                // Server validation failures rebuild the Review row. If a
-                // worker becomes unavailable, restore the controls rather
-                // than leaving the user with a permanently hidden queue.
-                parentWindow.setTimeout(() => {
-                    reviewQueue?.classList.remove("costerly-price-review-queue-empty");
-                    reviewRow?.classList.remove("costerly-price-review-saving");
-                }, 5000);
-            }
-
-            parentDoc.addEventListener("click", handleClick, true);
-            parentWindow[CLEANUP_KEY] = () => {
-                parentDoc.removeEventListener("click", handleClick, true);
-                delete parentWindow[CLEANUP_KEY];
-            };
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-
-
 def install_price_source_notice_guard() -> None:
     """Dismiss and expire viewport-level Price Lists confirmations client-side."""
     components.html(

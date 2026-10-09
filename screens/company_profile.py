@@ -28,7 +28,6 @@ from ui.js_guards import (
     install_price_source_notice_guard,
     install_price_source_processing_guard,
     install_price_source_remove_guard,
-    install_price_source_save_guard,
     install_upload_dragover_guard,
 )
 from use_cases.email_addresses import is_valid_email_address
@@ -2205,6 +2204,13 @@ def _cancel_price_source_row_edit() -> None:
     st.session_state.pop("_price_source_action_location", None)
 
 
+def _open_price_source_row_review(target: tuple[str, str]) -> None:
+    """Open a review editor before the fragment reruns its projections."""
+    st.session_state.pop("_selected_price_source_id", None)
+    st.session_state["_editing_price_source_row"] = target
+    st.session_state["_price_source_action_location"] = "review"
+
+
 def _cancel_price_source_row_removal() -> None:
     st.session_state.pop("_removing_price_source_row", None)
     st.session_state.pop("_price_source_action_location", None)
@@ -2748,9 +2754,6 @@ def _render_price_source_row_editor(
                 on_click=_cancel_price_source_row_edit,
                 use_container_width=True,
             )
-    install_price_source_save_guard()
-
-
 def _render_price_source_row_remove_confirmation(
     access: CompanyAccess,
     target: tuple[str, str],
@@ -2923,10 +2926,12 @@ def _render_price_source_review_queue(
                         source_url=source_url,
                         key=f"review_{row_id}",
                     )
-                if review_col.button("Review", key=f"review_price_{row_id}"):
-                    st.session_state.pop("_selected_price_source_id", None)
-                    st.session_state._editing_price_source_row = target
-                    st.session_state._price_source_action_location = "review"
+                review_col.button(
+                    "Review",
+                    key=f"review_price_{row_id}",
+                    on_click=_open_price_source_row_review,
+                    args=(target,),
+                )
 
                 if (
                     st.session_state.get("_removing_price_source_row") == target
