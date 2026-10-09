@@ -2638,7 +2638,7 @@ def _render_price_source_row_editor(
             [1, 1, 0.52, 0.62], gap="small"
         )
         with price_col:
-            price_label = f"Source price ({'incl' if fixed_values['vat_mode'] == 'included' else 'ex'} VAT)"
+            price_label = "Price ex VAT"
             if review_field == "price":
                 st.markdown(
                     '<span class="price-source-review-required-label">'
