@@ -2540,7 +2540,8 @@ def test_price_catalog_geometry_patch_stays_scoped_to_agreed_controls():
     assert 'category != "Other"' in screen_source
     assert "margin: 30px 0 !important;" in style_source
     assert "top: -10px;" in style_source
-    assert "top: 32px;" in style_source
+    assert "top: 13px;" in style_source
+    assert 'st-key-edit_price_source_supplier_' in style_source
     assert "border-radius: 18px 18px 0 0;" in style_source
     assert ".st-key-price_review_pagination" in style_source
     assert "padding: 0 0 var(--space-3) var(--space-4);" in style_source

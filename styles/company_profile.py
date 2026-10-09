@@ -2183,11 +2183,20 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-view_price_source_"] a,
         .stApp:has(.company-profile-active)
+        [class*="st-key-edit_price_source_supplier_"] button,
+        .stApp:has(.company-profile-active)
         [class*="st-key-delete_price_source_"] button {
             min-width: 72px !important;
             height: 40px !important;
             padding: 0 12px !important;
             white-space: nowrap !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-edit_price_source_supplier_"] button,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-edit_price_source_supplier_"] button p {
+            text-transform: none !important;
         }
 
         .stApp:has(.company-profile-active)
@@ -2589,7 +2598,7 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-cancel_price_source_supplier_"] button {
             position: relative;
-            top: 32px;
+            top: 13px;
         }
 
         .stApp:has(.company-profile-active)
