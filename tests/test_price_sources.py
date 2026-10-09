@@ -2681,6 +2681,8 @@ def test_price_source_save_guard_shows_saving_state_immediately():
 
     assert "costerly-price-source-saving" in source
     assert 'label.textContent = "Saving"' in source
+    assert "costerly-price-review-saving" in source
+    assert "st-key-price_review_row_" in source
 
 
 def test_review_save_is_optimistic_and_keeps_the_original_source_action():
@@ -2691,9 +2693,11 @@ def test_review_save_is_optimistic_and_keeps_the_original_source_action():
     completion = inspect.getsource(company_profile._process_pending_price_source_row_saves)
 
     assert 'source_col.link_button(' in source
-    assert '"Source"' in source
+    assert '"↗"' in source
+    assert 'help="Open source"' in source
     assert "submit_price_source_row_save_job(" in save_action
     assert 'pending[target] = future' in save_action
+    assert '_set_price_source_action_notice("Saved")' not in completion
     assert '"The price could not be saved. It is visible again. Try again"' in completion
 
 

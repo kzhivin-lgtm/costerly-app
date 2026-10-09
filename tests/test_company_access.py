@@ -1634,6 +1634,7 @@ def test_price_source_terminal_slot_keeps_extract_position_stable():
     assert 'card.querySelector(".st-key-price_source_terminal_slot")' in guard_source
     assert "terminalSlot.before(progress)" in guard_source
     assert "terminalSlot.replaceChildren(restored)" in guard_source
+    assert ".price-source-processing-complete-marker" in style_source
 
 
 def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():
@@ -1977,7 +1978,8 @@ def test_price_review_save_callback_uses_current_form_values(monkeypatch):
     assert values["material_type"] == "Wood Sheets"
     assert values["raw_price"] == "125"
     assert values["vat_mode"] == "excluded"
-    assert "Saved" in Path("screens/company_profile.py").read_text()
+    completion = inspect.getsource(company_profile._process_pending_price_source_row_saves)
+    assert '_set_price_source_action_notice("Saved")' not in completion
 
 
 def test_price_lists_starts_with_compact_upload_and_keeps_library_closed(monkeypatch):

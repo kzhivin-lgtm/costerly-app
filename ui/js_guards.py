@@ -4244,6 +4244,13 @@ def install_price_source_save_guard() -> None:
                 button.setAttribute("aria-busy", "true");
                 const label = button.querySelector("p");
                 if (label) label.textContent = "Saving";
+                // The server callback still owns validation and persistence,
+                // but the reviewed row has an unambiguous local outcome.
+                // Hide it in this browser event turn instead of making the
+                // user wait for Streamlit's rerun. A failed write rerenders
+                // the row together with its error message.
+                button.closest('[class*="st-key-price_review_row_"]')
+                    ?.classList.add("costerly-price-review-saving");
             }
 
             parentDoc.addEventListener("click", handleClick, true);

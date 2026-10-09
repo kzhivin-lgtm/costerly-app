@@ -1203,6 +1203,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active)
         [data-testid="stElementContainer"]:has(.price-source-processing-marker),
+        [data-testid="stElementContainer"]:has(.price-source-processing-complete-marker),
         [data-testid="stElementContainer"]:has(.price-source-start-rejected-marker) {
             display: none !important;
         }
@@ -1811,8 +1812,6 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-catalog_source_"] [data-testid="stLinkButton"] a,
         .stApp:has(.company-profile-active)
-        [class*="st-key-review_price_"] [data-testid="stButton"] button,
-        .stApp:has(.company-profile-active)
         [class*="st-key-edit_price_row_"] [data-testid="stButton"] button {
             width: 100% !important;
             height: 32px !important;
@@ -1821,6 +1820,33 @@ def apply_company_profile_css() -> None:
             border-radius: 8px !important;
             font-size: 11px !important;
             font-weight: 500 !important;
+            letter-spacing: 0.01em !important;
+            text-transform: none !important;
+            white-space: nowrap !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-review_source_"] [data-testid="stLinkButton"] a {
+            width: 36px !important;
+            min-width: 36px !important;
+            height: 36px !important;
+            min-height: 36px !important;
+            padding: 0 !important;
+            border-radius: 9px !important;
+            font-size: 19px !important;
+            font-weight: 600 !important;
+            line-height: 1 !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-review_price_"] [data-testid="stButton"] button {
+            width: 100% !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            padding: 0 14px !important;
+            border-radius: 9px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
             letter-spacing: 0.01em !important;
             text-transform: none !important;
             white-space: nowrap !important;
@@ -1873,9 +1899,18 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-catalog_source_"] [data-testid="stLinkButton"] a p,
         .stApp:has(.company-profile-active)
-        [class*="st-key-review_price_"] [data-testid="stButton"] button p,
-        .stApp:has(.company-profile-active)
         [class*="st-key-edit_price_row_"] [data-testid="stButton"] button p {
+            overflow: visible !important;
+            font-size: inherit !important;
+            font-weight: inherit !important;
+            text-overflow: clip !important;
+            white-space: nowrap !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-review_source_"] [data-testid="stLinkButton"] a p,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-review_price_"] [data-testid="stButton"] button p {
             overflow: visible !important;
             font-size: inherit !important;
             font-weight: inherit !important;
@@ -1890,6 +1925,10 @@ def apply_company_profile_css() -> None:
             background: #FFFFFF;
             box-shadow: 0 0 0 1px var(--color-border-soft),
                         0 12px 34px rgba(42, 31, 44, 0.06);
+        }
+
+        .stApp:has(.company-profile-active) .costerly-price-review-saving {
+            display: none !important;
         }
 
         .stApp:has(.company-profile-active)

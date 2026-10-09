@@ -2365,7 +2365,9 @@ def _process_pending_price_source_row_saves() -> bool:
             )
         else:
             _clear_price_lists_snapshot()
-            _set_price_source_action_notice("Saved")
+            # The review row has already disappeared optimistically. A second
+            # success toast arrives late and adds no information, so reserve
+            # feedback here for write failures only.
     if not pending:
         st.session_state.pop("_price_source_row_save_pending", None)
     return changed
@@ -2827,7 +2829,7 @@ def _render_price_source_review_queue(
             unsafe_allow_html=True,
         )
         with st.container(key="price_review_header"):
-            header = st.columns([0.24, 1.55, 0.78, 0.9, 0.82, 0.82, 0.68, 0.55, 0.55])
+            header = st.columns([0.24, 1.55, 0.78, 0.9, 0.82, 0.82, 0.68, 0.38, 0.72])
             for column, label in zip(
                 header,
                 ("", "Material", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Reason", "Source", ""),
@@ -2849,7 +2851,7 @@ def _render_price_source_review_queue(
             target = (source_id, row_id)
             with st.container(key=f"price_review_row_{row_id}"):
                 remove_col, item_col, category_col, supplier_col, net_price_col, gross_price_col, reason_col, source_col, review_col = st.columns(
-                    [0.24, 1.55, 0.78, 0.9, 0.82, 0.82, 0.68, 0.55, 0.55],
+                    [0.24, 1.55, 0.78, 0.9, 0.82, 0.82, 0.68, 0.38, 0.72],
                     vertical_alignment="center",
                 )
                 if remove_col.button("×", key=f"review_remove_{row_id}"):
@@ -2898,10 +2900,10 @@ def _render_price_source_review_queue(
                 source_url = _price_source_direct_url(access, source)
                 if source_url:
                     source_col.link_button(
-                        "Source",
+                        "↗",
                         source_url,
                         key=f"review_source_{row_id}",
-                        use_container_width=True,
+                        help="Open source",
                     )
                 if review_col.button("Review", key=f"review_price_{row_id}"):
                     st.session_state.pop("_selected_price_source_id", None)
