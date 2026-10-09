@@ -2587,8 +2587,6 @@ def test_price_source_processing_uses_callback_without_manual_rerun():
     assert "st.rerun" not in add_source
     assert lists_source.startswith("@st.fragment")
     assert "_process_pending_price_source(access, trace=trace)" in lists_source
-    assert 'st.session_state.get("_price_source_error")' in lists_source
-    assert 'st.session_state.pop("_price_source_error", None)' not in lists_source
 
 
 def test_reloaded_price_list_session_reattaches_to_active_extraction(monkeypatch):
@@ -2622,26 +2620,6 @@ def test_reloaded_price_list_session_reattaches_to_active_extraction(monkeypatch
     assert state["_price_source_pending"]["future"] is future
     assert state["_price_source_pending"]["processing_cycle"] == 3
     assert state["_price_source_pending"]["user_cycle_started_at_epoch_ms"] == 456000
-
-
-def test_completed_price_source_failure_survives_rerun_until_ui_acknowledges(monkeypatch):
-    from use_cases import price_source_runtime
-
-    future = Future()
-    future.set_exception(PriceSourceError("PDF extraction failed"))
-    jobs = {
-        "company-1": price_source_runtime.ActivePriceSourceJob(
-            future=future,
-            job_id="failed-job",
-            started_at=123.0,
-            started_at_epoch_ms=456000,
-        )
-    }
-    monkeypatch.setattr(price_source_runtime, "_COMPANY_ACTIVE_JOBS", jobs)
-
-    assert price_source_runtime.active_price_source_job("company-1").future is future
-    price_source_runtime.acknowledge_price_source_job("company-1", future)
-    assert price_source_runtime.active_price_source_job("company-1") is None
 
 
 def test_price_source_processing_guard_restores_client_mutations_after_completion():
@@ -2849,7 +2827,7 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
     assert state["_price_source_purge_reconcile_requested"] is True
 
 
-def test_multiple_source_purges_reconcile_only_after_the_last_worker_finishes(monkeypatch):
+def test_multiple_source_purges_reconcile_only_after_last_worker(monkeypatch):
     from screens import company_profile
 
     first, last = Future(), Future()
@@ -2865,7 +2843,6 @@ def test_multiple_source_purges_reconcile_only_after_the_last_worker_finishes(mo
 
     first.set_result({"deleted_rows": 1, "storage_deleted": True})
     assert company_profile._process_pending_price_source_purges() is True
-    assert "_price_lists_projection_state" in state
     assert state["_price_lists_projection_state"]["results"]["catalog"] == [
         {"source_id": "source-2"}
     ]
@@ -4550,7 +4527,7 @@ def test_price_source_batch_processes_each_photo_independently_in_selection_orde
     assert result.summary["total"] == 2
 
 
-def test_price_source_batch_records_bounded_schema_failure_detail(monkeypatch):
+def test_price_source_batch_records_bounded_failure_detail(monkeypatch):
     from use_cases import price_source_runtime
 
     events = []
@@ -4559,7 +4536,7 @@ def test_price_source_batch_records_bounded_schema_failure_detail(monkeypatch):
         price_source_runtime,
         "process_price_source",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            PriceSourceSchemaError("invalid unit price " + ("x" * 300))
+            PriceSourceSchemaError("invalid source table " + ("x" * 300))
         ),
     )
 
@@ -4569,10 +4546,10 @@ def test_price_source_batch_records_bounded_schema_failure_detail(monkeypatch):
 
     with pytest.raises(PriceSourceError, match="No selected source"):
         price_source_runtime._run_price_source_batch_job(
-            access=SimpleNamespace(company_id="batch-failure-company"),
+            access=SimpleNamespace(company_id="failure-company"),
             uploaded_files=(SimpleNamespace(name="invoice.jpg"),),
             trace=Trace(),
-            job_id="batch-failure-diagnostic",
+            job_id="failure-diagnostic",
         )
 
     failure = next(
@@ -4581,7 +4558,7 @@ def test_price_source_batch_records_bounded_schema_failure_detail(monkeypatch):
         if name == "server.price_source_batch_source_finished" and status == "error"
     )
     assert failure["error_type"] == "PriceSourceSchemaError"
-    assert failure["error_message"].startswith("invalid unit price ")
+    assert failure["error_message"].startswith("invalid source table ")
     assert len(failure["error_message"]) == 240
 
 

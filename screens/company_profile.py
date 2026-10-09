@@ -61,7 +61,6 @@ from use_cases.price_sources import (
     validate_price_source_upload_selection,
 )
 from use_cases.price_source_runtime import (
-    acknowledge_price_source_job,
     active_price_source_job,
     submit_price_lists_projection_jobs,
     submit_price_source_batch_job,
@@ -2264,11 +2263,9 @@ def _process_pending_price_source_purges() -> bool:
     if not pending:
         st.session_state.pop("_price_source_purge_pending", None)
         if changed:
-            # Optimistic filtering is enough while adjacent deletes are still
-            # being confirmed. Once the final worker finishes, it is not an
-            # authoritative projection: offers and review rows can have been
-            # changed by a different completed purge. Discard it as one
-            # batch and load the final database state on the next app render.
+            # Optimistic filtering prevents jumps during a rapid delete run.
+            # Once its final worker settles, reload one authoritative snapshot
+            # so catalog and review cannot retain rows from deleted sources.
             _clear_price_lists_snapshot()
             st.session_state["_price_source_purge_reconcile_requested"] = True
     if not hidden:
@@ -2548,14 +2545,12 @@ def _price_source_review_reason(row: dict) -> str:
 
 
 def _price_source_review_field(row: dict) -> str:
-    """Map every unresolved evidence case to its one editable Review field."""
     unit_reasons = {
         "missing_unit",
         "ambiguous_unit",
         "package_conversion_unresolved",
     }
-    reason_codes = set(row.get("reason_codes") or [])
-    return "unit" if reason_codes & unit_reasons else "price"
+    return "unit" if unit_reasons & set(row.get("reason_codes") or []) else "price"
 
 
 def _render_price_source_row_editor(
@@ -2639,32 +2634,35 @@ def _render_price_source_row_editor(
             [1, 1, 0.52, 0.62], gap="small"
         )
         with price_col:
-            price_label = f"Source price ({'incl' if fixed_values['vat_mode'] == 'included' else 'ex'} VAT)"
             if review_field == "price":
-                st.markdown(
-                    '<span class="price-source-review-required-label">'
-                    f"{price_label}</span>",
-                    unsafe_allow_html=True,
+                with st.container(key=f"price_source_review_price_{row_id}"):
+                    raw_price = st.text_input(
+                        "Price (excl VAT)",
+                        value=str(row.get("raw_price") or 0).replace(".", ","),
+                        key=field_keys["raw_price"],
+                    )
+            else:
+                raw_price = st.text_input(
+                    f"Source price ({'incl' if fixed_values['vat_mode'] == 'included' else 'ex'} VAT)",
+                    value=str(row.get("raw_price") or 0).replace(".", ","),
+                    key=field_keys["raw_price"],
                 )
-            raw_price = st.text_input(
-                price_label,
-                value=str(row.get("raw_price") or 0).replace(".", ","),
-                key=field_keys["raw_price"],
-                label_visibility="collapsed" if review_field == "price" else "visible",
-            )
         with calculation_unit_col:
             if review_field == "unit":
-                st.markdown(
-                    '<span class="price-source-review-required-label">Estimation unit</span>',
-                    unsafe_allow_html=True,
+                with st.container(key=f"price_source_review_unit_{row_id}"):
+                    selected_calculation_unit = st.selectbox(
+                        "Estimation unit",
+                        units,
+                        index=units.index(calculation_unit),
+                        key=field_keys["calculation_unit"],
+                    )
+            else:
+                selected_calculation_unit = st.selectbox(
+                    "Estimation unit",
+                    units,
+                    index=units.index(calculation_unit),
+                    key=field_keys["calculation_unit"],
                 )
-            selected_calculation_unit = st.selectbox(
-                "Estimation unit",
-                units,
-                index=units.index(calculation_unit),
-                key=field_keys["calculation_unit"],
-                label_visibility="collapsed" if review_field == "unit" else "visible",
-            )
         with save_col:
             st.markdown(
                 '<span class="price-source-form-control-spacer" '
@@ -3453,7 +3451,6 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     finally:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
-        acknowledge_price_source_job(str(access.company_id), future)
 
 
 def _restore_active_price_source_processing(access: CompanyAccess) -> None:
@@ -3487,8 +3484,6 @@ def _render_price_source_processing_status(access: CompanyAccess, *, trace=None)
     purge_finished = _process_pending_price_source_purges()
     # A completed purge has already updated the live snapshot in place. A full
     # app rerun would collapse Source Library and restart every projection.
-    # The last completed purge is the exception: it needs exactly one
-    # authoritative reconciliation, after every queued delete has settled.
     if (
         st.session_state.get("_price_source_purge_reconcile_requested")
         and not _price_source_has_unsubmitted_selection()
@@ -3496,9 +3491,6 @@ def _render_price_source_processing_status(access: CompanyAccess, *, trace=None)
         st.session_state.pop("_price_source_purge_reconcile_requested", None)
         st.rerun(scope="app")
     if purge_finished:
-        # Keep a requested reconciliation pending while the user is choosing
-        # an upload. The next safe fragment pass will perform it; do not clear
-        # their unsubmitted selection merely to repaint the projections.
         if not _price_source_has_unsubmitted_selection():
             st.rerun(scope="app")
         return
@@ -3589,10 +3581,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         )
     else:
         cycle_result = None
-    # A terminal extraction failure is evidence the user needs to act on.  Do
-    # not consume it on the next fragment/app rerun; starting a new extraction
-    # explicitly clears it in _queue_price_source_processing.
-    error = st.session_state.get("_price_source_error")
+    error = st.session_state.pop("_price_source_error", None)
     _render_price_source_add(
         access, trace=trace, cycle_result=cycle_result, cycle_error=error,
     )

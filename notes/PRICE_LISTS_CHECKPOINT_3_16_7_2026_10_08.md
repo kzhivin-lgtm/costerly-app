@@ -190,12 +190,6 @@ VAT evidence cannot by itself leave a valid row in Review.
      app rerun. A confirmed delete preserves the open Source Library and the
      current scroll location. The initial page shows only `Loading catalog…`
      with a spinner until all independent projections are ready.
-   - Reconciliation repair, 2026-10-09: optimistic filtering is provisional
-     while one or more purge workers remain pending. After the final worker
-     settles, discard every cached projection and perform exactly one
-     authoritative reload. This prevents a zero-row Source Library from being
-     displayed next to stale Catalog or Review rows after rapid consecutive
-     deletes.
    - Extraction accounting: the terminal result must account for every
      price-table line read from every source. Rows excluded in an early
      consumables/non-candidate pass count as `excluded`; they must not vanish
@@ -228,26 +222,7 @@ VAT evidence cannot by itself leave a valid row in Review.
    - Compact price card, 2026-10-09: the row editor contains only Material
      name, Material type, Source price and Estimation unit. VAT, currency,
      source/purchase units and conversion are source-level or persisted
-   defaults, not routine row-level controls.
-
-10. **3.16.7.13 Multi-invoice PDF router and compact Review reason**
-   - Status: implemented locally, owner acceptance pending.
-   - Outcome: a PDF stays on the current single-document path unless its
-     already-prepared native text or direct-PDF OCR proves at least two
-     distinct `(issuer identity, invoice number)` pairs. Only then it is split
-     in memory into one-page PDF inputs. The existing supplier plus invoice
-     merge contract groups pages of the same invoice, while distinct proven
-     invoices become distinct Source Library records.
-   - Cost boundary: the router never invokes OCR only to classify a PDF. It
-     reuses the text/OCR pass required for extraction. A normal generated PDF
-     and a multi-page single invoice keep the fast path unchanged.
-   - Safety boundary: page count, scan-like metadata and filename are hints at
-     most, never a routing decision. A page without a proven separate identity
-     cannot cause a batch-adjacency merge.
-   - Review contract: Source Review exposes only `Price` and `Unit`. The
-     reason is exactly one of those words and the corresponding editable label
-     is red. Name, category and supplier identity remain immutable in Review,
-     so correcting evidence cannot split a catalog merge.
+     defaults, not routine row-level controls.
 
 ### P1: improvements after P0 closure
 
@@ -270,6 +245,17 @@ VAT evidence cannot by itself leave a valid row in Review.
 2. **3.12.3 Batch Price Source ingestion**: post-MVP bounded multi-source queue.
 3. Brand expansion and market-reference enrichment: after the normalization
    schema is approved.
+4. **Multi-invoice PDF router, 2026-10-09**: deferred after a bounded
+   experiment. The router split a scanned composite PDF only after OCR found
+   distinct supplier plus invoice pairs, but the routed PDF-page path was not
+   equivalent to the established single-image path: one page intermittently
+   failed schema validation, and table-price quality regressed. Do not revive
+   this path by adding broader retries or price heuristics. Resume only with
+   a paired JPEG-versus-routed-page benchmark for every column: quantity, unit
+   price, line total, document number, supplier, persisted row and Review
+   outcome. A page with no proven unit-price column must not create an active
+   offer. Keep normal mixed-file upload and same supplier plus invoice merge
+   unchanged.
 
 ### Global backlog retained, outside 3.16.7
 

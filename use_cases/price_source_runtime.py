@@ -19,7 +19,6 @@ from use_cases.price_sources import (
     list_unresolved_price_source_rows,
     process_price_source,
     purge_price_source,
-    route_price_source_pdf_bundle,
 )
 
 
@@ -84,8 +83,7 @@ _COMPANY_ACTIVE_JOBS: dict[str, ActivePriceSourceJob] = {}
 
 def _bounded_error_message(exc: BaseException, *, limit: int = 240) -> str:
     """Keep diagnostic events actionable without persisting unbounded input text."""
-    message = " ".join(str(exc).split())
-    return message[:limit]
+    return " ".join(str(exc).split())[:limit]
 
 
 def _trace_event(
@@ -106,18 +104,15 @@ def _company_lock(company_id: str) -> Lock:
 
 
 def active_price_source_job(company_id: str) -> ActivePriceSourceJob | None:
-    """Return the unacknowledged company job, including a completed failure.
-
-    A Streamlit rerun can occur between worker completion and the next polling
-    pass. Keep the terminal Future until the UI consumes it, otherwise that
-    error is silently lost.
-    """
+    """Return a live company extraction so a reloaded UI can reattach to it."""
     with _ACTIVE_JOBS_GUARD:
-        return _COMPANY_ACTIVE_JOBS.get(str(company_id))
+        active = _COMPANY_ACTIVE_JOBS.get(str(company_id))
+        if active is None or active.future.done():
+            return None
+        return active
 
 
-def acknowledge_price_source_job(company_id: str, future: Future) -> None:
-    """Remove a terminal job only after its result or error reached the UI."""
+def _clear_active_price_source_job(company_id: str, future: Future) -> None:
     with _ACTIVE_JOBS_GUARD:
         active = _COMPANY_ACTIVE_JOBS.get(company_id)
         if active is not None and active.future is future:
@@ -162,6 +157,9 @@ def submit_price_source_job(
             started_at=started_at,
             started_at_epoch_ms=int(time.time() * 1000),
         )
+    future.add_done_callback(
+        lambda completed: _clear_active_price_source_job(company_id, completed)
+    )
     return future
 
 
@@ -208,6 +206,9 @@ def submit_price_source_batch_job(
             started_at=started_at,
             started_at_epoch_ms=int(time.time() * 1000),
         )
+    future.add_done_callback(
+        lambda completed: _clear_active_price_source_job(company_id, completed)
+    )
     return future
 
 
@@ -328,9 +329,27 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
         for index, uploaded_file in enumerate(uploaded_files, start=1):
             source_name = str(getattr(uploaded_file, "name", "source"))
             try:
-                routed_uploads = route_price_source_pdf_bundle(uploaded_file)
+                result = process_price_source(
+                    access,
+                    department="",
+                    uploaded_file=uploaded_file,
+                    source_url="",
+                    trace=trace,
+                    client=client,
+                    owner_authorized=False,
+                    batch_source_ids=prior_batch_source_ids,
+                )
+                results.append(result)
+                prior_batch_source_ids.add(str(result.source_id))
+                _trace_event(
+                    trace,
+                    "server.price_source_batch_source_finished",
+                    job_id=job_id,
+                    source_index=index,
+                    source_name=source_name,
+                )
             except Exception as exc:
-                logger.exception("Price source PDF routing failed: %s", source_name)
+                logger.exception("Price source batch input failed: %s", source_name)
                 failed_source_names.append(source_name)
                 _trace_event(
                     trace,
@@ -342,48 +361,6 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
                     error_type=type(exc).__name__,
                     error_message=_bounded_error_message(exc),
                 )
-                continue
-            for routed_upload in routed_uploads:
-                routed_name = str(routed_upload.uploaded_file.name)
-                try:
-                    result = process_price_source(
-                        access,
-                        department="",
-                        uploaded_file=routed_upload.uploaded_file,
-                        source_url="",
-                        trace=trace,
-                        client=client,
-                        owner_authorized=False,
-                        batch_source_ids=prior_batch_source_ids,
-                        precomputed_text_layer=routed_upload.text_layer,
-                        bundle_page_number=routed_upload.bundle_page_number,
-                        bundle_page_count=routed_upload.bundle_page_count,
-                        allow_invoice_merge=not routed_upload.force_standalone_source,
-                    )
-                    results.append(result)
-                    prior_batch_source_ids.add(str(result.source_id))
-                    _trace_event(
-                        trace,
-                        "server.price_source_batch_source_finished",
-                        job_id=job_id,
-                        source_index=index,
-                        source_name=routed_name,
-                        bundle_page_number=routed_upload.bundle_page_number,
-                        bundle_page_count=routed_upload.bundle_page_count,
-                    )
-                except Exception as exc:
-                    logger.exception("Price source batch input failed: %s", routed_name)
-                    failed_source_names.append(routed_name)
-                    _trace_event(
-                        trace,
-                        "server.price_source_batch_source_finished",
-                        status="error",
-                        job_id=job_id,
-                        source_index=index,
-                        source_name=routed_name,
-                        error_type=type(exc).__name__,
-                        error_message=_bounded_error_message(exc),
-                    )
         if not results:
             raise PriceSourceError("No selected source could be processed.")
         return PriceSourceBatchProcessResult(

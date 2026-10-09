@@ -2632,14 +2632,11 @@ def apply_company_profile_css() -> None:
             visibility: hidden;
         }
 
-        .stApp:has(.company-profile-active) .price-source-review-required-label {
-            display: block;
-            min-height: 20px;
-            margin-bottom: 0.25rem;
-            color: #C53C4C;
-            font-family: var(--font-heading);
-            font-size: 0.9rem;
-            font-weight: 700;
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_review_price_"] label,
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_review_unit_"] label {
+            color: #C53C4C !important;
         }
 
         .stApp:has(.company-profile-active)
