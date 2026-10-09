@@ -1911,6 +1911,10 @@ def apply_company_profile_css() -> None:
             display: none !important;
         }
 
+        .stApp:has(.company-profile-active) .costerly-price-review-queue-empty {
+            display: none !important;
+        }
+
         .stApp:has(.company-profile-active)
         .st-key-price_source_review_queue .price-catalog-title {
             display: grid;

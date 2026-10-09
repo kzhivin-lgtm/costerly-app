@@ -4218,6 +4218,27 @@ def install_price_source_save_guard() -> None:
                 // the row together with its error message.
                 button.closest('[class*="st-key-price_review_row_"]')
                     ?.classList.add("costerly-price-review-saving");
+                const reviewRow = button.closest('[class*="st-key-price_review_row_"]');
+                const reviewQueue = reviewRow?.closest(".st-key-price_source_review_queue");
+                const hasAnotherVisibleRow = Array.from(
+                    reviewQueue?.querySelectorAll('[class*="st-key-price_review_row_"]') || []
+                ).some((row) => (
+                    row !== reviewRow
+                    && !row.classList.contains("costerly-price-review-saving")
+                ));
+                // A lone saved row must not leave an empty Needs Review
+                // heading and table chrome behind while the new Catalog
+                // projection is being fetched.
+                if (reviewQueue && !hasAnotherVisibleRow) {
+                    reviewQueue.classList.add("costerly-price-review-queue-empty");
+                }
+                // Server validation failures rebuild the Review row. If a
+                // worker becomes unavailable, restore the controls rather
+                // than leaving the user with a permanently hidden queue.
+                parentWindow.setTimeout(() => {
+                    reviewQueue?.classList.remove("costerly-price-review-queue-empty");
+                    reviewRow?.classList.remove("costerly-price-review-saving");
+                }, 5000);
             }
 
             parentDoc.addEventListener("click", handleClick, true);

@@ -2683,6 +2683,8 @@ def test_price_source_save_guard_shows_saving_state_immediately():
     assert 'label.textContent = "Saving"' in source
     assert "costerly-price-review-saving" in source
     assert "st-key-price_review_row_" in source
+    assert "costerly-price-review-queue-empty" in source
+    assert "hasAnotherVisibleRow" in source
 
 
 def test_review_save_is_optimistic_and_keeps_the_original_source_action():
