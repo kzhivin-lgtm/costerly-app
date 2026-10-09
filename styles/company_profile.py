@@ -2635,7 +2635,14 @@ def apply_company_profile_css() -> None:
         .stApp:has(.company-profile-active)
         [class*="st-key-price_source_review_price_"] label,
         .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_review_price_"] label p,
+        .stApp:has(.company-profile-active)
         [class*="st-key-price_source_review_unit_"] label {
+            color: #C53C4C !important;
+        }
+
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_review_unit_"] label p {
             color: #C53C4C !important;
         }
 

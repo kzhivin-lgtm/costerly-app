@@ -2589,6 +2589,13 @@ def test_price_source_processing_uses_callback_without_manual_rerun():
     assert "_process_pending_price_source(access, trace=trace)" in lists_source
 
 
+def test_price_review_required_labels_style_the_native_streamlit_text():
+    style_source = Path("styles/company_profile.py").read_text()
+
+    assert '[class*="st-key-price_source_review_price_"] label p' in style_source
+    assert '[class*="st-key-price_source_review_unit_"] label p' in style_source
+
+
 def test_reloaded_price_list_session_reattaches_to_active_extraction(monkeypatch):
     from screens import company_profile
 
