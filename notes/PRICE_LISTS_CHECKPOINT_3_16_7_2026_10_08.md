@@ -263,24 +263,6 @@ VAT evidence cannot by itself leave a valid row in Review.
      including invoice `62336`, and activates prices only after source-table
      confirmation. A second schema failure remains an explicit source failure.
 
-12. **3.16.7.15 Discrete purchase quantity and table-header repair**
-   - Status: implemented locally, production acceptance pending.
-   - Evidence: the scanned `62336` page reported high page-level OCR
-     confidence, but its table collapsed `price` and `discount` columns. That
-     produced self-consistent but impossible quantities such as `26.25 sets`
-     and `1,523.2 sets`. Page-level confidence is therefore not treated as a
-     column-level metric.
-   - Outcome: only length, area, volume, mass and liquid purchase units may
-     carry fractional quantities. A fractional discrete purchase is sent to
-     Price Review. The visual verifier receives only row identity, not the
-     first pass's possibly shifted numeric triple, and is explicitly instructed
-     to use Hebrew quantity, price, discount and total headers.
-   - UI: Review now labels the editable field `Price ex VAT` and removes the
-     extra label gap. The label remains red only when Price is required.
-   - Acceptance: scanned invoices never activate a fractional piece, set,
-     sheet, pack or box. Fractional `m`, `m2`, `m3`, `kg`, `liter` and related
-     continuous purchases remain valid.
-
 ### P1: improvements after P0 closure
 
 1. **3.16.7.7 Source Library invoice label**: document number under supplier,

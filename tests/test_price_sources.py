@@ -31,9 +31,8 @@ from agents.price_source_agent import (
     PRICE_SOURCE_MAX_OUTPUT_TOKENS,
     _apply_material_taxonomy_to_rows,
     _line_arithmetic_conflicts,
-    _source_table_recheck_rows,
     _mark_unverified_source_table_rows_for_review,
-    _mark_unrepaired_fractional_discrete_purchase_for_review,
+    _mark_unrepaired_fractional_hardware_for_review,
     _merge_arithmetic_recheck,
 )
 from use_cases.price_sources import (
@@ -3495,7 +3494,7 @@ def test_large_arithmetic_difference_is_not_hidden_by_rounding_tolerance():
     assert "source_table_price_not_verified" in row["reason_codes"]
 
 
-def test_fractional_discrete_purchase_requires_a_second_read_or_review():
+def test_fractional_hardware_piece_requires_a_second_read_or_review():
     result = _result()
     row = result["rows"][0]
     row.update(
@@ -3507,33 +3506,11 @@ def test_fractional_discrete_purchase_requires_a_second_read_or_review():
     )
 
     conflicts = _line_arithmetic_conflicts(result)
-    _mark_unrepaired_fractional_discrete_purchase_for_review(result, conflicts)
+    _mark_unrepaired_fractional_hardware_for_review(result, conflicts)
 
-    assert conflicts[0]["recheck_reason"] == "fractional_discrete_purchase_quantity"
+    assert conflicts[0]["recheck_reason"] == "fractional_hardware_piece_quantity"
     assert row["status"] == "unresolved"
-    assert "fractional_discrete_purchase_quantity" in row["reason_codes"]
-
-
-def test_fractional_continuous_purchase_remains_valid():
-    result = _result()
-    row = result["rows"][0]
-    row.update(raw_unit="m3", raw_price=450, raw_quantity=0.35, raw_line_total=157.5)
-
-    assert _line_arithmetic_conflicts(result) == []
-
-
-def test_source_table_recheck_does_not_anchor_the_visual_reader_to_bad_numbers():
-    result = _result()
-    row = result["rows"][0]
-    row.update(raw_quantity=26.25, raw_price=10, raw_line_total=262.5)
-
-    candidate = _source_table_recheck_rows(result)[0]
-
-    assert candidate["source_row_number"] == row["source_row_number"]
-    assert candidate["raw_sku"] == row["raw_sku"]
-    assert "raw_quantity" not in candidate
-    assert "raw_price" not in candidate
-    assert "raw_line_total" not in candidate
+    assert "fractional_hardware_piece_quantity" in row["reason_codes"]
 
 
 def test_arithmetic_recheck_repairs_only_a_consistent_second_reading():
