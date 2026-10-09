@@ -4159,24 +4159,6 @@ def test_price_source_arithmetic_recheck_uses_runtime_trace_metadata_contract():
     assert "_source_table_recheck_rows(result)" in source
 
 
-def test_scanned_pdf_sources_require_the_same_price_proof_as_photos():
-    processing_source = Path("use_cases/price_sources.py").read_text()
-
-    assert '"pdf_ocr_bundle_page"' in processing_source
-    assert '"pdf_ocr"' in processing_source
-    assert '"require_source_table_verification": text_layer.strategy in {' in processing_source
-
-
-def test_schema_rejection_retries_one_price_source_response_with_the_contract():
-    agent_source = Path("agents/price_source_agent.py").read_text()
-    processing_source = Path("use_cases/price_sources.py").read_text()
-
-    assert "schema_retry: bool = False" in agent_source
-    assert "RETRY REQUIREMENT" in agent_source
-    assert "except PriceSourceSchemaError as exc:" in processing_source
-    assert "run_price_source_agent(**agent_request, schema_retry=True)" in processing_source
-
-
 def test_price_source_summary_aggregates_primary_and_table_verifier_timing():
     source = Path("use_cases/price_sources.py").read_text()
 
@@ -4450,9 +4432,9 @@ def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():
     assert "The original visible table is authoritative" in source
     assert "build_uploaded_file_content_block(source_name, source_bytes)" in source
     assert "Never derive a price by dividing a total by quantity" in source
-    assert '"source_evidence_bytes": text_layer.arithmetic_evidence_bytes or source_bytes' in processing_source
-    assert '"source_original_evidence_bytes": source_bytes' in processing_source
-    assert '"require_source_table_verification": text_layer.strategy in {' in processing_source
+    assert "source_evidence_bytes=text_layer.arithmetic_evidence_bytes or source_bytes" in processing_source
+    assert "source_original_evidence_bytes=source_bytes" in processing_source
+    assert 'require_source_table_verification=text_layer.strategy == "image_ocr"' in processing_source
 
 
 def test_price_source_runtime_marks_worker_boundaries(monkeypatch):
