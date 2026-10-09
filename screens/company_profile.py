@@ -3253,11 +3253,27 @@ def _queue_price_source_processing(
     st.session_state.pop("_price_source_error", None)
     st.session_state.pop("_price_source_start_rejected", None)
 
-def _begin_price_source_file_selection(uploader_key: str) -> None:
-    """Start a new source selection as soon as files enter the uploader."""
-    files = accepted_price_source_uploads(list(st.session_state.get(uploader_key) or []))
-    if files:
-        _begin_price_source_selection()
+def _synchronize_price_source_file_selection(files: list[object]) -> None:
+    """Clear a terminal result once per new uploader selection.
+
+    This runs inside the Price Lists fragment after Streamlit has delivered the
+    files. A file-uploader ``on_change`` callback forces a whole-app rerun and
+    makes a selected document appear several seconds after a drop.
+    """
+    if not files:
+        return
+    fingerprint = tuple(
+        (
+            str(getattr(file, "file_id", "") or ""),
+            str(getattr(file, "name", "") or ""),
+            int(getattr(file, "size", 0) or 0),
+        )
+        for file in files
+    )
+    if fingerprint == st.session_state.get("_price_source_selection_fingerprint"):
+        return
+    st.session_state["_price_source_selection_fingerprint"] = fingerprint
+    _begin_price_source_selection()
 
 
 def _begin_price_source_selection() -> None:
@@ -3371,14 +3387,13 @@ def _render_price_source_add(
                     key=uploader_key,
                     disabled=processing,
                     label_visibility="collapsed",
-                    on_change=_begin_price_source_file_selection,
-                    args=(uploader_key,),
                     help=(
                         "Upload up to 6 files in any supported format. Each file is processed "
                         "separately and is merged only when supplier and invoice number match."
                     ),
                 )
                 accepted_files = accepted_price_source_uploads(list(uploaded_files or []))
+                _synchronize_price_source_file_selection(accepted_files)
                 file_previews = []
                 for accepted_file in accepted_files:
                     preview = render_price_source_preview(
@@ -3470,6 +3485,7 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     else:
         _clear_price_lists_snapshot()
         st.session_state._price_source_uploader_version = uploader_version + 1
+        st.session_state.pop("_price_source_selection_fingerprint", None)
         if hasattr(result, "summary"):
             summary = dict(result.summary)
             summary["full_cycle_duration_seconds"] = (
@@ -3522,7 +3538,7 @@ def _restore_active_price_source_processing(access: CompanyAccess) -> None:
     st.session_state.pop("_price_source_start_rejected", None)
 
 
-@st.fragment(run_every=0.25, parallel=True)
+@st.fragment(run_every=1.0, parallel=True)
 def _render_price_source_processing_status(access: CompanyAccess, *, trace=None) -> None:
     """Refresh only the terminal state while the worker runs in background."""
     purge_finished = _process_pending_price_source_purges()
@@ -3814,7 +3830,7 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
                                 _render_price_source_supplier_settings(access, source)
 
 
-@st.fragment(run_every=0.25, parallel=True)
+@st.fragment(run_every=1.0, parallel=True)
 def _refresh_price_lists_projections(access: CompanyAccess) -> None:
     """Refresh the page only when a background projection has new data."""
     state = _price_lists_projection_state(access)

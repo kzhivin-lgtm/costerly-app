@@ -2967,15 +2967,25 @@ def test_price_source_file_selection_invalidates_the_server_terminal_result(monk
     from screens import company_profile
 
     state = {
-        "price_upload": [_UploadedPhoto("prices.xlsx", b"first")],
+        "_price_source_notice": {"summary": {"ready": 1}},
     }
     monkeypatch.setattr(company_profile.st, "session_state", state)
 
-    company_profile._begin_price_source_file_selection("price_upload")
+    company_profile._synchronize_price_source_file_selection(
+        [_UploadedPhoto("prices.xlsx", b"first")]
+    )
 
     assert state["_price_source_selection_cycle"] == 1
+    assert state["_price_source_selection_fingerprint"]
     assert "_price_source_notice" not in state
     assert "_price_source_error" not in state
+
+
+def test_price_source_uploader_keeps_selection_inside_the_price_lists_fragment():
+    source = Path("screens/company_profile.py").read_text()
+
+    assert "on_change=_begin_price_source_file_selection" not in source
+    assert "_synchronize_price_source_file_selection(accepted_files)" in source
 
 
 def test_price_source_file_guard_caps_mixed_batch_before_streamlit_receives_selection():
@@ -4147,7 +4157,7 @@ def test_price_source_processing_collects_completed_future_from_status_fragment(
 
     assert "future.done()" in source
     assert "future.result()" in source
-    assert "run_every=0.25" in status_source
+    assert "run_every=1.0" in status_source
     assert "st.rerun(scope=\"app\")" in status_source
 
 

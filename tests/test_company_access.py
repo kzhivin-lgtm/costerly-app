@@ -1583,7 +1583,7 @@ def test_price_source_notice_exposes_full_user_cycle_duration():
 def test_price_source_result_notice_persists_until_the_source_selection_changes():
     source = inspect.getsource(company_profile._render_price_lists)
     queue_source = inspect.getsource(company_profile._queue_price_source_processing)
-    file_change_source = inspect.getsource(company_profile._begin_price_source_file_selection)
+    file_change_source = inspect.getsource(company_profile._synchronize_price_source_file_selection)
     selection_source = inspect.getsource(company_profile._begin_price_source_selection)
 
     assert 'st.session_state.get("_price_source_notice")' in source
