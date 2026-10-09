@@ -61,6 +61,7 @@ from use_cases.price_sources import (
     validate_price_source_upload_selection,
 )
 from use_cases.price_source_runtime import (
+    acknowledge_price_source_job,
     active_price_source_job,
     submit_price_lists_projection_jobs,
     submit_price_source_batch_job,
@@ -3452,6 +3453,7 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     finally:
         st.session_state._price_source_processing = False
         st.session_state.pop("_price_source_pending", None)
+        acknowledge_price_source_job(str(access.company_id), future)
 
 
 def _restore_active_price_source_processing(access: CompanyAccess) -> None:
@@ -3587,7 +3589,10 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
         )
     else:
         cycle_result = None
-    error = st.session_state.pop("_price_source_error", None)
+    # A terminal extraction failure is evidence the user needs to act on.  Do
+    # not consume it on the next fragment/app rerun; starting a new extraction
+    # explicitly clears it in _queue_price_source_processing.
+    error = st.session_state.get("_price_source_error")
     _render_price_source_add(
         access, trace=trace, cycle_result=cycle_result, cycle_error=error,
     )

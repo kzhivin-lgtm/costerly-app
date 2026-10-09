@@ -106,15 +106,18 @@ def _company_lock(company_id: str) -> Lock:
 
 
 def active_price_source_job(company_id: str) -> ActivePriceSourceJob | None:
-    """Return a live company extraction so a reloaded UI can reattach to it."""
+    """Return the unacknowledged company job, including a completed failure.
+
+    A Streamlit rerun can occur between worker completion and the next polling
+    pass. Keep the terminal Future until the UI consumes it, otherwise that
+    error is silently lost.
+    """
     with _ACTIVE_JOBS_GUARD:
-        active = _COMPANY_ACTIVE_JOBS.get(str(company_id))
-        if active is None or active.future.done():
-            return None
-        return active
+        return _COMPANY_ACTIVE_JOBS.get(str(company_id))
 
 
-def _clear_active_price_source_job(company_id: str, future: Future) -> None:
+def acknowledge_price_source_job(company_id: str, future: Future) -> None:
+    """Remove a terminal job only after its result or error reached the UI."""
     with _ACTIVE_JOBS_GUARD:
         active = _COMPANY_ACTIVE_JOBS.get(company_id)
         if active is not None and active.future is future:
@@ -159,9 +162,6 @@ def submit_price_source_job(
             started_at=started_at,
             started_at_epoch_ms=int(time.time() * 1000),
         )
-    future.add_done_callback(
-        lambda completed: _clear_active_price_source_job(company_id, completed)
-    )
     return future
 
 
@@ -208,9 +208,6 @@ def submit_price_source_batch_job(
             started_at=started_at,
             started_at_epoch_ms=int(time.time() * 1000),
         )
-    future.add_done_callback(
-        lambda completed: _clear_active_price_source_job(company_id, completed)
-    )
     return future
 
 

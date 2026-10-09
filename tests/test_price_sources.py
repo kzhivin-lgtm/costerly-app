@@ -2587,6 +2587,8 @@ def test_price_source_processing_uses_callback_without_manual_rerun():
     assert "st.rerun" not in add_source
     assert lists_source.startswith("@st.fragment")
     assert "_process_pending_price_source(access, trace=trace)" in lists_source
+    assert 'st.session_state.get("_price_source_error")' in lists_source
+    assert 'st.session_state.pop("_price_source_error", None)' not in lists_source
 
 
 def test_reloaded_price_list_session_reattaches_to_active_extraction(monkeypatch):
@@ -2620,6 +2622,26 @@ def test_reloaded_price_list_session_reattaches_to_active_extraction(monkeypatch
     assert state["_price_source_pending"]["future"] is future
     assert state["_price_source_pending"]["processing_cycle"] == 3
     assert state["_price_source_pending"]["user_cycle_started_at_epoch_ms"] == 456000
+
+
+def test_completed_price_source_failure_survives_rerun_until_ui_acknowledges(monkeypatch):
+    from use_cases import price_source_runtime
+
+    future = Future()
+    future.set_exception(PriceSourceError("PDF extraction failed"))
+    jobs = {
+        "company-1": price_source_runtime.ActivePriceSourceJob(
+            future=future,
+            job_id="failed-job",
+            started_at=123.0,
+            started_at_epoch_ms=456000,
+        )
+    }
+    monkeypatch.setattr(price_source_runtime, "_COMPANY_ACTIVE_JOBS", jobs)
+
+    assert price_source_runtime.active_price_source_job("company-1").future is future
+    price_source_runtime.acknowledge_price_source_job("company-1", future)
+    assert price_source_runtime.active_price_source_job("company-1") is None
 
 
 def test_price_source_processing_guard_restores_client_mutations_after_completion():
