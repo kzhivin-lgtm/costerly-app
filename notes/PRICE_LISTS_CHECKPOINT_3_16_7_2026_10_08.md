@@ -77,6 +77,40 @@ acceptance boundary, not a claim that the future taxonomy work is finished.
 - Not accepted or included: router handling for a scanned PDF containing
   multiple unrelated invoices. That bounded experiment is deferred below.
 
+### Owner-accepted Price Sources UI checkpoint, 2026-10-09
+
+Status: accepted production checkpoint. This closes the Price Sources and
+Price Lists surface inside Company Profile. It is a product boundary, not
+permission to reopen supplier, material-normalisation or multi-invoice-PDF
+work without new evidence.
+
+- Accepted live flow: a dropped source appears without a broad Profile rerun;
+  `Review` opens its compact editor promptly; and one `Save` moves directly to
+  the single central `Loading catalog…` state until the authoritative Catalog,
+  Review and Source projections return.
+- Review has no redundant `Review` column heading. The compact source arrow is
+  secondary and consistent wherever a row can open its originating source.
+- The intermediate client-side `Saving` state, success toast and stale empty
+  Review shell are prohibited. They created misleading transitions and are not
+  part of the accepted interaction.
+- Save writes use their own short-lived executor, distinct from extraction and
+  source purge. Completed writes invalidate the projection snapshot before the
+  final catalog is rendered, so a row is never fabricated optimistically.
+- Interaction polling remains bounded at one second. A four-times-per-second
+  fragment refresh was rejected because it competed with Review, Save and
+  uploader interactions. File selection is synchronised within the Price Lists
+  fragment, not via a wide `st.file_uploader` callback.
+- Accepted implementation range: `0c32a15`, `d9d51c5`, `efb56fe`. Focused
+  verification: 480 Price Source and Company Profile tests passed, plus
+  `git diff --check`. Owner live acceptance confirmed fast Review details and
+  immediate central loading after Save.
+
+Known non-blocking follow-up: the central loading state can remain visible
+longer than desired while the database write and all four projections settle.
+Do not mask this with artificial rows or client DOM replacement. Reopen only
+as a timed performance task that records write latency and each projection
+latency separately.
+
 ### Implementation checkpoint, 2026-10-08, supplier and invoice identity
 
 This is a code-and-data-contract checkpoint, pending the next authenticated
@@ -250,8 +284,7 @@ VAT evidence cannot by itself leave a valid row in Review.
 
 ### P1: improvements after P0 closure
 
-1. **3.16.7.13 File-only upload control**: local verification complete,
-   production visual acceptance pending. New Price Sources are uploaded files
+1. **3.16.7.13 File-only upload control**: owner accepted, 2026-10-09. New Price Sources are uploaded files
    only; the supplier-page URL entry is retired. `Add price source` belongs to
    the right upload-control column, while terminal success and error notices
    render directly below the right-column button within the uploader's fixed
@@ -278,6 +311,10 @@ VAT evidence cannot by itself leave a valid row in Review.
 5. **3.16.7.10 Unified material-normalisation design**: complete for Price
    Source. Do not reopen this page for taxonomy work without a reproducible
    Price Source failure.
+6. **3.16.7.14 Price Sources post-save performance measurement**: deferred,
+   non-blocking. Measure the database write and the individual Sources,
+   Catalog, Review and Material Jobs projections before changing the accepted
+   single loading state. No UI-only workaround is authorised by this entry.
 
 ### Deferred
 
