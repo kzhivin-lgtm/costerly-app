@@ -4528,6 +4528,41 @@ def test_price_source_batch_processes_each_photo_independently_in_selection_orde
     assert result.summary["total"] == 2
 
 
+def test_price_source_batch_records_bounded_schema_failure_detail(monkeypatch):
+    from use_cases import price_source_runtime
+
+    events = []
+    monkeypatch.setattr(price_source_runtime, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(
+        price_source_runtime,
+        "process_price_source",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            PriceSourceSchemaError("invalid unit price " + ("x" * 300))
+        ),
+    )
+
+    class Trace:
+        def event(self, name, *, status, duration_ms, metadata):
+            events.append((name, status, metadata))
+
+    with pytest.raises(PriceSourceError, match="No selected source"):
+        price_source_runtime._run_price_source_batch_job(
+            access=SimpleNamespace(company_id="batch-failure-company"),
+            uploaded_files=(SimpleNamespace(name="invoice.jpg"),),
+            trace=Trace(),
+            job_id="batch-failure-diagnostic",
+        )
+
+    failure = next(
+        metadata
+        for name, status, metadata in events
+        if name == "server.price_source_batch_source_finished" and status == "error"
+    )
+    assert failure["error_type"] == "PriceSourceSchemaError"
+    assert failure["error_message"].startswith("invalid unit price ")
+    assert len(failure["error_message"]) == 240
+
+
 def test_price_source_keeps_string_usage_cost_in_source_summary(monkeypatch):
     source = Path("use_cases/price_sources.py").read_text()
 

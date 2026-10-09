@@ -82,6 +82,12 @@ class PriceSourceBatchProcessResult:
 _COMPANY_ACTIVE_JOBS: dict[str, ActivePriceSourceJob] = {}
 
 
+def _bounded_error_message(exc: BaseException, *, limit: int = 240) -> str:
+    """Keep diagnostic events actionable without persisting unbounded input text."""
+    message = " ".join(str(exc).split())
+    return message[:limit]
+
+
 def _trace_event(
     trace: Any,
     name: str,
@@ -337,6 +343,7 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
                     source_index=index,
                     source_name=source_name,
                     error_type=type(exc).__name__,
+                    error_message=_bounded_error_message(exc),
                 )
                 continue
             for routed_upload in routed_uploads:
@@ -378,6 +385,7 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
                         source_index=index,
                         source_name=routed_name,
                         error_type=type(exc).__name__,
+                        error_message=_bounded_error_message(exc),
                     )
         if not results:
             raise PriceSourceError("No selected source could be processed.")
