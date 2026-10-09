@@ -140,6 +140,7 @@ _HARDWARE_EXCLUSION_OVERRIDES = (
     "פלטת חיבור", "פלטת הרכבה", "פלטה לציר", "תושבת", "קליפ", "פין מדף",
     "רגלית פלסטיק", "רגל פלסטיק", "תותב פלסטיק",
 )
+_MINIMUM_CATALOG_UNIT_PRICE_EX_VAT = 2.0
 _GLASS_MARKERS = ("glass", "זכוכית")
 _IDENTITY_DESCRIPTOR_MARKERS = {
     "construction": (
@@ -782,6 +783,42 @@ def discard_price_source_consumables(result: dict[str, Any]) -> int:
                 )
             )
         ):
+            discarded += 1
+            continue
+        retained.append(row)
+    result["rows"] = retained
+    return discarded
+
+
+def discard_price_source_low_value_rows(
+    result: dict[str, Any],
+    *,
+    vat_rate: float,
+) -> int:
+    """Keep supplier evidence but omit immaterial low-value catalog rows.
+
+    This is intentionally a temporary catalog boundary, separate from the
+    durable consumables taxonomy above. The floor is evaluated on the printed
+    source price for one purchase unit, excluding VAT. It never excludes an
+    operation-service row.
+    """
+    retained: list[dict[str, Any]] = []
+    discarded = 0
+    for row in result.get("rows") or []:
+        if row.get("item_kind") != "material":
+            retained.append(row)
+            continue
+        try:
+            source_price = float(row.get("raw_price") or 0)
+        except (TypeError, ValueError):
+            source_price = 0
+        vat_included = row.get("raw_vat_mode") == "included"
+        net_source_price = (
+            source_price / (1 + vat_rate)
+            if vat_included and vat_rate > 0
+            else source_price
+        )
+        if 0 < net_source_price < _MINIMUM_CATALOG_UNIT_PRICE_EX_VAT:
             discarded += 1
             continue
         retained.append(row)
@@ -4009,6 +4046,10 @@ def process_price_source(
             document_vat_amount=result.get("document_vat_amount"),
             document_total=result.get("document_total"),
         )
+        discarded_low_value = discard_price_source_low_value_rows(
+            result,
+            vat_rate=vat_rate,
+        )
         supplier_identity_rows_resolved = (
             resolve_rows_after_supplier_identity(result) if supplier_id else 0
         )
@@ -4046,6 +4087,7 @@ def process_price_source(
             persisted_excluded_count
             + discarded_non_candidates
             + discarded_consumables
+            + discarded_low_value
         )
         new_count = 0
         updated_count = 0
@@ -4062,6 +4104,7 @@ def process_price_source(
             "excluded": excluded_count,
             "discarded_non_candidates": discarded_non_candidates,
             "discarded_consumables": discarded_consumables,
+            "discarded_low_value": discarded_low_value,
             "operation_services": len(operation_code_by_row_number),
             "total": extracted_row_count,
             "document_number": result["document_number"],
@@ -4774,11 +4817,17 @@ def process_price_source(
             previous_discarded_consumables = int(
                 previous_summary.get("discarded_consumables") or 0
             )
+            previous_discarded_low_value = int(
+                previous_summary.get("discarded_low_value") or 0
+            )
             source_summary["discarded_non_candidates"] = (
                 previous_discarded_non_candidates + discarded_non_candidates
             )
             source_summary["discarded_consumables"] = (
                 previous_discarded_consumables + discarded_consumables
+            )
+            source_summary["discarded_low_value"] = (
+                previous_discarded_low_value + discarded_low_value
             )
             # An invoice can arrive one photo at a time. Persist the count of
             # every table line across its pages, not only rows retained in the
@@ -4792,7 +4841,7 @@ def process_price_source(
             )
             source_summary["excluded"] = sum(
                 row.get("result_status") == "excluded" for row in aggregate_rows
-            ) + source_summary["discarded_non_candidates"] + source_summary["discarded_consumables"]
+            ) + source_summary["discarded_non_candidates"] + source_summary["discarded_consumables"] + source_summary["discarded_low_value"]
             for key in ("new", "updated", "unchanged", "merged", "operation_services"):
                 source_summary[key] = int(previous_summary.get(key) or 0) + int(
                     source_summary.get(key) or 0

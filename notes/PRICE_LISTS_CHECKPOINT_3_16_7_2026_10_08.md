@@ -185,6 +185,11 @@ VAT evidence cannot by itself leave a valid row in Review.
    - Acceptance: delete two adjacent sources rapidly without losing the second
      click, collapsing the library or changing scroll position. On cold entry,
      see one loading state only, then the final ordered view.
+   - Implementation update, 2026-10-09: a completed background purge mutates
+     the already visible projection snapshot in place instead of forcing a full
+     app rerun. A confirmed delete preserves the open Source Library and the
+     current scroll location. The initial page shows only `Loading catalog…`
+     with a spinner until all independent projections are ready.
    - Extraction accounting: the terminal result must account for every
      price-table line read from every source. Rows excluded in an early
      consumables/non-candidate pass count as `excluded`; they must not vanish
@@ -199,6 +204,15 @@ VAT evidence cannot by itself leave a valid row in Review.
      Hardware pieces, not drawer-slide sets.
    - Protected dependency: supplier resolution, invoice matching, VAT and
      merge logic are out of scope.
+   - Temporary catalog boundary, 2026-10-09: a material with a printed source
+     price below ₪2.00 per purchase unit excluding VAT is excluded from the
+     active catalog but remains included in the source's excluded count.
+     Operation-service rows are unaffected. This is a temporary price floor,
+     not a replacement for the durable consumables taxonomy.
+   - Normalisation requirement: drawer-runner length, such as 500, 550, 600
+     or 750 mm, is a required primary identity attribute, equivalent to sheet
+     thickness. It must be parsed as millimetres and used for comparison and
+     merge, never reduced to an arbitrary `width` value or optional prose.
 
 ### P1: improvements after P0 closure
 

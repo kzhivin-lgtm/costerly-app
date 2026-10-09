@@ -1328,6 +1328,25 @@ def apply_company_profile_css() -> None:
             display: none !important;
         }
 
+        .stApp:has(.company-profile-active) .price-lists-projection-loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stApp:has(.company-profile-active) .price-lists-projection-spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid #D6CBE2;
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: price-lists-projection-spin 0.8s linear infinite;
+        }
+
+        @keyframes price-lists-projection-spin {
+            to { transform: rotate(360deg); }
+        }
+
         .st-key-price_source_list_card [data-testid="stHorizontalBlock"]:first-child {
             min-height: 38px;
             background: #FAF8FC;

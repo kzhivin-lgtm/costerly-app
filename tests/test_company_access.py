@@ -2020,9 +2020,9 @@ def test_price_lists_renders_upload_before_background_projections(monkeypatch):
     assert "Add price source" in markup
     assert any(button.label == "Extract prices" for button in app.button)
     assert "Loading catalog…" in markup
-    assert "Loading Material Jobs…" in markup
-    assert "Loading Review…" in markup
-    assert "Loading Source Library…" in markup
+    assert "Loading Material Jobs…" not in markup
+    assert "Loading Review…" not in markup
+    assert "Loading Source Library…" not in markup
 
 
 def test_price_source_action_extracts_from_url_and_finishes_with_notice(monkeypatch):

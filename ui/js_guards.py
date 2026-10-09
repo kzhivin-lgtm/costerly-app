@@ -4188,6 +4188,10 @@ def install_price_source_remove_guard() -> None:
                         // immediate and visually deterministic.
                         button.closest('[class*="st-key-price_source_row_"]')
                             ?.classList.add("costerly-price-source-pending-delete");
+                        parentWindow.sessionStorage.setItem(
+                            "costerly-price-source-delete-scroll-y",
+                            String(parentWindow.scrollY),
+                        );
                         button.dataset.priceSourceRemoveConfirmed = "true";
                         button.click();
                     });
@@ -4212,6 +4216,17 @@ def install_price_source_remove_guard() -> None:
             }
 
             parentDoc.addEventListener("click", handleClick, true);
+            const savedScrollY = parentWindow.sessionStorage.getItem(
+                "costerly-price-source-delete-scroll-y",
+            );
+            if (savedScrollY !== null) {
+                parentWindow.sessionStorage.removeItem(
+                    "costerly-price-source-delete-scroll-y",
+                );
+                parentWindow.requestAnimationFrame(() => {
+                    parentWindow.scrollTo({ top: Number(savedScrollY), behavior: "auto" });
+                });
+            }
             parentWindow[CLEANUP_KEY] = () => {
                 parentDoc.removeEventListener("click", handleClick, true);
                 closeModal();

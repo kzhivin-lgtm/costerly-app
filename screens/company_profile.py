@@ -2176,11 +2176,11 @@ def _poll_price_lists_projections(access: CompanyAccess) -> tuple[dict, dict, di
     return results, errors, futures
 
 
-def _render_price_lists_loading(label: str) -> None:
+def _render_price_lists_loading() -> None:
     st.markdown(
-        '<div class="price-catalog-empty-row price-lists-projection-loading">'
-        + escape(f"Loading {label}…")
-        + "</div>",
+        '<div class="price-catalog-empty-row price-lists-projection-loading" '
+        'role="status"><span class="price-lists-projection-spinner" '
+        'aria-hidden="true"></span>Loading catalog…</div>',
         unsafe_allow_html=True,
     )
 
@@ -2216,6 +2216,9 @@ def _start_price_source_purge_action(access: CompanyAccess, source_id: str) -> N
         pending[source_id] = future
         hidden = st.session_state.setdefault("_price_source_purging_ids", set())
         hidden.add(source_id)
+        # The callback reruns Streamlit immediately. Preserve the interaction
+        # surface the user is actively working in for consecutive deletes.
+        st.session_state["_price_source_library_open_once"] = True
 
 
 def _process_pending_price_source_purges() -> bool:
@@ -2237,11 +2240,17 @@ def _process_pending_price_source_purges() -> bool:
                 "The source could not be removed. It is visible again. Try again"
             )
         else:
-            _clear_price_lists_snapshot()
             hidden.discard(source_id)
-            # A completed background purge must not collapse the library that
-            # the user is actively cleaning. This flag is consumed by the next
-            # full render only; subsequent manual expand/collapse is untouched.
+            state = st.session_state.get("_price_lists_projection_state") or {}
+            # Do not force a full app rerun once the database worker returns.
+            # The current snapshot already reflects the optimistic deletion,
+            # so remove the deleted source from every loaded projection and
+            # let the next ordinary refresh fetch the authoritative data.
+            for name, records in (state.get("results") or {}).items():
+                if isinstance(records, list):
+                    state["results"][name] = _without_purging_price_source_records(
+                        records, {source_id}
+                    )
             st.session_state["_price_source_library_open_once"] = True
             st.session_state.pop("_price_source_notice", None)
             # The disappearing row is the only success acknowledgement for a
@@ -3395,17 +3404,9 @@ def _restore_active_price_source_processing(access: CompanyAccess) -> None:
 def _render_price_source_processing_status(access: CompanyAccess, *, trace=None) -> None:
     """Refresh only the terminal state while the worker runs in background."""
     purge_finished = _process_pending_price_source_purges()
-    # Refresh the parent Price Lists fragment after a completed purge.  Without
-    # this, the already-rendered catalog remains visible even though the DB
-    # purge completed.  A selected file/URL is an exception: its Extract
-    # callback owns that selection, and an app rerun can remount the uploader
-    # before the callback consumes it.
+    # A completed purge has already updated the live snapshot in place. A full
+    # app rerun would collapse Source Library and restart every projection.
     if purge_finished:
-        if (
-            not st.session_state.get("_price_source_processing")
-            and not _price_source_has_unsubmitted_selection()
-        ):
-            st.rerun(scope="app")
         return
     if not st.session_state.get("_price_source_processing"):
         return
@@ -3542,26 +3543,31 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
     review_rows = projection("review")
     material_jobs = projection("material_jobs")
 
+    # Keep the first visible load deliberate and calm. The upload card above
+    # remains usable, while all four independent reads finish in background.
+    # Rendering individual section loaders caused the page to jump and made
+    # the ordered catalog look unstable.
+    if any(
+        name not in results and name not in errors
+        for name in ("sources", "catalog", "review", "material_jobs")
+    ):
+        _render_price_lists_loading()
+        return
+
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):
             if errors.get("catalog"):
                 st.info(errors["catalog"])
-            elif catalog is None:
-                _render_price_lists_loading("catalog")
             elif catalog:
                 _render_price_catalog(access, catalog, sources or [])
 
             if errors.get("material_jobs"):
                 st.info(errors["material_jobs"])
-            elif material_jobs is None:
-                _render_price_lists_loading("Material Jobs")
             elif material_jobs:
                 _render_material_jobs(access, material_jobs)
 
             if errors.get("review"):
                 st.info(errors["review"])
-            elif review_rows is None:
-                _render_price_lists_loading("Review")
             else:
                 _render_price_source_review_queue(access, review_rows)
 
@@ -3580,8 +3586,6 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
                 visible_sources = sources or []
                 if errors.get("sources"):
                     st.info(errors["sources"])
-                elif sources is None:
-                    _render_price_lists_loading("Source Library")
                 elif not visible_sources:
                     st.info("No source documents yet.")
                 else:

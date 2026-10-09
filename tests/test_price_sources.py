@@ -38,6 +38,7 @@ from agents.price_source_agent import (
 from use_cases.price_sources import (
     discard_price_source_non_candidates,
     discard_price_source_consumables,
+    discard_price_source_low_value_rows,
     prepare_price_source_operation_rows,
     PriceSourceError,
     PRICE_CATALOG_DEPARTMENTS,
@@ -567,6 +568,35 @@ def test_consumables_are_discarded_and_supplier_services_map_before_persistence(
     assert supplier_service_pricing_basis(
         "piece", operation_code="supplier_cut_and_edge_banding"
     ) == "supplier_defined"
+
+
+def test_low_value_materials_are_excluded_at_less_than_two_shekels_ex_vat():
+    result = _result()
+    row = result["rows"][0]
+    row.update({"raw_price": 1.99, "raw_vat_mode": "excluded"})
+
+    assert discard_price_source_low_value_rows(result, vat_rate=0.17) == 1
+    assert result["rows"] == []
+
+
+def test_two_shekels_ex_vat_and_services_survive_the_temporary_floor():
+    result = _result()
+    row = result["rows"][0]
+    row.update({"raw_price": 2.0, "raw_vat_mode": "excluded"})
+    service = deepcopy(row)
+    service.update({"source_row_number": 2, "item_kind": "operation_service", "raw_price": 1.0})
+    result["rows"] = [row, service]
+
+    assert discard_price_source_low_value_rows(result, vat_rate=0.17) == 0
+    assert result["rows"] == [row, service]
+
+
+def test_included_vat_price_uses_its_net_value_for_the_temporary_floor():
+    result = _result()
+    result["rows"][0].update({"raw_price": 2.30, "raw_vat_mode": "included"})
+
+    assert discard_price_source_low_value_rows(result, vat_rate=0.17) == 1
+    assert result["rows"] == []
 
 
 def test_glass_cutter_is_a_tool_consumable_not_a_glass_material():
@@ -2727,12 +2757,19 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
         "submit_price_source_purge_job",
         lambda **_kwargs: future,
     )
-    cleared = []
-    monkeypatch.setattr(
-        company_profile,
-        "_clear_price_lists_snapshot",
-        lambda: cleared.append(True),
-    )
+    state["_price_lists_projection_state"] = {
+        "results": {
+            "sources": [
+                {"source_id": "source-1"},
+                {"source_id": "source-keep"},
+            ],
+            "catalog": [
+                {"source_id": "source-1"},
+                {"source_id": "source-keep"},
+            ],
+        },
+        "errors": {},
+    }
 
     company_profile._start_price_source_purge_action(
         SimpleNamespace(company_id="company-1"), "source-1"
@@ -2740,14 +2777,20 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
 
     assert state["_price_source_purging_ids"] == {"source-1"}
     assert state["_price_source_purge_pending"]["source-1"] is future
+    assert state["_price_source_library_open_once"] is True
 
     future.set_result({"deleted_rows": 5, "storage_deleted": True})
 
     assert company_profile._process_pending_price_source_purges() is True
-    assert cleared == [True]
     assert "_price_source_purge_pending" not in state
     assert "_price_source_action_notice" not in state
     assert state["_price_source_library_open_once"] is True
+    assert state["_price_lists_projection_state"]["results"]["sources"] == [
+        {"source_id": "source-keep"}
+    ]
+    assert state["_price_lists_projection_state"]["results"]["catalog"] == [
+        {"source_id": "source-keep"}
+    ]
 
 
 def test_optimistic_source_purge_hides_all_source_owned_projections():
