@@ -257,6 +257,18 @@ local and `+972` phone input, successful persistence/reload, and no regression
 to Contacts Logo Save, the Profile rail, protected Price Lists or cold-load
 behavior.
 
+ACTIVE, P0, 3.20.1 Bank Details validation and normalization, approved 10.10:
+Company registration number is exactly nine digits, retaining leading zeros.
+Bank, branch and account numbers accept digits only, retaining leading zeros
+without invented length limits. Bank and legal names remain free text. BIC is
+uppercase Latin letters/digits in its standard eight- or eleven-character
+format. IBAN removes spaces, converts letters to uppercase during typing and
+paste, and must pass the international IBAN structure and MOD-97 checksum.
+Invalid values use the existing Auth-red field border only and block Save,
+without validation copy, external bank requests or per-edit Streamlit reruns.
+Acceptance requires authenticated production coverage of paste, correction,
+normalization, blocked invalid Save, saved reload and retained Profile behavior.
+
 COMPLETED, P0, 3.18.1 authenticated Upload first paint, owner accepted 10.10:
 instrumented the complete cold path and moved non-critical Platform Admin and
 Last Estimate reads behind the first authenticated Upload reveal. The resulting
@@ -316,6 +328,17 @@ preceding comparable sample. The Profile-tab durable-route defect is explicitly
 deferred: Pricing Cost can still reload as Overhead Expenses. Do not add another
 route experiment without a fresh authenticated reproduction and DOM/message-path
 evidence.
+
+ACTIVE, P0, 3.18.5 authenticated-session legal gate boundary, owner approved
+10.10: Terms, Privacy, releases, documents and acceptance history are checked
+only by the fresh successful password Sign in flow. Any already-authenticated
+session resume, hard refresh, Fast Resume, browser-storage restoration, tab
+selection, tool action or internal rerun must not read any legal source. A
+failed fresh Sign in legal read remains a visible fail-safe error, never a
+resume bypass. Membership and authentication checks remain mandatory. Verify in
+authenticated production trace that resume contains `server.legal_terms_gate_resume_skip`
+and no `server.legal_terms_gate_lookup`, then compare the cold timing with the
+11:51 UTC baseline that spent 1.88 s in the legal lookup.
 
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session

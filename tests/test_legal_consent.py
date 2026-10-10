@@ -460,9 +460,14 @@ def test_confirmation_and_permanent_privacy_routes_are_wired():
 
 def test_updated_terms_gate_precedes_application_controls():
     app_source = (ROOT / "app.py").read_text()
-    gate_position = app_source.index("needs_terms = terms_acceptance_required(")
+    gate_position = app_source.index("server.legal_terms_gate_sign_in_result")
     controls_position = app_source.index("render_account_control(")
     assert gate_position < controls_position
+    authenticated_section = app_source.split(
+        'post_sign_in_terms_check = st.session_state.pop(', 1
+    )[1].split("platform_user_id =", 1)[0]
+    assert "terms_acceptance_required(" not in authenticated_section
+    assert "server.legal_terms_gate_resume_skip" in authenticated_section
 
     auth_source = (ROOT / "state/company_auth.py").read_text()
     gate_source = auth_source.split("def render_terms_acceptance", 1)[1].split(
@@ -470,6 +475,14 @@ def test_updated_terms_gate_precedes_application_controls():
     )[0]
     assert '"Sign out"' in gate_source
     assert "on_click=sign_out" in gate_source
+
+
+def test_failed_sign_in_legal_check_stays_a_visible_gate_not_a_resume_skip():
+    auth_source = (ROOT / "state/company_auth.py").read_text()
+    sign_in_source = auth_source.split("def _submit_login", 1)[1].split(
+        "def _verified_token_identity", 1
+    )[0]
+    assert '"error": True' in sign_in_source
 
 
 def test_terms_gate_uses_the_minimal_updated_terms_heading(monkeypatch):

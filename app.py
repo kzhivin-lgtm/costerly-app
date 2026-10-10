@@ -33,7 +33,6 @@ from state.legal_consent import (
     complete_pending_registration,
     legal_consent_enabled,
     pending_registration_for_user,
-    terms_acceptance_required,
 )
 from db.company_access import assert_estimate_owned, assert_run_owned
 from db.supabase_client import get_supabase_client
@@ -465,33 +464,23 @@ def main() -> None:
             # back to the first tab before the shell could reconcile state.
             if "screen" in st.query_params:
                 del st.query_params["screen"]
-        legal_check_key = f"_terms_acceptance_checked:{access.user_id}"
         post_sign_in_terms_check = st.session_state.pop(
             "_post_sign_in_terms_check", None
         )
-        skip_legal_refresh_check = (
-            st.session_state.get("_fast_resume_outcome") == "restored"
-        )
-        if legal_consent_enabled() and not (
-            st.session_state.get(legal_check_key) or skip_legal_refresh_check
-        ):
-            try:
-                if (
-                    isinstance(post_sign_in_terms_check, dict)
-                    and post_sign_in_terms_check.get("user_id") == access.user_id
-                ):
-                    needs_terms = bool(post_sign_in_terms_check.get("needs_terms"))
-                    trace.event("server.legal_terms_gate_cache_hit")
-                else:
-                    with trace.span("server.legal_terms_gate_lookup"):
-                        needs_terms = terms_acceptance_required(
-                            get_supabase_client(),
-                            access.user_id,
-                        )
-            except Exception:
+        if legal_consent_enabled() and isinstance(post_sign_in_terms_check, dict):
+            # Legal releases, documents and acceptance history are read exactly
+            # once, by the successful password Sign in path. An authenticated
+            # resume must never re-read them, regardless of the screen or tool.
+            if post_sign_in_terms_check.get("user_id") != access.user_id:
                 st.error("Legal documents are temporarily unavailable")
                 _signal_ready(trace, "legal_documents_error")
                 return
+            if post_sign_in_terms_check.get("error"):
+                st.error("Legal documents are temporarily unavailable")
+                _signal_ready(trace, "legal_documents_error")
+                return
+            needs_terms = bool(post_sign_in_terms_check.get("needs_terms"))
+            trace.event("server.legal_terms_gate_sign_in_result")
             if needs_terms:
                 with trace.span("server.app_header_render"):
                     render_app_header()
@@ -500,9 +489,8 @@ def main() -> None:
                     render_terms_acceptance(access)
                 _signal_ready(trace, "terms_acceptance")
                 return
-            st.session_state[legal_check_key] = True
-        elif skip_legal_refresh_check:
-            st.session_state[legal_check_key] = True
+        elif legal_consent_enabled():
+            trace.event("server.legal_terms_gate_resume_skip")
         platform_user_id = str(access.user_id)
         platform_cached = (
             st.session_state.get("_platform_access_user_id") == platform_user_id

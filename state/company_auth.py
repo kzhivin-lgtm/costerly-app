@@ -982,9 +982,13 @@ def _submit_login() -> None:
             try:
                 needs_terms = bool(terms_future.result())
             except Exception:
-                # Preserve the established, visible legal error in the app
-                # run if this speculative parallel read is unavailable.
-                pass
+                # A fresh Sign in must not bypass the one mandatory legal
+                # check. Mark the following app run so it stops visibly rather
+                # than treating this as an authenticated session resume.
+                st.session_state["_post_sign_in_terms_check"] = {
+                    "user_id": access.user_id,
+                    "error": True,
+                }
             else:
                 terms_check_ms = (time.perf_counter() - submitted_at) * 1000
                 st.session_state["_post_sign_in_terms_check"] = {
