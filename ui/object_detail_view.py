@@ -262,20 +262,10 @@ def _footer_html(run_id: object, estimate_id: object, object_id: object) -> str:
     )
 
 
-def hero_html(data: dict[str, object]) -> str:
-    """Render Object Detail hero/header block."""
-    preview_url = str(data.get("preview_url") or "")
-    preview = (
-        '<div class="object-detail-preview-placeholder">'
-        f'<img class="object-detail-preview-image" src="{_escape(preview_url)}" alt="Source preview">'
-        '</div>'
-        if preview_url
-        else f'<div class="object-detail-preview-placeholder">{_escape(data["preview_label"])}</div>'
-    )
+def hero_heading_html(data: dict[str, object]) -> str:
+    """Render the Object Detail title and object facts without its preview."""
     return (
         '<div class="post-upload-shell object-detail-shell">'
-        '<div class="object-detail-hero">'
-        '<div>'
         '<h1 class="post-upload-title object-detail-title workflow-title">'
         f'{_workflow_title_html("Object:")}'
         '<br>'
@@ -294,7 +284,28 @@ def hero_html(data: dict[str, object]) -> str:
         f'<span class="object-detail-info-value">{_escape(data["confidence"])}</span>'
         '</div>'
         '</div>'
-        f'{preview}'
+    )
+
+
+def hero_preview_html(data: dict[str, object]) -> str:
+    """Render the Object Detail source preview for the header row."""
+    preview_url = str(data.get("preview_url") or "")
+    return (
+        '<div class="object-detail-preview-placeholder">'
+        f'<img class="object-detail-preview-image" src="{_escape(preview_url)}" alt="Source preview">'
+        '</div>'
+        if preview_url
+        else f'<div class="object-detail-preview-placeholder">{_escape(data["preview_label"])}</div>'
+    )
+
+
+def hero_html(data: dict[str, object]) -> str:
+    """Render the legacy combined Object Detail hero/header block."""
+    return (
+        '<div class="post-upload-shell object-detail-shell">'
+        '<div class="object-detail-hero">'
+        f'<div>{hero_heading_html(data)}</div>'
+        f'{hero_preview_html(data)}'
         '</div>'
         '</div>'
     )

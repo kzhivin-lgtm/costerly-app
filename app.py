@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from importlib.metadata import PackageNotFoundError, version as package_version
 import platform
 import time
+from typing import Callable
 
 _SCRIPT_STARTED_AT = time.perf_counter()
 
@@ -258,6 +259,7 @@ def _render_screen(
     access=None,
     platform_access=None,
     trace=None,
+    render_header_controls: Callable[[], None] | None = None,
 ) -> None:
     if screen == "upload":
         from screens.upload import render_upload_screen
@@ -270,15 +272,15 @@ def _render_screen(
     elif screen == "file_review":
         from screens.file_review import render_file_review_screen
 
-        render_file_review_screen(company_id)
+        render_file_review_screen(company_id, render_header_controls=render_header_controls)
     elif screen == "objects":
         from screens.objects import render_objects_screen
 
-        render_objects_screen(company_id)
+        render_objects_screen(company_id, render_header_controls=render_header_controls)
     elif screen == "object_detail":
         from screens.object_detail import render_object_detail_screen
 
-        render_object_detail_screen(company_id)
+        render_object_detail_screen(company_id, render_header_controls=render_header_controls)
     elif screen == "projects":
         from screens.projects import render_projects_screen
 
@@ -290,6 +292,7 @@ def _render_screen(
             access,
             platform_access=platform_access,
             trace=trace,
+            render_header_controls=render_header_controls,
         )
     elif screen == "admin":
         if access is None or platform_access is None:
@@ -609,12 +612,18 @@ def main() -> None:
         if active_product_screen == "upload":
             with trace.span("server.app_header_render"):
                 render_app_header()
-        with trace.span("server.account_controls_render"):
-            render_account_control(
-                access,
-                platform_access=platform_access,
-                latest_route=latest_route,
-            )
+        contextual_header_screens = {"account", "file_review", "objects", "object_detail"}
+
+        def render_header_controls() -> None:
+            with trace.span("server.account_controls_render"):
+                render_account_control(
+                    access,
+                    platform_access=platform_access,
+                    latest_route=latest_route,
+                )
+
+        if active_product_screen not in contextual_header_screens:
+            render_header_controls()
     else:
         requested_screen = str(st.query_params.get("screen") or "")
         current_screen = requested_screen or str(st.session_state.get("screen") or "upload")
@@ -757,6 +766,11 @@ def main() -> None:
             access=access,
             platform_access=platform_access,
             trace=trace,
+            render_header_controls=(
+                render_header_controls
+                if auth_enabled and screen in {"account", "file_review", "objects", "object_detail"}
+                else None
+            ),
         )
 
     _signal_ready(trace, screen, company_id=company_id)

@@ -4,6 +4,7 @@ from concurrent.futures import Future
 from datetime import UTC, datetime
 import html
 import time
+from typing import Callable
 
 import streamlit as st
 
@@ -13,7 +14,7 @@ from styles.file_review import apply_file_review_css
 from ui.js_guards import (
     install_workflow_header_alignment_guard,
 )
-from ui.layout import post_upload_header_html, render_post_upload_header
+from ui.layout import render_post_upload_header
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
 )
@@ -693,9 +694,13 @@ def _render_missing_object_search() -> None:
     st.markdown(card_html, unsafe_allow_html=True)
 
 
-def _render_file_review_header_only() -> None:
+def _render_file_review_header_only(render_header_controls: Callable[[], None] | None = None) -> None:
     """Render File Review header when full review data is unavailable."""
-    render_post_upload_header("File Review", marker_id=FILE_REVIEW_MARKER_ID)
+    render_post_upload_header(
+        "File Review",
+        marker_id=FILE_REVIEW_MARKER_ID,
+        render_header_controls=render_header_controls,
+    )
 
 
 def _back_to_upload_button(*, clear_processing_error: bool = False) -> None:
@@ -718,44 +723,54 @@ def _back_to_upload_from_review() -> None:
     set_screen("upload")
 
 
-def _render_processing_error(message: object) -> None:
+def _render_processing_error(
+    message: object,
+    render_header_controls: Callable[[], None] | None = None,
+) -> None:
     """Render the File Review fallback when RFQ processing failed."""
-    _render_file_review_header_only()
+    _render_file_review_header_only(render_header_controls)
     st.error(f"RFQ processing failed: {message}")
     _back_to_upload_button(clear_processing_error=True)
 
 
-def _render_load_error(message: object) -> None:
+def _render_load_error(
+    message: object,
+    render_header_controls: Callable[[], None] | None = None,
+) -> None:
     """Render the File Review fallback when persisted RFQ data cannot load."""
-    _render_file_review_header_only()
+    _render_file_review_header_only(render_header_controls)
     st.error(f"Could not load RFQ run from Supabase: {message}")
 
 
-def _render_missing_run_state() -> None:
+def _render_missing_run_state(render_header_controls: Callable[[], None] | None = None) -> None:
     """Render the File Review fallback when there is no processed RFQ run."""
-    _render_file_review_header_only()
+    _render_file_review_header_only(render_header_controls)
     st.warning("No processed RFQ run found. Upload a file to start.")
     _back_to_upload_button()
 
 
-def render_file_review_screen(company_id: str) -> None:
+def render_file_review_screen(
+    company_id: str,
+    *,
+    render_header_controls: Callable[[], None] | None = None,
+) -> None:
     """Render File Review from the persisted detection result when available."""
     apply_file_review_css()
 
     processing_error = st.session_state.get("processing_error")
     if processing_error:
-        _render_processing_error(processing_error)
+        _render_processing_error(processing_error, render_header_controls)
         return
 
     run_id = st.session_state.get("current_run_id")
     if not run_id:
-        _render_missing_run_state()
+        _render_missing_run_state(render_header_controls)
         return
 
     try:
         data = _load_file_review_screen_data(run_id)
     except Exception as exc:
-        _render_load_error(exc)
+        _render_load_error(exc, render_header_controls)
         return
 
     _sync_run_metadata_state(run_id, data["run"])
@@ -764,9 +779,10 @@ def render_file_review_screen(company_id: str) -> None:
             '<span class="file-review-title-card-shell-marker" aria-hidden="true"></span>',
             unsafe_allow_html=True,
         )
-        st.markdown(
-            post_upload_header_html("File Review", marker_id=FILE_REVIEW_MARKER_ID),
-            unsafe_allow_html=True,
+        render_post_upload_header(
+            "File Review",
+            marker_id=FILE_REVIEW_MARKER_ID,
+            render_header_controls=render_header_controls,
         )
         _render_review_card(
             run_id=run_id,

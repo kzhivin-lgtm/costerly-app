@@ -283,6 +283,24 @@ def apply_base_css() -> None:
             opacity: 1;
         }
 
+        /* These screen headers render the one shared control component in
+           their native Streamlit row. It must follow that row through normal
+           document scrolling, rather than inherit the root rail's viewport
+           positioning. */
+        .stApp:has(.company-profile-active) .st-key-costerly_header_controls,
+        .stApp:has(#costerly-file-review-screen-active) .st-key-costerly_header_controls,
+        .stApp:has(.objects-estimation-header) .st-key-costerly_header_controls,
+        .stApp:has(.object-detail-shell) .st-key-costerly_header_controls {
+            position: static !important;
+            top: auto !important;
+            right: auto !important;
+            z-index: auto;
+            width: 100% !important;
+            max-width: none;
+            opacity: 1;
+            transform: none !important;
+        }
+
         .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
             width: fit-content !important;
             gap: 6px;

@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 import re
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 from urllib.parse import urlsplit
 
 import streamlit as st
@@ -5222,7 +5222,13 @@ def _open_platform_admin_screen() -> None:
     set_screen("admin")
 
 
-def render_company_profile(access: CompanyAccess, *, platform_access=None, trace=None) -> None:
+def render_company_profile(
+    access: CompanyAccess,
+    *,
+    platform_access=None,
+    trace=None,
+    render_header_controls: Callable[[], None] | None = None,
+) -> None:
     phase_started_at = time.perf_counter()
 
     def finish_phase(name: str, summary_key: str) -> None:
@@ -5245,11 +5251,16 @@ def render_company_profile(access: CompanyAccess, *, platform_access=None, trace
     )
     finish_phase("server.company_profile_styles", "p_styles_ms")
 
-    st.markdown(
-        f'<div class="company-profile-heading"><div class="company-profile-mark">{_brand_mark()}</div>'
-        '<h1>Company profile</h1></div>',
-        unsafe_allow_html=True,
-    )
+    def render_profile_title() -> None:
+        st.markdown(
+            f'<div class="company-profile-heading"><div class="company-profile-mark">{_brand_mark()}</div>'
+            '<h1>Company profile</h1></div>',
+            unsafe_allow_html=True,
+        )
+
+    from ui.layout import render_screen_header_row
+
+    render_screen_header_row(render_profile_title, render_header_controls)
     finish_phase("server.company_profile_header", "p_header_ms")
 
     expenses_tab, labor_tab, pricing_tab, machinery_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(

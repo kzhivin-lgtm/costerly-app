@@ -4,6 +4,7 @@ import html
 import base64
 from functools import lru_cache
 from pathlib import Path
+from typing import Callable
 
 import streamlit as st
 
@@ -66,6 +67,7 @@ def render_post_upload_header(
     *,
     class_name: str | None = None,
     marker_id: str | None = None,
+    render_header_controls: Callable[[], None] | None = None,
 ) -> None:
     """Render the fixed-origin header used after the Upload screen.
 
@@ -74,12 +76,36 @@ def render_post_upload_header(
     """
     apply_post_upload_css()
 
-    st.markdown(
-        post_upload_header_html(
-            title,
-            subtitle,
-            class_name=class_name,
-            marker_id=marker_id,
-        ),
-        unsafe_allow_html=True,
-    )
+    def render_title() -> None:
+        st.markdown(
+            post_upload_header_html(
+                title,
+                subtitle,
+                class_name=class_name,
+                marker_id=marker_id,
+            ),
+            unsafe_allow_html=True,
+        )
+
+    render_screen_header_row(render_title, render_header_controls)
+
+
+def render_screen_header_row(
+    render_title: Callable[[], None],
+    render_header_controls: Callable[[], None] | None = None,
+) -> None:
+    """Render one native header row, optionally with the shared action rail.
+
+    The rail must be a sibling of the screen title in Streamlit's server tree.
+    CSS positioning cannot make a root-level widget reliably participate in a
+    screen header's document flow after Streamlit reconciliation.
+    """
+    if render_header_controls is None:
+        render_title()
+        return
+
+    title_column, actions_column = st.columns([3, 2], gap="small", vertical_alignment="center")
+    with title_column:
+        render_title()
+    with actions_column:
+        render_header_controls()

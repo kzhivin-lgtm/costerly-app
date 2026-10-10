@@ -1750,19 +1750,25 @@ def render_account_control(
         st.warning(last_estimate_error)
 
 
-def render_company_account(access: CompanyAccess, *, platform_access=None, trace=None) -> None:
+def render_company_account(
+    access: CompanyAccess,
+    *,
+    platform_access=None,
+    trace=None,
+    render_header_controls=None,
+) -> None:
+    profile_kwargs = {"platform_access": platform_access}
+    if render_header_controls is not None:
+        profile_kwargs["render_header_controls"] = render_header_controls
+
     if trace is None:
         from screens.company_profile import render_company_profile
 
-        render_company_profile(access, platform_access=platform_access)
+        render_company_profile(access, **profile_kwargs)
         return
 
     with trace.span("server.company_profile_import"):
         from screens.company_profile import render_company_profile
 
     with trace.span("server.company_profile_render"):
-        render_company_profile(
-            access,
-            platform_access=platform_access,
-            trace=trace,
-        )
+        render_company_profile(access, trace=trace, **profile_kwargs)

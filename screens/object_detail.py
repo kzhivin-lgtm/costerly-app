@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+from typing import Callable
 import streamlit as st
 
 from config import get_optional_secret
@@ -30,7 +31,11 @@ class ObjectDetailContext:
     run_id: str
 
 
-def render_object_detail_screen(company_id: str) -> None:
+def render_object_detail_screen(
+    company_id: str,
+    *,
+    render_header_controls: Callable[[], None] | None = None,
+) -> None:
     """Render one object estimate detail screen from persisted estimate data."""
     context = _current_object_detail_context()
     if context is None:
@@ -47,7 +52,7 @@ def render_object_detail_screen(company_id: str) -> None:
     if data is None:
         return
 
-    _render_object_detail(data, context)
+    _render_object_detail(data, context, render_header_controls=render_header_controls)
     _install_object_detail_runtime(context)
     install_workflow_header_alignment_guard("h1.object-detail-title")
 
@@ -108,11 +113,26 @@ def _load_object_detail_or_render_error(context: ObjectDetailContext) -> dict[st
         return None
 
 
-def _render_object_detail(data: dict[str, object], context: ObjectDetailContext) -> None:
-    st.markdown(
-        object_detail_view.hero_html(data),
-        unsafe_allow_html=True,
-    )
+def _render_object_detail(
+    data: dict[str, object],
+    context: ObjectDetailContext,
+    *,
+    render_header_controls: Callable[[], None] | None = None,
+) -> None:
+    if render_header_controls is None:
+        st.markdown(object_detail_view.hero_html(data), unsafe_allow_html=True)
+    else:
+        title_column, actions_column, preview_column = st.columns(
+            [2.4, 2, 1.25],
+            gap="small",
+            vertical_alignment="top",
+        )
+        with title_column:
+            st.markdown(object_detail_view.hero_heading_html(data), unsafe_allow_html=True)
+        with actions_column:
+            render_header_controls()
+        with preview_column:
+            st.markdown(object_detail_view.hero_preview_html(data), unsafe_allow_html=True)
     st.markdown(
         object_detail_view.detail_html(
             data,

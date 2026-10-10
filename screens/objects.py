@@ -3,6 +3,7 @@ from __future__ import annotations
 from concurrent.futures import Future
 from dataclasses import dataclass
 import json
+from typing import Callable
 
 import streamlit as st
 
@@ -527,7 +528,11 @@ def _render_live_objects_content(*, estimate_id: str, run_id: str | None) -> Non
         )
 
 
-def render_objects_screen(company_id: str) -> None:
+def render_objects_screen(
+    company_id: str,
+    *,
+    render_header_controls: Callable[[], None] | None = None,
+) -> None:
     """Render the object pricing review screen from persisted estimate data."""
     apply_objects_css()
     _consume_estimation_future()
@@ -541,6 +546,7 @@ def render_objects_screen(company_id: str) -> None:
         "Review objects → Set sale price → Final Approval",
         class_name="objects-estimation-header",
         marker_id=OBJECTS_MARKER_ID,
+        render_header_controls=render_header_controls,
     )
     screen_state = _current_objects_state(estimate_id)
     screen_state = ObjectsScreenState(

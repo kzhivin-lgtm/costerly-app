@@ -56,6 +56,12 @@ def install_workflow_header_alignment_guard(
                 const { title, actions } = targets();
                 if (!title || !actions) return;
 
+                if (parentWindow.getComputedStyle(actions).position !== "fixed") {
+                    actions.style.removeProperty("transform");
+                    delete actions.dataset.workflowHeaderAligned;
+                    return;
+                }
+
                 if (actions !== currentActions || actions.style.transform !== appliedTransform) {
                     currentActions = actions;
                     appliedOffset = 0;
