@@ -21,6 +21,16 @@ def test_profile_route_preserves_selected_tab():
     }
 
 
+def test_account_bootstrap_keeps_the_profile_tab_query_for_hard_reload_recovery():
+    source = (Path(__file__).parents[1] / "app.py").read_text()
+    account_bootstrap = source.split('if requested_screen == "account":', 1)[1].split(
+        "legal_check_key", 1
+    )[0]
+
+    assert 'st.session_state.company_profile_tab = _PROFILE_TAB_ROUTES[requested_profile_tab]' in account_bootstrap
+    assert 'del st.query_params["profile_tab"]' not in account_bootstrap
+
+
 def test_profile_route_preserves_machinery_tab_in_app_and_wrapper():
     st.session_state.clear()
     st.session_state.company_profile_tab = "Machinery"

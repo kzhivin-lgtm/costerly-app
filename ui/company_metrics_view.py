@@ -101,7 +101,7 @@ def table_html(
 
 
 PRICING_GROUPS = (
-    ((
+    (
         "Project pricing",
         (
             ("delivery_percent", "Delivery", 3, "Percent of the objects sale subtotal."),
@@ -110,8 +110,8 @@ PRICING_GROUPS = (
             ("paint_consumables_percent", "Paint consumables", 10, "Percent of coating materials."),
             ("packaging_percent", "Packaging", 1, "Percent of primary materials."),
         ),
-    ),),
-    ((
+    ),
+    (
         "Company policy",
         (
             ("management_buffer_percent", "Management buffer", 5, "Reserve applied by the overhead engine."),
@@ -119,7 +119,7 @@ PRICING_GROUPS = (
             ("sale_price_markup_percent", "Default sale markup", 30, "Default markup for suggested sale prices."),
             ("vat_percent", "Ma'am / VAT rate", 18, "VAT rate used for company pricing totals."),
         ),
-    ),),
+    ),
 )
 
 
@@ -130,8 +130,7 @@ def pricing_table_html(settings: dict, *, editable: bool) -> str:
         if editable else ""
     )
     body: list[str] = []
-    for group_index, group in enumerate(PRICING_GROUPS):
-        _group_name, fields = group[0]
+    for group_index, (_group_name, fields) in enumerate(PRICING_GROUPS):
         if group_index:
             body.append('<div class="company-pricing-divider" aria-hidden="true"></div>')
         for start in range(0, len(fields), 2):

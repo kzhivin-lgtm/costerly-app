@@ -460,9 +460,12 @@ def main() -> None:
             requested_profile_tab = str(st.query_params.get("profile_tab") or "")
             if requested_profile_tab in _PROFILE_TAB_ROUTES:
                 st.session_state.company_profile_tab = _PROFILE_TAB_ROUTES[requested_profile_tab]
-            for route_key in ("screen", "profile_tab"):
-                if route_key in st.query_params:
-                    del st.query_params[route_key]
+            # Keep the selected Profile tab in the durable route. The outer
+            # shell restores this route after a hard reload, while Streamlit
+            # starts a new session. Removing it here made every reload fall
+            # back to the first tab before the shell could reconcile state.
+            if "screen" in st.query_params:
+                del st.query_params["screen"]
         legal_check_key = f"_terms_acceptance_checked:{access.user_id}"
         post_sign_in_terms_check = st.session_state.pop(
             "_post_sign_in_terms_check", None

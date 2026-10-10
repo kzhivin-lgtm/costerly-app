@@ -2785,6 +2785,18 @@ def apply_company_profile_css() -> None:
         .company-pricing-table { --detail-grid: minmax(0, 1.3fr) minmax(112px, 0.7fr) minmax(0, 1.3fr) minmax(112px, 0.7fr); }
         .company-pricing-row .object-detail-table-cell { min-height: 51px; }
         .company-pricing-label { gap: 7px; font-weight: 700; }
+        .company-pricing-row .object-detail-table-cell:nth-child(2) {
+            justify-content: flex-start;
+            padding-left: 16px;
+        }
+        .company-pricing-row .object-detail-table-cell:nth-child(3) {
+            justify-content: flex-start;
+            padding-left: 0;
+        }
+        .company-pricing-row .object-detail-table-cell:nth-child(4) {
+            justify-content: flex-start;
+            padding: 0 16px;
+        }
         .company-pricing-empty { background: rgba(42, 31, 44, 0.018); }
         .company-pricing-divider { height: 18px; background: var(--color-surface); border-bottom: 1px solid rgba(42, 31, 44, 0.12); }
         .company-pricing-help { width: 16px; height: 16px; border: 1px solid rgba(42, 31, 44, 0.32); border-radius: 50%; color: rgba(42, 31, 44, 0.66); display: inline-flex; align-items: center; justify-content: center; cursor: help; font-family: var(--font-mono); font-size: 11px; font-weight: 800; line-height: 1; }

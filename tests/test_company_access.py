@@ -2618,6 +2618,10 @@ def test_company_metrics_zero_clears_on_focus_but_formats_on_blur():
 
     assert 'input.textContent = Number(cleaned) === 0 ? "" : cleaned;' in guard
     assert "input.textContent = formatMoney(readNumber(input.textContent));" in guard
+    assert "const pricing = pricingInput(event.target);" in guard
+    assert "pricing.textContent = Number(cleaned) === 0 ? \"\" : cleaned;" in guard
+    assert "if (pricing) pricing.textContent = formatPercent(pricing.textContent);" in guard
+    assert 'parentDoc.addEventListener("pointerdown", handlePointerDown, true);' in guard
 
 
 def test_labor_position_list_uses_compact_labels_and_keeps_legacy_display():

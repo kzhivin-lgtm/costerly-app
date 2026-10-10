@@ -331,7 +331,12 @@ def install_company_metrics_input_guard() -> None:
                     const cleaned = cleanNumber(percent.value);
                     percent.value = Number(cleaned) === 0 ? "" : formatPercent(cleaned, false);
                 }
-                moveCaretToEnd(metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target) || percent);
+                const pricing = pricingInput(event.target);
+                if (pricing) {
+                    const cleaned = cleanNumber(pricing.textContent);
+                    pricing.textContent = Number(cleaned) === 0 ? "" : cleaned;
+                }
+                moveCaretToEnd(metricsInput(event.target) || metricsTotalInput(event.target) || pricing || percent);
             }
 
             function handlePointerDown(event) {
@@ -370,6 +375,8 @@ def install_company_metrics_input_guard() -> None:
                 if (phone) updatePhone(phone);
                 const percent = percentInput(event.target);
                 if (percent) percent.value = formatPercent(percent.value);
+                const pricing = pricingInput(event.target);
+                if (pricing) pricing.textContent = formatPercent(pricing.textContent);
             }
 
             function handleKeydown(event) {
