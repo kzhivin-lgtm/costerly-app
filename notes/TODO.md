@@ -355,19 +355,28 @@ added. The rejected fixed, top-offset and absolute experiments remain reverted.
 Visual refinement is not included in this accepted functional checkpoint and
 requires a separately approved UI task.
 
-PARTIALLY ACCEPTED, P0, 3.18.7 unified authenticated header geometry,
-10.10: implementation `b8bd3b0`; checkpoint:
+COMPLETED AND OWNER-ACCEPTED, P0, 3.18.7 unified authenticated header geometry,
+10.10: production implementation `b8bd3b0`, Object Detail completion
+`9bd7339`; checkpoint:
 `notes/UNIFIED_HEADER_GEOMETRY_CHECKPOINT_3_18_7_2026_10_10.md`. One shared
-document-flow header component now anchors the action rail to the title's local
-header container, rather than Streamlit-generated grid columns. The owner
-accepted the resulting geometry on Company Profile, File Review, Objects,
-Partners and Admin. Document-flow scrolling, callbacks, Upload placement,
-transition readiness and the accepted Price Lists contract remain protected.
-Object Detail is explicitly not accepted: its action rail still does not meet
-the title-axis geometry requirement. Keep it as the only remaining scope of
-3.18.7. Do not start an isolated CSS-offset experiment or a new task number;
-first inspect its specific title, controls and preview layout against the shared
-component contract.
+document-flow header component anchors the action rail to the title's local
+header container rather than Streamlit-generated grid columns. The owner
+accepted the resulting geometry across Company Profile, File Review, Objects,
+Partners, Admin and Object Detail. Document-flow scrolling, callbacks, Upload
+placement, transition readiness and the accepted Price Lists contract remain
+protected.
+
+ACTIVE, P0, 3.18.8 Object Detail hero-card vertical spacing, owner approved,
+10.10: separate the accepted navigation-controls geometry from Object Detail's
+content-card layout. Raise the Object Detail preview and associated hero content
+so the vertical whitespace above the preview equals the whitespace below it
+before the Cost/VAT/Total row. Keep the preview's top and bottom spacing at a
+measured 16px within its right-side content column, align the left object name
+and quantity content to the resulting composition, and do not change the
+accepted `Object:` title/control axis, shared header component, navigation
+callbacks, preview source, totals, table calculations or responsive behavior.
+Acceptance requires authenticated production visual inspection at the current
+desktop surface, with equal preview top/bottom gaps and no header regression.
 
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session

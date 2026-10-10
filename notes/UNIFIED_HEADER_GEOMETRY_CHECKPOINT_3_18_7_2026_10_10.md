@@ -1,8 +1,10 @@
 # Unified Header Geometry Checkpoint 3.18.7
 
-Status: partially owner-accepted on 2026-10-10
+Status: completed and owner-accepted on 2026-10-10
 
 Production implementation: `b8bd3b0` (`fix: anchor shared controls to header axis`)
+
+Object Detail completion: `9bd7339` (`fix: tighten object detail header layout`)
 
 ## Accepted outcome
 
@@ -19,6 +21,7 @@ The owner accepted the live authenticated result on:
 - Objects Estimation
 - Partners
 - Admin
+- Object Detail
 
 The controls remain one existing Streamlit action component. Their callbacks,
 authorization-dependent visibility and button keys were not changed.
@@ -52,11 +55,16 @@ the title and controls leave the viewport together on scroll.
 - `git diff --check`: passed.
 - Focused automated coverage: `262 passed` across company access, workflow
   header and navigation-route suites.
-- Live authenticated owner acceptance confirmed the five listed screens.
+- Live authenticated owner acceptance confirmed all six listed screens.
 
-## Remaining boundary
+## Object Detail completion
 
-Object Detail is not accepted. Its title, action rail and right-side preview
-still require a screen-specific diagnosis against the shared component's
-contract. This is the sole remaining scope of 3.18.7. Do not solve it with a
-new independent rail, a fixed viewport control, or an offset-only CSS tweak.
+Object Detail initially retained a legacy `44px` bottom margin inside the new
+primary `Object:` title row. That margin enlarged the row and lowered the
+action rail. `9bd7339` removes that margin only inside the shared primary
+header, which places the controls on the `Object:` title axis. The live owner
+check accepted the resulting navigation-control alignment.
+
+The preview's surrounding content-card spacing is intentionally excluded from
+this checkpoint. It is tracked separately as 3.18.8 so it cannot regress the
+accepted shared navigation geometry.
