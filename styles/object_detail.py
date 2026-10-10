@@ -161,11 +161,18 @@ def apply_object_detail_css() -> None:
         .object-detail-preview-under-actions {
             display: flex;
             justify-content: flex-end;
-            margin-top: 18px;
+            margin: 16px 0;
         }
 
         .object-detail-details {
-            margin-top: 18px;
+            margin-top: 16px;
+        }
+
+        /* The shared header's primary row contains only `Object:`. The legacy
+           hero spacing belongs below a complete hero, not inside that title
+           row: otherwise it makes the shared action rail centre too low. */
+        .st-key-costerly_screen_header_primary .object-detail-shell {
+            margin-bottom: 0;
         }
 
         .object-detail-title--name {
