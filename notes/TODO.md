@@ -366,17 +366,15 @@ Partners, Admin and Object Detail. Document-flow scrolling, callbacks, Upload
 placement, transition readiness and the accepted Price Lists contract remain
 protected.
 
-ACTIVE, P0, 3.18.8 Object Detail hero-card vertical spacing, owner approved,
-10.10: separate the accepted navigation-controls geometry from Object Detail's
-content-card layout. Raise the Object Detail preview and associated hero content
-so the vertical whitespace above the preview equals the whitespace below it
-before the Cost/VAT/Total row. Keep the preview's top and bottom spacing at a
-measured 16px within its right-side content column, align the left object name
-and quantity content to the resulting composition, and do not change the
-accepted `Object:` title/control axis, shared header component, navigation
-callbacks, preview source, totals, table calculations or responsive behavior.
-Acceptance requires authenticated production visual inspection at the current
-desktop surface, with equal preview top/bottom gaps and no header regression.
+COMPLETED AND OWNER-ACCEPTED, P0, 3.18.8 Object Detail hero-card vertical
+spacing, 10.10: production implementation `8c0eb53`; checkpoint:
+`notes/OBJECT_DETAIL_HERO_LAYOUT_CHECKPOINT_3_18_8_2026_10_10.md`. The Object
+Detail second row now consumes the one native 16px Streamlit gap beneath the
+accepted `Object:` header, without adding a duplicate top margin. Preview keeps
+a matching 16px bottom clearance before the Cost/VAT/Total row. The owner
+accepted the live authenticated result. Preserved: the accepted `Object:` /
+navigation-controls axis, shared header component, callbacks, preview source,
+totals, table calculations and responsive behavior.
 
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session
