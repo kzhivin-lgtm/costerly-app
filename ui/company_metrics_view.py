@@ -18,13 +18,6 @@ def _money(value: object) -> str:
     return f"₪{round(_amount(value)):,}".replace(",", "\u202f")
 
 
-def _percent(value: object) -> str:
-    amount = min(100.0, _amount(value))
-    if amount.is_integer():
-        return f"{int(amount)}%"
-    return f"{amount:.2f}".rstrip("0").rstrip(".") + "%"
-
-
 def table_html(
     groups: tuple,
     monthly: dict,
@@ -95,67 +88,6 @@ def table_html(
         'company-metrics-table" data-company-metrics-table '
         f'data-vat-percent="{float(vat_percent)}">'
         f'<div class="object-detail-table-head-row">{headers}</div>'
-        f'{"".join(body)}'
-        '</div>'
-    )
-
-
-PRICING_GROUPS = (
-    (
-        "Project pricing",
-        (
-            ("delivery_percent", "Delivery", 3, "Percent of the objects sale subtotal."),
-            ("installation_percent", "Installation", 10, "Percent of the objects sale subtotal."),
-            ("consumables_percent", "Consumables", 5, "Percent of primary materials."),
-            ("paint_consumables_percent", "Paint consumables", 10, "Percent of coating materials."),
-            ("packaging_percent", "Packaging", 1, "Percent of primary materials."),
-        ),
-    ),
-    (
-        "Company policy",
-        (
-            ("management_buffer_percent", "Management buffer", 5, "Reserve applied by the overhead engine."),
-            ("warranty_reserve_percent", "Warranty reserve", 5, "Reserve applied by the overhead engine."),
-            ("sale_price_markup_percent", "Default sale markup", 30, "Default markup for suggested sale prices."),
-            ("vat_percent", "Ma'am / VAT rate", 18, "VAT rate used for company pricing totals."),
-        ),
-    ),
-)
-
-
-def pricing_table_html(settings: dict, *, editable: bool) -> str:
-    """Render compact profile pricing inputs using the Overhead input primitive."""
-    editable_attrs = (
-        ' role="textbox" contenteditable="true" tabindex="0" inputmode="decimal"'
-        if editable
-        else ""
-    )
-    body: list[str] = []
-    for group_index, (_group_name, fields) in enumerate(PRICING_GROUPS):
-        if group_index:
-            body.append('<div class="company-pricing-divider" aria-hidden="true"></div>')
-        for start in range(0, len(fields), 2):
-            pair = fields[start:start + 2]
-            cells: list[str] = []
-            for field, label, default, help_text in pair:
-                value = _percent(settings.get(field, default))
-                cells.extend((
-                    '<div class="object-detail-table-cell company-pricing-label">'
-                    f'{_escape(label)}'
-                    f'<span class="company-pricing-help" title="{_escape(help_text)}" '
-                    f'aria-label="{_escape(help_text)}">?</span>'
-                    '</div>',
-                    '<div class="object-detail-table-cell">'
-                    '<div class="object-detail-cell-input company-pricing-input" '
-                    f'data-field="{_escape(field)}"{editable_attrs}>{value}</div>'
-                    '</div>',
-                ))
-            while len(cells) < 4:
-                cells.append('<div class="object-detail-table-cell company-pricing-empty"></div>')
-            body.append('<div class="object-detail-table-row company-pricing-row">' + "".join(cells) + '</div>')
-    return (
-        '<div class="object-detail-table company-pricing-table" '
-        'data-company-pricing-table>'
         f'{"".join(body)}'
         '</div>'
     )

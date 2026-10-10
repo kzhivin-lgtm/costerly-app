@@ -274,16 +274,15 @@ deferred until a separately measured performance task.
 
 ACTIVE, P0, 3.18.4 Profile Overhead and Pricing Cost editable-policy inputs:
 make Monthly Cost and Total reciprocal whole-shekel inputs, with Arnona VAT exempt,
-and add a visible Total monthly overhead expenses sum. Replace large native Pricing
-Cost inputs with the same compact editable table primitive, ordered Delivery /
-Installation, Consumables / Paint consumables, Packaging, then a separated policy
-block Management buffer / Warranty reserve and Default sale markup / VAT. Each
-Pricing field exposes a compact explanatory question mark. Preserve canonical
-net-overhead persistence, owner-only authorization, a single save boundary, and
-the accepted Price Lists, its fragments, polling, upload, Source, Review and
-catalog loading behavior. Acceptance requires authenticated production edits in
-both directions, Arnona invariance, correct total sum, Pricing zero-clear/percent
-format behavior, save/reload persistence, and no Price Lists regression.
+and add a visible Total monthly overhead expenses sum. The first compact Pricing
+surface was rejected by the owner and reverted. Preserve the established native
+Pricing Cost layout and ordering; retain only the zero-clear / percent-format
+input correction. Preserve canonical net-overhead persistence, owner-only
+authorization, a single save boundary, and the accepted Price Lists, its fragments,
+polling, upload, Source, Review and catalog loading behavior. Acceptance requires
+authenticated production edits in both directions, Arnona invariance, correct total
+sum, Pricing zero-clear/percent format behavior, save/reload persistence, and no
+Price Lists regression.
 
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session

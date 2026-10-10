@@ -167,11 +167,6 @@ def install_company_metrics_input_guard() -> None:
                 return target.closest(".company-metrics-total-input");
             }
 
-            function pricingInput(target) {
-                if (!target || !target.closest) return null;
-                return target.closest(".company-pricing-input");
-            }
-
             function phoneInput(target) {
                 return target && target.matches && target.matches(".st-key-profile_public_phone input")
                     ? target
@@ -228,7 +223,11 @@ def install_company_metrics_input_guard() -> None:
                 if (!table) return;
                 let total = 0;
                 for (const row of table.querySelectorAll(".company-metrics-row")) {
-                    total += readNumber(row.dataset.companyMetricsGross || "0");
+                    const totalNode = row.querySelector("[data-company-metrics-total]");
+                    total += readNumber(
+                        row.dataset.companyMetricsGross
+                        || (totalNode ? totalNode.textContent : "0")
+                    );
                 }
                 const node = table.querySelector("[data-company-metrics-grand-total]");
                 if (node) node.textContent = formatMoney(total);
@@ -308,13 +307,11 @@ def install_company_metrics_input_guard() -> None:
                     const cleaned = cleanNumber(total.textContent);
                     total.textContent = Number(cleaned) === 0 ? "" : cleaned;
                 }
-                const pricing = pricingInput(event.target);
-                if (pricing) {
-                    const cleaned = cleanNumber(pricing.textContent);
-                    pricing.textContent = Number(cleaned) === 0 ? "" : cleaned;
-                }
                 const percent = percentInput(event.target);
-                if (percent) percent.value = formatPercent(percent.value, false);
+                if (percent) {
+                    const cleaned = cleanNumber(percent.value);
+                    percent.value = Number(cleaned) === 0 ? "" : formatPercent(cleaned, false);
+                }
             }
 
             function handleInput(event) {
@@ -341,8 +338,6 @@ def install_company_metrics_input_guard() -> None:
                     updateRowFromTotal(total);
                     total.textContent = formatMoney(readNumber(total.textContent));
                 }
-                const pricing = pricingInput(event.target);
-                if (pricing) pricing.textContent = formatPercent(pricing.textContent);
                 const phone = phoneInput(event.target);
                 if (phone) updatePhone(phone);
                 const percent = percentInput(event.target);
@@ -362,7 +357,7 @@ def install_company_metrics_input_guard() -> None:
                     );
                     return;
                 }
-                const input = metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target);
+                const input = metricsInput(event.target) || metricsTotalInput(event.target);
                 if (!input) return;
                 const allowed = new Set([
                     "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End",
@@ -373,7 +368,7 @@ def install_company_metrics_input_guard() -> None:
             }
 
             function handlePaste(event) {
-                const input = metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target);
+                const input = metricsInput(event.target) || metricsTotalInput(event.target);
                 if (!input) return;
                 event.preventDefault();
                 const text = event.clipboardData ? event.clipboardData.getData("text") : "";

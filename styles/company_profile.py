@@ -137,9 +137,6 @@ def apply_company_profile_css() -> None:
         [data-testid="stElementContainer"]:has(.st-key-company_metrics_bridge_host),
         .st-key-company_metrics_bridge_host,
         .stApp:has(.company-profile-active)
-        [data-testid="stElementContainer"]:has(.st-key-company_pricing_bridge_host),
-        .st-key-company_pricing_bridge_host,
-        .stApp:has(.company-profile-active)
         [data-testid="stElementContainer"]:has(.st-key-company_labor_bridge_host),
         .st-key-company_labor_bridge_host {
             display: none !important;
@@ -211,7 +208,6 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) div[data-testid="stForm"],
         .stApp:has(.company-profile-active) .st-key-company_metrics_card,
-        .stApp:has(.company-profile-active) .st-key-company_pricing_card,
         .stApp:has(.company-profile-active) .st-key-company_labor_card,
         .stApp:has(.company-profile-active) [class*="st-key-company_machinery_group_"] {
             padding: 28px;
@@ -2783,52 +2779,6 @@ def apply_company_profile_css() -> None:
             font-weight: 900;
         }
 
-        .company-pricing-table {
-            --detail-grid: minmax(0, 1.25fr) minmax(112px, 0.55fr) minmax(0, 1.25fr) minmax(112px, 0.55fr);
-            border: 0;
-            border-radius: 0;
-            background: transparent;
-            box-shadow: none;
-            overflow: visible;
-        }
-
-        .company-pricing-row .object-detail-table-cell {
-            min-height: 51px;
-            border-bottom: 0;
-            justify-content: flex-start;
-            padding: 8px 0;
-        }
-
-        .company-pricing-label {
-            gap: 7px;
-            font-weight: 700;
-        }
-
-        .company-pricing-empty {
-            background: transparent;
-        }
-
-        .company-pricing-divider {
-            height: 51px;
-            background: transparent;
-        }
-
-        .company-pricing-help {
-            width: 16px;
-            height: 16px;
-            border: 1px solid rgba(42, 31, 44, 0.32);
-            border-radius: 50%;
-            color: rgba(42, 31, 44, 0.66);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: help;
-            font-family: var(--font-mono);
-            font-size: 11px;
-            font-weight: 800;
-            line-height: 1;
-        }
-
         .stApp:has(.company-profile-active) .st-key-company_metrics_settings {
             margin-top: 34px;
         }
@@ -3262,7 +3212,6 @@ def apply_company_profile_css() -> None:
 
             .stApp:has(.company-profile-active) div[data-testid="stForm"],
             .stApp:has(.company-profile-active) .st-key-company_metrics_card,
-            .stApp:has(.company-profile-active) .st-key-company_pricing_card,
             .stApp:has(.company-profile-active) .st-key-company_labor_card,
             .stApp:has(.company-profile-active) [class*="st-key-company_machinery_group_"] { padding: 18px; }
 
