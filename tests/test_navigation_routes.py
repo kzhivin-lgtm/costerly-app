@@ -39,6 +39,8 @@ def test_profile_tab_click_syncs_pricing_cost_to_the_durable_outer_route():
     assert 'type: "costerly:profile-tab-selected"' in guard
     assert '"pricing-cost"' in wrapper
     assert 'event.data.type === "costerly:profile-tab-selected"' in wrapper
+    assert 'const currentProfileTab = safeRouteValue(nextUrl.searchParams.get("profile_tab"));' in wrapper
+    assert 'currentScreen === "account" && allowedProfileTabs.has(currentProfileTab)' in wrapper
 
 
 def test_profile_route_preserves_machinery_tab_in_app_and_wrapper():

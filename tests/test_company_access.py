@@ -2905,6 +2905,13 @@ def test_company_pricing_cost_uses_compact_overhead_inputs_and_bridge(monkeypatc
     company_profile.st.session_state.clear()
 
 
+def test_company_pricing_table_has_no_internal_row_rules():
+    css = Path("styles/company_profile.py").read_text()
+
+    assert ".company-pricing-row .object-detail-table-cell {\n            min-height: 51px;\n            border-bottom: 0;" in css
+    assert ".company-pricing-divider { height: 18px; background: var(--color-surface); border-bottom: 0; }" in css
+
+
 def test_labor_input_change_synchronizes_editable_totals():
     company_profile.st.session_state.clear()
     company_profile.st.session_state.update({

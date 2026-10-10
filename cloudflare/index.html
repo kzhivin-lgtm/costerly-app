@@ -256,6 +256,8 @@
 
         function syncOuterRoute(route, renderedScreen) {
           const nextUrl = new URL(window.location.href);
+          const currentScreen = safeRouteValue(nextUrl.searchParams.get("screen"));
+          const currentProfileTab = safeRouteValue(nextUrl.searchParams.get("profile_tab"));
           routeKeys.forEach((key) => nextUrl.searchParams.delete(key));
 
           // A workflow path must not survive navigation to Profile, Upload or
@@ -268,7 +270,14 @@
           const screen = requestedScreen || safeRouteValue(renderedScreen);
           if (screen === "account") {
             nextUrl.searchParams.set("screen", "account");
-            const profileTab = safeRouteValue(route && route.profile_tab);
+            // A Streamlit tab is selected client-side. Its click updates the
+            // outer route immediately, but an already queued app-ready message
+            // can still carry the previously rendered tab. Retain the explicit
+            // current Profile route in that narrow case rather than overwriting
+            // it with the stale server snapshot.
+            const profileTab = currentScreen === "account" && allowedProfileTabs.has(currentProfileTab)
+              ? currentProfileTab
+              : safeRouteValue(route && route.profile_tab);
             if (allowedProfileTabs.has(profileTab)) {
               nextUrl.searchParams.set("profile_tab", profileTab);
             }
