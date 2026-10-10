@@ -161,11 +161,13 @@ def apply_object_detail_css() -> None:
         .object-detail-preview-under-actions {
             display: flex;
             justify-content: flex-end;
-            margin: 16px 0;
+            /* Streamlit already supplies the 16px row gap after the shared
+               title/control row. Keep only the matching bottom clearance. */
+            margin: 0 0 16px;
         }
 
         .object-detail-details {
-            margin-top: 16px;
+            margin-top: 0;
         }
 
         /* The shared header's primary row contains only `Object:`. The legacy
