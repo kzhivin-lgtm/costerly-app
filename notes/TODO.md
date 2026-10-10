@@ -257,7 +257,8 @@ local and `+972` phone input, successful persistence/reload, and no regression
 to Contacts Logo Save, the Profile rail, protected Price Lists or cold-load
 behavior.
 
-ACTIVE, P0, 3.20.1 Bank Details validation and normalization, approved 10.10:
+COMPLETED, P0, 3.20.1 Bank Details validation and normalization, owner accepted
+10.10, commit `fcf0c78`:
 Company registration number is exactly nine digits, retaining leading zeros.
 Bank, branch and account numbers accept digits only, retaining leading zeros
 without invented length limits. Bank and legal names remain free text. BIC is
@@ -266,7 +267,7 @@ format. IBAN removes spaces, converts letters to uppercase during typing and
 paste, and must pass the international IBAN structure and MOD-97 checksum.
 Invalid values use the existing Auth-red field border only and block Save,
 without validation copy, external bank requests or per-edit Streamlit reruns.
-Acceptance requires authenticated production coverage of paste, correction,
+Owner verified authenticated production coverage of paste, correction,
 normalization, blocked invalid Save, saved reload and retained Profile behavior.
 
 COMPLETED, P0, 3.18.1 authenticated Upload first paint, owner accepted 10.10:
