@@ -130,6 +130,17 @@
         const appUrl = new URL(frame.dataset.src);
         const appOrigin = appUrl.origin;
         const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id", "route_token"];
+        const allowedProfileTabs = new Set([
+          "overhead-expenses",
+          "labor-costs",
+          "pricing-cost",
+          "machinery",
+          "contacts",
+          "bank-details",
+          "company-details",
+          "users",
+          "price-lists",
+        ]);
         const outerParams = new URLSearchParams(window.location.search);
         appUrl.searchParams.set("obs_trace", traceId);
         routeKeys.forEach((key) => {
@@ -258,17 +269,7 @@
           if (screen === "account") {
             nextUrl.searchParams.set("screen", "account");
             const profileTab = safeRouteValue(route && route.profile_tab);
-            const allowedTabs = new Set([
-              "overhead-expenses",
-              "labor-costs",
-              "machinery",
-              "contacts",
-              "bank-details",
-              "company-details",
-              "users",
-              "price-lists",
-            ]);
-            if (allowedTabs.has(profileTab)) {
+            if (allowedProfileTabs.has(profileTab)) {
               nextUrl.searchParams.set("profile_tab", profileTab);
             }
           } else if (["admin", "projects"].includes(screen)) {
@@ -419,6 +420,17 @@
             event.data.type === "costerly:recovery-complete"
           ) {
             window.history.replaceState(window.history.state, "", "/");
+            return;
+          }
+          if (
+            event.origin === appOrigin &&
+            event.data &&
+            event.data.type === "costerly:profile-tab-selected"
+          ) {
+            const profileTab = safeRouteValue(event.data.profileTab);
+            if (allowedProfileTabs.has(profileTab)) {
+              syncOuterRoute({ screen: "account", profile_tab: profileTab }, "account");
+            }
             return;
           }
           if (

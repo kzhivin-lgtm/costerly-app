@@ -2782,7 +2782,11 @@ def apply_company_profile_css() -> None:
             font-weight: 900;
         }
 
-        .company-pricing-table { --detail-grid: minmax(0, 1.3fr) minmax(112px, 0.7fr) minmax(0, 1.3fr) minmax(112px, 0.7fr); }
+        .company-pricing-table {
+            /* Keep both label origins fixed at their accepted half-table positions.
+               Only the input columns move, to 16 px after each block's longest label. */
+            --detail-grid: 244px calc(50% - 244px) 218px calc(50% - 218px);
+        }
         .company-pricing-row .object-detail-table-cell { min-height: 51px; }
         .company-pricing-label { gap: 7px; font-weight: 700; }
         .company-pricing-row .object-detail-table-cell:nth-child(2) {

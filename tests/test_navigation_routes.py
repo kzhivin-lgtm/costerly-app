@@ -31,6 +31,16 @@ def test_account_bootstrap_keeps_the_profile_tab_query_for_hard_reload_recovery(
     assert 'del st.query_params["profile_tab"]' not in account_bootstrap
 
 
+def test_profile_tab_click_syncs_pricing_cost_to_the_durable_outer_route():
+    guard = (Path(__file__).parents[1] / "ui" / "js_guards.py").read_text()
+    wrapper = (Path(__file__).parents[1] / "cloudflare" / "index.html").read_text()
+
+    assert '"pricing cost": "pricing-cost"' in guard
+    assert 'type: "costerly:profile-tab-selected"' in guard
+    assert '"pricing-cost"' in wrapper
+    assert 'event.data.type === "costerly:profile-tab-selected"' in wrapper
+
+
 def test_profile_route_preserves_machinery_tab_in_app_and_wrapper():
     st.session_state.clear()
     st.session_state.company_profile_tab = "Machinery"

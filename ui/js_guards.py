@@ -599,6 +599,22 @@ def signal_app_ready_to_embed(
                 }[transition] || "";
             }
 
+            function profileTabRoute(control) {
+                const label = String(control.innerText || control.textContent || "")
+                    .trim()
+                    .toLowerCase();
+                return {
+                    "overhead expenses": "overhead-expenses",
+                    "labor costs": "labor-costs",
+                    "pricing cost": "pricing-cost",
+                    "machinery": "machinery",
+                    "price lists": "price-lists",
+                    "contacts": "contacts",
+                    "bank details": "bank-details",
+                    "users": "users",
+                }[label] || "";
+            }
+
             function targetSelector(transition) {
                 if (transition === "sign_in") {
                     return ".upload-screen-active, .company-profile-active, .company-setup-active";
@@ -867,6 +883,15 @@ def signal_app_ready_to_embed(
                         if (!control) return;
                         const transition = transitionName(control);
                         if (!transition) return;
+                        if (transition === "profile_tab_change") {
+                            const profileTab = profileTabRoute(control);
+                            if (profileTab) {
+                                window.top.postMessage({
+                                    type: "costerly:profile-tab-selected",
+                                    profileTab,
+                                }, "*");
+                            }
+                        }
                         const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
                         const objectId = String(control.dataset.objectId || "");
                         let bridgeButton = bridgeKey
