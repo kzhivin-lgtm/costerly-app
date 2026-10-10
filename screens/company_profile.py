@@ -23,6 +23,7 @@ from ui import company_metrics_view
 from ui.company_labor_bridge import company_labor_bridge
 from ui.company_metrics_bridge import company_metrics_bridge
 from ui.js_guards import (
+    install_company_contacts_input_guard,
     install_company_logo_picker_guard,
     install_company_metrics_input_guard,
     install_price_source_notice_guard,
@@ -110,6 +111,20 @@ PROFILE_COLUMNS = (
 PROFILE_FIELDS = tuple(
     field for field in PROFILE_COLUMNS.split(",") if field not in {"company_id", "logo_url"}
 )
+CONTACT_VALIDATION_FIELDS = (
+    "public_email",
+    "public_phone",
+    "website_url",
+    "address_postal_code",
+    "facebook_url",
+    "linkedin_url",
+    "instagram_url",
+)
+_SOCIAL_CONTACT_HOSTS = {
+    "facebook_url": {"facebook.com", "www.facebook.com"},
+    "linkedin_url": {"linkedin.com", "www.linkedin.com"},
+    "instagram_url": {"instagram.com", "www.instagram.com"},
+}
 PRICING_SETTING_FIELDS = (
     "vat_percent",
     "warranty_reserve_percent",
@@ -1177,6 +1192,85 @@ def load_company_metrics(access: CompanyAccess) -> tuple[dict, dict]:
     return _load_company_metrics_by_id(str(access.company_id))
 
 
+def _contact_url(value: object, *, allowed_hosts: set[str] | None = None) -> str:
+    """Return a display/storage URL without a protocol, or raise for bad input."""
+    text = _clean(value)
+    if not text:
+        return ""
+    if any(character.isspace() for character in text):
+        raise ValueError("Invalid contact URL.")
+
+    parsed = urlsplit(text if "://" in text else f"https://{text}")
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("Invalid contact URL.")
+    host = parsed.hostname.lower().rstrip(".")
+    labels = host.split(".")
+    if (
+        len(labels) < 2
+        or any(not label or len(label) > 63 or label.startswith("-") or label.endswith("-")
+               or not label.replace("-", "").isalnum() for label in labels)
+    ):
+        raise ValueError("Invalid contact URL.")
+    if allowed_hosts is not None and host not in allowed_hosts:
+        raise ValueError("Invalid social profile URL.")
+    if allowed_hosts is not None and not parsed.path.strip("/"):
+        raise ValueError("A social profile URL needs a profile path.")
+
+    normalized = host + (parsed.path or "")
+    if parsed.query:
+        normalized += f"?{parsed.query}"
+    return normalized
+
+
+def _normalize_israeli_phone(value: object) -> str:
+    digits = "".join(character for character in _clean(value) if character.isdigit())
+    if digits.startswith("972"):
+        digits = digits[3:]
+    elif digits.startswith("0"):
+        digits = digits[1:]
+    if len(digits) not in {8, 9} or not digits or digits[0] not in "2345789":
+        raise ValueError("Invalid Israeli phone number.")
+    return f"+972{digits}"
+
+
+def normalize_company_contact_values(values: dict[str, object]) -> dict[str, object]:
+    """Validate supplied Contact fields and return their canonical stored values."""
+    normalized: dict[str, object] = {}
+    public_email = _clean(values.get("public_email")) if "public_email" in values else None
+    if public_email is not None:
+        if public_email and not is_valid_email_address(public_email):
+            raise ValueError("Enter a valid official email address.")
+        normalized["public_email"] = public_email
+
+    if "public_phone" in values:
+        phone = _clean(values.get("public_phone"))
+        normalized["public_phone"] = _normalize_israeli_phone(phone) if phone else ""
+    if "website_url" in values:
+        normalized["website_url"] = _contact_url(values.get("website_url"))
+    if "address_postal_code" in values:
+        postal_code = _clean(values.get("address_postal_code"))
+        if postal_code and (not postal_code.isdigit() or len(postal_code) != 7):
+            raise ValueError("Invalid postal code.")
+        normalized["address_postal_code"] = postal_code
+    for field, hosts in _SOCIAL_CONTACT_HOSTS.items():
+        if field in values:
+            normalized[field] = _contact_url(values.get(field), allowed_hosts=hosts)
+    return normalized
+
+
+def company_contact_validation_errors(values: dict[str, object]) -> set[str]:
+    """Return every invalid submitted Contact field, without stopping at the first."""
+    invalid_fields: set[str] = set()
+    for field in CONTACT_VALIDATION_FIELDS:
+        if field not in values:
+            continue
+        try:
+            normalize_company_contact_values({field: values[field]})
+        except ValueError:
+            invalid_fields.add(field)
+    return invalid_fields
+
+
 def save_company_profile(access: CompanyAccess, values: dict[str, object]) -> dict:
     fresh = _current_access(access)
     payload = {
@@ -1193,9 +1287,10 @@ def save_company_profile(access: CompanyAccess, values: dict[str, object]) -> di
             raise ValueError("Company name is required.")
         payload["company_name"] = company_name
 
-    public_email = _clean(values.get("public_email")) if "public_email" in values else ""
-    if public_email and not is_valid_email_address(public_email):
-        raise ValueError("Enter a valid official email address.")
+    payload.update({
+        field: _optional(value)
+        for field, value in normalize_company_contact_values(payload).items()
+    })
 
     client = get_supabase_client()
     assert_company_owner(client, fresh.user_id, fresh.company_id)
@@ -1271,20 +1366,20 @@ def save_company_contacts(
     """Keep the original focused update contract for existing callers."""
     fresh = _current_access(access)
     name = name.strip()
-    public_email = public_email.strip()
-    public_phone = public_phone.strip()
     if not name:
         raise ValueError("Company name is required.")
-    if public_email and not is_valid_email_address(public_email):
-        raise ValueError("Enter a valid official email address.")
+    contacts = normalize_company_contact_values({
+        "public_email": public_email,
+        "public_phone": public_phone,
+    })
     client = get_supabase_client()
     assert_company_owner(client, fresh.user_id, fresh.company_id)
     result = (
         client.table("companies")
         .update({
             "company_name": name,
-            "public_email": public_email or None,
-            "public_phone": public_phone or None,
+            "public_email": contacts["public_email"] or None,
+            "public_phone": contacts["public_phone"] or None,
         })
         .eq("company_id", fresh.company_id)
         .execute()
@@ -1560,10 +1655,12 @@ def _format_israeli_phone(value: object) -> str:
         digits = digits[3:]
     elif digits.startswith("0"):
         digits = digits[1:]
-    digits = digits[:9]
     if not digits:
         return ""
-    parts = [digits[:2], digits[2:5], digits[5:9]]
+    if digits.startswith("5"):
+        parts = [digits[:2], digits[2:5], digits[5:9]]
+    else:
+        parts = [digits[:1], digits[1:4], digits[4:8]]
     return "+972 " + " ".join(part for part in parts if part)
 
 
@@ -3957,10 +4054,11 @@ def _render_owner_contacts(access: CompanyAccess, profile: dict, *, trace=None) 
                 profile, "Instagram", "instagram_url", placeholder="https://instagram.com/..."
             )
         saved = _profile_save_button("Save Contacts")
+    invalid_fields: set[str] = set()
     if saved:
-        _save_profile_section(access, {
+        contact_values = {
             "public_email": official_email,
-            "public_phone": _format_israeli_phone(phone),
+            "public_phone": phone,
             "website_url": website,
             "address_street": street,
             "address_house_number": house_number,
@@ -3969,7 +4067,11 @@ def _render_owner_contacts(access: CompanyAccess, profile: dict, *, trace=None) 
             "linkedin_url": linkedin,
             "instagram_url": instagram,
             "facebook_url": facebook,
-        }, success_message="Contacts saved")
+        }
+        invalid_fields = company_contact_validation_errors(contact_values)
+        if not invalid_fields:
+            _save_profile_section(access, contact_values, success_message="Contacts saved")
+    install_company_contacts_input_guard(invalid_fields)
     _render_company_logo_card(access, profile, editable=True, trace=trace)
 
 

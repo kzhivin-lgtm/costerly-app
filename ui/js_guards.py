@@ -434,6 +434,165 @@ def install_company_metrics_input_guard() -> None:
     )
 
 
+def install_company_contacts_input_guard(initial_invalid_fields: set[str] | None = None) -> None:
+    """Validate and normalize Contacts locally without a Streamlit rerun per edit."""
+    initial_invalid_fields_json = json.dumps(sorted(initial_invalid_fields or set()))
+    script = """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const CLEANUP_KEY = "__costerlyCompanyContactsInputGuardCleanup";
+            const initialInvalidFields = new Set(__INITIAL_INVALID_FIELDS__);
+            const fields = {
+                public_email: { selector: ".st-key-profile_public_email input", type: "email" },
+                public_phone: { selector: ".st-key-profile_public_phone input", type: "phone" },
+                website_url: { selector: ".st-key-profile_website_url input", type: "website" },
+                address_postal_code: { selector: ".st-key-profile_address_postal_code input", type: "postal" },
+                facebook_url: { selector: ".st-key-profile_facebook_url input", type: "facebook" },
+                linkedin_url: { selector: ".st-key-profile_linkedin_url input", type: "linkedin" },
+                instagram_url: { selector: ".st-key-profile_instagram_url input", type: "instagram" },
+            };
+
+            if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
+
+            function fieldFor(input) {
+                return Object.entries(fields).find(([, field]) => input.matches(field.selector));
+            }
+
+            function rootFor(input) {
+                return input.closest("[data-testid='stTextInput']")?.querySelector(
+                    "[data-testid='stTextInputRootElement'], div[data-baseweb='input'], div[data-baseweb='base-input']"
+                );
+            }
+
+            function mark(input, invalid) {
+                const root = rootFor(input);
+                if (!root) return;
+                root.dataset.costerlyContactInvalid = invalid ? "true" : "false";
+                input.setAttribute("aria-invalid", invalid ? "true" : "false");
+            }
+
+            function withoutProtocol(value) {
+                return String(value || "").trim().replace(/^https?:\\/\\//i, "");
+            }
+
+            function validHost(value, hosts = null, requirePath = false) {
+                const clean = withoutProtocol(value);
+                if (!clean || /\\s/.test(clean)) return clean === "";
+                let parsed;
+                try { parsed = new URL(`https://${clean}`); } catch (_) { return false; }
+                const host = parsed.hostname.toLowerCase().replace(/\\.$/, "");
+                if (!host.includes(".") || !host.split(".").every((label) =>
+                    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label)
+                )) return false;
+                if (hosts && !hosts.has(host)) return false;
+                return !requirePath || parsed.pathname.replace(/^\\/+|\\/+$/g, "").length > 0;
+            }
+
+            function phoneNational(value) {
+                let digits = String(value || "").replace(/\\D/g, "");
+                if (digits.startsWith("972")) digits = digits.slice(3);
+                else if (digits.startsWith("0")) digits = digits.slice(1);
+                return digits.slice(0, 9);
+            }
+
+            function formatPhone(value) {
+                const digits = phoneNational(value);
+                if (!digits) return String(value || "").replace(/\\D/g, "") === "0" ? "+972 " : "";
+                const parts = digits.startsWith("5")
+                    ? [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 9)]
+                    : [digits.slice(0, 1), digits.slice(1, 4), digits.slice(4, 8)];
+                return `+972 ${parts.filter(Boolean).join(" ")}`;
+            }
+
+            function valid(input, type) {
+                const value = String(input.value || "").trim();
+                if (!value) return true;
+                if (type === "email") return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value) && !value.includes("..");
+                if (type === "phone") {
+                    const digits = phoneNational(value);
+                    return (digits.length === 8 || digits.length === 9) && /^[2345789]/.test(digits);
+                }
+                if (type === "postal") return /^\\d{7}$/.test(value);
+                if (type === "website") return validHost(value);
+                const hosts = {
+                    facebook: new Set(["facebook.com", "www.facebook.com"]),
+                    linkedin: new Set(["linkedin.com", "www.linkedin.com"]),
+                    instagram: new Set(["instagram.com", "www.instagram.com"]),
+                };
+                return validHost(value, hosts[type], true);
+            }
+
+            function normalize(input, type) {
+                if (type === "phone") {
+                    const formatted = formatPhone(input.value);
+                    setValue(input, formatted);
+                } else if (["website", "facebook", "linkedin", "instagram"].includes(type)) {
+                    const normalized = withoutProtocol(input.value);
+                    setValue(input, normalized);
+                }
+            }
+
+            function setValue(input, value) {
+                if (input.value === value) return;
+                const setter = Object.getOwnPropertyDescriptor(
+                    parentWindow.HTMLInputElement.prototype, "value"
+                ).set;
+                setter.call(input, value);
+                input.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+
+            function handleInput(event) {
+                const found = fieldFor(event.target);
+                if (!found) return;
+                const [, field] = found;
+                if (field.type === "phone") normalize(event.target, field.type);
+                mark(event.target, !valid(event.target, field.type));
+            }
+
+            function handleBlur(event) {
+                const found = fieldFor(event.target);
+                if (!found) return;
+                const [, field] = found;
+                normalize(event.target, field.type);
+                mark(event.target, !valid(event.target, field.type));
+            }
+
+            function handlePaste(event) {
+                const found = fieldFor(event.target);
+                if (!found) return;
+                const [, field] = found;
+                if (!["website", "facebook", "linkedin", "instagram"].includes(field.type)) return;
+                parentWindow.setTimeout(() => {
+                    normalize(event.target, field.type);
+                    mark(event.target, !valid(event.target, field.type));
+                }, 0);
+            }
+
+            parentDoc.addEventListener("input", handleInput, true);
+            parentDoc.addEventListener("focusout", handleBlur, true);
+            parentDoc.addEventListener("paste", handlePaste, true);
+            for (const [name, field] of Object.entries(fields)) {
+                const input = parentDoc.querySelector(field.selector);
+                if (input) mark(input, initialInvalidFields.has(name));
+            }
+            parentWindow[CLEANUP_KEY] = () => {
+                parentDoc.removeEventListener("input", handleInput, true);
+                parentDoc.removeEventListener("focusout", handleBlur, true);
+                parentDoc.removeEventListener("paste", handlePaste, true);
+                delete parentWindow[CLEANUP_KEY];
+            };
+        })();
+        </script>
+        """.replace("__INITIAL_INVALID_FIELDS__", initial_invalid_fields_json)
+    components.html(
+        script,
+        height=0,
+        width=0,
+    )
+
+
 def signal_app_ready_to_embed(
     screen: str,
     *,

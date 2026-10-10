@@ -844,8 +844,8 @@ def test_profile_contacts_save_only_for_owner(monkeypatch):
             return Query(name)
 
     monkeypatch.setattr(company_profile, "get_supabase_client", lambda: Client())
-    company_profile.save_company_contacts(access, " Workshop ", " hello@example.com ", " +1 555 ")
-    assert writes == [("companies", {"company_name": "Workshop", "public_email": "hello@example.com", "public_phone": "+1 555"})]
+    company_profile.save_company_contacts(access, " Workshop ", " hello@example.com ", " +972 53 425 4735 ")
+    assert writes == [("companies", {"company_name": "Workshop", "public_email": "hello@example.com", "public_phone": "+972534254735"})]
 
     stored_role[0] = "member"
     monkeypatch.setattr(company_profile, "_current_access", lambda _access: company_auth.CompanyAccess("user-1", "owner@example.com", "company-a", "member", "token"))
@@ -3919,6 +3919,41 @@ def test_registration_and_profile_use_same_email_shape(monkeypatch):
     monkeypatch.setattr(company_profile, "_current_access", lambda _access: access)
     with pytest.raises(ValueError, match="official email"):
         company_profile.save_company_contacts(access, "Workshop", "name@company..com", "")
+
+
+def test_company_contact_normalization_and_validation_contract():
+    normalized = company_profile.normalize_company_contact_values({
+        "public_email": " hello@company.co.il ",
+        "public_phone": "053 425 4735",
+        "website_url": "https://company.co.il/about",
+        "address_postal_code": "6608089",
+        "facebook_url": "https://www.facebook.com/company",
+        "linkedin_url": "http://linkedin.com/company/coasterly",
+        "instagram_url": "instagram.com/coasterly.ai",
+    })
+    assert normalized == {
+        "public_email": "hello@company.co.il",
+        "public_phone": "+972534254735",
+        "website_url": "company.co.il/about",
+        "address_postal_code": "6608089",
+        "facebook_url": "www.facebook.com/company",
+        "linkedin_url": "linkedin.com/company/coasterly",
+        "instagram_url": "instagram.com/coasterly.ai",
+    }
+
+    invalid = company_profile.company_contact_validation_errors({
+        "public_email": "not-an-email",
+        "public_phone": "052 12",
+        "website_url": "https://",
+        "address_postal_code": "6608abc",
+        "facebook_url": "linkedin.com/company/coasterly",
+        "linkedin_url": "linkedin.com",
+        "instagram_url": "instagram.com/coasterly",
+    })
+    assert invalid == {
+        "public_email", "public_phone", "website_url", "address_postal_code",
+        "facebook_url", "linkedin_url",
+    }
 
 
 def test_mismatched_password_never_reaches_signup(monkeypatch):

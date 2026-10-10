@@ -234,6 +234,25 @@ File-Review-only stale-Upload CSS override is removed because it addressed the
 wrong phase. Pending owner production acceptance: one run must retain the rail
 while both a preview and an object name replace their placeholders.
 
+ACTIVE, P0, 3.19.1 Contacts validation and normalization, approved 10.10:
+keep Street, House Number and City unchanged. Empty Contact fields remain
+permitted. A non-empty Official email must match the existing shared email
+syntax rule. Phone accepts an Israeli local number beginning with `0`, or an
+international `+972` form, stores canonical E.164, and displays conventional
+Israeli spacing. Website, Facebook, LinkedIn and Instagram silently remove an
+entered `http://` or `https://`; Website must be a syntactically valid hostname,
+while each social field must use its matching service hostname and a non-empty
+profile path. Postal code accepts exactly seven digits. There are no external
+network lookups. Invalid fields receive only the existing Auth-red border and
+the save is blocked, with no validation-copy block or extra Streamlit rerun per
+edit. The implementation must retain values, clear a red state immediately
+after correction, validate all submitted fields together, and reject a bypassed
+client request on the server. Acceptance requires the authenticated production
+matrix for empty fields, malformed and corrected values, pasted protocol URLs,
+local and `+972` phone input, successful persistence/reload, and no regression
+to Contacts Logo Save, the Profile rail, protected Price Lists or cold-load
+behavior.
+
 COMPLETED, P0, 3.18.1 authenticated Upload first paint, owner accepted 10.10:
 instrumented the complete cold path and moved non-critical Platform Admin and
 Last Estimate reads behind the first authenticated Upload reveal. The resulting
