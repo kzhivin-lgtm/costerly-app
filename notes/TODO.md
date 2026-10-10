@@ -234,7 +234,8 @@ File-Review-only stale-Upload CSS override is removed because it addressed the
 wrong phase. Pending owner production acceptance: one run must retain the rail
 while both a preview and an object name replace their placeholders.
 
-ACTIVE, P0, 3.19.1 Contacts validation and normalization, approved 10.10:
+COMPLETED, P0, 3.19.1 Contacts validation and normalization, owner accepted
+10.10, commits `221d448`, `4709579`:
 keep Street, House Number and City unchanged. Empty Contact fields remain
 permitted. A non-empty Official email must match the existing shared email
 syntax rule. Phone accepts an Israeli local number beginning with `0`, or an
