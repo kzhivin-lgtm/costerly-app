@@ -125,6 +125,7 @@ def test_authenticated_upload_startup_keeps_phase_markers_for_the_cold_path():
     auth_source = (ROOT / "state/company_auth.py").read_text()
 
     for marker in (
+        "server.header_client_create",
         "server.platform_access_wait",
         "server.platform_access_query",
         "server.latest_estimate_wait",

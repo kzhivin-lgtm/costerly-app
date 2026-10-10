@@ -66,6 +66,12 @@ def _timed_call(callback, /, *args, **kwargs):
     return result, (time.perf_counter() - started_at) * 1000
 
 
+def _header_client(trace):
+    """Create the client used by the authenticated header and record its cost."""
+    with trace.span("server.header_client_create"):
+        return get_supabase_client()
+
+
 _RUNTIME_VERSIONS = {
     "python_version": platform.python_version(),
     "streamlit_version": st.__version__,
@@ -510,13 +516,13 @@ def main() -> None:
                 try:
                     with trace.span("server.latest_estimate_query"):
                         latest_route = load_latest_estimate_route(
-                            get_supabase_client(), str(access.company_id)
+                            _header_client(trace), str(access.company_id)
                         )
                 except Exception:
                     latest_route = None
                 st.session_state[latest_route_cache_key] = latest_route
         else:
-            client = get_supabase_client()
+            client = _header_client(trace)
             with ThreadPoolExecutor(max_workers=2) as executor:
                 platform_future = executor.submit(
                     _timed_call, load_platform_access, client, platform_user_id
