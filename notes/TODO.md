@@ -234,19 +234,14 @@ File-Review-only stale-Upload CSS override is removed because it addressed the
 wrong phase. Pending owner production acceptance: one run must retain the rail
 while both a preview and an object name replace their placeholders.
 
-ACTIVE, P0, 3.18.1 authenticated Upload first paint: make the first authenticated
-Upload screen appear as quickly as possible while preserving Fast Resume,
-`app-ready`, the accepted transition mask, authentication, and native controls.
-Fresh production evidence: the last 30 actual Upload reveals have p50 3.69 s,
-p90 5.31 s, and 2.27-7.17 s range; Upload rendering itself is only 7-20 ms.
-Instrument the critical path first, including Fast Resume/browser-session state,
-RLS company-access client creation and membership lookup, Platform Admin lookup,
-Last Estimate lookup, and the wait for each parallel header dependency. Do not
-add polling, a second full-page rerun, or a synthetic loading screen. After
-measured evidence, move only non-critical header data behind first paint without
-removing or fabricating their controls. Acceptance: authenticated cold and warm
-production loads have complete correlated timing, one Python run for Fast Resume,
-no intermediate DOM, and an owner-accepted measured improvement.
+COMPLETED, P0, 3.18.1 authenticated Upload first paint, owner accepted 10.10:
+instrumented the complete cold path and moved non-critical Platform Admin and
+Last Estimate reads behind the first authenticated Upload reveal. The resulting
+three owner production hard reloads were 3.05 s, 3.06 s and 3.23 s, median
+3.06 s versus the immediately preceding comparable median 3.36 s. The server
+critical-path median fell from 1.03 s to 0.28 s. Fast Resume remains one Python
+run; RLS remains mandatory before authenticated content; no polling, second full
+rerun, synthetic loading screen, or Price Lists behavior change was introduced.
 
 PENDING, P0, 3.18.2 Profile first paint and tab warming, depends on 3.18.1:
 render the authenticated Profile shell and Overhead Expenses without importing
@@ -258,7 +253,7 @@ loading-contract change. Acceptance requires live authenticated production
 evidence for first Profile paint, tab-open latency, no cross-company data, and
 the unchanged accepted Price Lists Review Save behavior.
 
-ACTIVE, P0, 3.18.3 cold Sign in and authenticated bootstrap architecture,
+COMPLETED, P0, 3.18.3 cold Sign in and authenticated bootstrap architecture,
 depends on 3.18.1 measurements: optimise the worst customer path from Sign in
 click through the first authenticated Upload reveal, and establish one measured
 bootstrap architecture shared by cold Upload, Profile and Sign in. Record the
@@ -267,8 +262,11 @@ RLS, header-read, first-run and reveal timings. Do not count warm navigation as
 acceptance. Prefer one coherent architecture over isolated wrapper micro-tweaks;
 preserve Fast Resume, native authentication controls, one Python run where
 possible, the accepted transition mask, and all protected 3.16.7 Price Lists
-behavior. Acceptance: measured production p50/p90 improvement for authenticated
-cold Upload and Sign in to first authenticated screen, with live owner approval.
+behavior. Owner acceptance on 10.10: Terms and membership gates now overlap only
+after Supabase accepts the password, both remain mandatory before Upload, and
+fresh Sign in to Upload traces reached 1.98 s, 2.46 s, 2.58 s and 2.98 s without
+adding polling or a second Python run. Further wrapper/iframe bootstrap work is
+deferred until a separately measured performance task.
 
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session
