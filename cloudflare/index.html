@@ -271,6 +271,11 @@
             if (allowedTabs.has(profileTab)) {
               nextUrl.searchParams.set("profile_tab", profileTab);
             }
+          } else if (["admin", "projects"].includes(screen)) {
+            // Keep a durable outer history entry for header destinations. Without
+            // it, Projects from Upload leaves the URL at `/`, so browser Back
+            // skips Upload and restores an older Profile route instead.
+            nextUrl.searchParams.set("screen", screen);
           } else if (["file_review", "objects", "object_detail"].includes(screen)) {
             const routeToken = safeRouteValue(route && route.route_token);
             if (routeToken) {

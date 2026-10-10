@@ -295,6 +295,8 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     assert 'const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id", "route_token"]' in wrapper
     assert "appUrl.searchParams.set(key, value)" in wrapper
     assert "function syncOuterRoute(route, renderedScreen)" in wrapper
+    assert 'else if (["admin", "projects"].includes(screen))' in wrapper
+    assert 'nextUrl.searchParams.set("screen", screen);' in wrapper
     assert "window.history.pushState({costerlyRoute: true}" in wrapper
     assert 'window.addEventListener("popstate"' in wrapper
     assert "syncOuterRoute(event.data.route || {}, screen)" in wrapper
