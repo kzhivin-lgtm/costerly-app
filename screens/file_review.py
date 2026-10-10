@@ -10,9 +10,6 @@ import streamlit as st
 from state.session import set_screen
 from state.session import get_company_id
 from styles.file_review import apply_file_review_css
-from ui.js_guards import (
-    install_workflow_header_alignment_guard,
-)
 from ui.layout import post_upload_header_html, render_post_upload_header
 from ui.screen_transition import (
     FILE_REVIEW_MARKER_ID,
@@ -773,8 +770,6 @@ def render_file_review_screen(company_id: str) -> None:
             run=data["run"],
             timings=_merged_timings(st.session_state.get("current_agent_timings"), data.get("timings")),
         )
-    install_workflow_header_alignment_guard()
-
     _render_file_review_dynamic_content(run_id)
 
     col_back, col_next = st.columns(2, gap="small")

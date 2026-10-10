@@ -54,28 +54,13 @@ def test_file_review_does_not_need_a_stale_upload_navigation_override():
     assert ".st-key-costerly_header_controls" not in review_css
 
 
-def test_workflow_header_alignment_guard_uses_live_dom_centers_without_scroll_events():
-    source = open("ui/js_guards.py").read()
-
-    assert "def install_workflow_header_alignment_guard" in source
-    assert "const titleSelector = __TITLE_SELECTOR__;" in source
-    assert "title: activeElement(titleSelector)" in source
-    assert "querySelectorAll(selector)" in source
-    assert "element.closest('[data-stale=\"true\"]')" in source
-    assert 'actions.style.removeProperty("transform")' in source
-    assert 'attributeFilter: ["data-stale"]' in source
-    assert "getBoundingClientRect()" in source
-    assert "actionsBaseCenter" in source
-    assert "- appliedOffset" in source
-    assert "translateY(${Math.round(offset * 100) / 100}px)" in source
-    assert 'addEventListener("scroll"' not in source.split(
-        "def install_workflow_header_alignment_guard", 1
-    )[1].split("def install_company_metrics_input_guard", 1)[0]
-
-
-def test_each_post_detail_screen_aligns_to_its_own_title():
+def test_workflow_screens_do_not_translate_the_shared_navigation_rail():
+    base_css = open("styles/base.py").read()
+    review_source = open("screens/file_review.py").read()
     objects_source = open("screens/objects.py").read()
     detail_source = open("screens/object_detail.py").read()
 
-    assert '".objects-estimation-header h1.workflow-title"' in objects_source
-    assert 'install_workflow_header_alignment_guard("h1.object-detail-title")' in detail_source
+    assert "transform: none !important;" in base_css
+    assert "install_workflow_header_alignment_guard" not in review_source
+    assert "install_workflow_header_alignment_guard" not in objects_source
+    assert "install_workflow_header_alignment_guard" not in detail_source
