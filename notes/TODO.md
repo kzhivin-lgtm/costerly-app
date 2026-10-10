@@ -170,7 +170,7 @@ Production acceptance completed: the transition is fast, intermediate fragments
 are no longer exposed, and the owner accepted the remaining gray interval of
 approximately 1-2 seconds. Checkpoint: `5c322bf`.
 
-ACTIVE, PARTIAL OWNER-ACCEPTED CHECKPOINT, 3.15.23 P0 authenticated full-reload optimization: production telemetry
+HISTORICAL, SUPERSEDED FOR NEW PERFORMANCE WORK, 3.15.23 P0 authenticated full-reload optimization: production telemetry
 shows that a hard reload frequently takes 6-8 seconds and can reach the
 wrapper's 8-second fallback. Preserve the accepted Fast Resume and `app-ready`
 readiness contract. The first candidate removes the legal release lookup from
@@ -233,6 +233,30 @@ object cards refresh from the persisted deferred artifacts. The earlier
 File-Review-only stale-Upload CSS override is removed because it addressed the
 wrong phase. Pending owner production acceptance: one run must retain the rail
 while both a preview and an object name replace their placeholders.
+
+ACTIVE, P0, 3.18.1 authenticated Upload first paint: make the first authenticated
+Upload screen appear as quickly as possible while preserving Fast Resume,
+`app-ready`, the accepted transition mask, authentication, and native controls.
+Fresh production evidence: the last 30 actual Upload reveals have p50 3.69 s,
+p90 5.31 s, and 2.27-7.17 s range; Upload rendering itself is only 7-20 ms.
+Instrument the critical path first, including Fast Resume/browser-session state,
+RLS company-access client creation and membership lookup, Platform Admin lookup,
+Last Estimate lookup, and the wait for each parallel header dependency. Do not
+add polling, a second full-page rerun, or a synthetic loading screen. After
+measured evidence, move only non-critical header data behind first paint without
+removing or fabricating their controls. Acceptance: authenticated cold and warm
+production loads have complete correlated timing, one Python run for Fast Resume,
+no intermediate DOM, and an owner-accepted measured improvement.
+
+PENDING, P0, 3.18.2 Profile first paint and tab warming, depends on 3.18.1:
+render the authenticated Profile shell and Overhead Expenses without importing
+or querying Price Lists, Contacts, Users, or Machinery on the critical path.
+After first paint, warm non-critical tab reads in a tenant-scoped, cancellable,
+non-blocking path. Preserve the owner-accepted 3.16.7 Price Lists screen exactly:
+no callback, fragment polling, upload, Source, Review, DOM, toast, or catalog
+loading-contract change. Acceptance requires live authenticated production
+evidence for first Profile paint, tab-open latency, no cross-company data, and
+the unchanged accepted Price Lists Review Save behavior.
 
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session

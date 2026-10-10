@@ -59,6 +59,13 @@ def _installed_version(distribution: str) -> str:
         return "unknown"
 
 
+def _timed_call(callback, /, *args, **kwargs):
+    """Return a synchronous call result together with its elapsed milliseconds."""
+    started_at = time.perf_counter()
+    result = callback(*args, **kwargs)
+    return result, (time.perf_counter() - started_at) * 1000
+
+
 _RUNTIME_VERSIONS = {
     "python_version": platform.python_version(),
     "streamlit_version": st.__version__,
@@ -375,7 +382,7 @@ def main() -> None:
             st.stop()
         try:
             with trace.span("server.auth.access_lookup"):
-                access = current_company_access()
+                access = current_company_access(trace=trace)
                 invitation = invitation_from_url()
         except Exception as exc:
             trace.event(
@@ -501,9 +508,10 @@ def main() -> None:
             platform_access = st.session_state.get("_platform_access")
             if latest_route is None and latest_route_cache_key not in st.session_state:
                 try:
-                    latest_route = load_latest_estimate_route(
-                        get_supabase_client(), str(access.company_id)
-                    )
+                    with trace.span("server.latest_estimate_query"):
+                        latest_route = load_latest_estimate_route(
+                            get_supabase_client(), str(access.company_id)
+                        )
                 except Exception:
                     latest_route = None
                 st.session_state[latest_route_cache_key] = latest_route
@@ -511,33 +519,47 @@ def main() -> None:
             client = get_supabase_client()
             with ThreadPoolExecutor(max_workers=2) as executor:
                 platform_future = executor.submit(
-                    load_platform_access, client, platform_user_id
+                    _timed_call, load_platform_access, client, platform_user_id
                 )
                 latest_future = (
                     executor.submit(
-                        load_latest_estimate_route, client, str(access.company_id)
+                        _timed_call,
+                        load_latest_estimate_route,
+                        client,
+                        str(access.company_id),
                     )
                     if latest_route is None and latest_route_cache_key not in st.session_state
                     else None
                 )
-            try:
-                platform_access = platform_future.result()
-            except Exception as exc:
-                trace.event(
-                    "server.platform_access_unavailable",
-                    status="error",
-                    metadata={"error_type": type(exc).__name__},
-                )
-                platform_access = None
-            else:
-                st.session_state._platform_access_user_id = platform_user_id
-                st.session_state._platform_access = platform_access
-            if latest_future is not None:
                 try:
-                    latest_route = latest_future.result()
-                except Exception:
-                    latest_route = None
-                st.session_state[latest_route_cache_key] = latest_route
+                    with trace.span("server.platform_access_wait"):
+                        platform_access, platform_query_ms = platform_future.result()
+                except Exception as exc:
+                    trace.event(
+                        "server.platform_access_unavailable",
+                        status="error",
+                        metadata={"error_type": type(exc).__name__},
+                    )
+                    platform_access = None
+                else:
+                    trace.event(
+                        "server.platform_access_query",
+                        duration_ms=platform_query_ms,
+                    )
+                    st.session_state._platform_access_user_id = platform_user_id
+                    st.session_state._platform_access = platform_access
+                if latest_future is not None:
+                    try:
+                        with trace.span("server.latest_estimate_wait"):
+                            latest_route, latest_estimate_query_ms = latest_future.result()
+                    except Exception:
+                        latest_route = None
+                    else:
+                        trace.event(
+                            "server.latest_estimate_query",
+                            duration_ms=latest_estimate_query_ms,
+                        )
+                    st.session_state[latest_route_cache_key] = latest_route
         if requested_screen == "admin":
             if platform_access is None:
                 st.query_params.clear()

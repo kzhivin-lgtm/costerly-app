@@ -995,17 +995,32 @@ def _token_email_claim(access_token: str) -> str:
         return ""
 
 
-def _company_access_via_rls(access_token: str) -> CompanyAccess:
+def _company_access_via_rls(access_token: str, *, trace=None) -> CompanyAccess:
     """Validate the JWT and read its own membership in one PostgREST request."""
-    client = _auth_client()
+    if trace is None:
+        client = _auth_client()
+    else:
+        with trace.span("server.auth.rls_client_create"):
+            client = _auth_client()
     client.postgrest.auth(access_token)
-    rows = (
-        client.table("company_members")
-        .select("user_id,company_id,role")
-        .limit(1)
-        .execute()
-    ).data or []
-    user_id, email = _verified_token_identity(access_token)
+    if trace is None:
+        rows = (
+            client.table("company_members")
+            .select("user_id,company_id,role")
+            .limit(1)
+            .execute()
+        ).data or []
+        user_id, email = _verified_token_identity(access_token)
+    else:
+        with trace.span("server.auth.rls_membership_lookup"):
+            rows = (
+                client.table("company_members")
+                .select("user_id,company_id,role")
+                .limit(1)
+                .execute()
+            ).data or []
+        with trace.span("server.auth.token_claim_parse"):
+            user_id, email = _verified_token_identity(access_token)
     membership = rows[0] if rows else {}
     member_user_id = membership.get("user_id")
     if member_user_id is not None and str(member_user_id) != user_id:
@@ -1027,25 +1042,40 @@ def _company_access_via_rls(access_token: str) -> CompanyAccess:
     )
 
 
-def current_company_access() -> CompanyAccess | None:
+def current_company_access(*, trace=None) -> CompanyAccess | None:
     access_token = st.session_state.get("auth_access_token")
     refresh_token = st.session_state.get("auth_refresh_token")
     if not access_token or not refresh_token:
         return None
 
     try:
-        client = _auth_client()
+        if trace is None:
+            client = _auth_client()
+        else:
+            with trace.span("server.auth.fallback_client_create"):
+                client = _auth_client()
         if int(st.session_state.get("auth_expires_at") or 0) <= time.time() + 60:
-            refreshed = client.auth.refresh_session(refresh_token)
+            if trace is None:
+                refreshed = client.auth.refresh_session(refresh_token)
+            else:
+                with trace.span("server.auth.session_refresh"):
+                    refreshed = client.auth.refresh_session(refresh_token)
             _store_auth_session(refreshed.session)
             access_token = st.session_state.auth_access_token
         try:
-            return _company_access_via_rls(str(access_token))
+            if trace is None:
+                return _company_access_via_rls(str(access_token))
+            with trace.span("server.auth.rls_access"):
+                return _company_access_via_rls(str(access_token), trace=trace)
         except (APIError, AttributeError, UnicodeError, ValueError):
             # Compatibility fallback preserves the established auth path if the
             # installed client or production schema cannot use the RLS shortcut.
             pass
-        response = client.auth.get_user(access_token)
+        if trace is None:
+            response = client.auth.get_user(access_token)
+        else:
+            with trace.span("server.auth.get_user"):
+                response = client.auth.get_user(access_token)
         user = response.user if response else None
         if user is None:
             clear_auth_session()
@@ -1059,13 +1089,23 @@ def current_company_access() -> CompanyAccess | None:
         }
         return None
 
-    members = (
-        _server_client().table("company_members")
-        .select("company_id,role")
-        .eq("user_id", str(user.id))
-        .limit(1)
-        .execute()
-    )
+    if trace is None:
+        members = (
+            _server_client().table("company_members")
+            .select("company_id,role")
+            .eq("user_id", str(user.id))
+            .limit(1)
+            .execute()
+        )
+    else:
+        with trace.span("server.auth.membership_fallback_lookup"):
+            members = (
+                _server_client().table("company_members")
+                .select("company_id,role")
+                .eq("user_id", str(user.id))
+                .limit(1)
+                .execute()
+            )
     company_id = str(members.data[0]["company_id"]) if members.data else None
     role = str(members.data[0]["role"]) if members.data else None
     return CompanyAccess(

@@ -120,6 +120,30 @@ def test_runtime_summary_relays_safe_phase_metrics(monkeypatch):
     assert isinstance(summary["server_elapsed_ms"], float)
 
 
+def test_authenticated_upload_startup_keeps_phase_markers_for_the_cold_path():
+    app_source = (ROOT / "app.py").read_text()
+    auth_source = (ROOT / "state/company_auth.py").read_text()
+
+    for marker in (
+        "server.platform_access_wait",
+        "server.platform_access_query",
+        "server.latest_estimate_wait",
+        "server.latest_estimate_query",
+    ):
+        assert marker in app_source
+    for marker in (
+        "server.auth.rls_client_create",
+        "server.auth.rls_membership_lookup",
+        "server.auth.token_claim_parse",
+        "server.auth.rls_access",
+        "server.auth.fallback_client_create",
+        "server.auth.session_refresh",
+        "server.auth.get_user",
+        "server.auth.membership_fallback_lookup",
+    ):
+        assert marker in auth_source
+
+
 def test_completed_action_is_emitted_once_without_sensitive_values(monkeypatch):
     captured = []
     monkeypatch.setattr(runtime, "_enqueue", captured.append)
