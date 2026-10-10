@@ -97,6 +97,10 @@ can be distinguished from browser and Streamlit session startup. `run_sequence=1
 means the final screen was produced by the first Python run. A value greater
 than one identifies one or more Streamlit reruns during startup.
 
+`app_ready_postmessage_ms` is the final postMessage delivery only. It excludes
+the time Streamlit takes to schedule and execute the app-ready component, so a
+small value alongside a long visible delay isolates that scheduler boundary.
+
 Server:
 
 - `server.run_start`

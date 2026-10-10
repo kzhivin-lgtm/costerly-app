@@ -647,6 +647,14 @@
               server_build_version: serverBuildVersion,
               ...(event.data.metrics || {}),
             };
+            const appReadySentAt = Number(event.data.sentAt);
+            if (Number.isFinite(appReadySentAt)) {
+              // Separates Streamlit's component scheduling from the final
+              // cross-frame delivery. This is observational only.
+              metadata.app_ready_postmessage_ms = Math.max(0, Math.round(
+                (Date.now() - appReadySentAt) * 1000
+              ) / 1000);
+            }
             const serverRunStartedEpochMs = Number(metadata.server_run_started_epoch_ms);
             if (Number.isFinite(serverRunStartedEpochMs)) {
               const serverElapsedMs = Number(metadata.server_elapsed_ms || 0);

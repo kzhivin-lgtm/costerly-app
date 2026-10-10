@@ -137,6 +137,7 @@ def test_authenticated_upload_startup_keeps_phase_markers_for_the_cold_path():
     for marker in (
         "browser.server_run_start_observed",
         "server_run_start_after_iframe_ms",
+        "app_ready_postmessage_ms",
     ):
         assert marker in wrapper_source
     for marker in (
