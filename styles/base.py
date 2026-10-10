@@ -268,10 +268,7 @@ def apply_base_css() -> None:
         }
 
         .st-key-costerly_header_controls {
-            /* These actions belong to the active screen header. They retain
-               their established initial coordinates, then leave with that
-               header as the Streamlit document scrolls. */
-            position: absolute !important;
+            position: fixed !important;
             top: calc(var(--app-header-top) + 15px);
             right: max(28px, calc((100vw - var(--post-upload-width)) / 2));
             z-index: 950;
