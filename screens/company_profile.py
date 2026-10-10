@@ -5258,9 +5258,9 @@ def render_company_profile(
             unsafe_allow_html=True,
         )
 
-    from ui.layout import render_screen_header_row
+    from ui.layout import render_screen_header
 
-    render_screen_header_row(render_profile_title, render_header_controls)
+    render_screen_header(render_profile_title, render_header_controls)
     finish_phase("server.company_profile_header", "p_header_ms")
 
     expenses_tab, labor_tab, pricing_tab, machinery_tab, prices_tab, contacts_tab, company_tab, users_tab = st.tabs(
