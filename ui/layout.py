@@ -124,13 +124,12 @@ def render_screen_header(
     render_below_title: Callable[[], None] | None = None,
     render_below_controls: Callable[[], None] | None = None,
 ) -> None:
-    """Render the one native header grid used by authenticated screens.
+    """Render the one document-flow header used by authenticated screens.
 
-    The rail must be a sibling of the screen title in Streamlit's server tree.
-    CSS positioning cannot make a root-level widget reliably participate in a
-    screen header's document flow after Streamlit reconciliation. Optional
-    second-row slots preserve the identical left/right axes for screen-specific
-    detail content, such as Object Detail's preview.
+    The title and shared control rail live in the same local header container.
+    The rail is positioned against that container, never against Streamlit's
+    generated column wrappers or the viewport. This gives every screen one
+    title/control axis while keeping the whole header in document flow.
     """
     with st.container(key="costerly_screen_header"):
         if render_header_controls is None:
@@ -141,10 +140,8 @@ def render_screen_header(
                 render_below_controls()
             return
 
-        title_column, actions_column = st.columns([3, 2], gap="small", vertical_alignment="center")
-        with title_column:
+        with st.container(key="costerly_screen_header_primary"):
             render_title()
-        with actions_column:
             render_header_controls()
 
         if render_below_controls is None and render_below_title is not None:
