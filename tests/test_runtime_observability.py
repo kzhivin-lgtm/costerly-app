@@ -288,6 +288,7 @@ def test_cloudflare_wrapper_emits_non_blocking_correlated_timeline():
     routes = (ROOT / "cloudflare/_routes.json").read_text()
 
     assert 'data-src="https://core.costerly.ai/?embed=true"' in wrapper
+    assert '<link rel="preconnect" href="https://core.costerly.ai" crossorigin />' in wrapper
     assert '"staging.costerly.ai": "https://core.costerly.ai/?embed=true"' in wrapper
     assert "const appOrigin = appUrl.origin" in wrapper
     assert 'appUrl.searchParams.set("obs_trace", traceId)' in wrapper
