@@ -479,6 +479,8 @@ def test_admin_route_is_hidden_and_guarded_in_application_source():
     assert 'screen == "admin" and platform_access is None' in app_source
     assert 'st.session_state.get("_platform_access_user_id")' in app_source
     assert "st.session_state._platform_access = platform_access" in app_source
+    assert "cold_header_prefetch" not in app_source
+    assert "prefetch_header_access_in_background" not in app_source
     assert 'show_admin=platform_access is not None' in auth_source
     assert "if show_admin:" in header_source
     assert '("Admin", "open_platform_admin", on_admin, False, None)' in header_source

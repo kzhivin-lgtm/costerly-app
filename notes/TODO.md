@@ -285,7 +285,8 @@ polling, upload, Source, Review and catalog loading behavior. Acceptance require
 authenticated production edits in both directions, Arnona invariance, correct total
 sum, Pricing zero-clear/percent format behavior, aligned compact input columns,
 hard-reload restoration of the selected Profile tab, save/reload persistence, and
-no Price Lists regression.
+no Price Lists regression. A cold restored session must render its complete
+authorized header controls, including Admin when platform access exists.
 
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session

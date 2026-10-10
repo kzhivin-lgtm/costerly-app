@@ -2926,7 +2926,7 @@ def test_company_pricing_tooltips_explain_each_calculation_base():
     css = Path("styles/company_profile.py").read_text()
     assert ".company-pricing-empty { background: transparent; }" in css
     assert ".company-pricing-help:hover::after" in css
-    assert ".company-pricing-table {" in css
+    assert ".company-pricing-table.object-detail-table {" in css
     assert "overflow: visible;" in css
 
 

@@ -434,20 +434,16 @@
           if (
             event.origin === appOrigin &&
             event.data &&
-            event.data.type === "costerly:profile-tab-selected"
-          ) {
-            const profileTab = safeRouteValue(event.data.profileTab);
-            if (allowedProfileTabs.has(profileTab)) {
-              syncOuterRoute({ screen: "account", profile_tab: profileTab }, "account");
-            }
-            return;
-          }
-          if (
-            event.origin === appOrigin &&
-            event.data &&
             event.data.type === "costerly:transition-click" &&
             typeof event.data.transition === "string"
           ) {
+            const profileTab = safeRouteValue(event.data.profileTab);
+            if (
+              event.data.transition === "profile_tab_change" &&
+              allowedProfileTabs.has(profileTab)
+            ) {
+              syncOuterRoute({ screen: "account", profile_tab: profileTab }, "account");
+            }
             const pendingTransition = {
               id: String(event.data.transitionId || crypto.randomUUID()),
               name: event.data.transition,

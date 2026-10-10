@@ -36,12 +36,11 @@ def test_profile_tab_click_syncs_pricing_cost_to_the_durable_outer_route():
     wrapper = (Path(__file__).parents[1] / "cloudflare" / "index.html").read_text()
 
     assert '"pricing cost": "pricing-cost"' in guard
-    assert 'type: "costerly:profile-tab-selected"' in guard
-    assert "function postToEmbed(payload)" in guard
-    assert "postToEmbed({" in guard
-    assert 'event.target.closest("[role=\'tab\']")' in guard
+    assert 'event.target.closest("[role=\'tab\'], [data-baseweb=\'tab\']")' in guard
+    assert 'control.dataset.baseweb === "tab"' in guard
+    assert "profileTab," in guard
     assert '"pricing-cost"' in wrapper
-    assert 'event.data.type === "costerly:profile-tab-selected"' in wrapper
+    assert 'event.data.transition === "profile_tab_change"' in wrapper
     assert 'const currentProfileTab = safeRouteValue(nextUrl.searchParams.get("profile_tab"));' in wrapper
     assert 'currentScreen === "account" && allowedProfileTabs.has(currentProfileTab)' in wrapper
 

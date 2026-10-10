@@ -473,7 +473,7 @@ def signal_app_ready_to_embed(
             }
 
             function transitionName(control) {
-                if (control.getAttribute("role") === "tab") {
+                if (control.getAttribute("role") === "tab" || control.dataset.baseweb === "tab") {
                     return "profile_tab_change";
                 }
                 if (control.closest(".objects-pricing-review-button")) {
@@ -613,12 +613,6 @@ def signal_app_ready_to_embed(
                     "bank details": "bank-details",
                     "users": "users",
                 }[label] || "";
-            }
-
-            function postToEmbed(payload) {
-                try { window.parent.postMessage(payload, "*"); } catch (_) {}
-                try { window.parent.parent.postMessage(payload, "*"); } catch (_) {}
-                try { window.top.postMessage(payload, "*"); } catch (_) {}
             }
 
             function targetSelector(transition) {
@@ -884,7 +878,7 @@ def signal_app_ready_to_embed(
                     if (previous) parentDocument.removeEventListener("click", previous, false);
                     const handler = (event) => {
                         const tab = event.target && event.target.closest
-                            ? event.target.closest("[role='tab']")
+                            ? event.target.closest("[role='tab'], [data-baseweb='tab']")
                             : null;
                         const control = tab || (event.target && event.target.closest
                             ? event.target.closest("button, a")
@@ -892,15 +886,9 @@ def signal_app_ready_to_embed(
                         if (!control) return;
                         const transition = transitionName(control);
                         if (!transition) return;
-                        if (transition === "profile_tab_change") {
-                            const profileTab = profileTabRoute(control);
-                            if (profileTab) {
-                                postToEmbed({
-                                    type: "costerly:profile-tab-selected",
-                                    profileTab,
-                                });
-                            }
-                        }
+                        const profileTab = transition === "profile_tab_change"
+                            ? profileTabRoute(control)
+                            : "";
                         const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
                         const objectId = String(control.dataset.objectId || "");
                         let bridgeButton = bridgeKey
@@ -929,6 +917,7 @@ def signal_app_ready_to_embed(
                             transitionId,
                             sourceScreen: currentScreen(),
                             targetScreen: targetScreenFor(transition),
+                            profileTab,
                         }, "*");
                         observeTargetScreen(transition, transitionId);
                         if (bridgeButton) bridgeButton.click();
@@ -1012,7 +1001,15 @@ def signal_app_ready_to_embed(
                 }
 
                 try {
-                    postToEmbed(message);
+                    window.parent.postMessage(message, "*");
+                } catch (error) {}
+
+                try {
+                    window.parent.parent.postMessage(message, "*");
+                } catch (error) {}
+
+                try {
+                    window.top.postMessage(message, "*");
                 } catch (error) {}
             }
 

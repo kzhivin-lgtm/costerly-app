@@ -48,7 +48,6 @@ from ui.app_header import render_app_header
 from use_cases.latest_estimate import load_latest_estimate_route
 from use_cases.platform_admin import (
     load_platform_access,
-    prefetch_header_access_in_background,
     record_authenticated_session_in_background,
     take_prefetched_header_access,
 )
@@ -528,13 +527,6 @@ def main() -> None:
             st.session_state[latest_route_cache_key] = latest_route
         elif latest_route_cache_key in st.session_state:
             latest_route = st.session_state.get(latest_route_cache_key)
-        cold_header_prefetch = (
-            st.session_state.get("_fast_resume_outcome") == "restored"
-            and st.session_state.get("_runtime_run_sequence") == 1
-            and not platform_cached
-            and latest_route is None
-            and latest_route_cache_key not in st.session_state
-        )
         prefetched_header = take_prefetched_header_access(
             user_id=platform_user_id,
             company_id=str(access.company_id),
@@ -557,13 +549,6 @@ def main() -> None:
                 except Exception:
                     latest_route = None
                 st.session_state[latest_route_cache_key] = latest_route
-        elif cold_header_prefetch and requested_screen != "admin":
-            prefetch_header_access_in_background(
-                user_id=platform_user_id,
-                company_id=str(access.company_id),
-            )
-            st.session_state[latest_route_cache_key] = None
-            trace.event("server.header_prefetch_started")
         else:
             client = _header_client(trace)
             with ThreadPoolExecutor(max_workers=2) as executor:
