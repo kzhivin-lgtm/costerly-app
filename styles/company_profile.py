@@ -2786,6 +2786,7 @@ def apply_company_profile_css() -> None:
             /* Keep both label origins fixed at their accepted half-table positions.
                Only the input columns move, to 16 px after each block's longest label. */
             --detail-grid: 212px calc(50% - 212px) 196px calc(50% - 196px);
+            overflow: visible;
         }
         .company-pricing-row .object-detail-table-cell {
             min-height: 51px;

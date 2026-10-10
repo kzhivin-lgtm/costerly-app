@@ -883,9 +883,12 @@ def signal_app_ready_to_embed(
                     const previous = parentWindow[transitionHandlerKey];
                     if (previous) parentDocument.removeEventListener("click", previous, false);
                     const handler = (event) => {
-                        const control = event.target && event.target.closest
-                            ? event.target.closest("button, a, [role='tab']")
+                        const tab = event.target && event.target.closest
+                            ? event.target.closest("[role='tab']")
                             : null;
+                        const control = tab || (event.target && event.target.closest
+                            ? event.target.closest("button, a")
+                            : null);
                         if (!control) return;
                         const transition = transitionName(control);
                         if (!transition) return;
