@@ -341,6 +341,16 @@ authenticated production trace that resume contains `server.legal_terms_gate_res
 and no `server.legal_terms_gate_lookup`, then compare the cold timing with the
 11:51 UTC baseline that spent 1.88 s in the legal lookup.
 
+ACTIVE, P1, 3.18.6 navigation rail document anchoring, owner clarified 10.10:
+the existing shared actions must begin beside the active screen header and
+scroll away with that header on Profile, File Review, Objects and Object Detail.
+They must not remain fixed over the middle of scrolled content. Keep the
+existing initial geometry and callbacks. Upload remains untouched. Do not add
+scroll listeners, polling, DOM replacement, or a second rail. Acceptance
+requires owner-authenticated live scrolling on the four target screens,
+working controls before scroll, and no change to accepted Upload or Price Lists
+behavior.
+
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session
 must wake and restore authenticated state, replace the unexplained prolonged
