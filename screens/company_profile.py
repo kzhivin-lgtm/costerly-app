@@ -2186,6 +2186,23 @@ def _poll_price_lists_projections(access: CompanyAccess) -> tuple[dict, dict, di
     return results, errors, futures
 
 
+def _start_post_overhead_warmup(access: CompanyAccess, *, trace=None) -> None:
+    """Begin the next Profile workload only after Overhead has rendered.
+
+    Price Lists is deliberately first because it has the longest independent
+    read set. This reuses its accepted projection futures, does not render the
+    fragment, and does not add polling or callbacks to the Overhead tab.
+    """
+    if access.role != "owner":
+        return
+    state = _price_lists_projection_state(access)
+    if trace is not None:
+        trace.event(
+            "server.profile_post_overhead_warmup_started",
+            metadata={"price_list_futures": len(state["futures"])},
+        )
+
+
 def _render_price_lists_loading() -> None:
     st.markdown(
         '<div class="price-catalog-empty-row price-lists-projection-loading" '
@@ -5068,6 +5085,7 @@ def render_company_profile(access: CompanyAccess, *, platform_access=None, trace
             else:
                 with trace.span("server.expenses_render"):
                     _render_metrics(access)
+        _start_post_overhead_warmup(access, trace=trace)
     elif labor_tab.open:
         with labor_tab:
             if trace is None:
