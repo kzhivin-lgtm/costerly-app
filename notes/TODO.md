@@ -243,15 +243,19 @@ critical-path median fell from 1.03 s to 0.28 s. Fast Resume remains one Python
 run; RLS remains mandatory before authenticated content; no polling, second full
 rerun, synthetic loading screen, or Price Lists behavior change was introduced.
 
-PENDING, P0, 3.18.2 Profile first paint and tab warming, depends on 3.18.1:
-render the authenticated Profile shell and Overhead Expenses without importing
-or querying Price Lists, Contacts, Users, or Machinery on the critical path.
-After first paint, warm non-critical tab reads in a tenant-scoped, cancellable,
-non-blocking path. Preserve the owner-accepted 3.16.7 Price Lists screen exactly:
-no callback, fragment polling, upload, Source, Review, DOM, toast, or catalog
-loading-contract change. Acceptance requires live authenticated production
-evidence for first Profile paint, tab-open latency, no cross-company data, and
-the unchanged accepted Price Lists Review Save behavior.
+COMPLETED, P0, 3.18.2 Profile first-paint and tab-latency measurement checkpoint,
+owner accepted 10.10, depends on 3.18.1: live authenticated cold evidence records
+the complete Upload-to-Profile and first-open tab path without changing the
+owner-accepted Price Lists interaction contract. The production cold run measured
+2.30 s Upload-to-Profile visible completion, with 2.27 s server work: 1.87 s
+eager Profile import plus 0.37 s Overhead Expenses. First tab renders measured
+Price Lists 0.49 s, Labor Costs 0.19 s, Company Details 0.19 s, Machinery 0.57 s,
+and Users 0.64 s. The safe Price Lists projection-start hook did not produce a
+confirmed pre-warmed Price Lists result in this owner trace, so this checkpoint
+does not claim successful tab preloading. It preserves the 3.16.7 Price Lists
+screen exactly: no callback, fragment polling, upload, Source, Review, DOM, toast,
+or catalog-loading-contract change. Any renewed Profile performance work must use
+this cold baseline and separately validate eager-import removal and tab warming.
 
 COMPLETED, P0, 3.18.3 cold Sign in and authenticated bootstrap architecture,
 depends on 3.18.1 measurements: optimise the worst customer path from Sign in

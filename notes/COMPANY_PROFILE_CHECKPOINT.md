@@ -1,5 +1,47 @@
 # Company Profile checkpoint
 
+## 3.18.2 Profile first-paint and tab-latency measurement checkpoint
+
+Status: owner accepted in authenticated production on 2026-10-10.
+
+### Scope and protected behavior
+
+- This is a performance-observation checkpoint for the cold authenticated path,
+  not a claim that every Profile tab is now preloaded.
+- The accepted 3.16.7 Price Lists behavior remains untouched: Review opens
+  quickly; Save shows one central `Loading catalog…` then authoritative data.
+  No client `Saving` toast, React-owned Streamlit DOM replacement/removal,
+  frequent polling, broad uploader callback, or Source/Review contract changed.
+- The attempted post-Overhead Price Lists projection start reuses the existing
+  tenant-scoped projection futures. It does not render a fragment or add a
+  callback, polling loop, or rerun to Overhead Expenses.
+
+### Owner production evidence
+
+The owner performed Command-Shift-R on Upload, entered Profile, and opened every
+Profile tab. Trace `9c4b7caf-3d02-4468-a1a0-bc56cfe3220e` recorded:
+
+- Upload first reveal: 2.82 s wrapper start to Upload ready, with 0.25 s server
+  work. This is context only, not an Upload checkpoint replacement.
+- Upload to Profile visible completion: 2.30 s. The first Profile server run was
+  2.27 s, consisting principally of 1.87 s eager `company_profile` import and
+  0.37 s Overhead Expenses rendering.
+- First subsequent tab renders: Price Lists 0.49 s, Labor Costs 0.19 s,
+  Company Details 0.19 s, Machinery 0.57 s, Users 0.64 s.
+
+### Verified boundary
+
+- Overhead Expenses is not the dominant cold Profile cost in this trace.
+  Eager Profile imports are.
+- The trace does not contain `server.profile_post_overhead_warmup_started`, and
+  the first Price Lists render still took 0.49 s about three seconds after
+  Profile ready. Therefore prewarming is unconfirmed and must not be represented
+  as an achieved performance result.
+- The owner accepted this measured state as the completed 3.18.2 checkpoint. A
+  future Profile-performance task must start from this baseline and be separately
+  accepted after proving both first-paint and tab-open behavior in authenticated
+  production.
+
 Version: v3.7.1 accepted Profile transition checkpoint
 Date: 2026-09-21
 
