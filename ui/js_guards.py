@@ -167,6 +167,25 @@ def install_company_metrics_input_guard() -> None:
                 return target.closest(".company-metrics-total-input");
             }
 
+            function pricingInput(target) {
+                if (!target || !target.closest) return null;
+                return target.closest(".company-pricing-input");
+            }
+
+            function moveCaretToEnd(input) {
+                if (!input) return;
+                if (input.matches && input.matches("input")) {
+                    input.setSelectionRange(input.value.length, input.value.length);
+                    return;
+                }
+                const selection = parentWindow.getSelection();
+                const range = parentDoc.createRange();
+                range.selectNodeContents(input);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+
             function phoneInput(target) {
                 return target && target.matches && target.matches(".st-key-profile_public_phone input")
                     ? target
@@ -312,6 +331,15 @@ def install_company_metrics_input_guard() -> None:
                     const cleaned = cleanNumber(percent.value);
                     percent.value = Number(cleaned) === 0 ? "" : formatPercent(cleaned, false);
                 }
+                moveCaretToEnd(metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target) || percent);
+            }
+
+            function handlePointerDown(event) {
+                const input = metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target) || percentInput(event.target);
+                if (!input) return;
+                event.preventDefault();
+                input.focus();
+                moveCaretToEnd(input);
             }
 
             function handleInput(event) {
@@ -357,7 +385,7 @@ def install_company_metrics_input_guard() -> None:
                     );
                     return;
                 }
-                const input = metricsInput(event.target) || metricsTotalInput(event.target);
+                const input = metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target);
                 if (!input) return;
                 const allowed = new Set([
                     "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End",
@@ -368,7 +396,7 @@ def install_company_metrics_input_guard() -> None:
             }
 
             function handlePaste(event) {
-                const input = metricsInput(event.target) || metricsTotalInput(event.target);
+                const input = metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target);
                 if (!input) return;
                 event.preventDefault();
                 const text = event.clipboardData ? event.clipboardData.getData("text") : "";
@@ -376,6 +404,7 @@ def install_company_metrics_input_guard() -> None:
             }
 
             parentDoc.addEventListener("focusin", handleFocus, true);
+            parentDoc.addEventListener("pointerdown", handlePointerDown, true);
             parentDoc.addEventListener("input", handleInput, true);
             parentDoc.addEventListener("focusout", handleBlur, true);
             parentDoc.addEventListener("keydown", handleKeydown, true);
@@ -383,6 +412,7 @@ def install_company_metrics_input_guard() -> None:
 
             parentWindow[HANDLER_KEY] = () => {
                 parentDoc.removeEventListener("focusin", handleFocus, true);
+                parentDoc.removeEventListener("pointerdown", handlePointerDown, true);
                 parentDoc.removeEventListener("input", handleInput, true);
                 parentDoc.removeEventListener("focusout", handleBlur, true);
                 parentDoc.removeEventListener("keydown", handleKeydown, true);

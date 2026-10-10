@@ -38,12 +38,8 @@
         function snapshot() {
           if (mode === "pricing") {
             const settings = {};
-            for (const field of [
-              "vat_percent", "warranty_reserve_percent", "management_buffer_percent",
-              "consumables_percent", "packaging_percent", "paint_consumables_percent",
-              "sale_price_markup_percent", "delivery_percent", "installation_percent",
-            ]) {
-              settings[field] = widgetValue(`profile_pricing_${field}`);
+            for (const input of parentDoc.querySelectorAll(".company-pricing-input[data-field]")) {
+              settings[input.dataset.field] = readNumber(input.textContent);
             }
             return {
               nonce: `${Date.now()}-${Math.random().toString(36).slice(2)}`,

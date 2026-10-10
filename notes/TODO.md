@@ -274,10 +274,12 @@ deferred until a separately measured performance task.
 
 ACTIVE, P0, 3.18.4 Profile Overhead and Pricing Cost editable-policy inputs:
 make Monthly Cost and Total reciprocal whole-shekel inputs, with Arnona VAT exempt,
-and add a visible Total monthly overhead expenses sum. The first compact Pricing
-surface was rejected by the owner and reverted. Preserve the established native
-Pricing Cost layout and ordering; retain only the zero-clear / percent-format
-input correction. Preserve canonical net-overhead persistence, owner-only
+and add a visible Total monthly overhead expenses sum. The owner rejected the
+last compact-Pricing spacing revision, but selected the preceding compact Pricing
+surface: grouped Delivery / Installation, Consumables / Paint consumables,
+Packaging, then policy fields with explanatory `?`. Numeric and percentage
+inputs now follow the product-wide end-caret design-system contract. Preserve
+canonical net-overhead persistence, owner-only
 authorization, a single save boundary, and the accepted Price Lists, its fragments,
 polling, upload, Source, Review and catalog loading behavior. Acceptance requires
 authenticated production edits in both directions, Arnona invariance, correct total

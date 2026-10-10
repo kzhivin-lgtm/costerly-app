@@ -65,6 +65,13 @@ screen.
 
 ## Form interaction states
 
+- Numeric and percentage inputs use the shared end-caret contract. On pointer
+  entry or keyboard focus, the caret is placed at the right edge of an existing
+  value. A pointer must not place it inside or before that value. This prevents
+  accidental leading-zero input such as `01` when the intended edit is `10`.
+  Apply the contract through the shared input guard, never with a screen-local
+  event handler. Formatting may update a derived companion field, but it must
+  not move the caret or overwrite the value currently being edited.
 - Default fields use the shared neutral border.
 - Focus is always a quiet Costerly-purple border and ring. Focus is never an
   error and must never be red.
