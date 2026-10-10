@@ -261,7 +261,11 @@ def install_company_metrics_input_guard() -> None:
                 const net = exempt ? Math.round(gross) : Math.round(gross / (1 + rate / 100));
                 const monthlyInput = row.querySelector(".company-metrics-monthly-input");
                 if (monthlyInput) monthlyInput.textContent = formatMoney(net);
-                updateRow(monthlyInput);
+                const vat = exempt ? 0 : Math.max(0, Math.round(gross - net));
+                const vatNode = row.querySelector("[data-company-metrics-vat]");
+                if (vatNode) vatNode.textContent = exempt ? "—" : formatMoney(vat);
+                row.dataset.companyMetricsGross = String(gross);
+                updateGrandTotal(table);
             }
 
             function updateAllRows(rate) {
@@ -335,7 +339,7 @@ def install_company_metrics_input_guard() -> None:
                 const total = metricsTotalInput(event.target);
                 if (total) {
                     updateRowFromTotal(total);
-                    total.textContent = formatMoney(readNumber(total.closest(".company-metrics-row").dataset.companyMetricsGross));
+                    total.textContent = formatMoney(readNumber(total.textContent));
                 }
                 const pricing = pricingInput(event.target);
                 if (pricing) pricing.textContent = formatPercent(pricing.textContent);

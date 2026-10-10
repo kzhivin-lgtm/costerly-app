@@ -2772,20 +2772,31 @@ def apply_company_profile_css() -> None:
             font-family: var(--font-mono);
             font-size: 14px;
             font-weight: 800;
+            text-transform: uppercase;
         }
 
         .company-metrics-total-summary .object-detail-table-cell:last-child {
             justify-content: center;
             color: var(--color-accent);
             font-variant-numeric: tabular-nums;
+            font-size: 17px;
+            font-weight: 900;
         }
 
         .company-pricing-table {
-            --detail-grid: minmax(0, 1.3fr) minmax(112px, 0.7fr) minmax(0, 1.3fr) minmax(112px, 0.7fr);
+            --detail-grid: minmax(0, 1.25fr) minmax(112px, 0.55fr) minmax(0, 1.25fr) minmax(112px, 0.55fr);
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            overflow: visible;
         }
 
         .company-pricing-row .object-detail-table-cell {
             min-height: 51px;
+            border-bottom: 0;
+            justify-content: flex-start;
+            padding: 8px 0;
         }
 
         .company-pricing-label {
@@ -2794,13 +2805,12 @@ def apply_company_profile_css() -> None:
         }
 
         .company-pricing-empty {
-            background: rgba(42, 31, 44, 0.018);
+            background: transparent;
         }
 
         .company-pricing-divider {
-            height: 18px;
-            background: var(--color-surface);
-            border-bottom: 1px solid rgba(42, 31, 44, 0.12);
+            height: 51px;
+            background: transparent;
         }
 
         .company-pricing-help {
