@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import html
@@ -55,6 +56,7 @@ from state.legal_consent import (
     pending_registration_for_user,
     record_current_terms_acceptance,
     record_pending_registration,
+    terms_acceptance_required,
     terms_disclosure_content,
 )
 
@@ -919,6 +921,7 @@ def sign_out() -> None:
 
 def _submit_login() -> None:
     """Authenticate before Streamlit renders the post-submit script run."""
+    submitted_at = time.perf_counter()
     email = str(st.session_state.get("login_email") or "")
     password = str(st.session_state.get("login_password") or "")
     st.session_state.auth_feedback_id = secrets.token_urlsafe(8)
@@ -940,8 +943,28 @@ def _submit_login() -> None:
         elif "password" in invalid_fields:
             st.session_state.company_login_error = "Check your email and password"
         return
+    terms_executor = None
     try:
         sign_in(email, password)
+        password_auth_ms = float(
+            (st.session_state.get("_runtime_completed_action") or {}).get(
+                "duration_ms", 0.0
+            )
+        )
+        access_token = str(st.session_state.get("auth_access_token") or "")
+        user_id = ""
+        if access_token:
+            user_id, _ = _verified_token_identity(access_token)
+        terms_future = None
+        if legal_consent_enabled() and user_id:
+            # The password grant has already been accepted by Supabase. Start
+            # the independent Terms read while the established membership gate
+            # runs, then retain the result for the following app run. The app
+            # still waits for both gates before showing authenticated content.
+            terms_executor = ThreadPoolExecutor(max_workers=1)
+            terms_future = terms_executor.submit(
+                lambda: terms_acceptance_required(get_supabase_client(), user_id)
+            )
         access = current_company_access()
         pending_registration = None
         if legal_consent_enabled() and access is not None and access.company_id is None:
@@ -954,6 +977,36 @@ def _submit_login() -> None:
         ):
             sign_out()
             raise PermissionError("Company access is required")
+        terms_check_ms = None
+        if terms_future is not None:
+            try:
+                needs_terms = bool(terms_future.result())
+            except Exception:
+                # Preserve the established, visible legal error in the app
+                # run if this speculative parallel read is unavailable.
+                pass
+            else:
+                terms_check_ms = (time.perf_counter() - submitted_at) * 1000
+                st.session_state["_post_sign_in_terms_check"] = {
+                    "user_id": access.user_id,
+                    "needs_terms": needs_terms,
+                }
+        completed_action = st.session_state.get("_runtime_completed_action")
+        if isinstance(completed_action, dict):
+            completed_action["duration_ms"] = (
+                time.perf_counter() - submitted_at
+            ) * 1000
+            completed_action["phase_durations_ms"] = {
+                "password_auth_ms": password_auth_ms,
+                "post_auth_gate_ms": max(
+                    0.0,
+                    (time.perf_counter() - submitted_at) * 1000 - password_auth_ms,
+                ),
+            }
+            if terms_check_ms is not None:
+                completed_action["phase_durations_ms"]["terms_gate_ready_ms"] = (
+                    terms_check_ms
+                )
     except AuthApiError as exc:
         if str(getattr(exc, "code", "")) in {
             "email_not_confirmed",
@@ -966,6 +1019,9 @@ def _submit_login() -> None:
     except Exception:
         st.session_state.company_login_invalid_fields = ["email", "password"]
         st.session_state.company_login_error = "Check your email and password"
+    finally:
+        if terms_executor is not None:
+            terms_executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _verified_token_identity(access_token: str) -> tuple[str, str]:

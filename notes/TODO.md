@@ -258,6 +258,18 @@ loading-contract change. Acceptance requires live authenticated production
 evidence for first Profile paint, tab-open latency, no cross-company data, and
 the unchanged accepted Price Lists Review Save behavior.
 
+ACTIVE, P0, 3.18.3 cold Sign in and authenticated bootstrap architecture,
+depends on 3.18.1 measurements: optimise the worst customer path from Sign in
+click through the first authenticated Upload reveal, and establish one measured
+bootstrap architecture shared by cold Upload, Profile and Sign in. Record the
+correlated browser, iframe, Streamlit-bootstrap, sign-in action, browser-session,
+RLS, header-read, first-run and reveal timings. Do not count warm navigation as
+acceptance. Prefer one coherent architecture over isolated wrapper micro-tweaks;
+preserve Fast Resume, native authentication controls, one Python run where
+possible, the accepted transition mask, and all protected 3.16.7 Price Lists
+behavior. Acceptance: measured production p50/p90 improvement for authenticated
+cold Upload and Sign in to first authenticated screen, with live owner approval.
+
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session
 must wake and restore authenticated state, replace the unexplained prolonged

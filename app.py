@@ -462,6 +462,9 @@ def main() -> None:
                 if route_key in st.query_params:
                     del st.query_params[route_key]
         legal_check_key = f"_terms_acceptance_checked:{access.user_id}"
+        post_sign_in_terms_check = st.session_state.pop(
+            "_post_sign_in_terms_check", None
+        )
         skip_legal_refresh_check = (
             st.session_state.get("_fast_resume_outcome") == "restored"
         )
@@ -469,10 +472,18 @@ def main() -> None:
             st.session_state.get(legal_check_key) or skip_legal_refresh_check
         ):
             try:
-                needs_terms = terms_acceptance_required(
-                    get_supabase_client(),
-                    access.user_id,
-                )
+                if (
+                    isinstance(post_sign_in_terms_check, dict)
+                    and post_sign_in_terms_check.get("user_id") == access.user_id
+                ):
+                    needs_terms = bool(post_sign_in_terms_check.get("needs_terms"))
+                    trace.event("server.legal_terms_gate_cache_hit")
+                else:
+                    with trace.span("server.legal_terms_gate_lookup"):
+                        needs_terms = terms_acceptance_required(
+                            get_supabase_client(),
+                            access.user_id,
+                        )
             except Exception:
                 st.error("Legal documents are temporarily unavailable")
                 _signal_ready(trace, "legal_documents_error")
