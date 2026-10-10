@@ -2804,7 +2804,7 @@ def apply_company_profile_css() -> None:
             justify-content: flex-start;
             padding: 0 16px;
         }
-        .company-pricing-empty { background: rgba(42, 31, 44, 0.018); }
+        .company-pricing-empty { background: transparent; }
         .company-pricing-divider { height: 18px; background: var(--color-surface); border-bottom: 0; }
         .company-pricing-help { width: 16px; height: 16px; border: 1px solid rgba(42, 31, 44, 0.32); border-radius: 50%; color: rgba(42, 31, 44, 0.66); display: inline-flex; align-items: center; justify-content: center; cursor: help; font-family: var(--font-mono); font-size: 11px; font-weight: 800; line-height: 1; }
 

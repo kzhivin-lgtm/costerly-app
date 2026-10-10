@@ -104,20 +104,20 @@ PRICING_GROUPS = (
     (
         "Project pricing",
         (
-            ("delivery_percent", "Delivery", 3, "Percent of the objects sale subtotal."),
-            ("installation_percent", "Installation", 10, "Percent of the objects sale subtotal."),
-            ("consumables_percent", "Consumables", 5, "Percent of primary materials."),
-            ("paint_consumables_percent", "Paint consumables", 10, "Percent of coating materials."),
-            ("packaging_percent", "Packaging", 1, "Percent of primary materials."),
+            ("delivery_percent", "Delivery", 3, "A % of the sale price of all objects, added to the commercial proposal for delivery."),
+            ("installation_percent", "Installation", 10, "A % of the sale price of all objects, added to the commercial proposal for installation."),
+            ("consumables_percent", "Consumables", 5, "A % of primary material cost, added to cover workshop consumables."),
+            ("paint_consumables_percent", "Paint consumables", 10, "A % of coating material cost, added to cover paint-related consumables."),
+            ("packaging_percent", "Packaging", 1, "A % of primary material cost, added to cover packaging."),
         ),
     ),
     (
         "Company policy",
         (
-            ("management_buffer_percent", "Management buffer", 5, "Reserve applied by the overhead engine."),
-            ("warranty_reserve_percent", "Warranty reserve", 5, "Reserve applied by the overhead engine."),
-            ("sale_price_markup_percent", "Default sale markup", 30, "Default markup for suggested sale prices."),
-            ("vat_percent", "Ma'am / VAT rate", 18, "VAT rate used for company pricing totals."),
+            ("management_buffer_percent", "Management buffer", 5, "A % of the object self-cost, added to cover project management and coordination."),
+            ("warranty_reserve_percent", "Warranty reserve", 5, "A % of the object self-cost, reserved for potential warranty work and related costs."),
+            ("sale_price_markup_percent", "Default sale markup", 30, "The default % added to self-cost when suggesting an object sale price. You can change it here or override an individual object's sale price in an estimate."),
+            ("vat_percent", "Ma'am / VAT rate", 18, "Tax added to the final sale price. VAT is shown separately from revenue."),
         ),
     ),
 )

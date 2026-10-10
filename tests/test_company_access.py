@@ -2912,6 +2912,19 @@ def test_company_pricing_table_has_no_internal_row_rules():
     assert ".company-pricing-divider { height: 18px; background: var(--color-surface); border-bottom: 0; }" in css
 
 
+def test_company_pricing_tooltips_explain_each_calculation_base():
+    html = company_metrics_view.pricing_table_html({}, editable=True)
+
+    assert "sale price of all objects" in html
+    assert "primary material cost" in html
+    assert "coating material cost" in html
+    assert "object self-cost" in html
+    assert "VAT is shown separately from revenue" in html
+    assert "company-pricing-empty" in html
+    css = Path("styles/company_profile.py").read_text()
+    assert ".company-pricing-empty { background: transparent; }" in css
+
+
 def test_labor_input_change_synchronizes_editable_totals():
     company_profile.st.session_state.clear()
     company_profile.st.session_state.update({
