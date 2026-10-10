@@ -156,6 +156,7 @@
         }
         let fallbackTimer = null;
         let internalTransitionTimer = null;
+        let iframeLoadAtMs = null;
         let ready = false;
         const readyRunIds = new Set();
         const pendingTransitions = [];
@@ -377,7 +378,10 @@
 
         mark("browser.wrapper_start", {metadata: navigationMetadata()});
         if (frame) {
-          frame.addEventListener("load", () => mark("browser.iframe_load"), {once: true});
+          frame.addEventListener("load", () => {
+            iframeLoadAtMs = performance.now();
+            mark("browser.iframe_load");
+          }, {once: true});
           mark("browser.iframe_request");
           frame.src = appUrl.toString();
         }
@@ -620,6 +624,24 @@
               server_build_version: serverBuildVersion,
               ...(event.data.metrics || {}),
             };
+            const serverRunStartedEpochMs = Number(metadata.server_run_started_epoch_ms);
+            if (Number.isFinite(serverRunStartedEpochMs)) {
+              const serverElapsedMs = Number(metadata.server_elapsed_ms || 0);
+              const browserEpochMs = performance.timeOrigin + performance.now();
+              const iframeLoadEpochMs = iframeLoadAtMs === null
+                ? null
+                : performance.timeOrigin + iframeLoadAtMs;
+              mark("browser.server_run_start_observed", {
+                metadata: {
+                  browser_clock_offset_at_ready_ms: Math.round(
+                    (browserEpochMs - serverRunStartedEpochMs - serverElapsedMs) * 1000
+                  ) / 1000,
+                  server_run_start_after_iframe_ms: iframeLoadEpochMs === null
+                    ? null
+                    : Math.round((serverRunStartedEpochMs - iframeLoadEpochMs) * 1000) / 1000,
+                },
+              });
+            }
             pendingTransitions.forEach((item) => {
               item.pythonRuns += 1;
             });

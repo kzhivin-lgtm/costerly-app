@@ -303,6 +303,7 @@ def _render_screen(
 
 
 def main() -> None:
+    run_started_epoch_ms = round(time.time() * 1000, 3)
     init_started_at = time.perf_counter()
     init_state()
     st.session_state._runtime_run_sequence = (
@@ -321,6 +322,7 @@ def main() -> None:
     )
     trace.annotate(
         run_sequence=st.session_state._runtime_run_sequence,
+        server_run_started_epoch_ms=run_started_epoch_ms,
         python_imports_ms=round((init_started_at - _SCRIPT_STARTED_AT) * 1000, 3),
         **_RUNTIME_VERSIONS,
     )

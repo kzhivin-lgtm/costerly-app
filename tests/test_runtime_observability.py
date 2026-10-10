@@ -123,8 +123,10 @@ def test_runtime_summary_relays_safe_phase_metrics(monkeypatch):
 def test_authenticated_upload_startup_keeps_phase_markers_for_the_cold_path():
     app_source = (ROOT / "app.py").read_text()
     auth_source = (ROOT / "state/company_auth.py").read_text()
+    wrapper_source = (ROOT / "cloudflare/index.html").read_text()
 
     for marker in (
+        "server_run_started_epoch_ms",
         "server.header_client_create",
         "server.platform_access_wait",
         "server.platform_access_query",
@@ -132,6 +134,11 @@ def test_authenticated_upload_startup_keeps_phase_markers_for_the_cold_path():
         "server.latest_estimate_query",
     ):
         assert marker in app_source
+    for marker in (
+        "browser.server_run_start_observed",
+        "server_run_start_after_iframe_ms",
+    ):
+        assert marker in wrapper_source
     for marker in (
         "server.auth.rls_client_create",
         "server.auth.rls_membership_lookup",
