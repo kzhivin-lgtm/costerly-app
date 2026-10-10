@@ -274,9 +274,6 @@ def apply_base_css() -> None:
             z-index: 950;
             width: fit-content !important;
             max-width: calc(100vw - 56px);
-            /* Navigation is viewport-anchored. Screen content must never
-               translate this shared rail while the main container scrolls. */
-            transform: none !important;
             opacity: 0.58;
             transition: opacity 140ms ease;
         }

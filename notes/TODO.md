@@ -341,15 +341,6 @@ authenticated production trace that resume contains `server.legal_terms_gate_res
 and no `server.legal_terms_gate_lookup`, then compare the cold timing with the
 11:51 UTC baseline that spent 1.88 s in the legal lookup.
 
-ACTIVE, P1, 3.18.6 fixed shared navigation rail, owner requested 10.10:
-keep the current shared rail fixed at its existing viewport position on Profile,
-File Review, Objects and Object Detail. Upload is already fixed and is protected.
-Remove only the workflow title-alignment transform that moves the rail with
-content. Do not change navigation callbacks, routing, auth, polling, reruns,
-or the accepted Price Lists behavior. Acceptance requires authenticated
-production scroll verification on all four target screens, with usable buttons
-and no content overlap.
-
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session
 must wake and restore authenticated state, replace the unexplained prolonged

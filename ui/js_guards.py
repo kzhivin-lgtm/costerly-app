@@ -6,6 +6,127 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
+def install_workflow_header_alignment_guard(
+    title_selector: str = "h1.workflow-title",
+) -> None:
+    """Align the fixed workflow actions to the rendered workflow-title center."""
+    title_selector_json = json.dumps(title_selector)
+    components.html(
+        """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const CLEANUP_KEY = "__costerlyWorkflowHeaderAlignmentCleanup";
+            const titleSelector = __TITLE_SELECTOR__;
+
+            if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
+
+            let frameId = null;
+            let titleObserver = null;
+            let actionsObserver = null;
+            let mutationObserver = null;
+            let currentActions = null;
+            let appliedOffset = 0;
+            let appliedTransform = "";
+
+            function activeElement(selector) {
+                const candidates = Array.from(parentDoc.querySelectorAll(selector));
+                return candidates.reverse().find((element) => {
+                    if (!element.isConnected || element.closest('[data-stale="true"]')) return false;
+                    const style = parentWindow.getComputedStyle(element);
+                    const rect = element.getBoundingClientRect();
+                    return style.display !== "none"
+                        && style.visibility !== "hidden"
+                        && Number.parseFloat(style.opacity || "1") > 0
+                        && rect.width > 0
+                        && rect.height > 0;
+                }) || null;
+            }
+
+            function targets() {
+                return {
+                    title: activeElement(titleSelector),
+                    actions: activeElement(".st-key-costerly_header_controls"),
+                };
+            }
+
+            function align() {
+                frameId = null;
+                const { title, actions } = targets();
+                if (!title || !actions) return;
+
+                if (actions !== currentActions || actions.style.transform !== appliedTransform) {
+                    currentActions = actions;
+                    appliedOffset = 0;
+                }
+
+                const titleRect = title.getBoundingClientRect();
+                const actionsRect = actions.getBoundingClientRect();
+                if (!titleRect.height || !actionsRect.height) return;
+
+                const titleCenter = titleRect.top + titleRect.height / 2;
+                const actionsBaseCenter = actionsRect.top + actionsRect.height / 2 - appliedOffset;
+                const offset = titleCenter - actionsBaseCenter;
+                appliedTransform = `translateY(${Math.round(offset * 100) / 100}px)`;
+                actions.style.transform = appliedTransform;
+                appliedOffset = offset;
+                actions.dataset.workflowHeaderAligned = "true";
+            }
+
+            function scheduleAlign() {
+                if (frameId !== null) parentWindow.cancelAnimationFrame(frameId);
+                frameId = parentWindow.requestAnimationFrame(align);
+            }
+
+            function observeTargets() {
+                const { title, actions } = targets();
+                if (!title || !actions) return false;
+                actions.style.removeProperty("transform");
+                delete actions.dataset.workflowHeaderAligned;
+                currentActions = null;
+                appliedOffset = 0;
+                appliedTransform = "";
+                titleObserver = new parentWindow.ResizeObserver(scheduleAlign);
+                actionsObserver = new parentWindow.ResizeObserver(scheduleAlign);
+                titleObserver.observe(title);
+                actionsObserver.observe(actions);
+                scheduleAlign();
+                return true;
+            }
+
+            mutationObserver = new parentWindow.MutationObserver(() => {
+                if (!titleObserver && observeTargets()) return;
+                scheduleAlign();
+            });
+            mutationObserver.observe(parentDoc.body, {
+                attributes: true,
+                attributeFilter: ["data-stale"],
+                childList: true,
+                subtree: true,
+            });
+
+            observeTargets();
+            parentWindow.addEventListener("resize", scheduleAlign, { passive: true });
+            parentWindow.setTimeout(scheduleAlign, 100);
+            parentWindow.setTimeout(scheduleAlign, 350);
+
+            parentWindow[CLEANUP_KEY] = () => {
+                if (frameId !== null) parentWindow.cancelAnimationFrame(frameId);
+                titleObserver?.disconnect();
+                actionsObserver?.disconnect();
+                mutationObserver?.disconnect();
+                parentWindow.removeEventListener("resize", scheduleAlign);
+                parentWindow[CLEANUP_KEY] = null;
+            };
+        })();
+        </script>
+        """.replace("__TITLE_SELECTOR__", title_selector_json),
+        height=0,
+        width=0,
+    )
+
+
 def install_company_metrics_input_guard() -> None:
     """Bridge the shared Object Detail-style Metrics table to Save Metrics."""
     components.html(
