@@ -38,93 +38,58 @@ from use_cases.company_logo import (
     normalize_company_logo,
     persist_company_logo,
 )
+from use_cases.price_sources import (
+    PRICE_CATALOG_DEPARTMENTS,
+    PriceSourceError,
+    accepted_price_source_uploads,
+    canonical_price_source_category,
+    create_price_source_download_url,
+    list_material_jobs,
+    list_price_catalog,
+    list_price_sources,
+    list_unresolved_price_source_rows,
+    load_price_source_bytes,
+    load_price_source_rows,
+    process_price_source,
+    price_source_vat_rate,
+    remove_price_source_row,
+    render_price_source_preview,
+    save_price_source_supplier_settings,
+    split_price_source_uploads,
+    validate_price_source_upload_selection,
+)
+from use_cases.price_source_runtime import (
+    active_price_source_job,
+    submit_price_lists_projection_jobs,
+    submit_price_source_batch_job,
+    submit_price_source_job,
+    submit_price_source_purge_job,
+    submit_price_source_row_save_job,
+)
+from use_cases.machinery import (
+    CNC_ESTIMATE_LEVEL_DEFAULT,
+    CNC_ESTIMATE_LEVEL_KEY,
+    CNC_ESTIMATE_LEVELS,
+    INDUSTRY_LABELS,
+    PROFILE_COSTING_MACHINE_CODES,
+    PROFILE_MACHINE_SPECS,
+    SUBCONTRACTOR_MACHINE_CODES,
+    MachineryError,
+    create_or_get_supplier,
+    deactivate_company_machinery,
+    deactivate_supplier_services,
+    list_company_machinery,
+    list_company_suppliers,
+    list_supplier_services,
+    save_company_machinery,
+    save_supplier_service,
+)
 
 if TYPE_CHECKING:
     from state.company_auth import CompanyAccess
 
 
 logger = logging.getLogger(__name__)
-
-_MACHINERY_DEPENDENCY_NAMES = frozenset({
-    "CNC_ESTIMATE_LEVEL_DEFAULT", "CNC_ESTIMATE_LEVEL_KEY", "CNC_ESTIMATE_LEVELS",
-    "INDUSTRY_LABELS", "PROFILE_COSTING_MACHINE_CODES", "PROFILE_MACHINE_SPECS",
-    "SUBCONTRACTOR_MACHINE_CODES", "MachineryError", "create_or_get_supplier",
-    "deactivate_company_machinery", "deactivate_supplier_services",
-    "list_company_machinery", "list_company_suppliers", "list_supplier_services",
-    "save_company_machinery", "save_supplier_service",
-})
-_PRICE_LIST_DEPENDENCY_NAMES = frozenset({
-    "PRICE_CATALOG_DEPARTMENTS", "PriceSourceError", "accepted_price_source_uploads",
-    "canonical_price_source_category", "create_price_source_download_url",
-    "list_material_jobs", "list_price_catalog", "list_price_sources",
-    "list_unresolved_price_source_rows", "load_price_source_bytes",
-    "load_price_source_rows", "process_price_source", "price_source_vat_rate",
-    "remove_price_source_row", "render_price_source_preview",
-    "save_price_source_supplier_settings", "split_price_source_uploads",
-    "validate_price_source_upload_selection", "active_price_source_job",
-    "submit_price_lists_projection_jobs", "submit_price_source_batch_job",
-    "submit_price_source_job", "submit_price_source_purge_job",
-    "submit_price_source_row_save_job",
-})
-
-
-def __getattr__(name: str):
-    """Keep direct Price Lists and Machinery entry points lazy-import compatible."""
-    if name in _MACHINERY_DEPENDENCY_NAMES:
-        _load_machinery_dependencies()
-        return globals()[name]
-    if name in _PRICE_LIST_DEPENDENCY_NAMES:
-        _load_price_list_dependencies()
-        return globals()[name]
-    raise AttributeError(name)
-
-
-def _load_machinery_dependencies() -> None:
-    """Load Machinery only after its Profile tab becomes active."""
-    global CNC_ESTIMATE_LEVEL_DEFAULT, CNC_ESTIMATE_LEVEL_KEY, CNC_ESTIMATE_LEVELS
-    global INDUSTRY_LABELS, PROFILE_COSTING_MACHINE_CODES, PROFILE_MACHINE_SPECS
-    global SUBCONTRACTOR_MACHINE_CODES, MachineryError, create_or_get_supplier
-    global deactivate_company_machinery, deactivate_supplier_services
-    global list_company_machinery, list_company_suppliers, list_supplier_services
-    global save_company_machinery, save_supplier_service
-    from use_cases.machinery import (
-        CNC_ESTIMATE_LEVEL_DEFAULT, CNC_ESTIMATE_LEVEL_KEY, CNC_ESTIMATE_LEVELS,
-        INDUSTRY_LABELS, PROFILE_COSTING_MACHINE_CODES, PROFILE_MACHINE_SPECS,
-        SUBCONTRACTOR_MACHINE_CODES, MachineryError, create_or_get_supplier,
-        deactivate_company_machinery, deactivate_supplier_services,
-        list_company_machinery, list_company_suppliers, list_supplier_services,
-        save_company_machinery, save_supplier_service,
-    )
-
-
-def _load_price_list_dependencies() -> None:
-    """Load the accepted Price Lists implementation only when its tab opens."""
-    global PRICE_CATALOG_DEPARTMENTS, PriceSourceError, accepted_price_source_uploads
-    global canonical_price_source_category, create_price_source_download_url
-    global list_material_jobs, list_price_catalog, list_price_sources
-    global list_unresolved_price_source_rows, load_price_source_bytes
-    global load_price_source_rows, process_price_source, price_source_vat_rate
-    global remove_price_source_row, render_price_source_preview
-    global save_price_source_supplier_settings, split_price_source_uploads
-    global validate_price_source_upload_selection, active_price_source_job
-    global submit_price_lists_projection_jobs, submit_price_source_batch_job
-    global submit_price_source_job, submit_price_source_purge_job
-    global submit_price_source_row_save_job
-    from use_cases.price_sources import (
-        PRICE_CATALOG_DEPARTMENTS, PriceSourceError, accepted_price_source_uploads,
-        canonical_price_source_category, create_price_source_download_url,
-        list_material_jobs, list_price_catalog, list_price_sources,
-        list_unresolved_price_source_rows, load_price_source_bytes,
-        load_price_source_rows, process_price_source, price_source_vat_rate,
-        remove_price_source_row, render_price_source_preview,
-        save_price_source_supplier_settings, split_price_source_uploads,
-        validate_price_source_upload_selection,
-    )
-    from use_cases.price_source_runtime import (
-        active_price_source_job, submit_price_lists_projection_jobs,
-        submit_price_source_batch_job, submit_price_source_job,
-        submit_price_source_purge_job, submit_price_source_row_save_job,
-    )
 
 
 def _price_source_failure_message(error: Exception) -> str:
@@ -1128,7 +1093,6 @@ def _render_owner_machinery(
 
 @st.fragment
 def _render_machinery(access: CompanyAccess) -> None:
-    _load_machinery_dependencies()
     st.markdown('<div class="company-machinery-active"></div>', unsafe_allow_html=True)
     notice = st.session_state.pop(
         f"company_machinery_notice:{access.company_id}", None
@@ -3658,7 +3622,6 @@ def _render_price_source_cycle_error(
 
 @st.fragment
 def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
-    _load_price_list_dependencies()
     if access.role != "owner":
         st.info("Price sources are available to the company owner.")
         return
