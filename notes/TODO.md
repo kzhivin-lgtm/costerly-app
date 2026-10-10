@@ -341,18 +341,19 @@ authenticated production trace that resume contains `server.legal_terms_gate_res
 and no `server.legal_terms_gate_lookup`, then compare the cold timing with the
 11:51 UTC baseline that spent 1.88 s in the legal lookup.
 
-ACTIVE, P0, 3.18.6 shared authenticated header controls in document flow,
-owner approved 10.10: Profile, File Review, Objects and Object Detail must
+COMPLETED AND OWNER-ACCEPTED, P0, 3.18.6 shared authenticated header controls
+in document flow, 10.10: Profile, File Review, Objects and Object Detail now
 render the one existing authenticated action component beside their own title,
-not as a root-level fixed rail. On each of these screens the controls leave the
-viewport together with its title when the document scrolls. Preserve every
-existing action and callback, authorized visibility, Upload placement,
-transition readiness, scroll-to-top behavior and Price Lists contract. Do not
-move controls by DOM mutation or client polling. The rejected fixed, top-offset
-and absolute experiments are not part of this implementation. Acceptance:
-authenticated production test of each route, scrolling past its title, and at
-least one navigation click from every rendered control set without a duplicate
-rail, missing control or slower/intermediate transition.
+not as a root-level fixed rail. The controls leave the viewport together with
+the screen title during document scrolling. Production implementation:
+`b5bce72`; checkpoint: `notes/SHARED_HEADER_CONTROLS_CHECKPOINT_3_18_6_2026_10_10.md`.
+The owner confirmed the previously persistent scrolling defect is resolved.
+Preserved: action callbacks, authorized visibility, Upload placement,
+transition readiness, scroll-to-top behavior, and the Price Lists contract.
+No DOM mutation, client polling, uploader, callback or Price Lists behavior was
+added. The rejected fixed, top-offset and absolute experiments remain reverted.
+Visual refinement is not included in this accepted functional checkpoint and
+requires a separately approved UI task.
 
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session
