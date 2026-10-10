@@ -2806,7 +2806,9 @@ def apply_company_profile_css() -> None:
         }
         .company-pricing-empty { background: transparent; }
         .company-pricing-divider { height: 18px; background: var(--color-surface); border-bottom: 0; }
-        .company-pricing-help { width: 16px; height: 16px; border: 1px solid rgba(42, 31, 44, 0.32); border-radius: 50%; color: rgba(42, 31, 44, 0.66); display: inline-flex; align-items: center; justify-content: center; cursor: help; font-family: var(--font-mono); font-size: 11px; font-weight: 800; line-height: 1; }
+        .company-pricing-help { position: relative; width: 16px; height: 16px; border: 1px solid rgba(42, 31, 44, 0.32); border-radius: 50%; color: rgba(42, 31, 44, 0.66); display: inline-flex; align-items: center; justify-content: center; cursor: help; font-family: var(--font-mono); font-size: 11px; font-weight: 800; line-height: 1; }
+        .company-pricing-help::after { content: attr(data-tooltip); position: absolute; z-index: 12; left: 50%; bottom: calc(100% + 9px); width: max-content; max-width: 300px; padding: 8px 10px; border-radius: 7px; background: #2A1F2C; color: #FFFFFF; box-shadow: 0 8px 18px rgba(42, 31, 44, 0.2); font-family: var(--font-sans); font-size: 12px; font-weight: 500; line-height: 1.35; opacity: 0; pointer-events: none; transform: translate(-50%, 3px); transition: opacity 120ms ease, transform 120ms ease; white-space: normal; }
+        .company-pricing-help:hover::after { opacity: 1; transform: translate(-50%, 0); }
 
         .stApp:has(.company-profile-active) .st-key-company_metrics_settings {
             margin-top: 34px;

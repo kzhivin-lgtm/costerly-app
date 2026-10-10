@@ -2920,9 +2920,12 @@ def test_company_pricing_tooltips_explain_each_calculation_base():
     assert "coating material cost" in html
     assert "object self-cost" in html
     assert "VAT is shown separately from revenue" in html
+    assert "data-tooltip=" in html
+    assert "title=" not in html
     assert "company-pricing-empty" in html
     css = Path("styles/company_profile.py").read_text()
     assert ".company-pricing-empty { background: transparent; }" in css
+    assert ".company-pricing-help:hover::after" in css
 
 
 def test_labor_input_change_synchronizes_editable_totals():

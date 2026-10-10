@@ -615,6 +615,12 @@ def signal_app_ready_to_embed(
                 }[label] || "";
             }
 
+            function postToEmbed(payload) {
+                try { window.parent.postMessage(payload, "*"); } catch (_) {}
+                try { window.parent.parent.postMessage(payload, "*"); } catch (_) {}
+                try { window.top.postMessage(payload, "*"); } catch (_) {}
+            }
+
             function targetSelector(transition) {
                 if (transition === "sign_in") {
                     return ".upload-screen-active, .company-profile-active, .company-setup-active";
@@ -886,10 +892,10 @@ def signal_app_ready_to_embed(
                         if (transition === "profile_tab_change") {
                             const profileTab = profileTabRoute(control);
                             if (profileTab) {
-                                window.top.postMessage({
+                                postToEmbed({
                                     type: "costerly:profile-tab-selected",
                                     profileTab,
-                                }, "*");
+                                });
                             }
                         }
                         const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
@@ -1003,15 +1009,7 @@ def signal_app_ready_to_embed(
                 }
 
                 try {
-                    window.parent.postMessage(message, "*");
-                } catch (error) {}
-
-                try {
-                    window.parent.parent.postMessage(message, "*");
-                } catch (error) {}
-
-                try {
-                    window.top.postMessage(message, "*");
+                    postToEmbed(message);
                 } catch (error) {}
             }
 

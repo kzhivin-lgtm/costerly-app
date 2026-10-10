@@ -139,7 +139,7 @@ def pricing_table_html(settings: dict, *, editable: bool) -> str:
                 cells.extend((
                     '<div class="object-detail-table-cell company-pricing-label">'
                     f'{_escape(label)}<span class="company-pricing-help" '
-                    f'title="{_escape(help_text)}" aria-label="{_escape(help_text)}">?</span></div>',
+                    f'data-tooltip="{_escape(help_text)}" aria-label="{_escape(help_text)}">?</span></div>',
                     '<div class="object-detail-table-cell"><div class="object-detail-cell-input '
                     f'company-pricing-input" data-field="{_escape(field)}"{editable_attrs}>'
                     f'{_percent(settings.get(field, default))}</div></div>',
