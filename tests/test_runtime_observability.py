@@ -138,8 +138,11 @@ def test_authenticated_upload_startup_keeps_phase_markers_for_the_cold_path():
         "browser.server_run_start_observed",
         "server_run_start_after_iframe_ms",
         "app_ready_postmessage_ms",
+        "navigation_rail_scroll_container",
+        "navigation_rail_fixed_containing_block",
     ):
         assert marker in wrapper_source
+    assert "function railLayout()" in (ROOT / "ui/js_guards.py").read_text()
     for marker in (
         "server.auth.rls_client_create",
         "server.auth.rls_membership_lookup",
