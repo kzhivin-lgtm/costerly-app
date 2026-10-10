@@ -1130,12 +1130,13 @@ def test_upload_dashboard_has_compact_centered_navigation_and_preserves_logo():
     assert "order: 10 !important;" in css
     assert "order: 20 !important;" in css
     assert "order: 30 !important;" in css
+    assert "position: fixed !important;" in css
+    assert "top: calc(var(--app-content-top) + 119px);" in css
+    assert "left: 50%;" in css
     assert "width: fit-content !important;" in css
     assert "max-width: calc(100vw - 32px);" in css
-    assert "margin: 48px auto 32px !important;" in css
+    assert "margin: 0 !important;" in css
     assert "margin-top: 23px;" in css
-    assert "left: 50vw;" in css
-    assert "width: 100vw !important;" in css
     assert "transform: translateX(-50%);" in css
     assert "height: 32px !important;" in css
     assert "padding: 0 9px !important;" in css
