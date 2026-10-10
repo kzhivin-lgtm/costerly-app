@@ -220,6 +220,7 @@ def _server_client():
 def _store_auth_session(session: object) -> None:
     if session is None:
         raise RuntimeError("Supabase did not return a sign-in session.")
+    st.session_state.pop("_company_access_cache", None)
     st.session_state.auth_access_token = session.access_token
     st.session_state.auth_refresh_token = session.refresh_token
     st.session_state.auth_expires_at = int(session.expires_at or 0)
@@ -1049,12 +1050,26 @@ def current_company_access(*, trace=None) -> CompanyAccess | None:
         return None
 
     try:
+        expires_at = int(st.session_state.get("auth_expires_at") or 0)
+        if expires_at > time.time() + 60:
+            if trace is None:
+                cached_access = st.session_state.get("_company_access_cache")
+            else:
+                with trace.span("server.auth.access_cache_lookup"):
+                    cached_access = st.session_state.get("_company_access_cache")
+            if (
+                isinstance(cached_access, CompanyAccess)
+                and cached_access.access_token == str(access_token)
+            ):
+                if trace is not None:
+                    trace.event("server.auth.access_cache_hit")
+                return cached_access
         if trace is None:
             client = _auth_client()
         else:
             with trace.span("server.auth.fallback_client_create"):
                 client = _auth_client()
-        if int(st.session_state.get("auth_expires_at") or 0) <= time.time() + 60:
+        if expires_at <= time.time() + 60:
             if trace is None:
                 refreshed = client.auth.refresh_session(refresh_token)
             else:
@@ -1064,13 +1079,17 @@ def current_company_access(*, trace=None) -> CompanyAccess | None:
             access_token = st.session_state.auth_access_token
         try:
             if trace is None:
-                return _company_access_via_rls(str(access_token))
-            with trace.span("server.auth.rls_access"):
-                return _company_access_via_rls(str(access_token), trace=trace)
+                access = _company_access_via_rls(str(access_token))
+            else:
+                with trace.span("server.auth.rls_access"):
+                    access = _company_access_via_rls(str(access_token), trace=trace)
         except (APIError, AttributeError, UnicodeError, ValueError):
             # Compatibility fallback preserves the established auth path if the
             # installed client or production schema cannot use the RLS shortcut.
             pass
+        else:
+            st.session_state["_company_access_cache"] = access
+            return access
         if trace is None:
             response = client.auth.get_user(access_token)
         else:

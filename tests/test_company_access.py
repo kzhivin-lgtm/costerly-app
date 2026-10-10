@@ -4076,3 +4076,69 @@ def test_company_access_uses_one_rls_request_for_valid_token(monkeypatch):
         role="member",
         access_token=access_token,
     )
+
+
+def test_company_access_reuses_verified_rls_access_for_unchanged_session_token(monkeypatch):
+    state = {
+        "auth_access_token": "access-1",
+        "auth_refresh_token": "refresh-1",
+        "auth_expires_at": time.time() + 3600,
+    }
+    monkeypatch.setattr(company_auth.st, "session_state", state)
+    client_creations = []
+    rls_tokens = []
+    monkeypatch.setattr(
+        company_auth,
+        "_auth_client",
+        lambda: client_creations.append("created") or object(),
+    )
+
+    def rls_access(token):
+        rls_tokens.append(token)
+        return company_auth.CompanyAccess(
+            user_id="user-1",
+            email="member@example.com",
+            company_id="company-a",
+            role="member",
+            access_token=token,
+        )
+
+    monkeypatch.setattr(company_auth, "_company_access_via_rls", rls_access)
+
+    first = company_auth.current_company_access()
+    second = company_auth.current_company_access()
+
+    assert first == second
+    assert rls_tokens == ["access-1"]
+    assert client_creations == ["created"]
+
+
+def test_company_access_cache_is_invalidated_by_a_new_auth_session(monkeypatch):
+    class SessionState(dict):
+        __getattr__ = dict.__getitem__
+        __setattr__ = dict.__setitem__
+
+    state = SessionState({
+        "_company_access_cache": company_auth.CompanyAccess(
+            user_id="user-1",
+            email="member@example.com",
+            company_id="company-a",
+            role="member",
+            access_token="old-access",
+        ),
+    })
+    monkeypatch.setattr(company_auth.st, "session_state", state)
+    monkeypatch.setattr(company_auth, "seal_resume_session", lambda **_kwargs: "sealed")
+    session = type(
+        "Session",
+        (),
+        {
+            "access_token": "new-access",
+            "refresh_token": "new-refresh",
+            "expires_at": int(time.time()) + 3600,
+        },
+    )()
+
+    company_auth._store_auth_session(session)
+
+    assert "_company_access_cache" not in state

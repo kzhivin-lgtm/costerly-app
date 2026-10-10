@@ -137,6 +137,8 @@ def test_authenticated_upload_startup_keeps_phase_markers_for_the_cold_path():
         "server.auth.rls_membership_lookup",
         "server.auth.token_claim_parse",
         "server.auth.rls_access",
+        "server.auth.access_cache_lookup",
+        "server.auth.access_cache_hit",
         "server.auth.fallback_client_create",
         "server.auth.session_refresh",
         "server.auth.get_user",
