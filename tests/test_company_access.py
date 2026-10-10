@@ -1223,15 +1223,11 @@ def test_company_profile_has_pricing_tab_and_owner_only_controls(monkeypatch, ro
 
     app.session_state["company_profile_tab"] = "Pricing Cost"
     app.run()
-    assert [field.label for field in app.text_input] == [
-        "Ma'am / VAT rate", "Warranty reserve", "Management buffer",
-        "Consumables", "Packaging", "Paint consumables",
-        "Default sale markup", "Delivery", "Installation",
-    ]
-    assert all(field.disabled is (role != "owner") for field in app.text_input)
-    assert any(button.label == "Save Pricing Cost" for button in app.button) is (
-        role == "owner"
-    )
+    pricing_markup = "".join(item.value for item in app.markdown)
+    assert not app.text_input
+    assert pricing_markup.count("company-pricing-input") == 9
+    assert (pricing_markup.count('contenteditable="true"') == 9) is (role == "owner")
+    assert ("SAVE PRICING COST" in pricing_markup) is (role == "owner")
 
     app.session_state["company_profile_tab"] = "Labor Costs"
     app.run()
@@ -2606,10 +2602,12 @@ def test_company_metrics_reuses_object_detail_table_contract():
     assert "object-detail-table object-detail-table--cols-4 company-metrics-table" in html
     assert "object-detail-table-head-row" in html
     assert "object-detail-group-summary company-metrics-group-summary" in html
-    assert html.count('contenteditable="true"') == 2
+    assert html.count('contenteditable="true"') == 4
     assert html.count("company-metrics-monthly-input") == 2
     assert 'data-company-metrics-vat>—</span>' in html
-    assert 'data-company-metrics-total>₪500</span>' in html
+    assert 'company-metrics-total-input" data-company-metrics-total' in html
+    assert "Total monthly overhead expenses" in html
+    assert 'data-company-metrics-grand-total>₪1\u202f680</span>' in html
 
 
 def test_company_metrics_zero_clears_on_focus_but_formats_on_blur():
@@ -2881,31 +2879,32 @@ def test_labor_costs_apply_factor_and_hours_only_to_hourly_workers():
     assert overridden["total_monthly_cost"] == 11_000
 
 
-def test_company_pricing_cost_form_saves_owner_values(monkeypatch):
+def test_company_pricing_cost_uses_compact_overhead_inputs_and_bridge(monkeypatch):
     pricing_saves = []
-    monkeypatch.setattr(
-        company_profile,
-        "load_company_metrics",
-        lambda _access: ({"vat_percent": 18}, {}),
-    )
     monkeypatch.setattr(
         company_profile,
         "save_company_pricing",
         lambda _access, values: pricing_saves.append(values),
     )
 
-    app = AppTest.from_function(_render_profile_test)
-    app.session_state["test_profile_role"] = "owner"
-    app.session_state["screen"] = "account"
-    app.session_state["company_profile_tab"] = "Pricing Cost"
-    app.run()
+    company_profile.st.session_state.clear()
+    access = company_auth.CompanyAccess(
+        "user-1", "owner@example.com", "company-a", "owner", "token"
+    )
+    snapshot = json.dumps({
+        "nonce": "pricing-test",
+        "settings": {field: 1 for field in company_profile.PRICING_SETTING_FIELDS},
+    })
+    assert company_profile._consume_company_pricing_snapshot(access, snapshot) == "Pricing Cost saved"
+    assert pricing_saves and pricing_saves[-1]["vat_percent"] == 1
 
-    next(field for field in app.text_input if field.label == "Ma'am / VAT rate").set_value("19")
-    next(button for button in app.button if button.label == "Save Pricing Cost").click()
-    app.run()
-
-    assert pricing_saves and pricing_saves[-1]["vat_percent"] == 19
-    assert "Pricing Cost saved" in " ".join(item.value for item in app.success)
+    html = company_metrics_view.pricing_table_html({}, editable=True)
+    assert html.count("company-pricing-input") == len(company_profile.PRICING_SETTING_FIELDS)
+    assert html.index("Delivery") < html.index("Installation") < html.index("Consumables")
+    assert html.index("Consumables") < html.index("Paint consumables") < html.index("Packaging")
+    assert html.index("Management buffer") < html.index("Warranty reserve")
+    assert html.index("Default sale markup") < html.index("VAT rate")
+    assert html.count("company-pricing-help") == len(company_profile.PRICING_SETTING_FIELDS)
     company_profile.st.session_state.clear()
 
 
@@ -3181,7 +3180,7 @@ def test_company_metrics_member_table_has_no_editable_cells_or_save_action():
         editable=False,
     )
     assert "contenteditable" not in html
-    assert 'data-company-metrics-total>₪236</span>' in html
+    assert 'data-company-metrics-total>₪236</div>' in html
 
 
 def test_other_spendings_flows_from_company_metrics_to_object_detail_pricing():

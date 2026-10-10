@@ -162,6 +162,16 @@ def install_company_metrics_input_guard() -> None:
                 return target.closest(".company-metrics-monthly-input");
             }
 
+            function metricsTotalInput(target) {
+                if (!target || !target.closest) return null;
+                return target.closest(".company-metrics-total-input");
+            }
+
+            function pricingInput(target) {
+                if (!target || !target.closest) return null;
+                return target.closest(".company-pricing-input");
+            }
+
             function phoneInput(target) {
                 return target && target.matches && target.matches(".st-key-profile_public_phone input")
                     ? target
@@ -214,6 +224,16 @@ def install_company_metrics_input_guard() -> None:
                 input.setSelectionRange(formatted.length, formatted.length);
             }
 
+            function updateGrandTotal(table) {
+                if (!table) return;
+                let total = 0;
+                for (const row of table.querySelectorAll(".company-metrics-row")) {
+                    total += readNumber(row.dataset.companyMetricsGross || "0");
+                }
+                const node = table.querySelector("[data-company-metrics-grand-total]");
+                if (node) node.textContent = formatMoney(total);
+            }
+
             function updateRow(input) {
                 const row = input ? input.closest(".company-metrics-row") : null;
                 const table = row ? row.closest("[data-company-metrics-table]") : null;
@@ -225,7 +245,23 @@ def install_company_metrics_input_guard() -> None:
                 const vatNode = row.querySelector("[data-company-metrics-vat]");
                 const totalNode = row.querySelector("[data-company-metrics-total]");
                 if (vatNode) vatNode.textContent = exempt ? "—" : formatMoney(vat);
-                if (totalNode) totalNode.textContent = formatMoney(net + vat);
+                const gross = net + vat;
+                row.dataset.companyMetricsGross = String(gross);
+                if (totalNode && totalNode !== parentDoc.activeElement) totalNode.textContent = formatMoney(gross);
+                updateGrandTotal(table);
+            }
+
+            function updateRowFromTotal(input) {
+                const row = input ? input.closest(".company-metrics-row") : null;
+                const table = row ? row.closest("[data-company-metrics-table]") : null;
+                if (!row || !table) return;
+                const rate = readNumber(table.dataset.vatPercent);
+                const gross = readNumber(input.textContent);
+                const exempt = row.dataset.vatExempt === "true";
+                const net = exempt ? Math.round(gross) : Math.round(gross / (1 + rate / 100));
+                const monthlyInput = row.querySelector(".company-metrics-monthly-input");
+                if (monthlyInput) monthlyInput.textContent = formatMoney(net);
+                updateRow(monthlyInput);
             }
 
             function updateAllRows(rate) {
@@ -263,6 +299,16 @@ def install_company_metrics_input_guard() -> None:
                     const cleaned = cleanNumber(input.textContent);
                     input.textContent = Number(cleaned) === 0 ? "" : cleaned;
                 }
+                const total = metricsTotalInput(event.target);
+                if (total) {
+                    const cleaned = cleanNumber(total.textContent);
+                    total.textContent = Number(cleaned) === 0 ? "" : cleaned;
+                }
+                const pricing = pricingInput(event.target);
+                if (pricing) {
+                    const cleaned = cleanNumber(pricing.textContent);
+                    pricing.textContent = Number(cleaned) === 0 ? "" : cleaned;
+                }
                 const percent = percentInput(event.target);
                 if (percent) percent.value = formatPercent(percent.value, false);
             }
@@ -270,6 +316,8 @@ def install_company_metrics_input_guard() -> None:
             function handleInput(event) {
                 const input = metricsInput(event.target);
                 if (input) updateRow(input);
+                const total = metricsTotalInput(event.target);
+                if (total) updateRowFromTotal(total);
                 const phone = phoneInput(event.target);
                 if (phone) updatePhone(phone);
                 const percent = percentInput(event.target);
@@ -284,6 +332,13 @@ def install_company_metrics_input_guard() -> None:
                     input.textContent = formatMoney(readNumber(input.textContent));
                     updateRow(input);
                 }
+                const total = metricsTotalInput(event.target);
+                if (total) {
+                    updateRowFromTotal(total);
+                    total.textContent = formatMoney(readNumber(total.closest(".company-metrics-row").dataset.companyMetricsGross));
+                }
+                const pricing = pricingInput(event.target);
+                if (pricing) pricing.textContent = formatPercent(pricing.textContent);
                 const phone = phoneInput(event.target);
                 if (phone) updatePhone(phone);
                 const percent = percentInput(event.target);
@@ -303,7 +358,7 @@ def install_company_metrics_input_guard() -> None:
                     );
                     return;
                 }
-                const input = metricsInput(event.target);
+                const input = metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target);
                 if (!input) return;
                 const allowed = new Set([
                     "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Home", "End",
@@ -314,7 +369,7 @@ def install_company_metrics_input_guard() -> None:
             }
 
             function handlePaste(event) {
-                const input = metricsInput(event.target);
+                const input = metricsInput(event.target) || metricsTotalInput(event.target) || pricingInput(event.target);
                 if (!input) return;
                 event.preventDefault();
                 const text = event.clipboardData ? event.clipboardData.getData("text") : "";

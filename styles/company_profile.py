@@ -137,6 +137,9 @@ def apply_company_profile_css() -> None:
         [data-testid="stElementContainer"]:has(.st-key-company_metrics_bridge_host),
         .st-key-company_metrics_bridge_host,
         .stApp:has(.company-profile-active)
+        [data-testid="stElementContainer"]:has(.st-key-company_pricing_bridge_host),
+        .st-key-company_pricing_bridge_host,
+        .stApp:has(.company-profile-active)
         [data-testid="stElementContainer"]:has(.st-key-company_labor_bridge_host),
         .st-key-company_labor_bridge_host {
             display: none !important;
@@ -208,6 +211,7 @@ def apply_company_profile_css() -> None:
 
         .stApp:has(.company-profile-active) div[data-testid="stForm"],
         .stApp:has(.company-profile-active) .st-key-company_metrics_card,
+        .stApp:has(.company-profile-active) .st-key-company_pricing_card,
         .stApp:has(.company-profile-active) .st-key-company_labor_card,
         .stApp:has(.company-profile-active) [class*="st-key-company_machinery_group_"] {
             padding: 28px;
@@ -2759,6 +2763,62 @@ def apply_company_profile_css() -> None:
             font-variant-numeric: tabular-nums;
         }
 
+        .company-metrics-total-summary {
+            background: rgba(128, 73, 198, 0.075);
+        }
+
+        .company-metrics-total-summary .object-detail-table-cell {
+            border-bottom: 0;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .company-metrics-total-summary .object-detail-table-cell:last-child {
+            justify-content: center;
+            color: var(--color-accent);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .company-pricing-table {
+            --detail-grid: minmax(0, 1.3fr) minmax(112px, 0.7fr) minmax(0, 1.3fr) minmax(112px, 0.7fr);
+        }
+
+        .company-pricing-row .object-detail-table-cell {
+            min-height: 51px;
+        }
+
+        .company-pricing-label {
+            gap: 7px;
+            font-weight: 700;
+        }
+
+        .company-pricing-empty {
+            background: rgba(42, 31, 44, 0.018);
+        }
+
+        .company-pricing-divider {
+            height: 18px;
+            background: var(--color-surface);
+            border-bottom: 1px solid rgba(42, 31, 44, 0.12);
+        }
+
+        .company-pricing-help {
+            width: 16px;
+            height: 16px;
+            border: 1px solid rgba(42, 31, 44, 0.32);
+            border-radius: 50%;
+            color: rgba(42, 31, 44, 0.66);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: help;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
         .stApp:has(.company-profile-active) .st-key-company_metrics_settings {
             margin-top: 34px;
         }
@@ -3192,6 +3252,7 @@ def apply_company_profile_css() -> None:
 
             .stApp:has(.company-profile-active) div[data-testid="stForm"],
             .stApp:has(.company-profile-active) .st-key-company_metrics_card,
+            .stApp:has(.company-profile-active) .st-key-company_pricing_card,
             .stApp:has(.company-profile-active) .st-key-company_labor_card,
             .stApp:has(.company-profile-active) [class*="st-key-company_machinery_group_"] { padding: 18px; }
 
