@@ -474,7 +474,7 @@ def install_company_contacts_input_guard(initial_invalid_fields: set[str] | None
             }
 
             function withoutProtocol(value) {
-                return String(value || "").trim().replace(/^https?:\\/\\//i, "");
+                return String(value || "").trim().replace(/^(?:https?:\\/\\/)?(?:www\\.)?/i, "");
             }
 
             function validHost(value, hosts = null, requirePath = false) {
@@ -509,7 +509,8 @@ def install_company_contacts_input_guard(initial_invalid_fields: set[str] | None
             function valid(input, type) {
                 const value = String(input.value || "").trim();
                 if (!value) return true;
-                if (type === "email") return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value) && !value.includes("..");
+                if (type === "email") return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value)
+                    && !/[^\\x00-\\x7F]/.test(value) && !value.includes("..");
                 if (type === "phone") {
                     const digits = phoneNational(value);
                     return (digits.length === 8 || digits.length === 9) && /^[2345789]/.test(digits);
@@ -543,10 +544,20 @@ def install_company_contacts_input_guard(initial_invalid_fields: set[str] | None
                 input.dispatchEvent(new Event("input", { bubbles: true }));
             }
 
+            function sanitize(input, type) {
+                let value = String(input.value || "");
+                if (type === "postal") value = value.replace(/\\D/g, "").slice(0, 7);
+                if (["email", "website", "facebook", "linkedin", "instagram"].includes(type)) {
+                    value = value.replace(/[^\\x00-\\x7F]/g, "");
+                }
+                setValue(input, value);
+            }
+
             function handleInput(event) {
                 const found = fieldFor(event.target);
                 if (!found) return;
                 const [, field] = found;
+                sanitize(event.target, field.type);
                 if (field.type === "phone") normalize(event.target, field.type);
                 mark(event.target, !valid(event.target, field.type));
             }
@@ -565,6 +576,7 @@ def install_company_contacts_input_guard(initial_invalid_fields: set[str] | None
                 const [, field] = found;
                 if (!["website", "facebook", "linkedin", "instagram"].includes(field.type)) return;
                 parentWindow.setTimeout(() => {
+                    sanitize(event.target, field.type);
                     normalize(event.target, field.type);
                     mark(event.target, !valid(event.target, field.type));
                 }, 0);

@@ -1197,6 +1197,8 @@ def _contact_url(value: object, *, allowed_hosts: set[str] | None = None) -> str
     text = _clean(value)
     if not text:
         return ""
+    if not text.isascii():
+        raise ValueError("Contact URLs must use Latin characters.")
     if any(character.isspace() for character in text):
         raise ValueError("Invalid contact URL.")
 
@@ -1216,6 +1218,8 @@ def _contact_url(value: object, *, allowed_hosts: set[str] | None = None) -> str
     if allowed_hosts is not None and not parsed.path.strip("/"):
         raise ValueError("A social profile URL needs a profile path.")
 
+    if host.startswith("www."):
+        host = host[4:]
     normalized = host + (parsed.path or "")
     if parsed.query:
         normalized += f"?{parsed.query}"
@@ -1238,7 +1242,7 @@ def normalize_company_contact_values(values: dict[str, object]) -> dict[str, obj
     normalized: dict[str, object] = {}
     public_email = _clean(values.get("public_email")) if "public_email" in values else None
     if public_email is not None:
-        if public_email and not is_valid_email_address(public_email):
+        if public_email and (not public_email.isascii() or not is_valid_email_address(public_email)):
             raise ValueError("Enter a valid official email address.")
         normalized["public_email"] = public_email
 

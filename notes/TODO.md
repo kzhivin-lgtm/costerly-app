@@ -242,8 +242,11 @@ international `+972` form, stores canonical E.164, and displays conventional
 Israeli spacing. Website, Facebook, LinkedIn and Instagram silently remove an
 entered `http://` or `https://`; Website must be a syntactically valid hostname,
 while each social field must use its matching service hostname and a non-empty
-profile path. Postal code accepts exactly seven digits. There are no external
-network lookups. Invalid fields receive only the existing Auth-red border and
+profile path. A pasted `www.` is removed too, while placeholders retain their
+example URLs. Postal code accepts exactly seven digits and strips non-digits at
+input time. Email and every URL field strip non-ASCII characters at input time;
+the server rejects any bypassed non-Latin value. There are no external network
+lookups. Invalid fields receive only the existing Auth-red border and
 the save is blocked, with no validation-copy block or extra Streamlit rerun per
 edit. The implementation must retain values, clear a red state immediately
 after correction, validate all submitted fields together, and reject a bypassed

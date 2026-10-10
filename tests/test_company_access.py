@@ -3936,7 +3936,7 @@ def test_company_contact_normalization_and_validation_contract():
         "public_phone": "+972534254735",
         "website_url": "company.co.il/about",
         "address_postal_code": "6608089",
-        "facebook_url": "www.facebook.com/company",
+        "facebook_url": "facebook.com/company",
         "linkedin_url": "linkedin.com/company/coasterly",
         "instagram_url": "instagram.com/coasterly.ai",
     }
@@ -3948,11 +3948,11 @@ def test_company_contact_normalization_and_validation_contract():
         "address_postal_code": "6608abc",
         "facebook_url": "linkedin.com/company/coasterly",
         "linkedin_url": "linkedin.com",
-        "instagram_url": "instagram.com/coasterly",
+        "instagram_url": "instagram.com/кирилл",
     })
     assert invalid == {
         "public_email", "public_phone", "website_url", "address_postal_code",
-        "facebook_url", "linkedin_url",
+        "facebook_url", "linkedin_url", "instagram_url",
     }
 
 
