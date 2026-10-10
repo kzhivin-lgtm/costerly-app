@@ -132,29 +132,30 @@ def render_screen_header(
     second-row slots preserve the identical left/right axes for screen-specific
     detail content, such as Object Detail's preview.
     """
-    if render_header_controls is None:
-        render_title()
-        if render_below_title is not None:
-            render_below_title()
-        if render_below_controls is not None:
-            render_below_controls()
-        return
-
-    title_column, actions_column = st.columns([3, 2], gap="small", vertical_alignment="center")
-    with title_column:
-        render_title()
-    with actions_column:
-        render_header_controls()
-
-    if render_below_controls is None and render_below_title is not None:
-        render_below_title()
-        return
-
-    if render_below_title is not None or render_below_controls is not None:
-        details_column, preview_column = st.columns([3, 2], gap="small", vertical_alignment="top")
-        with details_column:
+    with st.container(key="costerly_screen_header"):
+        if render_header_controls is None:
+            render_title()
             if render_below_title is not None:
                 render_below_title()
-        with preview_column:
             if render_below_controls is not None:
                 render_below_controls()
+            return
+
+        title_column, actions_column = st.columns([3, 2], gap="small", vertical_alignment="center")
+        with title_column:
+            render_title()
+        with actions_column:
+            render_header_controls()
+
+        if render_below_controls is None and render_below_title is not None:
+            render_below_title()
+            return
+
+        if render_below_title is not None or render_below_controls is not None:
+            details_column, preview_column = st.columns([3, 2], gap="small", vertical_alignment="top")
+            with details_column:
+                if render_below_title is not None:
+                    render_below_title()
+            with preview_column:
+                if render_below_controls is not None:
+                    render_below_controls()

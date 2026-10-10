@@ -23,6 +23,7 @@ def apply_projects_css() -> None:
             line-height: 1.05;
             letter-spacing: -0.04em;
         }
+        .st-key-costerly_screen_header { margin-bottom: 30px; }
         .projects-table-card {
             background: var(--color-surface);
             border: 1px solid rgba(42, 31, 44, 0.14);

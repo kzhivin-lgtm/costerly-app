@@ -297,19 +297,44 @@ def apply_base_css() -> None:
             top: auto !important;
             right: auto !important;
             z-index: auto;
-            width: 100% !important;
+            width: fit-content !important;
             max-width: none;
             opacity: 1;
             transform: none !important;
         }
 
-        .stApp:has(.company-profile-active) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"],
-        .stApp:has(#costerly-file-review-screen-active) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"],
-        .stApp:has(.objects-estimation-header) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"],
-        .stApp:has(.object-detail-shell) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"],
-        .stApp:has(.projects-screen-active) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"],
-        .stApp:has(.platform-admin-active) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
-            margin-left: auto !important;
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.company-profile-heading),
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.post-upload-title),
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.projects-title),
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.platform-admin-heading) {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            align-items: center !important;
+            column-gap: 24px !important;
+        }
+
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.company-profile-heading) > [data-testid="stColumn"],
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.post-upload-title) > [data-testid="stColumn"],
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.projects-title) > [data-testid="stColumn"],
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.platform-admin-heading) > [data-testid="stColumn"] {
+            width: auto !important;
+            min-width: 0 !important;
+            flex: none !important;
+        }
+
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.company-profile-heading) > [data-testid="stColumn"]:last-child,
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.post-upload-title) > [data-testid="stColumn"]:last-child,
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.projects-title) > [data-testid="stColumn"]:last-child,
+        .st-key-costerly_screen_header [data-testid="stHorizontalBlock"]:has(.platform-admin-heading) > [data-testid="stColumn"]:last-child {
+            align-self: center !important;
+        }
+
+        .st-key-costerly_screen_header .projects-title,
+        .st-key-costerly_screen_header .post-upload-title,
+        .st-key-costerly_screen_header .company-profile-heading h1,
+        .st-key-costerly_screen_header .platform-admin-heading h1 {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
         }
 
         .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
