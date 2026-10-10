@@ -736,43 +736,6 @@ def signal_app_ready_to_embed(
         <script>
         (() => {
             const transitionHandlerKey = "__costerlyRuntimeTransitionHandlerV1";
-            function railLayout() {
-                const parentWindow = window.parent;
-                const parentDoc = parentWindow.document;
-                const rail = parentDoc.querySelector(".st-key-costerly_header_controls");
-                if (!rail) return {present: false};
-
-                const describe = (element) => {
-                    if (!element) return "";
-                    const testId = element.getAttribute("data-testid");
-                    return testId ? `${element.tagName.toLowerCase()}[${testId}]` : element.tagName.toLowerCase();
-                };
-                const railStyle = parentWindow.getComputedStyle(rail);
-                let scrollContainer = "";
-                let fixedContainingBlock = "";
-                for (let node = rail.parentElement; node && node !== parentDoc.documentElement; node = node.parentElement) {
-                    const style = parentWindow.getComputedStyle(node);
-                    if (!scrollContainer && /(auto|scroll|overlay)/.test(style.overflowY || "")
-                        && node.scrollHeight > node.clientHeight) {
-                        scrollContainer = describe(node);
-                    }
-                    if (!fixedContainingBlock && (
-                        style.transform !== "none" ||
-                        style.perspective !== "none" ||
-                        style.filter !== "none" ||
-                        /(paint|layout)/.test(style.contain || "")
-                    )) {
-                        fixedContainingBlock = describe(node);
-                    }
-                }
-                return {
-                    present: true,
-                    position: railStyle.position,
-                    transform: railStyle.transform,
-                    scrollContainer,
-                    fixedContainingBlock,
-                };
-            }
             const message = {
                 type: "costerly:app-ready",
                 screen: __SCREEN__,
@@ -780,7 +743,6 @@ def signal_app_ready_to_embed(
                 runId: __RUN_ID__,
                 metrics: __METRICS__,
                 route: __ROUTE__,
-                railLayout: railLayout(),
                 sentAt: Date.now()
             };
             const resetScrollOnReady = __RESET_SCROLL__;

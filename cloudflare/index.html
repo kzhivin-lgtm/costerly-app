@@ -650,13 +650,6 @@
               // Runtime ingestion retains the first 30 keys, so keep this
               // boundary before the verbose server summary.
               app_ready_postmessage_ms: appReadyDeliveryMs,
-              navigation_rail_present: Boolean(event.data.railLayout?.present),
-              navigation_rail_position: String(event.data.railLayout?.position || ""),
-              navigation_rail_transform: String(event.data.railLayout?.transform || ""),
-              navigation_rail_scroll_container: String(event.data.railLayout?.scrollContainer || ""),
-              navigation_rail_fixed_containing_block: String(
-                event.data.railLayout?.fixedContainingBlock || ""
-              ),
               server_run_id: runId,
               server_build_version: serverBuildVersion,
               ...(event.data.metrics || {}),
