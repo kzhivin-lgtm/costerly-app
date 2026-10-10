@@ -642,19 +642,18 @@
                 window.sessionStorage.removeItem("costerly:build-mismatch-reload");
               } catch (_) {}
             }
+            const appReadySentAt = Number(event.data.sentAt);
+            const appReadyDeliveryMs = Number.isFinite(appReadySentAt)
+              ? Math.max(0, Math.round((Date.now() - appReadySentAt) * 1000) / 1000)
+              : null;
             const metadata = {
+              // Runtime ingestion retains the first 30 keys, so keep this
+              // boundary before the verbose server summary.
+              app_ready_postmessage_ms: appReadyDeliveryMs,
               server_run_id: runId,
               server_build_version: serverBuildVersion,
               ...(event.data.metrics || {}),
             };
-            const appReadySentAt = Number(event.data.sentAt);
-            if (Number.isFinite(appReadySentAt)) {
-              // Separates Streamlit's component scheduling from the final
-              // cross-frame delivery. This is observational only.
-              metadata.app_ready_postmessage_ms = Math.max(0, Math.round(
-                (Date.now() - appReadySentAt) * 1000
-              ) / 1000);
-            }
             const serverRunStartedEpochMs = Number(metadata.server_run_started_epoch_ms);
             if (Number.isFinite(serverRunStartedEpochMs)) {
               const serverElapsedMs = Number(metadata.server_elapsed_ms || 0);
