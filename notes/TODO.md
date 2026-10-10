@@ -341,14 +341,6 @@ authenticated production trace that resume contains `server.legal_terms_gate_res
 and no `server.legal_terms_gate_lookup`, then compare the cold timing with the
 11:51 UTC baseline that spent 1.88 s in the legal lookup.
 
-ACTIVE, P1, 3.18.6 fixed Upload navigation rail, owner requested 10.10:
-keep the existing centered Upload navigation buttons at their established resting
-location while the main Streamlit container scrolls. Change presentation only:
-no navigation callback, route, auth, polling, rerun, or Price Lists behavior
-change. Acceptance requires authenticated production verification that the rail
-does not move during Upload scroll, remains usable, and does not cover the
-Upload controls on desktop or mobile.
-
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session
 must wake and restore authenticated state, replace the unexplained prolonged
