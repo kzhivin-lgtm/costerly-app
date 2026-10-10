@@ -120,6 +120,7 @@ def apply_base_css() -> None:
             --app-header-top: clamp(72px, 10vh, 104px);
             --app-header-width: min(323px, 70vw);
             --app-content-top: clamp(132px, 14vh, 158px);
+            --navigation-rail-top: 16px;
 
             /* Shared button tokens */
             --button-height-md: 44px;
@@ -269,7 +270,7 @@ def apply_base_css() -> None:
 
         .st-key-costerly_header_controls {
             position: fixed !important;
-            top: calc(var(--app-header-top) + 15px);
+            top: var(--navigation-rail-top);
             right: max(28px, calc((100vw - var(--post-upload-width)) / 2));
             z-index: 950;
             width: fit-content !important;
@@ -644,7 +645,7 @@ def apply_base_css() -> None:
             }
 
             .st-key-costerly_header_controls {
-                top: calc(var(--app-header-top) + 8px);
+                top: var(--navigation-rail-top);
                 right: 14px;
                 width: calc(100vw - 28px) !important;
                 overflow-x: auto;
