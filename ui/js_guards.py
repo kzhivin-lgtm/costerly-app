@@ -605,6 +605,115 @@ def install_company_contacts_input_guard(initial_invalid_fields: set[str] | None
     )
 
 
+def install_company_bank_details_input_guard(initial_invalid_fields: set[str] | None = None) -> None:
+    """Keep Bank Details canonical in the browser without per-edit reruns."""
+    initial_invalid_fields_json = json.dumps(sorted(initial_invalid_fields or set()))
+    script = """
+        <script>
+        (() => {
+            const parentWindow = window.parent;
+            const parentDoc = parentWindow.document;
+            const CLEANUP_KEY = "__costerlyCompanyBankDetailsInputGuardCleanup";
+            const initialInvalidFields = new Set(__INITIAL_INVALID_FIELDS__);
+            const fields = {
+                company_registration_number: { selector: ".st-key-profile_company_registration_number input", type: "registration" },
+                bank_number: { selector: ".st-key-profile_bank_number input", type: "digits" },
+                branch_number: { selector: ".st-key-profile_branch_number input", type: "digits" },
+                account_number: { selector: ".st-key-profile_account_number input", type: "digits" },
+                iban: { selector: ".st-key-profile_iban input", type: "iban" },
+                swift: { selector: ".st-key-profile_swift input", type: "bic" },
+            };
+
+            if (parentWindow[CLEANUP_KEY]) parentWindow[CLEANUP_KEY]();
+
+            function fieldFor(input) {
+                return Object.entries(fields).find(([, field]) => input.matches(field.selector));
+            }
+
+            function rootFor(input) {
+                return input.closest("[data-testid='stTextInput']")?.querySelector(
+                    "[data-testid='stTextInputRootElement'], div[data-baseweb='input'], div[data-baseweb='base-input']"
+                );
+            }
+
+            function mark(input, invalid) {
+                const root = rootFor(input);
+                if (!root) return;
+                root.dataset.costerlyBankInvalid = invalid ? "true" : "false";
+                input.setAttribute("aria-invalid", invalid ? "true" : "false");
+            }
+
+            function setValue(input, value) {
+                if (input.value === value) return;
+                const setter = Object.getOwnPropertyDescriptor(
+                    parentWindow.HTMLInputElement.prototype, "value"
+                ).set;
+                setter.call(input, value);
+                input.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+
+            function canonical(input, type) {
+                const value = String(input.value || "");
+                if (type === "registration") return value.replace(/\\D/g, "").slice(0, 9);
+                if (type === "digits") return value.replace(/\\D/g, "");
+                return value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+            }
+
+            function ibanIsValid(value) {
+                if (!value) return true;
+                if (!/^[A-Z]{2}\\d{2}[A-Z0-9]{11,30}$/.test(value)) return false;
+                const rearranged = value.slice(4) + value.slice(0, 4);
+                let remainder = 0;
+                for (const character of rearranged) {
+                    const digits = /\\d/.test(character)
+                        ? character
+                        : String(character.charCodeAt(0) - 55);
+                    for (const digit of digits) remainder = (remainder * 10 + Number(digit)) % 97;
+                }
+                return remainder === 1;
+            }
+
+            function valid(value, type) {
+                if (!value) return true;
+                if (type === "registration") return /^\\d{9}$/.test(value);
+                if (type === "digits") return /^\\d+$/.test(value);
+                if (type === "bic") return /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/.test(value);
+                return ibanIsValid(value);
+            }
+
+            function sanitizeAndMark(input, type) {
+                const value = canonical(input, type);
+                setValue(input, value);
+                mark(input, !valid(value, type));
+            }
+
+            function handleInput(event) {
+                const found = fieldFor(event.target);
+                if (found) sanitizeAndMark(event.target, found[1].type);
+            }
+
+            function handleBlur(event) {
+                const found = fieldFor(event.target);
+                if (found) sanitizeAndMark(event.target, found[1].type);
+            }
+
+            parentDoc.addEventListener("input", handleInput, true);
+            parentDoc.addEventListener("focusout", handleBlur, true);
+            for (const [name, field] of Object.entries(fields)) {
+                const input = parentDoc.querySelector(field.selector);
+                if (input) mark(input, initialInvalidFields.has(name));
+            }
+            parentWindow[CLEANUP_KEY] = () => {
+                parentDoc.removeEventListener("input", handleInput, true);
+                parentDoc.removeEventListener("focusout", handleBlur, true);
+                delete parentWindow[CLEANUP_KEY];
+            };
+        })();
+        </script>
+        """.replace("__INITIAL_INVALID_FIELDS__", initial_invalid_fields_json)
+    components.html(script, height=0, width=0)
+
+
 def signal_app_ready_to_embed(
     screen: str,
     *,

@@ -3300,14 +3300,15 @@ def test_last_estimate_always_reopens_through_file_review():
 def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
     profile = {
         "company_name": "Workshop",
+        "company_registration_number": "001234567",
         "legal_name_hebrew": "חברה",
         "legal_name": "Workshop Ltd",
         "bank_name": "Bank",
         "bank_number": "10",
         "branch_number": "20",
         "account_number": "30",
-        "iban": "IL00",
-        "swift": "TESTILIT",
+        "iban": "GB82WEST12345698765432",
+        "swift": "DEUTDEFF",
     }
     writes = []
     monkeypatch.setattr(company_profile, "load_company_profile", lambda _access: profile)
@@ -3336,8 +3337,8 @@ def test_company_details_saves_identity_and_bank_fields_together(monkeypatch):
     assert writes[-1]["company_name"] == "Workshop"
     assert writes[-1]["legal_name_hebrew"] == "חברה"
     assert writes[-1]["legal_name"] == "Workshop Ltd"
-    assert writes[-1]["iban"] == "IL00"
-    assert writes[-1]["swift"] == "TESTILIT"
+    assert writes[-1]["iban"] == "GB82WEST12345698765432"
+    assert writes[-1]["swift"] == "DEUTDEFF"
 
 
 def test_save_company_metrics_updates_only_monthly_fields(monkeypatch):
@@ -3954,6 +3955,49 @@ def test_company_contact_normalization_and_validation_contract():
         "public_email", "public_phone", "website_url", "address_postal_code",
         "facebook_url", "linkedin_url", "instagram_url",
     }
+
+
+def test_company_bank_details_normalization_and_validation_contract():
+    normalized = company_profile.normalize_company_bank_details({
+        "company_registration_number": "001234567",
+        "bank_number": "010",
+        "branch_number": "002",
+        "account_number": "0004567",
+        "iban": "gb82 west 1234 5698 7654 32",
+        "swift": "deutdeff500",
+    })
+    assert normalized == {
+        "company_registration_number": "001234567",
+        "bank_number": "010",
+        "branch_number": "002",
+        "account_number": "0004567",
+        "iban": "GB82WEST12345698765432",
+        "swift": "DEUTDEFF500",
+    }
+    invalid = company_profile.company_bank_details_validation_errors({
+        "company_registration_number": "12345678",
+        "bank_number": "12a",
+        "branch_number": "א",
+        "account_number": "123-4",
+        "iban": "IL001234",
+        "swift": "deutdeff12",
+    })
+    assert invalid == {
+        "company_registration_number", "bank_number", "branch_number",
+        "account_number", "iban", "swift",
+    }
+
+
+def test_bank_details_browser_guard_uses_no_input_callback_or_rerun():
+    guard_source = (Path(__file__).parents[1] / "ui/js_guards.py").read_text()
+    guard = guard_source.split(
+        "def install_company_bank_details_input_guard", 1
+    )[1].split("def signal_app_ready_to_embed", 1)[0]
+    assert "company_registration_number" in guard
+    assert "account_number" in guard
+    assert "ibanIsValid" in guard
+    assert "costerlyBankInvalid" in guard
+    assert "st.rerun" not in guard
 
 
 def test_mismatched_password_never_reaches_signup(monkeypatch):

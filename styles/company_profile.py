@@ -2390,6 +2390,16 @@ def apply_company_profile_css() -> None:
             box-shadow: 0 0 0 3px rgba(217, 75, 82, 0.12) !important;
         }
 
+        .stApp:has(.company-profile-active)
+        [data-testid="stTextInputRootElement"][data-costerly-bank-invalid="true"],
+        .stApp:has(.company-profile-active)
+        div[data-baseweb="input"][data-costerly-bank-invalid="true"],
+        .stApp:has(.company-profile-active)
+        div[data-baseweb="base-input"][data-costerly-bank-invalid="true"] {
+            border-color: #D94B52 !important;
+            box-shadow: 0 0 0 3px rgba(217, 75, 82, 0.12) !important;
+        }
+
         .stApp:has(.company-profile-active) [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
             display: flex !important;
             align-items: center !important;

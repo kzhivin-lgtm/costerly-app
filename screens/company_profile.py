@@ -8,6 +8,7 @@ from html import escape
 import json
 import logging
 from pathlib import Path
+import re
 import time
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
@@ -23,6 +24,7 @@ from ui import company_metrics_view
 from ui.company_labor_bridge import company_labor_bridge
 from ui.company_metrics_bridge import company_metrics_bridge
 from ui.js_guards import (
+    install_company_bank_details_input_guard,
     install_company_contacts_input_guard,
     install_company_logo_picker_guard,
     install_company_metrics_input_guard,
@@ -119,6 +121,14 @@ CONTACT_VALIDATION_FIELDS = (
     "facebook_url",
     "linkedin_url",
     "instagram_url",
+)
+BANK_DETAILS_VALIDATION_FIELDS = (
+    "company_registration_number",
+    "bank_number",
+    "branch_number",
+    "account_number",
+    "iban",
+    "swift",
 )
 _SOCIAL_CONTACT_HOSTS = {
     "facebook_url": {"facebook.com", "www.facebook.com"},
@@ -1275,6 +1285,70 @@ def company_contact_validation_errors(values: dict[str, object]) -> set[str]:
     return invalid_fields
 
 
+def _normalized_bank_digits(value: object, *, exact_length: int | None = None) -> str:
+    text = _clean(value)
+    if text and not text.isdigit():
+        raise ValueError("Bank number fields may contain digits only.")
+    if exact_length is not None and len(text) != exact_length:
+        raise ValueError("Company registration number must contain nine digits.")
+    return text
+
+
+def _normalized_bic(value: object) -> str:
+    text = "".join(_clean(value).split()).upper()
+    if text and not re.fullmatch(
+        r"[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?", text
+    ):
+        raise ValueError("Invalid BIC.")
+    return text
+
+
+def _normalized_iban(value: object) -> str:
+    text = "".join(_clean(value).split()).upper()
+    if not text:
+        return ""
+    if not re.fullmatch(r"[A-Z]{2}\d{2}[A-Z0-9]{11,30}", text):
+        raise ValueError("Invalid IBAN.")
+    remainder = 0
+    for character in text[4:] + text[:4]:
+        digits = character if character.isdigit() else str(ord(character) - ord("A") + 10)
+        for digit in digits:
+            remainder = (remainder * 10 + int(digit)) % 97
+    if remainder != 1:
+        raise ValueError("Invalid IBAN.")
+    return text
+
+
+def normalize_company_bank_details(values: dict[str, object]) -> dict[str, object]:
+    """Validate Bank Details and return their canonical stored values."""
+    normalized: dict[str, object] = {}
+    if "company_registration_number" in values:
+        normalized["company_registration_number"] = _normalized_bank_digits(
+            values.get("company_registration_number"), exact_length=9
+        )
+    for field in ("bank_number", "branch_number", "account_number"):
+        if field in values:
+            normalized[field] = _normalized_bank_digits(values.get(field))
+    if "iban" in values:
+        normalized["iban"] = _normalized_iban(values.get("iban"))
+    if "swift" in values:
+        normalized["swift"] = _normalized_bic(values.get("swift"))
+    return normalized
+
+
+def company_bank_details_validation_errors(values: dict[str, object]) -> set[str]:
+    """Return all invalid submitted Bank Details fields in one pass."""
+    invalid_fields: set[str] = set()
+    for field in BANK_DETAILS_VALIDATION_FIELDS:
+        if field not in values:
+            continue
+        try:
+            normalize_company_bank_details({field: values[field]})
+        except ValueError:
+            invalid_fields.add(field)
+    return invalid_fields
+
+
 def save_company_profile(access: CompanyAccess, values: dict[str, object]) -> dict:
     fresh = _current_access(access)
     payload = {
@@ -1294,6 +1368,10 @@ def save_company_profile(access: CompanyAccess, values: dict[str, object]) -> di
     payload.update({
         field: _optional(value)
         for field, value in normalize_company_contact_values(payload).items()
+    })
+    payload.update({
+        field: _optional(value)
+        for field, value in normalize_company_bank_details(payload).items()
     })
 
     client = get_supabase_client()
@@ -4002,8 +4080,9 @@ def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
         with international_right:
             swift = _text_input(profile, "BIC", "swift")
         saved = _profile_save_button("Save Bank Details")
+    invalid_fields: set[str] = set()
     if saved:
-        _save_profile_section(access, {
+        bank_values = {
             "company_name": company_name,
             "company_registration_number": registration,
             "legal_name_hebrew": legal_name_hebrew,
@@ -4014,7 +4093,11 @@ def _render_owner_bank_details(access: CompanyAccess, profile: dict) -> None:
             "legal_name": legal_name,
             "iban": iban,
             "swift": swift,
-        }, success_message="Bank details saved")
+        }
+        invalid_fields = company_bank_details_validation_errors(bank_values)
+        if not invalid_fields:
+            _save_profile_section(access, bank_values, success_message="Bank details saved")
+    install_company_bank_details_input_guard(invalid_fields)
 
 
 def _render_owner_contacts(access: CompanyAccess, profile: dict, *, trace=None) -> None:
