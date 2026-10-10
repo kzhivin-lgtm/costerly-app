@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from typing import Any
+from threading import Lock
 
 
 PLATFORM_ROLES = {"platform_admin", "platform_viewer"}
@@ -19,6 +20,11 @@ MANUFACTURING_CALCULATORS = {
 _PRODUCT_SESSION_EXECUTOR = ThreadPoolExecutor(
     max_workers=1, thread_name_prefix="product-session"
 )
+_HEADER_PREFETCH_EXECUTOR = ThreadPoolExecutor(
+    max_workers=2, thread_name_prefix="header-prefetch"
+)
+_HEADER_PREFETCH_LOCK = Lock()
+_HEADER_PREFETCHES: dict[tuple[str, str], Any] = {}
 
 
 @dataclass(frozen=True)
@@ -158,6 +164,46 @@ def record_authenticated_session_in_background(
         user_id=user_id,
         session_id=session_id,
     )
+
+
+def prefetch_header_access_in_background(*, user_id: str, company_id: str) -> None:
+    """Warm non-critical header data without holding first authenticated paint."""
+    key = (str(user_id), str(company_id))
+    with _HEADER_PREFETCH_LOCK:
+        existing = _HEADER_PREFETCHES.get(key)
+        if existing is not None and not existing.done():
+            return
+        from db.supabase_client import get_supabase_client
+        from use_cases.latest_estimate import load_latest_estimate_route
+
+        def load_header_data():
+            client = get_supabase_client()
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                platform_future = executor.submit(load_platform_access, client, key[0])
+                latest_future = executor.submit(
+                    load_latest_estimate_route, client, key[1]
+                )
+                return platform_future.result(), latest_future.result()
+
+        _HEADER_PREFETCHES[key] = _HEADER_PREFETCH_EXECUTOR.submit(load_header_data)
+
+
+def take_prefetched_header_access(
+    *, user_id: str, company_id: str
+) -> tuple[PlatformAccess | None, dict[str, str] | None] | None:
+    """Return a completed header prefetch, never wait for it in a UI run."""
+    key = (str(user_id), str(company_id))
+    with _HEADER_PREFETCH_LOCK:
+        future = _HEADER_PREFETCHES.get(key)
+    if future is None or not future.done():
+        return None
+    try:
+        result = future.result()
+    except Exception:
+        return None
+    if not isinstance(result, tuple) or len(result) != 2:
+        return None
+    return result
 
 
 def company_file_fingerprint(company_id: str, file_bytes: bytes) -> str:
