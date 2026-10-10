@@ -272,7 +272,7 @@ fresh Sign in to Upload traces reached 1.98 s, 2.46 s, 2.58 s and 2.98 s without
 adding polling or a second Python run. Further wrapper/iframe bootstrap work is
 deferred until a separately measured performance task.
 
-ACTIVE, P0, 3.18.4 Profile Overhead and Pricing Cost editable-policy inputs:
+PARTIALLY ACCEPTED, P0, 3.18.4 Profile Overhead and Pricing Cost editable-policy inputs:
 make Monthly Cost and Total reciprocal whole-shekel inputs, with Arnona VAT exempt,
 and add a visible Total monthly overhead expenses sum. The owner rejected the
 last compact-Pricing spacing revision, but selected the preceding compact Pricing
@@ -286,7 +286,13 @@ authenticated production edits in both directions, Arnona invariance, correct to
 sum, Pricing zero-clear/percent format behavior, aligned compact input columns,
 hard-reload restoration of the selected Profile tab, save/reload persistence, and
 no Price Lists regression. A cold restored session must render its complete
-authorized header controls, including Admin when platform access exists.
+authorized header controls, including Admin when platform access exists. Owner
+accepted the cold-reload speed checkpoint on 10.10: post-candidate visible
+completion median was approximately 0.86 s versus approximately 1.08 s in the
+preceding comparable sample. The Profile-tab durable-route defect is explicitly
+deferred: Pricing Cost can still reload as Overhead Expenses. Do not add another
+route experiment without a fresh authenticated reproduction and DOM/message-path
+evidence.
 
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session

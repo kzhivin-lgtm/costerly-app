@@ -1,5 +1,40 @@
 # Company Profile checkpoint
 
+## 3.18.4 Profile cold-reload speed checkpoint
+
+Status: owner accepted the measured speed on 2026-10-10. This is not a full
+functional acceptance of 3.18.4.
+
+### Verified production evidence
+
+Authenticated `account` hard reloads after the final candidate `827f9cb` had
+browser-visible completion of 0.72 s, 0.82 s, 0.89 s, 1.05 s and 1.22 s. The
+median is approximately 0.86 s. The comparable preceding Profile reload sample
+was 0.80 s, 1.00 s, 1.08 s, 1.19 s, 1.24 s and 1.80 s, with a median of
+approximately 1.08 s.
+
+The variability follows authenticated RLS access lookup, not the new Pricing
+layout. The newest samples restored the company session through
+`fast_resume_restored`; no anonymous screen was measured in this cohort.
+
+### Scope and explicit exception
+
+- The accepted responsive work includes the Overhead reciprocal inputs, Pricing
+  inputs, tooltip content, compact layout, and removal of the Packaging filler.
+- The known Profile-tab durable-route defect remains open: a hard reload can
+  still restore Overhead Expenses after the user had selected Pricing Cost.
+  It is not represented as fixed by this checkpoint.
+- The Price Lists checkpoint remains protected. No Price Lists callback,
+  fragment polling, upload, Source, Review, or central catalog-loading behavior
+  changed.
+
+### Follow-up boundary
+
+A future route-recovery task must begin from `827f9cb`, reproduce the tab URL
+failure in authenticated production, and inspect the actual Streamlit tab DOM
+and browser message delivery before changing routing again. Do not stack another
+client-side route synchronization experiment onto this checkpoint.
+
 ## 3.18.2 Profile first-paint and tab-latency measurement checkpoint
 
 Status: owner accepted in authenticated production on 2026-10-10.
