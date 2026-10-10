@@ -284,7 +284,7 @@ def _render_screen(
     elif screen == "projects":
         from screens.projects import render_projects_screen
 
-        render_projects_screen(company_id)
+        render_projects_screen(company_id, render_header_controls=render_header_controls)
     elif screen == "account":
         if access is None or access.company_id != company_id:
             raise PermissionError("Company access changed. Please sign in again.")
@@ -299,7 +299,11 @@ def _render_screen(
             raise PermissionError("Platform Admin access is required.")
         from screens.platform_admin import render_platform_admin_screen
 
-        render_platform_admin_screen(access, platform_access)
+        render_platform_admin_screen(
+            access,
+            platform_access,
+            render_header_controls=render_header_controls,
+        )
     else:
         st.session_state.screen = "upload"
         st.rerun()
@@ -612,7 +616,14 @@ def main() -> None:
         if active_product_screen == "upload":
             with trace.span("server.app_header_render"):
                 render_app_header()
-        contextual_header_screens = {"account", "file_review", "objects", "object_detail"}
+        contextual_header_screens = {
+            "account",
+            "file_review",
+            "objects",
+            "object_detail",
+            "projects",
+            "admin",
+        }
 
         def render_header_controls() -> None:
             with trace.span("server.account_controls_render"):
@@ -768,7 +779,8 @@ def main() -> None:
             trace=trace,
             render_header_controls=(
                 render_header_controls
-                if auth_enabled and screen in {"account", "file_review", "objects", "object_detail"}
+                if auth_enabled
+                and screen in {"account", "file_review", "objects", "object_detail", "projects", "admin"}
                 else None
             ),
         )

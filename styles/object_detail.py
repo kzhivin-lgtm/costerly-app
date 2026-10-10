@@ -158,6 +158,20 @@ def apply_object_detail_css() -> None:
             background: #FFFFFF;
         }
 
+        .object-detail-preview-under-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 18px;
+        }
+
+        .object-detail-details {
+            margin-top: 18px;
+        }
+
+        .object-detail-title--name {
+            margin-bottom: 18px !important;
+        }
+
         .object-detail-section {
             --detail-grid: minmax(260px, 2.1fr) repeat(4, minmax(0, 1fr));
             margin: 0 0 48px 0;

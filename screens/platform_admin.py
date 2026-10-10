@@ -4,7 +4,7 @@ from decimal import Decimal
 from html import escape
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlsplit
 
 import streamlit as st
@@ -12,6 +12,7 @@ import streamlit as st
 from db.supabase_client import get_supabase_client
 from state.session import set_screen
 from styles.platform_admin import apply_platform_admin_css
+from ui.layout import render_screen_header
 from use_cases.platform_admin import (
     PlatformAccess,
     company_operational_status,
@@ -393,7 +394,12 @@ def _render_manufacturing_library(client, access, platform_access: PlatformAcces
                 )
 
 
-def render_platform_admin_screen(access, platform_access: PlatformAccess) -> None:
+def render_platform_admin_screen(
+    access,
+    platform_access: PlatformAccess,
+    *,
+    render_header_controls: Callable[[], None] | None = None,
+) -> None:
     """Render the read-only cross-company overview."""
     apply_platform_admin_css()
     st.markdown(
@@ -405,10 +411,13 @@ def render_platform_admin_screen(access, platform_access: PlatformAccess) -> Non
     if fresh != platform_access:
         raise PermissionError("Platform Admin access changed. Please refresh.")
 
-    st.markdown(
-        f'<div class="platform-admin-heading"><div class="platform-admin-mark">{_brand_mark()}</div>'
-        "<h1>Admin</h1></div>",
-        unsafe_allow_html=True,
+    render_screen_header(
+        lambda: st.markdown(
+            f'<div class="platform-admin-heading"><div class="platform-admin-mark">{_brand_mark()}</div>'
+            "<h1>Admin</h1></div>",
+            unsafe_allow_html=True,
+        ),
+        render_header_controls,
     )
 
     current_view = str(st.session_state.get("platform_admin_view") or "companies")

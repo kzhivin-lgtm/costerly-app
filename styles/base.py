@@ -290,7 +290,9 @@ def apply_base_css() -> None:
         .stApp:has(.company-profile-active) .st-key-costerly_header_controls,
         .stApp:has(#costerly-file-review-screen-active) .st-key-costerly_header_controls,
         .stApp:has(.objects-estimation-header) .st-key-costerly_header_controls,
-        .stApp:has(.object-detail-shell) .st-key-costerly_header_controls {
+        .stApp:has(.object-detail-shell) .st-key-costerly_header_controls,
+        .stApp:has(.projects-screen-active) .st-key-costerly_header_controls,
+        .stApp:has(.platform-admin-active) .st-key-costerly_header_controls {
             position: static !important;
             top: auto !important;
             right: auto !important;
@@ -299,6 +301,15 @@ def apply_base_css() -> None:
             max-width: none;
             opacity: 1;
             transform: none !important;
+        }
+
+        .stApp:has(.company-profile-active) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"],
+        .stApp:has(#costerly-file-review-screen-active) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"],
+        .stApp:has(.objects-estimation-header) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"],
+        .stApp:has(.object-detail-shell) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"],
+        .stApp:has(.projects-screen-active) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"],
+        .stApp:has(.platform-admin-active) .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {
+            margin-left: auto !important;
         }
 
         .st-key-costerly_header_controls [data-testid="stHorizontalBlock"] {

@@ -355,6 +355,18 @@ added. The rejected fixed, top-offset and absolute experiments remain reverted.
 Visual refinement is not included in this accepted functional checkpoint and
 requires a separately approved UI task.
 
+ACTIVE, P0, 3.18.7 unified authenticated header geometry, owner approved
+10.10: one shared `3:2` document-flow header component must align the vertical
+axis of the title and action controls, with the controls' right edge matching
+the active content surface. Apply it to Company Profile, File Review, Objects,
+Partners, Admin and Object Detail. Object Detail uses the same component: its
+first row is `Object:` plus controls; its second-row preview belongs under the
+controls and ends on the Materials surface's right edge. Preserve 3.18.6
+document-flow scrolling, every action callback, Upload placement, transition
+readiness and all accepted Price Lists behavior. Acceptance: authenticated
+production screenshot and scroll check across all six screens, with no fixed
+rail, duplicate actions, geometry drift or transition regression.
+
 DEFERRED, P2, USER REQUEST, 3.15.26 sleeping-session recovery feedback: when a
 user refreshes Costerly after a long idle period and the application or session
 must wake and restore authenticated state, replace the unexplained prolonged

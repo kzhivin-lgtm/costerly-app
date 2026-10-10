@@ -287,6 +287,40 @@ def hero_heading_html(data: dict[str, object]) -> str:
     )
 
 
+def hero_label_html() -> str:
+    """Render the stable first-line Object label for the shared header row."""
+    return (
+        '<div class="post-upload-shell object-detail-shell">'
+        '<h1 class="post-upload-title object-detail-title workflow-title">'
+        f'{_workflow_title_html("Object:")}'
+        '</h1>'
+        '</div>'
+    )
+
+
+def hero_details_html(data: dict[str, object]) -> str:
+    """Render the object-specific heading details below the shared header row."""
+    return (
+        '<div class="post-upload-shell object-detail-details">'
+        '<h1 class="post-upload-title object-detail-title object-detail-title--name">'
+        f'<span class="object-detail-object-name">{_escape(data["name"])}</span>'
+        '</h1>'
+        '<div class="object-detail-info-row" '
+        f'data-run-id="{_escape(data.get("run_id") or "")}" '
+        f'data-estimate-id="{_escape(data.get("estimate_id") or "")}" '
+        f'data-object-key="{_escape(data.get("object_key") or "")}">'
+        '<span class="object-detail-info-label">QTY:</span>'
+        '<span class="object-detail-info-value object-detail-quantity-input" '
+        'data-object-quantity-input="true" contenteditable="true" inputmode="decimal" '
+        f'tabindex="0">{_quantity(data["quantity"])}</span>'
+        '<span>·</span>'
+        '<span class="object-detail-info-label">AI confidence:</span>'
+        f'<span class="object-detail-info-value">{_escape(data["confidence"])}</span>'
+        '</div>'
+        '</div>'
+    )
+
+
 def hero_preview_html(data: dict[str, object]) -> str:
     """Render the Object Detail source preview for the header row."""
     preview_url = str(data.get("preview_url") or "")

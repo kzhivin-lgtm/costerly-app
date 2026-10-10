@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from html import escape
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import urlsplit
 
 import streamlit as st
 
 from styles.projects import apply_projects_css
+from ui.layout import render_screen_header
 from use_cases.projects import load_projects_workspace
 
 
@@ -117,10 +118,17 @@ def _projects_table(data: dict[str, list[dict[str, Any]]]) -> str:
     return f'<div class="projects-table-card">{"".join(partner_sections)}</div>'
 
 
-def render_projects_screen(company_id: str) -> None:
+def render_projects_screen(
+    company_id: str,
+    *,
+    render_header_controls: Callable[[], None] | None = None,
+) -> None:
     apply_projects_css()
     st.markdown('<div class="projects-screen-active"></div>', unsafe_allow_html=True)
-    st.markdown('<h1 class="projects-title">Partners</h1>', unsafe_allow_html=True)
+    render_screen_header(
+        lambda: st.markdown('<h1 class="projects-title">Partners</h1>', unsafe_allow_html=True),
+        render_header_controls,
+    )
     try:
         data = load_projects_workspace(company_id)
     except Exception:

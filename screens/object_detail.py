@@ -10,6 +10,7 @@ from db.repositories import delete_rfq_object_detail_draft, fetch_rfq_object_det
 from db.supabase_client import get_supabase_client
 from styles.object_detail import apply_object_detail_css
 from ui import object_detail_view
+from ui.layout import render_screen_header
 from ui.js_guards import (
     install_object_detail_input_guard,
     install_workflow_header_alignment_guard,
@@ -122,17 +123,20 @@ def _render_object_detail(
     if render_header_controls is None:
         st.markdown(object_detail_view.hero_html(data), unsafe_allow_html=True)
     else:
-        title_column, actions_column, preview_column = st.columns(
-            [2.4, 2, 1.25],
-            gap="small",
-            vertical_alignment="top",
+        render_screen_header(
+            lambda: st.markdown(object_detail_view.hero_label_html(), unsafe_allow_html=True),
+            render_header_controls,
+            render_below_title=lambda: st.markdown(
+                object_detail_view.hero_details_html(data),
+                unsafe_allow_html=True,
+            ),
+            render_below_controls=lambda: st.markdown(
+                '<div class="object-detail-preview-under-actions">'
+                f'{object_detail_view.hero_preview_html(data)}'
+                '</div>',
+                unsafe_allow_html=True,
+            ),
         )
-        with title_column:
-            st.markdown(object_detail_view.hero_heading_html(data), unsafe_allow_html=True)
-        with actions_column:
-            render_header_controls()
-        with preview_column:
-            st.markdown(object_detail_view.hero_preview_html(data), unsafe_allow_html=True)
     st.markdown(
         object_detail_view.detail_html(
             data,

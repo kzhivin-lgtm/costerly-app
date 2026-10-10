@@ -38,25 +38,45 @@ def post_upload_header_html(
     marker_id: str | None = None,
 ) -> str:
     """Return the shared post-upload header HTML."""
-    subtitle_html = ""
-    if subtitle:
-        subtitle_html = f'<div class="post-upload-subtitle">{html.escape(subtitle)}</div>'
+    return (
+        post_upload_title_html(title, class_name=class_name, marker_id=marker_id)
+        + post_upload_subtitle_html(subtitle, class_name=class_name)
+    )
 
+
+def post_upload_title_html(
+    title: str,
+    *,
+    class_name: str | None = None,
+    marker_id: str | None = None,
+) -> str:
+    """Return the title-only half of a server-rendered workflow header."""
     marker_html = ""
     if marker_id:
         marker_html = f'<div id="{html.escape(marker_id)}" style="display:none"></div>'
-
     shell_class = "post-upload-shell post-upload-screen-shell"
     if class_name:
         shell_class = f"{shell_class} {html.escape(class_name)}"
-
     return (
         f'<div class="{shell_class}">'
         f'{marker_html}'
         '<h1 class="post-upload-title workflow-title">'
         f'{_workflow_title_html(title)}'
         '</h1>'
-        f'{subtitle_html}'
+        '</div>'
+    )
+
+
+def post_upload_subtitle_html(subtitle: str | None, *, class_name: str | None = None) -> str:
+    """Return a separately laid-out workflow subtitle, when one exists."""
+    if not subtitle:
+        return ""
+    shell_class = "post-upload-shell post-upload-screen-shell"
+    if class_name:
+        shell_class = f"{shell_class} {html.escape(class_name)}"
+    return (
+        f'<div class="{shell_class}">'
+        f'<div class="post-upload-subtitle">{html.escape(subtitle)}</div>'
         '</div>'
     )
 
@@ -78,30 +98,46 @@ def render_post_upload_header(
 
     def render_title() -> None:
         st.markdown(
-            post_upload_header_html(
+            post_upload_title_html(
                 title,
-                subtitle,
                 class_name=class_name,
                 marker_id=marker_id,
             ),
             unsafe_allow_html=True,
         )
 
-    render_screen_header_row(render_title, render_header_controls)
+    render_screen_header(
+        render_title,
+        render_header_controls,
+        render_below_title=(
+            (lambda: st.markdown(post_upload_subtitle_html(subtitle, class_name=class_name), unsafe_allow_html=True))
+            if subtitle
+            else None
+        ),
+    )
 
 
-def render_screen_header_row(
+def render_screen_header(
     render_title: Callable[[], None],
     render_header_controls: Callable[[], None] | None = None,
+    *,
+    render_below_title: Callable[[], None] | None = None,
+    render_below_controls: Callable[[], None] | None = None,
 ) -> None:
-    """Render one native header row, optionally with the shared action rail.
+    """Render the one native header grid used by authenticated screens.
 
     The rail must be a sibling of the screen title in Streamlit's server tree.
     CSS positioning cannot make a root-level widget reliably participate in a
-    screen header's document flow after Streamlit reconciliation.
+    screen header's document flow after Streamlit reconciliation. Optional
+    second-row slots preserve the identical left/right axes for screen-specific
+    detail content, such as Object Detail's preview.
     """
     if render_header_controls is None:
         render_title()
+        if render_below_title is not None:
+            render_below_title()
+        if render_below_controls is not None:
+            render_below_controls()
         return
 
     title_column, actions_column = st.columns([3, 2], gap="small", vertical_alignment="center")
@@ -109,3 +145,16 @@ def render_screen_header_row(
         render_title()
     with actions_column:
         render_header_controls()
+
+    if render_below_controls is None and render_below_title is not None:
+        render_below_title()
+        return
+
+    if render_below_title is not None or render_below_controls is not None:
+        details_column, preview_column = st.columns([3, 2], gap="small", vertical_alignment="top")
+        with details_column:
+            if render_below_title is not None:
+                render_below_title()
+        with preview_column:
+            if render_below_controls is not None:
+                render_below_controls()
