@@ -61,6 +61,19 @@ record the exception type, not the exception message.
 - The Pages project root is `cloudflare/`, so Functions live under
   `cloudflare/functions/`, not the repository root.
 
+## User-journey marker standard
+
+For a user-visible asynchronous action, emit only the boundaries needed to
+attribute the experience: action accepted, pending state visible, each material
+dependency wait, write accepted or rejected, and result rendered. Each boundary
+uses the shared correlation fields plus one bounded `action_id` that remains
+stable through reruns. This distinguishes click delay, server work, refresh,
+and render delay without feature-specific logging formats.
+
+Do not emit a marker for every render or local interaction. Markers are
+best-effort, private, and non-blocking. They must never cause a request, rerun,
+polling loop, spinner, or layout change.
+
 ## Initial event boundaries
 
 Browser:

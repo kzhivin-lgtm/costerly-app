@@ -176,6 +176,14 @@ change. Instrument the earliest useful start, meaningful dependency waits,
 completion, and failure. Reuse the shared runtime event contract and correlation
 IDs instead of creating feature-specific log formats.
 
+For an important interactive journey, use a minimal marker sequence that can
+separate: action accepted, pending feedback visible, material server work or
+dependency wait, durable success or failure, and result rendered. Carry one
+action correlation ID across the sequence. Add a boundary only when it answers
+a real latency, correctness, or recovery question. Do not instrument ordinary
+renders or add requests, reruns, polls, or visible UI solely to collect a
+marker.
+
 Do:
 - emit start, completion, and error events for user-visible actions and external calls;
 - include durations and bounded technical metadata needed to distinguish causes;

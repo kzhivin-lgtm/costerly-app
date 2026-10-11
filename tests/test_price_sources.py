@@ -2778,7 +2778,7 @@ def test_review_editor_opens_from_a_server_callback_without_save_dom_guard():
     ).read_text()
 
 
-def test_review_save_is_optimistic_and_keeps_the_original_source_action():
+def test_review_save_is_independent_and_keeps_the_original_source_action():
     from screens import company_profile
 
     source = inspect.getsource(company_profile._render_price_source_review_queue)
@@ -2789,24 +2789,22 @@ def test_review_save_is_optimistic_and_keeps_the_original_source_action():
     assert '"↗"' in inspect.getsource(company_profile._render_price_source_action)
     assert 'help="Open source"' in inspect.getsource(company_profile._render_price_source_action)
     assert "submit_price_source_row_save_job(" in save_action
-    assert 'pending[target] = future' in save_action
-    assert '"_price_source_catalog_update_pending"' in save_action
-    assert '"_price_source_catalog_refresh_started"' in completion
+    assert "pending[target] = {" in save_action
+    assert '"action_id"' in save_action
+    assert "_request_price_lists_projection_refresh(" in completion
+    assert "{\"catalog\", \"review\"}" in completion
     assert '_set_price_source_action_notice("Saved")' not in completion
     assert '"The price could not be saved. It is visible again. Try again"' in completion
 
 
-def test_review_save_hides_stale_catalog_until_authoritative_refresh():
+def test_review_save_keeps_other_projections_visible_while_catalog_refreshes():
     from screens import company_profile
 
     source = inspect.getsource(company_profile._render_price_lists_projections)
 
-    assert '"_price_source_catalog_update_pending"' in source
-    assert '"_price_source_catalog_refresh_started"' in source
+    assert "_render_price_source_save_progress()" in source
+    assert '"_price_source_catalog_update_pending"' not in source
     assert "_render_price_lists_loading()" in source
-    assert source.index("_price_source_catalog_update_pending") < source.index(
-        'with st.container(key="price_catalog_shell")'
-    )
 
 
 def test_review_action_has_no_redundant_column_header():

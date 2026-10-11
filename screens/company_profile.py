@@ -12,6 +12,7 @@ import re
 import time
 from typing import TYPE_CHECKING, Callable
 from urllib.parse import urlsplit
+from uuid import uuid4
 
 import streamlit as st
 
@@ -2343,9 +2344,42 @@ def _price_lists_projection_state(access: CompanyAccess) -> dict:
         ),
         "results": {},
         "errors": {},
+        "refresh_futures": {},
+        "refresh_generation": {},
+        "completed_refreshes": {},
+        "revision": 0,
     }
     st.session_state["_price_lists_projection_state"] = state
     return state
+
+
+def _request_price_lists_projection_refresh(
+    access: CompanyAccess,
+    names: set[str],
+) -> dict[str, int]:
+    """Refresh changed Price List views without blanking unrelated projections."""
+    loaders = {
+        "catalog": list_price_catalog,
+        "review": list_unresolved_price_source_rows,
+        "sources": list_price_sources,
+        "material_jobs": list_material_jobs,
+    }
+    state = _price_lists_projection_state(access)
+    refresh_futures = state.setdefault("refresh_futures", {})
+    generations = state.setdefault("refresh_generation", {})
+    requested: dict[str, int] = {}
+    for name in names:
+        loader = loaders.get(name)
+        if loader is None:
+            continue
+        generation = int(generations.get(name) or 0) + 1
+        generations[name] = generation
+        requested[name] = generation
+        refresh_futures[name] = (
+            generation,
+            submit_price_lists_projection_jobs(access=access, loaders={name: loader})[name],
+        )
+    return requested
 
 
 def _poll_price_lists_projections(access: CompanyAccess) -> tuple[dict, dict, dict]:
@@ -2359,9 +2393,30 @@ def _poll_price_lists_projections(access: CompanyAccess) -> tuple[dict, dict, di
             continue
         try:
             results[name] = future.result()
+            state["revision"] = int(state.get("revision") or 0) + 1
         except Exception:
             logger.exception("Price Lists projection failed projection=%s", name)
             errors[name] = "Price Lists data could not be loaded. Try again."
+            state["revision"] = int(state.get("revision") or 0) + 1
+    refresh_futures = state.setdefault("refresh_futures", {})
+    for name, (generation, future) in list(refresh_futures.items()):
+        if not future.done():
+            continue
+        refresh_futures.pop(name, None)
+        if generation != int(state.get("refresh_generation", {}).get(name) or 0):
+            continue
+        try:
+            results[name] = future.result()
+            errors.pop(name, None)
+        except Exception:
+            logger.exception("Price Lists refresh failed projection=%s", name)
+            errors[name] = "Price Lists data could not be refreshed. Try again."
+        completed_refreshes = state.get("completed_refreshes")
+        if not isinstance(completed_refreshes, dict):
+            completed_refreshes = {}
+            state["completed_refreshes"] = completed_refreshes
+        completed_refreshes[name] = generation
+        state["revision"] = int(state.get("revision") or 0) + 1
     return results, errors, futures
 
 
@@ -2548,27 +2603,71 @@ def _save_price_source_row_action(
         logger.exception("Price source row save failed")
         st.session_state._price_source_action_error = "The price could not be saved. Try again"
     else:
-        pending[target] = future
-        # Hide stale projections immediately after Review is confirmed. The
-        # write is still running, so do not refresh until it has completed.
-        st.session_state["_price_source_catalog_update_pending"] = True
-        st.session_state.pop("_price_source_catalog_refresh_started", None)
+        pending[target] = {
+            "future": future,
+            "action_id": str(uuid4()),
+            "submitted_at": time.monotonic(),
+        }
         st.session_state.pop("_editing_price_source_row", None)
         st.session_state.pop("_price_source_action_location", None)
 
 
 def _price_source_saving_row_targets() -> set[tuple[str, str]]:
-    return {
+    pending = {
         (str(source_id), str(row_id))
         for source_id, row_id in (st.session_state.get("_price_source_row_save_pending") or {})
     }
+    reconcile = {
+        (str(source_id), str(row_id))
+        for source_id, row_id in (
+            st.session_state.get("_price_source_row_save_reconcile_pending") or {}
+        )
+    }
+    return pending | reconcile
 
 
-def _process_pending_price_source_row_saves() -> bool:
+def _render_price_source_save_progress() -> None:
+    """Show one non-blocking status for independently saving rows."""
+    count = len(_price_source_saving_row_targets())
+    if not count:
+        return
+    label = "price" if count == 1 else "prices"
+    st.markdown(
+        '<div class="price-source-save-progress" role="status">'
+        '<span class="price-source-save-spinner" aria-hidden="true"></span>'
+        f'<span>Updating {count} {label}</span></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _process_pending_price_source_row_saves(
+    access: CompanyAccess,
+    *,
+    trace=None,
+) -> bool:
     """Finish optimistic Review saves and restore a row only on failure."""
     pending = st.session_state.get("_price_source_row_save_pending") or {}
     changed = False
-    for target, future in list(pending.items()):
+    for target, pending_save in list(pending.items()):
+        future = (
+            pending_save.get("future")
+            if isinstance(pending_save, dict)
+            else pending_save
+        )
+        if (
+            trace is not None
+            and isinstance(pending_save, dict)
+            and not pending_save.get("accepted_marker_emitted")
+        ):
+            observed_at = time.monotonic()
+            trace.event(
+                "server.price_source_row_save_accepted",
+                duration_ms=(
+                    observed_at - float(pending_save.get("submitted_at") or observed_at)
+                ) * 1000,
+                metadata={"action_id": str(pending_save["action_id"])},
+            )
+            pending_save["accepted_marker_emitted"] = True
         if not isinstance(future, Future) or not future.done():
             continue
         changed = True
@@ -2578,24 +2677,93 @@ def _process_pending_price_source_row_saves() -> bool:
             future.result()
         except PriceSourceError as exc:
             st.session_state._price_source_action_error = str(exc)
+            if trace is not None and isinstance(pending_save, dict):
+                trace.event(
+                    "server.price_source_row_save_failed",
+                    status="error",
+                    metadata={"action_id": str(pending_save["action_id"])},
+                )
         except Exception:
             logger.exception("Price source row save failed target=%s", target)
             st.session_state._price_source_action_error = (
                 "The price could not be saved. It is visible again. Try again"
             )
+            if trace is not None and isinstance(pending_save, dict):
+                trace.event(
+                    "server.price_source_row_save_failed",
+                    status="error",
+                    metadata={"action_id": str(pending_save["action_id"])},
+                )
         else:
             save_succeeded = True
-            _clear_price_lists_snapshot()
-            st.session_state["_price_source_catalog_refresh_started"] = True
-            # The review row has already disappeared optimistically. A second
-            # success toast arrives late and adds no information, so reserve
-            # feedback here for write failures only.
-        if not save_succeeded:
-            st.session_state.pop("_price_source_catalog_update_pending", None)
-            st.session_state.pop("_price_source_catalog_refresh_started", None)
+            saved_at = time.monotonic()
+            reconcile = st.session_state.setdefault(
+                "_price_source_row_save_reconcile_pending", {}
+            )
+            details = {
+                "action_id": (
+                    str(pending_save.get("action_id"))
+                    if isinstance(pending_save, dict)
+                    else str(uuid4())
+                ),
+                "submitted_at": (
+                    float(pending_save.get("submitted_at") or saved_at)
+                    if isinstance(pending_save, dict)
+                    else saved_at
+                ),
+            }
+            requested = _request_price_lists_projection_refresh(
+                access, {"catalog", "review"}
+            )
+            details["catalog_generation"] = int(requested["catalog"])
+            reconcile[target] = details
+            if trace is not None:
+                trace.event(
+                    "server.price_source_row_save_persisted",
+                    duration_ms=(saved_at - details["submitted_at"]) * 1000,
+                    metadata={"action_id": details["action_id"]},
+                )
+            # A completed write only refreshes Catalog and Review. The other
+            # Price Lists projections stay interactive and keep their snapshot.
     if not pending:
         st.session_state.pop("_price_source_row_save_pending", None)
     return changed
+
+
+def _settle_price_source_row_save_reconciliations(*, trace=None) -> None:
+    """Reveal saved rows only after the refreshed Catalog has rendered."""
+    state = st.session_state.get("_price_lists_projection_state") or {}
+    completed_raw = state.get("completed_refreshes")
+    completed = dict(completed_raw) if isinstance(completed_raw, dict) else {}
+    if not completed:
+        return
+    state["completed_refreshes"] = {}
+    catalog_generation = completed.get("catalog")
+    if catalog_generation is None:
+        return
+    reconcile = st.session_state.get("_price_source_row_save_reconcile_pending") or {}
+    settled = {
+        target: details
+        for target, details in reconcile.items()
+        if int(details.get("catalog_generation") or 0) <= int(catalog_generation)
+    }
+    remaining = {
+        target: details
+        for target, details in reconcile.items()
+        if target not in settled
+    }
+    if remaining:
+        st.session_state["_price_source_row_save_reconcile_pending"] = remaining
+    else:
+        st.session_state.pop("_price_source_row_save_reconcile_pending", None)
+    settled_at = time.monotonic()
+    if trace is not None:
+        for details in settled.values():
+            trace.event(
+                "server.price_source_row_save_catalog_ready",
+                duration_ms=(settled_at - float(details["submitted_at"])) * 1000,
+                metadata={"action_id": str(details["action_id"])},
+            )
 
 
 def _open_price_source_supplier_settings(source_id: str) -> None:
@@ -2692,11 +2860,16 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                 key="price_catalog_supplier",
             )
 
+    saving_rows = _price_source_saving_row_targets()
     visible = [
         row for row in catalog
         if (department == "All departments" or row.get("department") == department)
         and (material_type == "All material types" or row.get("material_type") == material_type)
         and (supplier == "All suppliers" or row.get("supplier_name") == supplier)
+        and (
+            str(row.get("source_id") or ""),
+            str(row.get("source_row_id") or ""),
+        ) not in saving_rows
     ]
     if catalog and not visible:
         st.info("No material prices match these filters")
@@ -3747,7 +3920,7 @@ def _restore_active_price_source_processing(access: CompanyAccess) -> None:
 def _render_price_source_processing_status(access: CompanyAccess, *, trace=None) -> None:
     """Refresh only the terminal state while the worker runs in background."""
     purge_finished = _process_pending_price_source_purges()
-    save_finished = _process_pending_price_source_row_saves()
+    save_finished = _process_pending_price_source_row_saves(access, trace=trace)
     # A completed purge has already updated the live snapshot in place. A full
     # app rerun would collapse Source Library and restart every projection.
     if (
@@ -3761,8 +3934,6 @@ def _render_price_source_processing_status(access: CompanyAccess, *, trace=None)
             st.rerun(scope="app")
         return
     if save_finished:
-        if not _price_source_has_unsubmitted_selection():
-            st.rerun(scope="app")
         return
     if not st.session_state.get("_price_source_processing"):
         return
@@ -3833,11 +4004,7 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
 
     _restore_active_price_source_processing(access)
     _process_pending_price_source(access, trace=trace)
-    if _process_pending_price_source_row_saves():
-        # A confirmed Review save changes both Review and Catalog projections.
-        # Rebuild the app surface once so no old rows or client-side hiding
-        # classes survive around the new active offer.
-        st.rerun(scope="app")
+    _process_pending_price_source_row_saves(access, trace=trace)
 
     # Keep the dashboard in the upload card, so it cannot leave a detached
     # blank region after the processing marker is removed.
@@ -3880,14 +4047,15 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     if action_error:
         st.error(action_error)
 
-    _render_price_lists_projections(access)
+    _render_price_lists_projections(access, trace=trace)
     _refresh_price_lists_projections(access)
 
 
 @st.fragment
-def _render_price_lists_projections(access: CompanyAccess) -> None:
+def _render_price_lists_projections(access: CompanyAccess, *, trace=None) -> None:
     """Render the ordered projections as soon as each background read completes."""
     results, errors, _futures = _poll_price_lists_projections(access)
+    _settle_price_source_row_save_reconciliations(trace=trace)
     hidden_source_ids = _price_source_hidden_ids()
 
     def projection(name: str) -> list[dict] | None:
@@ -3901,15 +4069,6 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
     review_rows = projection("review")
     material_jobs = projection("material_jobs")
 
-    # A Review save was accepted but its write has not finished. Keep the
-    # obsolete catalog out of view and use the normal catalog loading state.
-    if (
-        st.session_state.get("_price_source_catalog_update_pending")
-        and not st.session_state.get("_price_source_catalog_refresh_started")
-    ):
-        _render_price_lists_loading()
-        return
-
     # Keep the first visible load deliberate and calm. The upload card above
     # remains usable, while all four independent reads finish in background.
     # Rendering individual section loaders caused the page to jump and made
@@ -3921,11 +4080,9 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
         _render_price_lists_loading()
         return
 
-    st.session_state.pop("_price_source_catalog_update_pending", None)
-    st.session_state.pop("_price_source_catalog_refresh_started", None)
-
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):
+            _render_price_source_save_progress()
             if errors.get("catalog"):
                 st.info(errors["catalog"])
             elif catalog:
@@ -4039,9 +4196,9 @@ def _render_price_lists_projections(access: CompanyAccess) -> None:
 def _refresh_price_lists_projections(access: CompanyAccess) -> None:
     """Refresh the page only when a background projection has new data."""
     state = _price_lists_projection_state(access)
-    before = len(state["results"]) + len(state["errors"])
+    before = int(state.get("revision") or 0)
     results, errors, _futures = _poll_price_lists_projections(access)
-    after = len(results) + len(errors)
+    after = int(state.get("revision") or 0)
     if after > before and not _price_source_has_unsubmitted_selection():
         st.rerun(scope="app")
 

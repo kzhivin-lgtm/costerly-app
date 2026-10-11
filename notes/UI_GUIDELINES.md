@@ -63,6 +63,22 @@ screen.
   item with a clear error if persistence fails. Do not make the user wait for a
   database round trip merely to see an already determined interface change.
 
+## User-journey markers
+
+Every important user-facing asynchronous journey must have a small, correlated
+set of diagnostic markers. This is part of the interaction design, not
+after-the-fact debugging. Mark the meaningful boundaries: action accepted,
+truthful pending state shown, material dependency wait when one exists, write
+accepted or rejected, and the resulting state rendered. Use the same action
+correlation ID through those boundaries so latency can be assigned to a click,
+server work, data refresh, or render.
+
+Do not instrument every component render, hover, or trivial local state change.
+Add markers where their absence would make a user-visible delay, duplicate
+action, missing result, or recovery failure impossible to explain. Markers must
+be asynchronous, private, and invisible to the user. They never justify an
+extra rerun, poll, loading state, or layout shift.
+
 ## Form interaction states
 
 - Numeric and percentage inputs use the shared end-caret contract. On pointer

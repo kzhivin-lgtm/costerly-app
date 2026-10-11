@@ -1628,11 +1628,12 @@ def test_price_source_markers_keep_extract_position_stable_without_client_dom_re
     assert "replaceChildren(restored)" not in guard_source
 
 
-def test_confirmed_review_save_reloads_catalog_and_removes_stale_review_dom():
+def test_confirmed_review_save_refreshes_only_changed_catalog_projections():
     source = inspect.getsource(company_profile._render_price_lists)
 
-    assert 'if _process_pending_price_source_row_saves():' in source
-    assert 'st.rerun(scope="app")' in source
+    assert "_process_pending_price_source_row_saves(access, trace=trace)" in source
+    assert 'if _process_pending_price_source_row_saves():' not in source
+    assert 'st.rerun(scope="app")' not in source
 
 
 def test_price_catalog_row_controls_are_compact_and_remove_has_no_tooltip():
