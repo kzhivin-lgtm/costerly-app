@@ -105,7 +105,7 @@ def test_e14_missing_company_material_uses_one_active_israel_price_model():
     assert result.price_typical == Decimal("100")
 
 
-def test_e15_ambiguous_company_material_requires_review_without_fallback():
+def test_e15_multiple_compatible_company_materials_choose_the_cheapest_offer():
     result = _resolve(
         company_material_items=(
             _company_item("company-1", "Birch plywood B/B", thickness_mm=18, species="birch", grade="B/B"),
@@ -116,8 +116,57 @@ def test_e15_ambiguous_company_material_requires_review_without_fallback():
         pricing_identity_prices=(_price("model-1", "israel-birch-18"),),
     )
 
-    assert result.status == "needs_review"
-    assert result.reason_codes == ("ambiguous_company_material",)
+    assert result.status == "resolved"
+    assert result.authority == "company"
+    assert result.company_material_id == "company-1"
+    assert result.offer_ids == ("offer-1",)
+    assert result.selection_reason == "company_catalog_lowest_compatible_price"
+
+
+def test_hardware_family_selection_uses_known_depth_only_when_requirement_has_it():
+    common = {
+        "requirement_name": "Drawer slide",
+        "material_family": "drawer slide",
+        "requested_unit": "piece",
+        "company_material_items": (
+            _company_item("slide-500", "Basic drawer slide", material_family="drawer slide", depth_mm=500),
+            _company_item("slide-750", "Long drawer slide", material_family="drawer slide", depth_mm=750),
+        ),
+        "company_offers": (
+            _offer("slide-500-offer", "slide-500", normalized_unit="piece", normalized_price="60"),
+            _offer("slide-750-offer", "slide-750", normalized_unit="piece", normalized_price="100"),
+        ),
+        "pricing_identities": (),
+        "pricing_identity_prices": (),
+        "as_of": AS_OF,
+    }
+
+    unspecified = resolve_estimate_material_requirement(specifications={}, **common)
+    explicit = resolve_estimate_material_requirement(specifications={"depth_mm": 750}, **common)
+
+    assert unspecified.company_material_id == "slide-500"
+    assert explicit.company_material_id == "slide-750"
+
+
+def test_reference_tie_uses_lowest_compatible_israel_price():
+    result = _resolve(
+        requirement_name="Drawer slide",
+        material_family="drawer slide",
+        specifications={},
+        requested_unit="piece",
+        pricing_identities=(
+            _identity("reference-60", base_unit="piece", material_family="drawer slide"),
+            _identity("reference-100", base_unit="piece", material_family="drawer slide"),
+        ),
+        pricing_identity_prices=(
+            _price("price-60", "reference-60", unit="piece", price_low="50", price_typical="60", price_high="70"),
+            _price("price-100", "reference-100", unit="piece", price_low="90", price_typical="100", price_high="110"),
+        ),
+    )
+
+    assert result.status == "resolved"
+    assert result.pricing_identity_id == "reference-60"
+    assert result.price_typical == Decimal("60")
 
 
 def test_e16_supplier_sku_is_not_a_company_matching_input():

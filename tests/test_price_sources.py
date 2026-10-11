@@ -3350,6 +3350,54 @@ def test_review_activate_and_remove_row_are_auditable(monkeypatch):
     assert "removed_by_user" in tables["company_price_source_rows"][0]["reason_codes"]
 
 
+def test_catalog_edit_enriches_attributes_without_renaming_or_rewriting_source_evidence(monkeypatch):
+    tables = {
+        "company_price_sources": [{
+            "source_id": "source-1", "company_id": "company-1", "supplier_id": "supplier-1",
+            "currency": "ILS", "document_date": "2026-10-01", "status": "ready",
+            "processing_summary": {},
+        }],
+        "company_price_source_rows": [{
+            "row_id": "row-1", "source_id": "source-1", "company_id": "company-1",
+            "company_material_id": "slide-1", "raw_description": "מסילה למגירה",
+            "normalized_name": "Drawer slide", "raw_sku": "SUPPLIER-ONLY",
+            "raw_price": 60, "raw_currency": "ILS", "raw_unit": "piece",
+            "purchase_unit": "piece", "calculation_unit": "piece", "conversion_factor": 1,
+            "raw_vat_included": False, "confidence": 90, "result_status": "updated",
+            "reason_codes": [], "evidence": {"material_type": "Hardware", "identity_attributes": {}},
+        }],
+        "company_material_items": [{
+            "company_material_id": "slide-1", "company_id": "company-1", "category": "Hardware",
+            "canonical_name": "Drawer slide", "normalized_name": "drawer slide", "preferred_unit": "piece",
+            "reference_material_id": "old-reference", "pricing_identity_id": "old-price-class",
+            "specifications": {"material_family": "drawer slide", "source_sku": "SUPPLIER-ONLY"},
+        }],
+        "company_material_offers": [],
+    }
+    client = _MutableClient(tables)
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+
+    save_price_source_row(
+        SimpleNamespace(company_id="company-1", user_id="user-1"), "source-1", "row-1",
+        {
+            "catalog_edit": True, "attribute_text": "750 mm, Movento", "material_type": "Hardware",
+            "raw_price": 60, "raw_currency": "ILS", "raw_unit": "piece",
+            "purchase_unit": "piece", "calculation_unit": "piece", "conversion_factor": 1,
+            "vat_mode": "excluded",
+        },
+    )
+
+    item = tables["company_material_items"][0]
+    assert item["canonical_name"] == "Drawer slide"
+    assert item["specifications"]["depth_mm"] == 750
+    assert item["specifications"]["product_system"] == "MOVENTO"
+    assert item["specifications"]["source_sku"] == "SUPPLIER-ONLY"
+    assert item["reference_material_id"] is None
+    assert item["pricing_identity_id"] is None
+    assert tables["company_price_source_rows"][0]["raw_description"] == "מסילה למגירה"
+
+
 def test_supplier_settings_apply_from_any_source_to_the_entire_supplier_lane(monkeypatch):
     tables = {
         "company_price_sources": [

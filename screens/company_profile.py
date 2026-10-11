@@ -2521,6 +2521,9 @@ def _save_price_source_row_action(
     fixed_values: dict[str, object],
 ) -> None:
     values = dict(fixed_values)
+    # Only the Catalog editor may enrich the company item's structured facts.
+    # Review deliberately has no identity controls and must remain price/unit-only.
+    values["catalog_edit"] = "attribute_text" in field_keys
     values.update({name: st.session_state.get(key) for name, key in field_keys.items()})
     raw_price = values.get("raw_price")
     if isinstance(raw_price, str):
@@ -2867,7 +2870,7 @@ def _render_price_source_row_editor(
     if not review_only:
         field_keys.update({
             name: f"price_row_{name}_{source_id}_{row_id}"
-            for name in ("normalized_name", "material_type")
+            for name in ("attribute_text", "material_type")
         })
     fixed_values = {
         # Review resolves price evidence only. The catalog identity remains
@@ -2886,9 +2889,11 @@ def _render_price_source_row_editor(
             name_col, type_col = st.columns([1.7, 1])
             with name_col:
                 st.text_input(
-                    "Material name",
-                    value=str(row.get("normalized_name") or row.get("raw_description") or ""),
-                    key=field_keys["normalized_name"],
+                    "Add attributes",
+                    value="",
+                    placeholder="For example: 750 mm, white, Movento",
+                    key=field_keys["attribute_text"],
+                    help="Adds only facts that are written here. The material name and supplier evidence stay unchanged.",
                 )
             with type_col:
                 selected_type = material_type if material_type in categories else categories[0]

@@ -520,12 +520,19 @@ def resolve_price_source_material_identities(
         extracted_specifications = {
             key: value
             for key, value in {
-                **(company_material.get("specifications") or {}),
                 **(evidence.get("identity_attributes") or {}),
+                # Owner-confirmed Catalog attributes are an enrichment layer,
+                # not rewritten supplier evidence. They therefore take
+                # precedence only for canonical resolution.
+                **(company_material.get("specifications") or {}),
             }.items()
             if value not in (None, "", 0, 0.0, [])
         }
-        material_family = str(evidence.get("material_family") or "")
+        material_family = str(
+            (company_material.get("specifications") or {}).get("material_family")
+            or evidence.get("material_family")
+            or ""
+        )
         existing_pricing_identity_id = str(
             company_material.get("pricing_identity_id") or ""
         )

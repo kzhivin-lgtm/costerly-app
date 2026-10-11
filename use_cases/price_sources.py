@@ -3564,7 +3564,15 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         raise PriceSourceError("Price row not found")
     row = matches[0]
 
-    normalized_name = str(values.get("normalized_name") or "").strip()
+    catalog_edit = values.get("catalog_edit") is True
+    # Catalog identity is stable. Attribute enrichment is a separate owner
+    # action, never a side effect of renaming a supplier-derived position.
+    # Review still supplies its original name while it activates an unresolved
+    # row for the first time.
+    normalized_name = str(
+        (row.get("normalized_name") or row.get("raw_description"))
+        if catalog_edit else values.get("normalized_name") or ""
+    ).strip()
     material_type = canonical_price_source_category(str(values.get("material_type") or ""))
     raw_unit = str(values.get("raw_unit") or "").strip()
     raw_currency = str(values.get("raw_currency") or source.get("currency") or "ILS").strip().upper()
@@ -3597,6 +3605,47 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
 
     normalized_price = raw_price / conversion_factor
     normalized_key = _normalized_name(normalized_name)
+    def enriched_specifications(existing_specifications: Mapping[str, Any] | None) -> dict[str, Any]:
+        """Add facts literally supplied through the Catalog attribute input.
+
+        This is deliberately local and deterministic.  It never rewrites the
+        supplier row or its raw evidence, and unknown wording stays unknown.
+        """
+        retained = dict(existing_specifications or {})
+        context = " ".join(
+            value for value in (
+                str(retained.get("material_family") or "").strip(),
+                str(values.get("attribute_text") or "").strip(),
+            ) if value
+        )
+        candidate = {
+            "item_kind": "material",
+            "raw_description": context,
+            "identity_attributes": retained,
+        }
+        if not apply_material_taxonomy(candidate):
+            return retained
+        derived = dict(candidate.get("identity_attributes") or {})
+        for key, value in derived.items():
+            if value not in (None, "", 0, 0.0, []):
+                retained[key] = value
+        family = str(candidate.get("material_family") or "").strip()
+        if family:
+            retained["material_family"] = family
+        return retained
+
+    linked_material_id = str(row.get("company_material_id") or "").strip()
+    linked_material: dict[str, Any] | None = None
+    if catalog_edit and linked_material_id:
+        linked = (
+            client.table("company_material_items")
+            .select("*")
+            .eq("company_id", company_id)
+            .eq("company_material_id", linked_material_id)
+            .limit(1)
+            .execute()
+        ).data or []
+        linked_material = linked[0] if linked else None
     existing = (
         client.table("company_material_items")
         .select("company_material_id")
@@ -3612,6 +3661,23 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         source_id=source_id,
     )
     active_material_offers = []
+    if linked_material is not None:
+        # A Catalog edit modifies the existing company position. Looking it up
+        # again by the new name would silently split one position into two.
+        material_id = linked_material_id
+        client.table("company_material_items").update(
+            {
+                "category": material_type,
+                "preferred_unit": calculation_unit,
+                "specifications": enriched_specifications(linked_material.get("specifications")),
+                # The edited name may add a decisive fact, so resolve its
+                # canonical reference again. Raw supplier provenance remains
+                # attached to the source row and offer.
+                "reference_material_id": None,
+                "pricing_identity_id": None,
+            }
+        ).eq("company_id", company_id).eq("company_material_id", material_id).execute()
+        existing = [{"company_material_id": material_id}]
     if existing:
         material_id = existing[0]["company_material_id"]
         active_material_offers = (
