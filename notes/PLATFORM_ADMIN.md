@@ -40,3 +40,13 @@ Protected checkpoint: `d8e0c8e`.
 - Company Admin remains protected from removal despite the user-facing role rename.
 - Costs use tracked US dollars with two decimal places in every column.
 - Unknown cost and unavailable PDF data are visibly distinguished from zero.
+
+## Subsequent restricted action
+
+- An active `platform_admin` can create a one-use company-registration link
+  from the Companies view. The action reuses the existing opaque-token
+  invitation mechanism: Supabase stores only the token hash, while the raw URL
+  is shown once in the current authenticated browser session for copying.
+- `platform_viewer` remains read-only and cannot create a link. The action is
+  guarded again in the server-side use case, and audit metadata records only
+  that a link was created, never its bearer token.

@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 
 import streamlit as st
 
+from config import get_optional_secret
 from db.supabase_client import get_supabase_client
 from state.session import set_screen
 from styles.platform_admin import apply_platform_admin_css
@@ -16,6 +17,7 @@ from ui.layout import render_screen_header
 from use_cases.platform_admin import (
     PlatformAccess,
     company_operational_status,
+    create_company_creation_invitation,
     format_ai_cost,
     load_company_dashboard,
     load_manufacturing_parameter_library,
@@ -69,6 +71,41 @@ def _open_estimate() -> None:
 
 def _set_admin_view(view: str) -> None:
     st.session_state.platform_admin_view = view if view in ADMIN_VIEWS else "companies"
+
+
+def _render_company_creation_link(client: Any, platform_access: PlatformAccess) -> None:
+    """Render the platform-admin-only one-use company-registration action."""
+    if platform_access.role != "platform_admin":
+        return
+
+    def create_link() -> None:
+        try:
+            st.session_state._platform_company_creation_url = create_company_creation_invitation(
+                client,
+                requesting_user_id=platform_access.user_id,
+                base_url=get_optional_secret("COSTERLY_PUBLIC_URL"),
+            )
+            st.session_state.pop("_platform_company_creation_error", None)
+        except Exception:
+            LOGGER.exception("Platform company-registration link creation failed")
+            st.session_state._platform_company_creation_error = (
+                "The company registration link could not be created. Try again in a moment."
+            )
+
+    with st.container(key="platform_admin_company_creation"):
+        st.button(
+            "Create company registration link",
+            key="platform_admin_create_company_link",
+            type="primary",
+            on_click=create_link,
+        )
+        error = st.session_state.pop("_platform_company_creation_error", None)
+        if error:
+            st.error(error)
+        url = str(st.session_state.get("_platform_company_creation_url") or "")
+        if url:
+            st.caption("One-use link. Share it only with the intended company owner.")
+            st.code(url, language=None)
 
 
 def _metric_cell(count: int, cost: str, *, label: str) -> str:
@@ -400,7 +437,7 @@ def render_platform_admin_screen(
     *,
     render_header_controls: Callable[[], None] | None = None,
 ) -> None:
-    """Render the read-only cross-company overview."""
+    """Render the cross-company overview and restricted admin actions."""
     apply_platform_admin_css()
     st.markdown(
         '<div class="platform-admin-active" style="display:none"></div>',
@@ -447,6 +484,8 @@ def render_platform_admin_screen(
     if current_view == "cnc_laser":
         _render_manufacturing_library(client, access, platform_access)
         return
+
+    _render_company_creation_link(client, fresh)
 
     if not st.session_state.get("_platform_admin_dashboard_audited"):
         record_dashboard_view(client, platform_user_id=str(access.user_id))

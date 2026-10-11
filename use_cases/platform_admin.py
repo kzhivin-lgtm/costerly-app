@@ -7,6 +7,12 @@ from hashlib import sha256
 from typing import Any
 from threading import Lock
 
+from use_cases.invite_links import (
+    DEFAULT_PUBLIC_APP_URL,
+    create_one_company_link,
+    public_app_url,
+)
+
 
 PLATFORM_ROLES = {"platform_admin", "platform_viewer"}
 ACCOUNT_STAGES = {"test", "pilot", "paid"}
@@ -56,6 +62,37 @@ def require_platform_access(client: Any, user_id: str) -> PlatformAccess:
     if access is None:
         raise PermissionError("Platform Admin access is required.")
     return access
+
+
+def create_company_creation_invitation(
+    client: Any,
+    *,
+    requesting_user_id: str,
+    base_url: str | None = None,
+    label: str | None = None,
+) -> str:
+    """Create one bearer-sensitive company-registration URL for a platform admin.
+
+    The link itself deliberately never enters audit metadata or a persistent
+    application state. Only its hash is stored by ``create_one_company_link``.
+    """
+    access = require_platform_access(client, requesting_user_id)
+    if access.role != "platform_admin":
+        raise PermissionError("Platform Admin access is required to create company links.")
+    url = create_one_company_link(
+        client,
+        public_app_url(base_url or DEFAULT_PUBLIC_APP_URL),
+        label,
+    )
+    client.table("platform_admin_audit_events").insert(
+        {
+            "platform_user_id": str(requesting_user_id),
+            "company_id": None,
+            "action": "company_creation_link_created",
+            "metadata": {"label_present": bool(label and label.strip())},
+        }
+    ).execute()
+    return url
 
 
 def load_company_dashboard(

@@ -14,6 +14,7 @@ from use_cases.platform_admin import (
     PlatformAccess,
     company_file_fingerprint,
     company_operational_status,
+    create_company_creation_invitation,
     format_ai_cost,
     load_company_dashboard,
     load_manufacturing_parameter_library,
@@ -102,6 +103,72 @@ def test_platform_access_requires_an_explicit_active_platform_role():
 def test_platform_access_denial_is_server_side():
     with pytest.raises(PermissionError, match="Platform Admin"):
         require_platform_access(_Client(), "user-1")
+
+
+def test_company_creation_link_requires_platform_admin_and_audits_without_bearer_token():
+    writes: list[tuple[str, dict]] = []
+
+    class InviteQuery:
+        def insert(self, payload):
+            writes.append(("company_creation_invites", payload))
+            return self
+
+        def execute(self):
+            return _Response([])
+
+    class AuditQuery:
+        def insert(self, payload):
+            writes.append(("platform_admin_audit_events", payload))
+            return self
+
+        def execute(self):
+            return _Response([])
+
+    class InviteClient(_Client):
+        def table(self, name):
+            if name == "company_creation_invites":
+                return InviteQuery()
+            if name == "platform_admin_audit_events":
+                return AuditQuery()
+            return super().table(name)
+
+    client = InviteClient(staff=[{
+        "user_id": "user-1", "role": "platform_admin", "active": True,
+    }])
+    url = create_company_creation_invitation(
+        client,
+        requesting_user_id="user-1",
+        base_url="https://app.costerly.ai/",
+    )
+
+    assert url.startswith("https://app.costerly.ai/start/")
+    invite = writes[0][1]
+    audit = writes[1][1]
+    assert "token_hash" in invite
+    assert audit == {
+        "platform_user_id": "user-1",
+        "company_id": None,
+        "action": "company_creation_link_created",
+        "metadata": {"label_present": False},
+    }
+    assert url not in str(audit)
+
+    viewer = InviteClient(staff=[{
+        "user_id": "viewer-1", "role": "platform_viewer", "active": True,
+    }])
+    with pytest.raises(PermissionError, match="create company links"):
+        create_company_creation_invitation(
+            viewer,
+            requesting_user_id="viewer-1",
+            base_url="https://app.costerly.ai/",
+        )
+
+
+def test_admin_companies_view_restores_company_link_action():
+    source = (ROOT / "screens/platform_admin.py").read_text()
+    assert '"Create company registration link"' in source
+    assert "create_company_creation_invitation" in source
+    assert "_render_company_creation_link(client, fresh)" in source
 
 
 def test_dashboard_uses_guarded_v2_rpc_and_validates_period():
