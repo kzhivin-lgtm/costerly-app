@@ -57,6 +57,59 @@ def test_company_offer_price_uses_deterministic_median_and_removes_vat():
     assert source == "company-offer:offer-1"
 
 
+def test_catalogs_enriches_mapped_rows_with_v2_identity_and_keeps_review_fallback(monkeypatch):
+    legacy_mapped = {
+        "material_id": "legacy-mapped",
+        "active": True,
+        "canonical_name": "MDF raw 18 mm",
+        "specifications": {"catalog_version": "israel_global_catalog_v1"},
+    }
+    legacy_review = {
+        "material_id": "legacy-review",
+        "active": True,
+        "canonical_name": "Unclassified panel",
+        "specifications": {"catalog_version": "israel_global_catalog_v1"},
+    }
+    paged_by_table = {
+        "reference_materials": [legacy_mapped, legacy_review],
+        "reference_market_material_legacy_mappings": [{
+            "legacy_material_id": "legacy-mapped",
+            "material_model_id": "model-1",
+            "market_material_listing_id": "listing-1",
+        }],
+        "reference_material_models": [{
+            "material_model_id": "model-1",
+            "family_id": "family-mdf",
+            "material_model_code": "global:mdf:raw:18",
+            "active": True,
+        }],
+        "reference_market_material_listings": [{
+            "market_material_listing_id": "listing-1",
+            "listing_code": "IL:mdf:raw:18",
+            "active": True,
+        }],
+    }
+
+    monkeypatch.setattr(
+        publisher,
+        "_paged_rows",
+        lambda _client, table, **_kwargs: paged_by_table.get(table, []),
+    )
+    monkeypatch.setattr(publisher, "_rows", lambda *_args, **_kwargs: [])
+
+    catalogs = publisher._catalogs(object(), "company-1")
+    materials = {row["material_id"]: row for row in catalogs["reference_materials"]}
+
+    assert set(materials) == {"legacy-mapped", "legacy-review"}
+    assert materials["legacy-mapped"]["specifications"] == {
+        "catalog_version": "israel_global_catalog_v1",
+        "catalog_v2_family_id": "family-mdf",
+        "catalog_v2_model_code": "global:mdf:raw:18",
+        "catalog_v2_listing_code": "IL:mdf:raw:18",
+    }
+    assert "catalog_v2_model_code" not in materials["legacy-review"]["specifications"]
+
+
 def test_sheet_thickness_normalization_is_visible_and_auditable(monkeypatch):
     resolution = SimpleNamespace(
         status="resolved", authority="israel_pricing", price_typical=Decimal("200"),

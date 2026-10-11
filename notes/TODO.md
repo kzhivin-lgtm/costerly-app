@@ -205,6 +205,14 @@ production dry-run permitted and production backfill created 3,793 active
 Global-model and Israel-listing records, excluded 247 consumables by policy,
 and retained 408 review rows. No missing thickness, diameter or other primary
 attribute was invented to improve this coverage.
+P0, COMPLETED, 3.17.2.4 Material Resolver V2 identity bridge: the Estimation
+publisher now reads active V2 Global models, Israel market listings and their
+approved legacy mappings. It enriches only the 3,793 mapped legacy rows with
+their V2 identity, while retaining all 4,448 legacy rows in the resolver
+index. The 247 policy-excluded and 408 review-required rows therefore remain
+available as fallback evidence and cannot make an estimate disappear. Legacy
+material IDs remain the temporary price-identity bridge until the pricing
+catalog and Company Price Catalog are migrated to V2 links.
 Stone design coverage is complete for current kitchen and furniture scope:
 natural, engineered, sintered, porcelain/ceramic, solid-surface and terrazzo
 families, countertop-like uses, brands, attributes and possible operations are

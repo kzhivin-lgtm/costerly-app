@@ -136,11 +136,34 @@ def _catalogs(client: Any, company_id: str) -> dict[str, Any]:
     all_reference_materials = _paged_rows(
         client, "reference_materials", filters={"active": True}
     )
-    catalog_reference_materials = [
+    v2_mappings = _paged_rows(
+        client,
+        "reference_market_material_legacy_mappings",
+        filters={"market_code": "IL", "classification_status": "mapped"},
+    )
+    v2_models = _paged_rows(client, "reference_material_models", filters={"active": True})
+    v2_listings = _paged_rows(
+        client,
+        "reference_market_material_listings",
+        filters={"market_code": "IL", "active": True},
+    )
+    model_by_id = {str(row.get("material_model_id") or ""): row for row in v2_models}
+    listing_by_id = {str(row.get("market_material_listing_id") or ""): row for row in v2_listings}
+    v2_by_legacy_id = {
+        str(mapping.get("legacy_material_id") or ""): mapping
+        for mapping in v2_mappings
+        if str(mapping.get("material_model_id") or "") in model_by_id
+        and str(mapping.get("market_material_listing_id") or "") in listing_by_id
+    }
+    legacy_catalog_reference_materials = [
         row for row in all_reference_materials
         if (row.get("specifications") or {}).get("catalog_version")
         == "israel_global_catalog_v1"
     ] or all_reference_materials
+    # V2-mapped rows are the authoritative identity path. Rows deliberately
+    # retained as review_required stay available through the legacy fallback,
+    # otherwise an uncertain catalog row could make an estimate disappear.
+    catalog_reference_materials = legacy_catalog_reference_materials
     pricing_identity_members = _paged_rows(
         client, "reference_material_pricing_identity_members", filters={}
     )
@@ -163,6 +186,13 @@ def _catalogs(client: Any, company_id: str) -> dict[str, Any]:
             for key, value in identity_attributes.get(next(iter(linked_ids)), {}).items():
                 if value not in (None, "", []) and key not in specifications:
                     specifications[key] = value
+        v2_mapping = v2_by_legacy_id.get(material_id)
+        if v2_mapping:
+            model = model_by_id[str(v2_mapping["material_model_id"])]
+            listing = listing_by_id[str(v2_mapping["market_material_listing_id"])]
+            specifications["catalog_v2_family_id"] = str(model.get("family_id") or "")
+            specifications["catalog_v2_model_code"] = str(model.get("material_model_code") or "")
+            specifications["catalog_v2_listing_code"] = str(listing.get("listing_code") or "")
         reference_materials.append({**row, "specifications": specifications})
     reference_aliases = _paged_rows(
         client,

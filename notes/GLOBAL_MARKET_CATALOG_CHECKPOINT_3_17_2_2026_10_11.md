@@ -172,3 +172,19 @@ mapping statuses were `mapped` 3,793, `excluded_by_policy` 247 and
 `review_required` 408. The post-run integrity check found zero mapped rows
 without both a model and listing link. No legacy material, price, Company
 offer, Price Source reader or UI record was modified.
+
+## Completed task 3.17.2.4
+
+The Estimation publisher now reads the active V2 Global material models,
+Israel market listings and mapped legacy bridge rows. A mapped legacy record is
+enriched with its V2 family identifier, Global model code and Israel listing
+code before it reaches the Material Resolver. The legacy catalog remains the
+price-identity bridge for this controlled cutover: all 4,448 rows remain in
+the resolver index, so the 247 policy-excluded and 408 review-required records
+continue as fallback evidence rather than disappearing from an estimate.
+
+Live production read verification returned 4,448 resolver rows, 3,793 V2
+enriched rows, 655 legacy-fallback-only rows and 4,448 identity-index entries.
+The focused publisher suite passed 24 tests. This task does not alter Price
+Source UI, Company offers or pricing values. Those records must move through
+their own V2 links before the legacy price bridge can be removed.
