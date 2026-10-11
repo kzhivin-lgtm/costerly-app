@@ -11,64 +11,22 @@ from screens import file_review, objects
 from use_cases import rfq_processing
 
 
-def test_profile_route_preserves_selected_tab():
+def test_profile_route_stays_at_profile_level():
     st.session_state.clear()
     st.session_state.company_profile_tab = "Contacts"
 
-    assert app._browser_route("account") == {
-        "screen": "account",
-        "profile_tab": "contacts",
-    }
+    assert app._browser_route("account") == {"screen": "account"}
 
 
-def test_account_bootstrap_keeps_the_profile_tab_query_for_hard_reload_recovery():
+def test_account_bootstrap_drops_legacy_profile_tab_parameter():
     source = (Path(__file__).parents[1] / "app.py").read_text()
     account_bootstrap = source.split('if requested_screen == "account":', 1)[1].split(
-        "legal_check_key", 1
+        "post_sign_in_terms_check", 1
     )[0]
-
-    assert 'st.session_state.company_profile_tab = _PROFILE_TAB_ROUTES[requested_profile_tab]' in account_bootstrap
-    assert 'del st.query_params["profile_tab"]' not in account_bootstrap
-
-
-def test_profile_tab_click_syncs_pricing_cost_to_the_durable_outer_route():
-    guard = (Path(__file__).parents[1] / "ui" / "js_guards.py").read_text()
     wrapper = (Path(__file__).parents[1] / "cloudflare" / "index.html").read_text()
 
-    assert '"pricing cost": "pricing-cost"' in guard
-    assert 'event.target.closest("[role=\'tab\'], [data-baseweb=\'tab\']")' in guard
-    assert 'control.dataset.baseweb === "tab"' in guard
-    assert "profileTab," in guard
-    assert '"pricing-cost"' in wrapper
-    assert 'event.data.transition === "profile_tab_change"' in wrapper
-    assert 'const currentProfileTab = safeRouteValue(nextUrl.searchParams.get("profile_tab"));' in wrapper
-    assert 'currentScreen === "account" && allowedProfileTabs.has(currentProfileTab)' in wrapper
-
-
-def test_profile_route_preserves_machinery_tab_in_app_and_wrapper():
-    st.session_state.clear()
-    st.session_state.company_profile_tab = "Machinery"
-
-    assert app._browser_route("account") == {
-        "screen": "account",
-        "profile_tab": "machinery",
-    }
-    wrapper = (Path(__file__).parents[1] / "cloudflare" / "index.html").read_text()
-    assert '"machinery"' in wrapper
-
-
-def test_profile_route_uses_bank_details_slug_and_accepts_legacy_slug():
-    st.session_state.clear()
-    st.session_state.company_profile_tab = "Bank Details"
-
-    assert app._browser_route("account") == {
-        "screen": "account",
-        "profile_tab": "bank-details",
-    }
-    assert app._PROFILE_TAB_ROUTES["company-details"] == "Bank Details"
-    wrapper = (Path(__file__).parents[1] / "cloudflare" / "index.html").read_text()
-    assert '"bank-details"' in wrapper
-    assert '"company-details"' in wrapper
+    assert 'for route_key in ("screen", "profile_tab"):' in account_bootstrap
+    assert 'nextUrl.searchParams.delete("profile_tab");' in wrapper
 
 
 def test_file_review_route_preserves_run_context():

@@ -759,9 +759,6 @@ def signal_app_ready_to_embed(
             }
 
             function transitionName(control) {
-                if (control.getAttribute("role") === "tab" || control.dataset.baseweb === "tab") {
-                    return "profile_tab_change";
-                }
                 if (control.closest(".objects-pricing-review-button")) {
                     return "objects_to_object_detail";
                 }
@@ -865,7 +862,6 @@ def signal_app_ready_to_embed(
                     objects_to_object_detail: "object_detail",
                     object_detail_to_objects: "objects",
                     object_detail_approve_to_objects: "objects",
-                    profile_tab_change: "account",
                     upload_to_profile: "account",
                     profile_to_upload: "upload",
                     upload_to_admin: "admin",
@@ -883,22 +879,6 @@ def signal_app_ready_to_embed(
                     profile_to_sign_out: "login",
                     upload_to_sign_out: "login",
                 }[transition] || "";
-            }
-
-            function profileTabRoute(control) {
-                const label = String(control.innerText || control.textContent || "")
-                    .trim()
-                    .toLowerCase();
-                return {
-                    "overhead expenses": "overhead-expenses",
-                    "labor costs": "labor-costs",
-                    "pricing cost": "pricing-cost",
-                    "machinery": "machinery",
-                    "price lists": "price-lists",
-                    "contacts": "contacts",
-                    "bank details": "bank-details",
-                    "users": "users",
-                }[label] || "";
             }
 
             function targetSelector(transition) {
@@ -1163,18 +1143,12 @@ def signal_app_ready_to_embed(
                     const previous = parentWindow[transitionHandlerKey];
                     if (previous) parentDocument.removeEventListener("click", previous, false);
                     const handler = (event) => {
-                        const tab = event.target && event.target.closest
-                            ? event.target.closest("[role='tab'], [data-baseweb='tab']")
-                            : null;
-                        const control = tab || (event.target && event.target.closest
+                        const control = event.target && event.target.closest
                             ? event.target.closest("button, a")
-                            : null);
+                            : null;
                         if (!control) return;
                         const transition = transitionName(control);
                         if (!transition) return;
-                        const profileTab = transition === "profile_tab_change"
-                            ? profileTabRoute(control)
-                            : "";
                         const bridgeKey = String(control.dataset.streamlitBridgeKey || "");
                         const objectId = String(control.dataset.objectId || "");
                         let bridgeButton = bridgeKey
@@ -1203,7 +1177,6 @@ def signal_app_ready_to_embed(
                             transitionId,
                             sourceScreen: currentScreen(),
                             targetScreen: targetScreenFor(transition),
-                            profileTab,
                         }, "*");
                         observeTargetScreen(transition, transitionId);
                         if (bridgeButton) bridgeButton.click();

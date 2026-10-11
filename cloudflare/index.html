@@ -129,18 +129,7 @@
         const startupProbe = new URLSearchParams(window.location.search).get("startup_probe");
         const appUrl = new URL(frame.dataset.src);
         const appOrigin = appUrl.origin;
-        const routeKeys = ["screen", "profile_tab", "run_id", "estimate_id", "object_id", "route_token"];
-        const allowedProfileTabs = new Set([
-          "overhead-expenses",
-          "labor-costs",
-          "pricing-cost",
-          "machinery",
-          "contacts",
-          "bank-details",
-          "company-details",
-          "users",
-          "price-lists",
-        ]);
+        const routeKeys = ["screen", "run_id", "estimate_id", "object_id", "route_token"];
         const outerParams = new URLSearchParams(window.location.search);
         appUrl.searchParams.set("obs_trace", traceId);
         routeKeys.forEach((key) => {
@@ -256,9 +245,10 @@
 
         function syncOuterRoute(route, renderedScreen) {
           const nextUrl = new URL(window.location.href);
-          const currentScreen = safeRouteValue(nextUrl.searchParams.get("screen"));
-          const currentProfileTab = safeRouteValue(nextUrl.searchParams.get("profile_tab"));
           routeKeys.forEach((key) => nextUrl.searchParams.delete(key));
+          // Old Profile URLs may still carry a selected-tab hint. Profile
+          // navigation is intentionally screen-level only, so discard it.
+          nextUrl.searchParams.delete("profile_tab");
 
           // A workflow path must not survive navigation to Profile, Upload or
           // Admin. It would otherwise be reinterpreted after a browser refresh.
@@ -270,17 +260,6 @@
           const screen = requestedScreen || safeRouteValue(renderedScreen);
           if (screen === "account") {
             nextUrl.searchParams.set("screen", "account");
-            // A Streamlit tab is selected client-side. Its click updates the
-            // outer route immediately, but an already queued app-ready message
-            // can still carry the previously rendered tab. Retain the explicit
-            // current Profile route in that narrow case rather than overwriting
-            // it with the stale server snapshot.
-            const profileTab = currentScreen === "account" && allowedProfileTabs.has(currentProfileTab)
-              ? currentProfileTab
-              : safeRouteValue(route && route.profile_tab);
-            if (allowedProfileTabs.has(profileTab)) {
-              nextUrl.searchParams.set("profile_tab", profileTab);
-            }
           } else if (["admin", "projects"].includes(screen)) {
             // Keep a durable outer history entry for header destinations. Without
             // it, Projects from Upload leaves the URL at `/`, so browser Back
@@ -437,13 +416,6 @@
             event.data.type === "costerly:transition-click" &&
             typeof event.data.transition === "string"
           ) {
-            const profileTab = safeRouteValue(event.data.profileTab);
-            if (
-              event.data.transition === "profile_tab_change" &&
-              allowedProfileTabs.has(profileTab)
-            ) {
-              syncOuterRoute({ screen: "account", profile_tab: profileTab }, "account");
-            }
             const pendingTransition = {
               id: String(event.data.transitionId || crypto.randomUUID()),
               name: event.data.transition,

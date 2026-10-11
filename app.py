@@ -88,18 +88,6 @@ st.set_page_config(
 )
 
 
-_PROFILE_TAB_ROUTES = {
-    "overhead-expenses": "Overhead Expenses",
-    "labor-costs": "Labor Costs",
-    "machinery": "Machinery",
-    "contacts": "Contacts",
-    "bank-details": "Bank Details",
-    "company-details": "Bank Details",
-    "users": "Users",
-    "price-lists": "Price Lists",
-}
-
-
 def _workflow_route_token(
     *,
     company_id: str,
@@ -150,18 +138,7 @@ def _remember_workflow_route_token(
 def _browser_route(screen: str, *, company_id: str | None = None) -> dict[str, str]:
     """Return the safe, durable browser route for the rendered screen."""
     if screen == "account":
-        selected_tab = str(
-            st.session_state.get("company_profile_tab") or "Overhead Expenses"
-        )
-        tab_route = next(
-            (
-                route
-                for route, label in _PROFILE_TAB_ROUTES.items()
-                if label == selected_tab
-            ),
-            "overhead-expenses",
-        )
-        return {"screen": "account", "profile_tab": tab_route}
+        return {"screen": "account"}
 
     if screen == "admin":
         return {"screen": "admin"}
@@ -462,15 +439,9 @@ def main() -> None:
         requested_screen = st.query_params.get("screen")
         if requested_screen == "account":
             st.session_state.screen = "account"
-            requested_profile_tab = str(st.query_params.get("profile_tab") or "")
-            if requested_profile_tab in _PROFILE_TAB_ROUTES:
-                st.session_state.company_profile_tab = _PROFILE_TAB_ROUTES[requested_profile_tab]
-            # Keep the selected Profile tab in the durable route. The outer
-            # shell restores this route after a hard reload, while Streamlit
-            # starts a new session. Removing it here made every reload fall
-            # back to the first tab before the shell could reconcile state.
-            if "screen" in st.query_params:
-                del st.query_params["screen"]
+            for route_key in ("screen", "profile_tab"):
+                if route_key in st.query_params:
+                    del st.query_params[route_key]
         post_sign_in_terms_check = st.session_state.pop(
             "_post_sign_in_terms_check", None
         )
