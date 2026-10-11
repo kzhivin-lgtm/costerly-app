@@ -106,16 +106,19 @@ legacy reference rows produced:
 
 | Result | Rows | Treatment |
 | --- | ---: | --- |
-| `mapped` | 4,366 | Eligible for a later explicit Global family, Global model and Israel-listing backfill |
-| `excluded_by_policy` | 288 | Consumables. Retain legacy/source evidence only, with no Company Price Catalog or preliminary-estimate material identity |
-| `review_required` | 74 | Preserve without invented family, model or listing |
+| `mapped` | 3,793 | Eligible for a later explicit Global family, Global model and Israel-listing backfill |
+| `excluded_by_policy` | 247 | Active consumables. Retain legacy/source evidence only, with no Company Price Catalog or preliminary-estimate material identity |
+| `review_required` | 408 | Preserve without invented family, model or listing |
 
-The remaining review set is intentionally small and explicit: 46 square-bar
-metal rows whose approved matrix has no square-bar family, 24 decorative films
-or foils with no approved production operation, and two faced-panel rows whose
-substrate/construction is not proven by their current category. Those are
-catalog-curation decisions, not parser failures. The migration must keep them
-visible until a staff member creates or approves the required family rule.
+The strict production dry-run on 2026-10-11 supersedes the earlier, weaker
+category-only projection. The 408 review rows contain 72 rows whose category
+or geometry does not prove one approved family, plus 336 rows which have a
+family candidate but lack that family's required primary attribute. The latter
+is primarily 192 sheet rows without a proven thickness, 96 round-stock rows
+without a proven diameter, and 48 edge/band rows without a proven width and
+thickness pair. The migration must keep them visible until a staff member
+creates or approves the required family rule or primary attribute. It must not
+invent a value merely to obtain a mapped status.
 
 ## Implementation sequence after this checkpoint
 
@@ -139,7 +142,7 @@ tests, is an executable schema contract and deterministic plan proving that
 Global identity, Israel market variant and Company offer cannot be confused or
 written through one another.
 
-## Active task 3.17.2.2
+## Completed task 3.17.2.2
 
 Task 3.17.2.2 adds the unapplied Global family registry seed in
 `db/sql/2026_10_11_catalog_v2_global_family_seed.sql`. It establishes the
@@ -148,3 +151,11 @@ eligibility. It must not import legacy rows, create Israel market listings,
 alter Company Price Catalog records or switch readers. `stone_edge_profiling`
 is deliberately absent pending its separately approved operation, route and
 Labor baseline.
+
+## Next task 3.17.2.3
+
+Task 3.17.2.3 will build the deterministic Israel-market projection and
+backfill preview for the 3,793 strict mapped rows only. It must retain the 247
+policy-excluded rows and 408 review rows as legacy evidence, create no
+production data until its preview and integrity gates pass, and preserve the
+separation of Global model, Israel variant and Company offer.

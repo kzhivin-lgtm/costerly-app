@@ -36,6 +36,8 @@ class LegacyMaterialDecision:
     reason: str
     global_model_code: str | None
     israel_variant_code: str | None
+    primary_attribute_code: str | None
+    primary_attribute_value: Any | None
 
 
 _FAMILY_BY_CATEGORY_NAME = {
@@ -145,6 +147,142 @@ def _model_codes(row: Mapping[str, Any]) -> tuple[str, str]:
     return global_model_code, f"il_{_code(row.get('material_code') or global_model_code)}"
 
 
+_PRIMARY_ATTRIBUTE_BY_FAMILY = {
+    "mdf_hdf": "thickness",
+    "faced_mdf": "thickness",
+    "particleboard": "thickness",
+    "melamine_faced_particleboard": "thickness",
+    "plywood": "thickness",
+    "plywood_special": "thickness",
+    "osb": "thickness",
+    "fibreboard_hardboard": "thickness",
+    "lightweight_sandwich_panel": "thickness",
+    "hpl_cpl": "thickness",
+    "compact_laminate": "thickness",
+    "wood_veneer": "species",
+    "edge_banding": "width_thickness",
+    "timber_solid_wood_panel": "species",
+    "sheet_metal": "thickness",
+    "metal_tube": "section_profile",
+    "metal_profile_angle_channel": "section_profile",
+    "metal_flat_bar": "width_thickness",
+    "metal_round_bar_rod_wire": "diameter",
+    "glass": "thickness",
+    "mirror": "thickness",
+    "acrylic_pmma": "thickness",
+    "sheet_plastic": "thickness",
+    "natural_stone_slab": "thickness",
+    "engineered_quartz_mineral_hybrid": "thickness",
+    "sintered_ultra_compact_surface": "thickness",
+    "porcelain_ceramic_slab": "thickness",
+    "solid_surface": "thickness",
+    "paint_lacquer_stain": "coating_system",
+    "primer": "coating_system",
+    "powder_coating": "coating_system",
+    "filler_hardener_thinner": "chemistry_product_type",
+    "hardware_hinge": "model_series",
+    "hardware_drawer_slide": "nominal_length",
+    "hardware_connector": "model_series",
+    "hardware_fastener": "model_series",
+    "hardware_mounting_part": "model_series",
+    "hardware_handle": "model_series",
+    "hardware_leg_caster": "model_series",
+    "hardware_lift_system": "model_series",
+    "hardware_lock_latch": "model_series",
+    "hardware_drawer_system": "model_series",
+    "hardware_storage_system": "model_series",
+    "hardware_door_system": "model_series",
+    "hardware_furniture_system": "model_series",
+    "hardware_electrical_component": "model_series",
+    "purchased_fabricated_component": "component_type",
+    "packaging_material": "packaging_type",
+}
+
+
+def _first_specification(specifications: Mapping[str, Any], *keys: str) -> Any | None:
+    for key in keys:
+        value = specifications.get(key)
+        if value not in (None, "", [], {}):
+            return value
+    return None
+
+
+def _canonical_mm_values(row: Mapping[str, Any]) -> list[float]:
+    values = re.findall(r"(?<![a-z0-9])(\d+(?:\.\d+)?)\s*mm\b", _key(row.get("canonical_name")))
+    return [float(value) for value in values]
+
+
+def _canonical_thickness(row: Mapping[str, Any]) -> float | None:
+    values = _canonical_mm_values(row)
+    return values[-1] if values else None
+
+
+def _canonical_section_profile(row: Mapping[str, Any]) -> str | None:
+    name = _key(row.get("canonical_name"))
+    for profile in (
+        "round tube",
+        "square tube",
+        "rectangular tube",
+        "round pipe",
+        "square pipe",
+        "rectangular pipe",
+        "angle",
+        "channel",
+        "beam",
+        "profile",
+    ):
+        if profile in name:
+            return profile.replace(" ", "_")
+    return None
+
+
+def _canonical_species(row: Mapping[str, Any]) -> str | None:
+    first_segment = _key(row.get("canonical_name")).split(",", 1)[0]
+    return first_segment or None
+
+
+def _canonical_width_thickness(row: Mapping[str, Any]) -> dict[str, float] | None:
+    values = _canonical_mm_values(row)
+    if len(values) < 2:
+        return None
+    return {"width_mm": values[-1], "thickness_mm": values[0]}
+
+
+def _primary_attribute_value(
+    family_code: str,
+    row: Mapping[str, Any],
+) -> tuple[str, Any | None]:
+    specifications = row.get("specifications") or {}
+    primary_attribute_code = _PRIMARY_ATTRIBUTE_BY_FAMILY[family_code]
+
+    if primary_attribute_code == "thickness":
+        return primary_attribute_code, _first_specification(specifications, "thickness_mm", "thickness") or _canonical_thickness(row)
+    if primary_attribute_code == "species":
+        return primary_attribute_code, _first_specification(specifications, "species", "wood_species") or _canonical_species(row)
+    if primary_attribute_code == "width_thickness":
+        width = _first_specification(specifications, "width_mm", "width")
+        thickness = _first_specification(specifications, "thickness_mm", "thickness")
+        value = {"width_mm": width, "thickness_mm": thickness} if width is not None and thickness is not None else None
+        return primary_attribute_code, value or _canonical_width_thickness(row)
+    if primary_attribute_code == "section_profile":
+        return primary_attribute_code, _first_specification(specifications, "section_profile", "profile", "section") or _canonical_section_profile(row)
+    if primary_attribute_code == "diameter":
+        return primary_attribute_code, _first_specification(specifications, "diameter_mm", "diameter") or _canonical_thickness(row)
+    if primary_attribute_code == "coating_system":
+        return primary_attribute_code, _first_specification(specifications, "coating_system", "system") or _key(row.get("canonical_name"))
+    if primary_attribute_code == "chemistry_product_type":
+        return primary_attribute_code, _first_specification(specifications, "chemistry", "product_type") or _key(row.get("canonical_name"))
+    if primary_attribute_code == "model_series":
+        return primary_attribute_code, _first_specification(specifications, "model_series", "model", "series") or _key(row.get("canonical_name"))
+    if primary_attribute_code == "nominal_length":
+        return primary_attribute_code, _first_specification(specifications, "nominal_length_mm", "length_mm") or _canonical_thickness(row)
+    if primary_attribute_code == "component_type":
+        return primary_attribute_code, _first_specification(specifications, "component_type") or _key(row.get("canonical_name"))
+    if primary_attribute_code == "packaging_type":
+        return primary_attribute_code, _first_specification(specifications, "packaging_type") or _key(row.get("canonical_name"))
+    raise ValueError(f"No primary attribute extraction rule for {family_code}.")
+
+
 def classify_legacy_material(
     row: Mapping[str, Any],
     *,
@@ -164,6 +302,8 @@ def classify_legacy_material(
             reason="consumables_are_not_company_catalog_or_preliminary_estimate_items",
             global_model_code=None,
             israel_variant_code=None,
+            primary_attribute_code=None,
+            primary_attribute_value=None,
         )
 
     mapped = None
@@ -185,9 +325,25 @@ def classify_legacy_material(
             reason="legacy_category_or_geometry_does_not_prove_one_approved_family",
             global_model_code=None,
             israel_variant_code=None,
+            primary_attribute_code=None,
+            primary_attribute_value=None,
         )
 
     family_code, entity_role_code, production_department_code = mapped
+    primary_attribute_code, primary_attribute_value = _primary_attribute_value(family_code, row)
+    if primary_attribute_value is None:
+        return LegacyMaterialDecision(
+            status=REVIEW_REQUIRED,
+            entity_role_code=entity_role_code,
+            family_code=None,
+            production_department_code=None,
+            reason="legacy_row_lacks_required_primary_attribute_for_approved_family",
+            global_model_code=None,
+            israel_variant_code=None,
+            primary_attribute_code=primary_attribute_code,
+            primary_attribute_value=None,
+        )
+
     model_code, variant_code = _model_codes(row)
     return LegacyMaterialDecision(
         status=MAPPED,
@@ -197,4 +353,6 @@ def classify_legacy_material(
         reason="approved_category_or_geometry_rule",
         global_model_code=model_code,
         israel_variant_code=variant_code,
+        primary_attribute_code=primary_attribute_code,
+        primary_attribute_value=primary_attribute_value,
     )

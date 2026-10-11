@@ -193,11 +193,17 @@ production evidence inventory, mapping rules and cutover gates are in
 reconciled the unapplied V2 contract with that chain and created an executable
 deterministic migration plan before any production SQL application, reader
 cutover or legacy-data deletion.
-P0, ACTIVE, 3.17.2.2 Global family registry seed: create the approved Global
+P0, COMPLETED, 3.17.2.2 Global family registry seed: created the approved Global
 family vocabulary, primary and secondary attribute contracts and possible
 operation eligibility only. The seed must not import legacy rows, construct an
 Israel listing, write a Company offer or change a reader. `stone_edge_profiling`
 remains excluded until its separate operation and Labor baseline are approved.
+P0, ACTIVE, 3.17.2.3 Israel-market projection and strict backfill preview:
+only a row with a proven approved family and that family's required primary
+attribute may create a Global model and Israel variant. The 2026-10-11
+production dry-run permits 3,793 active rows, excludes 247 consumables by
+policy, and retains 408 review rows. No missing thickness, diameter or other
+primary attribute may be invented to improve this coverage.
 Stone design coverage is complete for current kitchen and furniture scope:
 natural, engineered, sintered, porcelain/ceramic, solid-surface and terrazzo
 families, countertop-like uses, brands, attributes and possible operations are

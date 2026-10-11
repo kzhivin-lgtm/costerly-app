@@ -11,7 +11,7 @@ def _row(**overrides):
         "material_code": "gcm_wood_panel_001",
         "department": "wood",
         "canonical_name": "Plywood, raw, 18 mm",
-        "specifications": {"global_canonical_id": "GCM-V1-PLYWOOD-RAW-18"},
+        "specifications": {"global_canonical_id": "GCM-V1-PLYWOOD-RAW-18", "thickness_mm": 18},
     }
     row.update(overrides)
     return row
@@ -25,6 +25,8 @@ def test_known_category_maps_to_global_family_model_and_israel_variant():
     assert decision.production_department_code == "wood"
     assert decision.global_model_code == "gcm_v1_plywood_raw_18"
     assert decision.israel_variant_code == "il_gcm_wood_panel_001"
+    assert decision.primary_attribute_code == "thickness"
+    assert decision.primary_attribute_value == 18
 
 
 def test_metal_requires_shape_evidence_but_can_use_proven_geometry_words():
@@ -57,3 +59,32 @@ def test_unknown_category_remains_explicitly_review_required():
     decision = classify_legacy_material(_row(department="wood"), category_name="Unproven category")
     assert decision.status == REVIEW_REQUIRED
     assert decision.reason == "legacy_category_or_geometry_does_not_prove_one_approved_family"
+
+
+def test_known_family_without_its_required_primary_attribute_is_review_required():
+    decision = classify_legacy_material(
+        _row(
+            canonical_name="Plywood, raw",
+            specifications={"global_canonical_id": "GCM-V1-PLYWOOD-RAW"},
+        ),
+        category_name="Plywood",
+    )
+
+    assert decision.status == REVIEW_REQUIRED
+    assert decision.reason == "legacy_row_lacks_required_primary_attribute_for_approved_family"
+    assert decision.primary_attribute_code == "thickness"
+
+
+def test_primary_attribute_can_be_extracted_deterministically_from_canonical_name():
+    decision = classify_legacy_material(
+        _row(
+            department="hardware",
+            canonical_name="Standard concealed hinge, 95 degree, full overlay",
+            specifications={"global_canonical_id": "GCM-V1-HINGE-95"},
+        ),
+        category_name="Hinges",
+    )
+
+    assert decision.status == MAPPED
+    assert decision.primary_attribute_code == "model_series"
+    assert decision.primary_attribute_value == "standard concealed hinge, 95 degree, full overlay"
