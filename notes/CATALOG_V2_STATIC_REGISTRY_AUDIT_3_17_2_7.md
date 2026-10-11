@@ -11,8 +11,8 @@ the V2 Global registry?
 
 | Registry | Static Source Agent inventory | V2 state before 3.17.2.7 | Disposition |
 | --- | ---: | --- | --- |
-| Hardware brands | 15 brands, 32 aliases | zero `reference_brands` rows and zero hardware scopes | Seed now, together with Product Systems |
-| Hardware Product Systems | no previous V2 representation | no table | Create Global system and alias relations, seed 116 manufacturer-published lines |
+| Hardware brands | 15 brands, 51 aliases | zero `reference_brands` rows and zero hardware scopes | Seed now, together with Product Systems. Every brand has at least one Hebrew alias |
+| Hardware Product Systems | 116 manufacturer lines, 357 aliases | no table | Create Global system and alias relations. Every system has a Hebrew transliteration alias; short ambiguous names remain brand-qualified |
 | All curated brands | 73 brands | zero V2 brand rows | The remaining 58 non-Hardware brands are a separate migration slice. They must not be represented as missing V2 data after this Hardware-only seed |
 | Material taxonomy families | 47 source families | 46 V2 projections | `laminated panel` has no safe V2 projection. Do not map it to faced MDF or melamine-faced particleboard, because that would invent a substrate. Add a generic laminated-panel family or send it to review in a later approved family expansion |
 | Attribute-value vocabulary | 61 deterministic source values | V2 has family attribute contracts, not every allowed literal value | Keep values as structured source evidence for now. A controlled value registry is a later curation task, not a reason to invent model variants |
@@ -40,3 +40,15 @@ manufacturer product lines, not a claim that every maker SKU or every product
 variant has been curated. The seed creates no Global material model, Israel
 market listing, Company Price Catalog item, price, supplier offer or SKU
 crosswalk.
+
+## Alias coverage invariant added in 3.17.2.7
+
+The active Source Agent vocabulary now has a regression contract: every
+material family and every deterministic attribute value carries a Hebrew
+recognition alias. The hardware Global registry has the same contract for all
+brands and Product Systems, and the SQL seed is tested against the exact
+offline Source Agent vocabulary. English canonical names remain display-only.
+Aliases are recognition evidence, never a basis for an inferred physical
+variant. For example, `מובנטו`, `Moventa` and the OCR variant `Movers` resolve
+to Blum MOVENTO only when the line is already established as a drawer slide;
+they cannot derive an unstated length or SKU variant.
