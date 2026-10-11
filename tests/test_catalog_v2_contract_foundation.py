@@ -57,6 +57,7 @@ def test_global_model_market_listing_and_company_offer_are_separate_contracts():
     assert "mapping_status in ('matched', 'no_market_match', 'review_required')" in sql
     assert "market_material_listing_id is not null" in sql
     assert "unique (market_code, material_model_id)" in sql
+    assert "default 'unknown'" in sql
 
 
 def test_provisional_assumptions_cannot_mutate_canonical_catalog():

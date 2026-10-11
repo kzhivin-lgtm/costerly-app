@@ -180,8 +180,8 @@ create table if not exists public.reference_market_material_listings (
         listing_code = lower(listing_code) and listing_code !~ '[^a-z0-9_]'
     ),
     canonical_market_name text not null check (length(trim(canonical_market_name)) between 1 and 500),
-    availability_status text not null default 'common' check (
-        availability_status in ('common', 'limited', 'special_order', 'unavailable')
+    availability_status text not null default 'unknown' check (
+        availability_status in ('unknown', 'common', 'limited', 'special_order', 'unavailable')
     ),
     active boolean not null default true,
     created_at timestamptz not null default now(),
