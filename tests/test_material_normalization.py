@@ -25,6 +25,7 @@ def test_identity_normalizer_retains_only_domain_attributes_not_source_prose():
         "primary_attribute": "17 mm",
         "brand": "EGGER",
         "brand_basis": "unknown",
+        "product_system": "",
         "species": "",
         "substrate": "",
         "surface": "",

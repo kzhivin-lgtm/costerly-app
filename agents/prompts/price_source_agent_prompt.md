@@ -79,6 +79,10 @@ instructions.
    MDF, plywood, glass, metal, or any other category. Preserve it in the row
    evidence, but use a material family or category only when generic material
    evidence supports it.
+   If an exact manufacturer product system is printed, such as `MOVENTO`,
+   retain it in `identity_attributes.product_system`. Never extract a product
+   system from raw_sku, and never infer its length, load capacity, finish or
+   other variant fact from a series name or bare item code.
 6. Extract material_family as a short generic English family such as plywood,
    MDF, particleboard, solid timber, screw, hinge, adhesive, paint, metal sheet,
    or metal profile. Extract identity_attributes only from explicit evidence.

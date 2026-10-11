@@ -235,6 +235,21 @@ defined. The subsequent implementation must create the approved
 `stone_edge_profiling` operation only together with its route, driver schema
 and Labor baseline. It must not be added as an unpriced catalog label.
 
+ACTIVE, P0, USER REQUEST, 3.17.2.7 Hardware brand and Product System registry:
+move the 15 curated Hardware manufacturers from the Source Agent-only vocabulary
+into the V2 Global registry, with family-scoped brand aliases and a catalogued
+Product System layer. Source evidence may recognise an exact system such as
+Blum MOVENTO only after the Hardware family is independently established. A
+recognised system may supply the known manufacturer; neither it nor any raw
+supplier SKU may invent a nominal length, load class or Global model variant.
+Seed only manufacturer-published systems, not every SKU or price offer. The
+first scope covers drawer slides and systems, lift/flap mechanisms, door
+systems, storage systems, connector systems and hinge systems where the brand
+publishes a distinct named line. Product variants and supplier-SKU-to-variant
+crosswalks remain staff-authoritative later work. In the same pass, audit
+Source Agent static registries against V2 and record unmigrated vocabulary;
+do not silently treat it as V2 data.
+
 ACTIVE, IMPLEMENTATION CHECKPOINT `5f6360f`, P0, 3.15.24 canonical object quantity and durable Object Detail route:
 make item quantity editable on File Review, Objects, and Object Detail. All
 three screens share `rfq_detected_objects.quantity` as the canonical record;

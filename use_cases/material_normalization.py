@@ -25,6 +25,7 @@ IDENTITY_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
     "primary_attribute": "",
     "brand": "",
     "brand_basis": "unknown",
+    "product_system": "",
     "species": "",
     "substrate": "",
     "surface": "",
@@ -36,7 +37,7 @@ IDENTITY_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
 }
 
 SECONDARY_ATTRIBUTE_ORDER: tuple[str, ...] = (
-    "grade", "species", "substrate", "construction", "finish", "surface",
+    "product_system", "grade", "species", "substrate", "construction", "finish", "surface",
     "coating", "colour",
 )
 

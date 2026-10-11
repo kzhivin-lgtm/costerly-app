@@ -38,6 +38,7 @@ IDENTITY_ATTRIBUTE_FIELDS = (
     "primary_attribute",
     "brand",
     "brand_basis",
+    "product_system",
     "species",
     "substrate",
     "surface",
@@ -286,6 +287,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                             "primary_attribute": {"type": "string"},
                             "brand": {"type": "string"},
                             "brand_basis": {"type": "string"},
+                            "product_system": {"type": "string"},
                             "species": {"type": "string"},
                             "substrate": {"type": "string"},
                             "surface": {"type": "string"},
@@ -427,6 +429,7 @@ def normalize_price_source_row_identity_fields(result: dict[str, Any]) -> dict[s
             attributes.setdefault("primary_attribute", "")
             attributes.setdefault("brand", "")
             attributes.setdefault("brand_basis", "unknown")
+            attributes.setdefault("product_system", "")
     return result
 
 
@@ -666,6 +669,11 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         if row["item_kind"] not in ITEM_KINDS:
             raise PriceSourceSchemaError("unsupported row item kind")
         attributes = row["identity_attributes"]
+        # A source result created before Product System recognition existed is
+        # still valid evidence. Normalise the absent optional field before the
+        # strict shape check, rather than making historical imports fail.
+        if isinstance(attributes, dict) and "product_system" not in attributes:
+            attributes["product_system"] = ""
         if not isinstance(attributes, dict) or set(attributes) != set(IDENTITY_ATTRIBUTE_FIELDS):
             raise PriceSourceSchemaError("identity attributes do not match the contract")
         for key in ("thickness_mm", "width_mm", "length_mm", "depth_mm", "diameter_mm"):

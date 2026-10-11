@@ -1894,7 +1894,30 @@ def test_drawer_slide_uses_explicit_nominal_depth_as_primary_attribute(descripti
     assert row["material_family"] == "drawer slide"
     assert row["identity_attributes"]["depth_mm"] == expected_depth
     assert row["identity_attributes"]["primary_attribute"] == f"{expected_depth} mm"
-    assert row["normalized_name"] == f"Drawer Slide {expected_depth} mm Blum"
+    expected_name = f"Drawer Slide {expected_depth} mm Blum"
+    if "movento" in description.casefold():
+        expected_name += ", MOVENTO"
+        assert row["identity_attributes"]["product_system"] == "MOVENTO"
+    assert row["normalized_name"] == expected_name
+
+
+def test_known_hardware_system_can_supply_its_brand_but_not_an_unstated_variant():
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": "MOVENTO concealed drawer runner",
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == "Hardware"
+    assert row["material_family"] == "drawer slide"
+    assert row["identity_attributes"]["brand"] == "Blum"
+    assert row["identity_attributes"]["brand_basis"] == "catalog"
+    assert row["identity_attributes"]["product_system"] == "MOVENTO"
+    assert row["identity_attributes"]["depth_mm"] == 0
+    assert row["normalized_name"] == "Drawer Slide Blum, MOVENTO"
 
 
 @pytest.mark.parametrize(

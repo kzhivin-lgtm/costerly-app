@@ -16,6 +16,10 @@ from use_cases.material_normalization import (
     canonical_display_name,
     normalize_identity_attributes,
 )
+from use_cases.hardware_product_system_registry import (
+    BRAND_NAME_BY_CODE,
+    PRODUCT_SYSTEM_SEEDS,
+)
 
 
 @dataclass(frozen=True)
@@ -37,6 +41,32 @@ class BrandRule:
     brand: str
     categories: tuple[str, ...]
     aliases: tuple[str, ...]
+
+
+def product_system_for_text(
+    text: str,
+    *,
+    material_family: str,
+    catalog_brand: str,
+) -> tuple[str, str] | None:
+    """Return an exact recognised Hardware Product System and its brand.
+
+    The caller must independently establish the Hardware family first. A
+    system is never extracted from a supplier SKU and never supplies a length,
+    capacity, price or a physical-model variant.
+    """
+    requested_brand = str(catalog_brand or "").casefold()
+    matches = [
+        seed
+        for seed in PRODUCT_SYSTEM_SEEDS
+        if _SOURCE_FAMILY_BY_V2_FAMILY.get(seed.family_code) == material_family
+        and _has_alias(text, seed.aliases)
+        and (not requested_brand or BRAND_NAME_BY_CODE[seed.brand_code].casefold() == requested_brand)
+    ]
+    if not matches:
+        return None
+    selected = max(matches, key=lambda seed: max(len(alias) for alias in seed.aliases))
+    return selected.canonical_name, BRAND_NAME_BY_CODE[selected.brand_code]
 
 
 # Keep the four product areas represented by the existing catalog categories:
@@ -280,6 +310,11 @@ _V2_FAMILY_PROJECTIONS: dict[str, tuple[str, str, str | None]] = {
     "furniture leg": ("hardware_leg_caster", "hardware", None),
     "furniture connector": ("hardware_connector", "hardware", None),
     "lift mechanism": ("hardware_lift_system", "hardware", None),
+}
+
+_SOURCE_FAMILY_BY_V2_FAMILY = {
+    family_code: source_family
+    for source_family, (family_code, _entity_role, _department) in _V2_FAMILY_PROJECTIONS.items()
 }
 
 
@@ -896,6 +931,23 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     elif candidate_brand := _brand_candidate_from_text(str(row.get("raw_description") or "")):
         attributes["brand"] = candidate_brand
         attributes["brand_basis"] = "candidate"
+    if rule.category == "Hardware":
+        product_system = product_system_for_text(
+            text,
+            material_family=rule.family,
+            catalog_brand=(
+                str(attributes.get("brand") or "")
+                if attributes.get("brand_basis") == "catalog" else ""
+            ),
+        )
+        if product_system:
+            system_name, system_brand = product_system
+            attributes["product_system"] = system_name
+            # The exact recognised system is curated, family-scoped evidence
+            # of its manufacturer. It may never classify a non-Hardware line.
+            if attributes.get("brand_basis") != "catalog":
+                attributes["brand"] = system_brand
+                attributes["brand_basis"] = "catalog"
     literal_thickness = _explicit_thickness_mm(text)
     if literal_thickness:
         attributes["thickness_mm"] = literal_thickness
