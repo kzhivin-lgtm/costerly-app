@@ -961,6 +961,12 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     elif rule.category == "Metal Profiles":
         attributes["primary_attribute"] = _explicit_profile_primary_attribute(text)
     elif rule.family == "drawer slide":
+        # The supplier SKU can encode a model such as 55B or 76B. Those are
+        # not runner lengths, and a model/agent numeric guess must never make
+        # a slide look complete. Retain only an explicit length printed in the
+        # source text, for example 550 mm or 55 cm.
+        attributes["depth_mm"] = 0
+        attributes["length_mm"] = 0
         depth = _drawer_slide_depth_mm(text)
         if depth:
             attributes["depth_mm"] = depth

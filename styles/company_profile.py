@@ -1548,6 +1548,16 @@ def apply_company_profile_css() -> None:
             white-space: nowrap;
         }
 
+        .price-catalog-price-incl {
+            display: block;
+            margin-top: 2px;
+            color: var(--color-text-muted);
+            font-size: 11px;
+            font-weight: 400;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+
         [class*="st-key-price_source_row_"],
         [class*="st-key-price_catalog_row_"],
         [class*="st-key-price_review_row_"] {

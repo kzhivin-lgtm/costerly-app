@@ -4251,7 +4251,11 @@ def process_price_source(
         supplier_name = price_source_supplier_name(result)
         supplier_hp = str(result.get("supplier_hp") or "").strip()
         supplier_id = None
-        if supplier_name:
+        # A valid HeadPay is enough to join an established supplier lane even
+        # when the image OCR recovered the legal number but not a readable
+        # issuer name. It must never create a new lane by itself, because a
+        # name is still required for a new supplier record.
+        if supplier_name or supplier_hp:
             existing_suppliers = (
                 client.table("company_suppliers")
                 .select("supplier_id,supplier_name,normalized_name,supplier_hp,categories,created_at")
@@ -4266,22 +4270,21 @@ def process_price_source(
                 issuer_evidence_name=str(issuer_identity.get("supplier_name") or ""),
                 aliases_by_supplier_id=supplier_aliases,
             )
-            canonical_supplier_name = clean_supplier_name(
-                (matched_supplier or {}).get("supplier_name") or supplier_name
-            )
-            canonical_supplier_key = supplier_merge_key(canonical_supplier_name)
-            categories = sorted(
-                set(((matched_supplier or {}).get("categories") or []) + material_types)
-            ) if matched_supplier else material_types
-            supplier_payload = {
-                "company_id": company_id,
-                "supplier_name": canonical_supplier_name,
-                "normalized_name": canonical_supplier_key,
-                "supplier_hp": supplier_hp or (matched_supplier or {}).get("supplier_hp") or None,
-                "categories": categories,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-            }
             if matched_supplier:
+                # Preserve an owner-renamed supplier lane. Source OCR proves
+                # the lane through HeadPay but never overwrites its canonical
+                # display name, such as the user's private `12334` alias.
+                canonical_supplier_name = clean_supplier_name(
+                    matched_supplier.get("supplier_name") or supplier_name
+                )
+                supplier_payload = {
+                    "company_id": company_id,
+                    "supplier_name": canonical_supplier_name,
+                    "normalized_name": supplier_merge_key(canonical_supplier_name),
+                    "supplier_hp": supplier_hp or matched_supplier.get("supplier_hp") or None,
+                    "categories": sorted(set((matched_supplier.get("categories") or []) + material_types)),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
                 # Keep the first accepted supplier as the canonical row even
                 # when its old normalized key still contained OCR legal noise.
                 supplier_row = (
@@ -4290,13 +4293,25 @@ def process_price_source(
                     .eq("supplier_id", matched_supplier["supplier_id"])
                     .execute()
                 ).data[0]
-            else:
+            elif supplier_name:
+                canonical_supplier_name = clean_supplier_name(supplier_name)
+                supplier_payload = {
+                    "company_id": company_id,
+                    "supplier_name": canonical_supplier_name,
+                    "normalized_name": supplier_merge_key(canonical_supplier_name),
+                    "supplier_hp": supplier_hp or None,
+                    "categories": material_types,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
                 supplier_row = (
                     client.table("company_suppliers")
                     .upsert(supplier_payload, on_conflict="company_id,normalized_name")
                     .execute()
                 ).data[0]
-            supplier_id = supplier_row["supplier_id"]
+            else:
+                supplier_row = None
+            if supplier_row:
+                supplier_id = supplier_row["supplier_id"]
         current_vat_mode = str(result.get("vat_mode") or "unknown")
         if current_vat_mode in {"included", "excluded"}:
             apply_vat_basis_to_unknown_rows(

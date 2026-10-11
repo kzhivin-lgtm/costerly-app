@@ -2102,7 +2102,7 @@ def _material_jobs_count(count: int) -> str:
     return f"{count} {'job' if count == 1 else 'jobs'}"
 
 
-_PRICE_CATALOG_GRID = [0.24, 1.8, 0.95, 1.05, 0.95, 0.95, 0.75, 0.5, 0.6]
+_PRICE_CATALOG_GRID = [0.24, 1.82, 0.9, 0.9, 1.25, 0.72, 0.46, 0.98]
 
 
 def _render_price_catalog_grid_header(item_label: str) -> None:
@@ -2110,7 +2110,7 @@ def _render_price_catalog_grid_header(item_label: str) -> None:
     header = st.columns(_PRICE_CATALOG_GRID)
     for column, label in zip(
         header,
-        ("", item_label, "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Updated", "", ""),
+        ("", item_label, "Category", "Supplier", "Price", "Updated", "", ""),
     ):
         if label:
             column.markdown(
@@ -2909,7 +2909,7 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                 supplier_name = str(row.get("supplier_name") or "Unknown supplier")
                 source = sources_by_id.get(source_id) or {}
                 with st.container(key=f"price_catalog_row_{row_id}"):
-                    remove_col, material_col, category_col, supplier_col, net_price_col, gross_price_col, date_col, source_col, edit_col = _price_catalog_grid_columns()
+                    remove_col, material_col, category_col, supplier_col, price_col, date_col, source_col, edit_col = _price_catalog_grid_columns()
                     if remove_col.button("×", key=f"catalog_remove_{row_id}"):
                         st.session_state._removing_price_source_row = (source_id, row_id)
                         st.session_state._price_source_action_location = "catalog"
@@ -2936,12 +2936,9 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         unit_key="normalized_unit",
                         source=source,
                     )
-                    net_price_col.markdown(
-                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>',
-                        unsafe_allow_html=True,
-                    )
-                    gross_price_col.markdown(
-                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{gross_price}</span>',
+                    price_col.markdown(
+                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>'
+                        f'<span class="price-catalog-price-incl">({gross_price} incl. VAT)</span>',
                         unsafe_allow_html=True,
                     )
                     date_col.markdown(
@@ -2956,7 +2953,7 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                             key=f"catalog_{row_id}",
                         )
                     identity_status = dict(row.get("identity_status") or {})
-                    status_col, edit_button_col = edit_col.columns([0.24, 0.76], gap="small")
+                    status_col, edit_button_col = edit_col.columns([0.16, 0.84], gap="small")
                     status_col.markdown(
                         '<span class="price-catalog-identity-dot price-catalog-identity-dot-'
                         f'{escape(str(identity_status.get("tone") or "red"))}" '

@@ -49,3 +49,9 @@ def test_shared_display_contract_is_entity_primary_brand_then_secondaries():
     })
 
     assert name == "Plywood 17 mm EGGER, Okoume, double-sided, matte, black"
+
+
+def test_known_product_system_uses_one_canonical_display_spelling():
+    identity = normalize_identity_attributes({"product_system": "Movento"})
+
+    assert identity["product_system"] == "MOVENTO"

@@ -1933,6 +1933,22 @@ def test_known_hardware_system_can_supply_its_brand_but_not_an_unstated_variant(
     assert row["normalized_name"] == "Drawer Slide Blum, MOVENTO"
 
 
+def test_drawer_slide_drops_an_agent_length_guess_from_a_model_code():
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": "MOVENTO concealed drawer runner 55B",
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+        "identity_attributes": {"depth_mm": 55, "length_mm": 550},
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["identity_attributes"]["depth_mm"] == 0
+    assert row["identity_attributes"]["length_mm"] == 0
+    assert row["normalized_name"] == "Drawer Slide Blum, MOVENTO"
+
+
 @pytest.mark.parametrize("description", (
     "Moventa concealed drawer runner",
     "Movers concealed drawer runner",
