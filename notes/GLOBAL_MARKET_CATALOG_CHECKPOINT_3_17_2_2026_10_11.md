@@ -130,10 +130,21 @@ visible until a staff member creates or approves the required family rule.
 5. Run schema, mapping, resolver, estimate and authenticated browser checks.
    Only then remove obsolete reader paths and legacy constraints.
 
-## First active implementation task
+## Completed task 3.17.2.1
 
-Task 3.17.2.1 is the Global-Market schema reconciliation and migration map. It
-does not apply SQL to production, change Price Source behaviour, or delete
-legacy data. Its acceptance gate is an executable schema contract proving that
+Task 3.17.2.1 reconciled the Global-Market schema and added the deterministic
+migration planner. It does not apply SQL to production, change Price Source
+behaviour or delete legacy data. Its acceptance gate, now met in repository
+tests, is an executable schema contract and deterministic plan proving that
 Global identity, Israel market variant and Company offer cannot be confused or
 written through one another.
+
+## Active task 3.17.2.2
+
+Task 3.17.2.2 adds the unapplied Global family registry seed in
+`db/sql/2026_10_11_catalog_v2_global_family_seed.sql`. It establishes the
+approved family vocabulary, attribute contracts and possible-operation
+eligibility. It must not import legacy rows, create Israel market listings,
+alter Company Price Catalog records or switch readers. `stone_edge_profiling`
+is deliberately absent pending its separately approved operation, route and
+Labor baseline.

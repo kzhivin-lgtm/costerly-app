@@ -184,13 +184,20 @@ Price Catalog offer; a future Israel Catalog link or curation signal never
 blocks that publication.
 The approved Price Source migration sequence and protected behaviour are in
 `notes/PRICE_SOURCE_V2_UPDATE_PLAN_3_17_1.md`.
-P0, ACTIVE, 3.17.2.1 Global-Market catalog rebuild: owner approved the full
+P0, COMPLETED, 3.17.2.1 Global-Market catalog contract and deterministic
+migration plan: owner approved the full
 international architecture on 2026-10-11. The canonical chain is Global
 Catalog -> Market Catalog (Israel first) -> Company Price Catalog. Checkpoint,
 production evidence inventory, mapping rules and cutover gates are in
 `notes/GLOBAL_MARKET_CATALOG_CHECKPOINT_3_17_2_2026_10_11.md`. This task
-reconciles the unapplied V2 contract with that chain before any production SQL
-application, reader cutover or legacy-data deletion.
+reconciled the unapplied V2 contract with that chain and created an executable
+deterministic migration plan before any production SQL application, reader
+cutover or legacy-data deletion.
+P0, ACTIVE, 3.17.2.2 Global family registry seed: create the approved Global
+family vocabulary, primary and secondary attribute contracts and possible
+operation eligibility only. The seed must not import legacy rows, construct an
+Israel listing, write a Company offer or change a reader. `stone_edge_profiling`
+remains excluded until its separate operation and Labor baseline are approved.
 Stone design coverage is complete for current kitchen and furniture scope:
 natural, engineered, sintered, porcelain/ceramic, solid-surface and terrazzo
 families, countertop-like uses, brands, attributes and possible operations are
