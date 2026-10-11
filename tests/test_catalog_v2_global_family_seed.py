@@ -33,13 +33,37 @@ def test_seed_covers_accepted_departments_roles_and_stone_without_unapproved_ope
         "natural_stone_slab",
         "paint_lacquer_stain",
         "hardware_hinge",
+        "hardware_furniture_system",
         "packaging_material",
+        "terrazzo_engineered_agglomerate",
     ):
         assert f"'{family}'" in sql
 
     assert "'stone_edge_profiling'" not in sql
     assert "'consumable'" in sql
     assert "'packaging'" in sql
+
+
+def test_every_hardware_family_referenced_by_the_migration_plan_exists_in_seed():
+    sql = _sql()
+
+    for family in (
+        "hardware_furniture_system",
+        "hardware_hinge",
+        "hardware_drawer_slide",
+        "hardware_connector",
+        "hardware_fastener",
+        "hardware_mounting_part",
+        "hardware_handle",
+        "hardware_leg_caster",
+        "hardware_lift_system",
+        "hardware_lock_latch",
+        "hardware_drawer_system",
+        "hardware_storage_system",
+        "hardware_door_system",
+        "hardware_electrical_component",
+    ):
+        assert f"'{family}'" in sql
 
 
 def test_seed_only_links_to_existing_reference_operation_codes():
