@@ -198,12 +198,13 @@ family vocabulary, primary and secondary attribute contracts and possible
 operation eligibility only. The seed must not import legacy rows, construct an
 Israel listing, write a Company offer or change a reader. `stone_edge_profiling`
 remains excluded until its separate operation and Labor baseline are approved.
-P0, ACTIVE, 3.17.2.3 Israel-market projection and strict backfill preview:
+P0, COMPLETED, 3.17.2.3 Israel-market projection and strict backfill:
 only a row with a proven approved family and that family's required primary
 attribute may create a Global model and Israel variant. The 2026-10-11
-production dry-run permits 3,793 active rows, excludes 247 consumables by
-policy, and retains 408 review rows. No missing thickness, diameter or other
-primary attribute may be invented to improve this coverage.
+production dry-run permitted and production backfill created 3,793 active
+Global-model and Israel-listing records, excluded 247 consumables by policy,
+and retained 408 review rows. No missing thickness, diameter or other primary
+attribute was invented to improve this coverage.
 Stone design coverage is complete for current kitchen and furniture scope:
 natural, engineered, sintered, porcelain/ceramic, solid-surface and terrazzo
 families, countertop-like uses, brands, attributes and possible operations are

@@ -152,16 +152,23 @@ alter Company Price Catalog records or switch readers. `stone_edge_profiling`
 is deliberately absent pending its separately approved operation, route and
 Labor baseline.
 
-## Next task 3.17.2.3
+## Completed task 3.17.2.3
 
-Task 3.17.2.3 will build the deterministic Israel-market projection and
-backfill preview for the 3,793 strict mapped rows only. It must retain the 247
-policy-excluded rows and 408 review rows as legacy evidence, create no
-production data until its preview and integrity gates pass, and preserve the
-separation of Global model, Israel variant and Company offer.
+Task 3.17.2.3 built and ran the deterministic Israel-market projection and
+backfill for the 3,793 strict mapped rows only. It retained the 247
+policy-excluded rows and 408 review rows as legacy evidence, and preserved the
+separation of Global model, Israel market listing and Company offer.
 
 The initial read-only preview passed on the active production inventory: it
 produced 3,793 Global-model and Israel-variant pairs with zero Global model-code
 collisions and zero Israel variant-code collisions. It deliberately creates no
 supply format from legacy `base_unit`, because an estimation unit is not proof
 of a locally purchasable format.
+
+After the owner applied the V2 schema contract and Global family seed in
+Supabase SQL Editor, the production run completed with 3,793 Global material
+models, 3,793 Israel market listings and 4,448 legacy mappings. The final
+mapping statuses were `mapped` 3,793, `excluded_by_policy` 247 and
+`review_required` 408. The post-run integrity check found zero mapped rows
+without both a model and listing link. No legacy material, price, Company
+offer, Price Source reader or UI record was modified.
