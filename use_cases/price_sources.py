@@ -3625,6 +3625,33 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         raise PriceSourceError("Choose whether VAT is included")
 
     normalized_price = raw_price / conversion_factor
+    reviewed_specifications: dict[str, Any] = {}
+    if not catalog_edit:
+        # A Review save is the first moment an unresolved supplier row becomes
+        # a company position.  Its approved name and the literal source line
+        # must therefore enter the same deterministic taxonomy pass as an
+        # automatically accepted row.  Previously this path created a blank
+        # material item, so even an owner-entered "750 mm Blum" became red.
+        # The SKU is deliberately absent from this input: it remains supplier
+        # evidence only and can never complete a cross-supplier identity.
+        review_context = " ".join(
+            value for value in (normalized_name, str(row.get("raw_description") or "").strip())
+            if value
+        )
+        review_candidate = {
+            "item_kind": "material",
+            "raw_description": review_context,
+            "identity_attributes": {},
+        }
+        if apply_material_taxonomy(review_candidate):
+            reviewed_specifications = dict(review_candidate.get("identity_attributes") or {})
+            family = str(review_candidate.get("material_family") or "").strip()
+            if family:
+                reviewed_specifications["material_family"] = family
+    # Review owns the company-facing name. Taxonomy enriches its structured
+    # identity but must not silently rename an existing price-list position or
+    # split its supplier lane because a display label was normalised.
+    canonical_material_name = normalized_name
     normalized_key = _normalized_name(normalized_name)
     def enriched_catalog_identity(
         existing_specifications: Mapping[str, Any] | None,
@@ -3714,6 +3741,21 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         existing = [{"company_material_id": material_id}]
     if existing:
         material_id = existing[0]["company_material_id"]
+        if reviewed_specifications:
+            # An earlier Review save may have created this exact name before
+            # the taxonomy hand-off existed.  Repair it deterministically on
+            # the next save instead of preserving a structurally empty item.
+            client.table("company_material_items").update(
+                {
+                    "category": material_type,
+                    "canonical_name": canonical_material_name,
+                    "normalized_name": normalized_key,
+                    "preferred_unit": calculation_unit,
+                    "specifications": reviewed_specifications,
+                    "reference_material_id": None,
+                    "pricing_identity_id": None,
+                }
+            ).eq("company_id", company_id).eq("company_material_id", material_id).execute()
         active_material_offers = (
             client.table("company_material_offers")
             .select("offer_id,source_id,source_row_id")
@@ -3756,10 +3798,11 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
             {
                 "company_id": company_id,
                 "category": material_type,
-                "canonical_name": normalized_name,
+                "canonical_name": canonical_material_name,
                 "normalized_name": normalized_key,
                 "preferred_unit": calculation_unit,
                 "created_from_source_id": source_id,
+                "specifications": reviewed_specifications,
             }
         ).execute().data[0]
         material_id = material["company_material_id"]

@@ -339,9 +339,10 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
         _trace_event(trace, "server.price_source_lock_rejected", status="error", job_id=job_id)
         raise PriceSourceError(
             "Another price extraction is already running. Try again when it finishes."
-        )
+    )
     results: list[PriceSourceProcessResult] = []
     failed_source_names: list[str] = []
+    failed_source_details: list[str] = []
     try:
         _trace_event(trace, "server.price_source_lock_acquired", job_id=job_id)
         client = get_supabase_client()
@@ -371,6 +372,10 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
             except Exception as exc:
                 logger.exception("Price source batch input failed: %s", source_name)
                 failed_source_names.append(source_name)
+                error_detail = _bounded_error_message(exc)
+                failed_source_details.append(
+                    f"{source_name}: {type(exc).__name__}: {error_detail or 'No error detail was returned.'}"
+                )
                 _trace_event(
                     trace,
                     "server.price_source_batch_source_finished",
@@ -379,10 +384,11 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
                     source_index=index,
                     source_name=source_name,
                     error_type=type(exc).__name__,
-                    error_message=_bounded_error_message(exc),
+                    error_message=error_detail,
                 )
         if not results:
-            raise PriceSourceError("No selected source could be processed.")
+            detail = " ".join(failed_source_details)
+            raise PriceSourceError(f"No selected source could be processed. {detail}".strip())
         return PriceSourceBatchProcessResult(
             results=tuple(results),
             failed_source_names=tuple(failed_source_names),

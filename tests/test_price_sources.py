@@ -3388,6 +3388,45 @@ def test_review_activate_and_remove_row_are_auditable(monkeypatch):
     assert "removed_by_user" in tables["company_price_source_rows"][0]["reason_codes"]
 
 
+def test_review_save_builds_structured_identity_from_approved_name_and_source_text(monkeypatch):
+    tables = {
+        "company_price_sources": [{
+            "source_id": "source-1", "company_id": "company-1", "supplier_id": "supplier-1",
+            "category": "Hardware", "currency": "ILS", "document_date": "2026-10-11",
+            "status": "partial", "processing_summary": {},
+        }],
+        "company_price_source_rows": [{
+            "row_id": "row-1", "source_id": "source-1", "company_id": "company-1",
+            "raw_description": "MOVENTO concealed drawer slide 75 cm Blum",
+            "raw_sku": "SUPPLIER-ONLY-750", "confidence": 50, "result_status": "unresolved",
+            "reason_codes": [], "evidence": {"material_type": "Hardware"},
+        }],
+        "company_material_items": [],
+        "company_material_offers": [],
+    }
+    client = _MutableClient(tables)
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+
+    save_price_source_row(
+        SimpleNamespace(company_id="company-1", user_id="user-1"), "source-1", "row-1",
+        {
+            "normalized_name": "Drawer Slide 750 mm Blum", "material_type": "Hardware",
+            "raw_price": 79, "raw_currency": "ILS", "raw_unit": "set",
+            "purchase_unit": "set", "calculation_unit": "set", "conversion_factor": 1,
+            "vat_mode": "excluded",
+        },
+    )
+
+    item = tables["company_material_items"][0]
+    assert item["canonical_name"] == "Drawer Slide 750 mm Blum"
+    assert item["specifications"]["brand"] == "Blum"
+    assert item["specifications"]["product_system"] == "Movento"
+    assert item["specifications"]["depth_mm"] == 750
+    assert item["specifications"]["material_family"] == "drawer slide"
+    assert "SUPPLIER-ONLY-750" not in item["specifications"].values()
+
+
 def test_catalog_edit_enriches_attributes_without_renaming_or_rewriting_source_evidence(monkeypatch):
     tables = {
         "company_price_sources": [{
@@ -4768,7 +4807,10 @@ def test_price_source_batch_records_bounded_failure_detail(monkeypatch):
         def event(self, name, *, status, duration_ms, metadata):
             events.append((name, status, metadata))
 
-    with pytest.raises(PriceSourceError, match="No selected source"):
+    with pytest.raises(
+        PriceSourceError,
+        match="invoice.jpg: PriceSourceSchemaError: invalid source table",
+    ):
         price_source_runtime._run_price_source_batch_job(
             access=SimpleNamespace(company_id="failure-company"),
             uploaded_files=(SimpleNamespace(name="invoice.jpg"),),

@@ -4194,6 +4194,17 @@ def _render_price_lists_projections(access: CompanyAccess, *, trace=None) -> Non
                                             key=f"view_price_source_{source_id}",
                                             use_container_width=True,
                                         )
+                                    elif source.get("source_kind") != "url":
+                                        # Keep a missing Storage original visible as a recoverable
+                                        # source-integrity issue. A blank action cell looked like a
+                                        # rendering fault and gave the owner no explanation or remedy.
+                                        st.button(
+                                            "Unavailable",
+                                            key=f"view_price_source_unavailable_{source_id}",
+                                            disabled=True,
+                                            help="The original upload is unavailable. Re-upload the source to restore View.",
+                                            use_container_width=True,
+                                        )
                                 with settings_col:
                                     st.button(
                                         "Edit",
