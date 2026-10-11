@@ -2682,6 +2682,37 @@ def apply_company_profile_css() -> None:
             visibility: hidden;
         }
 
+        .stApp:has(.company-profile-active) .price-catalog-identity-dot {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            min-width: 9px;
+            border-radius: 50%;
+            vertical-align: middle;
+        }
+
+        .stApp:has(.company-profile-active) .price-catalog-identity-dot-green {
+            background: #3A9B62;
+        }
+
+        .stApp:has(.company-profile-active) .price-catalog-identity-dot-yellow {
+            background: #D69A22;
+        }
+
+        .stApp:has(.company-profile-active) .price-catalog-identity-dot-red {
+            background: #D94B52;
+        }
+
+        .stApp:has(.company-profile-active) .price-catalog-identity-summary {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin: 0 0 10px;
+            color: var(--color-text-muted);
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
         .stApp:has(.company-profile-active)
         [class*="st-key-price_source_review_price_"] label,
         .stApp:has(.company-profile-active)

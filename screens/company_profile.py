@@ -2955,7 +2955,16 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                             source_url=source_url,
                             key=f"catalog_{row_id}",
                         )
-                    if edit_col.button("Edit", key=f"catalog_edit_{row_id}"):
+                    identity_status = dict(row.get("identity_status") or {})
+                    status_col, edit_button_col = edit_col.columns([0.24, 0.76], gap="small")
+                    status_col.markdown(
+                        '<span class="price-catalog-identity-dot price-catalog-identity-dot-'
+                        f'{escape(str(identity_status.get("tone") or "red"))}" '
+                        f'title="{escape(str(identity_status.get("detail") or "Identity unresolved"))}" '
+                        'aria-label="Material identity status"></span>',
+                        unsafe_allow_html=True,
+                    )
+                    if edit_button_col.button("Edit", key=f"catalog_edit_{row_id}"):
                         st.session_state.pop("_selected_price_source_id", None)
                         st.session_state._editing_price_source_row = (source_id, row_id)
                         st.session_state._price_source_action_location = "catalog"
@@ -2982,6 +2991,10 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                                     None,
                                 )
                             if source_row:
+                                source_row = {
+                                    **source_row,
+                                    "identity_status": identity_status,
+                                }
                                 _render_price_source_row_editor(access, source, source_row)
 
 
@@ -3060,6 +3073,20 @@ def _render_price_source_row_editor(
     review_field = _price_source_review_field(row) if review_only else ""
     with st.form(f"price_source_row_form_{source_id}_{row_id}", border=False):
         if not review_only:
+            identity_status = dict(row.get("identity_status") or {})
+            if identity_status:
+                known_path = " · ".join(str(item) for item in identity_status.get("known_path") or ())
+                missing = ", ".join(str(item) for item in identity_status.get("missing") or ())
+                st.markdown(
+                    '<div class="price-catalog-identity-summary price-catalog-identity-summary-'
+                    f'{escape(str(identity_status.get("tone") or "red"))}">'
+                    f'<span class="price-catalog-identity-dot price-catalog-identity-dot-{escape(str(identity_status.get("tone") or "red"))}"></span>'
+                    f'<span><strong>{escape(str(identity_status.get("label") or "Identity"))}</strong>'
+                    + (f' · {escape(known_path)}' if known_path else '')
+                    + (f' · Missing: {escape(missing)}' if missing else '')
+                    + '</span></div>',
+                    unsafe_allow_html=True,
+                )
             name_col, type_col = st.columns([1.7, 1])
             with name_col:
                 st.text_input(

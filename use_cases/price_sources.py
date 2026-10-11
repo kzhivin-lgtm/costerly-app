@@ -39,6 +39,7 @@ from use_cases.price_source_ocr import (
 from use_cases.price_source_material_resolution import (
     resolve_price_source_material_identities,
 )
+from use_cases.material_identity_status import material_identity_status
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
@@ -2653,7 +2654,10 @@ def list_price_catalog(access) -> list[dict]:
 
     materials = (
         client.table("company_material_items")
-        .select("company_material_id,category,canonical_name,preferred_unit")
+        .select(
+            "company_material_id,category,canonical_name,preferred_unit,"
+            "specifications,reference_material_id,pricing_identity_id"
+        )
         .eq("company_id", company_id)
         .neq("status", "archived")
         .execute()
@@ -2707,12 +2711,20 @@ def list_price_catalog(access) -> list[dict]:
         supplier_name = str(supplier.get("supplier_name") or "Unknown supplier")
         if source_summary.get("source_origin") == "company_internal":
             supplier_name = "Internal estimate"
+        identity_status = material_identity_status(material)
         catalog.append(
             {
                 **offer,
                 "department": department,
                 "material_type": category,
                 "canonical_name": str(material.get("canonical_name") or "Material"),
+                "identity_status": {
+                    "tone": identity_status.tone,
+                    "label": identity_status.label,
+                    "known_path": list(identity_status.known_path),
+                    "missing": list(identity_status.missing),
+                    "detail": identity_status.detail,
+                },
                 "original_name": str(source_row.get("raw_description") or ""),
                 "source_row": source_row,
                 "supplier_name": supplier_name,
