@@ -3389,7 +3389,7 @@ def test_catalog_edit_enriches_attributes_without_renaming_or_rewriting_source_e
     )
 
     item = tables["company_material_items"][0]
-    assert item["canonical_name"] == "Drawer slide"
+    assert item["canonical_name"] == "Drawer Slide 750 mm Blum, MOVENTO"
     assert item["specifications"]["depth_mm"] == 750
     assert item["specifications"]["product_system"] == "MOVENTO"
     assert item["specifications"]["source_sku"] == "SUPPLIER-ONLY"

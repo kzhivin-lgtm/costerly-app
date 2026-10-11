@@ -3605,7 +3605,9 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
 
     normalized_price = raw_price / conversion_factor
     normalized_key = _normalized_name(normalized_name)
-    def enriched_specifications(existing_specifications: Mapping[str, Any] | None) -> dict[str, Any]:
+    def enriched_catalog_identity(
+        existing_specifications: Mapping[str, Any] | None,
+    ) -> tuple[dict[str, Any], str | None]:
         """Add facts literally supplied through the Catalog attribute input.
 
         This is deliberately local and deterministic.  It never rewrites the
@@ -3624,7 +3626,7 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
             "identity_attributes": retained,
         }
         if not apply_material_taxonomy(candidate):
-            return retained
+            return retained, None
         derived = dict(candidate.get("identity_attributes") or {})
         for key, value in derived.items():
             if value not in (None, "", 0, 0.0, []):
@@ -3632,7 +3634,11 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         family = str(candidate.get("material_family") or "").strip()
         if family:
             retained["material_family"] = family
-        return retained
+        # The displayed company name is an output of the canonical identity,
+        # never an owner-typed alias. This lets a confirmed attribute become
+        # visible immediately while keeping the raw supplier description intact.
+        canonical_name = str(candidate.get("normalized_name") or "").strip() or None
+        return retained, canonical_name
 
     linked_material_id = str(row.get("company_material_id") or "").strip()
     linked_material: dict[str, Any] | None = None
@@ -3665,17 +3671,24 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         # A Catalog edit modifies the existing company position. Looking it up
         # again by the new name would silently split one position into two.
         material_id = linked_material_id
+        specifications, canonical_name = enriched_catalog_identity(
+            linked_material.get("specifications")
+        )
+        identity_update = {
+            "category": material_type,
+            "preferred_unit": calculation_unit,
+            "specifications": specifications,
+            # The edited name may add a decisive fact, so resolve its
+            # canonical reference again. Raw supplier provenance remains
+            # attached to the source row and offer.
+            "reference_material_id": None,
+            "pricing_identity_id": None,
+        }
+        if canonical_name:
+            identity_update["canonical_name"] = canonical_name
+            identity_update["normalized_name"] = _normalized_name(canonical_name)
         client.table("company_material_items").update(
-            {
-                "category": material_type,
-                "preferred_unit": calculation_unit,
-                "specifications": enriched_specifications(linked_material.get("specifications")),
-                # The edited name may add a decisive fact, so resolve its
-                # canonical reference again. Raw supplier provenance remains
-                # attached to the source row and offer.
-                "reference_material_id": None,
-                "pricing_identity_id": None,
-            }
+            identity_update
         ).eq("company_id", company_id).eq("company_material_id", material_id).execute()
         existing = [{"company_material_id": material_id}]
     if existing:
