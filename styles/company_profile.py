@@ -2682,6 +2682,15 @@ def apply_company_profile_css() -> None:
             visibility: hidden;
         }
 
+        /* The attributes input reserves space for its help affordance in the
+           label row. Match only the adjacent Material type control, leaving
+           its label and every other selectbox untouched. */
+        .stApp:has(.company-profile-active)
+        [class*="st-key-price_source_material_type_"]
+        [data-testid="stSelectbox"] div[data-baseweb="select"] {
+            margin-top: 20px;
+        }
+
         .stApp:has(.company-profile-active)
         [class*="st-key-price_source_review_price_"] label,
         .stApp:has(.company-profile-active)

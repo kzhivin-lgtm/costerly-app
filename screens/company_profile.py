@@ -3071,12 +3071,13 @@ def _render_price_source_row_editor(
                 )
             with type_col:
                 selected_type = material_type if material_type in categories else categories[0]
-                st.selectbox(
-                    "Material type",
-                    categories,
-                    index=categories.index(selected_type),
-                    key=field_keys["material_type"],
-                )
+                with st.container(key=f"price_source_material_type_{row_id}"):
+                    st.selectbox(
+                        "Material type",
+                        categories,
+                        index=categories.index(selected_type),
+                        key=field_keys["material_type"],
+                    )
         price_col, calculation_unit_col, save_col, cancel_col = st.columns(
             [1, 1, 0.52, 0.62], gap="small"
         )
