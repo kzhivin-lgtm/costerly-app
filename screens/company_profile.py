@@ -3067,17 +3067,15 @@ def _render_price_source_row_editor(
                     value="",
                     placeholder="For example: 750 mm, white, Movento",
                     key=field_keys["attribute_text"],
-                    help="Adds only facts that are written here. The material name and supplier evidence stay unchanged.",
                 )
             with type_col:
                 selected_type = material_type if material_type in categories else categories[0]
-                with st.container(key=f"price_source_material_type_{row_id}"):
-                    st.selectbox(
-                        "Material type",
-                        categories,
-                        index=categories.index(selected_type),
-                        key=field_keys["material_type"],
-                    )
+                st.selectbox(
+                    "Material type",
+                    categories,
+                    index=categories.index(selected_type),
+                    key=field_keys["material_type"],
+                )
         price_col, calculation_unit_col, save_col, cancel_col = st.columns(
             [1, 1, 0.52, 0.62], gap="small"
         )
