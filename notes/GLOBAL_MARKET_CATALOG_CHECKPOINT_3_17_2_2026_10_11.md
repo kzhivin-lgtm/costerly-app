@@ -98,6 +98,25 @@ company offers and operation records remain linked through migration mapping.
 No destructive deletion or silent defaulting is permitted before reader cutover
 and integrity checks pass.
 
+## Deterministic migration-map baseline
+
+The executable, side-effect-free planner is
+`use_cases/catalog_migration_map.py`. A read-only production pass on the 4,728
+legacy reference rows produced:
+
+| Result | Rows | Treatment |
+| --- | ---: | --- |
+| `mapped` | 4,366 | Eligible for a later explicit Global family, Global model and Israel-listing backfill |
+| `excluded_by_policy` | 288 | Consumables. Retain legacy/source evidence only, with no Company Price Catalog or preliminary-estimate material identity |
+| `review_required` | 74 | Preserve without invented family, model or listing |
+
+The remaining review set is intentionally small and explicit: 46 square-bar
+metal rows whose approved matrix has no square-bar family, 24 decorative films
+or foils with no approved production operation, and two faced-panel rows whose
+substrate/construction is not proven by their current category. Those are
+catalog-curation decisions, not parser failures. The migration must keep them
+visible until a staff member creates or approves the required family rule.
+
 ## Implementation sequence after this checkpoint
 
 1. Replace the unapplied V2 transition schema with the Global-Market contract,
