@@ -115,11 +115,72 @@ brand aliases and a Material Job route to reference operation plus supplier
 operation offer, never a material offer. It must preserve the frozen 3.16.7
 supplier, VAT, source lifecycle and UI paths. Contract:
 `notes/MATERIAL_TAXONOMY_3_17_1.md`.
-Pending owner decision within this work: whether low-cost discrete Hardware is
-excluded as small consumables. Proposed policy is verified unit price at most
-ILS 10 ex-VAT plus explicit package or line quantity at least 10. It must run
-after arithmetic verification and must not reclassify the item away from
-Hardware.
+Owner accepted the five production departments (Wood, Metal, Glass & Plastics,
+Stone, Coating), distinct entity roles, and multi-department affinity for
+Hardware and Consumables. 3.17.1.3 is active: complete the Material Family
+Matrix, including primary and secondary attributes, family-scoped brands, and
+eligible operations. Thickness and other identity attributes do not alter
+operation eligibility; no operation is mandatory. Contract:
+`notes/MATERIAL_FAMILY_MATRIX_3_17_1.md`.
+Material Family Matrix and staged Operation Dictionary accepted by owner on
+2026-10-10. The next gate is source-backed time priors and formula parameters
+by recipe, beginning with panel-saw and CNC-router sessions. Shared setup and
+cleanup apply only within one compatible route and machine session, never
+across different machines. Contract:
+`notes/OPERATION_DICTIONARY_3_17_1.md`.
+Existing Labor evidence has been recovered for this gate: source audit,
+baseline, Furniture Core recipes/formulas and route catalog. It must be
+reclassified before use because the current engine has 53 flat v0 baselines,
+while the broader library mixes source-backed, equipment-bound and derived
+priors.
+Owner accepted the deliberately incomplete Operation Dictionary v1 on
+2026-10-10. Missing operations remain a controlled gap list for a later
+versioned expansion. They must not be folded into a similar operation or given
+an invented time value.
+Owner confirmed the approved new semantics for Hardware, Consumables and
+Packaging on 2026-10-10. They will be rebuilt as entity roles in the new
+canonical catalog model: Hardware and Consumables have one or more
+production-department affinities for retrieval/context only; Packaging has no
+production department. The owner also authorised a direct rebuild rather than
+legacy product compatibility because the current catalog is transitional and
+unused. Internal readers still require complete replacement and verification.
+Architecture checkpoint:
+`notes/CATALOG_ARCHITECTURE_MIGRATION_3_17_1.md`.
+Terminology accepted on 2026-10-10: `Material Resolver` resolves canonical
+material identity, `Material Engine` calculates purchasable quantities, `Labor
+Resolver` resolves selected operations to route/recipe/machinery session, and
+`Labor Engine` calculates staged labor. Sheet-material quantity is nesting and
+whole-purchase-unit rounding at project scope, not a generic waste percentage;
+V1 does not credit offcuts across projects. Material identity, material supply,
+Price Source and labor review states remain separate.
+P0, USER REQUEST, 3.17.1 catalog-gap provisional estimate and Staff review
+inbox: every review state must still produce an explicitly provisional estimate
+rather than block calculation. A bounded research pass may propose a material,
+source price, operation or route with provenance, confidence and assumptions.
+It is stored only inside that estimate, never as a candidate or provisional
+catalog row. Each gap creates a deduplicated internal review job carrying the
+source evidence, case-local assumption, calculation trace, gap type and
+reoccurrence count. A staff reviewer later creates the authoritative catalog
+record separately, if justified. Build the data contract, job lifecycle and
+Staff Admin review interface after owner approval of the fallback policy.
+Implementation started on 2026-10-11 from checkpoint
+`notes/CATALOG_REBUILD_CHECKPOINT_3_17_1_2026_10_11.md`. Increment 1 adds
+only the catalog-V2, case-local-assumption and Catalog-Gap-Job contracts in
+`db/sql/2026_10_11_catalog_v2_contract_foundation.sql`; it does not apply the
+migration, switch readers, write research into canonical catalog rows or expose
+the Staff Admin Inbox. Contract: `notes/PROVISIONAL_ESTIMATE_CONTRACT_3_17_1.md`.
+Reader/UI scope is mandatory, not a later cosmetic pass: migrate Price Source
+ingestion and review/list behaviour, Company Catalog, Estimation/Object Detail
+and Staff Admin to the same V2 taxonomy contract. Preserve the accepted Price
+Source rule that departments/families without an eligible material row are not
+rendered. A Stone row appears only after it is resolved to a canonical V2
+material, and must then use the Stone department/category/family path.
+Stone design coverage is complete for current kitchen and furniture scope:
+natural, engineered, sintered, porcelain/ceramic, solid-surface and terrazzo
+families, countertop-like uses, brands, attributes and possible operations are
+defined. The subsequent implementation must create the approved
+`stone_edge_profiling` operation only together with its route, driver schema
+and Labor baseline. It must not be added as an unpriced catalog label.
 
 ACTIVE, IMPLEMENTATION CHECKPOINT `5f6360f`, P0, 3.15.24 canonical object quantity and durable Object Detail route:
 make item quantity editable on File Review, Objects, and Object Detail. All

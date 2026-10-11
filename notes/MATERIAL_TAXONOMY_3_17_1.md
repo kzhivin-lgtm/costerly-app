@@ -146,6 +146,19 @@ preserves the existing identity and prevents a Review typo from splitting a
 future merge. Reclassification remains a separate future action with an
 explicit merge consequence.
 
+### Active matrix design, 3.17.1.3
+
+The owner accepted five production departments: Wood, Metal, Glass & Plastics,
+Stone, and Coating. Hardware, Consumables, and Packaging are entity roles,
+not production departments. Hardware and Consumables can have one or more
+department affinities for retrieval and Agent context. The accepted Material
+Family Matrix is `notes/MATERIAL_FAMILY_MATRIX_3_17_1.md`.
+
+An operation is eligible by material family only. No identity attribute,
+including thickness, may add, remove, or require an operation. The Agent
+chooses zero or more eligible operations from object evidence. Deterministic
+layers subsequently validate physical drivers and select the route.
+
 ## Acceptance
 
 - One literal source line has one structured identity and the same canonical
