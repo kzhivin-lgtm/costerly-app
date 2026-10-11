@@ -106,12 +106,12 @@ A later Estimation resolver consumes accepted offers only and is not a reason
 to reopen frozen supplier ingestion behavior.
 
 ACTIVE, P0, USER REQUEST, 3.17.1 Unified material taxonomy, identity, brands,
-and Material Jobs: establish one bilingual, structured normalisation contract
-for Price Source, company catalog, Israel Price List, Detection and Material
-Jobs. Canonical display order is entity, primary attribute, brand, then ordered
+and Supplier Operations: establish one bilingual, structured normalisation contract
+for Price Source, company catalog, Israel Price List, Detection and Supplier
+Operations. Canonical display order is entity, primary attribute, brand, then ordered
 secondary attributes. Supplier SKU remains supplier-scoped evidence only. The
 work includes Hebrew/English aliases, OCR-tolerant variants, department-scoped
-brand aliases and a Material Job route to reference operation plus supplier
+brand aliases and a Supplier Operation route to reference operation plus supplier
 operation offer, never a material offer. It must preserve the frozen 3.16.7
 supplier, VAT, source lifecycle and UI paths. Contract:
 `notes/MATERIAL_TAXONOMY_3_17_1.md`.
@@ -122,6 +122,12 @@ Matrix, including primary and secondary attributes, family-scoped brands, and
 eligible operations. Thickness and other identity attributes do not alter
 operation eligibility; no operation is mandatory. Contract:
 `notes/MATERIAL_FAMILY_MATRIX_3_17_1.md`.
+Owner accepted the Company Price Catalog structure on 2026-10-11: its six
+top-level sections are Wood, Metal, Glass & Plastics, Stone, Coating and
+Hardware. Hardware is a catalog section, not a production department, and no
+longer maps to Wood. Keep Consumables excluded from company-catalog persistence
+and preliminary-estimate selection. Rename the existing Material Jobs UI to
+Supplier Operations.
 Material Family Matrix and staged Operation Dictionary accepted by owner on
 2026-10-10. The next gate is source-backed time priors and formula parameters
 by recipe, beginning with panel-saw and CNC-router sessions. Shared setup and
@@ -173,8 +179,11 @@ Reader/UI scope is mandatory, not a later cosmetic pass: migrate Price Source
 ingestion and review/list behaviour, Company Catalog, Estimation/Object Detail
 and Staff Admin to the same V2 taxonomy contract. Preserve the accepted Price
 Source rule that departments/families without an eligible material row are not
-rendered. A Stone row appears only after it is resolved to a canonical V2
-material, and must then use the Stone department/category/family path.
+rendered. A Stone row appears after it is standardised into an active Company
+Price Catalog offer; a future Israel Catalog link or curation signal never
+blocks that publication.
+The approved Price Source migration sequence and protected behaviour are in
+`notes/PRICE_SOURCE_V2_UPDATE_PLAN_3_17_1.md`.
 Stone design coverage is complete for current kitchen and furniture scope:
 natural, engineered, sintered, porcelain/ceramic, solid-surface and terrazzo
 families, countertop-like uses, brands, attributes and possible operations are

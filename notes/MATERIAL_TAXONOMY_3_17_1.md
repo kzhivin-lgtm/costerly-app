@@ -6,7 +6,7 @@ Status: active, P0. Owner-approved 2026-10-08.
 
 Every material-bearing input follows one structured contract before it enters
 Price Source, company catalog, Israel Price List, Detection or Estimation.
-Material Jobs use the same bilingual evidence layer but follow the separate
+Supplier Operations use the same bilingual evidence layer but follow the separate
 operation-offer path.
 
 ## Protected boundaries
@@ -67,7 +67,7 @@ only a source-proven stock plate such as `steel plate` is Metal.
 | Metal | sheet, profile, tube, angle, channel, flat/round bar, rod, wire | section or thickness | metal type, technical grade including AISI, wall thickness, finish |
 | Glass & Plastics | glass, mirror, acrylic/PMMA, ABS, polycarbonate, PETG, PVC, plastic sheet, vinyl film, aluminium composite panel, sandwich panel | thickness or product form | dimensions, core, fire class, tempering, edge process, finish |
 | Coating | paint, lacquer, primer, powder coating, stain, filler, hardener, thinner | system/product type | substrate, sheen, colour, chemistry |
-| Material Jobs | cutting and edge banding, machining, metalwork, glasswork, finishing, assembly | reference operation | supplier-proved billing basis and scope only |
+| Supplier Operations | cutting and edge banding, machining, metalwork, glasswork, finishing, assembly | reference operation | supplier-proved billing basis and scope only |
 
 The formatter emits at most one entity, one primary attribute, one brand and
 up to four identity-bearing secondary attributes. This is an allowlist, not a
@@ -84,7 +84,7 @@ For same-supplier material identity, two known but different brands are a
 boundary. One missing brand is uncertainty, not a forced split. Supplier SKU
 remains a supplier-lane signal and is never a display field or global identity.
 
-## Material Jobs
+## Supplier Operations
 
 The bilingual dictionary identifies supplier work such as cutting plus edge
 banding, drilling, routing, welding, bending, coating or assembly. A recognised
@@ -95,7 +95,8 @@ source row → reference operation → company supplier operation offer
 ```
 
 It never creates a company material or material offer. The first production
-acceptance case is `פס חיתוך + קנט`.
+acceptance case is `פס חיתוך + קנט`. The previous UI name, `Material Jobs`, is
+replaced by `Supplier Operations`.
 
 ## Consumables boundary
 
@@ -107,8 +108,9 @@ suspension fixings. Hinges, handles, drawer slides, gas lifts, door closures
 and other durable or visible fittings remain catalog candidates regardless of
 price or package count. An explicit package of at least ten items is only a
 supporting exclusion signal for otherwise-generic Hardware; it never excludes
-a recognised durable fitting. The raw source row remains audit evidence with
-an exclusion reason.
+a recognised durable fitting. The source document remains audit evidence, but
+an excluded consumable creates neither a normalised source-row record nor a
+company-catalog record.
 
 ## Delivery sequence
 
@@ -153,6 +155,14 @@ Stone, and Coating. Hardware, Consumables, and Packaging are entity roles,
 not production departments. Hardware and Consumables can have one or more
 department affinities for retrieval and Agent context. The accepted Material
 Family Matrix is `notes/MATERIAL_FAMILY_MATRIX_3_17_1.md`.
+
+The Company Price Catalog has six top-level sections: Wood, Metal, Glass &
+Plastics, Stone, Coating and Hardware. Hardware is a separate catalog section,
+not a sixth production department. It is stored once under its functional
+family, never duplicated below production departments; affinities only support
+retrieval. Consumables remain excluded from company-catalog persistence and
+preliminary-estimate selection, because the preliminary estimate applies their
+approved allowance rather than enumerating workshop inputs.
 
 An operation is eligible by material family only. No identity attribute,
 including thickness, may add, remove, or require an operation. The Agent
