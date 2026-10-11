@@ -302,6 +302,91 @@ def _source_supplier_maps(
     )
 
 
+def _sync_company_market_listing_mappings(
+    client: Any,
+    *,
+    company_id: str,
+    market_code: str,
+    company_reference_links: Mapping[str, str],
+) -> int:
+    """Project proven legacy identities onto V2 market listings.
+
+    This is deliberately a bridge, not a second resolver. A Company Price
+    Catalog item receives a V2 listing only through its already-proven legacy
+    reference-material link. Staff-reviewed links are never overwritten.
+    """
+    if not company_reference_links:
+        return 0
+    reference_material_ids = sorted(set(company_reference_links.values()))
+    legacy_mappings = (
+        client.table("reference_market_material_legacy_mappings")
+        .select(
+            "legacy_material_id,market_material_listing_id,classification_status,"
+            "classification_basis"
+        )
+        .eq("market_code", market_code)
+        .in_("legacy_material_id", reference_material_ids)
+        .execute()
+        .data or []
+    )
+    legacy_mapping_by_id = {
+        str(row.get("legacy_material_id") or ""): row for row in legacy_mappings
+    }
+    existing_mappings = (
+        client.table("company_material_item_market_listing_mappings")
+        .select("company_material_id,mapping_basis")
+        .in_("company_material_id", sorted(company_reference_links))
+        .execute()
+        .data or []
+    )
+    staff_reviewed_ids = {
+        str(row.get("company_material_id") or "")
+        for row in existing_mappings
+        if str(row.get("mapping_basis") or "") == "staff_review"
+    }
+    payloads: list[dict[str, Any]] = []
+    for company_material_id, reference_material_id in company_reference_links.items():
+        if company_material_id in staff_reviewed_ids:
+            continue
+        legacy_mapping = legacy_mapping_by_id.get(reference_material_id) or {}
+        classification_status = str(legacy_mapping.get("classification_status") or "")
+        if (
+            classification_status == "mapped"
+            and legacy_mapping.get("market_material_listing_id")
+        ):
+            mapping_status = "matched"
+            listing_id = str(legacy_mapping["market_material_listing_id"])
+            mapping_basis: str | None = "deterministic_rule"
+        elif classification_status == "review_required":
+            mapping_status = "review_required"
+            listing_id = None
+            mapping_basis = None
+        else:
+            mapping_status = "no_market_match"
+            listing_id = None
+            mapping_basis = None
+        payloads.append(
+            {
+                "company_material_id": company_material_id,
+                "market_material_listing_id": listing_id,
+                "mapping_status": mapping_status,
+                "mapping_basis": mapping_basis,
+                "mapping_evidence": {
+                    "bridge": "legacy_reference_material_v1_to_market_listing_v2",
+                    "market_code": market_code,
+                    "legacy_material_id": reference_material_id,
+                    "legacy_classification_status": classification_status or None,
+                },
+            }
+        )
+    if payloads:
+        client.table("company_material_item_market_listing_mappings").upsert(
+            payloads,
+            on_conflict="company_material_id",
+        ).execute()
+    return len(payloads)
+
+
 def resolve_price_source_material_identities(
     client: Any,
     *,
@@ -761,6 +846,25 @@ def resolve_price_source_material_identities(
         client.table("material_identity_resolution_events").insert(
             resolution_events
         ).execute()
+    company_reference_links = {
+        str(row.get("company_material_id") or ""): str(
+            row.get("reference_material_id") or ""
+        )
+        for row in source_rows_to_update
+        if row.get("company_material_id") and row.get("reference_material_id")
+    }
+    # This is an additive V2 projection. Its outage must not invalidate the
+    # accepted Source Agent identity path or conceal a completed import.
+    try:
+        company_listing_mappings = _sync_company_market_listing_mappings(
+            client,
+            company_id=company_id,
+            market_code=market,
+            company_reference_links=company_reference_links,
+        )
+    except Exception:
+        logger.exception("Company catalog V2 listing projection failed")
+        company_listing_mappings = 0
 
     _emit_duration(
         trace,
@@ -769,6 +873,7 @@ def resolve_price_source_material_identities(
         source_row_updates=len(source_rows_to_update),
         candidates=len(new_candidates),
         resolution_events=len(resolution_events),
+        company_listing_mappings=company_listing_mappings,
     )
     _emit_duration(
         trace,

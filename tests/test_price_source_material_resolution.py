@@ -98,6 +98,7 @@ class _Query:
             payloads = self.payload if isinstance(self.payload, list) else [self.payload]
             primary_keys = {
                 "company_price_source_rows": "row_id",
+                "company_material_item_market_listing_mappings": "company_material_id",
             }
             primary_key = primary_keys[self.table]
             upserted = []
@@ -210,6 +211,14 @@ def _tables(*, exact_alias=True):
         ],
         "material_identity_candidates": [],
         "material_identity_resolution_events": [],
+        "reference_market_material_legacy_mappings": [{
+            "legacy_material_id": "reference-mdf",
+            "market_code": "IL",
+            "market_material_listing_id": "listing-mdf-18",
+            "classification_status": "mapped",
+            "classification_basis": "deterministic_rule",
+        }],
+        "company_material_item_market_listing_mappings": [],
     }
 
 
@@ -381,6 +390,56 @@ def test_exact_alias_links_company_material_and_records_immutable_event():
     assert tables["company_material_offers"][0]["identity_confidence"] == 100
     assert tables["material_identity_candidates"] == []
     assert len(tables["material_identity_resolution_events"]) == 1
+    assert tables["company_material_item_market_listing_mappings"] == [{
+        "company_material_id": "company-material-1",
+        "market_material_listing_id": "listing-mdf-18",
+        "mapping_status": "matched",
+        "mapping_basis": "deterministic_rule",
+        "mapping_evidence": {
+            "bridge": "legacy_reference_material_v1_to_market_listing_v2",
+            "market_code": "IL",
+            "legacy_material_id": "reference-mdf",
+            "legacy_classification_status": "mapped",
+        },
+    }]
+
+
+def test_staff_reviewed_company_listing_mapping_is_never_overwritten():
+    tables = _tables()
+    tables["company_material_item_market_listing_mappings"] = [{
+        "company_material_id": "company-material-1",
+        "market_material_listing_id": "staff-listing",
+        "mapping_status": "matched",
+        "mapping_basis": "staff_review",
+        "mapping_evidence": {"review": "staff"},
+    }]
+
+    resolve_price_source_material_identities(
+        _Client(tables), company_id="company-1", source_id="source-1"
+    )
+
+    assert tables["company_material_item_market_listing_mappings"][0][
+        "market_material_listing_id"
+    ] == "staff-listing"
+
+
+def test_v2_listing_projection_failure_does_not_fail_identity_resolution(monkeypatch):
+    tables = _tables()
+
+    def fail_projection(**_kwargs):
+        raise RuntimeError("V2 projection is temporarily unavailable")
+
+    monkeypatch.setattr(
+        "use_cases.price_source_material_resolution._sync_company_market_listing_mappings",
+        fail_projection,
+    )
+
+    batch = resolve_price_source_material_identities(
+        _Client(tables), company_id="company-1", source_id="source-1"
+    )
+
+    assert batch.resolved == 1
+    assert tables["company_material_items"][0]["reference_material_id"] == "reference-mdf"
 
 
 def test_non_exact_match_stays_private_and_enters_review_buffer():

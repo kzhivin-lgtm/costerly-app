@@ -188,3 +188,19 @@ enriched rows, 655 legacy-fallback-only rows and 4,448 identity-index entries.
 The focused publisher suite passed 24 tests. This task does not alter Price
 Source UI, Company offers or pricing values. Those records must move through
 their own V2 links before the legacy price bridge can be removed.
+
+## Completed task 3.17.2.5
+
+The Price Source identity stage now projects a proven legacy
+`reference_material_id` to the Israel Market Listing linked by its approved V2
+legacy mapping. The Company mapping records deterministic bridge evidence and
+will never overwrite a `staff_review` mapping. A V2 projection failure is
+non-blocking: the accepted supplier ingestion and identity-resolution flow
+still completes and is recorded normally.
+
+The current production inventory contains 29 Company Price Catalog items and
+zero proven legacy reference-material links. Consequently, no historical
+Company item is guessed or backfilled from name, price, supplier or SKU. It
+will receive a listing only after a future or explicitly re-run Source
+resolution proves its identity. Focused Source identity plus Estimation
+publisher tests passed 37 checks for this stage.

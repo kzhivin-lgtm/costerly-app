@@ -213,6 +213,13 @@ index. The 247 policy-excluded and 408 review-required rows therefore remain
 available as fallback evidence and cannot make an estimate disappear. Legacy
 material IDs remain the temporary price-identity bridge until the pricing
 catalog and Company Price Catalog are migrated to V2 links.
+P0, COMPLETED, 3.17.2.5 Company Price Catalog V2 forward bridge: a
+Price Source row that has already proved its legacy reference-material identity
+now projects deterministically to its Israel Market Listing. The projection
+preserves staff-reviewed mappings, records bridge evidence, and cannot fail or
+invalidate the frozen Price Source identity flow. The current catalog has 29
+items but no proven reference-material links, so no historical item was
+guessed or backfilled from its name, price or supplier SKU.
 Stone design coverage is complete for current kitchen and furniture scope:
 natural, engineered, sintered, porcelain/ceramic, solid-surface and terrazzo
 families, countertop-like uses, brands, attributes and possible operations are
