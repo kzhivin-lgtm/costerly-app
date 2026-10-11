@@ -204,3 +204,17 @@ Company item is guessed or backfilled from name, price, supplier or SKU. It
 will receive a listing only after a future or explicitly re-run Source
 resolution proves its identity. Focused Source identity plus Estimation
 publisher tests passed 37 checks for this stage.
+
+## Completed task 3.17.2.6
+
+Price Source now classifies natural stone, engineered quartz, sintered stone,
+porcelain, solid surface and terrazzo from explicit bilingual evidence. It
+persists the resulting V2 family, entity role and production-department facts
+inside source evidence only. Hardware now projects to the Hardware catalog
+section instead of Wood. The Price Source UI renders the six approved sections
+and calls the independent service-offer projection Supplier Operations.
+
+This is intentionally not a write-through catalog curator: a taxonomy fact
+does not create a Global model, Israel listing or Company Catalog offer on its
+own. The follow-up resolver/Admin workflow owns such canonical records. The
+focused Source, resolver, publisher and Company Access suites passed 529 tests.

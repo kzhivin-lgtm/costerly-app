@@ -98,6 +98,7 @@ from use_cases.price_sources import (
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
+    catalog_v2_taxonomy_for_family,
     job_operation_for_text,
     material_rule_for_text,
 )
@@ -1702,6 +1703,9 @@ def test_sheet_normalization_keeps_proved_glass_category():
         ("פח מגולוון 2 ממ", "Metal Sheets", "metal sheet"),
         ("steel plate 8 mm", "Metal Sheets", "metal sheet"),
         ("מוט פליז עגול 8 ממ", "Metal Supplies", "metal bar"),
+        ("Caesarstone quartz slab 20 mm", "Stone", "engineered quartz"),
+        ("דקטון 12 ממ", "Stone", "sintered stone"),
+        ("Carrara marble slab 20 mm", "Stone", "natural stone"),
         ("צבע אפוקסי שחור", "Paints & Coatings", "epoxy coating"),
         ("שמן עץ טבעי", "Coating Supplies", "coating material"),
     ],
@@ -1719,6 +1723,35 @@ def test_bilingual_taxonomy_covers_all_material_departments(description, categor
     assert apply_material_taxonomy(row) is True
     assert row["material_type"] == category
     assert row["material_family"] == family
+
+
+@pytest.mark.parametrize(
+    ("description", "expected"),
+    [
+        ("Caesarstone quartz slab 20 mm", {
+            "family_code": "engineered_quartz_mineral_hybrid",
+            "entity_role_code": "material",
+            "production_department_code": "stone",
+            "resolution": "deterministic_source_taxonomy_v1",
+        }),
+        ("Blum drawer slide 550 mm", {
+            "family_code": "hardware_drawer_slide",
+            "entity_role_code": "hardware",
+            "resolution": "deterministic_source_taxonomy_v1",
+        }),
+    ],
+)
+def test_taxonomy_emits_v2_family_facts_without_creating_a_catalog_link(description, expected):
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": description,
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert catalog_v2_taxonomy_for_family(row["material_family"]) == expected
 
 
 def test_taxonomy_preserves_a_category_scoped_brand_and_sheet_primary_attribute():
@@ -2432,18 +2465,19 @@ def test_price_source_output_budget_supports_large_supplier_pages():
     assert PRICE_SOURCE_MAX_OUTPUT_TOKENS >= 32_768
 
 
-def test_price_catalog_uses_four_stable_user_facing_departments():
+def test_price_catalog_uses_approved_user_facing_sections():
     assert PRICE_CATALOG_DEPARTMENTS["Wood Sheets"] == "Wood"
     assert PRICE_CATALOG_DEPARTMENTS["Wood Supplies"] == "Wood"
-    assert PRICE_CATALOG_DEPARTMENTS["Hardware"] == "Wood"
+    assert PRICE_CATALOG_DEPARTMENTS["Hardware"] == "Hardware"
     assert PRICE_CATALOG_DEPARTMENTS["Other"] == "Wood"
     assert PRICE_CATALOG_DEPARTMENTS["Metal Sheets"] == "Metal"
     assert PRICE_CATALOG_DEPARTMENTS["Metal Profiles"] == "Metal"
     assert PRICE_CATALOG_DEPARTMENTS["Metal Supplies"] == "Metal"
-    assert PRICE_CATALOG_DEPARTMENTS["Paints & Coatings"] == "Finishing"
-    assert PRICE_CATALOG_DEPARTMENTS["Coating Supplies"] == "Finishing"
+    assert PRICE_CATALOG_DEPARTMENTS["Paints & Coatings"] == "Coating"
+    assert PRICE_CATALOG_DEPARTMENTS["Coating Supplies"] == "Coating"
     assert PRICE_CATALOG_DEPARTMENTS["Glass"] == "Glass & Plastics"
     assert PRICE_CATALOG_DEPARTMENTS["Plastics & Composites"] == "Glass & Plastics"
+    assert PRICE_CATALOG_DEPARTMENTS["Stone"] == "Stone"
 
 
 def test_legacy_material_types_are_canonicalized_without_splitting_filters():

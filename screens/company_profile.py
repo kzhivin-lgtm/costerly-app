@@ -2119,7 +2119,7 @@ def _render_price_catalog_grid_header(item_label: str) -> None:
 
 
 def _price_catalog_grid_columns():
-    """Return the exact shared row grid used by materials and Material Jobs."""
+    """Return the exact shared row grid used by materials and Supplier Operations."""
     return st.columns(_PRICE_CATALOG_GRID, vertical_alignment="center")
 
 
@@ -2651,7 +2651,9 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
     if catalog:
         department_column, type_column, supplier_column = st.columns(3)
         department_options = ["All departments"] + [
-            item for item in ("Wood", "Metal", "Finishing", "Glass & Plastics")
+            item for item in (
+                "Wood", "Metal", "Glass & Plastics", "Stone", "Coating", "Hardware",
+            )
             if any(row.get("department") == item for row in catalog)
         ]
         with department_column:
@@ -2702,8 +2704,8 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
         departments.setdefault(str(row["department"]), []).append(row)
 
     department_labels = {
-        "Wood": "Wood", "Metal": "Metal", "Finishing": "Coating",
-        "Glass & Plastics": "Glass & Plastics",
+        "Wood": "Wood", "Metal": "Metal", "Glass & Plastics": "Glass & Plastics",
+        "Stone": "Stone", "Coating": "Coating", "Hardware": "Hardware",
     }
     sources_by_id = {str(source["source_id"]): source for source in sources}
     st.markdown(
@@ -2711,7 +2713,9 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
         f'<span>{len(visible)} active {"price" if len(visible) == 1 else "prices"}</span></div>',
         unsafe_allow_html=True,
     )
-    for department_name in ("Wood", "Metal", "Finishing", "Glass & Plastics"):
+    for department_name in (
+        "Wood", "Metal", "Glass & Plastics", "Stone", "Coating", "Hardware",
+    ):
         rows = departments.get(department_name) or []
         if not rows:
             continue
@@ -3167,12 +3171,12 @@ def _render_price_source_review_queue(
 
 
 def _render_material_jobs(access: CompanyAccess, jobs: list[dict]) -> None:
-    """Render the independent Material Jobs projection when it has rows."""
+    """Render the independent Supplier Operations projection when it has rows."""
     if not jobs:
         return
     with st.container(key="material_jobs_section"):
         with st.expander(
-            f'Material Jobs · {_material_jobs_count(len(jobs))}', expanded=True
+            f'Supplier Operations · {_material_jobs_count(len(jobs))}', expanded=True
         ):
             _render_price_catalog_grid_header("Job")
             for job in jobs:

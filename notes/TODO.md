@@ -220,6 +220,14 @@ preserves staff-reviewed mappings, records bridge evidence, and cannot fail or
 invalidate the frozen Price Source identity flow. The current catalog has 29
 items but no proven reference-material links, so no historical item was
 guessed or backfilled from its name, price or supplier SKU.
+P0, COMPLETED, 3.17.2.6 Source Agent taxonomy adapter and Price Source sections:
+Source intake now recognises Stone families and emits V2 family/role/production
+department evidence for every deterministic taxonomy match. Hardware is a
+standalone Company Price Catalog section, never a Wood row. Price Source now
+renders the approved six sections, Wood, Metal, Glass & Plastics, Stone,
+Coating and Hardware, and Material Jobs is named Supplier Operations. The
+adapter is evidence-only: it must not auto-create a Global model, Israel
+listing or Company offer when no proven catalog link exists.
 Stone design coverage is complete for current kitchen and furniture scope:
 natural, engineered, sintered, porcelain/ceramic, solid-surface and terrazzo
 families, countertop-like uses, brands, attributes and possible operations are

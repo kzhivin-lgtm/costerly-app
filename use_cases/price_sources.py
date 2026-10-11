@@ -42,6 +42,7 @@ from use_cases.price_source_material_resolution import (
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
+    catalog_v2_taxonomy_for_family,
     job_operation_for_text,
     normalize_sheet_name,
 )
@@ -80,20 +81,23 @@ CONTENT_TYPES = {
     ".heif": "image/heif",
 }
 
-PRICE_SOURCE_DEPARTMENTS = ("Wood", "Metal", "Finishing", "Glass & Plastics")
+PRICE_SOURCE_DEPARTMENTS = (
+    "Wood", "Metal", "Glass & Plastics", "Stone", "Coating", "Hardware",
+)
 PRICE_CATALOG_DEPARTMENTS = {
     "Wood Sheets": "Wood",
     "Solid Wood": "Wood",
     "Wood Supplies": "Wood",
-    "Hardware": "Wood",
+    "Hardware": "Hardware",
     "Glass": "Glass & Plastics",
     "Plastics & Composites": "Glass & Plastics",
+    "Stone": "Stone",
     "Metal Sheets": "Metal",
     "Metal Profiles": "Metal",
     "Metal Supplies": "Metal",
     "Metal": "Metal",
-    "Paints & Coatings": "Finishing",
-    "Coating Supplies": "Finishing",
+    "Paints & Coatings": "Coating",
+    "Coating Supplies": "Coating",
     "Other": "Wood",
 }
 LEGACY_PRICE_SOURCE_CATEGORIES = {
@@ -104,7 +108,8 @@ LEGACY_PRICE_SOURCE_CATEGORIES = {
     "Abrasives and Sanding": "Coating Supplies",
 }
 PRICE_CATALOG_DEPARTMENT_ORDER = {
-    "Wood": 0, "Metal": 1, "Finishing": 2, "Glass & Plastics": 3,
+    "Wood": 0, "Metal": 1, "Glass & Plastics": 2, "Stone": 3,
+    "Coating": 4, "Hardware": 5,
 }
 _CONSUMABLE_MARKERS = (
     # Small fixings and installation consumables. They remain source evidence
@@ -2695,6 +2700,8 @@ def list_price_catalog(access) -> list[dict]:
         source_row = source_row_by_id.get(str(offer.get("source_row_id")), {})
         source = source_by_id.get(str(offer.get("source_id")), {})
         category = canonical_price_source_category(str(material.get("category") or "Other"))
+        # ``Other`` remains a temporary compatibility bucket. It cannot claim
+        # a production department until Source Agent proves a V2 family.
         department = PRICE_CATALOG_DEPARTMENTS.get(category, "Wood")
         source_summary = source.get("processing_summary") or {}
         supplier_name = str(supplier.get("supplier_name") or "Unknown supplier")
@@ -2797,7 +2804,8 @@ def list_material_jobs(access) -> list[dict]:
                 "operation_code": str(operation.get("operation_code") or ""),
                 "department": {
                     "metal": "Metal",
-                    "coating": "Finishing",
+                    "coating": "Coating",
+                    "stone": "Stone",
                 }.get(operation_department, "Wood"),
                 "supplier_name": supplier_name,
                 "source": source,
@@ -4830,6 +4838,9 @@ def process_price_source(
                         "item_kind": row["item_kind"],
                         "material_family": row["material_family"],
                         "identity_attributes": row["identity_attributes"],
+                        "catalog_v2_taxonomy": catalog_v2_taxonomy_for_family(
+                            str(row.get("material_family") or "")
+                        ),
                         "discount_percent": row["raw_discount_percent"],
                         "discount_amount": row["raw_discount_amount"],
                         "comparison_status": result_status,

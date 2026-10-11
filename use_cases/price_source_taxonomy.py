@@ -167,6 +167,32 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
     )),
     TaxonomyRule("Wood Supplies", "veneer", ("veneer", "wood veneer", "פורניר", "שכבת פורניר")),
     TaxonomyRule("Wood Supplies", "edge banding", ("edge band", "edge banding", "edgeband", "abs edge", "קנט", "קנטים", "פס קנט")),
+    # Stone fabricated surfaces. Keep these before generic glass and plastic
+    # words: a quartz or porcelain slab is a Stone catalog material, even when
+    # a supplier calls it a "surface" or includes a brand-like trade name.
+    TaxonomyRule("Stone", "engineered quartz", (
+        "engineered quartz", "quartz slab", "quartz surface", "caesarstone",
+        "אבן קיסר", "קוורץ", "משטח קוורץ",
+    )),
+    TaxonomyRule("Stone", "sintered stone", (
+        "sintered stone", "ultra compact", "dekton", "neolith", "lapitec",
+        "אבן סינטרית", "דקטון", "ניאולית",
+    )),
+    TaxonomyRule("Stone", "porcelain", (
+        "porcelain slab", "ceramic slab", "large format porcelain", "גרניט פורצלן",
+        "פורצלן", "לוח קרמיקה",
+    )),
+    TaxonomyRule("Stone", "solid surface", (
+        "solid surface", "corian", "hi-macs", "hanex", "אבן אקרילית", "קוריאן",
+    )),
+    TaxonomyRule("Stone", "terrazzo", (
+        "terrazzo", "agglomerate", "terrazzo slab", "טרצו", "אגלומרט",
+    )),
+    TaxonomyRule("Stone", "natural stone", (
+        "natural stone", "marble", "granite", "quartzite", "travertine", "limestone",
+        "onyx", "basalt", "carrara", "stone slab", "שיש", "גרניט", "קוורציט",
+        "טרוורטין", "אוניקס", "אבן טבעית",
+    )),
     # Metal.
     TaxonomyRule("Metal Profiles", "metal tube", (
         "square tube", "rectangular tube", "round tube", "steel tube", "metal tube", "pipe",
@@ -202,6 +228,79 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         "wood oil", "wax", "מרק", "שפכטל", "מדלל", "מקשה", "סילר", "זרז", "בייץ", "שמן עץ", "ווקס",
     )),
 )
+
+
+# The source extractor deals in human-readable family terms. This projection
+# carries the same proven fact into the Global registry vocabulary without
+# making an unproven catalog link or creating a Global model.
+_V2_FAMILY_PROJECTIONS: dict[str, tuple[str, str, str | None]] = {
+    "mdf": ("mdf_hdf", "material", "wood"),
+    "plywood": ("plywood", "material", "wood"),
+    "particleboard": ("particleboard", "material", "wood"),
+    "hardboard": ("fibreboard_hardboard", "material", "wood"),
+    "osb": ("osb", "material", "wood"),
+    "solid timber": ("timber_solid_wood_panel", "material", "wood"),
+    "veneer": ("wood_veneer", "material", "wood"),
+    "edge banding": ("edge_banding", "material", "wood"),
+    "glass": ("glass", "material", "glass_plastics"),
+    "acrylic sheet": ("acrylic_pmma", "material", "glass_plastics"),
+    "abs sheet": ("polycarbonate_petg_pvc_abs", "material", "glass_plastics"),
+    "polycarbonate sheet": ("polycarbonate_petg_pvc_abs", "material", "glass_plastics"),
+    "petg sheet": ("polycarbonate_petg_pvc_abs", "material", "glass_plastics"),
+    "pvc sheet": ("polycarbonate_petg_pvc_abs", "material", "glass_plastics"),
+    "plastic sheet": ("sheet_plastic", "material", "glass_plastics"),
+    "vinyl film": ("vinyl_film", "material", "glass_plastics"),
+    "aluminium composite panel": ("aluminium_composite_panel", "material", "glass_plastics"),
+    "composite sandwich panel": ("composite_sandwich_panel", "material", "glass_plastics"),
+    "natural stone": ("natural_stone_slab", "material", "stone"),
+    "engineered quartz": ("engineered_quartz_mineral_hybrid", "material", "stone"),
+    "sintered stone": ("sintered_ultra_compact_surface", "material", "stone"),
+    "porcelain": ("porcelain_ceramic_slab", "material", "stone"),
+    "solid surface": ("solid_surface", "material", "stone"),
+    "terrazzo": ("terrazzo_engineered_agglomerate", "material", "stone"),
+    "metal tube": ("metal_tube", "material", "metal"),
+    "metal angle": ("metal_profile_angle_channel", "material", "metal"),
+    "metal channel": ("metal_profile_angle_channel", "material", "metal"),
+    "metal profile": ("metal_profile_angle_channel", "material", "metal"),
+    "metal sheet": ("sheet_metal", "material", "metal"),
+    "metal bar": ("metal_round_bar_rod_wire", "material", "metal"),
+    "powder coating": ("powder_coating", "material", "coating"),
+    "epoxy coating": ("paint_lacquer_stain", "material", "coating"),
+    "polyurethane coating": ("paint_lacquer_stain", "material", "coating"),
+    "primer": ("primer", "material", "coating"),
+    "lacquer": ("paint_lacquer_stain", "material", "coating"),
+    "paint": ("paint_lacquer_stain", "material", "coating"),
+    "coating material": ("filler_hardener_thinner", "material", "coating"),
+    "hinge": ("hardware_hinge", "hardware", None),
+    "drawer slide": ("hardware_drawer_slide", "hardware", None),
+    "door closure": ("hardware_lock_latch", "hardware", None),
+    "plinth clip": ("hardware_mounting_part", "hardware", None),
+    "mounting plate": ("hardware_mounting_part", "hardware", None),
+    "handle": ("hardware_handle", "hardware", None),
+    "furniture leg": ("hardware_leg_caster", "hardware", None),
+    "furniture connector": ("hardware_connector", "hardware", None),
+    "lift mechanism": ("hardware_lift_system", "hardware", None),
+}
+
+
+def catalog_v2_taxonomy_for_family(material_family: str) -> dict[str, str] | None:
+    """Return V2 evidence facts for an already proven source family.
+
+    The result is persisted as source evidence only. It cannot create or link
+    a Global model, Israel Listing or Company Catalog item by itself.
+    """
+    projection = _V2_FAMILY_PROJECTIONS.get(str(material_family or ""))
+    if not projection:
+        return None
+    family_code, entity_role_code, production_department_code = projection
+    payload = {
+        "family_code": family_code,
+        "entity_role_code": entity_role_code,
+        "resolution": "deterministic_source_taxonomy_v1",
+    }
+    if production_department_code:
+        payload["production_department_code"] = production_department_code
+    return payload
 
 
 # The curated catalogue is deliberately multilingual. Each entry has one
@@ -801,7 +900,7 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     if literal_thickness:
         attributes["thickness_mm"] = literal_thickness
     sheet_categories = {
-        "Wood Sheets", "Metal Sheets", "Glass", "Plastics & Composites",
+        "Wood Sheets", "Metal Sheets", "Glass", "Plastics & Composites", "Stone",
     }
     if rule.category in sheet_categories:
         try:
