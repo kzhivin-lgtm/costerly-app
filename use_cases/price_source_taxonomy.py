@@ -18,6 +18,7 @@ from use_cases.material_normalization import (
 )
 from use_cases.hardware_product_system_registry import (
     BRAND_NAME_BY_CODE,
+    HARDWARE_BRAND_SEEDS,
     PRODUCT_SYSTEM_SEEDS,
 )
 
@@ -347,23 +348,17 @@ def catalog_v2_taxonomy_for_family(material_family: str) -> dict[str, str] | Non
 # Israeli distributors are not listed merely because they sell a brand. These
 # are product manufacturers or product-system brands. A supplier name belongs
 # to supplier matching, not material identity.
+_HARDWARE_BRAND_RULES: tuple[BrandRule, ...] = tuple(
+    BrandRule(seed.canonical_name, ("Hardware",), seed.aliases)
+    for seed in HARDWARE_BRAND_SEEDS
+)
+
+
 BRAND_RULES: tuple[BrandRule, ...] = (
-    # Hardware and furniture fittings.
-    BrandRule("Blum", ("Hardware",), ("blum", "בלום")),
-    BrandRule("Hettich", ("Hardware",), ("hettich", "הטיך", "הטיש")),
-    BrandRule("Häfele", ("Hardware",), ("hafele", "häfele", "haefele", "הפלה", "האפהלה")),
-    BrandRule("Grass", ("Hardware",), ("grass", "גראס")),
-    BrandRule("FGV", ("Hardware",), ("fgv",)),
-    BrandRule("Salice", ("Hardware",), ("salice", "סליצה", "סליצ'ה")),
-    BrandRule("Titus", ("Hardware",), ("titus", "טיטוס")),
-    BrandRule("Sugatsune", ("Hardware",), ("sugatsune", "סוגאטסונה", "סוגצונה")),
-    BrandRule("Accuride", ("Hardware",), ("accuride", "אקורייד", "אקיורייד")),
-    BrandRule("DTC", ("Hardware",), ("dtc",)),
-    BrandRule("Kesseböhmer", ("Hardware",), ("kessebohmer", "kesseböhmer", "קסבוהמר")),
-    BrandRule("Vauth-Sagel", ("Hardware",), ("vauth sagel", "vauth-sagel", "וואט סאגל")),
-    BrandRule("Vibo", ("Hardware",), ("vibo", "ויבו")),
-    BrandRule("Emuca", ("Hardware",), ("emuca", "אמוקה")),
-    BrandRule("Lamello", ("Hardware",), ("lamello", "למלו")),
+    # Hardware and furniture fittings. Product vocabulary comes from the
+    # Global registry above, so Hebrew and OCR aliases cannot drift from the
+    # Global Brand records seeded into the database.
+    *_HARDWARE_BRAND_RULES,
     # Wood sheet manufacturers. Hebrew names are input aliases, not display.
     BrandRule("EGGER", ("Wood Sheets",), ("egger", "אגר")),
     BrandRule("Kronospan", ("Wood Sheets",), ("kronospan", "קרונוספן")),

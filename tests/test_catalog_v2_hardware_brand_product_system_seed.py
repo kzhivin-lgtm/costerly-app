@@ -28,6 +28,14 @@ def test_hardware_brand_seed_contains_all_source_agent_hardware_brands():
     }
     seeded_hardware = {seed.canonical_name: seed.aliases for seed in HARDWARE_BRAND_SEEDS}
     assert seeded_hardware == source_agent_hardware
+    assert all(
+        any("\u0590" <= char <= "\u05ff" for alias in seed.aliases for char in alias)
+        for seed in HARDWARE_BRAND_SEEDS
+    )
+
+    for seed in HARDWARE_BRAND_SEEDS:
+        for alias in dict.fromkeys((seed.canonical_name, *seed.aliases)):
+            assert f"'{alias.replace(chr(39), chr(39) * 2).lower()}'" in sql
 
 
 def test_product_system_seed_is_global_and_never_a_supplier_sku_crosswalk():
@@ -46,6 +54,9 @@ def test_product_system_seed_is_global_and_never_a_supplier_sku_crosswalk():
     for system in PRODUCT_SYSTEM_SEEDS:
         assert f"'{system.code}'" in sql
         assert f"'{system.canonical_name.lower()}'" in sql
+        assert any("\u0590" <= char <= "\u05ff" for alias in system.aliases for char in alias)
+        for alias in dict.fromkeys((system.canonical_name, *system.aliases)):
+            assert f"'{alias.replace(chr(39), chr(39) * 2).lower()}'" in sql
 
 
 def test_hardware_family_attribute_contract_can_hold_system_without_inventing_variant():

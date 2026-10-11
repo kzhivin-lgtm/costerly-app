@@ -1616,6 +1616,19 @@ def test_mdf_taxonomy_covers_safe_english_hebrew_and_ocr_variants(alias):
     assert rule.family == "mdf"
 
 
+def test_each_active_source_family_and_attribute_has_a_hebrew_alias():
+    """Hebrew input coverage is a contract, rather than a best-effort note."""
+    from use_cases.price_source_taxonomy import ATTRIBUTE_RULES, MATERIAL_RULES
+
+    has_hebrew = lambda values: any("\u0590" <= char <= "\u05ff" for value in values for char in value)
+    assert all(has_hebrew(rule.aliases) for rule in MATERIAL_RULES)
+    assert all(
+        has_hebrew(aliases)
+        for attribute_values in ATTRIBUTE_RULES.values()
+        for _value, aliases in attribute_values
+    )
+
+
 def test_hebrew_item_abbreviation_normalizes_before_sheet_rules():
     result = _result()
     row = result["rows"][0]
@@ -1918,6 +1931,29 @@ def test_known_hardware_system_can_supply_its_brand_but_not_an_unstated_variant(
     assert row["identity_attributes"]["product_system"] == "MOVENTO"
     assert row["identity_attributes"]["depth_mm"] == 0
     assert row["normalized_name"] == "Drawer Slide Blum, MOVENTO"
+
+
+@pytest.mark.parametrize("description", (
+    "Moventa concealed drawer runner",
+    "Movers concealed drawer runner",
+    "מסילה למגירה מובנטו",
+    "מסילה למגירה בלום מובנטו",
+))
+def test_product_system_aliases_cover_transliteration_and_safe_ocr_variants(description):
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": description,
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == "Hardware"
+    assert row["material_family"] == "drawer slide"
+    assert row["identity_attributes"]["brand"] == "Blum"
+    assert row["identity_attributes"]["product_system"] == "MOVENTO"
+    assert row["identity_attributes"]["depth_mm"] == 0
 
 
 @pytest.mark.parametrize(
