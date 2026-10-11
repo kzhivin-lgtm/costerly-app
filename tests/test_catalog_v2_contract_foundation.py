@@ -21,6 +21,15 @@ def test_catalog_v2_foundation_has_canonical_taxonomy_and_case_local_contracts()
         "reference_material_family_department_affinities",
         "reference_material_family_operation_eligibilities",
         "reference_material_family_memberships",
+        "reference_brands",
+        "reference_material_family_brand_scopes",
+        "reference_brand_aliases",
+        "reference_material_models",
+        "reference_material_model_attribute_values",
+        "reference_market_material_variants",
+        "reference_market_material_supply_formats",
+        "reference_market_material_legacy_mappings",
+        "company_material_item_market_variant_mappings",
         "estimate_case_assumptions",
         "catalog_gap_jobs",
         "catalog_gap_job_occurrences",
@@ -31,6 +40,22 @@ def test_catalog_v2_foundation_has_canonical_taxonomy_and_case_local_contracts()
     assert "'material', 'hardware', 'consumable', 'packaging'" in sql
     assert "reference_material_family_one_primary_attribute_idx" in sql
     assert "reference_material_one_active_family_idx" in sql
+
+
+def test_global_model_market_variant_and_company_offer_are_separate_contracts():
+    sql = _sql()
+
+    assert "global family, global material model, market listing and company offer are" in sql
+    assert "market_code text not null references public.reference_markets(market_code)" in sql
+    assert "family_id uuid not null references public.reference_material_families(family_id)" in sql
+    assert "references public.reference_material_family_brand_scopes(family_id, brand_id)" in sql
+    assert "create table if not exists public.reference_material_models" in sql
+    assert "material_model_id uuid not null references public.reference_material_models(material_model_id)" in sql
+    assert "legacy_material_id uuid not null unique references public.reference_materials(material_id)" in sql
+    assert "classification_status in ('mapped', 'excluded_by_policy', 'review_required')" in sql
+    assert "company_material_id uuid primary key" in sql
+    assert "mapping_status in ('matched', 'no_market_match', 'review_required')" in sql
+    assert "market_material_variant_id is not null" in sql
 
 
 def test_provisional_assumptions_cannot_mutate_canonical_catalog():

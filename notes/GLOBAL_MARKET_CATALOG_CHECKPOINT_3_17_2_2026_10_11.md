@@ -5,7 +5,8 @@
 This is the complete pre-rebuild checkpoint for the approved direct catalog
 replacement. The protected Git baseline is `f019876`; this checkpoint is
 committed separately immediately before any Global-to-Market schema or reader
-change. The validated source backup is recorded with that commit.
+change. The validated source backup is
+`backups/v3.17.2_before_global_market_catalog_rebuild/costerly-app_v3.17.2_before_global_market_catalog_rebuild_2026-10-11.zip`.
 
 The existing V2 contract file,
 `db/sql/2026_10_11_catalog_v2_contract_foundation.sql`, is an unapplied
@@ -48,10 +49,10 @@ The new model has three non-interchangeable layers:
 
 ```text
 Global Catalog
-  universal family, attribute contract, brand/product-system, operation
+  universal family, attribute contract, brand, material model, operation
        ↓ market availability and local rules
 Market Catalog, first market: Israel (IL)
-  purchasable variant, local names/aliases, supply format, recipe, price model
+  listing/variant, local names/aliases, supply format, recipe, price model
        ↓ supplier evidence for one company
 Company Price Catalog
   supplier item or operation offer, source provenance, current price and unit
@@ -61,10 +62,10 @@ Company Price Catalog
 registry. No Israel-specific table name is introduced. New markets use the same
 relations and `market_code`.
 
-A Global material family never carries country availability, currency, supplier
-price, VAT, source language, local purchasable format or labor minutes. A
-market-purchasable material never overwrites Global identity. A company offer
-never becomes a Global or Israel catalog record automatically.
+A Global material family or material model never carries country availability,
+currency, supplier price, VAT, source language, local purchasable format or
+labor minutes. A market listing never overwrites Global identity. A company
+offer never becomes a Global or Israel catalog record automatically.
 
 The retained rules are:
 
@@ -84,8 +85,9 @@ The retained rules are:
 
 Each old reference material is classified into one of three explicit outcomes:
 
-1. **Mapped**: attach its retained identifier to a Global family and an Israel
-   market-purchasable variant or an appropriate non-purchasable role.
+1. **Mapped**: attach its retained identifier to a Global family, Global
+   material model and an Israel market listing, or an appropriate
+   non-purchasable role.
 2. **Excluded by policy**: retain source evidence but do not create a Company
    catalog candidate, for example ordinary consumables.
 3. **Review required**: preserve the old row and evidence, publish no invented
