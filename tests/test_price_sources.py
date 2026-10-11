@@ -3184,6 +3184,30 @@ def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
     assert rows[0]["updated_at"] == "2026-09-24"
 
 
+def test_catalog_renders_historical_product_system_in_its_canonical_case(monkeypatch):
+    tables = {
+        "company_material_offers": [{
+            "offer_id": "offer-1", "company_material_id": "material-1", "supplier_id": "supplier-1",
+            "source_id": "source-1", "source_row_id": "row-1", "normalized_price": 90,
+            "normalized_unit": "set", "currency": "ILS", "valid_from": "2026-09-24",
+        }],
+        "company_material_items": [{
+            "company_material_id": "material-1", "category": "Hardware",
+            "canonical_name": "Drawer Slide Blum, Movento", "preferred_unit": "set",
+            "specifications": {"material_family": "drawer slide", "brand": "Blum", "product_system": "Movento"},
+        }],
+        "company_suppliers": [{"supplier_id": "supplier-1", "supplier_name": "Supplier Ltd"}],
+        "company_price_source_rows": [{"row_id": "row-1", "raw_description": "MOVENTO rail"}],
+        "company_price_sources": [{"source_id": "source-1", "source_name": "invoice.pdf", "source_kind": "file"}],
+    }
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: _CatalogClient(tables))
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+
+    rows = list_price_catalog(SimpleNamespace(company_id="company-1", user_id="user-1"))
+
+    assert rows[0]["canonical_name"] == "Drawer Slide Blum, MOVENTO"
+
+
 def test_active_supplier_operation_offer_is_enriched_as_material_job(monkeypatch):
     tables = {
         "company_supplier_operation_offers": [{

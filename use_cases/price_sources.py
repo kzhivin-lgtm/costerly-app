@@ -40,6 +40,7 @@ from use_cases.price_source_material_resolution import (
     resolve_price_source_material_identities,
 )
 from use_cases.material_identity_status import material_identity_status
+from use_cases.material_normalization import canonical_display_name
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
@@ -2712,12 +2713,20 @@ def list_price_catalog(access) -> list[dict]:
         if source_summary.get("source_origin") == "company_internal":
             supplier_name = "Internal estimate"
         identity_status = material_identity_status(material)
+        specifications = dict(material.get("specifications") or {})
+        material_family = str(specifications.get("material_family") or "").strip()
+        canonical_name = str(material.get("canonical_name") or "Material")
+        # Existing catalog rows can predate a formatting refinement in the
+        # curated registry. Render the same canonical identity from their
+        # persisted facts, without touching raw evidence or owner input.
+        if material_family:
+            canonical_name = canonical_display_name(material_family, specifications)
         catalog.append(
             {
                 **offer,
                 "department": department,
                 "material_type": category,
-                "canonical_name": str(material.get("canonical_name") or "Material"),
+                "canonical_name": canonical_name,
                 "identity_status": {
                     "tone": identity_status.tone,
                     "label": identity_status.label,
