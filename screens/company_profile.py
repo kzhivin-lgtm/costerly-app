@@ -2633,8 +2633,9 @@ def _render_price_source_save_progress() -> None:
         return
     label = "price" if count == 1 else "prices"
     st.markdown(
-        '<div class="price-source-save-progress" role="status">'
-        '<span class="price-source-save-spinner" aria-hidden="true"></span>'
+        '<div class="price-lists-projection-loading price-source-save-progress" '
+        'role="status"><span class="price-lists-projection-spinner" '
+        'aria-hidden="true"></span>'
         f'<span>Updating {count} {label}</span></div>',
         unsafe_allow_html=True,
     )

@@ -1401,26 +1401,6 @@ def apply_company_profile_css() -> None:
             animation: price-lists-projection-spin 0.8s linear infinite;
         }
 
-        .stApp:has(.company-profile-active) .price-source-save-progress {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            min-height: 30px;
-            margin: 0 0 -6px 2px;
-            color: var(--color-text-muted);
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .stApp:has(.company-profile-active) .price-source-save-spinner {
-            width: 14px;
-            height: 14px;
-            border: 2px solid #D5E5FA;
-            border-top-color: #2F76B7;
-            border-radius: 50%;
-            animation: price-lists-projection-spin 0.8s linear infinite;
-        }
-
         @keyframes price-lists-projection-spin {
             to { transform: rotate(360deg); }
         }
