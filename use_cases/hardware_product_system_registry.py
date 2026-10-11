@@ -52,13 +52,13 @@ HARDWARE_BRAND_SEEDS: tuple[HardwareBrandSeed, ...] = (
 # supplier item code and does not imply a length, capacity, finish or price.
 _BASE_PRODUCT_SYSTEM_SEEDS: tuple[ProductSystemSeed, ...] = (
     # Blum.
-    ProductSystemSeed("blum_movento", "blum", "hardware_drawer_slide", "drawer_runner", "MOVENTO", ("movento", "מובנטו")),
-    ProductSystemSeed("blum_tandem", "blum", "hardware_drawer_slide", "drawer_runner", "TANDEM", ("tandem", "טנדם")),
-    ProductSystemSeed("blum_legrabox", "blum", "hardware_drawer_system", "drawer_system", "LEGRABOX", ("legrabox",)),
-    ProductSystemSeed("blum_merivobox", "blum", "hardware_drawer_system", "drawer_system", "MERIVOBOX", ("merivobox",)),
-    ProductSystemSeed("blum_tandembox", "blum", "hardware_drawer_system", "drawer_system", "TANDEMBOX", ("tandembox",)),
-    ProductSystemSeed("blum_metabox", "blum", "hardware_drawer_system", "drawer_system", "METABOX", ("metabox",)),
-    ProductSystemSeed("blum_aventos", "blum", "hardware_lift_system", "lift_system", "AVENTOS", ("aventos",)),
+    ProductSystemSeed("blum_movento", "blum", "hardware_drawer_slide", "drawer_runner", "Movento", ("movento", "מובנטו")),
+    ProductSystemSeed("blum_tandem", "blum", "hardware_drawer_slide", "drawer_runner", "Tandem", ("tandem", "טנדם")),
+    ProductSystemSeed("blum_legrabox", "blum", "hardware_drawer_system", "drawer_system", "Legrabox", ("legrabox",)),
+    ProductSystemSeed("blum_merivobox", "blum", "hardware_drawer_system", "drawer_system", "Merivobox", ("merivobox",)),
+    ProductSystemSeed("blum_tandembox", "blum", "hardware_drawer_system", "drawer_system", "Tandembox", ("tandembox",)),
+    ProductSystemSeed("blum_metabox", "blum", "hardware_drawer_system", "drawer_system", "Metabox", ("metabox",)),
+    ProductSystemSeed("blum_aventos", "blum", "hardware_lift_system", "lift_system", "Aventos", ("aventos",)),
     ProductSystemSeed("blum_clip_top", "blum", "hardware_hinge", "hinge_system", "CLIP top", ("clip top", "cliptop")),
     ProductSystemSeed("blum_compact", "blum", "hardware_hinge", "hinge_system", "COMPACT", ("compact blum", "blum compact")),
     ProductSystemSeed("blum_revego", "blum", "hardware_door_system", "door_system", "REVEGO", ("revego",)),

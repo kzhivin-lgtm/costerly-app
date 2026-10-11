@@ -6,13 +6,13 @@ def test_drawer_slide_without_nominal_length_is_yellow_not_review_or_red():
         "specifications": {
             "material_family": "drawer slide",
             "brand": "Blum",
-            "product_system": "MOVENTO",
+            "product_system": "Movento",
         },
     })
 
     assert status.tone == "yellow"
     assert status.missing == ("nominal length",)
-    assert status.known_path == ("drawer slide", "brand: Blum", "system: MOVENTO")
+    assert status.known_path == ("drawer slide", "brand: Blum", "system: Movento")
 
 
 def test_complete_endpoint_without_israel_link_remains_yellow():

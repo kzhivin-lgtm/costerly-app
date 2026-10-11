@@ -8,7 +8,7 @@ def test_identity_normalizer_retains_only_domain_attributes_not_source_prose():
     identity = normalize_identity_attributes({
         "thickness_mm": 17,
         "primary_attribute": "17 mm",
-        "brand": "EGGER",
+        "brand": "Egger",
         "construction": "double-sided",
         "colour": "black",
         "seller_prose": "special offer while stocks last",
@@ -23,7 +23,7 @@ def test_identity_normalizer_retains_only_domain_attributes_not_source_prose():
         "depth_mm": 0,
         "diameter_mm": 0,
         "primary_attribute": "17 mm",
-        "brand": "EGGER",
+        "brand": "Egger",
         "brand_basis": "unknown",
         "product_system": "",
         "species": "",
@@ -40,7 +40,7 @@ def test_identity_normalizer_retains_only_domain_attributes_not_source_prose():
 def test_shared_display_contract_is_entity_primary_brand_then_secondaries():
     name = canonical_display_name("plywood", {
         "primary_attribute": "17 mm",
-        "brand": "EGGER",
+        "brand": "Egger",
         "species": "okoume",
         "construction": "double-sided",
         "finish": "matte",
@@ -48,10 +48,11 @@ def test_shared_display_contract_is_entity_primary_brand_then_secondaries():
         "seller_prose": "not included",
     })
 
-    assert name == "Plywood 17 mm EGGER, Okoume, double-sided, matte, black"
+    assert name == "Plywood 17 mm Egger, Okoume, double-sided, matte, black"
 
 
 def test_known_product_system_uses_one_canonical_display_spelling():
-    identity = normalize_identity_attributes({"product_system": "Movento"})
+    identity = normalize_identity_attributes({"brand": "BLUM", "product_system": "MOVENTO"})
 
-    assert identity["product_system"] == "MOVENTO"
+    assert identity["brand"] == "Blum"
+    assert identity["product_system"] == "Movento"

@@ -14,7 +14,10 @@ from collections.abc import Mapping
 import re
 from typing import Any
 
-from use_cases.hardware_product_system_registry import PRODUCT_SYSTEM_SEEDS
+from use_cases.hardware_product_system_registry import (
+    HARDWARE_BRAND_SEEDS,
+    PRODUCT_SYSTEM_SEEDS,
+)
 
 
 # This is an allowlist by design. A new key is a domain decision, not something
@@ -61,6 +64,23 @@ def _product_system_key(value: object) -> str:
     return re.sub(r"[^\w]+", "", str(value or "").casefold(), flags=re.UNICODE)
 
 
+def _title_case_catalog_label(value: object) -> str:
+    """Give source-provided catalog labels one calm, uniform display case."""
+    return " ".join(str(value or "").strip().title().split())
+
+
+def _canonical_brand_name(value: object) -> str:
+    """Resolve a known Hardware brand, then use uniform title case for display."""
+    candidate = str(value or "").strip()
+    key = _product_system_key(candidate)
+    if not key:
+        return ""
+    for seed in HARDWARE_BRAND_SEEDS:
+        if any(_product_system_key(alias) == key for alias in (seed.canonical_name, *seed.aliases)):
+            return _title_case_catalog_label(seed.canonical_name)
+    return _title_case_catalog_label(candidate)
+
+
 def _canonical_product_system_name(value: object) -> str:
     """Return a curated Product System spelling when the value is recognised.
 
@@ -73,8 +93,8 @@ def _canonical_product_system_name(value: object) -> str:
         return ""
     for seed in PRODUCT_SYSTEM_SEEDS:
         if any(_product_system_key(alias) == key for alias in (seed.canonical_name, *seed.aliases)):
-            return seed.canonical_name
-    return candidate
+            return _title_case_catalog_label(seed.canonical_name)
+    return _title_case_catalog_label(candidate)
 
 
 def normalize_identity_attributes(values: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -89,9 +109,8 @@ def normalize_identity_attributes(values: Mapping[str, Any] | None) -> dict[str,
         field: source.get(field, default)
         for field, default in IDENTITY_ATTRIBUTE_DEFAULTS.items()
     }
-    normalized["product_system"] = _canonical_product_system_name(
-        normalized["product_system"]
-    )
+    normalized["brand"] = _canonical_brand_name(normalized["brand"])
+    normalized["product_system"] = _canonical_product_system_name(normalized["product_system"])
     return normalized
 
 

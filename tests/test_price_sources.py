@@ -1198,7 +1198,7 @@ def test_same_supplier_material_merge_keeps_two_proved_brands_separate_but_toler
         "material_family": "plywood",
         "raw_price": 110,
         "identity_attributes": {
-            **first["identity_attributes"], "thickness_mm": 17, "brand": "EGGER",
+            **first["identity_attributes"], "thickness_mm": 17, "brand": "Egger",
         },
     })
     other_brand = deepcopy(first)
@@ -1778,15 +1778,15 @@ def test_taxonomy_preserves_a_category_scoped_brand_and_sheet_primary_attribute(
 
     assert apply_material_taxonomy(row) is True
     assert row["material_type"] == "Wood Sheets"
-    assert row["identity_attributes"]["brand"] == "EGGER"
+    assert row["identity_attributes"]["brand"] == "Egger"
     assert row["identity_attributes"]["primary_attribute"] == "17 mm"
-    assert row["normalized_name"].startswith("Plywood 17 mm EGGER")
+    assert row["normalized_name"].startswith("Plywood 17 mm Egger")
 
 
 @pytest.mark.parametrize(
     ("description", "category", "brand"),
     [
-        ("לביד אגר 17 ממ", "Wood Sheets", "EGGER"),
+        ("לביד אגר 17 ממ", "Wood Sheets", "Egger"),
         ("לוח MDF קרונוספן 18 ממ", "Wood Sheets", "Kronospan"),
         ("ציר טיטוס 110 מעלות", "Hardware", "Titus"),
         ("מסילת מגירה אקורייד 550 ממ", "Hardware", "Accuride"),
@@ -1909,8 +1909,8 @@ def test_drawer_slide_uses_explicit_nominal_depth_as_primary_attribute(descripti
     assert row["identity_attributes"]["primary_attribute"] == f"{expected_depth} mm"
     expected_name = f"Drawer Slide {expected_depth} mm Blum"
     if "movento" in description.casefold():
-        expected_name += ", MOVENTO"
-        assert row["identity_attributes"]["product_system"] == "MOVENTO"
+        expected_name += ", Movento"
+        assert row["identity_attributes"]["product_system"] == "Movento"
     assert row["normalized_name"] == expected_name
 
 
@@ -1928,9 +1928,9 @@ def test_known_hardware_system_can_supply_its_brand_but_not_an_unstated_variant(
     assert row["material_family"] == "drawer slide"
     assert row["identity_attributes"]["brand"] == "Blum"
     assert row["identity_attributes"]["brand_basis"] == "catalog"
-    assert row["identity_attributes"]["product_system"] == "MOVENTO"
+    assert row["identity_attributes"]["product_system"] == "Movento"
     assert row["identity_attributes"]["depth_mm"] == 0
-    assert row["normalized_name"] == "Drawer Slide Blum, MOVENTO"
+    assert row["normalized_name"] == "Drawer Slide Blum, Movento"
 
 
 def test_drawer_slide_drops_an_agent_length_guess_from_a_model_code():
@@ -1946,7 +1946,7 @@ def test_drawer_slide_drops_an_agent_length_guess_from_a_model_code():
     assert apply_material_taxonomy(row) is True
     assert row["identity_attributes"]["depth_mm"] == 0
     assert row["identity_attributes"]["length_mm"] == 0
-    assert row["normalized_name"] == "Drawer Slide Blum, MOVENTO"
+    assert row["normalized_name"] == "Drawer Slide Blum, Movento"
 
 
 @pytest.mark.parametrize("description", (
@@ -1968,7 +1968,7 @@ def test_product_system_aliases_cover_transliteration_and_safe_ocr_variants(desc
     assert row["material_type"] == "Hardware"
     assert row["material_family"] == "drawer slide"
     assert row["identity_attributes"]["brand"] == "Blum"
-    assert row["identity_attributes"]["product_system"] == "MOVENTO"
+    assert row["identity_attributes"]["product_system"] == "Movento"
     assert row["identity_attributes"]["depth_mm"] == 0
 
 
@@ -3205,7 +3205,7 @@ def test_catalog_renders_historical_product_system_in_its_canonical_case(monkeyp
 
     rows = list_price_catalog(SimpleNamespace(company_id="company-1", user_id="user-1"))
 
-    assert rows[0]["canonical_name"] == "Drawer Slide Blum, MOVENTO"
+    assert rows[0]["canonical_name"] == "Drawer Slide Blum, Movento"
 
 
 def test_active_supplier_operation_offer_is_enriched_as_material_job(monkeypatch):
@@ -3427,9 +3427,9 @@ def test_catalog_edit_enriches_attributes_without_renaming_or_rewriting_source_e
     )
 
     item = tables["company_material_items"][0]
-    assert item["canonical_name"] == "Drawer Slide 750 mm Blum, MOVENTO"
+    assert item["canonical_name"] == "Drawer Slide 750 mm Blum, Movento"
     assert item["specifications"]["depth_mm"] == 750
-    assert item["specifications"]["product_system"] == "MOVENTO"
+    assert item["specifications"]["product_system"] == "Movento"
     assert item["specifications"]["source_sku"] == "SUPPLIER-ONLY"
     assert item["reference_material_id"] is None
     assert item["pricing_identity_id"] is None

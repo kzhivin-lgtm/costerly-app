@@ -2103,6 +2103,7 @@ def _material_jobs_count(count: int) -> str:
 
 
 _PRICE_CATALOG_GRID = [0.24, 1.82, 0.9, 0.9, 1.25, 0.72, 0.46, 0.98]
+_PRICE_REVIEW_GRID = [0.24, 1.68, 0.8, 0.9, 1.18, 0.72, 0.42, 0.9]
 
 
 def _render_price_catalog_grid_header(item_label: str) -> None:
@@ -2122,6 +2123,14 @@ def _render_price_catalog_grid_header(item_label: str) -> None:
 def _price_catalog_grid_columns():
     """Return the exact shared row grid used by materials and Supplier Operations."""
     return st.columns(_PRICE_CATALOG_GRID, vertical_alignment="center")
+
+
+def _price_source_amount_markup(net_price: str, gross_price: str) -> str:
+    """Render both VAT bases in one compact, consistently aligned cell."""
+    return (
+        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>'
+        f'<span class="price-catalog-price-incl">({gross_price} incl. VAT)</span>'
+    )
 
 
 def _price_catalog_url_label(value: str) -> str:
@@ -2936,11 +2945,7 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         unit_key="normalized_unit",
                         source=source,
                     )
-                    price_col.markdown(
-                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>'
-                        f'<span class="price-catalog-price-incl">({gross_price} incl. VAT)</span>',
-                        unsafe_allow_html=True,
-                    )
+                    price_col.markdown(_price_source_amount_markup(net_price, gross_price), unsafe_allow_html=True)
                     date_col.markdown(
                         f'<span class="price-catalog-cell price-catalog-cell-nowrap">{_price_catalog_date(row.get("updated_at"))}</span>',
                         unsafe_allow_html=True,
@@ -3253,10 +3258,10 @@ def _render_price_source_review_queue(
             unsafe_allow_html=True,
         )
         with st.container(key="price_review_header"):
-            header = st.columns([0.24, 1.55, 0.78, 0.9, 0.82, 0.82, 0.68, 0.38, 0.72])
+            header = st.columns(_PRICE_REVIEW_GRID)
             for column, label in zip(
                 header,
-                ("", "Material", "Category", "Supplier", "Price ex VAT", "Price incl VAT", "Reason", "", ""),
+                ("", "Material", "Category", "Supplier", "Price", "Reason", "", ""),
             ):
                 if label:
                     column.markdown(
@@ -3274,8 +3279,8 @@ def _render_price_source_review_queue(
             row_id = str(row["row_id"])
             target = (source_id, row_id)
             with st.container(key=f"price_review_row_{row_id}"):
-                remove_col, item_col, category_col, supplier_col, net_price_col, gross_price_col, reason_col, source_col, review_col = st.columns(
-                    [0.24, 1.55, 0.78, 0.9, 0.82, 0.82, 0.68, 0.38, 0.72],
+                remove_col, item_col, category_col, supplier_col, price_col, reason_col, source_col, review_col = st.columns(
+                    _PRICE_REVIEW_GRID,
                     vertical_alignment="center",
                 )
                 if remove_col.button("×", key=f"review_remove_{row_id}"):
@@ -3309,14 +3314,7 @@ def _render_price_source_review_queue(
                     unit_key="raw_unit",
                     source=source,
                 )
-                net_price_col.markdown(
-                    f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>',
-                    unsafe_allow_html=True,
-                )
-                gross_price_col.markdown(
-                    f'<span class="price-catalog-cell price-catalog-cell-nowrap">{gross_price}</span>',
-                    unsafe_allow_html=True,
-                )
+                price_col.markdown(_price_source_amount_markup(net_price, gross_price), unsafe_allow_html=True)
                 reason_col.markdown(
                     f'<span class="price-source-needs-review">{escape(_price_source_review_reason(row))}</span>',
                     unsafe_allow_html=True,

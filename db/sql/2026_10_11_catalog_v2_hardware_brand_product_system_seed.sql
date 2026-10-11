@@ -166,8 +166,8 @@ with product_system_seed (
     product_system_code, brand_code, family_code, system_kind, canonical_name
 ) as (
     values
-        ('blum_movento', 'blum', 'hardware_drawer_slide', 'drawer_runner', 'MOVENTO'),
-        ('blum_tandem', 'blum', 'hardware_drawer_slide', 'drawer_runner', 'TANDEM'),
+        ('blum_movento', 'blum', 'hardware_drawer_slide', 'drawer_runner', 'Movento'),
+        ('blum_tandem', 'blum', 'hardware_drawer_slide', 'drawer_runner', 'Tandem'),
         ('blum_legrabox', 'blum', 'hardware_drawer_system', 'drawer_system', 'LEGRABOX'),
         ('blum_merivobox', 'blum', 'hardware_drawer_system', 'drawer_system', 'MERIVOBOX'),
         ('blum_tandembox', 'blum', 'hardware_drawer_system', 'drawer_system', 'TANDEMBOX'),
@@ -296,8 +296,8 @@ with product_system_seed (
     product_system_code, brand_code, family_code, system_kind, canonical_name
 ) as (
     values
-        ('blum_movento', 'blum', 'hardware_drawer_slide', 'drawer_runner', 'MOVENTO'),
-        ('blum_tandem', 'blum', 'hardware_drawer_slide', 'drawer_runner', 'TANDEM'),
+        ('blum_movento', 'blum', 'hardware_drawer_slide', 'drawer_runner', 'Movento'),
+        ('blum_tandem', 'blum', 'hardware_drawer_slide', 'drawer_runner', 'Tandem'),
         ('blum_legrabox', 'blum', 'hardware_drawer_system', 'drawer_system', 'LEGRABOX'),
         ('blum_merivobox', 'blum', 'hardware_drawer_system', 'drawer_system', 'MERIVOBOX'),
         ('blum_tandembox', 'blum', 'hardware_drawer_system', 'drawer_system', 'TANDEMBOX'),
