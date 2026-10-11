@@ -747,6 +747,26 @@ def material_source_description_key(row: Mapping[str, Any]) -> str:
     return _normalized_name(str(row.get("raw_description") or ""))
 
 
+def persisted_price_source_result_status(
+    result_status: str,
+    *,
+    company_material_id: str | None,
+    reference_operation_id: str | None,
+) -> tuple[str, tuple[str, ...]]:
+    """Translate transient extraction state into the database contract.
+
+    ``ready`` is an in-memory state meaning that the agent supplied enough
+    evidence. The table intentionally stores only the catalog outcomes. A
+    ready row without a prepared target must stay reviewable, never make the
+    complete source import fail on a database check constraint.
+    """
+    if result_status != "ready":
+        return result_status, ()
+    if company_material_id or reference_operation_id:
+        return "new", ()
+    return "unresolved", ("catalog_target_unavailable",)
+
+
 def discard_price_source_consumables(result: dict[str, Any]) -> int:
     """Discard known small consumables before any private row or offer is stored.
 
@@ -4961,6 +4981,16 @@ def process_price_source(
                 else:
                     result_status = "new"
                     new_count += 1
+
+            result_status, persistence_reason_codes = persisted_price_source_result_status(
+                str(result_status),
+                company_material_id=str(material_id or "") or None,
+                reference_operation_id=str(operation_id or "") or None,
+            )
+            if persistence_reason_codes:
+                row["reason_codes"] = sorted(
+                    set(row.get("reason_codes") or []) | set(persistence_reason_codes)
+                )
 
             source_row_payloads.append(
                 {

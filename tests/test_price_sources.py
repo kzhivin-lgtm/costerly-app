@@ -73,6 +73,7 @@ from use_cases.price_sources import (
     material_offer_matches_extracted_row,
     material_offer_matches_same_supplier_description,
     material_offer_matches_same_supplier_material,
+    persisted_price_source_result_status,
     material_offer_proves_unknown_family,
     material_catalog_key,
     material_persisted_normalized_name,
@@ -95,6 +96,25 @@ from use_cases.price_sources import (
     split_price_source_uploads,
     validate_price_source_upload_selection,
 )
+
+
+@pytest.mark.parametrize(
+    ("transient_status", "material_id", "operation_id", "expected_status", "expected_reasons"),
+    [
+        ("ready", "material-1", None, "new", ()),
+        ("ready", None, "operation-1", "new", ()),
+        ("ready", None, None, "unresolved", ("catalog_target_unavailable",)),
+        ("excluded", None, None, "excluded", ()),
+    ],
+)
+def test_persisted_price_source_status_never_leaks_transient_ready_state(
+    transient_status, material_id, operation_id, expected_status, expected_reasons,
+):
+    assert persisted_price_source_result_status(
+        transient_status,
+        company_material_id=material_id,
+        reference_operation_id=operation_id,
+    ) == (expected_status, expected_reasons)
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
