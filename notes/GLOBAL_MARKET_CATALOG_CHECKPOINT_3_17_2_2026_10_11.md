@@ -139,7 +139,7 @@ Task 3.17.2.1 reconciled the Global-Market schema and added the deterministic
 migration planner. It does not apply SQL to production, change Price Source
 behaviour or delete legacy data. Its acceptance gate, now met in repository
 tests, is an executable schema contract and deterministic plan proving that
-Global identity, Israel market variant and Company offer cannot be confused or
+Global identity, Israel market listing and Company offer cannot be confused or
 written through one another.
 
 ## Completed task 3.17.2.2

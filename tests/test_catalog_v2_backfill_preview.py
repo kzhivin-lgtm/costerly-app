@@ -29,7 +29,7 @@ def test_mapped_legacy_row_projects_to_distinct_global_and_israel_layers():
     assert preview.primary_attribute_code == "thickness"
     assert preview.primary_attribute_value == 18
     assert preview.market_code == ISRAEL_MARKET_CODE
-    assert preview.israel_variant_code == "il_gcm_wood_panel_001"
+    assert preview.israel_listing_code == "il_gcm_wood_panel_001"
     assert preview.global_canonical_name == preview.israel_canonical_name
 
 

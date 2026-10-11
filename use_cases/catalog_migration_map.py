@@ -35,7 +35,7 @@ class LegacyMaterialDecision:
     production_department_code: str | None
     reason: str
     global_model_code: str | None
-    israel_variant_code: str | None
+    israel_listing_code: str | None
     primary_attribute_code: str | None
     primary_attribute_value: Any | None
 
@@ -301,7 +301,7 @@ def classify_legacy_material(
             production_department_code=None,
             reason="consumables_are_not_company_catalog_or_preliminary_estimate_items",
             global_model_code=None,
-            israel_variant_code=None,
+            israel_listing_code=None,
             primary_attribute_code=None,
             primary_attribute_value=None,
         )
@@ -324,7 +324,7 @@ def classify_legacy_material(
             production_department_code=None,
             reason="legacy_category_or_geometry_does_not_prove_one_approved_family",
             global_model_code=None,
-            israel_variant_code=None,
+            israel_listing_code=None,
             primary_attribute_code=None,
             primary_attribute_value=None,
         )
@@ -339,12 +339,12 @@ def classify_legacy_material(
             production_department_code=None,
             reason="legacy_row_lacks_required_primary_attribute_for_approved_family",
             global_model_code=None,
-            israel_variant_code=None,
+            israel_listing_code=None,
             primary_attribute_code=primary_attribute_code,
             primary_attribute_value=None,
         )
 
-    model_code, variant_code = _model_codes(row)
+    model_code, listing_code = _model_codes(row)
     return LegacyMaterialDecision(
         status=MAPPED,
         entity_role_code=entity_role_code,
@@ -352,7 +352,7 @@ def classify_legacy_material(
         production_department_code=production_department_code,
         reason="approved_category_or_geometry_rule",
         global_model_code=model_code,
-        israel_variant_code=variant_code,
+        israel_listing_code=listing_code,
         primary_attribute_code=primary_attribute_code,
         primary_attribute_value=primary_attribute_value,
     )

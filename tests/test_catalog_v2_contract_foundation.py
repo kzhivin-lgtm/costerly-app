@@ -26,10 +26,10 @@ def test_catalog_v2_foundation_has_canonical_taxonomy_and_case_local_contracts()
         "reference_brand_aliases",
         "reference_material_models",
         "reference_material_model_attribute_values",
-        "reference_market_material_variants",
+        "reference_market_material_listings",
         "reference_market_material_supply_formats",
         "reference_market_material_legacy_mappings",
-        "company_material_item_market_variant_mappings",
+        "company_material_item_market_listing_mappings",
         "estimate_case_assumptions",
         "catalog_gap_jobs",
         "catalog_gap_job_occurrences",
@@ -42,7 +42,7 @@ def test_catalog_v2_foundation_has_canonical_taxonomy_and_case_local_contracts()
     assert "reference_material_one_active_family_idx" in sql
 
 
-def test_global_model_market_variant_and_company_offer_are_separate_contracts():
+def test_global_model_market_listing_and_company_offer_are_separate_contracts():
     sql = _sql()
 
     assert "global family, global material model, market listing and company offer are" in sql
@@ -55,7 +55,8 @@ def test_global_model_market_variant_and_company_offer_are_separate_contracts():
     assert "classification_status in ('mapped', 'excluded_by_policy', 'review_required')" in sql
     assert "company_material_id uuid primary key" in sql
     assert "mapping_status in ('matched', 'no_market_match', 'review_required')" in sql
-    assert "market_material_variant_id is not null" in sql
+    assert "market_material_listing_id is not null" in sql
+    assert "unique (market_code, material_model_id)" in sql
 
 
 def test_provisional_assumptions_cannot_mutate_canonical_catalog():

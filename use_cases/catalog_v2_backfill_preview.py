@@ -24,7 +24,7 @@ class CatalogV2BackfillPreview:
     primary_attribute_code: str
     primary_attribute_value: Any
     market_code: str
-    israel_variant_code: str
+    israel_listing_code: str
     israel_canonical_name: str
 
 
@@ -51,7 +51,7 @@ def preview_legacy_material_backfill(
         primary_attribute_code=decision.primary_attribute_code or _raise("Mapped decision lacks primary attribute."),
         primary_attribute_value=decision.primary_attribute_value,
         market_code=ISRAEL_MARKET_CODE,
-        israel_variant_code=decision.israel_variant_code or _raise("Mapped decision lacks Israel variant code."),
+        israel_listing_code=decision.israel_listing_code or _raise("Mapped decision lacks Israel listing code."),
         israel_canonical_name=canonical_name,
     )
 

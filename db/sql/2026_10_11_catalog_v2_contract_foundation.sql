@@ -172,12 +172,12 @@ create table if not exists public.reference_material_model_attribute_values (
         references public.reference_material_family_attributes(family_id, attribute_code)
 );
 
-create table if not exists public.reference_market_material_variants (
-    market_material_variant_id uuid primary key default gen_random_uuid(),
+create table if not exists public.reference_market_material_listings (
+    market_material_listing_id uuid primary key default gen_random_uuid(),
     market_code text not null references public.reference_markets(market_code),
     material_model_id uuid not null references public.reference_material_models(material_model_id),
-    variant_code text not null check (
-        variant_code = lower(variant_code) and variant_code !~ '[^a-z0-9_]'
+    listing_code text not null check (
+        listing_code = lower(listing_code) and listing_code !~ '[^a-z0-9_]'
     ),
     canonical_market_name text not null check (length(trim(canonical_market_name)) between 1 and 500),
     availability_status text not null default 'common' check (
@@ -186,16 +186,17 @@ create table if not exists public.reference_market_material_variants (
     active boolean not null default true,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
-    unique (market_code, variant_code),
-    unique (market_material_variant_id, material_model_id)
+    unique (market_code, listing_code),
+    unique (market_code, material_model_id),
+    unique (market_material_listing_id, material_model_id)
 );
 
-create index if not exists reference_market_material_variants_lookup_idx
-    on public.reference_market_material_variants (market_code, material_model_id, active);
+create index if not exists reference_market_material_listings_lookup_idx
+    on public.reference_market_material_listings (market_code, material_model_id, active);
 
 create table if not exists public.reference_market_material_supply_formats (
     supply_format_id uuid primary key default gen_random_uuid(),
-    market_material_variant_id uuid not null references public.reference_market_material_variants(market_material_variant_id)
+    market_material_listing_id uuid not null references public.reference_market_material_listings(market_material_listing_id)
         on delete cascade,
     supply_format_code text not null check (
         supply_format_code = lower(supply_format_code) and supply_format_code !~ '[^a-z0-9_]'
@@ -210,7 +211,7 @@ create table if not exists public.reference_market_material_supply_formats (
     active boolean not null default true,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
-    unique (market_material_variant_id, supply_format_code)
+    unique (market_material_listing_id, supply_format_code)
 );
 
 create table if not exists public.reference_market_material_legacy_mappings (
@@ -219,7 +220,7 @@ create table if not exists public.reference_market_material_legacy_mappings (
     market_code text not null references public.reference_markets(market_code),
     family_id uuid references public.reference_material_families(family_id),
     material_model_id uuid,
-    market_material_variant_id uuid,
+    market_material_listing_id uuid,
     classification_status text not null check (
         classification_status in ('mapped', 'excluded_by_policy', 'review_required')
     ),
@@ -235,26 +236,26 @@ create table if not exists public.reference_market_material_legacy_mappings (
         (classification_status = 'mapped'
             and family_id is not null
             and material_model_id is not null
-            and market_material_variant_id is not null
+            and market_material_listing_id is not null
             and classification_basis is not null)
         or (classification_status <> 'mapped'
             and material_model_id is null
-            and market_material_variant_id is null)
+            and market_material_listing_id is null)
     ),
     foreign key (material_model_id, family_id)
         references public.reference_material_models(material_model_id, family_id),
-    foreign key (market_material_variant_id, material_model_id)
-        references public.reference_market_material_variants(market_material_variant_id, material_model_id)
+    foreign key (market_material_listing_id, material_model_id)
+        references public.reference_market_material_listings(market_material_listing_id, material_model_id)
 );
 
 create index if not exists reference_market_material_legacy_mappings_review_idx
     on public.reference_market_material_legacy_mappings (market_code, classification_status)
     where classification_status = 'review_required';
 
-create table if not exists public.company_material_item_market_variant_mappings (
+create table if not exists public.company_material_item_market_listing_mappings (
     company_material_id uuid primary key
         references public.company_material_items(company_material_id) on delete cascade,
-    market_material_variant_id uuid references public.reference_market_material_variants(market_material_variant_id),
+    market_material_listing_id uuid references public.reference_market_material_listings(market_material_listing_id),
     mapping_status text not null check (
         mapping_status in ('matched', 'no_market_match', 'review_required')
     ),
@@ -268,10 +269,10 @@ create table if not exists public.company_material_item_market_variant_mappings 
     updated_at timestamptz not null default now(),
     check (
         (mapping_status = 'matched'
-            and market_material_variant_id is not null
+            and market_material_listing_id is not null
             and mapping_basis is not null)
         or (mapping_status <> 'matched'
-            and market_material_variant_id is null)
+            and market_material_listing_id is null)
     )
 );
 
@@ -371,10 +372,10 @@ alter table public.reference_material_family_brand_scopes enable row level secur
 alter table public.reference_brand_aliases enable row level security;
 alter table public.reference_material_models enable row level security;
 alter table public.reference_material_model_attribute_values enable row level security;
-alter table public.reference_market_material_variants enable row level security;
+alter table public.reference_market_material_listings enable row level security;
 alter table public.reference_market_material_supply_formats enable row level security;
 alter table public.reference_market_material_legacy_mappings enable row level security;
-alter table public.company_material_item_market_variant_mappings enable row level security;
+alter table public.company_material_item_market_listing_mappings enable row level security;
 alter table public.catalog_gap_jobs enable row level security;
 alter table public.estimate_case_assumptions enable row level security;
 alter table public.catalog_gap_job_occurrences enable row level security;
@@ -403,10 +404,10 @@ revoke all on public.reference_production_departments,
     public.reference_brand_aliases,
     public.reference_material_models,
     public.reference_material_model_attribute_values,
-    public.reference_market_material_variants,
+    public.reference_market_material_listings,
     public.reference_market_material_supply_formats,
     public.reference_market_material_legacy_mappings,
-    public.company_material_item_market_variant_mappings,
+    public.company_material_item_market_listing_mappings,
     public.catalog_gap_jobs,
     public.estimate_case_assumptions,
     public.catalog_gap_job_occurrences
@@ -426,10 +427,10 @@ grant all on public.reference_production_departments,
     public.reference_brand_aliases,
     public.reference_material_models,
     public.reference_material_model_attribute_values,
-    public.reference_market_material_variants,
+    public.reference_market_material_listings,
     public.reference_market_material_supply_formats,
     public.reference_market_material_legacy_mappings,
-    public.company_material_item_market_variant_mappings,
+    public.company_material_item_market_listing_mappings,
     public.catalog_gap_jobs,
     public.estimate_case_assumptions,
     public.catalog_gap_job_occurrences

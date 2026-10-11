@@ -17,14 +17,14 @@ def _row(**overrides):
     return row
 
 
-def test_known_category_maps_to_global_family_model_and_israel_variant():
+def test_known_category_maps_to_global_family_model_and_israel_listing():
     decision = classify_legacy_material(_row(), category_name="Plywood")
 
     assert decision.status == MAPPED
     assert decision.family_code == "plywood"
     assert decision.production_department_code == "wood"
     assert decision.global_model_code == "gcm_v1_plywood_raw_18"
-    assert decision.israel_variant_code == "il_gcm_wood_panel_001"
+    assert decision.israel_listing_code == "il_gcm_wood_panel_001"
     assert decision.primary_attribute_code == "thickness"
     assert decision.primary_attribute_value == 18
 
