@@ -159,3 +159,9 @@ backfill preview for the 3,793 strict mapped rows only. It must retain the 247
 policy-excluded rows and 408 review rows as legacy evidence, create no
 production data until its preview and integrity gates pass, and preserve the
 separation of Global model, Israel variant and Company offer.
+
+The initial read-only preview passed on the active production inventory: it
+produced 3,793 Global-model and Israel-variant pairs with zero Global model-code
+collisions and zero Israel variant-code collisions. It deliberately creates no
+supply format from legacy `base_unit`, because an estimation unit is not proof
+of a locally purchasable format.
