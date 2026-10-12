@@ -3382,7 +3382,7 @@ def _render_material_jobs(access: CompanyAccess, jobs: list[dict]) -> None:
             for job in jobs:
                 job_id = str(job.get("operation_offer_id") or job.get("source_row_id") or "job")
                 with st.container(key=f"price_catalog_row_job_{job_id}"):
-                    _, name_col, category_col, supplier_col, net_price_col, gross_price_col, date_col, source_col, _ = _price_catalog_grid_columns()
+                    _, name_col, category_col, supplier_col, price_col, date_col, source_col, _ = _price_catalog_grid_columns()
                     operation_name = str(job.get("operation_name") or "Material job")
                     original_name = str(job.get("raw_service_name") or "")
                     name_col.markdown(
@@ -3408,12 +3408,8 @@ def _render_material_jobs(access: CompanyAccess, jobs: list[dict]) -> None:
                         unit_key="source_unit_label",
                         source=job.get("source"),
                     )
-                    net_price_col.markdown(
-                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{net_price}</span>',
-                        unsafe_allow_html=True,
-                    )
-                    gross_price_col.markdown(
-                        f'<span class="price-catalog-cell price-catalog-cell-nowrap">{gross_price}</span>',
+                    price_col.markdown(
+                        _price_source_amount_markup(net_price, gross_price),
                         unsafe_allow_html=True,
                     )
                     date_col.markdown(

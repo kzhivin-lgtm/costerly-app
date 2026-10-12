@@ -1756,6 +1756,17 @@ def test_empty_catalog_and_material_jobs_do_not_render_sections():
     assert 'elif material_jobs:\n                _render_material_jobs' in screen_source
 
 
+def test_supplier_operations_uses_shared_single_price_column():
+    screen_source = Path("screens/company_profile.py").read_text()
+    start = screen_source.index("def _render_material_jobs")
+    end = screen_source.index("\ndef _render_price_source_details", start)
+    material_jobs_source = screen_source[start:end]
+
+    assert "price_col, date_col, source_col, _ = _price_catalog_grid_columns()" in material_jobs_source
+    assert "_price_source_amount_markup(net_price, gross_price)" in material_jobs_source
+    assert "net_price_col, gross_price_col" not in material_jobs_source
+
+
 def test_price_catalog_edit_opens_row_level_price_and_unit_form(monkeypatch):
     monkeypatch.setattr(
         company_profile,
