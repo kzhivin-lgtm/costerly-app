@@ -260,6 +260,11 @@ normalisation and Price Source display, then make Blue and Green eligible for
 deterministic selection. The future Material Engine selects minimum total
 purchasable cost at document scope, not merely the cheapest unit price.
 Contract: `notes/MATERIAL_RESOLVER_SELECTION_POLICY_3_17_2_9.md`.
+Current stage: broaden the Global family supply-format registry from verified
+Israeli and manufacturer catalogues, normalise ft/cm/mm source notation, and
+complete a one-sided format only where exactly one active candidate matches.
+The owner must apply `2026_10_12_correct_company_offer_formats.sql` before
+this stage can be deployed or tested in Price Source.
 
 DEFERRED, P1, USER REQUEST, 3.17.2.8 Construction Scenario Library and Staff
 Admin: define a controlled, versioned library of full estimating archetypes,
