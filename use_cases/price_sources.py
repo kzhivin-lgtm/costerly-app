@@ -41,7 +41,7 @@ from use_cases.price_source_material_resolution import (
 )
 from use_cases.material_identity_status import material_identity_status
 from use_cases.material_normalization import canonical_display_name
-from use_cases.material_supply_format import apply_price_source_supply_formats
+from use_cases.material_supply_format import apply_price_source_purchasable_dimensions
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
@@ -273,34 +273,28 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def active_material_pricing_policies(client) -> dict[str, dict[str, Any]]:
-    """Read the Global policy registry once for one source cycle.
-
-    The registry, rather than source prose or a local fallback list, decides
-    whether an omitted physical format may use the documented standard-sheet
-    assumption. A temporary read failure preserves provenance by producing
-    ``unknown`` formats, never by fabricating a format.
-    """
+def active_material_family_supply_formats(client) -> dict[str, list[dict[str, Any]]]:
+    """Read the active Global purchasable-format registry for one source cycle."""
     try:
         rows = (
-            client.table("reference_material_family_pricing_policies")
+            client.table("reference_material_family_supply_formats")
             .select(
-                "family_id,purchase_format_policy,default_purchasable_dimensions,"
+                "family_id,purchasable_dimensions,is_default,active,"
                 "reference_material_families!inner(code)"
             )
             .eq("active", True)
             .execute()
         ).data or []
     except Exception:
-        logger.exception("Material pricing-policy registry could not be loaded")
+        logger.exception("Material family supply-format registry could not be loaded")
         return {}
-    policies: dict[str, dict[str, Any]] = {}
+    formats: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         family = row.get("reference_material_families") or {}
         code = str(family.get("code") or "").strip()
         if code:
-            policies[code] = dict(row)
-    return policies
+            formats.setdefault(code, []).append(dict(row))
+    return formats
 
 
 def apply_vat_basis_to_unknown_rows(
@@ -4228,9 +4222,9 @@ def process_price_source(
     if header_document_number:
         result["document_number"] = header_document_number
     normalize_price_source_sheet_rows(result)
-    apply_price_source_supply_formats(
+    apply_price_source_purchasable_dimensions(
         result,
-        policies_by_family_code=active_material_pricing_policies(client),
+        formats_by_family_code=active_material_family_supply_formats(client),
     )
     # VAT is decided after the canonical supplier has been resolved below.
     # That preserves the priority: explicit current evidence, seller legal
@@ -5055,10 +5049,6 @@ def process_price_source(
                     "calculation_unit": row["calculation_unit"] or None,
                     "conversion_factor": row["conversion_factor"] or None,
                     "normalized_unit": row["calculation_unit"] or None,
-                    "supply_format_code": (row.get("supply_format") or {}).get("supply_format_code"),
-                    "purchasable_dimensions": (row.get("supply_format") or {}).get("purchasable_dimensions") or {},
-                    "minimum_purchase_quantity": (row.get("supply_format") or {}).get("minimum_purchase_quantity") or 1,
-                    "format_basis": (row.get("supply_format") or {}).get("format_basis") or "unknown",
                     "conversion_basis": {"description": row["conversion_basis"]},
                     "company_material_id": material_id,
                     "row_kind": "operation_service" if operation_id else "material" if row["item_kind"] == "material" else "non_catalog",
@@ -5072,7 +5062,6 @@ def process_price_source(
                         "item_kind": row["item_kind"],
                         "material_family": row["material_family"],
                         "identity_attributes": row["identity_attributes"],
-                        "supply_format": row.get("supply_format") or {},
                         "catalog_v2_taxonomy": catalog_v2_taxonomy_for_family(
                             str(row.get("material_family") or "")
                         ),
@@ -5107,10 +5096,7 @@ def process_price_source(
                         "conversion_factor": row["conversion_factor"],
                         "normalized_price": row["normalized_price"],
                         "normalized_unit": row["calculation_unit"],
-                        "supply_format_code": (row.get("supply_format") or {}).get("supply_format_code"),
-                        "purchasable_dimensions": (row.get("supply_format") or {}).get("purchasable_dimensions") or {},
-                        "minimum_purchase_quantity": (row.get("supply_format") or {}).get("minimum_purchase_quantity") or 1,
-                        "format_basis": (row.get("supply_format") or {}).get("format_basis") or "unknown",
+                        "purchasable_dimensions": row.get("purchasable_dimensions") or {},
                         "currency": row["raw_currency"] or result["currency"],
                         "vat_included": True if row["raw_vat_mode"] == "included" else False if row["raw_vat_mode"] == "excluded" else None,
                         "valid_from": _date_or_none(result["document_date"]),

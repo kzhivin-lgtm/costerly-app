@@ -97,8 +97,8 @@ from use_cases.price_sources import (
     validate_price_source_upload_selection,
 )
 from use_cases.material_supply_format import (
-    apply_price_source_supply_formats,
-    supply_format_for_row,
+    apply_price_source_purchasable_dimensions,
+    purchasable_dimensions_for_row,
 )
 
 
@@ -121,75 +121,66 @@ def test_persisted_price_source_status_never_leaks_transient_ready_state(
     ) == (expected_status, expected_reasons)
 
 
-def _pricing_format_policies() -> dict[str, dict]:
+def _family_supply_formats() -> dict[str, list[dict]]:
     return {
-        "mdf_hdf": {
-            "purchase_format_policy": "standard_sheet_2400x1220",
-            "default_purchasable_dimensions": {"length_mm": 2400, "width_mm": 1220},
-        },
-        "plywood": {
-            "purchase_format_policy": "standard_sheet_2400x1220",
-            "default_purchasable_dimensions": {"length_mm": 2400, "width_mm": 1220},
-        },
-        "sheet_metal": {
-            "purchase_format_policy": "required",
-            "default_purchasable_dimensions": {},
-        },
-        "hardware_leg_caster": {
-            "purchase_format_policy": "not_required",
-            "default_purchasable_dimensions": {},
-        },
+        "mdf_hdf": [{
+            "purchasable_dimensions": {"length_mm": 2400, "width_mm": 1220},
+            "is_default": True,
+        }],
+        "plywood": [
+            {"purchasable_dimensions": {"length_mm": 2400, "width_mm": 1220}, "is_default": True},
+            {"purchasable_dimensions": {"length_mm": 3000, "width_mm": 1500}, "is_default": False},
+            {"purchasable_dimensions": {"length_mm": 1520, "width_mm": 1520}, "is_default": False},
+            {"purchasable_dimensions": {"length_mm": 2440, "width_mm": 1520}, "is_default": False},
+        ],
+        "sheet_metal": [{
+            "purchasable_dimensions": {"length_mm": 3000, "width_mm": 1500},
+            "is_default": False,
+        }],
+        "hardware_leg_caster": [],
     }
 
 
-def test_offer_supply_format_defaults_only_an_approved_wood_sheet_family():
-    result = supply_format_for_row(
+def test_offer_dimensions_use_the_single_registry_default_when_source_has_no_format():
+    result = purchasable_dimensions_for_row(
         {
             "material_family": "mdf",
             "purchase_unit": "sheet",
             "identity_attributes": {"length_mm": 0, "width_mm": 0},
         },
-        policies_by_family_code=_pricing_format_policies(),
+        formats_by_family_code=_family_supply_formats(),
     )
 
-    assert result == {
-        "family_code": "mdf_hdf",
-        "supply_format_code": "sheet",
-        "purchasable_dimensions": {"length_mm": 2400, "width_mm": 1220},
-        "minimum_purchase_quantity": 1,
-        "format_basis": "standard_default",
-    }
+    assert result == {"length_mm": 2400, "width_mm": 1220}
 
 
-def test_offer_supply_format_retains_one_literal_sheet_side_and_infers_only_standard_width():
-    result = supply_format_for_row(
+def test_offer_dimensions_complete_one_literal_side_only_from_one_matching_catalogue_format():
+    result = purchasable_dimensions_for_row(
         {
             "material_family": "plywood",
             "purchase_unit": "sheet",
-            "identity_attributes": {"length_mm": 3100, "width_mm": 0},
+            "identity_attributes": {"length_mm": 3000, "width_mm": 0},
         },
-        policies_by_family_code=_pricing_format_policies(),
+        formats_by_family_code=_family_supply_formats(),
     )
 
-    assert result["purchasable_dimensions"] == {"length_mm": 3100, "width_mm": 1220}
-    assert result["format_basis"] == "inferred_standard_width"
+    assert result == {"length_mm": 3000, "width_mm": 1500}
 
 
-def test_offer_supply_format_never_invents_metal_sheet_dimensions():
-    result = supply_format_for_row(
+def test_offer_dimensions_stay_empty_when_the_one_side_has_multiple_matching_formats():
+    result = purchasable_dimensions_for_row(
         {
-            "material_family": "metal sheet",
+            "material_family": "plywood",
             "purchase_unit": "sheet",
-            "identity_attributes": {"length_mm": 0, "width_mm": 0},
+            "identity_attributes": {"length_mm": 1520, "width_mm": 0},
         },
-        policies_by_family_code=_pricing_format_policies(),
+        formats_by_family_code=_family_supply_formats(),
     )
 
-    assert result["purchasable_dimensions"] == {}
-    assert result["format_basis"] == "incomplete"
+    assert result == {}
 
 
-def test_offer_supply_format_is_not_applicable_to_hardware_and_is_persistable_on_rows():
+def test_offer_dimensions_are_empty_for_hardware_and_persistable_on_rows():
     payload = {
         "rows": [
             {
@@ -201,15 +192,9 @@ def test_offer_supply_format_is_not_applicable_to_hardware_and_is_persistable_on
         ]
     }
 
-    apply_price_source_supply_formats(payload, policies_by_family_code=_pricing_format_policies())
+    apply_price_source_purchasable_dimensions(payload, formats_by_family_code=_family_supply_formats())
 
-    assert payload["rows"][0]["supply_format"] == {
-        "family_code": "hardware_leg_caster",
-        "supply_format_code": "piece",
-        "purchasable_dimensions": {},
-        "minimum_purchase_quantity": 1,
-        "format_basis": "not_applicable",
-    }
+    assert payload["rows"][0]["purchasable_dimensions"] == {}
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,

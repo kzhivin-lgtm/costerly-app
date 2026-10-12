@@ -1,41 +1,15 @@
-"""Offer-level physical purchase-format normalisation.
+"""Resolve the physical dimensions of one supplier offer.
 
-The company material identifies *what* the supplier sells.  The active offer
-records *how that supplier sells it*.  This distinction is essential for sheet
-goods: the same plywood may be available as 2440 x 1220 or 3100 x 1220 sheets,
-with materially different purchasable cost and nesting.
+A company material answers what the item is. A supplier offer answers the
+price of a purchasable unit of that item. The physical dimensions belong to
+that offer because a supplier can sell the same plywood in 2440 x 1220 and
+1520 x 1520 sheets at different prices.
 """
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
-
-
-SHEET_FORMAT_CODES = {"sheet", "panel", "board"}
-_LINEAR_UNITS = {"mm", "cm", "m", "linear_m"}
-_AREA_UNITS = {"cm2", "m2"}
-_MASS_UNITS = {"g", "kg", "ton"}
-
-
-def supply_format_code_for_unit(unit: object) -> str:
-    """Return a compact physical purchase class for a canonical unit."""
-    normalized = str(unit or "").strip().casefold()
-    if normalized in SHEET_FORMAT_CODES:
-        return "sheet"
-    if normalized in _LINEAR_UNITS:
-        return "linear_stock"
-    if normalized in _AREA_UNITS:
-        return "area"
-    if normalized in _MASS_UNITS:
-        return "mass"
-    if normalized == "roll":
-        return "roll"
-    if normalized in {"set", "pair", "dozen"}:
-        return "set"
-    if normalized in {"piece", "pack", "box", "carton", "bag", "bucket", "can", "tube", "pallet"}:
-        return "piece"
-    return "unknown"
 
 
 def _positive_mm(value: object) -> int:
@@ -46,90 +20,72 @@ def _positive_mm(value: object) -> int:
     return int(round(parsed)) if parsed > 0 else 0
 
 
-def _sheet_dimensions(attributes: Mapping[str, Any]) -> tuple[int, int]:
-    """Normalise literal source dimensions into length x width millimetres."""
-    first = _positive_mm(attributes.get("length_mm"))
-    second = _positive_mm(attributes.get("width_mm"))
-    if first and second:
-        return max(first, second), min(first, second)
-    return first or second, 0
+def _normalised_dimensions(value: Mapping[str, Any] | None) -> dict[str, int]:
+    value = value or {}
+    length = _positive_mm(value.get("length_mm"))
+    width = _positive_mm(value.get("width_mm"))
+    if length and width:
+        return {"length_mm": max(length, width), "width_mm": min(length, width)}
+    if length:
+        return {"length_mm": length}
+    return {}
 
 
-def supply_format_for_row(
+def purchasable_dimensions_for_row(
     row: Mapping[str, Any],
     *,
-    policies_by_family_code: Mapping[str, Mapping[str, Any]],
-) -> dict[str, Any]:
-    """Build the persisted offer format, without mutating raw source evidence.
+    formats_by_family_code: Mapping[str, Sequence[Mapping[str, Any]]],
+) -> dict[str, int]:
+    """Return a complete format only when the registry determines it uniquely.
 
-    A missing policy deliberately remains ``unknown``.  It is not silently
-    upgraded to a default format, because that would invent a purchasable item.
+    One printed sheet side is evidence, not a licence to assume 1220 mm. It is
+    completed only when exactly one active family format contains that side.
+    With several candidates it stays unresolved for now.
     """
     taxonomy = catalog_v2_taxonomy_for_family(str(row.get("material_family") or "")) or {}
     family_code = str(taxonomy.get("family_code") or "")
-    policy = policies_by_family_code.get(family_code)
-    format_code = supply_format_code_for_unit(row.get("purchase_unit"))
-    payload: dict[str, Any] = {
-        "family_code": family_code or None,
-        "supply_format_code": format_code,
-        "purchasable_dimensions": {},
-        "minimum_purchase_quantity": 1,
-        "format_basis": "not_applicable",
-    }
-    if not policy:
-        payload["format_basis"] = "unknown"
-        return payload
-
-    purchase_format_policy = str(policy.get("purchase_format_policy") or "not_required")
-    if purchase_format_policy == "not_required":
-        return payload
-
-    # A family requiring a purchase format is a sheet/panel family in the
-    # current registry.  Preserve its physical meaning even when an invoice
-    # used the generic word "panel" or omitted the unit entirely.
-    payload["supply_format_code"] = "sheet"
     attributes = row.get("identity_attributes")
     attributes = attributes if isinstance(attributes, Mapping) else {}
-    length_mm, width_mm = _sheet_dimensions(attributes)
-    if length_mm and width_mm:
-        payload["purchasable_dimensions"] = {"length_mm": length_mm, "width_mm": width_mm}
-        payload["format_basis"] = "explicit"
-        return payload
+    literal = _normalised_dimensions(attributes)
+    if len(literal) == 2:
+        return literal
 
-    default_dimensions = policy.get("default_purchasable_dimensions")
-    default_dimensions = default_dimensions if isinstance(default_dimensions, Mapping) else {}
-    default_length = _positive_mm(default_dimensions.get("length_mm"))
-    default_width = _positive_mm(default_dimensions.get("width_mm"))
-    if purchase_format_policy == "standard_sheet_2400x1220" and default_length and default_width:
-        if length_mm:
-            payload["purchasable_dimensions"] = {
-                "length_mm": length_mm,
-                "width_mm": min(default_length, default_width),
-            }
-            payload["format_basis"] = "inferred_standard_width"
-        else:
-            payload["purchasable_dimensions"] = {
-                "length_mm": max(default_length, default_width),
-                "width_mm": min(default_length, default_width),
-            }
-            payload["format_basis"] = "standard_default"
-        return payload
+    raw_formats = formats_by_family_code.get(family_code, ())
+    formats = [
+        (_normalised_dimensions(candidate.get("purchasable_dimensions")), candidate)
+        for candidate in raw_formats
+        if candidate.get("active", True)
+    ]
+    formats = [(dimensions, candidate) for dimensions, candidate in formats if dimensions]
+    if literal:
+        known_side = next(iter(literal.values()))
+        matches = [
+            dimensions for dimensions, _candidate in formats
+            if known_side in dimensions.values()
+        ]
+        unique_matches = {
+            tuple(sorted(candidate.items())): candidate for candidate in matches
+        }
+        return next(iter(unique_matches.values())) if len(unique_matches) == 1 else {}
 
-    payload["format_basis"] = "incomplete"
-    return payload
+    defaults = [dimensions for dimensions, candidate in formats if candidate.get("is_default")]
+    unique_defaults = {
+        tuple(sorted(candidate.items())): candidate for candidate in defaults
+    }
+    return next(iter(unique_defaults.values())) if len(unique_defaults) == 1 else {}
 
 
-def apply_price_source_supply_formats(
+def apply_price_source_purchasable_dimensions(
     result: dict[str, Any],
     *,
-    policies_by_family_code: Mapping[str, Mapping[str, Any]],
+    formats_by_family_code: Mapping[str, Sequence[Mapping[str, Any]]],
 ) -> dict[str, Any]:
-    """Attach derived physical purchase formats to persisted-source candidates."""
+    """Attach an offer-only, fully resolved format to source candidates."""
     for row in result.get("rows") or []:
         if not isinstance(row, dict) or row.get("item_kind") != "material":
             continue
-        row["supply_format"] = supply_format_for_row(
+        row["purchasable_dimensions"] = purchasable_dimensions_for_row(
             row,
-            policies_by_family_code=policies_by_family_code,
+            formats_by_family_code=formats_by_family_code,
         )
     return result
