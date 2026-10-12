@@ -40,6 +40,7 @@ from use_cases.price_sources import (
     discard_price_source_consumables,
     discard_price_source_low_value_rows,
     prepare_price_source_operation_rows,
+    reconcile_price_source_operation_catalog,
     PriceSourceError,
     PRICE_CATALOG_DEPARTMENTS,
     _VisibleTextParser,
@@ -2212,13 +2213,33 @@ def test_product_system_aliases_cover_transliteration_and_safe_ocr_variants(desc
         ("הרכבת גוף", "carcass_assembly"),
         ("עבודת חיתוך לייזר", "sheet_laser_cutting"),
         ("powder coating service", "powder_coating_application"),
-        ("עיבוד CNC לחזיתות", "cnc_panel_processing"),
-        ("שירות הקצעה", "wood_planing"),
-        ("עבודת הדבקת פורניר", "veneer_pressing"),
+        ("עיבוד CNC לחזיתות", "cnc_router_profile_cutting"),
+        ("שירות הקצעה", "solid_wood_jointing_planing"),
+        ("עבודת הדבקת פורניר", "veneer_lamination"),
     ],
 )
 def test_bilingual_material_jobs_dictionary_resolves_existing_operations(description, operation_code):
     assert job_operation_for_text(description.casefold()) == operation_code
+
+
+def test_missing_reference_operation_becomes_review_evidence_not_a_source_failure():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "item_kind": "operation_service",
+        "status": "ready",
+        "reason_codes": [],
+    })
+
+    reconciled = reconcile_price_source_operation_catalog(
+        result,
+        {1: "obsolete_reference_operation"},
+        (),
+    )
+
+    assert reconciled == {}
+    assert row["status"] == "unresolved"
+    assert row["reason_codes"] == ["reference_operation_missing"]
 
 
 def test_explicit_cut_and_edge_work_overrides_an_incorrect_material_classification():

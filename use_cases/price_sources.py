@@ -934,6 +934,37 @@ def prepare_price_source_operation_rows(result: dict[str, Any]) -> dict[int, str
     return mapped
 
 
+def reconcile_price_source_operation_catalog(
+    result: dict[str, Any],
+    operation_code_by_row_number: Mapping[int, str],
+    available_operation_codes: Sequence[str],
+) -> dict[int, str]:
+    """Keep a source import usable if its operation taxonomy and registry drift.
+
+    Reference operations are catalog-owned data. A supplier source must never
+    create one implicitly. If a mapped code is absent, retain the source row as
+    actionable Review evidence instead of aborting the entire upload.
+    """
+    available_codes = {str(code) for code in available_operation_codes}
+    rows_by_number = {
+        int(row["source_row_number"]): row
+        for row in result.get("rows") or []
+        if row.get("source_row_number") is not None
+    }
+    reconciled: dict[int, str] = {}
+    for row_number, operation_code in operation_code_by_row_number.items():
+        if operation_code in available_codes:
+            reconciled[row_number] = operation_code
+            continue
+        row = rows_by_number.get(row_number)
+        if row and row.get("status") != "excluded":
+            row["status"] = "unresolved"
+            row["reason_codes"] = sorted(
+                set(row.get("reason_codes") or []) | {"reference_operation_missing"}
+            )
+    return reconciled
+
+
 def supplier_service_pricing_basis(
     raw_unit: object,
     *,
@@ -4521,6 +4552,22 @@ def process_price_source(
     discarded_non_candidates = discard_price_source_non_candidates(result)
     discarded_consumables = discard_price_source_consumables(result)
     operation_code_by_row_number = prepare_price_source_operation_rows(result)
+    operation_catalog_rows = (
+        client.table("reference_operations")
+        .select("operation_id,operation_code")
+        .in_("operation_code", sorted(set(operation_code_by_row_number.values())))
+        .execute().data
+        or []
+    ) if operation_code_by_row_number else []
+    operation_ids_by_code = {
+        str(row["operation_code"]): str(row["operation_id"])
+        for row in operation_catalog_rows
+    }
+    operation_code_by_row_number = reconcile_price_source_operation_catalog(
+        result,
+        operation_code_by_row_number,
+        tuple(operation_ids_by_code),
+    )
     guard_price_source_department(result, department)
     material_types = price_source_material_types(result)
     category = material_types[0] if len(material_types) == 1 else "Mixed"
@@ -4917,18 +4964,6 @@ def process_price_source(
                 },
                 on_conflict="company_id,normalized_name",
             ).execute()
-
-        operation_ids_by_code = {
-            str(row["operation_code"]): str(row["operation_id"])
-            for row in (
-                client.table("reference_operations")
-                .select("operation_id,operation_code")
-                .in_("operation_code", sorted(set(operation_code_by_row_number.values())))
-                .execute().data or []
-            )
-        } if operation_code_by_row_number else {}
-        if set(operation_code_by_row_number.values()) - set(operation_ids_by_code):
-            raise RuntimeError("Prepared supplier operation is missing from the reference catalog")
 
         offer_index_started = time.perf_counter()
         active_offers = (
