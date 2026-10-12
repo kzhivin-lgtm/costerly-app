@@ -7,6 +7,7 @@ that offer because a supplier can sell the same plywood in 2440 x 1220 and
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Mapping, Sequence
 
 from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
@@ -31,6 +32,72 @@ def _normalised_dimensions(value: Mapping[str, Any] | None) -> dict[str, int]:
     return {}
 
 
+def _metric_mm(value: str, unit: str) -> int:
+    parsed = float(value.replace(",", "."))
+    multiplier = {"mm": 1, "cm": 10, "m": 1000, "ft": 304.8}[unit]
+    # Trade sheet formats are normally written nominally: 4 ft is catalogued
+    # as 1220 mm, 5 ft as 1525 mm, not 1219.2 and 1524.0.
+    return int(round((parsed * multiplier) / 5) * 5)
+
+
+def _source_dimensions(text: object) -> dict[str, int]:
+    """Extract a literal two-dimensional format from supplier wording.
+
+    Supports mm, cm, metres and feet, including the common 4x8 notation. The
+    parser intentionally does not interpret punctuation such as ``3-100`` as
+    a size until a real source convention proves its grammar.
+    """
+    value = str(text or "").casefold().replace("×", "x")
+    unit_pattern = r"(?P<unit>mm|cm|m|ft|feet|foot|')"
+    number = r"(?P<left>\d+(?:[.,]\d+)?)"
+    right = r"(?P<right>\d+(?:[.,]\d+)?)"
+    explicit = re.search(
+        rf"{number}\s*{unit_pattern}\s*x\s*{right}\s*(?P=unit)", value
+    )
+    if not explicit:
+        explicit = re.search(
+            rf"{number}\s*x\s*{right}\s*(?P<unit>mm|cm|m|ft|feet|foot|')", value
+        )
+    if explicit:
+        unit = str(explicit.group("unit"))
+        unit = {"feet": "ft", "foot": "ft", "'": "ft"}.get(unit, unit)
+        left = _metric_mm(explicit.group("left"), unit)
+        right_value = _metric_mm(explicit.group("right"), unit)
+        return _normalised_dimensions({"length_mm": left, "width_mm": right_value})
+
+    nominal_feet = re.search(r"(?<!\d)([3-8])\s*x\s*(1[0-2]|[3-9])(?!\d)", value)
+    if nominal_feet:
+        return _normalised_dimensions(
+            {
+                "length_mm": _metric_mm(nominal_feet.group(1), "ft"),
+                "width_mm": _metric_mm(nominal_feet.group(2), "ft"),
+            }
+        )
+
+    # Explicit millimetre formats may omit the unit between the dimensions,
+    # and invoice strings commonly place thickness first: 18x1220x2440 mm.
+    millimetres = [
+        int(number)
+        for number in re.findall(r"(?<!\d)(\d{4})(?!\d)", value)
+    ]
+    if len(millimetres) >= 2:
+        return _normalised_dimensions(
+            {"length_mm": millimetres[-1], "width_mm": millimetres[-2]}
+        )
+
+    # Israeli supplier catalogues often abbreviate the familiar 1220x2440
+    # form as 122x244 and state centimetres elsewhere on the page.
+    centimetres = re.search(r"(?<!\d)(\d{2,3})\s*x\s*(\d{2,3})(?!\d)", value)
+    if centimetres:
+        return _normalised_dimensions(
+            {
+                "length_mm": int(centimetres.group(1)) * 10,
+                "width_mm": int(centimetres.group(2)) * 10,
+            }
+        )
+    return {}
+
+
 def purchasable_dimensions_for_row(
     row: Mapping[str, Any],
     *,
@@ -47,6 +114,9 @@ def purchasable_dimensions_for_row(
     attributes = row.get("identity_attributes")
     attributes = attributes if isinstance(attributes, Mapping) else {}
     literal = _normalised_dimensions(attributes)
+    source_dimensions = _source_dimensions(row.get("raw_description"))
+    if len(source_dimensions) == 2:
+        literal = source_dimensions
     if len(literal) == 2:
         return literal
 
