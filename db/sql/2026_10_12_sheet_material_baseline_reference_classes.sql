@@ -4,6 +4,12 @@
 -- birch/HPL/veneered class.
 begin;
 
+-- ``reference_materials`` is an existing server-managed catalog table. Keep
+-- the original foundation security contract explicit for dashboard checks:
+-- Streamlit writes through service_role, while anon/authenticated roles have
+-- no direct catalog-table access.
+alter table public.reference_materials enable row level security;
+
 with raw_plywood(thickness_mm) as (
     values (3), (4), (5), (6), (8), (9), (10), (12), (15), (18), (21),
            (24), (25), (27), (30), (35), (40), (45), (50)
