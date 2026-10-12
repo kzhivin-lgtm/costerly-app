@@ -39,3 +39,10 @@ def test_missing_family_is_red():
 
     assert status.tone == "red"
     assert status.missing == ("material family",)
+
+
+def test_legacy_other_bucket_is_red():
+    status = material_identity_status({"specifications": {"material_family": "other"}})
+
+    assert status.tone == "red"
+    assert status.missing == ("material family",)

@@ -74,10 +74,14 @@ _REQUIRED_BY_FAMILY: dict[str, tuple[str, ...]] = {
     "paint": ("coating_system",),
     "coating material": ("coating_system",),
     "drawer slide": ("depth_mm",),
+    "drawer system": (),
     "hinge": (),
     "door closure": (),
     "handle": (),
     "furniture leg": (),
+    "caster": (),
+    "plinth profile": (),
+    "drilling fixture": (),
     "furniture connector": (),
     "lift mechanism": (),
 }
@@ -95,7 +99,7 @@ def material_identity_status(item: Mapping[str, Any]) -> MaterialIdentityStatus:
     """Assess canonical-path depth without mutating source or catalog data."""
     specs = dict(item.get("specifications") or {})
     family = str(specs.get("material_family") or "").strip()
-    if not family:
+    if not family or family.casefold() in {"other", "unclassified", "unknown"}:
         return MaterialIdentityStatus("red", "Identity unresolved", (), ("material family",), "Material family is not established")
 
     required = _REQUIRED_BY_FAMILY.get(family, ())

@@ -613,6 +613,8 @@ def resolve_rows_after_supplier_identity(result: dict[str, Any]) -> int:
             and row.get("calculation_unit") not in {"", "unknown", "other"}
             and float(row.get("conversion_factor") or 0) > 0
             and str(row.get("normalized_name") or "").strip()
+            and str(row.get("material_type") or "").strip().casefold()
+            not in {"other", "unclassified"}
         )
         if has_pricing_basis and not (reasons & _SUPPLIER_IDENTITY_BLOCKING_REASONS):
             row["status"] = "ready"

@@ -1930,6 +1930,23 @@ def test_glass_door_closure_is_hardware_not_glass_and_keeps_compact_brand_candid
     assert row["normalized_name"] == "Door Closure 550 mm Mario Box, white"
 
 
+def test_exact_merivobox_is_drawer_system_not_glass_or_metal_profile():
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": "פרופיל חזית לפנימית מריבוקס לבן זכוכית בלום",
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+        "identity_attributes": {},
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_type"] == "Hardware"
+    assert row["material_family"] == "drawer system"
+    assert row["identity_attributes"]["brand"] == "Blum"
+    assert row["identity_attributes"]["product_system"] == "Merivobox"
+
+
 @pytest.mark.parametrize(
     ("description", "expected_depth"),
     [
@@ -2278,14 +2295,14 @@ def test_known_material_job_with_unknown_unit_uses_its_canonical_supplier_basis(
     assert "operation_type_unresolved" not in guarded["rows"][0]["reason_codes"]
 
 
-def test_confidence_and_other_material_type_do_not_block_a_usable_price():
+def test_other_material_type_requires_review_instead_of_active_catalog():
     result = _result(confidence=42)
     result["rows"][0]["material_type"] = "Other"
 
     guarded = guard_price_source_row_activation(result)
 
-    assert guarded["rows"][0]["status"] == "ready"
-    assert "material_type_unresolved" not in guarded["rows"][0]["reason_codes"]
+    assert guarded["rows"][0]["status"] == "unresolved"
+    assert "material_type_unresolved" in guarded["rows"][0]["reason_codes"]
 
 
 def test_price_source_schema_requires_a_supported_row_material_type():

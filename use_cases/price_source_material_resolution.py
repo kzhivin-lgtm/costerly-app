@@ -342,6 +342,65 @@ def _canonical_sheet_reference(
     )
 
 
+def _canonical_hardware_reference(
+    *,
+    material_family: str,
+    specifications: Mapping[str, Any],
+    materials: Sequence[Mapping[str, Any]],
+    resolver_version: str,
+    phrase: str,
+) -> MaterialIdentityResolution | None:
+    """Link an approved Hardware family to one Israel baseline endpoint.
+
+    This is intentionally narrower than text similarity. A baseline may only
+    be used when the class explicitly names the same family. Drawer slides add
+    the one price-bearing fact approved for preliminary estimation, their
+    nominal length. Brand, series, SKU, colour and accessory prose cannot
+    create or change the endpoint.
+    """
+    family = normalize_material_phrase(material_family)
+    if not family:
+        return None
+    requested_depth = specifications.get("depth_mm")
+    matches: list[Mapping[str, Any]] = []
+    for material in materials:
+        stored = material.get("specifications") or {}
+        if (
+            not material.get("active", True)
+            or stored.get("reference_class") != "hardware_baseline"
+            or normalize_material_phrase(stored.get("material_family")) != family
+        ):
+            continue
+        if family == "drawer slide":
+            if requested_depth in (None, "", 0, 0.0):
+                return None
+            try:
+                if float(stored.get("depth_mm") or 0) != float(requested_depth):
+                    continue
+            except (TypeError, ValueError):
+                continue
+        matches.append(material)
+    if len(matches) != 1:
+        return None
+    material_id = str(matches[0].get("material_id") or "")
+    if not material_id:
+        return None
+    return MaterialIdentityResolution(
+        status="resolved",
+        route="canonical_hardware_baseline",
+        normalized_phrase=normalize_material_phrase(phrase),
+        selected_material_id=material_id,
+        candidates=(
+            MaterialIdentityCandidate(
+                material_id=material_id,
+                score=Decimal("95"),
+                route="canonical_hardware_baseline",
+            ),
+        ),
+        resolver_version=resolver_version,
+    )
+
+
 def _source_supplier_maps(
     client: Any,
     *,
@@ -686,6 +745,16 @@ def resolve_price_source_material_identities(
                 )
                 if sheet_match is not None:
                     resolution = sheet_match
+            if resolution.status != "resolved":
+                hardware_match = _canonical_hardware_reference(
+                    material_family=material_family,
+                    specifications=canonical_specifications,
+                    materials=index["materials"],
+                    resolver_version=resolver_version,
+                    phrase=phrase,
+                )
+                if hardware_match is not None:
+                    resolution = hardware_match
             if resolution.status != "resolved":
                 low_impact_match = resolve_low_impact_compatibility(
                     phrase=phrase,

@@ -125,6 +125,18 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         "furniture leg", "cabinet leg", "plinth leg", "adjustable leg", "leveling foot",
         "רגלית", "רגל מתכווננת", "רגל לארון", "רגל מטבח",
     )),
+    TaxonomyRule("Hardware", "caster", (
+        "caster", "castor", "wheel", "trolley wheel", "גלגל", "גלגלת",
+        "גלגל לעגלה", "גלגל לרהיט",
+    )),
+    TaxonomyRule("Hardware", "plinth profile", (
+        "plinth profile", "plinth rail", "toe kick profile", "socle profile",
+        "סוקל", "פרופיל סוקל", "פס סוקל",
+    )),
+    TaxonomyRule("Hardware", "drilling fixture", (
+        "drilling fixture", "drilling template", "jig", "דגם קידוח",
+        "שבלונת קידוח", "מתקן קידוח",
+    )),
     TaxonomyRule("Hardware", "furniture connector", (
         "connector", "cabinet connector", "cam lock", "confirmat", "dowel",
         "bolt", "furniture screw", "minifix", "connector bolt", "cam fitting",
@@ -305,11 +317,15 @@ _V2_FAMILY_PROJECTIONS: dict[str, tuple[str, str, str | None]] = {
     "coating material": ("filler_hardener_thinner", "material", "coating"),
     "hinge": ("hardware_hinge", "hardware", None),
     "drawer slide": ("hardware_drawer_slide", "hardware", None),
+    "drawer system": ("hardware_drawer_system", "hardware", None),
     "door closure": ("hardware_lock_latch", "hardware", None),
     "plinth clip": ("hardware_mounting_part", "hardware", None),
     "mounting plate": ("hardware_mounting_part", "hardware", None),
     "handle": ("hardware_handle", "hardware", None),
     "furniture leg": ("hardware_leg_caster", "hardware", None),
+    "caster": ("hardware_leg_caster", "hardware", None),
+    "plinth profile": ("hardware_mounting_part", "hardware", None),
+    "drilling fixture": ("hardware_mounting_part", "hardware", None),
     "furniture connector": ("hardware_connector", "hardware", None),
     "lift mechanism": ("hardware_lift_system", "hardware", None),
 }
@@ -712,7 +728,35 @@ def _has_alias(text: str, aliases: tuple[str, ...]) -> bool:
     return False
 
 
+_DRAWER_SYSTEM_RULE = TaxonomyRule("Hardware", "drawer system", (
+    "drawer system", "drawer box", "metal drawer box", "drawer side",
+    "merivobox", "legrabox", "tandembox", "metabox", "lineabox",
+    "avantech", "arcitech", "innotech", "matrix drawer", "tekform",
+    "vertex drawer", "pure-box", "magic-star", "מריבובוקס", "מריבוקס",
+    "לגרבוקס", "טנדמבוקס", "מטאבוקס", "מגירת מתכת", "דופן מגירה",
+    "פרופיל חזית לפנימית",
+))
+
+
+def _has_exact_alias(text: str, aliases: tuple[str, ...]) -> bool:
+    canonical_text = _canonical_taxonomy_text(text)
+    return any(
+        canonical_alias and re.search(
+            rf"(?<!\\w){re.escape(canonical_alias)}(?!\\w)", canonical_text,
+            flags=re.UNICODE,
+        )
+        for alias in aliases
+        for canonical_alias in (_canonical_taxonomy_text(alias),)
+    )
+
+
 def material_rule_for_text(text: str) -> TaxonomyRule | None:
+    # Product-system words are long and OCR-prone. Unlike broad family words,
+    # they must match literally here: ``Mario Box`` cannot become MERIVOBOX.
+    # Exact recognised systems are still classified before raw "glass" or
+    # "profile" wording takes the line into a material department.
+    if _has_exact_alias(text, _DRAWER_SYSTEM_RULE.aliases):
+        return _DRAWER_SYSTEM_RULE
     return next((rule for rule in MATERIAL_RULES if _has_alias(text, rule.aliases)), None)
 
 

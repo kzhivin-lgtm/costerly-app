@@ -525,6 +525,17 @@ def guard_price_source_row_activation(result: dict[str, Any]) -> dict[str, Any]:
             )
             continue
         blockers: list[str] = []
+        # ``Other`` used to be a compatibility bucket which leaked an
+        # unclassified supplier line into the active company catalog. It is
+        # neither a production department nor a material family. Known lines
+        # must be classified by the deterministic taxonomy; genuinely unknown
+        # lines remain visible in Review with their source evidence intact.
+        if (
+            row.get("item_kind", "material") == "material"
+            and str(row.get("material_type") or "").strip().casefold()
+            in {"", "other", "unclassified"}
+        ):
+            blockers.append("material_type_unresolved")
         if row.get("raw_vat_mode") == "unknown":
             blockers.append("vat_basis_unknown")
         if (
