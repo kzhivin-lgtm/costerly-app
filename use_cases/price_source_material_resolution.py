@@ -9,11 +9,13 @@ from typing import Any, Mapping, Sequence
 from uuid import uuid4
 
 from use_cases.material_identity_resolution import (
+    MaterialIdentityCandidate,
     MaterialIdentityResolution,
     build_material_identity_index,
     normalize_material_phrase,
     resolve_material_identity,
 )
+from use_cases.material_family_resolution_policy import resolve_low_impact_compatibility
 from use_cases.material_pricing_identity_resolution import (
     PricingIdentityResolution,
     build_material_pricing_identity_index,
@@ -614,6 +616,27 @@ def resolve_price_source_material_identities(
                 ),
                 material_identity_index=index["material_identity_index"],
             )
+            if resolution.status != "resolved":
+                low_impact_match = resolve_low_impact_compatibility(
+                    phrase=phrase,
+                    material_family=material_family,
+                    materials=index["materials"],
+                )
+                if low_impact_match is not None:
+                    resolution = MaterialIdentityResolution(
+                        status="resolved",
+                        route=f"low_impact_compatible:{low_impact_match.policy_code}",
+                        normalized_phrase=resolution.normalized_phrase,
+                        selected_material_id=low_impact_match.material_id,
+                        candidates=(
+                            MaterialIdentityCandidate(
+                                material_id=low_impact_match.material_id,
+                                score=Decimal("90"),
+                                route=f"low_impact_compatible:{low_impact_match.policy_code}",
+                            ),
+                        ),
+                        resolver_version=resolver_version,
+                    )
 
         candidates = _candidate_payload(resolution, reference_material_by_id)
         identity_confidence = _identity_confidence(resolution)

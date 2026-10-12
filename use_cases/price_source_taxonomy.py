@@ -967,6 +967,7 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
         # source text, for example 550 mm or 55 cm.
         attributes["depth_mm"] = 0
         attributes["length_mm"] = 0
+        attributes["width_mm"] = 0
         depth = _drawer_slide_depth_mm(text)
         if depth:
             attributes["depth_mm"] = depth

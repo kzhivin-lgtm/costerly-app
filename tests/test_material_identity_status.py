@@ -15,13 +15,13 @@ def test_drawer_slide_without_nominal_length_is_yellow_not_review_or_red():
     assert status.known_path == ("drawer slide", "brand: Blum", "system: Movento")
 
 
-def test_complete_endpoint_without_israel_link_remains_yellow():
+def test_complete_endpoint_without_israel_link_is_blue():
     status = material_identity_status({
         "specifications": {"material_family": "drawer slide", "depth_mm": 600},
     })
 
-    assert status.tone == "yellow"
-    assert status.label == "Awaiting Israel reference link"
+    assert status.tone == "blue"
+    assert status.label == "Israel reference link missing"
 
 
 def test_complete_endpoint_with_israel_link_is_green():

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
 
-IdentityTone = Literal["green", "yellow", "red"]
+IdentityTone = Literal["green", "yellow", "blue", "red"]
 
 
 @dataclass(frozen=True)
@@ -110,5 +110,5 @@ def material_identity_status(item: Mapping[str, Any]) -> MaterialIdentityStatus:
     if missing:
         return MaterialIdentityStatus("yellow", "Canonical path incomplete", tuple(path), missing, f"Add {', '.join(missing)} to complete the canonical path")
     if not str(item.get("reference_material_id") or ""):
-        return MaterialIdentityStatus("yellow", "Awaiting Israel reference link", tuple(path), (), "Canonical endpoint is known, but no Israel reference material is linked yet")
+        return MaterialIdentityStatus("blue", "Israel reference link missing", tuple(path), (), "Canonical endpoint is known, but no Israel reference material is linked yet")
     return MaterialIdentityStatus("green", "Canonical link complete", tuple(path), (), "Canonical endpoint and Israel reference material are linked")

@@ -2709,6 +2709,10 @@ def apply_company_profile_css() -> None:
             background: #D69A22;
         }
 
+        .stApp:has(.company-profile-active) .price-catalog-identity-dot-blue {
+            background: #4F8FCB;
+        }
+
         .stApp:has(.company-profile-active) .price-catalog-identity-dot-red {
             background: #D94B52;
         }

@@ -456,6 +456,54 @@ def test_non_exact_match_stays_private_and_enters_review_buffer():
     assert len(tables["material_identity_candidates"][0]["candidate_materials"]) == 1
 
 
+def test_low_impact_furniture_leg_links_to_its_approved_generic_reference():
+    tables = _tables(exact_alias=False)
+    tables["material_resolver_versions"][0]["resolver_version"] = "material_identity_v3"
+    tables["reference_materials"] = [{
+        "material_id": "adjustable-cabinet-leg",
+        "department": "hardware",
+        "category_code": "hardware_leg",
+        "canonical_name": "Adjustable cabinet leg",
+        "base_unit": "piece",
+        "specifications": {
+            "catalog_version": "israel_global_catalog_v1",
+            "global_canonical_id": "GCM-V1-HW-ADJUSTABLE-CABINET-LEG-ADJUSTABLE-CABINET-LEG",
+        },
+        "active": True,
+    }]
+    tables["company_material_items"][0].update({
+        "category": "Hardware",
+        "canonical_name": "Furniture Leg 100 mm Blum",
+        "specifications": {"material_family": "furniture leg", "brand": "Blum"},
+    })
+    tables["company_price_source_rows"][0].update({
+        "normalized_name": "Furniture Leg 100 mm Blum",
+        "raw_description": "Furniture Leg 100 mm Blum",
+        "evidence": {
+            "material_type": "Hardware",
+            "material_family": "furniture leg",
+            "identity_attributes": {"brand": "Blum"},
+        },
+    })
+    tables["reference_market_material_legacy_mappings"] = [{
+        "legacy_material_id": "adjustable-cabinet-leg",
+        "market_code": "IL",
+        "market_material_listing_id": "listing-adjustable-cabinet-leg",
+        "classification_status": "mapped",
+        "classification_basis": "deterministic_rule",
+    }]
+
+    batch = resolve_price_source_material_identities(
+        _Client(tables), company_id="company-1", source_id="source-1"
+    )
+
+    assert batch.resolved == 1
+    assert tables["company_material_items"][0]["reference_material_id"] == "adjustable-cabinet-leg"
+    assert tables["company_price_source_rows"][0]["identity_route"] == (
+        "low_impact_compatible:adjustable_cabinet_leg_v1"
+    )
+
+
 def test_identity_agent_auto_links_only_a_high_confidence_bounded_candidate():
     tables = _tables(exact_alias=False)
 

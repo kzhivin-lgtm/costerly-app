@@ -250,6 +250,20 @@ crosswalks remain staff-authoritative later work. In the same pass, audit
 Source Agent static registries against V2 and record unmigrated vocabulary;
 do not silently treat it as V2 data.
 
+ACTIVE, P0, USER REQUEST, 3.17.2.9 Material Resolver selection authority:
+make the Company Price Catalog identity indicator an actual Estimation gate,
+not display-only metadata. The owner-approved derived states are Green for a
+complete family contract plus Israel Reference/Listing link, Yellow for a known
+family with missing completion facts, Blue for a complete family contract with
+no Israel link, and Red for no established family. Only Green is eligible for
+ordinary deterministic company-price selection; Yellow, Blue and Red require
+the separate provisional-assumption/review path and can never silently win a
+price. Green candidates resolve by all known compatibility facts, then the
+lowest normalized ex-VAT company offer and a stable tie breaker. The first
+low-impact compatibility rule is `furniture leg -> adjustable cabinet leg`;
+it excludes casters/wheels. Further low-impact rules need explicit approval.
+Contract: `notes/MATERIAL_RESOLVER_SELECTION_POLICY_3_17_2_9.md`.
+
 DEFERRED, P1, USER REQUEST, 3.17.2.8 Construction Scenario Library and Staff
 Admin: define a controlled, versioned library of full estimating archetypes,
 starting with kitchen modules and furniture. A scenario describes the complete

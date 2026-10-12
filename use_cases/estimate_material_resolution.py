@@ -25,6 +25,7 @@ from use_cases.material_pricing_identity_resolution import (
     PricingIdentityResolution,
     resolve_material_pricing_identity,
 )
+from use_cases.material_identity_status import material_identity_status
 
 
 EstimateMaterialStatus = Literal["resolved", "needs_review"]
@@ -86,6 +87,12 @@ def _company_candidates(
     candidates: list[Mapping[str, Any]] = []
     for item in company_material_items:
         if str(item.get("status") or "private") == "archived":
+            continue
+        # A company price is authoritative only after its identity has reached
+        # a green canonical endpoint. Yellow, blue and red rows remain source
+        # evidence and may later support a case-local assumption, but cannot
+        # silently win the normal deterministic price selection.
+        if material_identity_status(item).tone != "green":
             continue
         item_specs = dict(item.get("specifications") or {})
         same_name = normalize_material_phrase(

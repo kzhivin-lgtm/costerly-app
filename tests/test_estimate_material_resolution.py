@@ -11,13 +11,22 @@ from use_cases.material_identity_resolution import (
 AS_OF = date(2026, 9, 30)
 
 
-def _company_item(material_id: str, name: str, **specifications):
+def _company_item(
+    material_id: str,
+    name: str,
+    *,
+    reference_material_id: str | None = "green-reference",
+    **specifications,
+):
+    category = specifications.pop("category", "plywood")
+    specifications.setdefault("material_family", category)
     return {
         "company_material_id": material_id,
         "canonical_name": name,
         "normalized_name": name,
-        "category": specifications.pop("category", "plywood"),
+        "category": category,
         "status": "private",
+        "reference_material_id": reference_material_id,
         "specifications": specifications,
     }
 
@@ -123,6 +132,39 @@ def test_e15_multiple_compatible_company_materials_choose_the_cheapest_offer():
     assert result.selection_reason == "company_catalog_lowest_compatible_price"
 
 
+def test_yellow_company_item_cannot_silently_supply_an_estimate_price():
+    result = _resolve(
+        requirement_name="Drawer slide",
+        material_family="drawer slide",
+        specifications={"depth_mm": 500},
+        requested_unit="piece",
+        company_material_items=(
+            _company_item(
+                "incomplete-slide", "Drawer slide Blum", category="drawer slide",
+                material_family="drawer slide", reference_material_id="reference-slide",
+            ),
+        ),
+        company_offers=(
+            _offer("incomplete-slide-offer", "incomplete-slide", normalized_unit="piece", normalized_price="1"),
+        ),
+    )
+
+    assert result.status == "needs_review"
+    assert result.company_material_id is None
+
+
+def test_blue_company_item_cannot_silently_supply_an_estimate_price():
+    result = _resolve(
+        company_material_items=(
+            _company_item("blue-birch", "Birch plywood B/B", thickness_mm=18, species="birch", grade="B/B", reference_material_id=None),
+        ),
+        company_offers=(_offer("blue-birch-offer", "blue-birch", normalized_price="1"),),
+    )
+
+    assert result.status == "needs_review"
+    assert result.company_material_id is None
+
+
 def test_hardware_family_selection_uses_known_depth_only_when_requirement_has_it():
     common = {
         "requirement_name": "Drawer slide",
@@ -172,6 +214,7 @@ def test_reference_tie_uses_lowest_compatible_israel_price():
 def test_e16_supplier_sku_is_not_a_company_matching_input():
     result = _resolve(
         requirement_name="Supplier SKU 8172",
+        material_family="solid timber",
         company_material_items=(_company_item("company-birch-18", "Birch plywood B/B", thickness_mm=18, species="birch", grade="B/B"),),
         company_offers=(_offer("offer-1", "company-birch-18", supplier_sku="8172"),),
     )

@@ -1960,12 +1960,13 @@ def test_drawer_slide_drops_an_agent_length_guess_from_a_model_code():
         "normalized_name": "Unclassified material",
         "material_type": "Other",
         "material_family": "other",
-        "identity_attributes": {"depth_mm": 55, "length_mm": 550},
+        "identity_attributes": {"depth_mm": 55, "length_mm": 550, "width_mm": 50},
     })
 
     assert apply_material_taxonomy(row) is True
     assert row["identity_attributes"]["depth_mm"] == 0
     assert row["identity_attributes"]["length_mm"] == 0
+    assert row["identity_attributes"]["width_mm"] == 0
     assert row["normalized_name"] == "Drawer Slide Blum, Movento"
 
 
