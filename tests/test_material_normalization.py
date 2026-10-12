@@ -1,5 +1,6 @@
 from use_cases.material_normalization import (
     canonical_display_name,
+    canonical_material_display_name,
     normalize_identity_attributes,
 )
 
@@ -84,6 +85,17 @@ def test_shared_display_contract_title_cases_plywood_variant_once():
     })
 
     assert name == "Plywood 17 mm, Twin"
+
+
+def test_processed_material_projections_share_the_canonical_name_component():
+    name = canonical_material_display_name(
+        "drawer slide",
+        {"brand": "BLUM", "product_system": "MOVENTO", "depth_mm": 750},
+        fallback="מסילה למגירה בלום",
+    )
+
+    assert name == "Drawer Slide 750 mm Blum, Movento"
+    assert canonical_material_display_name("other", {}, fallback="Supplier wording") == "Supplier wording"
 
 
 def test_known_product_system_uses_one_canonical_display_spelling():

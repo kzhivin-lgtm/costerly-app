@@ -13,7 +13,7 @@ from typing import Any, Mapping
 
 from use_cases.material_normalization import (
     IDENTITY_ATTRIBUTE_DEFAULTS,
-    canonical_display_name,
+    canonical_material_display_name,
     normalize_identity_attributes,
 )
 from use_cases.hardware_product_system_registry import (
@@ -958,7 +958,7 @@ def apply_operation_taxonomy(row: dict[str, Any]) -> str | None:
 
 def _taxonomy_material_name(rule: TaxonomyRule, attributes: Mapping[str, Any]) -> str:
     """Build the shared compact display from structured, proven facts only."""
-    return canonical_display_name(rule.family, attributes)
+    return canonical_material_display_name(rule.family, attributes)
 
 
 def _discard_redundant_plywood_brand(attributes: dict[str, Any]) -> None:

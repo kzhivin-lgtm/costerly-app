@@ -40,14 +40,13 @@ from use_cases.price_source_material_resolution import (
     resolve_price_source_material_identities,
 )
 from use_cases.material_identity_status import material_identity_status
-from use_cases.material_normalization import canonical_display_name
+from use_cases.material_normalization import canonical_material_display_name
 from use_cases.material_supply_format import apply_price_source_purchasable_dimensions
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
     catalog_v2_taxonomy_for_family,
     job_operation_for_text,
-    normalize_sheet_name,
 )
 
 
@@ -247,18 +246,9 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
                 )
         if row.get("material_type") != "Wood Sheets":
             continue
-        thickness = float(attributes.get("thickness_mm") or 0)
-        name = str(row.get("normalized_name") or "")
-        # Category already conveys sheet form. Keep only identity-bearing words;
-        # never lose a proven thickness.
-        name = normalize_sheet_name(name)
-        if thickness:
-            thickness_label = f"{int(thickness)} mm"
-            if re.search(r"\b\d+(?:\.\d+)?\s*mm\b", name, flags=re.I):
-                name = re.sub(r"\b\d+(?:\.\d+)?\s*mm\b", thickness_label, name, count=1, flags=re.I)
-            else:
-                name = f"{name} {thickness_label}".strip()
-        row["normalized_name"] = name
+        # The taxonomy has already rendered the one canonical material name.
+        # Do not apply a sheet-only text rewrite here: every department must
+        # use the same entity/attributes display component.
         # A full wood sheet quoted as a piece, panel or board is still the same
         # purchasable sheet. Cut parts are represented by supplier Material Jobs,
         # not by a second material unit.
@@ -2821,7 +2811,11 @@ def list_price_catalog(access) -> list[dict]:
                 for field in ("length_mm", "width_mm", "depth_mm", "diameter_mm"):
                     if not display_specifications.get(field) and offer_dimensions.get(field):
                         display_specifications[field] = offer_dimensions[field]
-            canonical_name = canonical_display_name(material_family, display_specifications)
+            canonical_name = canonical_material_display_name(
+                material_family,
+                display_specifications,
+                fallback=canonical_name,
+            )
         catalog.append(
             {
                 **offer,
@@ -3011,6 +3005,25 @@ def load_price_source_rows(access, source_id: str) -> list[dict]:
     ).data or []
 
 
+def price_source_row_canonical_name(row: Mapping[str, Any]) -> str:
+    """Render a processed source row through the shared material component.
+
+    ``raw_description`` is immutable supplier evidence and is deliberately
+    never used as a material name when a deterministic family is known.
+    """
+    evidence = row.get("evidence")
+    evidence = evidence if isinstance(evidence, Mapping) else {}
+    family = str(row.get("material_family") or evidence.get("material_family") or "").strip()
+    attributes = row.get("identity_attributes")
+    if not isinstance(attributes, Mapping):
+        attributes = evidence.get("identity_attributes")
+    return canonical_material_display_name(
+        family,
+        attributes if isinstance(attributes, Mapping) else {},
+        fallback=row.get("normalized_name") or row.get("raw_description"),
+    )
+
+
 def list_unresolved_price_source_rows(access) -> list[dict]:
     """Return reviewable rows from non-archived sources with source context."""
     client = get_supabase_client()
@@ -3039,7 +3052,11 @@ def list_unresolved_price_source_rows(access) -> list[dict]:
     ).data or []
     sources_by_id = {str(source["source_id"]): source for source in sources}
     return [
-        {**row, "source": sources_by_id[str(row["source_id"])]}
+        {
+            **row,
+            "canonical_name": price_source_row_canonical_name(row),
+            "source": sources_by_id[str(row["source_id"])],
+        }
         for row in rows
         if str(row.get("source_id")) in sources_by_id
     ]

@@ -55,6 +55,7 @@ from use_cases.price_sources import (
     load_price_source_bytes,
     load_price_source_rows,
     process_price_source,
+    price_source_row_canonical_name,
     price_source_vat_rate,
     remove_price_source_row,
     render_price_source_preview,
@@ -2323,6 +2324,16 @@ def _render_price_source_action(container, *, source_url: str, key: str) -> None
     )
 
 
+def _price_source_material_name_markup(canonical_name: object, original_name: object) -> str:
+    """Render the common canonical-name plus immutable-evidence component."""
+    canonical = str(canonical_name or original_name or "Price item").strip()
+    original = str(original_name or "").strip()
+    markup = f'<span class="price-catalog-material-name">{escape(canonical)}</span>'
+    if original and original.casefold() != canonical.casefold():
+        markup += f'  \n<span class="price-catalog-original-name">{escape(original)}</span>'
+    return markup
+
+
 @st.cache_data(ttl=60, show_spinner=False)
 def _load_price_lists_snapshot(
     company_id: str,
@@ -2971,12 +2982,7 @@ def _render_price_catalog(access: CompanyAccess, catalog: list[dict], sources: l
                         st.session_state._removing_price_source_row = (source_id, row_id)
                         st.session_state._price_source_action_location = "catalog"
                     material_col.markdown(
-                        f'<span class="price-catalog-material-name">{escape(canonical_name)}</span>'
-                        + (
-                            f'  \n<span class="price-catalog-original-name">{escape(original_name)}</span>'
-                            if original_name and original_name.casefold() != canonical_name.casefold()
-                            else ""
-                        ),
+                        _price_source_material_name_markup(canonical_name, original_name),
                         unsafe_allow_html=True,
                     )
                     category_col.markdown(
@@ -3334,15 +3340,10 @@ def _render_price_source_review_queue(
                 if remove_col.button("×", key=f"review_remove_{row_id}"):
                     st.session_state._removing_price_source_row = target
                     st.session_state._price_source_action_location = "review"
-                english_name = str(row.get("normalized_name") or "").strip()
+                canonical_name = str(row.get("canonical_name") or price_source_row_canonical_name(row))
                 original_name = str(row.get("raw_description") or "Price item")
                 item_col.markdown(
-                    f'<span class="price-catalog-material-name">{escape(english_name or original_name)}</span>'
-                    + (
-                        f'  \n<span class="price-catalog-original-name">{escape(original_name)}</span>'
-                        if english_name and english_name.casefold() != original_name.casefold()
-                        else ""
-                    ),
+                    _price_source_material_name_markup(canonical_name, original_name),
                     unsafe_allow_html=True,
                 )
                 category = _price_source_row_material_type(row, source)
@@ -3598,7 +3599,10 @@ def _render_price_source_details(access: CompanyAccess, source: dict) -> None:
                 st.session_state._removing_price_source_row = (str(source["source_id"]), row_id)
                 st.session_state._price_source_action_location = "details"
             item_col.markdown(
-                f'<span class="price-catalog-material-name">{escape(str(row.get("raw_description") or "Price item"))}</span>',
+                _price_source_material_name_markup(
+                    price_source_row_canonical_name(row),
+                    row.get("raw_description"),
+                ),
                 unsafe_allow_html=True,
             )
             type_col.markdown(escape(_price_source_row_material_type(row, source)))

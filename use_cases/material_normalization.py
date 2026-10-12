@@ -192,3 +192,23 @@ def canonical_display_name(
         if len(secondary) >= maximum_secondary_attributes:
             break
     return " ".join(parts) + (f", {', '.join(secondary)}" if secondary else "")
+
+
+def canonical_material_display_name(
+    entity: object,
+    attributes: Mapping[str, Any] | None,
+    *,
+    fallback: object = "",
+) -> str:
+    """Return the one display name for every processed material projection.
+
+    A recognised material family must always render through the canonical
+    entity/attributes formatter, regardless of whether it is shown in the
+    catalog, Review, a source-detail row, or a later estimation projection.
+    An unknown family cannot truthfully be reformatted, so its persisted
+    normalized label remains the explicit fallback until the row is resolved.
+    """
+    family = " ".join(str(entity or "").strip().split())
+    if family and family.casefold() not in {"other", "unclassified", "unknown"}:
+        return canonical_display_name(family, attributes)
+    return " ".join(str(fallback or "Material").strip().split()) or "Material"

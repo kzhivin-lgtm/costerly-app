@@ -64,6 +64,7 @@ from use_cases.price_sources import (
     price_source_vat_rate,
     price_source_family_identity,
     price_source_semantic_fingerprint,
+    price_source_row_canonical_name,
     supplier_service_pricing_basis,
     match_existing_supplier,
     normalize_price_source_sheet_rows,
@@ -4114,6 +4115,44 @@ def test_prompt_requires_consistent_standalone_normalized_names():
     assert "entity, its primary attribute, brand, then" in prompt
     assert "same term and\n   capitalization" in prompt
     assert "when viewed outside the source document" in prompt
+
+
+def test_prompt_preserves_literal_source_description_separately_from_canonical_name():
+    prompt = Path("agents/prompts/price_source_agent_prompt.md").read_text()
+
+    assert "Preserve `raw_description` as literal source evidence" in prompt
+    assert "original language and script" in prompt
+    assert "Do not\n   translate, paraphrase, correct OCR spelling" in prompt
+
+
+def test_review_projection_uses_the_shared_canonical_name_component():
+    row = {
+        "raw_description": "מסילה למגירה בלום מובנטו 75 ס\"מ",
+        "normalized_name": "Old model wording",
+        "evidence": {
+            "material_family": "drawer slide",
+            "identity_attributes": {
+                "brand": "Blum",
+                "brand_basis": "catalog",
+                "product_system": "Movento",
+                "depth_mm": 750,
+            },
+        },
+    }
+
+    assert price_source_row_canonical_name(row) == "Drawer Slide 750 mm Blum, Movento"
+
+
+def test_catalog_review_and_source_detail_reuse_one_material_name_component():
+    from screens import company_profile
+
+    catalog = inspect.getsource(company_profile._render_price_catalog)
+    review = inspect.getsource(company_profile._render_price_source_review_queue)
+    details = inspect.getsource(company_profile._render_price_source_details)
+
+    assert "_price_source_material_name_markup(" in catalog
+    assert "_price_source_material_name_markup(" in review
+    assert "_price_source_material_name_markup(" in details
 
 
 def test_prompt_accepts_documents_addressed_to_another_company():

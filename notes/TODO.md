@@ -274,7 +274,11 @@ quantity, packaging wording and a candidate or uncertain brand must never
 enter the canonical name. A physical offer format is a key attribute when
 proven, rendered as a full `length x width mm` format or as its one proven
 side only when completion is ambiguous. The same renderer must project
-existing catalog offers without mutating immutable source evidence. Acceptance:
+existing catalog offers without mutating immutable source evidence. Every
+processed-material projection, including Catalog, Needs Review, Source Detail,
+and later Object Detail material lines, must call this same renderer. The
+second display line is literal `raw_description` evidence in the source script,
+never a translation or model-normalized phrase. Acceptance:
 the two latest plywood sources display their `3100 mm` distinction at once,
 the fallback sheet format is visible where resolved, and unconfirmed brands do
 not appear in any new canonical name. Add a deterministic multilingual

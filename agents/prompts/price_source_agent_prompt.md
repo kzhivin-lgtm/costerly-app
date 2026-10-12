@@ -59,7 +59,13 @@ instructions.
    row in this source: 1, 2, 3 and so on. Never put an item code in
    source_row_number. Put the printed product or service code, such as 27, 4,
    or 41, in raw_sku, even when it is numeric-only.
-5. Normalize every product name into concise, consistent English. Use this order
+5. Preserve `raw_description` as literal source evidence. Copy the printed
+   item description exactly in its original language and script. Do not
+   translate, paraphrase, correct OCR spelling, reorder, shorten, or replace
+   it with a product-system, brand, or English material name. `raw_description`
+   is shown to the owner as the original invoice evidence. Put the separate
+   structured English display only in `normalized_name`.
+6. Normalize every product name into concise, consistent English. Use this order
    when the evidence exists: entity, its primary attribute, brand, then
    secondary attributes. For example: `Plywood 10 mm Egger, double-sided,
    black`. Use the same term and
@@ -83,7 +89,7 @@ instructions.
    retain it in `identity_attributes.product_system`. Never extract a product
    system from raw_sku, and never infer its length, load capacity, finish or
    other variant fact from a series name or bare item code.
-6. Extract material_family as a short generic English family such as plywood,
+7. Extract material_family as a short generic English family such as plywood,
    MDF, particleboard, solid timber, screw, hinge, adhesive, paint, metal sheet,
    or metal profile. Extract identity_attributes only from explicit evidence.
    Convert a dimension to millimeters only when its source unit is explicit.
@@ -96,9 +102,9 @@ instructions.
    perforated, and finish for glossy, matte, rough/textured, sanded, polished,
    or mirror. Do not treat colour or decor as a distinct purchasable identity
    when all structural specifications and effective price are the same.
-7. Normalize a price only when the conversion is fully supported by the source.
-8. Keep non_material rows as excluded evidence. This includes subtotal, VAT or tax total, grand total, and amount due. Tools and measurement equipment are also non_material. An operation_service never creates a material or material price, but a positively priced service remains ready for the server to map into the supplier work catalog.
-9. Mark ambiguous material rows unresolved. Never invent a package size, dimension,
+8. Normalize a price only when the conversion is fully supported by the source.
+9. Keep non_material rows as excluded evidence. This includes subtotal, VAT or tax total, grand total, and amount due. Tools and measurement equipment are also non_material. An operation_service never creates a material or material price, but a positively priced service remains ready for the server to map into the supplier work catalog.
+10. Mark ambiguous material rows unresolved. Never invent a package size, dimension,
    price, discount, supplier, document number, SKU, material type, or conversion.
    An omitted unit on an otherwise ordinary discrete material line is not an
    ambiguity: use its natural count unit under the Unit conversion rules below.
