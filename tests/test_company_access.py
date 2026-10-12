@@ -1576,7 +1576,7 @@ def test_price_source_notice_exposes_full_user_cycle_duration():
     assert notice == "1 row extracted · 1 recorded · 0 review · Agent 13.8 s · Full cycle 17.2 s · TC 0.015"
 
 
-def test_price_source_result_notice_persists_until_the_source_selection_changes():
+def test_price_source_result_notice_persists_until_selection_or_next_job():
     source = inspect.getsource(company_profile._render_price_lists)
     queue_source = inspect.getsource(company_profile._queue_price_source_processing)
     file_change_source = inspect.getsource(company_profile._synchronize_price_source_file_selection)
@@ -1585,12 +1585,12 @@ def test_price_source_result_notice_persists_until_the_source_selection_changes(
     assert 'st.session_state.get("_price_source_notice")' in source
     assert "cycle_result=cycle_result" in source
     assert 'st.session_state.pop("_price_source_notice", None)' not in source
-    assert 'pop("_price_source_notice", None)' not in queue_source
+    assert 'pop("_price_source_notice", None)' in queue_source
     assert "_begin_price_source_selection()" in file_change_source
     assert 'pop("_price_source_notice", None)' in selection_source
 
 
-def test_price_source_result_clears_on_source_selection_not_extract_click():
+def test_price_source_result_client_guard_clears_on_source_selection():
     screen_source = Path("screens/company_profile.py").read_text()
     guard_source = Path("ui/js_guards.py").read_text()
 

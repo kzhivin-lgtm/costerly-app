@@ -2133,7 +2133,10 @@ _INVOICE_NUMBER_LABEL = (
 
 def invoice_number_from_source_text(text: object) -> str:
     """Read a printed invoice number without asking the extraction model twice."""
-    source_text = str(text or "")
+    # OCR evidence is Markdown. A printed number can sit immediately above an
+    # OCR heading such as ``## חשבונית מס - קבלה``. Heading punctuation is not
+    # document evidence and must not break the label-bound identifier match.
+    source_text = re.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", str(text or ""))
     patterns = (
         rf"{_INVOICE_NUMBER_LABEL}\s*(?:מס[׳'\"״.]*)?\s*[:#.\-]?\s*(?P<number>[A-Za-z0-9][A-Za-z0-9._/\-]{{2,31}})",
         rf"(?P<number>[A-Za-z0-9][A-Za-z0-9._/\-]{{2,31}})\s*[:#.\-]?\s*{_INVOICE_NUMBER_LABEL}",

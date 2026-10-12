@@ -2741,6 +2741,8 @@ def test_price_source_processing_uses_callback_without_manual_rerun():
     assert "st.rerun" not in add_source
     assert lists_source.startswith("@st.fragment")
     assert "_process_pending_price_source(access, trace=trace)" in lists_source
+    assert 'if st.session_state.get("_price_source_processing"):' in lists_source
+    assert "cycle_result = None" in lists_source
 
 
 def test_price_review_required_labels_style_the_native_streamlit_text():
@@ -2811,7 +2813,8 @@ def test_price_source_processing_guard_restores_client_mutations_after_completio
     assert "Extraction did not reach the server. Try again." not in source
     assert 'label.textContent = "Starting extraction"' in source
     assert 'showLiveProgress(card, Date.now(), "Starting extraction")' in source
-    assert 'if (!card.querySelector(".price-source-live-progress"))' in source
+    assert "progress.dataset.priceSourceProgressLabel = labelText" in source
+    assert '!== "Extracting prices"' in source
     assert "trigger itself indefinitely and freeze the browser" in source
     assert "observer.disconnect()" in source
     assert "never the native disabled property" in source
@@ -2953,6 +2956,7 @@ def test_mixed_batch_queues_every_selected_file(monkeypatch):
             _UploadedPhoto("prices-b.xlsx", b"second"),
         ],
         _price_source_selection_cycle=7,
+        _price_source_notice={"summary": {"ready": 1}},
     )
     monkeypatch.setattr(company_profile.st, "session_state", state)
     submitted = []
@@ -2972,6 +2976,7 @@ def test_mixed_batch_queues_every_selected_file(monkeypatch):
     ]
     assert isinstance(state["_price_source_pending"]["future"], Future)
     assert state["_price_source_pending"]["selection_cycle"] == 7
+    assert "_price_source_notice" not in state
     assert "_price_source_error" not in state
 
 
@@ -4748,6 +4753,9 @@ def test_invoice_source_identity_requires_supplier_and_invoice_number():
     assert invoice_number_from_source_text("חשבונית מס: 62336") == "62336"
     assert invoice_number_from_source_text("Tax Invoice No. 62336") == "62336"
     assert invoice_number_from_source_text("חשבונית מס - קבלה: DT.24016853") == "DT.24016853"
+    assert invoice_number_from_source_text(
+        "DT19.24016853\n\n## חשבונית מס - קבלה\n\nמספרכם: 39900"
+    ) == "DT19.24016853"
 
 
 def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():

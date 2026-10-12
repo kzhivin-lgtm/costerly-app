@@ -4205,6 +4205,7 @@ def install_price_source_processing_guard() -> None:
                 removeLiveProgress(card);
                 const progress = parentDoc.createElement("div");
                 progress.className = "price-source-live-progress";
+                progress.dataset.priceSourceProgressLabel = labelText;
                 progress.innerHTML =
                     '<span class="price-source-live-progress-label"></span>' +
                     '<span class="price-source-live-progress-time">0 s elapsed</span>' +
@@ -4332,7 +4333,16 @@ def install_price_source_processing_guard() -> None:
                         // trigger itself indefinitely and freeze the browser.
                         // The server marker is stable for one cycle, so build
                         // the live bar once only.
-                        if (!card.querySelector(".price-source-live-progress")) {
+                        const liveProgress = card.querySelector(
+                            ".price-source-live-progress"
+                        );
+                        // Replace the immediate client-only acknowledgement
+                        // once the server has accepted the worker.
+                        if (
+                            !liveProgress
+                            || liveProgress.dataset.priceSourceProgressLabel
+                                !== "Extracting prices"
+                        ) {
                             showLiveProgress(
                                 card,
                                 processingMarker.dataset.startedAtMs,

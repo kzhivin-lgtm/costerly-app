@@ -3694,6 +3694,10 @@ def _queue_price_source_processing(
         "user_cycle_started_at_epoch_ms": int(time.time() * 1000),
     }
     st.session_state._price_source_processing = True
+    # A terminal banner describes a completed extraction only. File selection
+    # invalidation is asynchronous relative to the button callback, so clear
+    # it again at this accepted-job boundary.
+    st.session_state.pop("_price_source_notice", None)
     st.session_state.pop("_price_source_error", None)
     st.session_state.pop("_price_source_start_rejected", None)
 
@@ -4070,7 +4074,11 @@ def _render_price_lists(access: CompanyAccess, *, trace=None) -> None:
     # Keep the dashboard in the upload card, so it cannot leave a detached
     # blank region after the processing marker is removed.
     notice_result = st.session_state.get("_price_source_notice")
-    if isinstance(notice_result, dict):
+    if st.session_state.get("_price_source_processing"):
+        # The queue callback clears the prior terminal result. This guard also
+        # prevents stale session state from rendering during a rerun race.
+        cycle_result = None
+    elif isinstance(notice_result, dict):
         cycle_result = notice_result
     elif notice_result:
         state = st.session_state.get("_price_lists_projection_state") or {}
