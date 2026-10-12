@@ -280,7 +280,7 @@ def active_material_family_supply_formats(client) -> dict[str, list[dict[str, An
             client.table("reference_material_family_supply_formats")
             .select(
                 "family_id,purchasable_dimensions,is_default,active,"
-                "reference_material_families!inner(code)"
+                "reference_material_families!inner(family_code)"
             )
             .eq("active", True)
             .execute()
@@ -291,7 +291,7 @@ def active_material_family_supply_formats(client) -> dict[str, list[dict[str, An
     formats: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         family = row.get("reference_material_families") or {}
-        code = str(family.get("code") or "").strip()
+        code = str(family.get("family_code") or "").strip()
         if code:
             formats.setdefault(code, []).append(dict(row))
     return formats

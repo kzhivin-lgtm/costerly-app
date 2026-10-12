@@ -158,7 +158,7 @@ insert into public.reference_material_family_supply_formats (
 )
 select family.family_id, seed.dimensions, seed.is_default
 from seed
-join public.reference_material_families family on family.code = seed.family_code
+join public.reference_material_families family using (family_code)
 on conflict (family_id, purchasable_dimensions) do update
 set is_default = excluded.is_default,
     active = true,

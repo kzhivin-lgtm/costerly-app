@@ -50,6 +50,7 @@ from use_cases.price_sources import (
     apply_legacy_price_benchmark,
     purge_price_source,
     accepted_price_source_uploads,
+    active_material_family_supply_formats,
     canonical_price_source_category,
     create_price_source_download_url,
     extract_spreadsheet_text,
@@ -144,6 +145,28 @@ def _family_supply_formats() -> dict[str, list[dict]]:
             "is_default": False,
         }],
         "hardware_leg_caster": [],
+    }
+
+
+def test_active_material_family_supply_formats_uses_global_family_code():
+    client = _CatalogClient({
+        "reference_material_family_supply_formats": [{
+            "family_id": "family-mdf",
+            "purchasable_dimensions": {"length_mm": 3100, "width_mm": 1220},
+            "is_default": False,
+            "active": True,
+            "reference_material_families": {"family_code": "mdf_hdf"},
+        }],
+    })
+
+    assert active_material_family_supply_formats(client) == {
+        "mdf_hdf": [{
+            "family_id": "family-mdf",
+            "purchasable_dimensions": {"length_mm": 3100, "width_mm": 1220},
+            "is_default": False,
+            "active": True,
+            "reference_material_families": {"family_code": "mdf_hdf"},
+        }],
     }
 
 
