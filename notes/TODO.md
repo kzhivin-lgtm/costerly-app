@@ -284,6 +284,14 @@ policy-complete classes from 4,515 Global materials, with active source model
 prices for 300. The next fresh-source verification intentionally ignores
 legacy Company Catalog rows that the owner will delete before re-import.
 
+Production benchmark, 2026-10-13: a clean import of the controlled legacy XLS
+now has 37 active material offers: 18 Green, 19 Blue, 0 Yellow and 0 Red.
+The immutable input hash, import result, scope boundary and comparison rule
+are recorded in
+`notes/PRICE_SOURCE_RESOLVER_BENCHMARK_3_17_2_10_2026_10_13.md`. Do not
+compare it to the older 43-offer snapshot, which included six pre-existing
+catalog offers.
+
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
 name solely as `Entity -> one or two proven key attributes -> confirmed brand
