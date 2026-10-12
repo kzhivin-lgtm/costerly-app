@@ -1528,7 +1528,7 @@ def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
     result = _result()
     row = result["rows"][0]
     row.update({
-        "raw_description": "Twin plywood 17 mm מבוקע high gloss",
+        "raw_description": "Twin plywood 17 mm מחורר high gloss",
         "normalized_name": "Twin plywood 17mm cut to size sheet",
         "material_type": "Wood Sheets",
         "identity_attributes": {**row["identity_attributes"], "thickness_mm": 17},
@@ -1539,7 +1539,7 @@ def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
     assert row["identity_attributes"]["construction"] == "perforated"
     assert row["identity_attributes"]["plywood_variant"] == "twin"
     assert row["identity_attributes"]["finish"] == "glossy"
-    assert row["normalized_name"] == "Plywood 17 mm, twin, perforated, glossy"
+    assert row["normalized_name"] == "Plywood 17 mm, Twin, perforated, glossy"
 
 
 def test_sheet_normalization_replaces_wrong_glass_label_when_okoume_proves_plywood():
@@ -1563,6 +1563,8 @@ def test_sheet_normalization_replaces_wrong_glass_label_when_okoume_proves_plywo
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "plywood"
     assert row["identity_attributes"]["species"] == "okoume"
+    assert row["identity_attributes"]["brand"] == ""
+    assert row["normalized_name"] == "Plywood 5 mm, Okoume"
     assert row["purchase_unit"] == row["calculation_unit"] == "sheet"
 
 
@@ -1680,15 +1682,33 @@ def test_sheet_normalization_classifies_proved_hebrew_trade_families_without_sup
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "plywood"
     assert row["identity_attributes"]["plywood_variant"] == "twin"
-    assert row["normalized_name"] == "Plywood 17 mm, twin"
+    assert row["identity_attributes"]["brand"] == ""
+    assert row["normalized_name"] == "Plywood 17 mm, Twin"
     assert "taxonomy_wood_sheets" in row["reason_codes"]
+
+
+def test_sheet_normalization_does_not_treat_mevuka_as_perforated():
+    result = _result()
+    row = result["rows"][0]
+    row.update({
+        "raw_description": "טווין 17 ממ 2* מבוקע",
+        "normalized_name": "Unclassified sheet material",
+        "material_type": "Other",
+        "material_family": "other",
+        "identity_attributes": {**row["identity_attributes"], "thickness_mm": 17},
+    })
+
+    normalize_price_source_sheet_rows(result)
+
+    assert row["identity_attributes"]["construction"] == ""
+    assert row["normalized_name"] == "Plywood 17 mm, Twin"
 
 
 def test_sheet_normalization_keeps_okume_perforated_separate_from_the_plain_family():
     result = _result()
     row = result["rows"][0]
     row.update({
-        "raw_description": "אוקמה 5 ממ מבוקע 1*",
+        "raw_description": "אוקמה 5 ממ מחורר 1*",
         "normalized_name": "Unclassified material",
         "material_type": "Other",
         "material_family": "other",

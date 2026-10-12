@@ -26,6 +26,7 @@ def test_identity_normalizer_retains_only_domain_attributes_not_source_prose():
         "brand": "Egger",
         "brand_basis": "unknown",
         "product_system": "",
+        "plywood_variant": "",
         "species": "",
         "substrate": "",
         "surface": "",
@@ -49,6 +50,15 @@ def test_shared_display_contract_is_entity_primary_brand_then_secondaries():
     })
 
     assert name == "Plywood 17 mm Egger, Okoume, double-sided, matte, black"
+
+
+def test_shared_display_contract_title_cases_plywood_variant_once():
+    name = canonical_display_name("plywood", {
+        "primary_attribute": "17 mm",
+        "plywood_variant": "twin",
+    })
+
+    assert name == "Plywood 17 mm, Twin"
 
 
 def test_known_product_system_uses_one_canonical_display_spelling():

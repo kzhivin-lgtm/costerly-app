@@ -21,6 +21,7 @@ from use_cases.hardware_product_system_registry import (
     HARDWARE_BRAND_SEEDS,
     PRODUCT_SYSTEM_SEEDS,
 )
+from use_cases.material_identity_resolution import normalize_material_phrase
 
 
 @dataclass(frozen=True)
@@ -458,7 +459,7 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("eucalyptus", ("eucalyptus", "אקליפטוס")),
     ),
     "construction": (
-        ("perforated", ("perforated", "perforation", "מחורר", "מבוקע", "בקוע", "מנוקב")),
+        ("perforated", ("perforated", "perforation", "מחורר", "מנוקב")),
     ),
     # These names are preserved in the private company catalog, because a
     # supplier can price them differently. They are not separate estimation
@@ -879,6 +880,31 @@ def _taxonomy_material_name(rule: TaxonomyRule, attributes: Mapping[str, Any]) -
     return canonical_display_name(rule.family, attributes)
 
 
+def _discard_redundant_plywood_brand(attributes: dict[str, Any]) -> None:
+    """Keep plywood trade variants once, as a secondary source fact.
+
+    Twin, Combi and Okoume are often emitted by extraction as a candidate
+    brand as well as a variant or species. They are not hardware-style brands
+    and must neither appear twice in a company material name nor affect the
+    generic raw-plywood estimation class.
+    """
+    brand = normalize_material_phrase(attributes.get("brand"))
+    if not brand:
+        return
+    non_brand_terms = {
+        normalize_material_phrase(attributes.get("plywood_variant")),
+        normalize_material_phrase(attributes.get("species")),
+        "okuma",
+        "okume",
+        "okoume",
+        "twin",
+        "combi",
+    }
+    if brand in non_brand_terms:
+        attributes["brand"] = ""
+        attributes["brand_basis"] = "unknown"
+
+
 def apply_material_taxonomy(row: dict[str, Any]) -> bool:
     """Apply only literal bilingual evidence to one material row.
 
@@ -991,6 +1017,8 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
             )
     if technical_grade := _explicit_technical_grade(text):
         attributes["grade"] = technical_grade
+    if rule.family == "plywood":
+        _discard_redundant_plywood_brand(attributes)
     attributes = normalize_identity_attributes(attributes)
     if rule.category in sheet_categories:
         # Model-generated dimensions are not source evidence. Rebuild this

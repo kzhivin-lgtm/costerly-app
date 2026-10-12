@@ -147,7 +147,7 @@ def canonical_display_name(
         value = str(identity[field] or "").strip()
         if not value or value.casefold() == str(entity or "").strip().casefold():
             continue
-        if field == "species":
+        if field in {"species", "plywood_variant"}:
             value = value.title()
         if value not in secondary:
             secondary.append(value)

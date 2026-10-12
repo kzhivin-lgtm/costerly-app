@@ -57,6 +57,18 @@ Company Price Catalog offers.
   policy never creates a green link by using a neighbouring thickness or a
   different construction class.
 
+### Baseline-class completeness
+
+The Israel catalog must contain each ordinary class required by this policy.
+`db/sql/2026_10_12_sheet_material_baseline_reference_classes.sql` supplies
+the missing raw-plywood and standard raw/faced MDF thicknesses. It deliberately
+does not create prices or infer a special class. A source row becomes green
+only when it has the correctly matched same-thickness reference class.
+
+For display, `Twin`, `Combi` and `Okoume` are one supplier-evidence attribute,
+not brands. They must render once, for example `Plywood 17 mm, Twin`, while
+remaining distinct supplier offers where their source pricing differs.
+
 ## Current implementation boundary
 
 The first low-impact rule is code-registered and has resolver coverage. It
