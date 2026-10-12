@@ -266,6 +266,24 @@ complete a one-sided format only where exactly one active candidate matches.
 The owner must apply `2026_10_12_correct_company_offer_formats.sql` before
 this stage can be deployed or tested in Price Source.
 
+ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
+contract: at source-row processing time, build every company-catalog display
+name solely as `Entity -> one or two proven key attributes -> confirmed brand
+when present -> ordered secondary attributes`. Raw supplier prose, SKU,
+quantity, packaging wording and a candidate or uncertain brand must never
+enter the canonical name. A physical offer format is a key attribute when
+proven, rendered as a full `length x width mm` format or as its one proven
+side only when completion is ambiguous. The same renderer must project
+existing catalog offers without mutating immutable source evidence. Acceptance:
+the two latest plywood sources display their `3100 mm` distinction at once,
+the fallback sheet format is visible where resolved, and unconfirmed brands do
+not appear in any new canonical name. Add a deterministic multilingual
+measurement-alias grammar before name rendering: thickness, length, width,
+depth and diameter labels; metric, imperial and Hebrew units; sheet-format
+labels; and source-safe separators. A bare number is accepted only in a
+proven entity-adjacent or explicitly labelled measurement position, never as
+SKU, quantity or packaging notation.
+
 DEFERRED, P1, USER REQUEST, 3.17.2.8 Construction Scenario Library and Staff
 Admin: define a controlled, versioned library of full estimating archetypes,
 starting with kitchen modules and furniture. A scenario describes the complete

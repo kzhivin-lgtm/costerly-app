@@ -1695,7 +1695,7 @@ def test_sheet_normalization_replaces_wrong_glass_label_when_okoume_proves_plywo
     assert row["material_family"] == "plywood"
     assert row["identity_attributes"]["species"] == "okoume"
     assert row["identity_attributes"]["brand"] == ""
-    assert row["normalized_name"] == "Plywood 5 mm, Okoume"
+    assert row["normalized_name"] == "Plywood 5 mm 3100 mm, Okoume"
     assert row["purchase_unit"] == row["calculation_unit"] == "sheet"
 
 
@@ -1720,7 +1720,7 @@ def test_sheet_taxonomy_removes_hallucinated_glass_and_resolves_known_okoume():
     normalize_price_source_sheet_rows(result)
 
     assert row["status"] == "ready"
-    assert row["normalized_name"] == "Plywood 5 mm, Okoume"
+    assert row["normalized_name"] == "Plywood 5 mm 3100 mm, Okoume"
     assert "Glass" not in row["normalized_name"]
     assert "unknown_product_term" not in row["reason_codes"]
 
@@ -1740,7 +1740,7 @@ def test_sheet_taxonomy_replaces_model_acrylic_label_when_okoume_proves_plywood(
 
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "plywood"
-    assert row["normalized_name"] == "Plywood 5 mm, Okoume"
+    assert row["normalized_name"] == "Plywood 5 mm 3100 mm, Okoume"
 
 
 def test_sheet_taxonomy_accepts_compact_hebrew_mdf_abbreviation():
@@ -1762,6 +1762,27 @@ def test_sheet_taxonomy_accepts_compact_hebrew_mdf_abbreviation():
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "mdf"
     assert row["normalized_name"] == "MDF 19 mm, white"
+
+
+@pytest.mark.parametrize("description, expected", (
+    ("MDF thk 18", 18),
+    ("plywood thickness: 12", 12),
+    ("מדפ עובי 19", 19),
+    ("MDF 1.9 cm", 19),
+    ("MDF 19", 19),
+))
+def test_taxonomy_reads_multilingual_thickness_aliases(description, expected):
+    row = _result()["rows"][0]
+    row.update({
+        "raw_description": description,
+        "normalized_name": "Unclassified material",
+        "material_type": "Other",
+        "material_family": "other",
+        "identity_attributes": {},
+    })
+
+    assert apply_material_taxonomy(row) is True
+    assert row["identity_attributes"]["thickness_mm"] == expected
 
 
 @pytest.mark.parametrize("alias", ("MDF", "m.d.f", "m d f", "מדי אף", "אמ די אף", "מדפ", "מ.ד.פ", "מ ד פ"))
@@ -1814,7 +1835,7 @@ def test_sheet_normalization_classifies_proved_hebrew_trade_families_without_sup
     assert row["material_family"] == "plywood"
     assert row["identity_attributes"]["plywood_variant"] == "twin"
     assert row["identity_attributes"]["brand"] == ""
-    assert row["normalized_name"] == "Plywood 17 mm, Twin"
+    assert row["normalized_name"] == "Plywood 17 mm 3100 mm, Twin"
     assert "taxonomy_wood_sheets" in row["reason_codes"]
 
 
@@ -1867,7 +1888,7 @@ def test_sheet_normalization_keeps_proved_glass_category():
     normalize_price_source_sheet_rows(result)
 
     assert row["material_type"] == "Glass"
-    assert row["normalized_name"] == "Glass 5 mm"
+    assert row["normalized_name"] == "Glass 5 mm 3100 mm"
 
 
 @pytest.mark.parametrize(
@@ -1955,7 +1976,7 @@ def test_taxonomy_preserves_a_category_scoped_brand_and_sheet_primary_attribute(
     assert row["material_type"] == "Wood Sheets"
     assert row["identity_attributes"]["brand"] == "Egger"
     assert row["identity_attributes"]["primary_attribute"] == "17 mm"
-    assert row["normalized_name"].startswith("Plywood 17 mm Egger")
+    assert row["normalized_name"].startswith("Plywood 17 mm 3100 mm Egger")
 
 
 @pytest.mark.parametrize(
@@ -2058,7 +2079,7 @@ def test_glass_door_closure_is_hardware_not_glass_and_keeps_compact_brand_candid
     assert row["material_family"] == "door closure"
     assert row["identity_attributes"]["primary_attribute"] == "550 mm"
     assert row["identity_attributes"]["brand"] == "Mario Box"
-    assert row["normalized_name"] == "Door Closure 550 mm Mario Box, white"
+    assert row["normalized_name"] == "Door Closure 550 mm, white"
 
 
 def test_exact_merivobox_is_drawer_system_not_glass_or_metal_profile():
@@ -3384,6 +3405,7 @@ def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
                 "source_row_id": "row-1",
                 "normalized_price": 90,
                 "normalized_unit": "m2",
+                "purchasable_dimensions": {"length_mm": 2440, "width_mm": 1220},
                 "currency": "ILS",
                 "valid_from": "2026-09-24",
             }
@@ -3394,6 +3416,7 @@ def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
                 "category": "Wood Sheets",
                 "canonical_name": "Birch plywood 10 mm",
                 "preferred_unit": "m2",
+                "specifications": {"material_family": "plywood", "thickness_mm": 10},
             }
         ],
         "company_suppliers": [
@@ -3424,7 +3447,7 @@ def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
     rows = list_price_catalog(SimpleNamespace(company_id="company-1", user_id="user-1"))
 
     assert rows[0]["department"] == "Wood"
-    assert rows[0]["canonical_name"] == "Birch plywood 10 mm"
+    assert rows[0]["canonical_name"] == "Plywood 10 mm 2440 × 1220 mm"
     assert rows[0]["original_name"] == "Plywood birch 10mm"
     assert rows[0]["supplier_name"] == "Supplier Ltd"
     assert rows[0]["updated_at"] == "2026-09-24"

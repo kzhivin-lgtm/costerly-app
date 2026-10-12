@@ -2696,7 +2696,7 @@ def list_price_catalog(access) -> list[dict]:
             "offer_id,company_material_id,supplier_id,source_id,source_row_id,"
             "source_price,source_unit,purchase_unit,calculation_unit,conversion_factor,"
             "normalized_price,normalized_unit,currency,vat_included,valid_from,"
-            "confidence,created_at"
+            "confidence,created_at,purchasable_dimensions"
         )
         .eq("company_id", company_id)
         .eq("status", "active")
@@ -2769,10 +2769,17 @@ def list_price_catalog(access) -> list[dict]:
         material_family = str(specifications.get("material_family") or "").strip()
         canonical_name = str(material.get("canonical_name") or "Material")
         # Existing catalog rows can predate a formatting refinement in the
-        # curated registry. Render the same canonical identity from their
-        # persisted facts, without touching raw evidence or owner input.
+        # curated registry. An offer's purchasable sheet format is a proven
+        # second key attribute for this catalog row, while raw source evidence
+        # remains untouched.
         if material_family:
-            canonical_name = canonical_display_name(material_family, specifications)
+            display_specifications = dict(specifications)
+            offer_dimensions = offer.get("purchasable_dimensions") or {}
+            if isinstance(offer_dimensions, Mapping):
+                for field in ("length_mm", "width_mm", "depth_mm", "diameter_mm"):
+                    if not display_specifications.get(field) and offer_dimensions.get(field):
+                        display_specifications[field] = offer_dimensions[field]
+            canonical_name = canonical_display_name(material_family, display_specifications)
         catalog.append(
             {
                 **offer,

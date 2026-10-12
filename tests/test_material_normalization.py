@@ -42,6 +42,7 @@ def test_shared_display_contract_is_entity_primary_brand_then_secondaries():
     name = canonical_display_name("plywood", {
         "primary_attribute": "17 mm",
         "brand": "Egger",
+        "brand_basis": "catalog",
         "species": "okoume",
         "construction": "double-sided",
         "finish": "matte",
@@ -50,6 +51,30 @@ def test_shared_display_contract_is_entity_primary_brand_then_secondaries():
     })
 
     assert name == "Plywood 17 mm Egger, Okoume, double-sided, matte, black"
+
+
+def test_shared_display_contract_adds_proven_second_key_dimension_before_brand():
+    name = canonical_display_name("plywood", {
+        "primary_attribute": "17 mm",
+        "length_mm": 3100,
+        "width_mm": 1220,
+        "brand": "Egger",
+        "brand_basis": "catalog",
+        "plywood_variant": "twin",
+    })
+
+    assert name == "Plywood 17 mm 3100 × 1220 mm Egger, Twin"
+
+
+def test_shared_display_contract_omits_unconfirmed_brand_candidate():
+    name = canonical_display_name("plywood", {
+        "primary_attribute": "17 mm",
+        "brand": "Mario Box",
+        "brand_basis": "candidate",
+        "plywood_variant": "twin",
+    })
+
+    assert name == "Plywood 17 mm, Twin"
 
 
 def test_shared_display_contract_title_cases_plywood_variant_once():

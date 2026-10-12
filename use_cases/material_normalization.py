@@ -122,6 +122,35 @@ def display_entity(entity: object) -> str:
     return _ENTITY_DISPLAY_OVERRIDES.get(value.casefold(), value.title())
 
 
+def _display_mm(value: object) -> str:
+    try:
+        numeric = float(value or 0)
+    except (TypeError, ValueError):
+        return ""
+    if numeric <= 0:
+        return ""
+    return str(int(numeric)) if numeric.is_integer() else str(numeric)
+
+
+def _key_dimension_label(identity: Mapping[str, Any]) -> str:
+    """Render proven physical dimensions as a universal second key attribute."""
+    length = _display_mm(identity.get("length_mm"))
+    width = _display_mm(identity.get("width_mm"))
+    depth = _display_mm(identity.get("depth_mm"))
+    diameter = _display_mm(identity.get("diameter_mm"))
+    if length and width:
+        return f"{length} × {width} mm"
+    if length:
+        return f"{length} mm"
+    if width:
+        return f"{width} mm"
+    if depth:
+        return f"{depth} mm"
+    if diameter:
+        return f"Ø{diameter} mm"
+    return ""
+
+
 def canonical_display_name(
     entity: object,
     attributes: Mapping[str, Any] | None,
@@ -136,9 +165,18 @@ def canonical_display_name(
     identity = normalize_identity_attributes(attributes)
     parts = [display_entity(entity)]
     primary = str(identity["primary_attribute"] or "").strip()
-    brand = str(identity["brand"] or "").strip()
+    if not primary:
+        thickness = _display_mm(identity.get("thickness_mm"))
+        if thickness:
+            primary = f"{thickness} mm"
+    source = attributes or {}
+    brand_basis = str(source.get("brand_basis") or "").strip().casefold()
+    brand = "" if brand_basis == "candidate" else str(identity["brand"] or "").strip()
+    key_dimension = _key_dimension_label(identity)
     if primary:
         parts.append(primary)
+    if key_dimension and key_dimension != primary:
+        parts.append(key_dimension)
     if brand:
         parts.append(brand)
 
