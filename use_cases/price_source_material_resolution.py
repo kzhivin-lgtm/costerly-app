@@ -271,7 +271,20 @@ def _pricing_specifications(
         and not normalize_material_phrase(result.get("construction"))
     ):
         result["construction"] = "raw"
-    if normalize_material_phrase(material_family) == "melamine":
+    normalized_family = normalize_material_phrase(material_family)
+    if normalized_family == "plywood":
+        # Twin, Combi and Okoume are supplier-facing sheet variants. Keep them
+        # in company identity and source evidence, but do not make them a
+        # different canonical or price class. An explicit perforation remains
+        # a construction fact and is deliberately not downgraded here.
+        construction_tokens = set(
+            normalize_material_phrase(result.get("construction")).split()
+        )
+        if not construction_tokens or construction_tokens <= {"twin", "combi"}:
+            result["construction"] = "raw"
+        result.pop("species", None)
+        result.pop("plywood_variant", None)
+    if normalized_family == "melamine":
         result["construction"] = "melamine_faced"
     if normalize_material_phrase(material_family) in {
         "solid timber laminated",
@@ -281,6 +294,58 @@ def _pricing_specifications(
     }:
         result["construction"] = "laminated"
     return result
+
+
+def _generic_raw_plywood_reference(
+    *,
+    material_family: str,
+    specifications: Mapping[str, Any],
+    materials: Sequence[Mapping[str, Any]],
+    resolver_version: str,
+    phrase: str,
+) -> MaterialIdentityResolution | None:
+    """Link ordinary plywood variants to one canonical raw-sheet record.
+
+    This intentionally operates after source identity has been preserved. It
+    applies only when the normalised estimation class is raw plywood and the
+    catalog contains exactly one generic raw record at the given thickness.
+    """
+    if normalize_material_phrase(material_family) != "plywood":
+        return None
+    if normalize_material_phrase(specifications.get("construction")) != "raw":
+        return None
+    thickness = specifications.get("thickness_mm")
+    try:
+        thickness_text = str(int(float(thickness)))
+    except (TypeError, ValueError):
+        return None
+    permitted_tokens = {"plywood", "raw", "standard", thickness_text, "mm"}
+    matches = []
+    for material in materials:
+        if not material.get("active", True):
+            continue
+        name_tokens = set(normalize_material_phrase(material.get("canonical_name")).split())
+        if {"plywood", "raw", thickness_text, "mm"}.issubset(name_tokens) and name_tokens <= permitted_tokens:
+            matches.append(material)
+    if len(matches) != 1:
+        return None
+    material_id = str(matches[0].get("material_id") or "")
+    if not material_id:
+        return None
+    return MaterialIdentityResolution(
+        status="resolved",
+        route="canonical_sheet_class:plywood_raw",
+        normalized_phrase=normalize_material_phrase(phrase),
+        selected_material_id=material_id,
+        candidates=(
+            MaterialIdentityCandidate(
+                material_id=material_id,
+                score=Decimal("95"),
+                route="canonical_sheet_class:plywood_raw",
+            ),
+        ),
+        resolver_version=resolver_version,
+    )
 
 
 def _source_supplier_maps(
@@ -535,6 +600,10 @@ def resolve_price_source_material_identities(
             or evidence.get("material_family")
             or ""
         )
+        canonical_specifications = _pricing_specifications(
+            material_family=material_family,
+            extracted_specifications=extracted_specifications,
+        )
         existing_pricing_identity_id = str(
             company_material.get("pricing_identity_id") or ""
         )
@@ -547,10 +616,7 @@ def resolve_price_source_material_identities(
         elif index["pricing_identities"]:
             pricing_resolution = resolve_material_pricing_identity(
                 material_family=material_family,
-                specifications=_pricing_specifications(
-                    material_family=material_family,
-                    extracted_specifications=extracted_specifications,
-                ),
+                specifications=canonical_specifications,
                 market_code=market,
                 pricing_identities=index["pricing_identities"],
                 pricing_identity_index=index["pricing_identity_index"],
@@ -609,13 +675,23 @@ def resolve_price_source_material_identities(
                 reference_aliases=index["reference_aliases"],
                 company_aliases=index["company_aliases"],
                 supplier_id=supplier_id,
-                specifications=extracted_specifications,
+                specifications=canonical_specifications,
                 material_family=material_family or None,
                 candidate_departments=PRICE_SOURCE_REFERENCE_DEPARTMENTS.get(
                     material_type, ()
                 ),
                 material_identity_index=index["material_identity_index"],
             )
+            if resolution.status != "resolved":
+                sheet_match = _generic_raw_plywood_reference(
+                    material_family=material_family,
+                    specifications=canonical_specifications,
+                    materials=index["materials"],
+                    resolver_version=resolver_version,
+                    phrase=phrase,
+                )
+                if sheet_match is not None:
+                    resolution = sheet_match
             if resolution.status != "resolved":
                 low_impact_match = resolve_low_impact_compatibility(
                     phrase=phrase,

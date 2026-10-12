@@ -620,13 +620,14 @@ def resolve_rows_after_supplier_identity(result: dict[str, Any]) -> int:
     return resolved
 
 
-def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str, str, str, str, str]:
+def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str, str, str, str, str, str]:
     """Return the deterministic private-material identity.
 
     The key deliberately ignores prose, SKU, colour and décor. A supplier can
     write the same sheet in many ways, but thickness, dimensions, a proven
-    brand and construction remain catalog distinctions. Perforation is retained
-    so a differently-priced perforated offer can stay separate.
+    brand and construction remain catalog distinctions. Plywood variants remain
+    separate company rows even though Twin, Combi and Okoume share the same
+    generic raw-plywood reference link for estimation.
     """
     attributes = row.get("identity_attributes") or {}
 
@@ -646,6 +647,7 @@ def material_structural_key(row: Mapping[str, Any]) -> tuple[str, str, str, str,
         number("diameter_mm"),
         _normalized_name(str(attributes.get("brand") or "")),
         _normalized_name(str(attributes.get("species") or "")),
+        _normalized_name(str(attributes.get("plywood_variant") or "")),
         _normalized_name(str(attributes.get("construction") or "")),
     )
 

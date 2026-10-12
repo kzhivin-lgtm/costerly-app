@@ -458,8 +458,14 @@ ATTRIBUTE_RULES: dict[str, tuple[tuple[str, tuple[str, ...]], ...]] = {
         ("eucalyptus", ("eucalyptus", "אקליפטוס")),
     ),
     "construction": (
-        ("twin", ("twin", "טווין", "combi", "קומבי")),
         ("perforated", ("perforated", "perforation", "מחורר", "מבוקע", "בקוע", "מנוקב")),
+    ),
+    # These names are preserved in the private company catalog, because a
+    # supplier can price them differently. They are not separate estimation
+    # classes: the sheet resolver maps each one to generic raw plywood.
+    "plywood_variant": (
+        ("twin", ("twin", "טווין")),
+        ("combi", ("combi", "קומבי")),
     ),
     "finish": (
         ("glossy", ("high gloss", "glossy", "gloss", "מבריק")),

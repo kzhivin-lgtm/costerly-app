@@ -1179,7 +1179,7 @@ def test_issuer_identity_does_not_guess_between_unlabelled_header_ids():
     assert issuer_identity_from_source_text(header)["supplier_hp"] == ""
 
 
-def test_material_structural_key_ignores_sheet_wording_but_keeps_perforation():
+def test_material_structural_key_keeps_a_private_plywood_variant_but_not_sheet_wording():
     base = _result()["rows"][0]
     base.update({
         "material_family": "twin plywood",
@@ -1188,10 +1188,13 @@ def test_material_structural_key_ignores_sheet_wording_but_keeps_perforation():
     })
     variant = deepcopy(base)
     variant["normalized_name"] = "Plywood twin 17 mm sheet"
+    combi = deepcopy(base)
+    combi["identity_attributes"]["plywood_variant"] = "combi"
     perforated = deepcopy(base)
     perforated["identity_attributes"]["construction"] = "perforated"
 
     assert material_structural_key(base) == material_structural_key(variant)
+    assert material_structural_key(base) != material_structural_key(combi)
     assert material_structural_key(base) != material_structural_key(perforated)
 
 
@@ -1533,9 +1536,10 @@ def test_sheet_normalization_canonicalizes_explicit_surface_descriptors():
 
     normalize_price_source_sheet_rows(result)
 
-    assert row["identity_attributes"]["construction"] == "perforated twin"
+    assert row["identity_attributes"]["construction"] == "perforated"
+    assert row["identity_attributes"]["plywood_variant"] == "twin"
     assert row["identity_attributes"]["finish"] == "glossy"
-    assert row["normalized_name"] == "Plywood 17 mm, perforated twin, glossy"
+    assert row["normalized_name"] == "Plywood 17 mm, twin, perforated, glossy"
 
 
 def test_sheet_normalization_replaces_wrong_glass_label_when_okoume_proves_plywood():
@@ -1675,7 +1679,7 @@ def test_sheet_normalization_classifies_proved_hebrew_trade_families_without_sup
 
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "plywood"
-    assert row["identity_attributes"]["construction"] == "twin"
+    assert row["identity_attributes"]["plywood_variant"] == "twin"
     assert row["normalized_name"] == "Plywood 17 mm, twin"
     assert "taxonomy_wood_sheets" in row["reason_codes"]
 

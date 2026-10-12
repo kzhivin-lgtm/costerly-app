@@ -39,6 +39,7 @@ IDENTITY_ATTRIBUTE_FIELDS = (
     "brand",
     "brand_basis",
     "product_system",
+    "plywood_variant",
     "species",
     "substrate",
     "surface",
@@ -288,6 +289,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                             "brand": {"type": "string"},
                             "brand_basis": {"type": "string"},
                             "product_system": {"type": "string"},
+                            "plywood_variant": {"type": "string"},
                             "species": {"type": "string"},
                             "substrate": {"type": "string"},
                             "surface": {"type": "string"},
@@ -430,6 +432,7 @@ def normalize_price_source_row_identity_fields(result: dict[str, Any]) -> dict[s
             attributes.setdefault("brand", "")
             attributes.setdefault("brand_basis", "unknown")
             attributes.setdefault("product_system", "")
+            attributes.setdefault("plywood_variant", "")
     return result
 
 
@@ -674,6 +677,8 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         # strict shape check, rather than making historical imports fail.
         if isinstance(attributes, dict) and "product_system" not in attributes:
             attributes["product_system"] = ""
+        if isinstance(attributes, dict) and "plywood_variant" not in attributes:
+            attributes["plywood_variant"] = ""
         if not isinstance(attributes, dict) or set(attributes) != set(IDENTITY_ATTRIBUTE_FIELDS):
             raise PriceSourceSchemaError("identity attributes do not match the contract")
         for key in ("thickness_mm", "width_mm", "length_mm", "depth_mm", "diameter_mm"):
