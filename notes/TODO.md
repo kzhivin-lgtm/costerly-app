@@ -250,6 +250,24 @@ crosswalks remain staff-authoritative later work. In the same pass, audit
 Source Agent static registries against V2 and record unmigrated vocabulary;
 do not silently treat it as V2 data.
 
+P1, USER REQUEST, 3.17.2.8 Construction Pattern Library and Staff Admin:
+introduce a controlled, versioned library of construction patterns for the
+Estimation Agent. A pattern may derive only named component requirements from
+defined object evidence, exclusions, permitted family alternatives, quantity
+rules and case-local fallback. It is not a universal furniture ontology and
+must never silently invent hardware, a supplier SKU, a price, a labor route or
+a catalog record. Initial owner-approved patterns are floor cabinet support,
+wall cabinet suspension, tall cabinet support and table support structure,
+documented in `notes/CONSTRUCTION_PATTERN_LIBRARY_3_17_2_8.md`.
+
+Create a staff-only Admin interface to list active and inactive patterns, read
+their human-readable contract and machine rules, edit a draft, activate a
+version, deactivate a version, and view where a version was used in estimates.
+Every edit and activation requires an immutable version and audit history. The
+interface must not expose source evidence to non-staff users and must not allow
+an edited rule to rewrite a completed estimate. Dependency: approve the V2
+data contract and deterministic Estimation use path before UI implementation.
+
 ACTIVE, IMPLEMENTATION CHECKPOINT `5f6360f`, P0, 3.15.24 canonical object quantity and durable Object Detail route:
 make item quantity editable on File Review, Objects, and Object Detail. All
 three screens share `rfq_detected_objects.quantity` as the canonical record;
