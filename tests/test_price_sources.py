@@ -1400,8 +1400,7 @@ def test_same_supplier_material_merge_collapses_perforation_only_at_equal_price(
     assert not price_rows_match_same_supplier_material(base, other_thickness)
 
 
-def test_same_supplier_material_merge_uses_sku_over_price_and_spurious_dimensions():
-    """A repeated supplier SKU survives price volatility and bad OCR geometry."""
+def test_same_supplier_material_merge_requires_price_and_keeps_conflicting_dimensions_separate():
     first = _result()["rows"][0]
     first.update({
         "material_type": "Wood Sheets",
@@ -1411,16 +1410,28 @@ def test_same_supplier_material_merge_uses_sku_over_price_and_spurious_dimension
         "identity_attributes": {
             **first["identity_attributes"],
             "thickness_mm": 17,
-            "width_mm": 3100,
+            "width_mm": 1220,
             "length_mm": 3100,
             "construction": "twin",
         },
     })
     repeated = deepcopy(first)
     repeated.update({"raw_price": 117})
-    repeated["identity_attributes"].update({"width_mm": 3100, "length_mm": 2000})
+    repeated["identity_attributes"].update({"width_mm": 1220, "length_mm": 2440})
 
-    assert price_rows_match_same_supplier_material(first, repeated)
+    assert not price_rows_match_same_supplier_material(first, repeated)
+
+    same_price_different_format = deepcopy(first)
+    same_price_different_format["identity_attributes"].update({"width_mm": 2440, "length_mm": 1220})
+    assert not price_rows_match_same_supplier_material(first, same_price_different_format)
+
+    missing_format = deepcopy(first)
+    missing_format["identity_attributes"].update({"width_mm": 0, "length_mm": 0})
+    assert price_rows_match_same_supplier_material(first, missing_format)
+
+    partial_matching_format = deepcopy(first)
+    partial_matching_format["identity_attributes"].update({"width_mm": 3100, "length_mm": 0})
+    assert price_rows_match_same_supplier_material(first, partial_matching_format)
 
     perforated = deepcopy(repeated)
     perforated["identity_attributes"]["construction"] = "perforated twin"
@@ -1560,7 +1571,7 @@ def test_same_supplier_offer_merge_allows_sku_variants_but_needs_same_thickness(
     assert not material_offer_matches_same_supplier_material(offer, material, row, default_currency="ILS")
 
 
-def test_same_supplier_offer_merge_reuses_canonical_material_for_conflicting_dimensions():
+def test_same_supplier_offer_merge_keeps_conflicting_proven_formats_separate():
     row = _result()["rows"][0]
     row.update({
         "material_type": "Wood Sheets",
@@ -1601,7 +1612,7 @@ def test_same_supplier_offer_merge_reuses_canonical_material_for_conflicting_dim
         },
     }
 
-    assert material_offer_matches_same_supplier_material(offer, material, row, default_currency="ILS")
+    assert not material_offer_matches_same_supplier_material(offer, material, row, default_currency="ILS")
 
 
 def test_existing_supplier_offer_can_prove_an_unknown_brand_family():

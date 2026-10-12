@@ -1993,16 +1993,59 @@ def _compatible_optional_identity_attribute(
     return not left or not right or left == right
 
 
+def _positive_identity_dimension(attributes: Mapping[str, Any], field: str) -> int:
+    try:
+        value = float(attributes.get(field) or 0)
+    except (TypeError, ValueError):
+        return 0
+    return int(round(value)) if value > 0 else 0
+
+
+def _compatible_physical_dimensions(
+    left_attributes: Mapping[str, Any],
+    right_attributes: Mapping[str, Any],
+) -> bool:
+    """Treat absent geometry as unknown, never as evidence of a mismatch."""
+    left_sides = sorted(
+        value for value in (
+            _positive_identity_dimension(left_attributes, "length_mm"),
+            _positive_identity_dimension(left_attributes, "width_mm"),
+        ) if value
+    )
+    right_sides = sorted(
+        value for value in (
+            _positive_identity_dimension(right_attributes, "length_mm"),
+            _positive_identity_dimension(right_attributes, "width_mm"),
+        ) if value
+    )
+    if len(left_sides) == 2 and len(right_sides) == 2:
+        # Two fully known sheets must be the same physical format. Sharing
+        # only their short side, for example 2440 x 1220 and 3100 x 1220,
+        # is not sufficient evidence to collapse them.
+        if left_sides != right_sides:
+            return False
+    elif left_sides and right_sides and not set(left_sides).intersection(right_sides):
+        # A single proven side can match one side of a complete format. This
+        # keeps an incomplete invoice line eligible to merge, but prevents a
+        # proven conflicting side from doing so.
+        return False
+    for field in ("depth_mm", "diameter_mm"):
+        left = _positive_identity_dimension(left_attributes, field)
+        right = _positive_identity_dimension(right_attributes, field)
+        if left and right and left != right:
+            return False
+    return True
+
+
 def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
     """Decide whether two rows describe one material for one supplier.
 
     Invoice prose is not a product key.  The relevant hierarchy is: same
-    supplier lane, same SKU when it is present (or same price when it is not),
+    supplier lane and same price,
     then category, material family, a proven primary measurement such as
     thickness, and construction. Quantity, decor and incidental
-    wording never participate.  Extracted dimensions are supporting evidence,
-    not a veto: an OCR/model may invent a second sheet dimension from a line
-    that literally contains only one span.
+    wording never participate. Absent geometry is unknown, but two proven
+    incompatible dimensions are a physical-material boundary.
     """
     if canonical_price_source_category(str(left.get("material_type") or "")) != canonical_price_source_category(
         str(right.get("material_type") or "")
@@ -2016,10 +2059,7 @@ def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapp
             _decimal_equal(left.get("raw_price"), right.get("raw_price"), "0.0001")
             and _hardware_rows_match_same_supplier(left, right)
         )
-    left_sku = _normalized_name(str(left.get("raw_sku") or left.get("supplier_sku") or ""))
-    right_sku = _normalized_name(str(right.get("raw_sku") or right.get("supplier_sku") or ""))
-    same_sku = bool(left_sku and left_sku == right_sku)
-    if not same_sku and not _decimal_equal(left.get("raw_price"), right.get("raw_price"), "0.0001"):
+    if not _decimal_equal(left.get("raw_price"), right.get("raw_price"), "0.0001"):
         return False
     left_attributes = left.get("identity_attributes") or {}
     right_attributes = right.get("identity_attributes") or {}
@@ -2029,9 +2069,11 @@ def price_rows_match_same_supplier_material(left: Mapping[str, Any], right: Mapp
         return False
     if not _compatible_material_family(left.get("material_family"), right.get("material_family")):
         return False
-    # A matching SKU usually survives ordinary supplier price changes.  Do not
-    # extend that latitude across a perforation difference: equal price is the
-    # required evidence for collapsing perforated and plain sheet lines.
+    if not _compatible_physical_dimensions(left_attributes, right_attributes):
+        return False
+    # A perforation difference may collapse only at the equal price already
+    # required above. Supplier SKU is evidence kept with the source, not a
+    # material identity rule for this non-hardware path.
     left_is_perforated = "perforated" in _normalized_name(
         str(left_attributes.get("construction") or "")
     ).split()
