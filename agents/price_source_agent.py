@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_AGENT_MODEL,
@@ -436,6 +436,7 @@ def run_price_source_agent(
     import_id: str | None = None,
     trace=None,
     model: str | None = None,
+    cancel_requested: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     """Extract one supplier source without granting the model database access."""
     if source_bytes is None and not extracted_text.strip():
@@ -481,6 +482,7 @@ def run_price_source_agent(
         get_anthropic_client().with_options(timeout=45.0, max_retries=0),
         max_stream_seconds=60.0,
         on_stream_phase=on_stream_phase,
+        cancel_requested=cancel_requested,
         model=selected_model,
         max_tokens=PRICE_SOURCE_MAX_OUTPUT_TOKENS,
         system=prompt,

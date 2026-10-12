@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-from concurrent.futures import Future
+from concurrent.futures import CancelledError, Future
 from datetime import datetime, timezone
 import hashlib
 from html import escape
@@ -46,6 +46,7 @@ from use_cases.price_sources import (
     PRICE_CATALOG_DEPARTMENTS,
     PriceSourceError,
     accepted_price_source_uploads,
+    invalid_price_source_uploads,
     canonical_price_source_category,
     create_price_source_download_url,
     list_material_jobs,
@@ -65,6 +66,7 @@ from use_cases.price_sources import (
 )
 from use_cases.price_source_runtime import (
     active_price_source_job,
+    cancel_price_source_job,
     submit_price_lists_projection_jobs,
     submit_price_source_batch_job,
     submit_price_source_job,
@@ -3656,11 +3658,10 @@ def _queue_price_source_processing(
 ) -> None:
     """Capture the selected source before the Price Lists fragment reruns."""
     st.session_state.pop("_price_source_error", None)
-    uploaded_files = accepted_price_source_uploads(
-        list(st.session_state.get(uploader_key) or [])
-    )
+    selected_files = list(st.session_state.get(uploader_key) or [])
+    uploaded_files = accepted_price_source_uploads(selected_files)
     try:
-        validate_price_source_upload_selection(uploaded_files)
+        validate_price_source_upload_selection(selected_files)
         if not uploaded_files:
             raise PriceSourceError("Add at least one file.")
     except PriceSourceError as exc:
@@ -3688,6 +3689,12 @@ def _queue_price_source_processing(
         return
     st.session_state._price_source_pending = {
         "future": future,
+        "job_id": (
+            active.job_id
+            if (active := active_price_source_job(str(access.company_id))) is not None
+            and active.future is future
+            else None
+        ),
         "processing_cycle": processing_cycle,
         # The completion banner belongs to this exact selection, not to a
         # mutable selection counter read after a fragment rerender.
@@ -3704,6 +3711,16 @@ def _queue_price_source_processing(
     st.session_state.pop("_price_source_notice", None)
     st.session_state.pop("_price_source_error", None)
     st.session_state.pop("_price_source_start_rejected", None)
+
+
+def _cancel_price_source_processing(access: CompanyAccess) -> None:
+    """Request cancellation of the exact background job displayed to this user."""
+    pending = st.session_state.get("_price_source_pending") or {}
+    job_id = str(pending.get("job_id") or "")
+    if not job_id:
+        return
+    if cancel_price_source_job(str(access.company_id), job_id):
+        st.session_state._price_source_cancelling = True
 
 def _synchronize_price_source_file_selection(files: list[object]) -> None:
     """Clear a terminal result once per new uploader selection.
@@ -3837,6 +3854,7 @@ def _render_price_source_add(
                     "Upload file or photos",
                     accept_multiple_files=True,
                     key=uploader_key,
+                    type=["pdf", "xls", "xlsx", "csv", "jpg", "jpeg", "png", "tif", "tiff", "heic", "heif"],
                     disabled=processing,
                     label_visibility="collapsed",
                     help=(
@@ -3844,8 +3862,10 @@ def _render_price_source_add(
                         "separately and is merged only when supplier and invoice number match."
                     ),
                 )
-                accepted_files = accepted_price_source_uploads(list(uploaded_files or []))
-                _synchronize_price_source_file_selection(accepted_files)
+                selected_files = list(uploaded_files or [])
+                accepted_files = accepted_price_source_uploads(selected_files)
+                invalid_files = invalid_price_source_uploads(selected_files)
+                _synchronize_price_source_file_selection(selected_files)
                 file_previews = []
                 for accepted_file in accepted_files:
                     preview = render_price_source_preview(
@@ -3894,20 +3914,34 @@ def _render_price_source_add(
                     key="process_price_source",
                     type="primary",
                     use_container_width=True,
-                    disabled=processing or not accepted_files,
+                    disabled=processing or not accepted_files or bool(invalid_files),
                     on_click=_queue_price_source_processing,
                     args=(access, uploader_key, trace),
                 )
-                if cycle_result:
-                    _render_price_source_cycle_result(
-                        _price_source_notice_text(cycle_result),
-                        processing_cycle=int(
-                            cycle_result.get("processing_cycle") or processing_cycle
-                        ),
-                        selection_cycle=int(
-                            cycle_result.get("selection_cycle") or selection_cycle
-                        ),
+                if processing:
+                    st.button(
+                        "Cancelling…" if st.session_state.get("_price_source_cancelling") else "Cancel extraction",
+                        key="cancel_price_source",
+                        use_container_width=True,
+                        disabled=bool(st.session_state.get("_price_source_cancelling")),
+                        on_click=_cancel_price_source_processing,
+                        args=(access,),
                     )
+                if invalid_files:
+                    st.error("Use PDF, XLS, XLSX, CSV, JPEG, PNG, TIFF, HEIC or HEIF files")
+                if cycle_result:
+                    if cycle_result.get("cancelled"):
+                        st.info("Extraction cancelled")
+                    else:
+                        _render_price_source_cycle_result(
+                            _price_source_notice_text(cycle_result),
+                            processing_cycle=int(
+                                cycle_result.get("processing_cycle") or processing_cycle
+                            ),
+                            selection_cycle=int(
+                                cycle_result.get("selection_cycle") or selection_cycle
+                            ),
+                        )
                 elif cycle_error:
                     _render_price_source_cycle_error(
                         cycle_error,
@@ -3927,8 +3961,21 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
     uploader_version = int(st.session_state.get("_price_source_uploader_version") or 0)
     try:
         result = future.result()
+    except CancelledError:
+        st.session_state._price_source_notice = {
+            "cancelled": True,
+            "processing_cycle": pending.get("processing_cycle"),
+            "selection_cycle": pending.get("selection_cycle"),
+        }
     except PriceSourceError as exc:
-        st.session_state._price_source_error = str(exc)
+        if "cancelled" in str(exc).casefold():
+            st.session_state._price_source_notice = {
+                "cancelled": True,
+                "processing_cycle": pending.get("processing_cycle"),
+                "selection_cycle": pending.get("selection_cycle"),
+            }
+        else:
+            st.session_state._price_source_error = str(exc)
     except PermissionError:
         st.session_state._price_source_error = "Only the company owner can add price sources."
     except Exception as exc:
@@ -3962,6 +4009,7 @@ def _process_pending_price_source(access: CompanyAccess, *, trace=None) -> None:
             )
     finally:
         st.session_state._price_source_processing = False
+        st.session_state.pop("_price_source_cancelling", None)
         st.session_state.pop("_price_source_pending", None)
 
 
@@ -3984,6 +4032,7 @@ def _restore_active_price_source_processing(access: CompanyAccess) -> None:
         ),
         "user_cycle_started_at": active.started_at,
         "user_cycle_started_at_epoch_ms": active.started_at_epoch_ms,
+        "job_id": getattr(active, "job_id", None),
     }
     st.session_state._price_source_processing = True
     st.session_state.pop("_price_source_error", None)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -14,6 +15,7 @@ import re
 import socket
 import time
 from pathlib import Path
+from threading import Event
 from typing import Any, Mapping, Sequence
 from urllib.parse import quote, urljoin, urlsplit
 from uuid import uuid4
@@ -69,9 +71,10 @@ LEGACY_CONFIDENCE_PENALTY = 15.0
 ISRAEL_VAT_RATE_BEFORE_2025 = 0.17
 ISRAEL_VAT_RATE_CURRENT = 0.18
 ISRAEL_VAT_RATE_CHANGE_DATE = date(2025, 1, 1)
-SUPPORTED_SUFFIXES = {".pdf", ".xlsx", ".csv", *OCR_IMAGE_SUFFIXES}
+SUPPORTED_SUFFIXES = {".pdf", ".xls", ".xlsx", ".csv", *OCR_IMAGE_SUFFIXES}
 CONTENT_TYPES = {
     ".pdf": "application/pdf",
+    ".xls": "application/vnd.ms-excel",
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ".csv": "text/csv",
     ".jpg": "image/jpeg",
@@ -167,6 +170,10 @@ _IDENTITY_DESCRIPTOR_MARKERS = {
 
 class PriceSourceError(ValueError):
     pass
+
+
+class PriceSourceProcessingCancelled(PriceSourceError):
+    """A user cancelled a background extraction before it could persist."""
 
 
 def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
@@ -1336,13 +1343,28 @@ def validate_price_source_upload_selection(files: list) -> None:
         )
     if any(suffix not in SUPPORTED_SUFFIXES for suffix in suffixes):
         raise PriceSourceError(
-            "Use PDF, XLSX, CSV, JPEG, PNG, TIFF, HEIC or HEIF files"
+            "Use PDF, XLS, XLSX, CSV, JPEG, PNG, TIFF, HEIC or HEIF files"
         )
 
 
 def accepted_price_source_uploads(files: list) -> list:
-    """Keep every selected file so batch routing can process it independently."""
-    return [item for item in files if item is not None]
+    """Return only files that can enter the extraction queue."""
+    return [
+        item
+        for item in files
+        if item is not None
+        and Path(str(getattr(item, "name", ""))).suffix.lower() in SUPPORTED_SUFFIXES
+    ]
+
+
+def invalid_price_source_uploads(files: list) -> list:
+    """Return selected files rejected before any extraction job is submitted."""
+    return [
+        item
+        for item in files
+        if item is not None
+        and Path(str(getattr(item, "name", ""))).suffix.lower() not in SUPPORTED_SUFFIXES
+    ]
 
 
 def render_price_source_pdf_preview(
@@ -1459,19 +1481,11 @@ def render_price_source_preview(
         except (UnidentifiedImageError, OSError):
             logger.info("Price source image preview unavailable", exc_info=True)
             return None
-    if suffix == ".xlsx":
+    if suffix in {".xls", ".xlsx"}:
         try:
-            from openpyxl import load_workbook
-
-            workbook = load_workbook(BytesIO(file_bytes), read_only=True, data_only=True)
-            try:
-                worksheet = next(
-                    (sheet for sheet in workbook.worksheets if sheet.sheet_state == "visible"),
-                    workbook.worksheets[0],
-                )
-                rows = [list(row[:6]) for row in worksheet.iter_rows(max_row=7, values_only=True)]
-            finally:
-                workbook.close()
+            frames = _read_spreadsheet_frames(file_name, file_bytes, nrows=7)
+            frame = next(iter(frames.values()), pd.DataFrame())
+            rows = frame.fillna("").iloc[:, :6].values.tolist()
             return _render_price_source_table_preview(rows)
         except Exception:
             logger.info("Price source spreadsheet preview unavailable", exc_info=True)
@@ -2419,6 +2433,31 @@ def price_source_template_fingerprint(file_name: str, data: bytes) -> str | None
             basis = {"format": "xlsx", "sheets": sheets}
         finally:
             workbook.close()
+    elif suffix == ".xls":
+        try:
+            sheets = _read_spreadsheet_frames(file_name, data)
+        except Exception:
+            return None
+        basis = {
+            "format": "xls",
+            "sheets": [
+                {
+                    "name": str(sheet_name),
+                    "columns": int(frame.shape[1]),
+                    "headers": [
+                        _normalized_name(str(cell))
+                        for cell in next(
+                            (
+                                row for row in frame.fillna("").values.tolist()
+                                if any(str(cell).strip() for cell in row)
+                            ),
+                            [],
+                        )
+                    ],
+                }
+                for sheet_name, frame in sheets.items()
+            ],
+        }
     else:
         return None
     encoded = json.dumps(basis, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -2670,26 +2709,143 @@ def fetch_public_page(url: str, *, client: httpx.Client | None = None) -> tuple[
             http.close()
 
 
+STRUCTURED_SPREADSHEET_MAX_ROWS_PER_AGENT_CALL = 12
+
+
+def _read_spreadsheet_frames(
+    file_name: str,
+    data: bytes,
+    *,
+    nrows: int | None = None,
+) -> dict[str, pd.DataFrame]:
+    """Read legacy and OOXML workbooks without inventing a header row."""
+    suffix = Path(file_name).suffix.lower()
+    if suffix not in {".xls", ".xlsx"}:
+        return {}
+    kwargs: dict[str, object] = {
+        "sheet_name": None,
+        "header": None,
+        "dtype": str,
+    }
+    if nrows is not None:
+        kwargs["nrows"] = nrows
+    if suffix == ".xls":
+        kwargs["engine"] = "xlrd"
+    return pd.read_excel(BytesIO(data), **kwargs)
+
+
+def _spreadsheet_row_text(row: list[object]) -> str:
+    return " | ".join(str(cell).strip() for cell in row if str(cell).strip())
+
+
+def _spreadsheet_header_index(rows: list[list[object]]) -> int:
+    """Find a conventional item-table header while preserving preamble evidence."""
+    markers = {
+        "sku", "item", "description", "material", "product", "quantity",
+        "unit", "price", "amount", "total", "מק", "פריט", "כמות", "מחיר",
+    }
+    best_index = 0
+    best_score = 0
+    for index, row in enumerate(rows[:30]):
+        tokens = {
+            token
+            for cell in row
+            for token in re.findall(r"[a-zA-Zא-ת]+", str(cell).casefold())
+        }
+        score = len(tokens & markers)
+        if score > best_score:
+            best_index, best_score = index, score
+    return best_index if best_score >= 2 else 0
+
+
+def _spreadsheet_sheet_rows(frame: pd.DataFrame) -> list[list[object]]:
+    return [
+        list(row)
+        for row in frame.fillna("").values.tolist()
+        if any(str(cell).strip() for cell in row)
+    ]
+
+
 def extract_spreadsheet_text(file_name: str, data: bytes) -> str:
     suffix = Path(file_name).suffix.lower()
     if suffix == ".csv":
         text = data.decode("utf-8-sig", errors="replace")
         rows = list(csv.reader(text.splitlines()))
         return "\n".join(" | ".join(cell.strip() for cell in row) for row in rows)[:180_000]
-    if suffix == ".xlsx":
-        sheets = pd.read_excel(BytesIO(data), sheet_name=None, dtype=str)
+    if suffix in {".xls", ".xlsx"}:
+        sheets = _read_spreadsheet_frames(file_name, data)
         parts: list[str] = []
         for sheet_name, frame in sheets.items():
             parts.append(f"SHEET: {sheet_name}")
-            parts.append(frame.fillna("").to_csv(index=False))
+            parts.extend(_spreadsheet_row_text(row) for row in _spreadsheet_sheet_rows(frame))
         return "\n".join(parts)[:180_000]
     return ""
+
+
+def extract_spreadsheet_text_chunks(file_name: str, data: bytes) -> list[str]:
+    """Repeat workbook context and bounded row groups for independent agent calls."""
+    suffix = Path(file_name).suffix.lower()
+    if suffix not in {".xls", ".xlsx"}:
+        return [extract_spreadsheet_text(file_name, data)]
+    groups: list[str] = []
+    for sheet_name, frame in _read_spreadsheet_frames(file_name, data).items():
+        rows = _spreadsheet_sheet_rows(frame)
+        if not rows:
+            continue
+        header_index = _spreadsheet_header_index(rows)
+        context_rows = rows[:header_index]
+        header_row = rows[header_index]
+        data_rows = rows[header_index + 1:] or [header_row]
+        prefix = [f"SHEET: {sheet_name}"]
+        prefix.extend(_spreadsheet_row_text(row) for row in context_rows)
+        header_text = _spreadsheet_row_text(header_row)
+        for offset in range(0, len(data_rows), STRUCTURED_SPREADSHEET_MAX_ROWS_PER_AGENT_CALL):
+            source_rows = data_rows[offset:offset + STRUCTURED_SPREADSHEET_MAX_ROWS_PER_AGENT_CALL]
+            lines = [*prefix, f"TABLE HEADER: {header_text}"]
+            lines.extend(_spreadsheet_row_text(row) for row in source_rows)
+            groups.append("\n".join(lines))
+    return groups or [extract_spreadsheet_text(file_name, data)]
+
+
+def merge_price_source_agent_results(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Merge independently extracted spreadsheet row groups into one source result.
+
+    The workbook-level header fields repeat in every request.  Rows and usage
+    records are intentionally accumulated in input order; the first complete
+    header remains authoritative so a later partial group cannot overwrite it.
+    """
+    if not results:
+        raise PriceSourceError("No spreadsheet row groups could be extracted.")
+    merged = deepcopy(dict(results[0]))
+    merged["rows"] = []
+    merged["_agent_usage"] = []
+    for result in results:
+        merged["rows"].extend(deepcopy(list(result.get("rows") or [])))
+        usage = result.get("_agent_usage")
+        if isinstance(usage, dict):
+            merged["_agent_usage"].append(deepcopy(usage))
+        elif isinstance(usage, list):
+            merged["_agent_usage"].extend(
+                deepcopy(item) for item in usage if isinstance(item, dict)
+            )
+        for key, value in result.items():
+            if key in {"rows", "_agent_usage"}:
+                continue
+            if merged.get(key) in (None, "", [], {}):
+                merged[key] = deepcopy(value)
+    # Each agent group numbers its local table from one.  The persisted source
+    # requires one source-wide sequence, and a spreadsheet row has no stable
+    # supplier line id unless the evidence explicitly supplies one.
+    for source_row_number, row in enumerate(merged["rows"], start=1):
+        if isinstance(row, dict):
+            row["source_row_number"] = source_row_number
+    return merged
 
 
 def _source_extension(file_name: str) -> str:
     suffix = Path(file_name).suffix.lower()
     if suffix not in SUPPORTED_SUFFIXES:
-        raise PriceSourceError("Upload PDF, XLSX, CSV, JPEG, PNG, TIFF, or HEIC")
+        raise PriceSourceError("Upload PDF, XLS, XLSX, CSV, JPEG, PNG, TIFF, or HEIC")
     return suffix
 
 
@@ -4117,9 +4273,15 @@ def process_price_source(
     client=None,
     owner_authorized: bool = False,
     batch_source_ids: set[str] | None = None,
+    cancel_event: Event | None = None,
 ) -> PriceSourceProcessResult:
     """Process and persist one source. Ambiguous rows stay non-active."""
+    def raise_if_cancelled() -> None:
+        if cancel_event is not None and cancel_event.is_set():
+            raise PriceSourceProcessingCancelled("Price extraction was cancelled.")
+
     process_started = time.perf_counter()
+    raise_if_cancelled()
     department = _validate_department(department)
     if (uploaded_file is None) == (not source_url.strip()):
         raise PriceSourceError("Add one file or one supplier URL.")
@@ -4163,6 +4325,7 @@ def process_price_source(
         )
         parse_started = time.perf_counter()
         structured_text = extract_spreadsheet_text(source_name, source_bytes)
+        spreadsheet_text_chunks = extract_spreadsheet_text_chunks(source_name, source_bytes)
         template_sha256 = price_source_template_fingerprint(source_name, source_bytes)
         _emit_duration(
             trace,
@@ -4187,6 +4350,7 @@ def process_price_source(
         suffix = ".html"
         mime_type = "text/html"
         template_sha256 = None
+        spreadsheet_text_chunks = []
 
     source_digest = sha256(source_bytes).hexdigest()
     _emit_marker(trace, "server.price_source_duplicate_check_started")
@@ -4209,6 +4373,7 @@ def process_price_source(
         )
 
     text_layer_started = time.perf_counter()
+    raise_if_cancelled()
     _emit_marker(trace, "server.price_source_text_layer_started", suffix=suffix)
     try:
         text_layer = prepare_price_source_text_layer(
@@ -4233,6 +4398,7 @@ def process_price_source(
         extracted_chars=len(text_layer.text),
         ocr_pages=len((text_layer.ocr_package or {}).get("pages") or []),
     )
+    raise_if_cancelled()
     if text_layer.ocr_package:
         ocr_package = text_layer.ocr_package
         try:
@@ -4273,35 +4439,57 @@ def process_price_source(
     issuer_identity = issuer_identity_from_source_text(
         text_layer.issuer_evidence_text or text_layer.text
     )
-    result = run_price_source_agent(
-        company_id=company_id,
-        department=department,
-        source_name=source_name,
-        source_kind=source_kind,
+    def run_agent_for_text(extracted_text: str) -> dict[str, Any]:
+        return run_price_source_agent(
+            company_id=company_id,
+            department=department,
+            source_name=source_name,
+            source_kind=source_kind,
         # The commercial agent receives an auditable text layer only.  This
         # keeps image/scanned-PDF interpretation in the dedicated OCR stage.
-        source_bytes=None,
+            source_bytes=None,
         # A conflict recheck is not a second broad extraction. It may use the
         # original visual source only to verify the already-identified table
         # cells whose OCR reading is contradictory.
-        source_evidence_bytes=text_layer.arithmetic_evidence_bytes or source_bytes,
-        source_evidence_name=(
+            source_evidence_bytes=text_layer.arithmetic_evidence_bytes or source_bytes,
+            source_evidence_name=(
             f"{Path(source_name).stem}-invoice-table.png"
             if text_layer.arithmetic_evidence_bytes is not None
             else source_name
-        ),
+            ),
         # The first bounded recheck sees the enlarged OCR table crop. Only if
         # it returns no rows at all may the agent inspect the original photo
         # once, for those same conflict rows.
-        source_original_evidence_bytes=source_bytes,
+            source_original_evidence_bytes=source_bytes,
         # Digital PDFs retain a native text layer and structured tables retain
         # cells directly. The conservative visual pass is reserved for photos
         # and image uploads, where OCR geometry is the best price evidence.
-        require_source_table_verification=text_layer.strategy == "image_ocr",
-        extracted_text=text_layer.text,
-        import_id=source_id,
-        trace=trace,
+            require_source_table_verification=text_layer.strategy == "image_ocr",
+            extracted_text=extracted_text,
+            import_id=source_id,
+            trace=trace,
+            cancel_requested=(cancel_event.is_set if cancel_event is not None else None),
+        )
+
+    # A one-call spreadsheet response is fragile beyond a few dozen rows.
+    # Keep source-wide evidence locally, but ask the agent to normalize only
+    # bounded table groups and reconcile them deterministically here.
+    agent_text_groups = (
+        spreadsheet_text_chunks
+        if len(spreadsheet_text_chunks) > 1
+        else [text_layer.text]
     )
+    agent_results: list[dict[str, Any]] = []
+    for extracted_text in agent_text_groups:
+        raise_if_cancelled()
+        try:
+            agent_results.append(run_agent_for_text(extracted_text))
+        except RuntimeError as exc:
+            if cancel_event is not None and cancel_event.is_set():
+                raise PriceSourceProcessingCancelled("Price extraction was cancelled.") from exc
+            raise
+    raise_if_cancelled()
+    result = merge_price_source_agent_results(agent_results)
     supplier_issuer_evidence_repaired = repair_supplier_from_issuer_evidence(
         result,
         issuer_identity=issuer_identity,
@@ -4361,6 +4549,7 @@ def process_price_source(
     usage_records = [
         event for event in (usage_events or []) if isinstance(event, dict)
     ]
+    raise_if_cancelled()
     if isinstance(usage_events, list):
         usage_started = time.perf_counter()
         for usage_event in usage_records:
@@ -4429,6 +4618,7 @@ def process_price_source(
         benchmark_started,
         benchmark_rows=len(legacy_materials),
     )
+    raise_if_cancelled()
     object_path = f"{company_id}/{source_id}{suffix}"
     storage_started = time.perf_counter()
     _emit_marker(trace, "server.price_source_storage_started")
@@ -4443,12 +4633,19 @@ def process_price_source(
         storage_started,
         source_bytes=len(source_bytes),
     )
+    if cancel_event is not None and cancel_event.is_set():
+        try:
+            client.storage.from_(PRICE_SOURCE_BUCKET).remove([object_path])
+        except Exception:
+            logger.exception("Cancelled Price Source storage cleanup failed")
+        raise PriceSourceProcessingCancelled("Price extraction was cancelled.")
 
     superseded_offer_ids: list[str] = []
     source_is_new = True
     source_page_id: str | None = None
     inserted_rows: list[dict[str, Any]] = []
     try:
+        raise_if_cancelled()
         database_started = time.perf_counter()
         _emit_marker(trace, "server.price_source_database_started")
         source_record_started = time.perf_counter()

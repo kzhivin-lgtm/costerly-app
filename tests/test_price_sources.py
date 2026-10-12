@@ -54,6 +54,8 @@ from use_cases.price_sources import (
     canonical_price_source_category,
     create_price_source_download_url,
     extract_spreadsheet_text,
+    extract_spreadsheet_text_chunks,
+    merge_price_source_agent_results,
     fetch_public_page,
     guard_price_source_department,
     list_material_jobs,
@@ -2818,7 +2820,7 @@ def test_price_source_uploader_accepts_multiple_files_before_backend_validation(
         ")\n", 1
     )[0]
     assert "accept_multiple_files=True" in uploader_call
-    assert "type=" not in uploader_call
+    assert 'type=["pdf", "xls", "xlsx", "csv"' in uploader_call
     assert 'label_visibility="collapsed"' in uploader_call
 
 
@@ -3371,7 +3373,7 @@ def test_price_source_uploader_keeps_selection_inside_the_price_lists_fragment()
     source = Path("screens/company_profile.py").read_text()
 
     assert "on_change=_begin_price_source_file_selection" not in source
-    assert "_synchronize_price_source_file_selection(accepted_files)" in source
+    assert "_synchronize_price_source_file_selection(selected_files)" in source
 
 
 def test_price_source_file_guard_caps_mixed_batch_before_streamlit_receives_selection():
@@ -4387,8 +4389,33 @@ def test_xlsx_is_rendered_with_sheet_and_column_context():
     )
     text = extract_spreadsheet_text("prices.xlsx", output.getvalue())
     assert "SHEET: Sheet1" in text
-    assert "SKU,Description,Price" in text
-    assert "A-1,Panel,90" in text
+    assert "SKU | Description | Price" in text
+    assert "A-1 | Panel | 90" in text
+
+
+def test_structured_workbook_is_split_by_rows_with_repeated_header_context():
+    output = BytesIO()
+    pd.DataFrame(
+        [{"SKU": f"A-{index}", "Description": "Panel", "Price": index}
+         for index in range(14)]
+    ).to_excel(output, index=False)
+
+    chunks = extract_spreadsheet_text_chunks("prices.xlsx", output.getvalue())
+
+    assert len(chunks) == 2
+    assert all("TABLE HEADER: SKU | Description | Price" in chunk for chunk in chunks)
+    assert "A-0 | Panel | 0" in chunks[0]
+    assert "A-13 | Panel | 13" in chunks[1]
+
+
+def test_spreadsheet_chunk_merge_resequences_local_agent_row_numbers():
+    merged = merge_price_source_agent_results([
+        {"supplier_name": "Supplier", "rows": [{"source_row_number": 1}]},
+        {"supplier_name": "", "rows": [{"source_row_number": 1}]},
+    ])
+
+    assert merged["supplier_name"] == "Supplier"
+    assert [row["source_row_number"] for row in merged["rows"]] == [1, 2]
 
 
 def test_visible_html_text_ignores_scripts_and_keeps_rows():
@@ -5082,6 +5109,29 @@ def test_price_source_submission_queues_without_request_thread_network_io(monkey
 
     assert isinstance(future, Future)
     assert executor.kwargs["owner_authorized"] is False
+
+
+def test_price_source_cancel_signals_the_active_worker(monkeypatch):
+    from use_cases import price_source_runtime
+
+    class Executor:
+        def submit(self, _fn, **_kwargs):
+            return Future()
+
+    monkeypatch.setattr(price_source_runtime, "_PRICE_SOURCE_EXECUTOR", Executor())
+    monkeypatch.setattr(price_source_runtime, "_COMPANY_ACTIVE_JOBS", {})
+    future = price_source_runtime.submit_price_source_job(
+        access=SimpleNamespace(company_id="company-cancel", user_id="owner-1"),
+        uploaded_file=SimpleNamespace(),
+        source_url="",
+    )
+    active = price_source_runtime.active_price_source_job("company-cancel")
+
+    assert active is not None
+    assert price_source_runtime.cancel_price_source_job("company-cancel", active.job_id) is True
+    assert active.cancel_event.is_set() is True
+    assert price_source_runtime.active_price_source_job("company-cancel") is None
+    assert future.cancelled() is True
 
 
 def test_review_save_uses_its_own_latency_sensitive_executor(monkeypatch):

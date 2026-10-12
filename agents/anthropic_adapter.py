@@ -121,6 +121,7 @@ def create_claude_message_streamed(
     *,
     max_stream_seconds: float | None = None,
     on_stream_phase: Callable[[str, float], None] | None = None,
+    cancel_requested: Callable[[], bool] | None = None,
     **kwargs: Any,
 ) -> tuple[Any, dict[str, Any]]:
     """Collect one streamed Message and precise request-phase diagnostics."""
@@ -133,9 +134,13 @@ def create_claude_message_streamed(
     request_id: str | None = None
 
     try:
+        if cancel_requested is not None and cancel_requested():
+            raise RuntimeError("Claude stream was cancelled.")
         with client.messages.stream(**kwargs) as stream:
             request_id = stream.request_id
             for event in stream:
+                if cancel_requested is not None and cancel_requested():
+                    raise RuntimeError("Claude stream was cancelled.")
                 elapsed = time.perf_counter() - started
                 if max_stream_seconds is not None and elapsed > max_stream_seconds:
                     raise RuntimeError(

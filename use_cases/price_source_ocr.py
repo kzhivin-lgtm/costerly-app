@@ -16,7 +16,7 @@ from agents.ocr_rendering import run_mistral_direct_pdf_evidence_ocr
 
 OCR_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".heic", ".heif"}
 OCR_DOCUMENT_SUFFIXES = OCR_IMAGE_SUFFIXES | {".pdf"}
-STRUCTURED_TABLE_SUFFIXES = {".xlsx", ".csv"}
+STRUCTURED_TABLE_SUFFIXES = {".xls", ".xlsx", ".csv"}
 PDF_EMBEDDED_TEXT_MIN_CHARS = 120
 # Supplier mastheads are normally centred near the top of an invoice.  This is
 # a document-layout rule, not a supplier-specific exception.  Cropping before

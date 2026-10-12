@@ -4,7 +4,7 @@ from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 import logging
-from threading import Lock
+from threading import Event, Lock
 import time
 from typing import Any, Callable
 from uuid import uuid4
@@ -12,6 +12,7 @@ from uuid import uuid4
 from db.supabase_client import get_supabase_client
 from use_cases.price_sources import (
     PriceSourceError,
+    PriceSourceProcessingCancelled,
     PriceSourceProcessResult,
     list_material_jobs,
     list_price_catalog,
@@ -51,6 +52,7 @@ class ActivePriceSourceJob:
     job_id: str
     started_at: float
     started_at_epoch_ms: int
+    cancel_event: Event
 
 
 @dataclass(frozen=True)
@@ -112,9 +114,24 @@ def active_price_source_job(company_id: str) -> ActivePriceSourceJob | None:
     """Return a live company extraction so a reloaded UI can reattach to it."""
     with _ACTIVE_JOBS_GUARD:
         active = _COMPANY_ACTIVE_JOBS.get(str(company_id))
-        if active is None or active.future.done():
+        if active is None or active.future.done() or active.cancel_event.is_set():
             return None
         return active
+
+
+def cancel_price_source_job(company_id: str, job_id: str) -> bool:
+    """Signal one active extraction to stop before any further persistence."""
+    with _ACTIVE_JOBS_GUARD:
+        active = _COMPANY_ACTIVE_JOBS.get(str(company_id))
+        if active is None or active.future.done() or active.job_id != str(job_id):
+            return False
+        active.cancel_event.set()
+        future = active.future
+    # ``Future.cancel`` can run the completion callback synchronously.  It
+    # must occur outside the registry lock, otherwise that callback deadlocks
+    # while trying to clear the same active-job entry.
+    future.cancel()
+    return True
 
 
 def _clear_active_price_source_job(company_id: str, future: Future) -> None:
@@ -145,6 +162,7 @@ def submit_price_source_job(
                 "Another price extraction is already running. Try again when it finishes."
             )
         job_id = str(uuid4())
+        cancel_event = Event()
         started_at = time.perf_counter()
         _trace_event(trace, "server.price_source_job_submitted", job_id=job_id)
         future = _PRICE_SOURCE_EXECUTOR.submit(
@@ -155,12 +173,14 @@ def submit_price_source_job(
             trace=trace,
             job_id=job_id,
             owner_authorized=False,
+            cancel_event=cancel_event,
         )
         _COMPANY_ACTIVE_JOBS[company_id] = ActivePriceSourceJob(
             future=future,
             job_id=job_id,
             started_at=started_at,
             started_at_epoch_ms=int(time.time() * 1000),
+            cancel_event=cancel_event,
         )
     future.add_done_callback(
         lambda completed: _clear_active_price_source_job(company_id, completed)
@@ -191,6 +211,7 @@ def submit_price_source_batch_job(
                 "Another price extraction is already running. Try again when it finishes."
             )
         job_id = str(uuid4())
+        cancel_event = Event()
         started_at = time.perf_counter()
         _trace_event(
             trace,
@@ -204,12 +225,14 @@ def submit_price_source_batch_job(
             uploaded_files=tuple(uploaded_files),
             trace=trace,
             job_id=job_id,
+            cancel_event=cancel_event,
         )
         _COMPANY_ACTIVE_JOBS[company_id] = ActivePriceSourceJob(
             future=future,
             job_id=job_id,
             started_at=started_at,
             started_at_epoch_ms=int(time.time() * 1000),
+            cancel_event=cancel_event,
         )
     future.add_done_callback(
         lambda completed: _clear_active_price_source_job(company_id, completed)
@@ -281,11 +304,14 @@ def submit_price_lists_projection_jobs(
 def _run_price_source_job(
     *, access, uploaded_file, source_url: str, trace=None, job_id: str,
     owner_authorized: bool = False,
+    cancel_event: Event | None = None,
 ):
     started_at = time.perf_counter()
     company_id = str(access.company_id)
     lock = _company_lock(company_id)
     _trace_event(trace, "server.price_source_worker_started", job_id=job_id)
+    if cancel_event is not None and cancel_event.is_set():
+        raise PriceSourceProcessingCancelled("Price extraction was cancelled.")
     if not lock.acquire(blocking=False):
         _trace_event(trace, "server.price_source_lock_rejected", status="error", job_id=job_id)
         raise PriceSourceError(
@@ -302,6 +328,7 @@ def _run_price_source_job(
             # Get a fresh client from the background-safe cached factory.
             client=get_supabase_client(),
             owner_authorized=owner_authorized,
+            cancel_event=cancel_event,
         )
         _trace_event(
             trace,
@@ -324,7 +351,7 @@ def _run_price_source_job(
         lock.release()
 
 
-def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: str):
+def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: str, cancel_event: Event | None = None):
     """Process each file separately while preserving invoice-page merge safety."""
     started_at = time.perf_counter()
     company_id = str(access.company_id)
@@ -335,6 +362,8 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
         job_id=job_id,
         source_count=len(uploaded_files),
     )
+    if cancel_event is not None and cancel_event.is_set():
+        raise PriceSourceProcessingCancelled("Price extraction was cancelled.")
     if not lock.acquire(blocking=False):
         _trace_event(trace, "server.price_source_lock_rejected", status="error", job_id=job_id)
         raise PriceSourceError(
@@ -348,6 +377,8 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
         client = get_supabase_client()
         prior_batch_source_ids: set[str] = set()
         for index, uploaded_file in enumerate(uploaded_files, start=1):
+            if cancel_event is not None and cancel_event.is_set():
+                raise PriceSourceProcessingCancelled("Price extraction was cancelled.")
             source_name = str(getattr(uploaded_file, "name", "source"))
             try:
                 result = process_price_source(
@@ -359,6 +390,7 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
                     client=client,
                     owner_authorized=False,
                     batch_source_ids=prior_batch_source_ids,
+                    cancel_event=cancel_event,
                 )
                 results.append(result)
                 prior_batch_source_ids.add(str(result.source_id))
@@ -370,6 +402,10 @@ def _run_price_source_batch_job(*, access, uploaded_files, trace=None, job_id: s
                     source_name=source_name,
                 )
             except Exception as exc:
+                if isinstance(exc, PriceSourceProcessingCancelled) or (
+                    cancel_event is not None and cancel_event.is_set()
+                ):
+                    raise PriceSourceProcessingCancelled("Price extraction was cancelled.") from exc
                 logger.exception("Price source batch input failed: %s", source_name)
                 failed_source_names.append(source_name)
                 error_detail = _bounded_error_message(exc)
