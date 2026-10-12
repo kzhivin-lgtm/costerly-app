@@ -49,6 +49,7 @@ from use_cases.price_source_taxonomy import (
     apply_operation_taxonomy,
     catalog_v2_taxonomy_for_family,
     job_operation_for_text,
+    source_row_text,
 )
 
 
@@ -176,11 +177,17 @@ class PriceSourceProcessingCancelled(PriceSourceError):
     """A user cancelled a background extraction before it could persist."""
 
 
-def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
-    """Apply deterministic bilingual material taxonomy after extraction.
+def normalize_price_source_rows(
+    result: dict[str, Any],
+    *,
+    pricing_policies: Mapping[str, Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Apply one deterministic material contract after every ingestion route.
 
-    This normalisation intentionally runs after the commercial agent and before
-    catalog matching. It has no supplier inputs or side effects.
+    PDF/OCR, images, CSV and spreadsheets all converge here after commercial
+    extraction. The pricing policy is a Family's fact contract: it does not
+    invent missing values, but records which literal facts the taxonomy must
+    seek before the resolver assesses the canonical path.
     """
     for row in result.get("rows") or []:
         if not isinstance(row, dict):
@@ -192,11 +199,19 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
         if row.get("item_kind") != "material":
             continue
         apply_material_taxonomy(row)
+        taxonomy = catalog_v2_taxonomy_for_family(str(row.get("material_family") or "")) or {}
+        family_code = str(taxonomy.get("family_code") or "")
+        policy = (pricing_policies or {}).get(family_code) or {}
+        # Processing-only context. It makes the family-first contract explicit
+        # without persisting derived guesses in source evidence.
+        row["_pricing_key_attribute_codes"] = tuple(
+            str(code) for code in policy.get("pricing_key_attribute_codes") or ()
+        )
         text = " ".join(
             str(row.get(key) or "")
             for key in ("raw_description", "normalized_name", "material_family")
         ).casefold()
-        source_text = str(row.get("raw_description") or "").casefold()
+        source_text = source_row_text(row)
         attributes = row.get("identity_attributes") or {}
         # Only normalise descriptors which are literally present in the source.
         # This makes equivalent OCR/translations share an identity without making
@@ -268,6 +283,11 @@ def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
             if isinstance(raw_price, (int, float)):
                 row["normalized_price"] = raw_price
     return result
+
+
+def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
+    """Compatibility alias for callers predating the all-source contract."""
+    return normalize_price_source_rows(result)
 
 
 def active_material_family_supply_formats(client) -> dict[str, list[dict[str, Any]]]:
@@ -2838,6 +2858,102 @@ def extract_spreadsheet_text_chunks(file_name: str, data: bytes) -> list[str]:
     return groups or [extract_spreadsheet_text(file_name, data)]
 
 
+def _spreadsheet_header_key(value: object) -> str:
+    return re.sub(r"[^a-z0-9א-ת]+", "", str(value or "").casefold())
+
+
+def _spreadsheet_row_evidence_records(file_name: str, data: bytes) -> list[dict[str, str]]:
+    """Return literal row evidence keyed by the workbook's SKU or description.
+
+    Agent extraction remains responsible for commercial interpretation. This
+    helper merely prevents a proven column such as ``Format / size`` from
+    disappearing before deterministic taxonomy and purchase-format parsing.
+    """
+    suffix = Path(file_name).suffix.lower()
+    if suffix not in {".xls", ".xlsx"}:
+        return []
+    records: list[dict[str, str]] = []
+    for _sheet_name, frame in _read_spreadsheet_frames(file_name, data).items():
+        rows = _spreadsheet_sheet_rows(frame)
+        if not rows:
+            continue
+        header_index = _spreadsheet_header_index(rows)
+        header = rows[header_index]
+        header_keys = [_spreadsheet_header_key(value) for value in header]
+        sku_index = next(
+            (index for index, key in enumerate(header_keys)
+             if key in {"sku", "itemcode", "productcode", "מק"}),
+            None,
+        )
+        description_index = next(
+            (index for index, key in enumerate(header_keys)
+             if key in {"itemdescription", "description", "item", "product", "material", "שםפריט"}),
+            None,
+        )
+        if sku_index is None and description_index is None:
+            continue
+        for source_row in rows[header_index + 1:]:
+            cells = [str(value or "").strip() for value in source_row]
+            if not any(cells):
+                continue
+            evidence = " | ".join(
+                f"{str(header[index]).strip()}: {cell}"
+                for index, cell in enumerate(cells)
+                if cell and index < len(header) and str(header[index]).strip()
+            )
+            if not evidence:
+                continue
+            records.append({
+                "sku": cells[sku_index] if sku_index is not None and sku_index < len(cells) else "",
+                "description": (
+                    cells[description_index]
+                    if description_index is not None and description_index < len(cells)
+                    else ""
+                ),
+                "evidence": evidence,
+            })
+    return records
+
+
+def enrich_price_source_rows_from_spreadsheet(
+    result: dict[str, Any],
+    *,
+    file_name: str,
+    data: bytes,
+) -> dict[str, Any]:
+    """Attach unambiguous structured-sheet row evidence before taxonomy.
+
+    The context is deliberately private and transient. It is not rendered as
+    the item's source-description line, and it never overwrites price, unit,
+    quantity, SKU or any agent conclusion. It only gives the deterministic
+    resolver literal source columns it can safely parse.
+    """
+    records = _spreadsheet_row_evidence_records(file_name, data)
+    if not records:
+        return result
+
+    def key(value: object) -> str:
+        return re.sub(r"[^\w]+", "", str(value or "").casefold(), flags=re.UNICODE)
+
+    records_by_sku: dict[str, list[dict[str, str]]] = {}
+    records_by_description: dict[str, list[dict[str, str]]] = {}
+    for record in records:
+        if sku := key(record["sku"]):
+            records_by_sku.setdefault(sku, []).append(record)
+        if description := key(record["description"]):
+            records_by_description.setdefault(description, []).append(record)
+
+    for row in result.get("rows") or []:
+        if not isinstance(row, dict):
+            continue
+        candidates = records_by_sku.get(key(row.get("raw_sku")), [])
+        if len(candidates) != 1:
+            candidates = records_by_description.get(key(row.get("raw_description")), [])
+        if len(candidates) == 1:
+            row["_source_table_evidence"] = candidates[0]["evidence"]
+    return result
+
+
 def merge_price_source_agent_results(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Merge independently extracted spreadsheet row groups into one source result.
 
@@ -4521,6 +4637,12 @@ def process_price_source(
             raise
     raise_if_cancelled()
     result = merge_price_source_agent_results(agent_results)
+    if uploaded_file is not None:
+        enrich_price_source_rows_from_spreadsheet(
+            result,
+            file_name=source_name,
+            data=source_bytes,
+        )
     supplier_issuer_evidence_repaired = repair_supplier_from_issuer_evidence(
         result,
         issuer_identity=issuer_identity,
@@ -4536,7 +4658,12 @@ def process_price_source(
     # letters or punctuation.
     if header_document_number:
         result["document_number"] = header_document_number
-    normalize_price_source_sheet_rows(result)
+    # The Global Pricing Key registry makes the family-first extraction
+    # contract explicit for every source type before formats and resolution.
+    normalize_price_source_rows(
+        result,
+        pricing_policies=_active_pricing_policies_by_family(client),
+    )
     apply_price_source_purchasable_dimensions(
         result,
         formats_by_family_code=active_material_family_supply_formats(client),

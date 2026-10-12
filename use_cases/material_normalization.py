@@ -28,6 +28,7 @@ IDENTITY_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
     "length_mm": 0,
     "depth_mm": 0,
     "diameter_mm": 0,
+    "wall_thickness_mm": 0,
     "primary_attribute": "",
     "brand": "",
     "brand_basis": "unknown",
@@ -41,11 +42,22 @@ IDENTITY_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
     "grade": "",
     "construction": "",
     "finish": "",
+    # Price-bearing facts outside the sheet-material vocabulary.  These stay
+    # explicitly allowlisted: a source may not promote arbitrary prose into
+    # an identity merely because it is a descriptive adjective.
+    "metal_type": "",
+    "section_profile": "",
+    "stone_type": "",
+    "coating_system": "",
+    "chemistry_product_type": "",
+    "component_type": "",
+    "packaging_type": "",
 }
 
 SECONDARY_ATTRIBUTE_ORDER: tuple[str, ...] = (
     "product_system", "grade", "species", "plywood_variant", "substrate", "construction", "finish", "surface",
-    "coating", "colour",
+    "coating", "metal_type", "section_profile", "wall_thickness_mm",
+    "stone_type", "coating_system", "colour",
 )
 
 _ENTITY_DISPLAY_OVERRIDES = {
@@ -151,6 +163,21 @@ def _key_dimension_label(identity: Mapping[str, Any]) -> str:
     return ""
 
 
+def _secondary_attribute_display(field: str, value: object) -> str:
+    """Render the small set of non-sheet pricing facts without source prose."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if field == "wall_thickness_mm":
+        dimension = _display_mm(value)
+        return f"{dimension} mm wall" if dimension else ""
+    if field in {"metal_type", "section_profile", "stone_type"}:
+        return _title_case_catalog_label(text)
+    if field == "substrate" and text.casefold() in {"abs", "pvc", "hpl", "petg", "pmma"}:
+        return text.upper()
+    return text
+
+
 def canonical_display_name(
     entity: object,
     attributes: Mapping[str, Any] | None,
@@ -173,6 +200,11 @@ def canonical_display_name(
     brand_basis = str(source.get("brand_basis") or "").strip().casefold()
     brand = "" if brand_basis == "candidate" else str(identity["brand"] or "").strip()
     key_dimension = _key_dimension_label(identity)
+    # A profile or edge band already renders its compound physical key as the
+    # primary attribute (for example ``40×20 mm`` or ``22×2 mm``). Do not
+    # repeat its first side as an unrelated second key dimension.
+    if "×" in primary or "x" in primary.casefold():
+        key_dimension = ""
     if primary:
         parts.append(primary)
     if key_dimension and key_dimension != primary:
@@ -182,8 +214,12 @@ def canonical_display_name(
 
     secondary: list[str] = []
     for field in SECONDARY_ATTRIBUTE_ORDER:
-        value = str(identity[field] or "").strip()
+        value = _secondary_attribute_display(field, identity[field])
         if not value or value.casefold() == str(entity or "").strip().casefold():
+            continue
+        if field == "coating_system" and value.casefold() in display_entity(entity).casefold():
+            continue
+        if field == "grade" and value.casefold() in str(identity.get("metal_type") or "").casefold():
             continue
         if field in {"species", "plywood_variant"}:
             value = value.title()

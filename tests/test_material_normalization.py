@@ -23,6 +23,7 @@ def test_identity_normalizer_retains_only_domain_attributes_not_source_prose():
         "length_mm": 0,
         "depth_mm": 0,
         "diameter_mm": 0,
+        "wall_thickness_mm": 0,
         "primary_attribute": "17 mm",
         "brand": "Egger",
         "brand_basis": "unknown",
@@ -36,6 +37,13 @@ def test_identity_normalizer_retains_only_domain_attributes_not_source_prose():
         "grade": "",
         "construction": "double-sided",
         "finish": "",
+        "metal_type": "",
+        "section_profile": "",
+        "stone_type": "",
+        "coating_system": "",
+        "chemistry_product_type": "",
+        "component_type": "",
+        "packaging_type": "",
     }
 
 

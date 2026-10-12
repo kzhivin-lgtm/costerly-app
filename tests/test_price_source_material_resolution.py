@@ -2,10 +2,33 @@ from copy import deepcopy
 from types import SimpleNamespace
 
 from use_cases.price_source_material_resolution import (
+    _canonical_sheet_reference,
     _load_resolution_index,
     invalidate_global_resolution_index,
     resolve_price_source_material_identities,
 )
+
+
+def test_canonical_sheet_reference_prefers_the_exact_generic_class_over_standard_synonym():
+    resolution = _canonical_sheet_reference(
+        material_family="mdf",
+        specifications={"thickness_mm": 18, "construction": "raw"},
+        materials=[
+            {
+                "material_id": "generic-mdf-18", "active": True,
+                "canonical_name": "MDF, raw, 18 mm",
+            },
+            {
+                "material_id": "standard-mdf-18", "active": True,
+                "canonical_name": "Standard MDF, raw, 18 mm",
+            },
+        ],
+        resolver_version="material_identity_v3",
+        phrase="MDF 18 mm raw",
+    )
+
+    assert resolution is not None
+    assert resolution.selected_material_id == "generic-mdf-18"
 from use_cases.material_pricing_identity_resolution import (
     build_material_pricing_identity_index,
     resolve_material_pricing_identity,

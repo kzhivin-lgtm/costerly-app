@@ -1,4 +1,7 @@
-from tools.seed_material_pricing_identities import build_identities
+from tools.seed_material_pricing_identities import (
+    build_identities,
+    build_policy_identities,
+)
 
 
 def _material(material_id, name, *, thickness, subcategory="Plywood"):
@@ -47,3 +50,45 @@ def test_concrete_mdf_name_wins_over_shared_mdf_and_hdf_subcategory():
     )
 
     assert {item.price_attributes["material_family"] for item in identities} == {"mdf", "hdf"}
+
+
+def test_policy_seed_uses_v2_family_and_only_approved_price_key_facts():
+    materials = (
+        {
+            **_material("mdf-white", "MDF white 19 mm", thickness=19, subcategory="MDF and HDF"),
+            "specifications": {"material_family": "mdf", "thickness_mm": 19, "colour": "white"},
+        },
+        {
+            **_material("tube", "Stainless steel 304 tube 40 x 20 x 2 mm", thickness=None, subcategory="Metal"),
+            "department": "metal",
+            "base_unit": "m",
+            "specifications": {"material_family": "metal tube"},
+        },
+        {
+            **_material("tube-incomplete", "Stainless steel tube 40 x 20 mm", thickness=None, subcategory="Metal"),
+            "department": "metal",
+            "base_unit": "m",
+            "specifications": {"material_family": "metal tube"},
+        },
+    )
+    policies = {
+        "faced_mdf": {"pricing_key_attribute_codes": ["thickness"]},
+        "metal_tube": {"pricing_key_attribute_codes": ["metal_type", "section_profile", "wall_thickness"]},
+    }
+
+    identities = build_policy_identities(materials, pricing_policies=policies)
+
+    assert {item.price_attributes["material_family"] for item in identities} == {"faced_mdf", "metal_tube"}
+    faced_mdf = next(item for item in identities if item.price_attributes["material_family"] == "faced_mdf")
+    assert faced_mdf.price_attributes == {
+        "material_family": "faced_mdf",
+        "thickness_mm": 19,
+        "construction": "plastic_laminate_faced",
+    }
+    tube = next(item for item in identities if item.price_attributes["material_family"] == "metal_tube")
+    assert tube.price_attributes == {
+        "material_family": "metal_tube",
+        "metal_type": "stainless steel 304",
+        "section_profile": "rectangular tube",
+        "wall_thickness_mm": 2.0,
+    }

@@ -314,16 +314,23 @@ def _canonical_sheet_reference(
     if not required_tokens:
         return None
     permitted_tokens = required_tokens | {"standard"}
-    matches = []
+    matches: list[tuple[int, Mapping[str, Any]]] = []
     for material in materials:
         if not material.get("active", True):
             continue
         name_tokens = set(normalize_material_phrase(material.get("canonical_name")).split())
         if required_tokens.issubset(name_tokens) and name_tokens <= permitted_tokens:
-            matches.append(material)
-    if len(matches) != 1:
+            # The Israel catalog can retain both a generic class and a named
+            # ``Standard`` synonym. The generic class is the more specific
+            # endpoint for an unqualified source line, not an ambiguity.
+            matches.append((len(name_tokens - required_tokens), material))
+    if not matches:
         return None
-    material_id = str(matches[0].get("material_id") or "")
+    best_extra = min(extra for extra, _material in matches)
+    best = [material for extra, material in matches if extra == best_extra]
+    if len(best) != 1:
+        return None
+    material_id = str(best[0].get("material_id") or "")
     if not material_id:
         return None
     return MaterialIdentityResolution(

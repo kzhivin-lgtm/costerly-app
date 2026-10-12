@@ -272,6 +272,18 @@ Yellow and Red remain excluded. Pending production verification with a fresh
 source cycle. Multi-candidate total-purchasable-cost selection remains the
 subsequent Material Engine scope.
 
+Implementation update, 2026-10-13: every source route now converges through
+the same Family-first deterministic normalization contract after extraction.
+Structured XLS/XLSX columns enrich literal source evidence without replacing
+the raw supplier description. The contract extracts only the proven Pricing
+Key facts for its Family, including profile section/wall, stone type,
+coating system and sheet dimensions. The Global pricing-identity generator
+now projects only policy-complete existing materials into V2 classes and does
+not invent a missing key or price. Its read-only production dry-run found 364
+policy-complete classes from 4,515 Global materials, with active source model
+prices for 300. The next fresh-source verification intentionally ignores
+legacy Company Catalog rows that the owner will delete before re-import.
+
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
 name solely as `Entity -> one or two proven key attributes -> confirmed brand

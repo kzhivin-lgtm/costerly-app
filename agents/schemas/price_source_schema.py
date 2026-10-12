@@ -35,6 +35,7 @@ IDENTITY_ATTRIBUTE_FIELDS = (
     "length_mm",
     "depth_mm",
     "diameter_mm",
+    "wall_thickness_mm",
     "primary_attribute",
     "brand",
     "brand_basis",
@@ -48,6 +49,13 @@ IDENTITY_ATTRIBUTE_FIELDS = (
     "grade",
     "construction",
     "finish",
+    "metal_type",
+    "section_profile",
+    "stone_type",
+    "coating_system",
+    "chemistry_product_type",
+    "component_type",
+    "packaging_type",
 )
 PRICE_SOURCE_CATEGORIES = (
     "Wood Sheets",
@@ -285,6 +293,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                             "length_mm": {"type": "number", "minimum": 0},
                             "depth_mm": {"type": "number", "minimum": 0},
                             "diameter_mm": {"type": "number", "minimum": 0},
+                            "wall_thickness_mm": {"type": "number", "minimum": 0},
                             "primary_attribute": {"type": "string"},
                             "brand": {"type": "string"},
                             "brand_basis": {"type": "string"},
@@ -298,6 +307,13 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                             "grade": {"type": "string"},
                             "construction": {"type": "string"},
                             "finish": {"type": "string"},
+                            "metal_type": {"type": "string"},
+                            "section_profile": {"type": "string"},
+                            "stone_type": {"type": "string"},
+                            "coating_system": {"type": "string"},
+                            "chemistry_product_type": {"type": "string"},
+                            "component_type": {"type": "string"},
+                            "packaging_type": {"type": "string"},
                         },
                     },
                     "raw_description": {"type": "string"},
@@ -433,6 +449,12 @@ def normalize_price_source_row_identity_fields(result: dict[str, Any]) -> dict[s
             attributes.setdefault("brand_basis", "unknown")
             attributes.setdefault("product_system", "")
             attributes.setdefault("plywood_variant", "")
+            attributes.setdefault("wall_thickness_mm", 0)
+            for field in (
+                "metal_type", "section_profile", "stone_type", "coating_system",
+                "chemistry_product_type", "component_type", "packaging_type",
+            ):
+                attributes.setdefault(field, "")
     return result
 
 
@@ -688,15 +710,25 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         # strict shape check, rather than making historical imports fail.
         if isinstance(attributes, dict) and "product_system" not in attributes:
             attributes["product_system"] = ""
-        if isinstance(attributes, dict) and "plywood_variant" not in attributes:
-            attributes["plywood_variant"] = ""
+        if isinstance(attributes, dict):
+            attributes.setdefault("plywood_variant", "")
+            attributes.setdefault("wall_thickness_mm", 0)
+            for field in (
+                "metal_type", "section_profile", "stone_type", "coating_system",
+                "chemistry_product_type", "component_type", "packaging_type",
+            ):
+                attributes.setdefault(field, "")
         if not isinstance(attributes, dict) or set(attributes) != set(IDENTITY_ATTRIBUTE_FIELDS):
             raise PriceSourceSchemaError("identity attributes do not match the contract")
-        for key in ("thickness_mm", "width_mm", "length_mm", "depth_mm", "diameter_mm"):
+        for key in (
+            "thickness_mm", "width_mm", "length_mm", "depth_mm", "diameter_mm",
+            "wall_thickness_mm",
+        ):
             if not isinstance(attributes[key], (int, float)) or attributes[key] < 0:
                 raise PriceSourceSchemaError(f"{key} must be a non-negative number")
         for key in set(IDENTITY_ATTRIBUTE_FIELDS) - {
-            "thickness_mm", "width_mm", "length_mm", "depth_mm", "diameter_mm"
+            "thickness_mm", "width_mm", "length_mm", "depth_mm", "diameter_mm",
+            "wall_thickness_mm",
         }:
             if not isinstance(attributes[key], str):
                 raise PriceSourceSchemaError(f"{key} must be a string")

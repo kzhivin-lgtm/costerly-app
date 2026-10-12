@@ -54,6 +54,7 @@ from use_cases.price_sources import (
     active_material_family_supply_formats,
     canonical_price_source_category,
     create_price_source_download_url,
+    enrich_price_source_rows_from_spreadsheet,
     extract_spreadsheet_text,
     extract_spreadsheet_text_chunks,
     merge_price_source_agent_results,
@@ -70,6 +71,7 @@ from use_cases.price_sources import (
     price_source_row_canonical_name,
     supplier_service_pricing_basis,
     match_existing_supplier,
+    normalize_price_source_rows,
     normalize_price_source_sheet_rows,
     supplier_merge_key,
     supplier_merge_max_distance,
@@ -250,6 +252,166 @@ def test_offer_dimensions_are_empty_for_hardware_and_persistable_on_rows():
     apply_price_source_purchasable_dimensions(payload, formats_by_family_code=_family_supply_formats())
 
     assert payload["rows"][0]["purchasable_dimensions"] == {}
+
+
+def test_structured_spreadsheet_columns_enrich_taxonomy_without_replacing_raw_description():
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Invoice"
+    sheet.append([
+        "SKU", "Item description", "Primary attribute", "Format / size", "Thickness (mm)",
+        "Estimation unit",
+    ])
+    sheet.append([
+        "PLY-5-3100", "Plywood 5 mm, Okoume", "5 mm", "3100 x 1530 mm", "5", "sheet",
+    ])
+    sheet.append([
+        "TUBE-40-20-2", "Steel rectangular tube", "40 x 20 x 2 mm", "6000 mm length", "2", "m",
+    ])
+    sheet.append([
+        "EDGE-PVC-W-22", "Edge banding PVC, white", "22 mm x 2 mm", "22 mm width", "2", "m",
+    ])
+    content = BytesIO()
+    workbook.save(content)
+    payload = {
+        "rows": [
+            {
+                "item_kind": "material", "raw_sku": "PLY-5-3100",
+                "raw_description": "Plywood 5 mm, Okoume", "normalized_name": "Plywood 5 mm",
+                "material_type": "Wood Sheets", "material_family": "plywood",
+                "identity_attributes": {}, "status": "ready", "reason_codes": [],
+            },
+            {
+                "item_kind": "material", "raw_sku": "TUBE-40-20-2",
+                "raw_description": "Steel rectangular tube", "normalized_name": "Metal tube",
+                "material_type": "Metal Profiles", "material_family": "metal tube",
+                "identity_attributes": {}, "status": "ready", "reason_codes": [],
+            },
+            {
+                "item_kind": "material", "raw_sku": "EDGE-PVC-W-22",
+                "raw_description": "Edge banding PVC, white", "normalized_name": "PVC sheet",
+                "material_type": "Plastics & Composites", "material_family": "pvc sheet",
+                "identity_attributes": {}, "status": "ready", "reason_codes": [],
+            },
+        ],
+    }
+
+    enrich_price_source_rows_from_spreadsheet(
+        payload, file_name="catalog.xlsx", data=content.getvalue(),
+    )
+    normalize_price_source_sheet_rows(payload)
+    apply_price_source_purchasable_dimensions(payload, formats_by_family_code={})
+
+    plywood, tube, edge = payload["rows"]
+    assert plywood["raw_description"] == "Plywood 5 mm, Okoume"
+    assert plywood["purchasable_dimensions"] == {"length_mm": 3100, "width_mm": 1530}
+    assert tube["identity_attributes"]["section_profile"] == "rectangular tube"
+    assert tube["identity_attributes"]["wall_thickness_mm"] == 2
+    assert tube["purchasable_dimensions"] == {"length_mm": 6000}
+    assert edge["material_family"] == "edge banding"
+    assert edge["identity_attributes"]["substrate"] == "pvc"
+    assert edge["identity_attributes"]["width_mm"] == 22
+    assert edge["identity_attributes"]["thickness_mm"] == 2
+
+
+def test_all_source_normalizer_applies_family_pricing_contract_after_taxonomy():
+    payload = {
+        "rows": [{
+            "item_kind": "material",
+            "raw_description": "Steel rectangular tube 40 x 20 x 2 mm",
+            "normalized_name": "tube",
+            "identity_attributes": {},
+            "status": "ready",
+            "reason_codes": [],
+        }],
+    }
+
+    normalize_price_source_rows(
+        payload,
+        pricing_policies={
+            "metal_tube": {
+                "pricing_key_attribute_codes": [
+                    "metal_type", "section_profile", "wall_thickness",
+                ],
+            },
+        },
+    )
+
+    row = payload["rows"][0]
+    assert row["material_family"] == "metal tube"
+    assert row["_pricing_key_attribute_codes"] == (
+        "metal_type", "section_profile", "wall_thickness",
+    )
+    assert row["identity_attributes"]["metal_type"] == "carbon steel"
+    assert row["identity_attributes"]["section_profile"] == "rectangular tube"
+    assert row["identity_attributes"]["wall_thickness_mm"] == 2
+
+
+@pytest.mark.parametrize(
+    ("description", "family", "expected"),
+    [
+        (
+            "Stainless steel 304 sheet 1.5 mm 3000 x 1500 mm",
+            "metal sheet",
+            {"metal_type": "stainless steel 304", "thickness_mm": 1.5},
+        ),
+        (
+            "Carbon steel round bar 8 mm, 6000 mm length",
+            "metal bar",
+            {"metal_type": "carbon steel", "diameter_mm": 8},
+        ),
+        (
+            "Solid oak panel 30 mm 2440 x 1220 mm",
+            "solid timber",
+            # Physical sheet dimensions are normalized short-side first,
+            # independent of the order in which a supplier prints them.
+            {"species": "oak", "thickness_mm": 30, "length_mm": 1220, "width_mm": 2440},
+        ),
+        (
+            "Gas lift 100 N",
+            "lift mechanism",
+            {},
+        ),
+        (
+            "Powder coating black",
+            "powder coating",
+            {"coating_system": "powder coating"},
+        ),
+    ],
+)
+def test_family_first_taxonomy_extracts_only_price_bearing_facts(
+    description, family, expected,
+):
+    row = {
+        "item_kind": "material",
+        "raw_description": description,
+        "normalized_name": "Material",
+        "identity_attributes": {},
+        "status": "ready",
+        "reason_codes": [],
+    }
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_family"] == family
+    for key, value in expected.items():
+        assert row["identity_attributes"][key] == value
+
+
+def test_hardware_force_rating_is_not_misread_as_thickness_or_a_brand():
+    row = {
+        "item_kind": "material",
+        "raw_description": "Gas lift 100 N",
+        "normalized_name": "Material",
+        "identity_attributes": {},
+        "status": "ready",
+        "reason_codes": [],
+    }
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_family"] == "lift mechanism"
+    assert row["identity_attributes"]["thickness_mm"] == 0
+    assert row["identity_attributes"]["primary_attribute"] == ""
+    assert row["identity_attributes"]["brand"] == ""
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,

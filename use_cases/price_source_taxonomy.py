@@ -143,7 +143,7 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         "מחבר", "מחברי רהיט", "אקסצנטרי", "דיבל", "בורג רהיטים", "מיני פיקס",
     )),
     TaxonomyRule("Hardware", "lift mechanism", (
-        "lift mechanism", "flap lift", "stay lift", "gas strut", "gas spring",
+        "lift mechanism", "flap lift", "stay lift", "gas lift", "gas strut", "gas spring",
         "soft close damper", "magnetic catch", "מנגנון קלפה", "מנגנון הרמה",
         "בוכנת גז", "קפיץ גז", "בולם טריקה", "תופסן מגנטי",
     )),
@@ -171,6 +171,12 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         "לוח מצופה", "לוח למינציה", "לוח פורמייקה",
     )),
     TaxonomyRule("Glass", "glass", ("glass", "mirror", "זכוכית", "מראה")),
+    # Edge wording wins over the polymer substrate. A PVC or ABS edge roll is
+    # never a sheet merely because its source description starts with PVC/ABS.
+    TaxonomyRule("Wood Supplies", "edge banding", (
+        "edge band", "edge banding", "edgeband", "abs edge", "pvc edge",
+        "קנט", "קנטים", "פס קנט",
+    )),
     TaxonomyRule("Plastics & Composites", "acrylic sheet", (
         "acrylic", "pmma", "plexiglas", "perspex", "acrylite", "optix",
         "פרספקס", "אקריל", "אקריליק", "פלקסיגלס",
@@ -210,7 +216,6 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         "לוח עץ", "סרגל", "לטה", "לוחות עץ", "בוצ׳ר", "בוצר", "עץ גושני", "קורות מודבקות",
     )),
     TaxonomyRule("Wood Supplies", "veneer", ("veneer", "wood veneer", "פורניר", "שכבת פורניר")),
-    TaxonomyRule("Wood Supplies", "edge banding", ("edge band", "edge banding", "edgeband", "abs edge", "קנט", "קנטים", "פס קנט")),
     # Stone fabricated surfaces. Keep these before generic glass and plastic
     # words: a quartz or porcelain slab is a Stone catalog material, even when
     # a supplier calls it a "surface" or includes a brand-like trade name.
@@ -255,6 +260,9 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
     TaxonomyRule("Metal Sheets", "metal sheet", (
         "sheet metal", "steel sheet", "aluminium sheet", "aluminum sheet", "stainless sheet",
         "steel plate", "aluminium plate", "aluminum plate", "פח", "פחים", "לוח אלומיניום", "פח נירוסטה",
+    )),
+    TaxonomyRule("Metal Supplies", "metal flat bar", (
+        "flat bar", "metal strip", "פס שטוח", "פס מתכת",
     )),
     TaxonomyRule("Metal Supplies", "metal bar", (
         "round bar", "flat bar", "solid bar", "rod", "wire", "rebar", "metal strip",
@@ -307,6 +315,7 @@ _V2_FAMILY_PROJECTIONS: dict[str, tuple[str, str, str | None]] = {
     "metal channel": ("metal_profile_angle_channel", "material", "metal"),
     "metal profile": ("metal_profile_angle_channel", "material", "metal"),
     "metal sheet": ("sheet_metal", "material", "metal"),
+    "metal flat bar": ("metal_flat_bar", "material", "metal"),
     "metal bar": ("metal_round_bar_rod_wire", "material", "metal"),
     "powder coating": ("powder_coating", "material", "coating"),
     "epoxy coating": ("paint_lacquer_stain", "material", "coating"),
@@ -640,7 +649,16 @@ FORCED_OPERATION_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
 def source_row_text(row: Mapping[str, Any]) -> str:
     # Taxonomy is grounded in source wording. A model-supplied family from a
     # previous pass must not create a false species/category proof.
-    return str(row.get("raw_description") or row.get("normalized_name") or "").casefold()
+    return " ".join(
+        str(value or "")
+        for value in (
+            row.get("raw_description") or row.get("normalized_name") or "",
+            # Structured workbook columns are literal row evidence. They are
+            # transient processing context, not a replacement for the source
+            # description shown to the user or a model-produced attribute.
+            row.get("_source_table_evidence") or "",
+        )
+    ).casefold()
 
 
 _HEBREW_FINAL_FORMS = str.maketrans({
@@ -757,6 +775,19 @@ def material_rule_for_text(text: str) -> TaxonomyRule | None:
     # "profile" wording takes the line into a material department.
     if _has_exact_alias(text, _DRAWER_SYSTEM_RULE.aliases):
         return _DRAWER_SYSTEM_RULE
+    # Supplier spreadsheets regularly call a glued solid-wood sheet a
+    # ``solid oak panel`` (or the equivalent species), not "solid wood".
+    # ``panel`` alone is far too broad: MDF, plywood and composite panels must
+    # keep their own rules.  Promote it only when the source literally proves
+    # both solid construction and a known timber species.
+    canonical_text = _canonical_taxonomy_text(text)
+    has_solid_panel = bool(re.search(r"(?<!\\w)solid(?!\\w).*?(?<!\\w)panel(?!\\w)", canonical_text))
+    has_known_species = any(
+        _has_alias(text, aliases)
+        for _species, aliases in ATTRIBUTE_RULES["species"]
+    )
+    if has_solid_panel and has_known_species:
+        return next(rule for rule in MATERIAL_RULES if rule.family == "solid timber")
     return next((rule for rule in MATERIAL_RULES if _has_alias(text, rule.aliases)), None)
 
 
@@ -772,11 +803,11 @@ def brand_for_text(text: str, *, category: str) -> str:
 
 
 _BRAND_CANDIDATE_NOISE = frozenset({
-    "aluminium", "aluminum", "assembly", "black", "blue", "box", "closure",
+    "abs", "aluminium", "aluminum", "assembly", "black", "blue", "box", "carbon", "closure", "edge",
     "door", "drawer", "front", "glass", "grey", "high", "hinge", "internal",
     "large", "left", "mdf", "metal", "okoume", "particleboard", "plywood",
-    "profile", "pure", "right", "sheet", "small", "stainless", "transparent",
-    "twin", "white", "wood",
+    "gas", "polyurethane", "powder", "profile", "pvc", "pure", "right", "sheet", "small",
+    "solid", "stainless", "steel", "twin", "white", "wood", "natural",
 })
 
 
@@ -847,6 +878,198 @@ def _explicit_profile_primary_attribute(text: str) -> str:
     return f"{match.group(1)}×{match.group(2)} mm"
 
 
+def _decimal_label(value: float) -> str:
+    return str(int(value)) if value.is_integer() else str(value)
+
+
+def _metal_type_for_text(text: str) -> str:
+    """Return only a literally proven, price-bearing base metal or alloy."""
+    value = _canonical_taxonomy_text(text)
+    grade = _explicit_technical_grade(text)
+    if "stainless" in value or "נירוסט" in value:
+        return f"stainless steel {grade}" if grade else "stainless steel"
+    # 201, 304, 304L, 316 and 430 are stainless designations in the metal
+    # supplier vocabulary. On a line already proven as sheet/profile stock,
+    # they are sufficient evidence of the base metal, not a model number.
+    if grade in {"201", "304", "304L", "316", "316L", "430"}:
+        return f"stainless steel {grade}"
+    if any(marker in value for marker in ("aluminium", "aluminum", "אלומיניום")):
+        return f"aluminium {grade}" if grade else "aluminium"
+    if any(marker in value for marker in ("brass", "פליז")):
+        return "brass"
+    if any(marker in value for marker in ("bronze", "ברונזה")):
+        return "bronze"
+    if any(marker in value for marker in ("copper", "נחושת")):
+        return "copper"
+    if any(marker in value for marker in ("mild steel", "carbon steel", "steel", "פלדה", "ברזל")):
+        return "carbon steel"
+    return ""
+
+
+def _metric_dimension(value: str, unit: str | None) -> float:
+    parsed = float(value)
+    normalized_unit = str(unit or "mm").casefold()
+    return parsed * 10 if normalized_unit in {"cm", 'ס"מ', "ס׳מ", "ס״מ", "סמ"} else parsed
+
+
+def _profile_dimensions(text: str) -> tuple[float, float, float]:
+    """Read ``section × section × wall`` only when it is printed as one run."""
+    match = re.search(
+        r"(?<!\d)(\d{1,3}(?:\.\d+)?)\s*(?:x|×)\s*"
+        r"(\d{1,3}(?:\.\d+)?)\s*(?:x|×)\s*"
+        r"(\d{1,2}(?:\.\d+)?)\s*(mm|m\.?m\.?|cm|ס[\"״']?מ)?(?!\w)",
+        str(text or ""),
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return 0, 0, 0
+    unit = match.group(4)
+    return (
+        _metric_dimension(match.group(1), unit),
+        _metric_dimension(match.group(2), unit),
+        _metric_dimension(match.group(3), unit),
+    )
+
+
+def _round_tube_dimensions(text: str) -> tuple[float, float]:
+    value = str(text or "")
+    match = re.search(
+        r"(?:round\s+tube|round\s+pipe|צינור\s+עגול)[^\d]{0,32}"
+        r"(\d{1,3}(?:\.\d+)?)\s*(mm|m\.?m\.?|cm|ס[\"״']?מ)?\s*(?:x|×)\s*"
+        r"(\d{1,2}(?:\.\d+)?)\s*(mm|m\.?m\.?|cm|ס[\"״']?מ)?",
+        value,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return 0, 0
+    return (
+        _metric_dimension(match.group(1), match.group(2)),
+        _metric_dimension(match.group(3), match.group(4) or match.group(2)),
+    )
+
+
+def _edge_banding_dimensions(text: str) -> tuple[float, float]:
+    match = re.search(
+        r"(?<!\d)(\d{1,3}(?:\.\d+)?)\s*(mm|m\.?m\.?|cm|ס[\"״']?מ)?\s*"
+        r"(?:x|×)\s*(\d{1,2}(?:\.\d+)?)\s*(mm|m\.?m\.?|cm|ס[\"״']?מ)?",
+        str(text or ""),
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return 0, 0
+    return (
+        _metric_dimension(match.group(1), match.group(2)),
+        _metric_dimension(match.group(3), match.group(4) or match.group(2)),
+    )
+
+
+def _stone_type_for_text(text: str) -> str:
+    aliases = (
+        ("granite", ("granite", "גרניט")),
+        ("marble", ("marble", "שיש")),
+        ("quartzite", ("quartzite", "קוורציט")),
+        ("travertine", ("travertine", "טרוורטין")),
+        ("limestone", ("limestone", "אבן גיר")),
+        ("onyx", ("onyx", "אוניקס")),
+        ("basalt", ("basalt", "בזלת")),
+    )
+    return next((canonical for canonical, values in aliases if _has_alias(text, values)), "")
+
+
+def _coating_system_for_family(family: str) -> str:
+    return {
+        "powder coating": "powder coating",
+        "epoxy coating": "epoxy",
+        "polyurethane coating": "polyurethane",
+        "primer": "primer",
+        "lacquer": "lacquer",
+        "paint": "paint",
+    }.get(family, "")
+
+
+def _apply_family_pricing_facts(
+    attributes: dict[str, Any],
+    *,
+    family: str,
+    text: str,
+) -> None:
+    """Populate only deterministic Pricing Key facts for the proven family."""
+    if family in {"metal sheet", "metal tube", "metal angle", "metal channel", "metal profile", "metal flat bar", "metal bar"}:
+        if metal_type := _metal_type_for_text(text):
+            attributes["metal_type"] = metal_type
+    if family == "metal tube":
+        # The first number in ``40×20×2`` or ``25×1.5`` is a section, not a
+        # sheet thickness. Do not carry that accidental generic parser value
+        # into later price matching.
+        attributes["thickness_mm"] = 0
+        canonical = _canonical_taxonomy_text(text)
+        if "rectangular" in canonical or "מלבני" in canonical:
+            attributes["section_profile"] = "rectangular tube"
+        elif "square" in canonical or "מרובע" in canonical:
+            attributes["section_profile"] = "square tube"
+        elif "round" in canonical or "עגול" in canonical:
+            attributes["section_profile"] = "round tube"
+        first, second, wall = _profile_dimensions(text)
+        if first and second and wall:
+            if not attributes.get("section_profile"):
+                attributes["section_profile"] = "square tube" if first == second else "rectangular tube"
+            attributes["primary_attribute"] = f"{_decimal_label(first)}×{_decimal_label(second)} mm"
+            attributes["wall_thickness_mm"] = wall
+        else:
+            diameter, wall = _round_tube_dimensions(text)
+            if diameter and wall:
+                attributes["section_profile"] = "round tube"
+                attributes["primary_attribute"] = f"Ø{_decimal_label(diameter)} mm"
+                attributes["diameter_mm"] = diameter
+                attributes["wall_thickness_mm"] = wall
+    elif family in {"metal angle", "metal channel", "metal profile"}:
+        attributes["thickness_mm"] = 0
+        profile = {
+            "metal angle": "angle",
+            "metal channel": "channel",
+            "metal profile": "profile",
+        }[family]
+        attributes["section_profile"] = profile
+        first, second, wall = _profile_dimensions(text)
+        if first and second:
+            attributes["primary_attribute"] = f"{_decimal_label(first)}×{_decimal_label(second)} mm"
+        if wall:
+            attributes["wall_thickness_mm"] = wall
+    elif family == "metal flat bar":
+        width, thickness = _edge_banding_dimensions(text)
+        if width and thickness:
+            attributes["width_mm"] = width
+            attributes["thickness_mm"] = thickness
+            attributes["primary_attribute"] = f"{_decimal_label(width)}×{_decimal_label(thickness)} mm"
+            attributes["section_profile"] = "flat bar"
+    elif family == "metal bar":
+        diameter = _explicit_thickness_mm(text)
+        if diameter:
+            # A round bar's printed dimension is a diameter, never sheet
+            # thickness. This is the only price-bearing dimensional axis for
+            # this family.
+            attributes["thickness_mm"] = 0
+            attributes["diameter_mm"] = diameter
+            attributes["primary_attribute"] = f"Ø{_decimal_label(diameter)} mm"
+    elif family == "natural stone":
+        attributes["finish"] = ""
+        if stone_type := _stone_type_for_text(text):
+            attributes["stone_type"] = stone_type
+    elif family in {"powder coating", "epoxy coating", "polyurethane coating", "primer", "lacquer", "paint"}:
+        attributes["coating_system"] = _coating_system_for_family(family)
+    elif family == "edge banding":
+        width, thickness = _edge_banding_dimensions(text)
+        if width and thickness:
+            attributes["width_mm"] = width
+            attributes["thickness_mm"] = thickness
+            attributes["primary_attribute"] = f"{_decimal_label(width)}×{_decimal_label(thickness)} mm"
+        canonical_text = _canonical_taxonomy_text(text)
+        if "pvc" in canonical_text or "פי וי סי" in canonical_text:
+            attributes["substrate"] = "pvc"
+        elif "abs" in canonical_text or "איי בי אס" in canonical_text:
+            attributes["substrate"] = "abs"
+
+
 def job_operation_for_text(text: str) -> str | None:
     matches = [
         (len(_canonical_taxonomy_text(alias)), code)
@@ -891,7 +1114,10 @@ def _explicit_thickness_mm(text: str) -> float:
         return thickness if 0.1 <= thickness <= 10_000 else 0
 
     labelled = re.search(
-        r"(?:thickness|thk|th\.?|t\.?|עובי)\s*[:=]?\s*(\d{1,3}(?:\.\d+)?)(?!\d)",
+        # ``t`` is an accepted drawing abbreviation, but it must be an
+        # independent token.  Without these boundaries the final letter of
+        # ``lift 100 N`` was read as a thickness label.
+        r"(?:(?<!\w)(?:thickness|thk|th\.?|t\.?)(?!\w)|עובי)\s*[:=]?\s*(\d{1,3}(?:\.\d+)?)(?!\d)",
         value,
         flags=re.IGNORECASE,
     )
@@ -1103,13 +1329,15 @@ def apply_material_taxonomy(row: dict[str, Any]) -> bool:
             )
     if technical_grade := _explicit_technical_grade(text):
         attributes["grade"] = technical_grade
+    _apply_family_pricing_facts(attributes, family=rule.family, text=text)
     if rule.family == "plywood":
         _discard_redundant_plywood_brand(attributes)
     attributes = normalize_identity_attributes(attributes)
-    if rule.category in sheet_categories:
+    if rule.category in sheet_categories or rule.family == "solid timber":
         # Model-generated dimensions are not source evidence. Rebuild this
         # pair from literal text so a single 3100 span cannot become 3100×3100
-        # or acquire an unrelated 2400 side.
+        # or acquire an unrelated 2400 side. Solid timber panels use the same
+        # explicit pair grammar, but retain their distinct Family policy.
         attributes["width_mm"], attributes["length_mm"] = _literal_sheet_dimensions(text)
     row["identity_attributes"] = attributes
     row["material_type"] = rule.category

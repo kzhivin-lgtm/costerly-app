@@ -40,7 +40,12 @@ def _metric_mm(value: str, unit: str) -> int:
     return int(round((parsed * multiplier) / 5) * 5)
 
 
-def _source_dimensions(text: object, *, allow_compact_sheet_span: bool) -> dict[str, int]:
+def _source_dimensions(
+    text: object,
+    *,
+    allow_compact_sheet_span: bool,
+    allow_linear_length: bool,
+) -> dict[str, int]:
     """Extract a literal two-dimensional format from supplier wording.
 
     Supports mm, cm, metres and feet, including the common 4x8 notation. The
@@ -48,6 +53,18 @@ def _source_dimensions(text: object, *, allow_compact_sheet_span: bool) -> dict[
     3100 mm only for a family that is already known to be a sheet family.
     """
     value = str(text or "").casefold().replace("×", "x")
+    # A linear profile can contain a cross-section such as ``40 x 20 x 2 mm``
+    # alongside its purchasable stock length. Read the explicitly labelled
+    # length first so the cross-section is never mistaken for a sheet format.
+    if allow_linear_length:
+        linear = re.search(
+            r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(mm|cm|m|ft|feet|foot|')\s*"
+            r"(?:length|long|אורך)(?!\w)",
+            value,
+        )
+        if linear:
+            unit = {"feet": "ft", "foot": "ft", "'": "ft"}.get(linear.group(2), linear.group(2))
+            return {"length_mm": _metric_mm(linear.group(1), unit)}
     unit_pattern = r"(?P<unit>mm|cm|m|ft|feet|foot|')"
     number = r"(?P<left>\d+(?:[.,]\d+)?)"
     right = r"(?P<right>\d+(?:[.,]\d+)?)"
@@ -119,12 +136,27 @@ def purchasable_dimensions_for_row(
     attributes = attributes if isinstance(attributes, Mapping) else {}
     literal = _normalised_dimensions(attributes)
     source_dimensions = _source_dimensions(
-        row.get("raw_description"),
+        " ".join(
+            str(value or "")
+            for value in (row.get("raw_description"), row.get("_source_table_evidence"))
+        ),
         allow_compact_sheet_span=bool(formats_by_family_code.get(family_code)),
+        allow_linear_length=family_code in {
+            "metal_tube", "metal_profile_angle_channel", "metal_flat_bar",
+            "metal_round_bar_rod_wire",
+        },
     )
     if source_dimensions:
         literal = source_dimensions
     if len(literal) == 2:
+        return literal
+
+    # Stock length is itself a complete purchasable format for profiles. It is
+    # not a one-side sheet clue that needs a second dimension from the registry.
+    if literal and family_code in {
+        "metal_tube", "metal_profile_angle_channel", "metal_flat_bar",
+        "metal_round_bar_rod_wire",
+    }:
         return literal
 
     raw_formats = formats_by_family_code.get(family_code, ())
