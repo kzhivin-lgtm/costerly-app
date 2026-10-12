@@ -1933,7 +1933,7 @@ def test_glass_door_closure_is_hardware_not_glass_and_keeps_compact_brand_candid
 def test_exact_merivobox_is_drawer_system_not_glass_or_metal_profile():
     row = _result()["rows"][0]
     row.update({
-        "raw_description": "פרופיל חזית לפנימית מריבוקס לבן זכוכית בלום",
+        "raw_description": "פרופיל חזית לפנימית מריובוקס לבן זכוכית בלום",
         "normalized_name": "Unclassified material",
         "material_type": "Other",
         "material_family": "other",
@@ -1952,6 +1952,7 @@ def test_exact_merivobox_is_drawer_system_not_glass_or_metal_profile():
     [
         ("Movento drawer runner 75 cm Blum", 750),
         ('מסילה למגירה 55 ס"מ בלום', 550),
+        ("מסילה מובנטו טיפ און 75 ס", 750),
     ],
 )
 def test_drawer_slide_uses_explicit_nominal_depth_as_primary_attribute(description, expected_depth):
@@ -1969,7 +1970,7 @@ def test_drawer_slide_uses_explicit_nominal_depth_as_primary_attribute(descripti
     assert row["identity_attributes"]["depth_mm"] == expected_depth
     assert row["identity_attributes"]["primary_attribute"] == f"{expected_depth} mm"
     expected_name = f"Drawer Slide {expected_depth} mm Blum"
-    if "movento" in description.casefold():
+    if "movento" in description.casefold() or "מובנטו" in description:
         expected_name += ", Movento"
         assert row["identity_attributes"]["product_system"] == "Movento"
     assert row["normalized_name"] == expected_name

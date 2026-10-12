@@ -732,7 +732,7 @@ _DRAWER_SYSTEM_RULE = TaxonomyRule("Hardware", "drawer system", (
     "drawer system", "drawer box", "metal drawer box", "drawer side",
     "merivobox", "legrabox", "tandembox", "metabox", "lineabox",
     "avantech", "arcitech", "innotech", "matrix drawer", "tekform",
-    "vertex drawer", "pure-box", "magic-star", "מריבובוקס", "מריבוקס",
+    "vertex drawer", "pure-box", "magic-star", "מריבובוקס", "מריבוקס", "מריובוקס",
     "לגרבוקס", "טנדמבוקס", "מטאבוקס", "מגירת מתכת", "דופן מגירה",
     "פרופיל חזית לפנימית",
 ))
@@ -886,7 +886,7 @@ def _drawer_slide_depth_mm(text: str) -> float:
     """
     match = re.search(
         r"(?<!\d)(\d{2,4}(?:\.\d+)?)\s*"
-        r"(mm|cm|מ[\"״']?מ|ס[\"״']?מ)(?!\w)",
+        r"(mm|cm|מ[\"״']?מ|ס[\"״']?מ|ס)(?!\w)",
         str(text or ""),
         flags=re.IGNORECASE,
     )
@@ -894,7 +894,10 @@ def _drawer_slide_depth_mm(text: str) -> float:
         return 0
     value = float(match.group(1))
     unit = match.group(2).casefold()
-    depth = value * 10 if unit in {"cm", 'ס"מ', "ס׳מ", "ס״מ", "סמ"} else value
+    # Some Hebrew invoice OCR drops the final ``מ`` from ``ס״מ``. This parser
+    # runs only after the line is proven to be a drawer slide, so a bare Hebrew
+    # ``ס`` after a plausible nominal length is safely a centimetre signal.
+    depth = value * 10 if unit in {"cm", 'ס"מ', "ס׳מ", "ס״מ", "סמ", "ס"} else value
     return depth if 250 <= depth <= 1_200 else 0
 
 

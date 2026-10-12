@@ -194,7 +194,7 @@ _PRODUCT_SYSTEM_ALIAS_EXPANSIONS: dict[str, tuple[str, ...]] = {
     "blum_movento": ("moventa", "movers", "מובנטו", "בלום מובנטו"),
     "blum_tandem": ("בלום טנדם",),
     "blum_legrabox": ("לגרבוקס", "בלום לגרבוקס"),
-    "blum_merivobox": ("מריבובוקס", "מריבוקס", "בלום מריבוקס"),
+    "blum_merivobox": ("מריבובוקס", "מריבוקס", "מריובוקס", "בלום מריבוקס"),
     "blum_tandembox": ("טנדמבוקס", "בלום טנדמבוקס"),
     "blum_metabox": ("מטאבוקס", "בלום מטאבוקס"),
     "blum_aventos": ("אוונטוס", "בלום אוונטוס"),
