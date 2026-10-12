@@ -1,13 +1,18 @@
 # Construction Pattern Library, 3.17.2.8
 
-Status: owner-approved initial design. This is a controlled Estimation input,
-not a universal furniture ontology or a production work order.
+Status: deferred draft, not approved for implementation. It captured an
+overly narrow hidden-hardware approach and must not be used as an Estimation
+contract. The owner redirected this work on 2026-10-12 toward full estimating
+archetypes, for example a complete floor kitchen cabinet, rather than isolated
+support or suspension rules.
 
-## Purpose
+## Superseded approach
 
-The Estimation Agent must not freely invent hidden hardware or construction.
-It may derive a hidden component only when an active construction pattern
-explicitly permits it and the object evidence meets that pattern's conditions.
+The prior draft treated legs and wall-suspension hardware as the main pattern
+outputs. That is insufficient for estimating a furniture object and should not
+be implemented. Low-cost legs, fasteners, concealed hangers and similar small
+items belong in an estimation allowance where appropriate, not as the primary
+architecture of a construction scenario.
 
 The library models recurring construction requirements, not every possible
 object. A pattern emits a requirement such as `support_system`; the Material
@@ -33,7 +38,7 @@ condition. It may emit no hidden component when the evidence is insufficient.
 If an estimate nevertheless needs an assumption, it is case-local, marked
 `review_required`, and creates a Catalog Gap occurrence when appropriate.
 
-## Initial patterns
+## Historical initial-pattern draft, do not implement
 
 ### `floor_cabinet_support`
 
