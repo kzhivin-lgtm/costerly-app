@@ -294,7 +294,7 @@ labels; and source-safe separators. A bare number is accepted only in a
 proven entity-adjacent or explicitly labelled measurement position, never as
 SKU, quantity or packaging notation.
 
-ACTIVE, P1, USER REQUEST, 3.17.2.12 Price Source upload resilience:
+PENDING, P1, USER REQUEST, 3.17.2.12 Price Source upload resilience:
 accept legacy XLS through a production-supported parser, while preserving XLSX,
 CSV, PDF and image handling. Before that format support is released, an invalid
 extension must be rejected at selection time and must keep Extract disabled;
@@ -307,7 +307,9 @@ groups or otherwise avoid a single unbounded Claude response, rather than
 raising the 60-second stream cap and making the owner wait longer. Acceptance:
 the supplied legacy XLS and its XLSX equivalent both parse, a 44-row workbook
 is split before model extraction, invalid files cannot start a cycle, and
-Cancel reaches a terminal state without catalog/source persistence.
+Cancel reaches a terminal state without catalog/source persistence. Automated
+verification passed in commit 40f4739; production acceptance still requires
+one XLS import, one 44-row XLSX import and one Cancel during extraction.
 
 DEFERRED, P1, USER REQUEST, 3.17.2.8 Construction Scenario Library and Staff
 Admin: define a controlled, versioned library of full estimating archetypes,
