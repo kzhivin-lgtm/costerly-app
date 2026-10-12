@@ -308,8 +308,11 @@ raising the 60-second stream cap and making the owner wait longer. Acceptance:
 the supplied legacy XLS and its XLSX equivalent both parse, a 44-row workbook
 is split before model extraction, invalid files cannot start a cycle, and
 Cancel reaches a terminal state without catalog/source persistence. Automated
-verification passed in commit 40f4739; production acceptance still requires
-one XLS import, one 44-row XLSX import and one Cancel during extraction.
+verification passed in commit 40f4739; the 44-row XLSX production import and
+resolver-status checkpoint are recorded in
+`notes/PRICE_SOURCE_XLS_RESILIENCE_CHECKPOINT_3_17_2_12_2026_10_12.md`.
+Production acceptance still requires one XLS import and one Cancel during
+extraction.
 
 DEFERRED, P1, USER REQUEST, 3.17.2.8 Construction Scenario Library and Staff
 Admin: define a controlled, versioned library of full estimating archetypes,
