@@ -55,6 +55,7 @@ with seed(family_code, dimensions, is_default) as (
         ('mdf_hdf', '{"length_mm": 2150, "width_mm": 900}'::jsonb, false),
         ('mdf_hdf', '{"length_mm": 2800, "width_mm": 2070}'::jsonb, false),
         ('mdf_hdf', '{"length_mm": 3050, "width_mm": 1220}'::jsonb, false),
+        ('mdf_hdf', '{"length_mm": 3100, "width_mm": 1220}'::jsonb, false),
         ('mdf_hdf', '{"length_mm": 3050, "width_mm": 1300}'::jsonb, false),
         ('faced_mdf', '{"length_mm": 2440, "width_mm": 1220}'::jsonb, true),
         ('faced_mdf', '{"length_mm": 2800, "width_mm": 1300}'::jsonb, false),

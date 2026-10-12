@@ -123,10 +123,16 @@ def test_persisted_price_source_status_never_leaks_transient_ready_state(
 
 def _family_supply_formats() -> dict[str, list[dict]]:
     return {
-        "mdf_hdf": [{
-            "purchasable_dimensions": {"length_mm": 2400, "width_mm": 1220},
-            "is_default": True,
-        }],
+        "mdf_hdf": [
+            {
+                "purchasable_dimensions": {"length_mm": 2400, "width_mm": 1220},
+                "is_default": True,
+            },
+            {
+                "purchasable_dimensions": {"length_mm": 3100, "width_mm": 1220},
+                "is_default": False,
+            },
+        ],
         "plywood": [
             {"purchasable_dimensions": {"length_mm": 2400, "width_mm": 1220}, "is_default": True},
             {"purchasable_dimensions": {"length_mm": 3000, "width_mm": 1500}, "is_default": False},
@@ -173,13 +179,14 @@ def test_offer_dimensions_complete_one_literal_side_only_from_one_matching_catal
         ("Birch plywood 4x8", {"length_mm": 2440, "width_mm": 1220}),
         ("Acrylic 1.22 x 2.44 m", {"length_mm": 2440, "width_mm": 1220}),
         ("MDF 122 x 244", {"length_mm": 2440, "width_mm": 1220}),
+        ("MDF 3-100", {"length_mm": 3100, "width_mm": 1220}),
         ("Steel 3.0x1250x2500 mm", {"length_mm": 2500, "width_mm": 1250}),
     ],
 )
 def test_offer_dimensions_normalise_imperial_and_metric_source_notation(description, expected):
     assert purchasable_dimensions_for_row(
         {
-            "material_family": "plywood",
+            "material_family": "mdf" if description == "MDF 3-100" else "plywood",
             "purchase_unit": "sheet",
             "raw_description": description,
             "identity_attributes": {"length_mm": 0, "width_mm": 0},

@@ -40,12 +40,12 @@ def _metric_mm(value: str, unit: str) -> int:
     return int(round((parsed * multiplier) / 5) * 5)
 
 
-def _source_dimensions(text: object) -> dict[str, int]:
+def _source_dimensions(text: object, *, allow_compact_sheet_span: bool) -> dict[str, int]:
     """Extract a literal two-dimensional format from supplier wording.
 
     Supports mm, cm, metres and feet, including the common 4x8 notation. The
-    parser intentionally does not interpret punctuation such as ``3-100`` as
-    a size until a real source convention proves its grammar.
+    A source-proved Israeli sheet notation such as ``3-100`` is read as
+    3100 mm only for a family that is already known to be a sheet family.
     """
     value = str(text or "").casefold().replace("×", "x")
     unit_pattern = r"(?P<unit>mm|cm|m|ft|feet|foot|')"
@@ -95,6 +95,10 @@ def _source_dimensions(text: object) -> dict[str, int]:
                 "width_mm": int(centimetres.group(2)) * 10,
             }
         )
+    if allow_compact_sheet_span:
+        compact_span = re.search(r"(?<!\d)([2-4])\s*[-‐–]\s*(\d{3})(?!\d)", value)
+        if compact_span:
+            return {"length_mm": int(compact_span.group(1)) * 1000 + int(compact_span.group(2))}
     return {}
 
 
@@ -114,8 +118,11 @@ def purchasable_dimensions_for_row(
     attributes = row.get("identity_attributes")
     attributes = attributes if isinstance(attributes, Mapping) else {}
     literal = _normalised_dimensions(attributes)
-    source_dimensions = _source_dimensions(row.get("raw_description"))
-    if len(source_dimensions) == 2:
+    source_dimensions = _source_dimensions(
+        row.get("raw_description"),
+        allow_compact_sheet_span=bool(formats_by_family_code.get(family_code)),
+    )
+    if source_dimensions:
         literal = source_dimensions
     if len(literal) == 2:
         return literal
