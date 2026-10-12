@@ -250,18 +250,15 @@ crosswalks remain staff-authoritative later work. In the same pass, audit
 Source Agent static registries against V2 and record unmigrated vocabulary;
 do not silently treat it as V2 data.
 
-ACTIVE, P0, USER REQUEST, 3.17.2.9 Material Resolver selection authority:
-make the Company Price Catalog identity indicator an actual Estimation gate,
-not display-only metadata. The owner-approved derived states are Green for a
-complete family contract plus Israel Reference/Listing link, Yellow for a known
-family with missing completion facts, Blue for a complete family contract with
-no Israel link, and Red for no established family. Only Green is eligible for
-ordinary deterministic company-price selection; Yellow, Blue and Red require
-the separate provisional-assumption/review path and can never silently win a
-price. Green candidates resolve by all known compatibility facts, then the
-lowest normalized ex-VAT company offer and a stable tie breaker. The first
-low-impact compatibility rule is `furniture leg -> adjustable cabinet leg`;
-it excludes casters/wheels. Further low-impact rules need explicit approval.
+ACTIVE, P0, USER REQUEST, 3.17.2.10 Estimate Ready Material Resolver:
+the Material Pricing Key registry is applied for all 54 active Material Family.
+Blue and Green are Estimate Ready: both have a complete Pricing Key, required
+purchase format, valid active price and estimation unit; Green also has an
+Israel canonical link. Yellow lacks a Pricing Key or required purchase format,
+and Red lacks family identity. Complete offer-level purchase format, Source
+normalisation and Price Source display, then make Blue and Green eligible for
+deterministic selection. The future Material Engine selects minimum total
+purchasable cost at document scope, not merely the cheapest unit price.
 Contract: `notes/MATERIAL_RESOLVER_SELECTION_POLICY_3_17_2_9.md`.
 
 DEFERRED, P1, USER REQUEST, 3.17.2.8 Construction Scenario Library and Staff
