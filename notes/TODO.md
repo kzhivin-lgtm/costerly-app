@@ -265,6 +265,12 @@ Israeli and manufacturer catalogues, normalise ft/cm/mm source notation, and
 complete a one-sided format only where exactly one active candidate matches.
 The owner must apply `2026_10_12_correct_company_offer_formats.sql` before
 this stage can be deployed or tested in Price Source.
+Implementation state, 2026-10-12: Resolver and the Price Source indicator
+now derive Estimate Ready from the active Global Pricing Key policy and the
+specific supplier offer's purchase format. Blue and Green are eligible;
+Yellow and Red remain excluded. Pending production verification with a fresh
+source cycle. Multi-candidate total-purchasable-cost selection remains the
+subsequent Material Engine scope.
 
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display

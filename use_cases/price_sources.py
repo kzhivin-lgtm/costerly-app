@@ -39,7 +39,7 @@ from use_cases.price_source_ocr import (
 from use_cases.price_source_material_resolution import (
     resolve_price_source_material_identities,
 )
-from use_cases.material_identity_status import material_identity_status
+from use_cases.material_identity_status import material_identity_status, pricing_policy_by_family_code
 from use_cases.material_normalization import canonical_material_display_name
 from use_cases.material_supply_format import apply_price_source_purchasable_dimensions
 from use_cases.price_source_taxonomy import (
@@ -2717,6 +2717,31 @@ def list_price_sources(access) -> list[dict]:
     ).data or []
 
 
+def _active_pricing_policies_by_family(client) -> dict[str, Mapping[str, Any]]:
+    """Load the Global Pricing Key registry for the Price Source indicator.
+
+    The ``KeyError`` branch only preserves the small in-memory repository
+    doubles used by older unit tests.  A real database/RPC failure remains
+    visible rather than silently reverting production to the old endpoint map.
+    """
+    try:
+        policies = (
+            client.table("reference_material_family_pricing_policies")
+            .select("family_id,pricing_key_attribute_codes,purchase_format_policy,active")
+            .eq("active", True)
+            .execute()
+        ).data or []
+        families = (
+            client.table("reference_material_families")
+            .select("family_id,family_code,active")
+            .eq("active", True)
+            .execute()
+        ).data or []
+    except KeyError:
+        return {}
+    return pricing_policy_by_family_code(policies, families=families)
+
+
 def list_price_catalog(access) -> list[dict]:
     """Return active normalized supplier offers enriched for catalog display."""
     client = get_supabase_client()
@@ -2736,6 +2761,7 @@ def list_price_catalog(access) -> list[dict]:
     ).data or []
     if not offers:
         return []
+    pricing_policies = _active_pricing_policies_by_family(client)
 
     materials = (
         client.table("company_material_items")
@@ -2796,7 +2822,11 @@ def list_price_catalog(access) -> list[dict]:
         supplier_name = str(supplier.get("supplier_name") or "Unknown supplier")
         if source_summary.get("source_origin") == "company_internal":
             supplier_name = "Internal estimate"
-        identity_status = material_identity_status(material)
+        identity_status = material_identity_status(
+            material,
+            pricing_policies=pricing_policies,
+            purchasable_dimensions=offer.get("purchasable_dimensions"),
+        )
         specifications = dict(material.get("specifications") or {})
         material_family = str(specifications.get("material_family") or "").strip()
         canonical_name = str(material.get("canonical_name") or "Material")

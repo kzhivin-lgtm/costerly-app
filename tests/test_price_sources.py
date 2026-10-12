@@ -3465,6 +3465,36 @@ def test_active_offer_is_enriched_as_material_first_catalog_row(monkeypatch):
     assert rows[0]["updated_at"] == "2026-09-24"
 
 
+def test_catalog_indicator_uses_registry_key_and_offer_level_sheet_format(monkeypatch):
+    tables = {
+        "company_material_offers": [{
+            "offer_id": "offer-1", "company_material_id": "material-1", "supplier_id": "supplier-1",
+            "source_id": "source-1", "source_row_id": "row-1", "normalized_price": 90,
+            "normalized_unit": "sheet", "currency": "ILS", "valid_from": "2026-09-24",
+            "purchasable_dimensions": {"length_mm": 2440, "width_mm": 1220},
+        }],
+        "company_material_items": [{
+            "company_material_id": "material-1", "category": "Wood Sheets",
+            "canonical_name": "Plywood 18 mm", "preferred_unit": "sheet",
+            "specifications": {"material_family": "plywood", "thickness_mm": 18},
+        }],
+        "company_suppliers": [{"supplier_id": "supplier-1", "supplier_name": "Supplier Ltd"}],
+        "company_price_source_rows": [{"row_id": "row-1", "raw_description": "Plywood 18 mm"}],
+        "company_price_sources": [{"source_id": "source-1", "source_name": "invoice.pdf", "source_kind": "file"}],
+        "reference_material_families": [{"family_id": "family-plywood", "family_code": "plywood", "active": True}],
+        "reference_material_family_pricing_policies": [{
+            "family_id": "family-plywood", "pricing_key_attribute_codes": ["thickness"],
+            "purchase_format_policy": "standard_sheet_2400x1220", "active": True,
+        }],
+    }
+    monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: _CatalogClient(tables))
+    monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+
+    rows = list_price_catalog(SimpleNamespace(company_id="company-1", user_id="user-1"))
+
+    assert rows[0]["identity_status"]["tone"] == "blue"
+
+
 def test_catalog_renders_historical_product_system_in_its_canonical_case(monkeypatch):
     tables = {
         "company_material_offers": [{

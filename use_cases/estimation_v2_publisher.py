@@ -167,6 +167,12 @@ def _catalogs(client: Any, company_id: str) -> dict[str, Any]:
     pricing_identity_members = _paged_rows(
         client, "reference_material_pricing_identity_members", filters={}
     )
+    material_families = _paged_rows(
+        client, "reference_material_families", filters={"active": True}
+    )
+    material_pricing_policies = _paged_rows(
+        client, "reference_material_family_pricing_policies", filters={"active": True}
+    )
     identity_attributes = {
         str(row.get("pricing_identity_id") or ""): dict(row.get("price_attributes") or {})
         for row in identities
@@ -211,6 +217,8 @@ def _catalogs(client: Any, company_id: str) -> dict[str, Any]:
             reference_materials, reference_aliases, "IL"
         ),
         "pricing_identity_members": pricing_identity_members,
+        "material_families": material_families,
+        "material_pricing_policies": material_pricing_policies,
     }
 
 
@@ -484,6 +492,8 @@ def _material_rows_and_costs(
             reference_materials=catalogs.get("reference_materials") or [],
             reference_aliases=catalogs.get("reference_aliases") or [],
             pricing_identity_members=catalogs.get("pricing_identity_members") or [],
+            material_pricing_policies=catalogs.get("material_pricing_policies") or [],
+            material_families=catalogs.get("material_families") or [],
             material_identity_index=catalogs.get("material_identity_index"),
             as_of=date.today(),
         )

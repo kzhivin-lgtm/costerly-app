@@ -153,7 +153,7 @@ def test_yellow_company_item_cannot_silently_supply_an_estimate_price():
     assert result.company_material_id is None
 
 
-def test_blue_company_item_cannot_silently_supply_an_estimate_price():
+def test_blue_company_item_is_estimate_ready_without_an_israel_link():
     result = _resolve(
         company_material_items=(
             _company_item("blue-birch", "Birch plywood B/B", thickness_mm=18, species="birch", grade="B/B", reference_material_id=None),
@@ -161,8 +161,57 @@ def test_blue_company_item_cannot_silently_supply_an_estimate_price():
         company_offers=(_offer("blue-birch-offer", "blue-birch", normalized_price="1"),),
     )
 
+    assert result.status == "resolved"
+    assert result.authority == "company"
+    assert result.company_material_id == "blue-birch"
+
+
+def test_registry_requires_sheet_offer_format_before_company_price_is_estimate_ready():
+    policy = {
+        "family_id": "family-plywood",
+        "pricing_key_attribute_codes": ["thickness"],
+        "purchase_format_policy": "standard_sheet_2400x1220",
+        "active": True,
+    }
+    family = {"family_id": "family-plywood", "family_code": "plywood", "active": True}
+    result = _resolve(
+        company_material_items=(
+            _company_item("plywood-18", "Plywood 18 mm", thickness_mm=18, reference_material_id=None),
+        ),
+        company_offers=(_offer("offer-without-format", "plywood-18"),),
+        material_pricing_policies=(policy,),
+        material_families=(family,),
+    )
+
     assert result.status == "needs_review"
     assert result.company_material_id is None
+
+
+def test_registry_allows_blue_sheet_offer_when_key_and_purchase_format_are_complete():
+    policy = {
+        "family_id": "family-plywood",
+        "pricing_key_attribute_codes": ["thickness"],
+        "purchase_format_policy": "standard_sheet_2400x1220",
+        "active": True,
+    }
+    family = {"family_id": "family-plywood", "family_code": "plywood", "active": True}
+    result = _resolve(
+        company_material_items=(
+            _company_item("plywood-18", "Plywood 18 mm", thickness_mm=18, reference_material_id=None),
+        ),
+        company_offers=(
+            _offer(
+                "offer-with-format", "plywood-18",
+                purchasable_dimensions={"length_mm": 2440, "width_mm": 1220},
+            ),
+        ),
+        material_pricing_policies=(policy,),
+        material_families=(family,),
+    )
+
+    assert result.status == "resolved"
+    assert result.authority == "company"
+    assert result.company_material_id == "plywood-18"
 
 
 def test_hardware_family_selection_uses_known_depth_only_when_requirement_has_it():

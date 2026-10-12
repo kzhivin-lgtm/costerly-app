@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, Mapping
+from typing import Any, Literal, Mapping, Sequence
+
+from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
 
 
 IdentityTone = Literal["green", "yellow", "blue", "red"]
@@ -29,6 +31,38 @@ _FIELD_LABELS = {
     "diameter_mm": "diameter",
     "coating_system": "coating system",
     "depth_mm": "nominal length",
+}
+
+
+# The Pricing Key registry uses stable Global attribute codes.  Company items
+# retain the source-facing attribute names, so this is the one explicit bridge
+# between the two contracts.  It is intentionally not another per-family
+# endpoint table.
+_PRICING_KEY_FIELDS: dict[str, tuple[str, ...]] = {
+    "thickness": ("thickness_mm", "thickness"),
+    "species": ("species",),
+    "width": ("width_mm", "width"),
+    "width_thickness": ("width_mm", "width", "thickness_mm", "thickness"),
+    "dimensions": ("length_mm", "width_mm", "depth_mm", "diameter_mm"),
+    "metal_type": ("metal_type",),
+    "section_profile": ("section_profile",),
+    "wall_thickness": ("wall_thickness_mm", "wall_thickness"),
+    "diameter": ("diameter_mm", "diameter"),
+    "coating_system": ("coating_system",),
+    "stone_type": ("stone_type",),
+    "chemistry_product_type": ("chemistry_product_type",),
+    "nominal_length": ("nominal_length_mm", "depth_mm", "length_mm"),
+    "component_type": ("component_type",),
+    "packaging_type": ("packaging_type",),
+}
+
+_PRICING_KEY_LABELS = {
+    "width_thickness": "width and thickness",
+    "dimensions": "dimensions",
+    "nominal_length": "nominal length",
+    "chemistry_product_type": "product type",
+    "component_type": "component type",
+    "packaging_type": "packaging type",
 }
 
 
@@ -95,15 +129,99 @@ def _display(value: Any) -> str:
     return str(int(value)) if isinstance(value, float) and value.is_integer() else str(value)
 
 
-def material_identity_status(item: Mapping[str, Any]) -> MaterialIdentityStatus:
+def _family_code(item: Mapping[str, Any], specs: Mapping[str, Any]) -> str:
+    explicit = str(
+        specs.get("catalog_v2_family_code")
+        or specs.get("global_family_code")
+        or item.get("catalog_v2_family_code")
+        or ""
+    ).strip()
+    if explicit:
+        return explicit
+    taxonomy = catalog_v2_taxonomy_for_family(str(specs.get("material_family") or ""))
+    return str((taxonomy or {}).get("family_code") or "")
+
+
+def pricing_policy_by_family_code(
+    policies: Sequence[Mapping[str, Any]],
+    *,
+    families: Sequence[Mapping[str, Any]] = (),
+) -> dict[str, Mapping[str, Any]]:
+    """Index active Pricing Key policies by stable Global family code."""
+    family_codes_by_id = {
+        str(row.get("family_id") or ""): str(row.get("family_code") or "")
+        for row in families
+        if str(row.get("family_id") or "") and str(row.get("family_code") or "")
+    }
+    indexed: dict[str, Mapping[str, Any]] = {}
+    for policy in policies:
+        if policy.get("active") is False:
+            continue
+        nested = policy.get("reference_material_families")
+        nested_code = nested.get("family_code") if isinstance(nested, Mapping) else ""
+        family_code = str(
+            policy.get("family_code")
+            or nested_code
+            or family_codes_by_id.get(str(policy.get("family_id") or ""), "")
+        ).strip()
+        if family_code:
+            indexed[family_code] = policy
+    return indexed
+
+
+def _format_is_complete(policy: Mapping[str, Any], dimensions: Mapping[str, Any] | None) -> bool:
+    mode = str(policy.get("purchase_format_policy") or "not_required")
+    if mode == "not_required":
+        return True
+    dimensions = dimensions or {}
+    positive = {
+        key for key, value in dimensions.items()
+        if key in {"length_mm", "width_mm", "depth_mm", "diameter_mm"} and _present(value)
+    }
+    # Sheet policies require two sides. Linear profiles and non-sheet stock
+    # have a meaningful single purchase length, so the generic required policy
+    # accepts one proven physical dimension.
+    return len(positive) >= (2 if mode == "standard_sheet_2400x1220" else 1)
+
+
+def _policy_missing(
+    specs: Mapping[str, Any], policy: Mapping[str, Any], dimensions: Mapping[str, Any] | None,
+) -> tuple[str, ...]:
+    missing: list[str] = []
+    for code in policy.get("pricing_key_attribute_codes") or ():
+        fields = _PRICING_KEY_FIELDS.get(str(code), (str(code),))
+        if code == "width_thickness":
+            present = all(_present(specs.get(field)) for field in ("width_mm", "thickness_mm"))
+        elif code == "dimensions":
+            present = any(_present(specs.get(field)) for field in fields) or bool(dimensions)
+        else:
+            present = any(_present(specs.get(field)) for field in fields)
+        if not present:
+            missing.append(_PRICING_KEY_LABELS.get(str(code), _FIELD_LABELS.get(str(code), str(code).replace("_", " "))))
+    if not _format_is_complete(policy, dimensions):
+        missing.append("purchase format")
+    return tuple(missing)
+
+
+def material_identity_status(
+    item: Mapping[str, Any],
+    *,
+    pricing_policies: Mapping[str, Mapping[str, Any]] | None = None,
+    purchasable_dimensions: Mapping[str, Any] | None = None,
+) -> MaterialIdentityStatus:
     """Assess canonical-path depth without mutating source or catalog data."""
     specs = dict(item.get("specifications") or {})
     family = str(specs.get("material_family") or "").strip()
     if not family or family.casefold() in {"other", "unclassified", "unknown"}:
         return MaterialIdentityStatus("red", "Identity unresolved", (), ("material family",), "Material family is not established")
 
+    policy = (pricing_policies or {}).get(_family_code(item, specs))
     required = _REQUIRED_BY_FAMILY.get(family, ())
-    missing = tuple(_FIELD_LABELS[field] for field in required if not _present(specs.get(field)))
+    missing = (
+        _policy_missing(specs, policy, purchasable_dimensions)
+        if policy is not None
+        else tuple(_FIELD_LABELS[field] for field in required if not _present(specs.get(field)))
+    )
     path = [family]
     for field, label in (("brand", "brand"), ("product_system", "system"), *[(field, _FIELD_LABELS[field]) for field in required]):
         value = specs.get(field)

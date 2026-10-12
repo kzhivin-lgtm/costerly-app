@@ -25,7 +25,7 @@ from use_cases.material_pricing_identity_resolution import (
     PricingIdentityResolution,
     resolve_material_pricing_identity,
 )
-from use_cases.material_identity_status import material_identity_status
+from use_cases.material_identity_status import material_identity_status, pricing_policy_by_family_code
 
 
 EstimateMaterialStatus = Literal["resolved", "needs_review"]
@@ -88,12 +88,6 @@ def _company_candidates(
     for item in company_material_items:
         if str(item.get("status") or "private") == "archived":
             continue
-        # A company price is authoritative only after its identity has reached
-        # a green canonical endpoint. Yellow, blue and red rows remain source
-        # evidence and may later support a case-local assumption, but cannot
-        # silently win the normal deterministic price selection.
-        if material_identity_status(item).tone != "green":
-            continue
         item_specs = dict(item.get("specifications") or {})
         same_name = normalize_material_phrase(
             item.get("normalized_name") or item.get("canonical_name")
@@ -122,7 +116,9 @@ def _company_candidates(
 def _company_offer_candidates(
     *,
     company_material_id: str,
+    company_material: Mapping[str, Any],
     company_offers: Sequence[Mapping[str, Any]],
+    pricing_policies: Mapping[str, Mapping[str, Any]],
     requested_unit: str,
     currency: str,
     price_scope: str,
@@ -143,6 +139,16 @@ def _company_offer_candidates(
             continue
         price = _decimal(offer.get("normalized_price"))
         if price is None:
+            continue
+        # Blue and Green are both Estimate Ready.  The item status is evaluated
+        # against this concrete offer because purchase format belongs to the
+        # offer, rather than to the shared company material identity.
+        status = material_identity_status(
+            company_material,
+            pricing_policies=pricing_policies,
+            purchasable_dimensions=offer.get("purchasable_dimensions"),
+        )
+        if status.tone not in {"blue", "green"}:
             continue
         offer_id = str(offer.get("offer_id") or "").strip()
         if offer_id:
@@ -405,6 +411,8 @@ def resolve_estimate_material_requirement(
     reference_materials: Sequence[Mapping[str, Any]] = (),
     reference_aliases: Sequence[Mapping[str, Any]] = (),
     pricing_identity_members: Sequence[Mapping[str, Any]] = (),
+    material_pricing_policies: Sequence[Mapping[str, Any]] = (),
+    material_families: Sequence[Mapping[str, Any]] = (),
     material_identity_index: MaterialIdentityIndex | None = None,
     market_code: str = "IL",
     currency: str = "ILS",
@@ -421,6 +429,9 @@ def resolve_estimate_material_requirement(
     if len(resolved_currency) != 3:
         raise ValueError("currency must be a three-letter code")
     facts = dict(specifications or {})
+    pricing_policies = pricing_policy_by_family_code(
+        material_pricing_policies, families=material_families,
+    )
     company_candidates = _company_candidates(
         requirement_name=requirement_name,
         material_family=material_family,
@@ -432,7 +443,9 @@ def resolve_estimate_material_requirement(
         company_material_id = str(company_candidate.get("company_material_id") or "").strip()
         for price, offer_id in _company_offer_candidates(
             company_material_id=company_material_id,
+            company_material=company_candidate,
             company_offers=company_offers,
+            pricing_policies=pricing_policies,
             requested_unit=unit,
             currency=resolved_currency,
             price_scope=price_scope,
