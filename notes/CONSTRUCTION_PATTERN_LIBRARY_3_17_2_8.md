@@ -37,24 +37,20 @@ If an estimate nevertheless needs an assumption, it is case-local, marked
 
 ### `floor_cabinet_support`
 
-Activates for a cabinet or carcass identified as floor-standing, with no
-evidence of a continuous integral base.
+Activates for a cabinet or carcass identified as floor-standing.
 
 Emits `support_system`:
 
-- preferred compatible family: `hardware_leg_caster`, specifically an
-  adjustable cabinet leg where available;
-- alternative construction: integral base or continuous plinth-supported
-  construction, only when visually or textually evidenced;
-- quantity: derive from the module footprint and declared module count. Use
-  four supports for a simple single carcass only as a case-local fallback,
-  never as a universal cabinet rule;
-- trace: state whether legs were evidenced, inferred from floor-standing
-  construction, or assumed.
+- required functional component: adjustable cabinet leg;
+- retrieval family: `hardware_leg_caster`, narrowed by the component
+  requirement so a caster is never substituted for a cabinet leg;
+- quantity: `4 ×` each recognised floor-standing cabinet module;
+- trace: state that legs were derived from the floor-standing cabinet pattern.
 
-A decorative plinth does not by itself prove the absence of adjustable legs.
-It may conceal them. The object evidence must distinguish a plinth cover from
-an integral load-bearing base where possible.
+A plinth confirms this pattern. It is ordinarily a cover concealing the
+adjustable legs, not an alternative to them. The estimate includes the four
+legs even when the drawing only shows a plinth, because adjustment is required
+to level a countertop or run of cabinets.
 
 ### `wall_cabinet_suspension`
 
@@ -75,7 +71,7 @@ Emits `wall_suspension_system`:
 
 Activates for a tall cabinet or pantry unit that is evidenced as floor-standing.
 
-Emits `support_system` with the same compatible family alternatives as
+Emits `support_system` with the same adjustable-leg requirement as
 `floor_cabinet_support`, plus a separate `anti_tip_or_wall_fixing` requirement
 only when the drawing or object context evidences it.
 
