@@ -36,6 +36,7 @@ from agents.price_source_agent import (
     _merge_arithmetic_recheck,
 )
 from use_cases.price_sources import (
+    CONTENT_TYPES,
     discard_price_source_non_candidates,
     discard_price_source_consumables,
     discard_price_source_low_value_rows,
@@ -3005,6 +3006,26 @@ def test_price_source_uploader_accepts_multiple_files_before_backend_validation(
     assert "accept_multiple_files=True" in uploader_call
     assert 'type=["pdf", "xls", "xlsx", "csv"' in uploader_call
     assert 'label_visibility="collapsed"' in uploader_call
+
+
+def test_price_source_storage_allows_legacy_xls_and_keeps_its_real_mime_type():
+    from screens.company_profile import _price_source_file_format_label
+
+    root = Path(__file__).parents[1]
+    initial_bucket = (
+        root / "db/sql/2026_09_20_company_price_sources.sql"
+    ).read_text(encoding="utf-8")
+    production_update = (
+        root / "db/sql/2026_10_13_company_price_sources_legacy_xls.sql"
+    ).read_text(encoding="utf-8")
+
+    assert CONTENT_TYPES[".xls"] == "application/vnd.ms-excel"
+    assert "'application/vnd.ms-excel'" in initial_bucket
+    assert "where id = 'company-price-sources'" in production_update
+    assert "'application/vnd.ms-excel' = any(allowed_mime_types)" in production_update
+    assert _price_source_file_format_label(
+        {"mime_type": "application/vnd.ms-excel", "source_name": "catalog.xls"}
+    ) == "XLS"
 
 
 def test_price_source_dropzone_only_hides_native_prompt_while_empty():

@@ -2251,6 +2251,7 @@ def _price_source_file_format_label(source: dict) -> str:
         "image/tiff": "TIFF",
         "image/heic": "HEIC",
         "text/csv": "CSV",
+        "application/vnd.ms-excel": "XLS",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
         "text/html": "URL",
     }

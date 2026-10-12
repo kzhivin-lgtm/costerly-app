@@ -326,6 +326,13 @@ resolver-status checkpoint are recorded in
 Production acceptance still requires one XLS import and one Cancel during
 extraction.
 
+Production correction, 2026-10-13: the XLS parser and uploader were already
+released, but the existing private `company-price-sources` Storage bucket
+still allowed XLSX only. Apply
+`db/sql/2026_10_13_company_price_sources_legacy_xls.sql` before the legacy
+XLS acceptance run. It preserves every enabled MIME type and adds only
+`application/vnd.ms-excel`.
+
 DEFERRED, P1, USER REQUEST, 3.17.2.8 Construction Scenario Library and Staff
 Admin: define a controlled, versioned library of full estimating archetypes,
 starting with kitchen modules and furniture. A scenario describes the complete
