@@ -39,6 +39,24 @@ It excludes casters and wheels. The resulting link is green and eligible for
 normal selection. Drawer slides, lift systems, frames, table supports, stone,
 sheet materials and other variant-sensitive families remain strict.
 
+## Initial sheet-family canonicalisation policy
+
+This policy is shared by Source ingestion, Material Resolver and Estimation
+material resolution. It changes neither supplier evidence nor the number of
+Company Price Catalog offers.
+
+- `Plywood`: ordinary plywood, Twin, Combi and Okoume remain distinct Company
+  offers, but resolve to the same `raw plywood` Israel class at the same
+  thickness. An explicit perforation, veneer, HPL/Formica or other facing is
+  not downgraded to raw plywood.
+- `MDF`: raw MDF resolves only to raw MDF at the same thickness. White, decor,
+  melamine and ordinary laminated MDF resolve to the standard faced class at
+  the same thickness; decor or colour does not create another estimation class.
+  HPL/Formica and veneered MDF are separate price-bearing classes.
+- A class without an authoritative Israel Reference/Listing remains blue. The
+  policy never creates a green link by using a neighbouring thickness or a
+  different construction class.
+
 ## Current implementation boundary
 
 The first low-impact rule is code-registered and has resolver coverage. It

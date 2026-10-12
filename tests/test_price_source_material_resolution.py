@@ -551,7 +551,50 @@ def test_raw_plywood_variants_keep_private_identity_and_share_one_reference_link
 
         assert batch.resolved == 1
         assert tables["company_material_items"][0]["reference_material_id"] == "reference-plywood-raw-17"
-        assert tables["company_price_source_rows"][0]["identity_route"] == "canonical_sheet_class:plywood_raw"
+        assert tables["company_price_source_rows"][0]["identity_route"] == "canonical_sheet_class"
+
+
+def test_standard_faced_mdf_links_only_to_its_same_thickness_faced_reference():
+    tables = _tables(exact_alias=False)
+    tables["material_resolver_versions"][0]["resolver_version"] = "material_identity_v2"
+    tables["reference_materials"] = [{
+        "material_id": "reference-mdf-faced-17",
+        "department": "wood",
+        "category_code": "gcm_mdf",
+        "canonical_name": "MDF, plastic laminate faced, 17 mm",
+        "base_unit": "m2",
+        "specifications": {"catalog_version": "israel_global_catalog_v1"},
+        "active": True,
+    }]
+    tables["company_material_items"][0].update({
+        "category": "Wood Sheets",
+        "canonical_name": "White MDF 17 mm",
+        "specifications": {"material_family": "mdf", "thickness_mm": 17, "colour": "white"},
+    })
+    tables["company_price_source_rows"][0].update({
+        "normalized_name": "White MDF 17 mm",
+        "raw_description": "White MDF 17 mm",
+        "evidence": {
+            "material_type": "Wood Sheets",
+            "material_family": "mdf",
+            "identity_attributes": {"thickness_mm": 17, "colour": "white"},
+        },
+    })
+    tables["reference_market_material_legacy_mappings"] = [{
+        "legacy_material_id": "reference-mdf-faced-17",
+        "market_code": "IL",
+        "market_material_listing_id": "listing-mdf-faced-17",
+        "classification_status": "mapped",
+        "classification_basis": "deterministic_rule",
+    }]
+
+    batch = resolve_price_source_material_identities(
+        _Client(tables), company_id="company-1", source_id="source-1"
+    )
+
+    assert batch.resolved == 1
+    assert tables["company_material_items"][0]["reference_material_id"] == "reference-mdf-faced-17"
+    assert tables["company_price_source_rows"][0]["identity_route"] == "canonical_sheet_class"
 
 
 def test_identity_agent_auto_links_only_a_high_confidence_bounded_candidate():

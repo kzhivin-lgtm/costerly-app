@@ -16,6 +16,10 @@ from use_cases.material_identity_resolution import (
     resolve_material_identity,
 )
 from use_cases.material_family_resolution_policy import resolve_low_impact_compatibility
+from use_cases.sheet_material_family_policy import (
+    canonical_sheet_name_tokens,
+    sheet_estimation_specifications,
+)
 from use_cases.material_pricing_identity_resolution import (
     PricingIdentityResolution,
     build_material_pricing_identity_index,
@@ -272,18 +276,6 @@ def _pricing_specifications(
     ):
         result["construction"] = "raw"
     normalized_family = normalize_material_phrase(material_family)
-    if normalized_family == "plywood":
-        # Twin, Combi and Okoume are supplier-facing sheet variants. Keep them
-        # in company identity and source evidence, but do not make them a
-        # different canonical or price class. An explicit perforation remains
-        # a construction fact and is deliberately not downgraded here.
-        construction_tokens = set(
-            normalize_material_phrase(result.get("construction")).split()
-        )
-        if not construction_tokens or construction_tokens <= {"twin", "combi"}:
-            result["construction"] = "raw"
-        result.pop("species", None)
-        result.pop("plywood_variant", None)
     if normalized_family == "melamine":
         result["construction"] = "melamine_faced"
     if normalize_material_phrase(material_family) in {
@@ -293,10 +285,13 @@ def _pricing_specifications(
         "butcher block panel",
     }:
         result["construction"] = "laminated"
-    return result
+    return sheet_estimation_specifications(
+        material_family=material_family,
+        extracted_specifications=result,
+    )
 
 
-def _generic_raw_plywood_reference(
+def _canonical_sheet_reference(
     *,
     material_family: str,
     specifications: Mapping[str, Any],
@@ -304,28 +299,27 @@ def _generic_raw_plywood_reference(
     resolver_version: str,
     phrase: str,
 ) -> MaterialIdentityResolution | None:
-    """Link ordinary plywood variants to one canonical raw-sheet record.
+    """Link one approved sheet estimation class to its canonical reference.
 
     This intentionally operates after source identity has been preserved. It
-    applies only when the normalised estimation class is raw plywood and the
-    catalog contains exactly one generic raw record at the given thickness.
+    applies only when the catalog contains exactly one canonical record for the
+    policy-selected class and thickness. It never turns a missing Israel class
+    into a guessed green link.
     """
-    if normalize_material_phrase(material_family) != "plywood":
+    required_tokens = canonical_sheet_name_tokens(
+        material_family=material_family,
+        construction=str(specifications.get("construction") or ""),
+        thickness_mm=specifications.get("thickness_mm"),
+    )
+    if not required_tokens:
         return None
-    if normalize_material_phrase(specifications.get("construction")) != "raw":
-        return None
-    thickness = specifications.get("thickness_mm")
-    try:
-        thickness_text = str(int(float(thickness)))
-    except (TypeError, ValueError):
-        return None
-    permitted_tokens = {"plywood", "raw", "standard", thickness_text, "mm"}
+    permitted_tokens = required_tokens | {"standard"}
     matches = []
     for material in materials:
         if not material.get("active", True):
             continue
         name_tokens = set(normalize_material_phrase(material.get("canonical_name")).split())
-        if {"plywood", "raw", thickness_text, "mm"}.issubset(name_tokens) and name_tokens <= permitted_tokens:
+        if required_tokens.issubset(name_tokens) and name_tokens <= permitted_tokens:
             matches.append(material)
     if len(matches) != 1:
         return None
@@ -334,14 +328,14 @@ def _generic_raw_plywood_reference(
         return None
     return MaterialIdentityResolution(
         status="resolved",
-        route="canonical_sheet_class:plywood_raw",
+        route="canonical_sheet_class",
         normalized_phrase=normalize_material_phrase(phrase),
         selected_material_id=material_id,
         candidates=(
             MaterialIdentityCandidate(
                 material_id=material_id,
                 score=Decimal("95"),
-                route="canonical_sheet_class:plywood_raw",
+                route="canonical_sheet_class",
             ),
         ),
         resolver_version=resolver_version,
@@ -683,7 +677,7 @@ def resolve_price_source_material_identities(
                 material_identity_index=index["material_identity_index"],
             )
             if resolution.status != "resolved":
-                sheet_match = _generic_raw_plywood_reference(
+                sheet_match = _canonical_sheet_reference(
                     material_family=material_family,
                     specifications=canonical_specifications,
                     materials=index["materials"],
