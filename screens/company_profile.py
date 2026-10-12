@@ -2017,6 +2017,17 @@ def _price_source_supplier_markup(value: object) -> str:
     )
 
 
+def _price_source_review_supplier_markup(source: dict) -> str:
+    """Show supplier and invoice identity together for Review decisions."""
+    supplier = _price_source_supplier(source)
+    invoice = _price_source_invoice_label(source)
+    return (
+        _price_source_supplier_markup(supplier)
+        + f'<span class="price-review-source-invoice" title="{escape(invoice)}">'
+        f'{escape(_price_source_short_text(invoice, limit=26))}</span>'
+    )
+
+
 def _price_catalog_number(value: object) -> str:
     try:
         number = float(value or 0)
@@ -2540,13 +2551,47 @@ def _process_pending_price_source_purges() -> bool:
         st.session_state.pop("_price_source_purge_pending", None)
         if changed:
             # Optimistic filtering prevents jumps during a rapid delete run.
-            # Once its final worker settles, reload one authoritative snapshot
-            # so catalog and review cannot retain rows from deleted sources.
-            _clear_price_lists_snapshot()
+            # Catalog, Review, and Operations refresh after the final worker,
+            # while Source Library stays available for more deletes.
             st.session_state["_price_source_purge_reconcile_requested"] = True
     if not hidden:
         st.session_state.pop("_price_source_purging_ids", None)
     return changed
+
+
+def _start_price_source_purge_reconcile(access: CompanyAccess) -> bool:
+    """Refresh deleted-source projections without closing Source Library."""
+    if not st.session_state.get("_price_source_purge_reconcile_requested"):
+        return False
+    if _price_source_has_unsubmitted_selection():
+        return False
+    generations = _request_price_lists_projection_refresh(
+        access, {"catalog", "review", "material_jobs"}
+    )
+    st.session_state["_price_source_purge_refresh_pending"] = {
+        "generations": generations,
+        "completed": set(),
+    }
+    st.session_state.pop("_price_source_purge_reconcile_requested", None)
+    return True
+
+
+def _settle_price_source_purge_reconcile() -> None:
+    """Keep the central delete spinner until every affected view is fresh."""
+    pending = st.session_state.get("_price_source_purge_refresh_pending")
+    if not isinstance(pending, dict):
+        return
+    expected = pending.get("generations") or {}
+    completed = pending.setdefault("completed", set())
+    state = st.session_state.get("_price_lists_projection_state") or {}
+    refreshes = state.get("completed_refreshes") or {}
+    if not isinstance(refreshes, dict):
+        return
+    for name, generation in expected.items():
+        if int(refreshes.get(name) or 0) >= int(generation):
+            completed.add(name)
+    if set(expected).issubset(completed):
+        st.session_state.pop("_price_source_purge_refresh_pending", None)
 
 
 def _without_purging_price_source_records(
@@ -2747,11 +2792,14 @@ def _settle_price_source_row_save_reconciliations(*, trace=None) -> None:
     completed = dict(completed_raw) if isinstance(completed_raw, dict) else {}
     if not completed:
         return
-    state["completed_refreshes"] = {}
+    reconcile = st.session_state.get("_price_source_row_save_reconcile_pending") or {}
+    if not reconcile:
+        return
     catalog_generation = completed.get("catalog")
     if catalog_generation is None:
         return
-    reconcile = st.session_state.get("_price_source_row_save_reconcile_pending") or {}
+    completed.pop("catalog", None)
+    state["completed_refreshes"] = completed
     settled = {
         target: details
         for target, details in reconcile.items()
@@ -3305,7 +3353,7 @@ def _render_price_source_review_queue(
                     unsafe_allow_html=True,
                 )
                 supplier_col.markdown(
-                    _price_source_supplier_markup(_price_source_supplier(source)),
+                    _price_source_review_supplier_markup(source),
                     unsafe_allow_html=True,
                 )
                 net_price, gross_price = _price_source_amounts(
@@ -3939,14 +3987,9 @@ def _render_price_source_processing_status(access: CompanyAccess, *, trace=None)
     """Refresh only the terminal state while the worker runs in background."""
     purge_finished = _process_pending_price_source_purges()
     save_finished = _process_pending_price_source_row_saves(access, trace=trace)
-    # A completed purge has already updated the live snapshot in place. A full
-    # app rerun would collapse Source Library and restart every projection.
-    if (
-        st.session_state.get("_price_source_purge_reconcile_requested")
-        and not _price_source_has_unsubmitted_selection()
-    ):
-        st.session_state.pop("_price_source_purge_reconcile_requested", None)
+    if _start_price_source_purge_reconcile(access):
         st.rerun(scope="app")
+        return
     if purge_finished:
         if not _price_source_has_unsubmitted_selection():
             st.rerun(scope="app")
@@ -4074,6 +4117,7 @@ def _render_price_lists_projections(access: CompanyAccess, *, trace=None) -> Non
     """Render the ordered projections as soon as each background read completes."""
     results, errors, _futures = _poll_price_lists_projections(access)
     _settle_price_source_row_save_reconciliations(trace=trace)
+    _settle_price_source_purge_reconcile()
     hidden_source_ids = _price_source_hidden_ids()
 
     def projection(name: str) -> list[dict] | None:
@@ -4100,21 +4144,24 @@ def _render_price_lists_projections(access: CompanyAccess, *, trace=None) -> Non
 
     with st.container(key="price_catalog_shell"):
         with st.container(key="price_catalog_section"):
-            _render_price_source_save_progress()
-            if errors.get("catalog"):
-                st.info(errors["catalog"])
-            elif catalog:
-                _render_price_catalog(access, catalog, sources or [])
-
-            if errors.get("material_jobs"):
-                st.info(errors["material_jobs"])
-            elif material_jobs:
-                _render_material_jobs(access, material_jobs)
-
-            if errors.get("review"):
-                st.info(errors["review"])
+            if st.session_state.get("_price_source_purge_refresh_pending"):
+                _render_price_lists_loading()
             else:
-                _render_price_source_review_queue(access, review_rows)
+                _render_price_source_save_progress()
+                if errors.get("catalog"):
+                    st.info(errors["catalog"])
+                elif catalog:
+                    _render_price_catalog(access, catalog, sources or [])
+
+                if errors.get("material_jobs"):
+                    st.info(errors["material_jobs"])
+                elif material_jobs:
+                    _render_material_jobs(access, material_jobs)
+
+                if errors.get("review"):
+                    st.info(errors["review"])
+                else:
+                    _render_price_source_review_queue(access, review_rows)
 
         with st.container(key="price_source_library_section"):
             st.markdown(

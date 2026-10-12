@@ -1752,8 +1752,9 @@ def test_empty_catalog_and_material_jobs_do_not_render_sections():
 
     assert 'if not catalog:\n        return' in screen_source
     assert 'if not jobs:\n        return' in screen_source
-    assert 'elif catalog:\n                _render_price_catalog' in screen_source
-    assert 'elif material_jobs:\n                _render_material_jobs' in screen_source
+    assert "elif catalog:\n                    _render_price_catalog" in screen_source
+    assert "elif material_jobs:\n                    _render_material_jobs" in screen_source
+    assert 'if st.session_state.get("_price_source_purge_refresh_pending")' in screen_source
 
 
 def test_supplier_operations_uses_shared_single_price_column():

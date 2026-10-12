@@ -2998,7 +2998,7 @@ def test_source_removal_hides_immediately_and_finishes_in_background(monkeypatch
     assert state["_price_source_deleted_ids"] == {"source-1"}
     assert "_price_source_action_notice" not in state
     assert state["_price_source_library_open_once"] is True
-    assert "_price_lists_projection_state" not in state
+    assert "_price_lists_projection_state" in state
     assert state["_price_source_purge_reconcile_requested"] is True
 
 
@@ -3025,8 +3025,55 @@ def test_multiple_source_purges_reconcile_only_after_last_worker(monkeypatch):
 
     last.set_result({"deleted_rows": 1, "storage_deleted": True})
     assert company_profile._process_pending_price_source_purges() is True
-    assert "_price_lists_projection_state" not in state
+    assert "_price_lists_projection_state" in state
     assert state["_price_source_purge_reconcile_requested"] is True
+
+
+def test_source_purge_refreshes_catalog_without_closing_source_library(monkeypatch):
+    from screens import company_profile
+
+    state = {
+        "_price_source_purge_reconcile_requested": True,
+        "_price_lists_projection_state": {
+            "completed_refreshes": {},
+        },
+    }
+    requested = []
+    monkeypatch.setattr(company_profile.st, "session_state", state)
+    monkeypatch.setattr(company_profile, "_price_source_has_unsubmitted_selection", lambda: False)
+    monkeypatch.setattr(
+        company_profile,
+        "_request_price_lists_projection_refresh",
+        lambda access, names: requested.append((access, names)) or {
+            "catalog": 4,
+            "review": 5,
+            "material_jobs": 6,
+        },
+    )
+
+    assert company_profile._start_price_source_purge_reconcile(SimpleNamespace()) is True
+    assert requested[0][1] == {"catalog", "review", "material_jobs"}
+    assert state["_price_source_purge_refresh_pending"]["generations"] == {
+        "catalog": 4,
+        "review": 5,
+        "material_jobs": 6,
+    }
+    assert "_price_source_purge_reconcile_requested" not in state
+
+
+def test_review_supplier_label_includes_source_invoice_number():
+    from screens import company_profile
+
+    markup = company_profile._price_source_review_supplier_markup(
+        {
+            "company_suppliers": {"supplier_name": "Supplier Ltd"},
+            "processing_summary": {"document_number": "DT 19.240"},
+        }
+    )
+
+    assert "Supplier Ltd" in markup
+    assert "DT 19.240" in markup
+    assert "price-review-source-invoice" in markup
 
 
 def test_completed_source_purge_hides_late_projection_results(monkeypatch):

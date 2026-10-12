@@ -1430,6 +1430,17 @@ def apply_company_profile_css() -> None:
             white-space: nowrap;
         }
 
+        .price-review-source-invoice {
+            display: block;
+            overflow: hidden;
+            margin-top: 4px;
+            color: var(--color-text-muted);
+            font-size: 12px;
+            font-weight: 500;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         .price-source-detail-heading {
             display: flex;
             flex-direction: column;
