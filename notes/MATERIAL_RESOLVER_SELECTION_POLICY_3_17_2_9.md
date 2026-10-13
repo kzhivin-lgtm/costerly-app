@@ -93,8 +93,10 @@ format was explicit or derived by this policy.
 
 ## Current implementation boundary
 
-The registry migration is applied to production. The Price Source runtime still
-uses its prior local endpoint table and still blocks Blue candidates. The next
-implementation stage replaces that duplicate completion logic, adds
-offer-level supply format and makes the derived Blue/Green Estimate Ready rule
-effective in the runtime and UI.
+The registry migration and offer-level supply-format read path are applied to
+production. Price Source now derives the indicator from the shared Pricing Key
+policy, and both Blue and Green offers are eligible Resolver candidates.
+Yellow and Red remain excluded from ordinary selection. The next boundary is
+Material Engine purchase planning: it compares complete Company purchase
+baskets at estimate scope, then uses Israel Reference only when no compatible
+Company basket can supply the requirement.

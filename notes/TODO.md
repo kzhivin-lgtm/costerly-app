@@ -292,6 +292,18 @@ are recorded in
 compare it to the older 43-offer snapshot, which included six pre-existing
 catalog offers.
 
+ACTIVE, P0, USER REQUEST, 3.17.3.1 Material Engine deterministic core:
+introduce the calculation-local Material Demand and Material Supply Candidate
+contracts, then build and test estimate-wide purchase planning. The Engine must
+consolidate only Resolver-compatible demands and select the least-cost complete
+basket, not a per-unit-price winner. Scope covers rectangular sheet nesting
+with explicit kerf, linear-stock packing, piece-package rounding, direct-unit
+purchase and demand-to-purchase traceability. It must not alter the Estimation
+Agent, live Estimate publisher, Labor Resolver or catalog data in this task.
+The subsequent integration task must first extend the agent contract with
+calculation-local part geometry, run a read-only shadow comparison, and only
+then replace legacy per-line selection.
+
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
 name solely as `Entity -> one or two proven key attributes -> confirmed brand
