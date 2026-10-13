@@ -35,6 +35,47 @@ def test_nan_values_do_not_crash_object_detail_number_rendering():
     assert _group_summary_value("Cost", [{"cost": float("nan")}, {"cost": 25}]) == "₪25"
 
 
+def test_v3_object_detail_loads_with_a_planned_material_plan(monkeypatch):
+    monkeypatch.setattr(estimation, "company_auth_enabled", lambda: False)
+    monkeypatch.setattr(estimation, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(
+        estimation,
+        "fetch_rfq_object_estimates",
+        lambda *_args, **_kwargs: pd.DataFrame([{
+            "object_id": "object-1", "run_id": "run-1", "company_id": "company-1",
+            "object_name": "Cabinet", "quantity": 1, "approved": False,
+        }]),
+    )
+    monkeypatch.setattr(
+        estimation,
+        "fetch_rfq_estimate_lines_for_object",
+        lambda *_args, **_kwargs: pd.DataFrame([{
+            "section": "material", "group_name": "Materials", "line_id": "line-1",
+            "item_name": "MDF", "unit": "m²", "unit_cost": None, "quantity": 2,
+            "cost": None, "source": "estimation_v3_material_facts", "raw_agent_json": {},
+        }]),
+    )
+    monkeypatch.setattr(
+        estimation,
+        "fetch_rfq_estimate_material_plan",
+        lambda *_args, **_kwargs: pd.DataFrame([{
+            "plan_status": "planned", "plan_payload": {"status": "planned"},
+        }]),
+    )
+    monkeypatch.setattr(estimation, "fetch_latest_estimation_facts_by_object", lambda *_args, **_kwargs: {})
+    monkeypatch.setattr(
+        estimation,
+        "fetch_company_overhead_settings",
+        lambda *_args, **_kwargs: pd.DataFrame([{"vat_percent": 18, "employer_load_percent": 25}]),
+    )
+
+    detail = estimation.load_object_detail_data(estimate_id="estimate-1", object_id="object-1")
+
+    assert detail["material_plan_ready"] is True
+    assert detail["material_plan_status"] == "planned"
+    assert detail["material_plan_blocking_label"] == "MATERIALS FINALIZING"
+
+
 def test_server_material_edit_recalculates_line_and_object_totals(monkeypatch):
     lines = [
         {

@@ -380,6 +380,10 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         else None
     )
     material_plan = dict((material_plan_row or {}).get("plan_payload") or {})
+    plan_status = _material_plan_status(material_plan_row)
+    plan_blocking_label, plan_blocking_message = _material_plan_blocking_state(
+        material_plan_row
+    )
 
     matching = objects_df[objects_df["object_id"] == object_id]
     if matching.empty:
