@@ -366,6 +366,18 @@ The next Material Engine task is read-only Purchase Plan presentation,
 including stock format, purchased quantity, remaining material and allocation
 trace. Assumption Fallback remains a separate orchestration task.
 
+Resolver correction, 2026-10-13: the first live multi-object Material Plan
+proved that Object Facts had been given legacy Israel price classes rather
+than the Resolver's purchasable-family vocabulary. That allowed an unsupported
+fact such as `stainless_steel` to replace the proven form `metal tube`, so no
+Pricing Key was built and neither Company nor Israel candidates were queried.
+Facts now receive only active Family Pricing Policy vocabulary, accept
+`metal_type` only as an explicit specification, and forbid invented alloy,
+wall or grade facts. Global family codes without a source alias are valid
+Resolver families. A 20 mm MDF requirement correctly remains a Catalog Gap
+until an authoritative Company or Israel offer is added: current Company data
+contains 18/19 mm only and current Israel Reference has no 20 mm MDF price.
+
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
 name solely as `Entity -> one or two proven key attributes -> confirmed brand
