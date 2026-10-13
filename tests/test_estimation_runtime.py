@@ -118,6 +118,7 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
     monkeypatch.setattr(runtime, "build_estimation_v2_context", lambda *_args: {"catalogs": {}})
     monkeypatch.setattr(runtime, "run_estimation_v2_facts_batch", lambda **_kwargs: events.append("facts") or {"failed": {}})
     monkeypatch.setattr(runtime, "fetch_latest_estimation_v2_facts_by_object", lambda _client, **_kwargs: facts)
+    monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_norm_overrides", lambda *_args, **_kwargs: SimpleNamespace(empty=True))
     monkeypatch.setattr(
         runtime,
         "shadow_material_plan",
@@ -125,6 +126,15 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
             plan=SimpleNamespace(status="planned", lines=[SimpleNamespace(total_cost=Decimal("42"))]),
             demand_count=1, candidate_count=1, unresolved_requirement_ids=(), reason_codes=(),
         ),
+    )
+    monkeypatch.setattr(runtime, "material_plan_snapshot", lambda _shadow, **_kwargs: {
+        "status": "planned", "demand_count": 1, "candidate_count": 1,
+        "lines": [{"total_cost": 42.0}], "unresolved_requirement_ids": [], "reason_codes": [],
+    })
+    monkeypatch.setattr(
+        runtime,
+        "upsert_rfq_estimate_material_plan",
+        lambda *_args, **_kwargs: events.append("material_plan_persisted"),
     )
     monkeypatch.setattr(runtime, "publish_estimation_v2_object", lambda **_kwargs: events.append("publish") or {"status": "complete"})
     monkeypatch.setattr(runtime, "_set_object_progress", lambda _client, **_kwargs: None)
@@ -138,7 +148,7 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
         }],
     )
 
-    assert events == ["facts", "shadow", "publish"]
+    assert events == ["facts", "shadow", "material_plan_persisted", "publish"]
     assert result["processed_input_ids"] == ["input-1"]
     assert result["material_engine_shadow"] == {
         "status": "planned", "demand_count": 1, "candidate_count": 1,

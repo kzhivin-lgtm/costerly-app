@@ -401,6 +401,21 @@ def test_object_detail_uses_v2_materials_without_inventing_costs():
     }]
 
 
+def test_object_detail_shows_material_norm_per_finished_item():
+    rows = _material_rows_from_v2_facts({
+        "quantity": 2,
+        "materials": [{
+            "requirement_id": "mat-1",
+            "source_name": "MDF panel 20 mm",
+            "family": "mdf",
+            "unit": "m2",
+            "quantity": 6,
+        }],
+    })
+
+    assert rows[0]["qty"] == 3
+
+
 class _Bucket:
     def create_signed_url(self, path, expires_in):
         assert path == "company-1/run-1/object-1/preview.webp"

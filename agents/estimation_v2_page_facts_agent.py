@@ -26,7 +26,7 @@ from use_cases.estimation_v2_composition import (
 from use_cases.labor_engine import BASELINES, MACHINE_REQUIREMENTS
 
 
-ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_page_facts_agent_v16_material_parts"
+ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_page_facts_agent_v17_target_material_totals"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_page_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 12000
 TIMEOUT_SECONDS = 180.0

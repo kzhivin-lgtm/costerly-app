@@ -345,6 +345,27 @@ returns `assumption_required`. This stage does not compare against, or depend
 on, any former estimator. Project-level plan persistence, rendering and the
 separate Assumption Fallback service remain the next work.
 
+Implementation stage, 2026-10-13, 3.17.3.5: an estimate now persists one
+derived, estimate-wide Material Plan and a user may override only the net
+material norm for one finished item. The Engine recomputes Company-first and
+then Israel-Reference purchase candidates after every norm or object-quantity
+change. It performs sheet nesting, stock and package rounding at estimate
+scope, persists the complete purchase trace, and allocates the resulting
+purchase cost back to Object Detail material rows by physical demand. The
+allocated Object Detail material costs sum exactly to the rounded plan cost.
+Manual area norms never claim fragmented offcuts as usable geometry. Any
+material-input change marks the plan stale, clears all object approvals and
+coalesces a full recalculation, including a guaranteed follow-up run when an
+edit lands during an active rebuild. Final Approval remains blocked until the
+plan is `planned`. Schema was applied through
+`2026_10_13_estimate_material_plan_v1.sql`; automated verification covers
+sheet, stock, package, manual-norm, allocation and approval-gate paths.
+Production acceptance still requires a multi-object estimate to verify that
+the visible object costs sum to the read-only estimate-wide purchase plan.
+The next Material Engine task is read-only Purchase Plan presentation,
+including stock format, purchased quantity, remaining material and allocation
+trace. Assumption Fallback remains a separate orchestration task.
+
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
 name solely as `Entity -> one or two proven key attributes -> confirmed brand

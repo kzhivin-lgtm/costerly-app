@@ -16,6 +16,7 @@ from ui.js_guards import (
     install_workflow_header_alignment_guard,
 )
 from use_cases.estimation import (
+    _require_final_material_plan,
     apply_object_detail_line_edit,
     apply_object_detail_snapshot,
     approve_object_estimate,
@@ -120,6 +121,7 @@ def _render_object_detail(
     *,
     render_header_controls: Callable[[], None] | None = None,
 ) -> None:
+    approval_ready = bool(data.get("material_plan_ready"))
     if render_header_controls is None:
         st.markdown(object_detail_view.hero_html(data), unsafe_allow_html=True)
     else:
@@ -146,6 +148,10 @@ def _render_object_detail(
         ),
         unsafe_allow_html=True,
     )
+    if not approval_ready:
+        st.info("Approval becomes available after materials for every object are finalized.")
+    if st.session_state.get("object_detail_approval_error"):
+        st.error(st.session_state.pop("object_detail_approval_error"))
     with st.container(key="object_detail_navigation_bridges"):
         st.button(
             "Back to Objects",
@@ -161,6 +167,7 @@ def _render_object_detail(
                 "object_id": context.object_id,
                 "run_id": context.run_id,
             },
+            disabled=not approval_ready,
         )
 
 
@@ -230,6 +237,13 @@ def _approve_current_object_and_return(
     user_id = str(st.session_state.get("auth_user_id") or "")
     if user_id:
         client = get_supabase_client()
+        try:
+            _require_final_material_plan(client, estimate_id)
+        except ValueError:
+            st.session_state.object_detail_approval_error = (
+                "Materials are still being finalized for this estimate."
+            )
+            return
         edits = fetch_rfq_object_detail_draft(
             client,
             user_id=user_id,
@@ -237,7 +251,7 @@ def _approve_current_object_and_return(
             object_id=object_id,
         )
         if edits:
-            apply_object_detail_snapshot(
+            approved = apply_object_detail_snapshot(
                 estimate_id=estimate_id,
                 object_id=object_id,
                 run_id=str(run_id or st.session_state.get("current_run_id") or ""),
@@ -250,6 +264,12 @@ def _approve_current_object_and_return(
                 estimate_id=estimate_id,
                 object_id=object_id,
             )
+            if not approved:
+                st.session_state.object_detail_approval_error = (
+                    "Material norms changed. Materials are being recalculated for every object."
+                )
+                _mark_objects_estimation_dirty(estimate_id)
+                return
             recalculate = False
             _mark_objects_estimation_dirty(estimate_id)
             approved_object_keys = st.session_state.setdefault("approved_object_keys", set())

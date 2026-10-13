@@ -7,7 +7,9 @@ from db.repositories import (
     fetch_company_overhead_settings,
     fetch_latest_estimation_v2_facts_by_object,
     fetch_rfq_estimate_pricing_overrides,
+    fetch_rfq_estimate_lines,
     fetch_rfq_estimate_lines_for_object,
+    fetch_rfq_estimate_material_plan,
     fetch_rfq_object_estimates,
     fetch_rfq_detected_objects,
     fetch_rfq_run,
@@ -17,6 +19,9 @@ from db.repositories import (
     update_rfq_object_estimate_quantity,
     update_rfq_object_estimate_progress,
     update_rfq_object_estimate_totals,
+    upsert_rfq_estimate_material_norm_override,
+    mark_rfq_estimate_material_plan_stale,
+    reset_rfq_object_estimate_approvals,
     upsert_rfq_estimate_shell,
 )
 from db.supabase_client import get_supabase_client
@@ -30,6 +35,38 @@ from use_cases.retry import read_with_retry
 def _assert_screen_estimate_access(client: Any, estimate_id: str) -> None:
     if company_auth_enabled():
         assert_estimate_owned(client, estimate_id, get_company_id())
+
+
+def _material_plan_status(row: Any) -> str:
+    if not isinstance(row, dict):
+        return "pending"
+    return str(row.get("plan_status") or (row.get("plan_payload") or {}).get("status") or "pending")
+
+
+def _invalidate_and_queue_material_plan(
+    client: Any,
+    *,
+    estimate_id: str,
+    company_id: str,
+    run_id: str,
+    reason_code: str,
+) -> None:
+    """Invalidate every object approval, then queue one estimate-wide rebuild."""
+    mark_rfq_estimate_material_plan_stale(
+        client,
+        estimate_id=estimate_id,
+        company_id=company_id,
+        reason_code=reason_code,
+    )
+    reset_rfq_object_estimate_approvals(client, estimate_id=estimate_id)
+    # Local import avoids the existing runtime -> estimation dependency cycle.
+    from use_cases.estimation_runtime import queue_material_plan_recalculation
+
+    queue_material_plan_recalculation(
+        estimate_id=estimate_id,
+        run_id=run_id,
+        company_id=company_id,
+    )
 
 
 def start_estimation_for_run(
@@ -111,6 +148,16 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         overrides_df = read_with_retry(lambda: fetch_rfq_estimate_pricing_overrides(client, estimate_id))
     except Exception:
         overrides_df = None
+    try:
+        material_plan_df = read_with_retry(lambda: fetch_rfq_estimate_material_plan(client, estimate_id))
+    except Exception:
+        material_plan_df = None
+    material_plan_row = (
+        material_plan_df.iloc[0].to_dict()
+        if material_plan_df is not None and not material_plan_df.empty
+        else None
+    )
+    material_plan = dict((material_plan_row or {}).get("plan_payload") or {})
     sale_price_overrides = _pricing_overrides_by_object(overrides_df)
     settings: dict[str, Any] = {}
     if not objects_df.empty:
@@ -185,6 +232,8 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         "rows": rows,
         "project_costs": project_costs,
         "summary": summary,
+        "material_plan": material_plan,
+        "material_plan_ready": _material_plan_status(material_plan_row) == "planned",
     }
 
 
@@ -295,6 +344,16 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         estimate_id=estimate_id,
         object_id=object_id,
     )
+    try:
+        material_plan_df = fetch_rfq_estimate_material_plan(client, estimate_id)
+    except Exception:
+        material_plan_df = None
+    material_plan_row = (
+        material_plan_df.iloc[0].to_dict()
+        if material_plan_df is not None and not material_plan_df.empty
+        else None
+    )
+    material_plan = dict((material_plan_row or {}).get("plan_payload") or {})
 
     matching = objects_df[objects_df["object_id"] == object_id]
     if matching.empty:
@@ -409,6 +468,8 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         "name": object_row.get("object_name"),
         "quantity": canonical_quantity,
         "approved": bool(object_row.get("approved")),
+        "material_plan_ready": _material_plan_status(material_plan_row) == "planned",
+        "material_plan_status": _material_plan_status(material_plan_row),
         "confidence": round(sum(operation_confidences) / len(operation_confidences))
         if operation_confidences else "—",
         "preview_label": "Object preview",
@@ -427,7 +488,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                     (f"VAT {_format_number(vat_percent)}%", round(material_total * vat_percent / 100, 2)),
                     ("Total", round(material_total * (1 + vat_percent / 100), 2)),
                 ],
-                "columns": ["Item", "Unit", "Unit cost", "Qty", "Cost"],
+                "columns": ["Item", "Unit", "Unit cost", "Per item", "Cost"],
                 "rows": material_rows,
             },
             {
@@ -465,16 +526,22 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
 
 def _material_rows_from_v2_facts(facts_payload: dict[str, Any]) -> list[dict[str, Any]]:
     rows = []
+    target_quantity = max(_number(facts_payload.get("quantity"), 1), 1)
     for material in facts_payload.get("materials") or []:
         if not isinstance(material, dict):
             continue
+        raw_quantity = material.get("quantity")
+        quantity_per_item = (
+            None if raw_quantity is None
+            else round(_number(raw_quantity, 0) / target_quantity, 6)
+        )
         rows.append({
             "group": "Detected materials",
             "line_id": material.get("requirement_id"),
             "item": material.get("source_name") or material.get("family"),
             "unit": material.get("unit"),
             "unit_cost": None,
-            "qty": material.get("quantity"),
+            "qty": quantity_per_item,
             "cost": None,
         })
     return rows
@@ -513,6 +580,7 @@ def approve_object_estimate(
     """Mark one object estimate approved in Supabase."""
     client = get_supabase_client()
     _assert_screen_estimate_access(client, estimate_id)
+    _require_final_material_plan(client, estimate_id)
     if recalculate:
         _recalculate_object_estimate_totals(
             client,
@@ -525,6 +593,98 @@ def approve_object_estimate(
         object_id=object_id,
         approved=True,
     )
+
+
+def _require_final_material_plan(client: Any, estimate_id: str) -> None:
+    """Prevent object approval before estimate-wide stock rounding is complete."""
+    try:
+        plan_df = fetch_rfq_estimate_material_plan(client, estimate_id)
+    except Exception as exc:
+        raise ValueError("Materials are still being finalized for this estimate") from exc
+    if plan_df.empty:
+        raise ValueError("Materials are still being finalized for this estimate")
+    row = plan_df.iloc[0].to_dict()
+    if _material_plan_status(row) != "planned":
+        raise ValueError("Materials are still being finalized for this estimate")
+
+
+def _object_material_context(client: Any, *, estimate_id: str, object_id: str) -> dict[str, Any]:
+    objects_df = fetch_rfq_object_estimates(client, estimate_id)
+    matching = objects_df[objects_df["object_id"] == object_id]
+    if matching.empty:
+        raise PermissionError("Object is not part of this estimate.")
+    return matching.iloc[0].to_dict()
+
+
+def _material_requirement_id(line: dict[str, Any]) -> str:
+    raw = line.get("raw_agent_json") or {}
+    if not isinstance(raw, dict):
+        return ""
+    facts = raw.get("facts") or {}
+    return str(facts.get("requirement_id") or "") if isinstance(facts, dict) else ""
+
+
+def _material_total_cost(*, unit_cost: float, quantity_per_item: float, object_quantity: float) -> float:
+    return round(unit_cost * quantity_per_item * max(object_quantity, 1), 2)
+
+
+def apply_material_plan_allocations(
+    client: Any,
+    *,
+    estimate_id: str,
+    plan_snapshot: dict[str, Any],
+) -> None:
+    """Project rounded purchase costs back into the owning Object Detail rows."""
+    if str(plan_snapshot.get("status") or "") != "planned":
+        return
+    allocation_costs = {
+        (str(row.get("object_id") or ""), str(row.get("material_requirement_id") or "")): _number(
+            row.get("cost_ex_vat"), 0
+        )
+        for row in plan_snapshot.get("object_material_costs") or []
+        if isinstance(row, dict)
+    }
+    if not allocation_costs:
+        return
+    lines_df = fetch_rfq_estimate_lines(client, estimate_id)
+    objects_df = fetch_rfq_object_estimates(client, estimate_id)
+    object_quantities = {
+        str(row.get("object_id") or ""): _number(row.get("quantity"), 1)
+        for _, row in objects_df.iterrows()
+    }
+    affected_object_ids: set[str] = set()
+    for _, item in lines_df.iterrows():
+        line = item.to_dict()
+        if str(line.get("section") or "") != "material":
+            continue
+        object_id = str(line.get("object_id") or "")
+        requirement_id = _material_requirement_id(line)
+        allocated_cost = allocation_costs.get((object_id, requirement_id))
+        if allocated_cost is None:
+            continue
+        quantity_per_item = _number(line.get("quantity"), 0)
+        total_required_quantity = quantity_per_item * max(object_quantities.get(object_id, 1), 1)
+        if total_required_quantity <= 0:
+            continue
+        effective_unit_cost = round(allocated_cost / total_required_quantity, 4)
+        update_rfq_estimate_line(
+            client,
+            estimate_id=estimate_id,
+            line_id=str(line.get("line_id") or ""),
+            values={
+                "unit_cost": effective_unit_cost,
+                "cost": round(allocated_cost, 2),
+                "notes": "Allocated from the estimate-wide Material Plan",
+                "updated_at": datetime.now(UTC).isoformat(),
+            },
+        )
+        affected_object_ids.add(object_id)
+    for object_id in affected_object_ids:
+        _recalculate_object_estimate_totals(
+            client,
+            estimate_id=estimate_id,
+            object_id=object_id,
+        )
 
 
 def update_object_quantity(
@@ -565,6 +725,15 @@ def update_object_quantity(
         object_id=object_id,
         values={"quantity": normalized},
     )
+    company_id = str(matching.iloc[0].get("company_id") or "")
+    if company_id:
+        _invalidate_and_queue_material_plan(
+            client,
+            estimate_id=estimate_id,
+            company_id=company_id,
+            run_id=run_id,
+            reason_code="object_quantity_changed",
+        )
     return normalized
 
 
@@ -603,7 +772,13 @@ def apply_object_detail_line_edit(
     section = str(line.get("section") or "")
     if str(line.get("source") or "") == "pricing_policy":
         return
+    requirement_id = _material_requirement_id(line) if section == "material" and field == "quantity" else ""
+    if section == "material" and field == "quantity" and not requirement_id:
+        raise ValueError("Material requirement cannot be edited without a stable requirement id.")
+    object_row = _object_material_context(client, estimate_id=estimate_id, object_id=object_id)
+    object_quantity = _number(object_row.get("quantity"), 1)
     updates: dict[str, Any] = {"updated_at": datetime.now(UTC).isoformat()}
+    material_norm_changed = False
 
     if field == "allocation_basis":
         if section != "overhead":
@@ -614,9 +789,16 @@ def apply_object_detail_line_edit(
         updates[field] = numeric_value
 
         if section == "material" and field in {"unit_cost", "quantity"}:
+            if field == "quantity" and numeric_value <= 0:
+                raise ValueError("Material norm per item must be greater than zero.")
             unit_cost = numeric_value if field == "unit_cost" else _number(line.get("unit_cost"), 0)
             quantity = numeric_value if field == "quantity" else _number(line.get("quantity"), 0)
-            updates["cost"] = round(unit_cost * quantity, 2)
+            updates["cost"] = _material_total_cost(
+                unit_cost=unit_cost,
+                quantity_per_item=quantity,
+                object_quantity=object_quantity,
+            )
+            material_norm_changed = field == "quantity"
         elif section == "labor" and field in {"hours", "rate"}:
             hours = numeric_value if field == "hours" else _number(line.get("hours"), 0)
             rate = numeric_value if field == "rate" else _number(line.get("rate"), 0)
@@ -635,6 +817,24 @@ def apply_object_detail_line_edit(
         line_id=line_id,
         values=updates,
     )
+    if material_norm_changed:
+        upsert_rfq_estimate_material_norm_override(
+            client,
+            estimate_id=estimate_id,
+            object_id=object_id,
+            material_requirement_id=requirement_id,
+            company_id=str(object_row.get("company_id") or ""),
+            quantity_per_item=numeric_value,
+            unit=str(line.get("unit") or ""),
+            source_line_id=line_id,
+        )
+        _invalidate_and_queue_material_plan(
+            client,
+            estimate_id=estimate_id,
+            company_id=str(object_row.get("company_id") or ""),
+            run_id=str(object_row.get("run_id") or ""),
+            reason_code="material_norm_changed",
+        )
     _recalculate_object_estimate_totals(
         client,
         estimate_id=estimate_id,
@@ -649,7 +849,7 @@ def apply_object_detail_snapshot(
     run_id: str | None = None,
     edits: list[Any],
     approve: bool = False,
-) -> None:
+) -> bool:
     """Persist the current Object Detail table snapshot and recalculate once."""
     allowed_fields = {
         "unit_cost",
@@ -674,7 +874,7 @@ def apply_object_detail_snapshot(
         edits_by_line.setdefault(line_id, {})[field] = edit.get("value")
 
     if not edits_by_line and object_quantity is None:
-        return
+        return True
 
     if object_quantity is not None:
         update_object_quantity(
@@ -684,7 +884,7 @@ def apply_object_detail_snapshot(
             quantity=_number_from_edit(object_quantity),
         )
     if not edits_by_line:
-        return
+        return False if object_quantity is not None else True
 
     client = get_supabase_client()
     _assert_screen_estimate_access(client, estimate_id)
@@ -694,7 +894,11 @@ def apply_object_detail_snapshot(
         object_id=object_id,
     )
     if lines_df.empty:
-        return
+        return False
+
+    object_row = _object_material_context(client, estimate_id=estimate_id, object_id=object_id)
+    current_object_quantity = _number(object_row.get("quantity"), 1)
+    material_norm_overrides: list[tuple[str, float, str, str]] = []
 
     for _, item in lines_df.iterrows():
         line = item.to_dict()
@@ -724,10 +928,23 @@ def apply_object_detail_snapshot(
             next_values[field] = numeric_value
 
         if section == "material" and {"unit_cost", "quantity"} & updates.keys():
-            updates["cost"] = round(
-                _number(next_values.get("unit_cost"), 0)
-                * _number(next_values.get("quantity"), 0),
-                2,
+            quantity_per_item = _number(next_values.get("quantity"), 0)
+            if "quantity" in updates:
+                if quantity_per_item <= 0:
+                    raise ValueError("Material norm per item must be greater than zero.")
+                requirement_id = _material_requirement_id(line)
+                if not requirement_id:
+                    raise ValueError("Material requirement cannot be edited without a stable requirement id.")
+                material_norm_overrides.append((
+                    requirement_id,
+                    quantity_per_item,
+                    str(line.get("unit") or ""),
+                    line_id,
+                ))
+            updates["cost"] = _material_total_cost(
+                unit_cost=_number(next_values.get("unit_cost"), 0),
+                quantity_per_item=quantity_per_item,
+                object_quantity=current_object_quantity,
             )
         elif section == "labor" and {"hours", "rate"} & updates.keys():
             updates["cost"] = round(
@@ -750,12 +967,35 @@ def apply_object_detail_snapshot(
             values=updates,
         )
 
+    for requirement_id, quantity_per_item, unit, source_line_id in material_norm_overrides:
+        upsert_rfq_estimate_material_norm_override(
+            client,
+            estimate_id=estimate_id,
+            object_id=object_id,
+            material_requirement_id=requirement_id,
+            company_id=str(object_row.get("company_id") or ""),
+            quantity_per_item=quantity_per_item,
+            unit=unit,
+            source_line_id=source_line_id,
+        )
+
+    material_input_changed = bool(material_norm_overrides) or object_quantity is not None
+    if material_input_changed:
+        _invalidate_and_queue_material_plan(
+            client,
+            estimate_id=estimate_id,
+            company_id=str(object_row.get("company_id") or ""),
+            run_id=str(object_row.get("run_id") or run_id or ""),
+            reason_code="material_norm_changed" if material_norm_overrides else "object_quantity_changed",
+        )
+
     _recalculate_object_estimate_totals(
         client,
         estimate_id=estimate_id,
         object_id=object_id,
-        approved=True if approve else None,
+        approved=True if approve and not material_input_changed else None,
     )
+    return not material_input_changed
 
 
 def _editable_numeric_fields_for_section(section: str) -> set[str]:

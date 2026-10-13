@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from hashlib import sha256
+import json
 from typing import Any, Mapping, Sequence
 
 from use_cases.estimate_material_resolution import _company_candidates
@@ -47,6 +49,130 @@ class MaterialEngineShadow:
     candidate_count: int
     unresolved_requirement_ids: tuple[str, ...] = ()
     reason_codes: tuple[str, ...] = ()
+    candidate_authorities: tuple[tuple[str, str], ...] = ()
+
+
+def material_plan_input_fingerprint(
+    *,
+    facts_by_object: Mapping[str, Mapping[str, Any]],
+    material_norm_overrides: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+) -> str:
+    """Fingerprint the complete Material Engine input, including manual norms."""
+    payload = {
+        "facts_by_object": facts_by_object,
+        "material_norm_overrides": {
+            f"{object_id}:{requirement_id}": dict(value)
+            for (object_id, requirement_id), value in sorted((material_norm_overrides or {}).items())
+        },
+    }
+    encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
+    return sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _allocation_weight(allocation: Any) -> Decimal:
+    if allocation.area_mm2 is not None:
+        return allocation.area_mm2
+    if allocation.length_mm is not None and allocation.width_mm is not None:
+        return allocation.length_mm * allocation.width_mm
+    if allocation.length_mm is not None:
+        return allocation.length_mm
+    return allocation.quantity or Decimal("1")
+
+
+def material_plan_object_cost_allocations(result: MaterialEngineShadow) -> dict[tuple[str, str], Decimal]:
+    """Allocate every rounded project purchase cost back to its material demand."""
+    result_by_requirement: dict[tuple[str, str], Decimal] = {}
+    for line in result.plan.lines if result.plan else ():
+        weights_by_requirement: dict[tuple[str, str], Decimal] = {}
+        for allocation in line.allocations:
+            if not allocation.material_requirement_id:
+                continue
+            weight = _allocation_weight(allocation)
+            if weight <= 0:
+                continue
+            key = (allocation.object_id, str(allocation.material_requirement_id))
+            weights_by_requirement[key] = weights_by_requirement.get(key, Decimal("0")) + weight
+        denominator = sum(weights_by_requirement.values(), Decimal("0"))
+        if denominator <= 0:
+            continue
+        total_cost = line.total_cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        allocated = Decimal("0")
+        ordered = sorted(weights_by_requirement.items())
+        for index, (key, weight) in enumerate(ordered):
+            if index == len(ordered) - 1:
+                allocated_cost = total_cost - allocated
+            else:
+                allocated_cost = (total_cost * weight / denominator).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP,
+                )
+                allocated += allocated_cost
+            result_by_requirement[key] = result_by_requirement.get(key, Decimal("0")) + (
+                allocated_cost
+            )
+    return result_by_requirement
+
+
+def material_plan_snapshot(
+    result: MaterialEngineShadow,
+    *,
+    input_fingerprint: str | None = None,
+) -> dict[str, Any]:
+    """Serialize one Engine outcome for the estimate-level plan record.
+
+    The snapshot preserves whole-purchase lines and per-part traceability. It
+    also records the proportional allocation of shared purchase cost back to
+    every object requirement, so Object Detail totals reconcile with the
+    estimate-wide purchase plan.
+    """
+    plan = result.plan
+    authorities = dict(result.candidate_authorities)
+    lines = []
+    for line in plan.lines if plan else ():
+        lines.append({
+            "selection_key": line.selection_key,
+            "candidate_id": line.candidate_id,
+            "authority": authorities.get(line.candidate_id),
+            "purchase_kind": line.purchase_kind,
+            "purchase_quantity": float(line.purchase_quantity),
+            "price_per_purchase_unit": float(line.price_per_purchase_unit),
+            "total_cost": float(line.total_cost),
+            "currency": line.currency,
+            "allocations": [
+                {
+                    "demand_id": allocation.demand_id,
+                    "purchase_index": allocation.purchase_index,
+                    "object_id": allocation.object_id,
+                    "material_requirement_id": allocation.material_requirement_id,
+                    "length_mm": None if allocation.length_mm is None else float(allocation.length_mm),
+                    "width_mm": None if allocation.width_mm is None else float(allocation.width_mm),
+                    "area_mm2": None if allocation.area_mm2 is None else float(allocation.area_mm2),
+                    "quantity": None if allocation.quantity is None else float(allocation.quantity),
+                    "rotated": allocation.rotated,
+                }
+                for allocation in line.allocations
+            ],
+        })
+    return {
+        "contract_version": "estimate_material_plan_v1",
+        "status": plan.status if plan else "needs_review",
+        "input_fingerprint": input_fingerprint,
+        "algorithm_version": plan.algorithm_version if plan else "material_engine_v1",
+        "demand_count": result.demand_count,
+        "candidate_count": result.candidate_count,
+        "lines": lines,
+        "unresolved_requirement_ids": list(result.unresolved_requirement_ids),
+        "reason_codes": list(result.reason_codes if result.reason_codes else (plan.reason_codes if plan else ())),
+        "object_material_costs": [
+            {
+                "object_id": object_id,
+                "material_requirement_id": requirement_id,
+                "cost_ex_vat": float(cost),
+            }
+            for (object_id, requirement_id), cost in sorted(
+                material_plan_object_cost_allocations(result).items()
+            )
+        ],
+    }
 
 
 def _decimal(value: Any) -> Decimal | None:
@@ -62,6 +188,44 @@ def _decimal(value: Any) -> Decimal | None:
 def _positive(value: Any) -> Decimal | None:
     result = _decimal(value)
     return result if result is not None and result > 0 else None
+
+
+def _canonical_requirement_unit(value: Any) -> str:
+    return _canonical_unit(str(value or "")).replace("²", "2")
+
+
+def _demand_from_net_requirement(
+    *,
+    demand_id: str,
+    object_id: str,
+    requirement_id: str,
+    material_family: str,
+    selection_key: str,
+    total_quantity: Decimal,
+    unit: str,
+    candidate_ids: tuple[str, ...],
+) -> MaterialDemand | None:
+    normalized = _canonical_requirement_unit(unit)
+    common = {
+        "demand_id": demand_id,
+        "object_id": object_id,
+        "material_requirement_id": requirement_id,
+        "material_family": material_family,
+        "selection_key": selection_key,
+        "quantity": Decimal("1"),
+        "unit": unit,
+        "compatible_candidate_ids": candidate_ids,
+    }
+    if normalized in {"m2", "sqm", "square_meter", "square_metre"}:
+        return MaterialDemand(**common, area_mm2=total_quantity * Decimal("1000000"))
+    if normalized in {"m", "lm", "linear_meter", "linear_metre"}:
+        return MaterialDemand(**common, linear_length_mm=total_quantity * Decimal("1000"))
+    if normalized in {"mm", "cm"}:
+        multiplier = Decimal("10") if normalized == "cm" else Decimal("1")
+        return MaterialDemand(**common, linear_length_mm=total_quantity * multiplier)
+    if normalized in {"piece", "ea", "set", "pair", "dozen", "sheet"}:
+        return MaterialDemand(**{**common, "quantity": total_quantity})
+    return None
 
 
 def _ex_vat(value: Decimal, offer: Mapping[str, Any], vat_percent: Decimal) -> Decimal:
@@ -341,12 +505,14 @@ def shadow_material_plan(
     *,
     facts_by_object: Mapping[str, Mapping[str, Any]],
     catalogs: Mapping[str, Sequence[Mapping[str, Any]]],
+    material_norm_overrides: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
     vat_percent: Decimal | int | float | str = Decimal("18"),
 ) -> MaterialEngineShadow:
-    """Build one document-wide plan from rectangular parts, without writes.
+    """Build one document-wide purchase plan from facts and approved norms.
 
-    Requirements without complete part geometry remain explicit gaps. They are
-    not silently converted into an area percentage or invented price.
+    Geometry remains preferred for sheets and stock. A user-edited per-item
+    norm is deliberately converted to an aggregate physical demand instead of
+    fabricating new cut dimensions.
     """
     demands: list[MaterialDemand] = []
     candidates: dict[str, MaterialSupplyCandidate] = {}
@@ -354,6 +520,7 @@ def shadow_material_plan(
     reasons: set[str] = set()
     candidate_cache: dict[tuple[str, str, tuple[tuple[str, str], ...]], tuple[str | None, tuple[MaterialSupplyCandidate, ...]]] = {}
 
+    overrides = material_norm_overrides or {}
     for object_id, raw_facts in sorted(facts_by_object.items()):
         facts = raw_facts.get("facts_payload", raw_facts)
         if not isinstance(facts, Mapping):
@@ -369,10 +536,6 @@ def shadow_material_plan(
                 parts_by_requirement.setdefault(str(part.get("material_requirement_id") or ""), []).append(part)
         for requirement_id, material in sorted(materials.items()):
             parts = parts_by_requirement.get(requirement_id) or []
-            if not parts:
-                unresolved.append(f"{object_id}:{requirement_id}")
-                reasons.add("material_parts_missing")
-                continue
             specs = dict(material.get("specification") or {})
             cache_key = (
                 str(material.get("source_name") or material.get("family") or ""),
@@ -411,6 +574,34 @@ def shadow_material_plan(
                 unresolved.append(f"{object_id}:{requirement_id}")
                 reasons.add("assumption_required")
                 continue
+            override = overrides.get((str(object_id), requirement_id))
+            object_quantity = _positive(facts.get("quantity")) or Decimal("1")
+            material_quantity = _positive(material.get("quantity"))
+            if override:
+                override_unit = str(override.get("unit") or "")
+                override_quantity = _positive(override.get("quantity_per_item"))
+                if override_quantity is None or _canonical_requirement_unit(override_unit) != _canonical_requirement_unit(material.get("unit")):
+                    unresolved.append(f"{object_id}:{requirement_id}")
+                    reasons.add("manual_material_norm_invalid")
+                    continue
+                material_quantity = override_quantity * object_quantity
+                direct_demand = _demand_from_net_requirement(
+                    demand_id=f"{object_id}:{requirement_id}:manual-norm",
+                    object_id=str(object_id),
+                    requirement_id=requirement_id,
+                    material_family=str(material.get("family") or ""),
+                    selection_key=selection_key,
+                    total_quantity=material_quantity,
+                    unit=override_unit,
+                    candidate_ids=candidate_ids,
+                )
+                if direct_demand is None:
+                    unresolved.append(f"{object_id}:{requirement_id}")
+                    reasons.add("manual_material_norm_unit_unsupported")
+                    continue
+                demands.append(direct_demand)
+                reasons.add("manual_material_norm_without_geometry")
+                continue
             for part in parts:
                 demand_id = f"{object_id}:{part.get('part_id')}"
                 try:
@@ -423,6 +614,7 @@ def shadow_material_plan(
                         unit="piece",
                         compatible_candidate_ids=candidate_ids,
                         part_id=str(part.get("part_id") or "") or None,
+                        material_requirement_id=requirement_id,
                         length_mm=part.get("length_mm"),
                         width_mm=part.get("width_mm"),
                         rotation_allowed=bool(part.get("rotation_allowed")),
@@ -430,6 +622,27 @@ def shadow_material_plan(
                 except MaterialEngineError:
                     unresolved.append(demand_id)
                     reasons.add("material_part_geometry_invalid")
+            if parts:
+                continue
+            if material_quantity is None:
+                unresolved.append(f"{object_id}:{requirement_id}")
+                reasons.add("material_quantity_missing")
+                continue
+            direct_demand = _demand_from_net_requirement(
+                demand_id=f"{object_id}:{requirement_id}:net-demand",
+                object_id=str(object_id),
+                requirement_id=requirement_id,
+                material_family=str(material.get("family") or ""),
+                selection_key=selection_key,
+                total_quantity=material_quantity,
+                unit=str(material.get("unit") or ""),
+                candidate_ids=candidate_ids,
+            )
+            if direct_demand is None:
+                unresolved.append(f"{object_id}:{requirement_id}")
+                reasons.add("material_unit_unsupported_for_purchase_plan")
+                continue
+            demands.append(direct_demand)
     plan = plan_material_purchases(demands=demands, candidates=tuple(candidates.values())) if demands else None
     if plan and plan.status == "needs_review":
         unresolved.extend(plan.unresolved_demand_ids)
@@ -440,4 +653,8 @@ def shadow_material_plan(
         candidate_count=len(candidates),
         unresolved_requirement_ids=tuple(sorted(set(unresolved))),
         reason_codes=tuple(sorted(reasons)),
+        candidate_authorities=tuple(sorted(
+            (candidate_id, candidate.authority)
+            for candidate_id, candidate in candidates.items()
+        )),
     )

@@ -4,6 +4,8 @@ from decimal import Decimal
 from use_cases.material_engine_adapter import (
     company_supply_candidates,
     israel_reference_supply_candidates,
+    material_plan_object_cost_allocations,
+    material_plan_snapshot,
     shadow_material_plan,
 )
 
@@ -256,7 +258,44 @@ def test_shadow_keeps_complete_company_basket_even_when_reference_is_cheaper():
     assert shadow.plan.lines[0].candidate_id == "company-offer:company"
 
 
-def test_shadow_records_missing_parts_without_inventing_area_pricing():
+def test_material_plan_snapshot_preserves_purchase_and_object_traceability():
+    shadow = shadow_material_plan(
+        facts_by_object={"cabinet-a": _facts("cabinet-a", "side-a", length=1200, width=600)},
+        catalogs=_catalogs(_offer("company", price="100")),
+    )
+
+    snapshot = material_plan_snapshot(shadow)
+
+    assert snapshot["status"] == "planned"
+    assert snapshot["lines"][0]["authority"] == "company"
+    assert snapshot["lines"][0]["total_cost"] == 100.0
+    assert snapshot["lines"][0]["allocations"] == [{
+        "demand_id": "cabinet-a:side-a", "purchase_index": 1,
+        "object_id": "cabinet-a", "material_requirement_id": "plywood",
+        "length_mm": 1200.0, "width_mm": 600.0, "area_mm2": None,
+        "quantity": 1.0, "rotated": False,
+    }]
+
+
+def test_shared_purchase_cost_is_allocated_back_to_each_object_without_rounding_gap():
+    shadow = shadow_material_plan(
+        facts_by_object={
+            "cabinet-a": _facts("cabinet-a", "side-a", width=800),
+            "cabinet-b": _facts("cabinet-b", "side-b", width=800),
+        },
+        catalogs=_catalogs(_offer("sheet", price="100")),
+    )
+
+    allocations = material_plan_object_cost_allocations(shadow)
+
+    assert allocations == {
+        ("cabinet-a", "plywood"): Decimal("50.00"),
+        ("cabinet-b", "plywood"): Decimal("50.00"),
+    }
+    assert sum(allocations.values()) == shadow.plan.lines[0].total_cost
+
+
+def test_shadow_uses_net_material_area_when_parts_are_unavailable():
     facts = _facts("cabinet-a", "side-a")
     facts["parts"] = []
 
@@ -265,9 +304,51 @@ def test_shadow_records_missing_parts_without_inventing_area_pricing():
         catalogs=_catalogs(_offer("sheet", price="100")),
     )
 
-    assert shadow.plan is None
-    assert shadow.unresolved_requirement_ids == ("cabinet-a:plywood",)
-    assert shadow.reason_codes == ("material_parts_missing",)
+    assert shadow.plan is not None
+    assert shadow.plan.status == "planned"
+    assert shadow.plan.lines[0].purchase_quantity == Decimal("1")
+    assert shadow.reason_codes == ()
+
+
+def test_manual_norm_creates_an_area_demand_without_inventing_part_geometry():
+    facts = _facts("cabinet-a", "side-a", length=1200, width=600)
+    facts["quantity"] = 1
+
+    shadow = shadow_material_plan(
+        facts_by_object={"cabinet-a": facts},
+        catalogs=_catalogs(_offer("sheet", price="100")),
+        material_norm_overrides={
+            ("cabinet-a", "plywood"): {"quantity_per_item": 2, "unit": "m2"},
+        },
+    )
+
+    assert shadow.plan is not None
+    assert shadow.plan.status == "planned"
+    assert shadow.plan.lines[0].purchase_quantity == Decimal("1")
+    # The override replaces, rather than supplements, the original part
+    # geometry. Two square metres fit in one 2.976 m2 sheet.
+    assert shadow.reason_codes == ("manual_material_norm_without_geometry",)
+
+
+def test_manual_norm_scales_by_the_object_target_quantity():
+    facts = _facts("cabinet-a", "side-a")
+    facts["quantity"] = 2
+    facts["parts"] = []
+
+    shadow = shadow_material_plan(
+        facts_by_object={"cabinet-a": facts},
+        catalogs=_catalogs(_offer("sheet", price="100")),
+        material_norm_overrides={
+            ("cabinet-a", "plywood"): {"quantity_per_item": 2, "unit": "m2"},
+        },
+    )
+
+    assert shadow.plan is not None
+    assert shadow.plan.lines[0].purchase_quantity == Decimal("2")
+    snapshot = material_plan_snapshot(shadow)
+    assert snapshot["object_material_costs"] == [{
+        "object_id": "cabinet-a", "material_requirement_id": "plywood", "cost_ex_vat": 200.0,
+    }]
 
 
 def test_shadow_marks_assumption_required_only_after_company_and_israel_have_no_candidate():

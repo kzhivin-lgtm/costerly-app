@@ -74,6 +74,37 @@ def test_engine_selects_lowest_total_sheet_basket_not_lowest_single_sheet_price(
     assert plan.lines[0].total_cost == Decimal("130")
 
 
+def test_engine_does_not_treat_fragmented_offcuts_as_a_manual_area_norm():
+    plan = plan_material_purchases(
+        demands=(
+            _demand("known-part", length_mm=1200, width_mm=600),
+            _demand(
+                "manual-norm", length_mm=None, width_mm=None,
+                area_mm2=Decimal("2000000"),
+            ),
+        ),
+        candidates=(_sheet(),),
+    )
+
+    assert plan.status == "planned"
+    assert plan.lines[0].purchase_quantity == Decimal("2")
+
+
+def test_engine_preserves_a_requirement_already_stated_in_whole_sheets():
+    plan = plan_material_purchases(
+        demands=(
+            _demand(
+                "supplier-sheet-count", quantity=2, unit="sheet",
+                length_mm=None, width_mm=None,
+            ),
+        ),
+        candidates=(_sheet(),),
+    )
+
+    assert plan.status == "planned"
+    assert plan.lines[0].purchase_quantity == Decimal("2")
+
+
 def test_engine_uses_israel_reference_only_when_no_company_candidate_can_supply_group():
     demand = _demand(
         "large-panel", quantity=2, length_mm=1500, width_mm=700,

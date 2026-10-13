@@ -14,7 +14,8 @@ Each object contains only these keys:
 - `d`: `[width_mm, depth_mm, height_mm]`, use `0` when unknown.
 - `m`: materials. Each item is `{"id","n","f","q","u","s"}` for stable
   requirement ID, literal source name, allowed material family, positive net
-  quantity, unit and sparse specification object.
+  quantity for the complete requested target quantity, unit and sparse
+  specification object.
 - `p`: optional calculation-local rectangular parts. Each item is
   `{"id","m","q","l","w","r"}` for part ID, material requirement ID,
   total part quantity for this target, cut length mm, cut width mm and whether
@@ -55,8 +56,10 @@ percentage allowances for these categories. Coatings and significant installed
 hardware remain explicit materials. Work bought as a finished component belongs
 in `pc` and must not also appear in `op`.
 
-For `p`, quantities must already include the requested target quantity. Use
-`r:"no"` only where grain, finish direction or evidence prevents rotation.
+For `m` and `p`, quantities must already include the requested target quantity.
+The server derives the editable per-finished-item material norm by dividing by
+that target quantity. Use `r:"no"` only where grain, finish direction or
+evidence prevents rotation.
 Omit uncertain rectangles rather than fabricating exact dimensions.
 
 The preview can contain multiple views. Do not treat repeated views as separate

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
+from threading import RLock
 from typing import Mapping
 
 from use_cases.estimation import start_estimation_for_run
@@ -9,14 +10,21 @@ from agents.anthropic_adapter import DETECTION_PROMPT_VERSION
 from db.repositories import (
     fetch_latest_estimation_v2_facts_by_object,
     fetch_latest_ocr_result,
+    fetch_rfq_estimate_material_norm_overrides,
+    fetch_rfq_object_estimates,
     fetch_rfq_detected_objects,
     fetch_rfq_run,
+    upsert_rfq_estimate_material_plan,
 )
 from db.supabase_client import get_supabase_client
 from use_cases.estimation_handoff import persist_estimation_v2_inputs
 from use_cases.estimation_originals import describe_estimation_original
 from use_cases.estimation_v2_facts_shadow import run_estimation_v2_facts_batch
-from use_cases.material_engine_adapter import shadow_material_plan
+from use_cases.material_engine_adapter import (
+    material_plan_input_fingerprint,
+    material_plan_snapshot,
+    shadow_material_plan,
+)
 from use_cases.estimation_v2_publisher import (
     build_estimation_v2_context,
     publish_estimation_v2_object,
@@ -26,6 +34,107 @@ from use_cases.estimation_progress import set_object_progress
 
 
 _ESTIMATION_EXECUTOR = ThreadPoolExecutor(max_workers=1)
+_MATERIAL_PLAN_LOCK = RLock()
+_MATERIAL_PLAN_FUTURES: dict[str, Future] = {}
+_MATERIAL_PLAN_PENDING_REQUESTS: dict[str, tuple[str, str]] = {}
+
+
+def _material_norm_overrides_by_requirement(rows: object) -> dict[tuple[str, str], dict[str, object]]:
+    if rows is None or getattr(rows, "empty", True):
+        return {}
+    return {
+        (str(row.get("object_id") or ""), str(row.get("material_requirement_id") or "")): dict(row)
+        for _, row in rows.iterrows()
+        if str(row.get("object_id") or "") and str(row.get("material_requirement_id") or "")
+    }
+
+
+def _build_and_persist_material_plan(
+    *,
+    client: object,
+    estimate_id: str,
+    run_id: str,
+    company_id: str,
+    catalogs: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """Compute one estimate-wide plan from the latest facts and user norms."""
+    shared_catalogs = catalogs or build_estimation_v2_context(client, company_id)["catalogs"]
+    facts_by_object = fetch_latest_estimation_v2_facts_by_object(client, run_id=run_id)
+    override_rows = fetch_rfq_estimate_material_norm_overrides(client, estimate_id)
+    overrides = _material_norm_overrides_by_requirement(override_rows)
+    fingerprint = material_plan_input_fingerprint(
+        facts_by_object=facts_by_object,
+        material_norm_overrides=overrides,
+    )
+    shadow = shadow_material_plan(
+        facts_by_object=facts_by_object,
+        catalogs=shared_catalogs,
+        material_norm_overrides=overrides,
+    )
+    snapshot = material_plan_snapshot(shadow, input_fingerprint=fingerprint)
+    plan = shadow.plan
+    upsert_rfq_estimate_material_plan(
+        client,
+        estimate_id=estimate_id,
+        company_id=company_id,
+        plan_payload=snapshot,
+        plan_status=plan.status if plan else "needs_review",
+        input_fingerprint=fingerprint,
+    )
+    return snapshot
+
+
+def _recalculate_material_plan_job(*, estimate_id: str, run_id: str, company_id: str) -> dict[str, object]:
+    client = get_supabase_client()
+    snapshot = _build_and_persist_material_plan(
+        client=client,
+        estimate_id=estimate_id,
+        run_id=run_id,
+        company_id=company_id,
+    )
+    from use_cases.estimation import apply_material_plan_allocations
+
+    apply_material_plan_allocations(
+        client,
+        estimate_id=estimate_id,
+        plan_snapshot=snapshot,
+    )
+    return snapshot
+
+
+def _submit_pending_material_plan_recalculation(estimate_id: str) -> Future | None:
+    """Submit the latest coalesced request. Caller holds the plan lock."""
+    request = _MATERIAL_PLAN_PENDING_REQUESTS.pop(estimate_id, None)
+    if request is None:
+        return None
+    run_id, company_id = request
+    future = _ESTIMATION_EXECUTOR.submit(
+        _recalculate_material_plan_job,
+        estimate_id=estimate_id,
+        run_id=run_id,
+        company_id=company_id,
+    )
+    _MATERIAL_PLAN_FUTURES[estimate_id] = future
+
+    def schedule_latest_if_changed(_completed: Future) -> None:
+        with _MATERIAL_PLAN_LOCK:
+            _submit_pending_material_plan_recalculation(estimate_id)
+
+    future.add_done_callback(schedule_latest_if_changed)
+    return future
+
+
+def queue_material_plan_recalculation(*, estimate_id: str, run_id: str, company_id: str) -> Future:
+    """Coalesce edits, but never lose a change that lands during a rebuild."""
+    with _MATERIAL_PLAN_LOCK:
+        _MATERIAL_PLAN_PENDING_REQUESTS[estimate_id] = (run_id, company_id)
+        active = _MATERIAL_PLAN_FUTURES.get(estimate_id)
+        if active is not None and not active.done():
+            return active
+        submitted = _submit_pending_material_plan_recalculation(estimate_id)
+        if submitted is None:
+            raise RuntimeError("Material-plan recalculation request was not queued")
+        return submitted
 
 
 def _set_object_progress(
@@ -94,26 +203,30 @@ def _run_estimation_v2_for_all_objects(
     facts_result = run_estimation_v2_facts_batch(client=client, inputs=valid_inputs)
 
     shadow_summary: dict[str, object] = {"status": "not_run"}
+    material_plan_snapshot_data: dict[str, object] | None = None
     if shared_context and valid_inputs:
         first_payload = valid_inputs[0].get("input_payload")
         run_id = str(first_payload.get("run_id") or "") if isinstance(first_payload, Mapping) else ""
         if run_id:
             try:
-                shadow = shadow_material_plan(
-                    facts_by_object=fetch_latest_estimation_v2_facts_by_object(client, run_id=run_id),
+                snapshot = _build_and_persist_material_plan(
+                    client=client,
+                    estimate_id=estimate_id,
+                    run_id=run_id,
+                    company_id=company_id,
                     catalogs=shared_context["catalogs"],
                 )
-                plan = shadow.plan
+                material_plan_snapshot_data = snapshot
                 shadow_summary = {
-                    "status": plan.status if plan else "needs_review",
-                    "demand_count": shadow.demand_count,
-                    "candidate_count": shadow.candidate_count,
-                    "planned_line_count": len(plan.lines) if plan else 0,
-                    "planned_material_cost_ex_vat": (
-                        float(sum((line.total_cost for line in plan.lines), start=0)) if plan else None
+                    "status": snapshot["status"],
+                    "demand_count": snapshot["demand_count"],
+                    "candidate_count": snapshot["candidate_count"],
+                    "planned_line_count": len(snapshot["lines"]),
+                    "planned_material_cost_ex_vat": sum(
+                        line["total_cost"] for line in snapshot["lines"]
                     ),
-                    "unresolved_requirement_ids": list(shadow.unresolved_requirement_ids),
-                    "reason_codes": list(shadow.reason_codes),
+                    "unresolved_requirement_ids": snapshot["unresolved_requirement_ids"],
+                    "reason_codes": snapshot["reason_codes"],
                 }
             except Exception as exc:
                 # Project-level purchase-plan persistence and rendering are a
@@ -166,6 +279,14 @@ def _run_estimation_v2_for_all_objects(
                 progress_percent=100,
                 progress_label="v2_publisher_failed",
             )
+    if material_plan_snapshot_data:
+        from use_cases.estimation import apply_material_plan_allocations
+
+        apply_material_plan_allocations(
+            client,
+            estimate_id=estimate_id,
+            plan_snapshot=material_plan_snapshot_data,
+        )
     return {
         "processed_input_ids": completed_inputs,
         "failed": failed,

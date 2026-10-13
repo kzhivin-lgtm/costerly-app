@@ -8,7 +8,7 @@ def _section():
     return {
         "key": "material",
         "title": "Materials",
-        "columns": ["Material", "Unit", "Unit cost", "Qty", "Cost"],
+        "columns": ["Material", "Unit", "Unit cost", "Per item", "Cost"],
         "rows": [],
     }
 

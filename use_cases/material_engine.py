@@ -66,8 +66,11 @@ class MaterialDemand:
     unit: str
     compatible_candidate_ids: tuple[str, ...]
     part_id: str | None = None
+    material_requirement_id: str | None = None
     length_mm: Decimal | int | float | str | None = None
     width_mm: Decimal | int | float | str | None = None
+    area_mm2: Decimal | int | float | str | None = None
+    linear_length_mm: Decimal | int | float | str | None = None
     rotation_allowed: bool = True
 
 
@@ -99,8 +102,12 @@ class MaterialSupplyCandidate:
 class MaterialAllocation:
     demand_id: str
     purchase_index: int
+    object_id: str
+    material_requirement_id: str | None = None
     length_mm: Decimal | None = None
     width_mm: Decimal | None = None
+    area_mm2: Decimal | None = None
+    quantity: Decimal | None = None
     rotated: bool = False
 
 
@@ -155,6 +162,18 @@ def _demand_quantity(demand: MaterialDemand, *, whole: bool = False) -> Decimal:
     return quantity
 
 
+def _demand_area(demand: MaterialDemand) -> Decimal | None:
+    if demand.area_mm2 is None:
+        return None
+    return _positive(demand.area_mm2, "demand.area_mm2")
+
+
+def _demand_linear_length(demand: MaterialDemand) -> Decimal | None:
+    if demand.linear_length_mm is None:
+        return None
+    return _positive(demand.linear_length_mm, "demand.linear_length_mm")
+
+
 def _ceil(value: Decimal) -> Decimal:
     return value.to_integral_value(rounding=ROUND_CEILING)
 
@@ -178,20 +197,32 @@ def _place_sheet_parts(
     if sheet_width is None:
         raise MaterialEngineError("sheet candidate requires width_mm")
     kerf = _decimal(candidate.kerf_mm, "candidate.kerf_mm")
-    parts: list[tuple[Decimal, Decimal, str, int, bool]] = []
+    parts: list[tuple[Decimal, Decimal, MaterialDemand, int, bool]] = []
+    aggregate_demands: list[tuple[MaterialDemand, Decimal]] = []
+    direct_sheet_demands: list[tuple[MaterialDemand, int]] = []
     for demand in demands:
+        if str(demand.unit or "").strip().casefold() in {"sheet", "sheets"}:
+            direct_sheet_demands.append((
+                demand,
+                _whole(_demand_quantity(demand, whole=True), "demand.quantity"),
+            ))
+            continue
+        area = _demand_area(demand)
+        if area is not None:
+            aggregate_demands.append((demand, area))
+            continue
         quantity = _whole(_demand_quantity(demand, whole=True), "demand.quantity")
         length, width = _demand_dimensions(demand)
         for index in range(quantity):
-            parts.append((length, width, demand.demand_id, index, demand.rotation_allowed))
+            parts.append((length, width, demand, index, demand.rotation_allowed))
     # Largest rectangles first gives a deterministic, conservative nesting
     # heuristic.  The plan records the exact placements, so a later optimiser
     # can replace this strategy without changing the external contract.
-    parts.sort(key=lambda part: (-part[0] * part[1], -max(part[0], part[1]), part[2], part[3]))
+    parts.sort(key=lambda part: (-part[0] * part[1], -max(part[0], part[1]), part[2].demand_id, part[3]))
     sheets: list[list[tuple[Decimal, Decimal, Decimal, Decimal]]] = []
     allocations: list[MaterialAllocation] = []
 
-    for length, width, demand_id, _index, rotation_allowed in parts:
+    for length, width, demand, _index, rotation_allowed in parts:
         # Kerf is clearance between rectangular cuts.  Inflating each part is
         # deliberately conservative and avoids hiding a kerf requirement in a
         # percentage-waste rule.
@@ -223,8 +254,10 @@ def _place_sheet_parts(
                 if below[2] > 0 and below[3] > 0:
                     free_rectangles.append(below)
                 allocations.append(MaterialAllocation(
-                    demand_id=demand_id, purchase_index=sheet_index,
-                    length_mm=length, width_mm=width, rotated=rotated,
+                    demand_id=demand.demand_id, purchase_index=sheet_index,
+                    object_id=demand.object_id,
+                    material_requirement_id=demand.material_requirement_id,
+                    length_mm=length, width_mm=width, quantity=Decimal("1"), rotated=rotated,
                 ))
                 placed = True
                 break
@@ -251,9 +284,43 @@ def _place_sheet_parts(
             free_rectangles.append(below)
         sheets.append(free_rectangles)
         allocations.append(MaterialAllocation(
-            demand_id=demand_id, purchase_index=len(sheets),
-            length_mm=length, width_mm=width, rotated=rotated,
+            demand_id=demand.demand_id, purchase_index=len(sheets),
+            object_id=demand.object_id,
+            material_requirement_id=demand.material_requirement_id,
+            length_mm=length, width_mm=width, quantity=Decimal("1"), rotated=rotated,
         ))
+
+    # A row already expressed in sheets is a physical purchase instruction,
+    # not a geometric area that should be re-nested.
+    for demand, quantity in direct_sheet_demands:
+        for _ in range(quantity):
+            sheets.append([])
+            allocations.append(MaterialAllocation(
+                demand_id=demand.demand_id,
+                purchase_index=len(sheets),
+                object_id=demand.object_id,
+                material_requirement_id=demand.material_requirement_id,
+                quantity=Decimal("1"),
+            ))
+
+    # A manual norm is intentionally allowed without invented part geometry.
+    # It cannot safely consume fragmented offcuts left by known rectangles:
+    # area alone does not prove that a physical piece fits.  It therefore adds
+    # whole sheets by area. This deliberately conservative commercial estimate
+    # never claims that an exact cut layout exists for the manual adjustment.
+    sheet_capacity = sheet_length * sheet_width
+    for demand, area in aggregate_demands:
+        outstanding = area
+        while outstanding > 0:
+            used = min(outstanding, sheet_capacity)
+            sheets.append([])
+            outstanding -= used
+            allocations.append(MaterialAllocation(
+                demand_id=demand.demand_id, purchase_index=len(sheets),
+                object_id=demand.object_id,
+                material_requirement_id=demand.material_requirement_id,
+                area_mm2=used,
+            ))
 
     price = _positive(candidate.price_per_purchase_unit, "candidate.price_per_purchase_unit")
     quantity = Decimal(len(sheets))
@@ -274,18 +341,23 @@ def _place_linear_stock(
 ) -> _CandidatePlan:
     stock_length, _unused_width = _candidate_dimensions(candidate)
     kerf = _decimal(candidate.kerf_mm, "candidate.kerf_mm")
-    cuts: list[tuple[Decimal, str, int]] = []
+    cuts: list[tuple[Decimal, MaterialDemand, int]] = []
+    aggregate_demands: list[tuple[MaterialDemand, Decimal]] = []
     for demand in demands:
+        aggregate_length = _demand_linear_length(demand)
+        if aggregate_length is not None:
+            aggregate_demands.append((demand, aggregate_length))
+            continue
         quantity = _whole(_demand_quantity(demand, whole=True), "demand.quantity")
         if demand.length_mm is None:
             raise MaterialEngineError("linear-stock demand requires length_mm")
         length = _positive(demand.length_mm, "demand.length_mm") + kerf
         for index in range(quantity):
-            cuts.append((length, demand.demand_id, index))
-    cuts.sort(key=lambda cut: (-cut[0], cut[1], cut[2]))
+            cuts.append((length, demand, index))
+    cuts.sort(key=lambda cut: (-cut[0], cut[1].demand_id, cut[2]))
     remaining: list[Decimal] = []
     allocations: list[MaterialAllocation] = []
-    for length, demand_id, _index in cuts:
+    for length, demand, _index in cuts:
         if length > stock_length:
             return _CandidatePlan(line=None, reason_code="demand_exceeds_purchasable_stock")
         selected = next((index for index, free in enumerate(remaining) if free >= length), None)
@@ -295,9 +367,38 @@ def _place_linear_stock(
         else:
             remaining[selected] -= length
         allocations.append(MaterialAllocation(
-            demand_id=demand_id, purchase_index=selected + 1,
-            length_mm=length - kerf,
+            demand_id=demand.demand_id, purchase_index=selected + 1,
+            object_id=demand.object_id,
+            material_requirement_id=demand.material_requirement_id,
+            length_mm=length - kerf, quantity=Decimal("1"),
         ))
+
+    for demand, aggregate_length in aggregate_demands:
+        outstanding = aggregate_length
+        for stock_index, free_length in enumerate(remaining, start=1):
+            if outstanding <= 0:
+                break
+            used = min(outstanding, free_length)
+            if used <= 0:
+                continue
+            remaining[stock_index - 1] -= used
+            outstanding -= used
+            allocations.append(MaterialAllocation(
+                demand_id=demand.demand_id, purchase_index=stock_index,
+                object_id=demand.object_id,
+                material_requirement_id=demand.material_requirement_id,
+                length_mm=used,
+            ))
+        while outstanding > 0:
+            used = min(outstanding, stock_length)
+            remaining.append(stock_length - used)
+            outstanding -= used
+            allocations.append(MaterialAllocation(
+                demand_id=demand.demand_id, purchase_index=len(remaining),
+                object_id=demand.object_id,
+                material_requirement_id=demand.material_requirement_id,
+                length_mm=used,
+            ))
     price = _positive(candidate.price_per_purchase_unit, "candidate.price_per_purchase_unit")
     quantity = Decimal(len(remaining))
     return _CandidatePlan(line=MaterialPurchaseLine(
@@ -323,7 +424,13 @@ def _plan_piece_or_direct(
         purchase_quantity = total / package_quantity
     price = _positive(candidate.price_per_purchase_unit, "candidate.price_per_purchase_unit")
     allocations = tuple(
-        MaterialAllocation(demand_id=demand.demand_id, purchase_index=1)
+        MaterialAllocation(
+            demand_id=demand.demand_id,
+            purchase_index=1,
+            object_id=demand.object_id,
+            material_requirement_id=demand.material_requirement_id,
+            quantity=_demand_quantity(demand),
+        )
         for demand in demands
     )
     return _CandidatePlan(line=MaterialPurchaseLine(

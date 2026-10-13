@@ -477,12 +477,14 @@ def _material_rows_and_costs(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     db_rows: list[dict[str, Any]] = []
     cost_lines: list[dict[str, Any]] = []
+    target_quantity = max(_number(facts.get("quantity"), 1), 1)
     for index, material in enumerate(facts.get("materials") or [], start=1):
         material = _material_for_pricing(material)
         if str(material.get("family") or "").casefold() in _ROUTINE_CONSUMABLE_FAMILIES:
             continue
         line_id = f"{facts['object_id']}_material_{index:04d}"
-        quantity = _number(material.get("quantity"))
+        total_quantity = _number(material.get("quantity"))
+        quantity = round(total_quantity / target_quantity, 4)
         unit = str(material.get("unit") or "")
         resolution = resolve_estimate_material_requirement(
             requirement_name=str(material.get("source_name") or material.get("family") or ""),
@@ -519,7 +521,7 @@ def _material_rows_and_costs(
                 "original_resolution_status": resolution.status,
                 "requested_unit": unit, "estimated_unit_cost": unit_cost,
             }
-        cost = None if unit_cost is None else round(max(quantity, 1) * unit_cost, 2)
+        cost = None if unit_cost is None else round(max(total_quantity, 1) * unit_cost, 2)
         source_name = material.get("source_name") or material.get("family")
         displayed_name = (
             resolution.resolved_material_name
@@ -544,6 +546,7 @@ def _material_rows_and_costs(
             "group_name": "Materials", "item_name": displayed_name,
             "catalog_match_query": material.get("source_name"), "unit": unit,
             "unit_cost": unit_cost, "quantity": quantity or 1, "cost": cost,
+            "quantity_basis": "per_finished_item",
             "source": "estimation_v2", "sort_order": index * 10,
             "needs_price": unit_cost is None, "needs_review": bool(fallback),
             "confidence": 45 if fallback and unit_cost is not None else None,
@@ -552,7 +555,11 @@ def _material_rows_and_costs(
                 else "No evidence-based price available" if fallback else None
             ),
             "raw_agent_json": _json_safe({
-                "facts": dict(material), "resolution": resolution.__dict__, "fallback": fallback,
+                "facts": dict(material),
+                "material_quantity_total": total_quantity,
+                "quantity_per_finished_item": quantity,
+                "object_target_quantity": target_quantity,
+                "resolution": resolution.__dict__, "fallback": fallback,
             }),
         })
     return db_rows, cost_lines

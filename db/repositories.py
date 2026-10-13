@@ -507,6 +507,116 @@ def fetch_rfq_estimate_lines_for_object(
     )
 
 
+def fetch_rfq_estimate_material_plan(client: Client, estimate_id: str) -> pd.DataFrame:
+    """Return the latest document-wide Material Engine plan for one estimate."""
+    return fetch_table(
+        client,
+        "rfq_estimate_material_plans",
+        filters={"estimate_id": estimate_id},
+    )
+
+
+def fetch_rfq_estimate_material_norm_overrides(client: Client, estimate_id: str) -> pd.DataFrame:
+    """Return user-owned per-item material norms for one estimate."""
+    return fetch_table(
+        client,
+        "rfq_estimate_material_norm_overrides",
+        order_by="object_id",
+        filters={"estimate_id": estimate_id},
+    )
+
+
+def upsert_rfq_estimate_material_plan(
+    client: Client,
+    *,
+    estimate_id: str,
+    company_id: str,
+    plan_payload: dict,
+    plan_status: str | None = None,
+    input_fingerprint: str | None = None,
+) -> None:
+    """Replace the derived plan snapshot when the estimate is recalculated."""
+    status = plan_status or str(plan_payload.get("status") or "pending")
+    client.table("rfq_estimate_material_plans").upsert(
+        {
+            "estimate_id": estimate_id,
+            "company_id": company_id,
+            "plan_status": status,
+            "input_fingerprint": input_fingerprint or plan_payload.get("input_fingerprint"),
+            "plan_payload": plan_payload,
+            "updated_at": datetime.now(UTC).isoformat(),
+        },
+        on_conflict="estimate_id",
+    ).execute()
+
+
+def upsert_rfq_estimate_material_norm_override(
+    client: Client,
+    *,
+    estimate_id: str,
+    object_id: str,
+    material_requirement_id: str,
+    company_id: str,
+    quantity_per_item: float,
+    unit: str,
+    source_line_id: str,
+) -> None:
+    """Persist the user-edited net material norm, never a purchase quantity."""
+    client.table("rfq_estimate_material_norm_overrides").upsert(
+        {
+            "estimate_id": estimate_id,
+            "object_id": object_id,
+            "material_requirement_id": material_requirement_id,
+            "company_id": company_id,
+            "quantity_per_item": quantity_per_item,
+            "unit": unit,
+            "source_line_id": source_line_id,
+            "updated_at": datetime.now(UTC).isoformat(),
+        },
+        on_conflict="estimate_id,object_id,material_requirement_id",
+    ).execute()
+
+
+def mark_rfq_estimate_material_plan_stale(
+    client: Client,
+    *,
+    estimate_id: str,
+    company_id: str,
+    reason_code: str,
+) -> None:
+    """Invalidate the derived purchase plan after an estimate input changes."""
+    payload = {
+        "contract_version": "estimate_material_plan_v1",
+        "status": "stale",
+        "reason_codes": [reason_code],
+        "lines": [],
+    }
+    upsert_rfq_estimate_material_plan(
+        client,
+        estimate_id=estimate_id,
+        company_id=company_id,
+        plan_payload=payload,
+        plan_status="stale",
+        input_fingerprint=None,
+    )
+
+
+def reset_rfq_object_estimate_approvals(client: Client, *, estimate_id: str) -> None:
+    """Any shared material-plan change invalidates every object approval."""
+    client.table("rfq_object_estimates").update(
+        {"approved": False, "updated_at": datetime.now(UTC).isoformat()}
+    ).eq("estimate_id", estimate_id).execute()
+
+
+def fetch_rfq_estimate_lines(client: Client, estimate_id: str) -> pd.DataFrame:
+    return fetch_table(
+        client,
+        "rfq_estimate_lines",
+        order_by="sort_order",
+        filters={"estimate_id": estimate_id},
+    )
+
+
 def replace_rfq_estimate_lines_for_object(
     client: Client,
     *,

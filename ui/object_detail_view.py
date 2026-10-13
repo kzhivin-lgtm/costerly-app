@@ -235,7 +235,7 @@ def _final_html(data: dict[str, object]) -> str:
     )
 
 
-def _footer_html(run_id: object, estimate_id: object, object_id: object) -> str:
+def _footer_html(run_id: object, estimate_id: object, object_id: object, *, approval_ready: bool) -> str:
     back_params = (
         f"screen=objects&run_id={html.escape(str(run_id or ''))}"
         f"&estimate_id={html.escape(str(estimate_id or ''))}"
@@ -246,6 +246,18 @@ def _footer_html(run_id: object, estimate_id: object, object_id: object) -> str:
         f"&object_id={html.escape(str(object_id or ''))}"
         "&od_snapshot=[]&od_approve_after=1"
     )
+    approve = (
+        f'<a class="object-detail-footer-button object-detail-footer-button--primary" href="?{approve_params}" '
+        'data-streamlit-bridge-key="object_detail_approve_bridge" '
+        'target="_self" data-object-detail-approve="true">'
+        'APPROVE ESTIMATE'
+        '</a>'
+        if approval_ready else
+        '<span class="object-detail-footer-button object-detail-footer-button--primary '
+        'object-detail-footer-button--disabled" aria-disabled="true">'
+        'MATERIALS FINALIZING'
+        '</span>'
+    )
     return (
         '<div class="object-detail-footer-actions">'
         f'<a class="object-detail-footer-button object-detail-footer-button--secondary" '
@@ -253,12 +265,8 @@ def _footer_html(run_id: object, estimate_id: object, object_id: object) -> str:
         f'href="?{back_params}" target="_self">'
         'BACK TO OBJECTS'
         '</a>'
-        f'<a class="object-detail-footer-button object-detail-footer-button--primary" href="?{approve_params}" '
-        'data-streamlit-bridge-key="object_detail_approve_bridge" '
-        'target="_self" data-object-detail-approve="true">'
-        'APPROVE ESTIMATE'
-        '</a>'
-        '</div>'
+        + approve
+        + '</div>'
     )
 
 
@@ -356,5 +364,10 @@ def detail_html(
     return (
         "".join(_section_html(section) for section in data["sections"])
         + _final_html(data)
-        + _footer_html(run_id=run_id, estimate_id=estimate_id, object_id=object_id)
+        + _footer_html(
+            run_id=run_id,
+            estimate_id=estimate_id,
+            object_id=object_id,
+            approval_ready=bool(data.get("material_plan_ready")),
+        )
     )

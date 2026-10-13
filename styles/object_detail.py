@@ -482,6 +482,14 @@ def apply_object_detail_css() -> None:
             color: var(--button-primary-text);
         }
 
+        .object-detail-footer-button--disabled,
+        .object-detail-footer-button--disabled:hover {
+            background: rgba(42, 31, 44, 0.10);
+            border-color: rgba(42, 31, 44, 0.10);
+            color: rgba(42, 31, 44, 0.42) !important;
+            cursor: not-allowed;
+        }
+
         @media (max-width: 760px) {
             .object-detail-hero,
             .object-detail-section-header,
