@@ -193,6 +193,38 @@ def test_israel_reference_candidate_uses_active_pricing_identity_and_physical_fo
     assert candidates[0].price_per_purchase_unit == Decimal("148.840")
 
 
+def test_reference_candidate_bridges_its_older_underscored_family_label():
+    policy = {
+        "family_id": "family-acrylic", "pricing_key_attribute_codes": ["thickness"],
+        "purchase_format_policy": "required", "active": True,
+    }
+    family = {"family_id": "family-acrylic", "family_code": "acrylic_pmma", "active": True}
+    identity = {
+        "pricing_identity_id": "reference-acrylic-20",
+        "price_attributes": {"material_family": "acrylic_sheet", "thickness_mm": 20},
+    }
+    price = _reference_price(
+        "reference-price-acrylic-20", identity_id="reference-acrylic-20", typical="80",
+    )
+    supply_format = {
+        "supply_format_id": "reference-format-acrylic-3050",
+        "family_id": "family-acrylic", "active": True,
+        "purchasable_dimensions": {"length_mm": 3050, "width_mm": 2030},
+    }
+
+    selection_key, candidates = israel_reference_supply_candidates(
+        material_family="acrylic sheet", specifications={"thickness_mm": 20},
+        pricing_identities=[identity], pricing_identity_prices=[price],
+        material_pricing_policies=[policy], material_families=[family],
+        family_supply_formats=[supply_format], as_of=AS_OF,
+    )
+
+    assert selection_key == "acrylic_pmma|thickness=20"
+    assert [candidate.candidate_id for candidate in candidates] == [
+        "israel-reference:reference-price-acrylic-20:reference-format-acrylic-3050",
+    ]
+
+
 def test_reference_sheet_price_is_not_assigned_to_an_unlinked_generic_format():
     _key, candidates = israel_reference_supply_candidates(
         material_family="plywood",

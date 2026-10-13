@@ -390,6 +390,16 @@ Resolver families. A 20 mm MDF requirement correctly remains a Catalog Gap
 until an authoritative Company or Israel offer is added: current Company data
 contains 18/19 mm only and current Israel Reference has no 20 mm MDF price.
 
+Reference bridge correction, 2026-10-13: active Israel Reference price
+identities retain older source-facing Family spellings such as
+`acrylic_sheet`, while the active registry uses `acrylic_pmma`. Material
+Engine now deterministically projects only that spelling onto the active
+Family code before comparing the unchanged Pricing Key. It does not widen
+attributes, select a different thickness or manufacture a candidate. The
+first live V3 plan confirmed that this restores 14 physical Israel candidates
+for acrylic 20 mm; faced MDF 20 mm remains an explicit Catalog Gap and
+incomplete facts remain review-required.
+
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
 name solely as `Entity -> one or two proven key attributes -> confirmed brand

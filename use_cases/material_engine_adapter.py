@@ -29,6 +29,7 @@ from use_cases.material_identity_status import (
     pricing_policy_by_family_code,
 )
 from use_cases.material_price_resolver import _canonical_unit, _effective
+from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
 
 
 _LINEAR_UNITS = frozenset({"lm", "mm", "cm"})
@@ -38,6 +39,29 @@ _REFERENCE_DISCRETE_PACKAGE_QUANTITIES = {
     "pair": Decimal("2"),
     "dozen": Decimal("12"),
 }
+
+
+def _catalog_family_for_reference_identity(
+    material_family: Any,
+    *,
+    pricing_policies: Mapping[str, Mapping[str, Any]],
+) -> str | None:
+    """Map an older Reference family label onto the active Family registry.
+
+    Israel Reference identities predate the current Family codes. Their stored
+    labels such as ``acrylic_sheet`` are provenance, not a second resolver
+    vocabulary. This is a deterministic spelling bridge only: it does not
+    broaden attributes or manufacture a compatible Pricing Key.
+    """
+    raw = str(material_family or "").strip()
+    if not raw:
+        return None
+    source_family = raw.replace("_", " ")
+    taxonomy = catalog_v2_taxonomy_for_family(source_family)
+    projected = str((taxonomy or {}).get("family_code") or "").strip()
+    if projected in pricing_policies:
+        return projected
+    return raw if raw in pricing_policies else None
 
 
 @dataclass(frozen=True)
@@ -430,9 +454,15 @@ def israel_reference_supply_candidates(
     for identity in pricing_identities:
         identity_id = str(identity.get("pricing_identity_id") or "").strip()
         attributes = dict(identity.get("price_attributes") or {})
+        identity_family = _catalog_family_for_reference_identity(
+            attributes.get("material_family") or material_family,
+            pricing_policies=policies,
+        )
+        if identity_family is None:
+            continue
         identity_key = material_pricing_selection_key(
-            material_family=str(attributes.get("material_family") or material_family),
-            specifications=attributes,
+            material_family=identity_family,
+            specifications={**attributes, "material_family": identity_family},
             pricing_policies=policies,
         )
         if not identity_id or identity_key != selection_key:
