@@ -8,7 +8,7 @@ from use_cases.estimation import start_estimation_for_run
 from use_cases.rfq_processing import apply_file_review_edits
 from agents.anthropic_adapter import DETECTION_PROMPT_VERSION
 from db.repositories import (
-    fetch_latest_estimation_v2_facts_by_object,
+    fetch_latest_estimation_facts_by_object,
     fetch_latest_ocr_result,
     fetch_rfq_estimate_material_norm_overrides,
     fetch_rfq_object_estimates,
@@ -17,18 +17,17 @@ from db.repositories import (
     upsert_rfq_estimate_material_plan,
 )
 from db.supabase_client import get_supabase_client
-from use_cases.estimation_handoff import persist_estimation_v2_inputs
+from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
-from use_cases.estimation_v2_facts_shadow import run_estimation_v2_facts_batch
+from use_cases.estimation_v3_material_facts import run_estimation_v3_material_facts_batch
+from agents.estimation_v3_material_facts_agent import ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION
 from use_cases.material_engine_adapter import (
     material_plan_input_fingerprint,
     material_plan_snapshot,
     shadow_material_plan,
 )
-from use_cases.estimation_v2_publisher import (
-    build_estimation_v2_context,
-    publish_estimation_v2_object,
-)
+from use_cases.estimation_material_context import build_estimation_material_context
+from use_cases.estimation_v3_material_publisher import publish_estimation_v3_material_object
 from db.repositories import update_rfq_object_estimate_progress
 from use_cases.estimation_progress import set_object_progress
 
@@ -58,8 +57,10 @@ def _build_and_persist_material_plan(
     catalogs: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     """Compute one estimate-wide plan from the latest facts and user norms."""
-    shared_catalogs = catalogs or build_estimation_v2_context(client, company_id)["catalogs"]
-    facts_by_object = fetch_latest_estimation_v2_facts_by_object(client, run_id=run_id)
+    shared_catalogs = catalogs or build_estimation_material_context(client, company_id)["catalogs"]
+    facts_by_object = fetch_latest_estimation_facts_by_object(
+        client, run_id=run_id, agent_version=ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
+    )
     override_rows = fetch_rfq_estimate_material_norm_overrides(client, estimate_id)
     overrides = _material_norm_overrides_by_requirement(override_rows)
     fingerprint = material_plan_input_fingerprint(
@@ -162,13 +163,13 @@ def _set_object_progress(
     )
 
 
-def _run_estimation_v2_for_all_objects(
+def _run_estimation_v3_for_all_objects(
     *,
     client: object,
     estimate_id: str,
     created_inputs: list[dict[str, object]],
 ) -> dict[str, object]:
-    """Extract, price and publish every object through Estimation v2."""
+    """Extract material facts, build one plan, then publish material rows."""
     failed: dict[str, str] = {}
     completed_inputs: list[str] = []
     total = len(created_inputs)
@@ -196,11 +197,11 @@ def _run_estimation_v2_for_all_objects(
 
     first_payload = valid_inputs[0].get("input_payload") if valid_inputs else None
     company_id = str(first_payload.get("company_id") or "") if isinstance(first_payload, Mapping) else ""
-    shared_context = build_estimation_v2_context(client, company_id) if company_id else None
+    shared_context = build_estimation_material_context(client, company_id) if company_id else None
 
     for input_row in valid_inputs:
         mark_facts_start(input_row)
-    facts_result = run_estimation_v2_facts_batch(client=client, inputs=valid_inputs)
+    facts_result = run_estimation_v3_material_facts_batch(client=client, inputs=valid_inputs)
 
     shadow_summary: dict[str, object] = {"status": "not_run"}
     material_plan_snapshot_data: dict[str, object] | None = None
@@ -260,11 +261,11 @@ def _run_estimation_v2_for_all_objects(
             label="object_facts_ready_for_costing",
         )
         try:
-            published = publish_estimation_v2_object(
+            published = publish_estimation_v3_material_object(
                 client=client,
                 estimate_id=estimate_id,
                 input_row=input_row,
-                context=shared_context,
+                allowed_material_families=set(shared_context["families"]),
             )
             completed_inputs.append(input_id)
             if published.get("status") not in {"complete", "review_required"}:
@@ -277,7 +278,7 @@ def _run_estimation_v2_for_all_objects(
                 object_id=object_id,
                 status="failed",
                 progress_percent=100,
-                progress_label="v2_publisher_failed",
+                progress_label="v3_material_publisher_failed",
             )
     if material_plan_snapshot_data:
         from use_cases.estimation import apply_material_plan_allocations
@@ -348,15 +349,15 @@ def _run_estimation_job(
     ignored_object_ids: set[str],
     shell: dict[str, object] | None,
 ) -> dict[str, object]:
-    """Persist the v2 handoff, then run queued object estimates."""
-    created_v2_inputs: list[dict[str, object]] = []
+    """Persist the V3 handoff, then run queued material estimates."""
+    created_inputs: list[dict[str, object]] = []
     client = get_supabase_client()
     try:
         run_rows = fetch_rfq_run(client, run_id)
         object_rows = fetch_rfq_detected_objects(client, run_id)
         ocr = fetch_latest_ocr_result(client, run_id)
         if not run_rows.empty and ocr and ocr.get("ocr_event_id"):
-            handoff = persist_estimation_v2_inputs(
+            handoff = persist_estimation_inputs(
                 client=client,
                 run=run_rows.iloc[0].to_dict(),
                 objects=[row.to_dict() for _, row in object_rows.iterrows()],
@@ -370,16 +371,16 @@ def _run_estimation_job(
                 ),
                 versions={"detection": DETECTION_PROMPT_VERSION},
             )
-            created_v2_inputs = handoff["created_inputs"]
+            created_inputs = handoff["created_inputs"]
     except Exception as exc:
-        raise RuntimeError(f"Estimation v2 handoff failed: {exc}") from exc
+        raise RuntimeError(f"Estimation V3 handoff failed: {exc}") from exc
 
-    v2_inputs_available = bool(created_v2_inputs)
-    if v2_inputs_available:
-        estimation_result = _run_estimation_v2_for_all_objects(
+    inputs_available = bool(created_inputs)
+    if inputs_available:
+        estimation_result = _run_estimation_v3_for_all_objects(
                 client=client,
                 estimate_id=estimate_id,
-                created_inputs=created_v2_inputs,
+                created_inputs=created_inputs,
         )
         return {
             "estimate_id": estimate_id,
@@ -390,7 +391,7 @@ def _run_estimation_job(
                 "estimated_objects": len(estimation_result["processed_input_ids"]),
                 "failed_objects": estimation_result["failed"],
             },
-            "estimation_version": "v2",
+            "estimation_version": "v3_materials",
         }
     if shell and int(shell.get("object_count") or 0) == 0:
         return {
@@ -402,6 +403,6 @@ def _run_estimation_job(
                 "estimated_objects": 0,
                 "failed_objects": {},
             },
-            "estimation_version": "v2",
+            "estimation_version": "v3_materials",
         }
-    raise RuntimeError("Estimation v2 input handoff produced no estimable objects.")
+    raise RuntimeError("Estimation V3 input handoff produced no estimable objects.")

@@ -13,7 +13,7 @@ from typing import Any, Mapping, Sequence
 from use_cases.material_identity_resolution import normalize_material_phrase
 
 
-ESTIMATION_INPUT_CONTRACT_VERSION = "estimation_input_v2"
+ESTIMATION_INPUT_CONTRACT_VERSION = "estimation_input_v3"
 @dataclass(frozen=True)
 class EvidenceArtifact:
     storage_ref: str
@@ -114,7 +114,7 @@ def _artifact_payload(artifacts: Sequence[EvidenceArtifact], page_numbers: tuple
     return tuple(sorted(result, key=lambda item: (item["artifact_kind"], item["page_number"], item["storage_ref"])))
 
 
-def build_estimation_input_v2(
+def build_estimation_input(
     *,
     run: Mapping[str, Any],
     detected_object: Mapping[str, Any],
@@ -176,3 +176,8 @@ def build_estimation_input_v2(
         },
         "versions": {key: str(value) for key, value in versions.items()},
     }
+
+
+# Retained only so historical V2 tests and records remain readable during the
+# one-way cutover. Active V3 runtime imports build_estimation_input directly.
+build_estimation_input_v2 = build_estimation_input

@@ -339,7 +339,7 @@ _V2_FAMILY_PROJECTIONS: dict[str, tuple[str, str, str | None]] = {
     "lift mechanism": ("hardware_lift_system", "hardware", None),
 }
 
-_SOURCE_FAMILY_BY_V2_FAMILY = {
+_SOURCE_FAMILY_BY_CATALOG_FAMILY = {
     family_code: source_family
     for source_family, (family_code, _entity_role, _department) in _V2_FAMILY_PROJECTIONS.items()
 }
@@ -365,7 +365,7 @@ def catalog_v2_taxonomy_for_family(material_family: str) -> dict[str, str] | Non
     return payload
 
 
-def source_family_for_catalog_v2_family(family_code: str) -> str:
+def source_family_for_catalog_family(family_code: str) -> str:
     """Return the Resolver-facing family name for one Global family code.
 
     Object Facts must classify a purchasable form, not a material grade.  The
@@ -373,7 +373,11 @@ def source_family_for_catalog_v2_family(family_code: str) -> str:
     otherwise the stable Global family code itself is the valid vocabulary.
     """
     normalized = str(family_code or "").strip()
-    return _SOURCE_FAMILY_BY_V2_FAMILY.get(normalized, normalized)
+    return _SOURCE_FAMILY_BY_CATALOG_FAMILY.get(normalized, normalized)
+
+
+# V2 source extraction is legacy-only. New callers use the neutral name.
+source_family_for_catalog_v2_family = source_family_for_catalog_family
 
 
 # The curated catalogue is deliberately multilingual. Each entry has one

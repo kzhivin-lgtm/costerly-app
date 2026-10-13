@@ -1,4 +1,4 @@
-"""Detection-to-Estimation v2 handoff after File Review edits."""
+"""Detection-to-Estimation immutable handoff after File Review edits."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from agents.detection_page_images import render_detection_pdf_pages
 from db.repositories import insert_estimation_object_input, next_estimation_object_input_revision
 from use_cases.estimation_artifacts import persist_page_artifact, persist_preview_artifact
 from use_cases.estimation_evidence import EvidenceArtifact
-from use_cases.estimation_evidence import build_estimation_input_v2, resolve_anchor_bbox
+from use_cases.estimation_evidence import build_estimation_input, resolve_anchor_bbox
 from use_cases.estimation_originals import StoredOriginal
 from use_cases.evidence_preview import crop_ocr_region_to_webp
 
@@ -23,7 +23,7 @@ def _render_pages(file_name: str, file_bytes: bytes) -> list[bytes]:
     return []
 
 
-def persist_estimation_v2_inputs(
+def persist_estimation_inputs(
     *, client: Any, run: Mapping[str, Any], objects: Sequence[Mapping[str, Any]],
     ignored_object_ids: set[str], file_name: str, file_bytes: bytes,
     ocr_event_id: str, ocr_package: Mapping[str, Any], original: StoredOriginal,
@@ -155,7 +155,7 @@ def persist_estimation_v2_inputs(
         }):
             skipped[object_id] = "evidence_page_not_renderable"
             continue
-        payload = build_estimation_input_v2(
+        payload = build_estimation_input(
             run=run, detected_object=item, ocr_event_id=ocr_event_id,
             ocr_package=bounded_ocr_package,
             evidence_artifacts=(artifact, *page_artifacts), versions=versions,
@@ -190,3 +190,7 @@ def persist_estimation_v2_inputs(
         "created_inputs": created_inputs,
         "skipped": skipped,
     }
+
+
+# Temporary reader compatibility for V2 history. Active V3 uses the neutral name.
+persist_estimation_v2_inputs = persist_estimation_inputs

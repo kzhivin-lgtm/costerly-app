@@ -5,7 +5,7 @@ from typing import Any
 
 from db.repositories import (
     fetch_company_overhead_settings,
-    fetch_latest_estimation_v2_facts_by_object,
+    fetch_latest_estimation_facts_by_object,
     fetch_rfq_estimate_pricing_overrides,
     fetch_rfq_estimate_lines,
     fetch_rfq_estimate_lines_for_object,
@@ -25,6 +25,7 @@ from db.repositories import (
     upsert_rfq_estimate_shell,
 )
 from db.supabase_client import get_supabase_client
+from agents.estimation_v3_material_facts_agent import ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION
 from db.company_access import assert_estimate_owned, assert_run_owned
 from state.company_auth import company_auth_enabled
 from state.session import get_company_id
@@ -197,9 +198,10 @@ def load_objects_estimation_data(estimate_id: str) -> dict[str, Any]:
         run_id = str(objects_df.iloc[0].get("run_id") or "")
         if run_id:
             try:
-                facts_by_object = fetch_latest_estimation_v2_facts_by_object(
+                facts_by_object = fetch_latest_estimation_facts_by_object(
                     client,
                     run_id=run_id,
+                    agent_version=ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
                 )
             except Exception:
                 facts_by_object = {}
@@ -387,9 +389,10 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
     canonical_quantity = _number(object_row.get("quantity"), 1)
     facts_result = {}
     try:
-        facts_result = fetch_latest_estimation_v2_facts_by_object(
+        facts_result = fetch_latest_estimation_facts_by_object(
             client,
             run_id=str(object_row.get("run_id") or ""),
+            agent_version=ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
         ).get(object_id) or {}
     except Exception:
         facts_result = {}
@@ -458,7 +461,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
             )
 
     if not material_rows:
-        material_rows = _material_rows_from_v2_facts(facts_payload)
+        material_rows = _material_rows_from_material_facts(facts_payload)
 
     material_total = sum(_number(row.get("cost"), 0) for row in material_rows)
     manufacturing_total = sum(
@@ -517,29 +520,6 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                 "columns": ["Item", "Unit", "Unit cost", "Per item", "Cost"],
                 "rows": material_rows,
             },
-            {
-                "key": "labor",
-                "title": "Labor cost",
-                "metrics": [
-                    ("Total hours", f"{_format_number(labor_hours_total)} h"),
-                    ("Cost", labor_base_total),
-                    ("Employer 25%", employer_load),
-                    ("Total", labor_total),
-                ],
-                "columns": ["Work", "Role", "Hours", "Rate", "Cost"],
-                "rows": labor_rows,
-            },
-            {
-                "key": "overhead",
-                "title": "Overhead",
-                "metrics": [
-                    ("Cost", overhead_total),
-                    ("VAT", round(overhead_total * vat_percent / 100, 2)),
-                    ("Total", round(overhead_total * (1 + vat_percent / 100), 2)),
-                ],
-                "columns": ["Group", "Monthly cost", "Allocation", "Cost"],
-                "rows": overhead_rows,
-            },
         ],
         "self_cost": {
             "title": f"{object_row.get('object_name') or 'Object'} self cost (SC)",
@@ -550,7 +530,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
     }
 
 
-def _material_rows_from_v2_facts(facts_payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _material_rows_from_material_facts(facts_payload: dict[str, Any]) -> list[dict[str, Any]]:
     rows = []
     target_quantity = max(_number(facts_payload.get("quantity"), 1), 1)
     for material in facts_payload.get("materials") or []:

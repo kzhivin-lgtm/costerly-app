@@ -5,7 +5,7 @@ import json
 
 import pandas as pd
 from supabase import Client
-from use_cases.price_source_taxonomy import source_family_for_catalog_v2_family
+from use_cases.price_source_taxonomy import source_family_for_catalog_family
 
 
 def fetch_table(
@@ -165,7 +165,7 @@ def next_estimation_object_input_revision(
     return int(rows[0].get("object_input_revision") or 0) + 1 if rows else 1
 
 
-def fetch_estimation_v2_fact_result(
+def fetch_estimation_fact_result(
     client: Client,
     *,
     input_id: str,
@@ -184,10 +184,11 @@ def fetch_estimation_v2_fact_result(
     return dict(rows[0]) if rows else None
 
 
-def fetch_latest_estimation_v2_facts_by_object(
+def fetch_latest_estimation_facts_by_object(
     client: Client,
     *,
     run_id: str,
+    agent_version: str | None = None,
 ) -> dict[str, dict]:
     """Return the latest persisted Object Facts result for each object in a run."""
     input_rows = (
@@ -202,12 +203,16 @@ def fetch_latest_estimation_v2_facts_by_object(
     input_ids = [str(row.get("input_id")) for row in input_rows if row.get("input_id")]
     if not input_ids:
         return {}
-    result_rows = (
+    result_rows_query = (
         client.table("rfq_estimation_object_fact_results")
         .select("input_id,agent_version,status,facts_payload,created_at")
         .in_("input_id", input_ids)
         .order("created_at", desc=True)
-        .execute()
+    )
+    if agent_version:
+        result_rows_query = result_rows_query.eq("agent_version", agent_version)
+    result_rows = (
+        result_rows_query.execute()
         .data
         or []
     )
@@ -281,13 +286,13 @@ def fetch_estimation_resolver_material_families(client: Client) -> set[str]:
         or []
     )
     return {
-        source_family_for_catalog_v2_family(family_by_id[str(row.get("family_id") or "")])
+        source_family_for_catalog_family(family_by_id[str(row.get("family_id") or "")])
         for row in policy_rows
         if family_by_id.get(str(row.get("family_id") or ""))
     }
 
 
-def insert_estimation_v2_fact_result(
+def insert_estimation_fact_result(
     client: Client,
     *,
     input_id: str,
@@ -308,6 +313,13 @@ def insert_estimation_v2_fact_result(
     if len(rows) != 1 or not rows[0].get("fact_result_id"):
         raise RuntimeError("Estimation Object Facts insert did not return fact_result_id.")
     return str(rows[0]["fact_result_id"])
+
+
+# Temporary compatibility surface for frozen V2 history only. New runtime code
+# must use the neutral names above with an explicit V3 agent version.
+fetch_estimation_v2_fact_result = fetch_estimation_fact_result
+fetch_latest_estimation_v2_facts_by_object = fetch_latest_estimation_facts_by_object
+insert_estimation_v2_fact_result = insert_estimation_fact_result
 
 
 def insert_agent_usage_events(client: Client, usage_events: list[dict]) -> None:

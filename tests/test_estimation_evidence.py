@@ -2,7 +2,7 @@ import pytest
 
 from use_cases.estimation_evidence import (
     EvidenceArtifact,
-    build_estimation_input_v2,
+    build_estimation_input,
     resolve_anchor_bbox,
 )
 from use_cases.estimation_artifacts import download_evidence_artifact
@@ -79,7 +79,7 @@ ARTIFACTS = (
 
 
 def test_e03_builder_freezes_only_cited_ocr_blocks_and_private_evidence_refs():
-    result = build_estimation_input_v2(
+    result = build_estimation_input(
         run=RUN,
         detected_object=OBJECT,
         ocr_event_id="ocr-event-1",
@@ -88,7 +88,7 @@ def test_e03_builder_freezes_only_cited_ocr_blocks_and_private_evidence_refs():
         versions={"detection": "v1", "material_catalog": "israel-2026-09"},
     )
 
-    assert result["contract_version"] == "estimation_input_v2"
+    assert result["contract_version"] == "estimation_input_v3"
     assert result["object"]["evidence_pages"] == [
         {"page_number": 1, "source_label": "1"},
         {"page_number": 3, "source_label": "3"},
@@ -110,7 +110,7 @@ def test_builder_keeps_all_cited_ocr_blocks_instead_of_silently_truncating_evide
             for index in range(100)
         ]},
     }
-    result = build_estimation_input_v2(
+    result = build_estimation_input(
         run=RUN, detected_object={**OBJECT, "evidence_pages": "1"},
         ocr_event_id="ocr-all", ocr_package=ocr,
         evidence_artifacts=(ARTIFACTS[0],), versions={},
@@ -120,7 +120,7 @@ def test_builder_keeps_all_cited_ocr_blocks_instead_of_silently_truncating_evide
 
 
 def test_e02_two_objects_share_one_persisted_ocr_result_without_document_reread():
-    first = build_estimation_input_v2(
+    first = build_estimation_input(
         run=RUN,
         detected_object=OBJECT,
         ocr_event_id="ocr-event-shared",
@@ -128,7 +128,7 @@ def test_e02_two_objects_share_one_persisted_ocr_result_without_document_reread(
         evidence_artifacts=ARTIFACTS,
         versions={"detection": "v1"},
     )
-    second = build_estimation_input_v2(
+    second = build_estimation_input(
         run=RUN,
         detected_object={
             **OBJECT,
@@ -156,7 +156,7 @@ def test_e02_two_objects_share_one_persisted_ocr_result_without_document_reread(
 
 def test_builder_rejects_missing_preview_instead_of_using_source_file():
     with pytest.raises(ValueError, match="preview"):
-        build_estimation_input_v2(
+        build_estimation_input(
             run=RUN,
             detected_object=OBJECT,
             ocr_event_id="ocr-event-1",
@@ -168,7 +168,7 @@ def test_builder_rejects_missing_preview_instead_of_using_source_file():
 
 def test_builder_rejects_non_private_storage_reference():
     with pytest.raises(ValueError, match="private evidence bucket"):
-        build_estimation_input_v2(
+        build_estimation_input(
             run=RUN,
             detected_object=OBJECT,
             ocr_event_id="ocr-event-1",
@@ -185,7 +185,7 @@ def test_builder_rejects_non_private_storage_reference():
 
 
 def test_builder_uses_detection_vnext_page_reference_for_drawing_labels():
-    result = build_estimation_input_v2(
+    result = build_estimation_input(
         run=RUN,
         detected_object={
             **OBJECT,
@@ -210,7 +210,7 @@ def test_builder_uses_detection_vnext_page_reference_for_drawing_labels():
 
 
 def test_builder_preserves_vnext_evidence_roles_and_preview_bbox():
-    result = build_estimation_input_v2(
+    result = build_estimation_input(
         run=RUN,
         detected_object={
             **OBJECT,

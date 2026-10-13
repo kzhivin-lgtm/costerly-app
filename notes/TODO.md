@@ -366,6 +366,18 @@ The next Material Engine task is read-only Purchase Plan presentation,
 including stock format, purchased quantity, remaining material and allocation
 trace. Assumption Fallback remains a separate orchestration task.
 
+ACTIVE, P0, USER REQUEST, 3.17.4.1 Estimation Agent V3 material-only cutover:
+replace the active Estimation path with a standalone V3 material-facts contract,
+Material Resolver and estimate-wide Material Engine integration. V3 must not
+import, invoke or publish V2. Labor, manufacturing and overhead remain
+disabled until their own engines are accepted. Company-first and Israel
+Reference candidate selection remain deterministic. When neither supplies a
+complete candidate set, V3 records `assumption_required` without inventing a
+price. V2 is retained only as isolated legacy history pending an explicit
+destructive removal task. Acceptance: active runtime and UI read V3 facts,
+publish only material norms, persist the project-level Material Plan, and do
+not contain an active V2 dependency.
+
 Resolver correction, 2026-10-13: the first live multi-object Material Plan
 proved that Object Facts had been given legacy Israel price classes rather
 than the Resolver's purchasable-family vocabulary. That allowed an unsupported
