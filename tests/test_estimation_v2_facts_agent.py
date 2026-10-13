@@ -78,6 +78,42 @@ def _provider_response(**overrides):
     return result
 
 
+def _page_compact_response():
+    facts = FIXTURE["facts"]
+    material = facts["materials"][0]
+    return {
+        "m": [{
+            "id": material["requirement_id"], "n": material["source_name"],
+            "f": material["family"], "q": material["quantity"], "u": material["unit"],
+            "s": material["specification"],
+        }],
+        "p": [
+            {"id": part["part_id"], "m": part["material_requirement_id"],
+             "q": part["quantity"], "l": part["length_mm"], "w": part["width_mm"],
+             "r": "yes" if part["rotation_allowed"] else "no"}
+            for part in facts["parts"]
+        ],
+        "op": [{"id": "op-1", "c": "panel_saw_cutting", "q": 11, "u": "cut", "m": [material["requirement_id"]]}],
+        "d": [1200, 560, 720],
+    }
+
+
+def test_page_agent_expands_calculation_local_part_geometry():
+    facts = page_agent._expand_object(
+        _page_compact_response(),
+        {"input_id": "input-1", "object_input_revision": 1, "input_payload": _input()},
+        {"birch_plywood"},
+    )
+
+    assert [
+        {key: part[key] for key in ("part_id", "material_requirement_id", "quantity", "length_mm", "width_mm", "rotation_allowed")}
+        for part in facts["parts"]
+    ] == [
+        {key: part[key] for key in ("part_id", "material_requirement_id", "quantity", "length_mm", "width_mm", "rotation_allowed")}
+        for part in FIXTURE["facts"]["parts"]
+    ]
+
+
 class _Client:
     def with_options(self, **_kwargs):
         return self

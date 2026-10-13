@@ -252,6 +252,10 @@ def _normalize_provider_result(
     estimation_input: Mapping[str, Any],
     production_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    # The legacy full-object transport is retained only for compatibility with
+    # stored/fixture facts. The current page agent owns part geometry. It may
+    # omit the additive field without being treated as an invalid old result.
+    result = {**result, "parts": result.get("parts", [])}
     if set(result) != set(TRANSPORT_FIELDS):
         missing = set(TRANSPORT_FIELDS) - set(result)
         extra = set(result) - set(TRANSPORT_FIELDS)
@@ -498,6 +502,7 @@ def _normalize_provider_result(
         "status": normalized_status,
         "dimensions_mm": normalized_dimensions,
         "materials": materials,
+        "parts": [],
         "features": features,
         "manufacturing_features": manufacturing,
         "purchased_components": purchased,

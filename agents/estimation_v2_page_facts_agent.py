@@ -18,7 +18,7 @@ from agents.anthropic_adapter import (
 from agents.estimation_v2_facts_agent import _provider_json_text
 from agents.schemas.estimation_v2_facts_schema import (
     FEATURE_KEYS, MANUFACTURING_FLAG_KEYS, MANUFACTURING_MEASUREMENT_KEYS,
-    PURCHASED_SPECIFICATION_KEYS, SPECIFICATION_KEYS,
+    COMPACT_PART_KEYS, PURCHASED_SPECIFICATION_KEYS, SPECIFICATION_KEYS,
 )
 from use_cases.estimation_v2_composition import (
     LABOR_OPERATION_VALUES, OBJECT_FACTS_CONTRACT_VERSION, validate_object_facts,
@@ -26,7 +26,7 @@ from use_cases.estimation_v2_composition import (
 from use_cases.labor_engine import BASELINES, MACHINE_REQUIREMENTS
 
 
-ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_page_facts_agent_v15_nonblocking_approximations"
+ESTIMATION_V2_FACTS_AGENT_VERSION = "estimation_page_facts_agent_v16_material_parts"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v2_page_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 12000
 TIMEOUT_SECONDS = 180.0
@@ -88,6 +88,14 @@ def _features(value: Any) -> dict[str, Any]:
     return result
 
 
+def _boolean(value: Any, *, default: bool) -> bool:
+    if value in {True, "yes", "true", 1}:
+        return True
+    if value in {False, "no", "false", 0}:
+        return False
+    return default
+
+
 def _expand_object(
     compact: Mapping[str, Any], row: Mapping[str, Any], families: AbstractSet[str],
 ) -> dict[str, Any]:
@@ -98,6 +106,7 @@ def _expand_object(
     review_items = []
     materials = []
     material_ids: set[str] = set()
+    material_id_map: dict[str, str] = {}
     for index, raw in enumerate(compact.get("m") or [], start=1):
         if not isinstance(raw, Mapping):
             continue
@@ -107,6 +116,7 @@ def _expand_object(
         if family not in families or quantity is None:
             continue
         requirement_id = _unique_identifier(original_id, f"m{index}", material_ids)
+        material_id_map[original_id] = requirement_id
         if requirement_id != original_id:
             review_items.append({"code": "model_value_normalized", "severity": "warning", "path": f"materials[{index}].requirement_id", "message": f"Normalized {original_id!r} to {requirement_id!r}", "evidence_refs": [preview]})
         materials.append({
@@ -114,6 +124,32 @@ def _expand_object(
             "source_name": str(raw.get("n") or family), "family": family,
             "specification": _sparse(raw.get("s"), SPECIFICATION_KEYS),
             "quantity": quantity, "unit": str(raw.get("u") or "ea"),
+            "evidence_refs": [preview],
+        })
+    parts = []
+    part_ids: set[str] = set()
+    for index, raw in enumerate(compact.get("p") or [], start=1):
+        if not isinstance(raw, Mapping):
+            continue
+        material_requirement_id = material_id_map.get(str(raw.get("m") or ""))
+        quantity = _number(raw.get("q"), positive=True)
+        length = _number(raw.get("l"), positive=True)
+        width = _number(raw.get("w"), positive=True)
+        if not material_requirement_id or quantity is None or length is None or width is None:
+            review_items.append({
+                "code": "model_value_normalized", "severity": "warning",
+                "path": f"parts[{index}]",
+                "message": "Skipped incomplete part geometry or unknown material reference",
+                "evidence_refs": [preview],
+            })
+            continue
+        parts.append({
+            "part_id": _unique_identifier(raw.get("id"), f"p{index}", part_ids),
+            "material_requirement_id": material_requirement_id,
+            "quantity": quantity,
+            "length_mm": length,
+            "width_mm": width,
+            "rotation_allowed": _boolean(raw.get("r"), default=True),
             "evidence_refs": [preview],
         })
     operations = []
@@ -200,7 +236,7 @@ def _expand_object(
         "quantity": object_payload.get("quantity") or 1,
         "status": "review_required" if any(item["severity"] == "blocking" for item in review_items) else "ready",
         "dimensions_mm": {key: (_number(value, positive=True) if value else None) for key, value in zip(("width", "depth", "height"), dimensions[:3])},
-        "materials": materials, "features": _features(compact.get("x")),
+        "materials": materials, "parts": parts, "features": _features(compact.get("x")),
         "manufacturing_features": manufacturing, "purchased_components": purchased,
         "labor_operations": operations, "source_facts": [], "review_items": review_items,
         "primary_preview_ref": preview,
@@ -231,6 +267,7 @@ def run_estimation_v2_page_facts_agent(
         "targets": targets, "allowed_material_families": sorted(allowed_material_families),
         "allowed_operation_codes": sorted(LABOR_OPERATION_VALUES),
         "specification_keys": list(SPECIFICATION_KEYS), "feature_keys": list(FEATURE_KEYS),
+        "part_keys": list(COMPACT_PART_KEYS),
         "manufacturing_measurement_keys": list(MANUFACTURING_MEASUREMENT_KEYS),
         "manufacturing_flag_keys": list(MANUFACTURING_FLAG_KEYS),
         "purchased_specification_keys": list(PURCHASED_SPECIFICATION_KEYS),

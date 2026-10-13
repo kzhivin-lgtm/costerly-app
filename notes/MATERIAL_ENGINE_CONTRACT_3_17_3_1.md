@@ -18,6 +18,13 @@ family classification, supplier-SKU matching or labor-route choice.
 - compatible candidate IDs;
 - for cut materials, part length, width and rotation permission.
 
+The page Facts Agent now emits these rectangles as `parts`: `part_id`, linked
+`material_requirement_id`, total part quantity for the target object, cut
+length and width in mm, and `rotation_allowed`. Evidence references are added
+by the server. A part is omitted when geometry is genuinely uncertain; this is
+not permission to invent a dimension. The field is additive while legacy facts
+remain readable, and the page-agent version invalidates its own old cache.
+
 `MaterialSupplyCandidate` is produced only after Material Resolver has checked
 family compatibility and Estimate Ready status. It holds the exact purchasable
 unit, ex-VAT price per purchasable unit, purchase format or package size, kerf,

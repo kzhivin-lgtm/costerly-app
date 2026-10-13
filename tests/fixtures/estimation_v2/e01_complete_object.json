@@ -22,6 +22,26 @@
         "evidence_refs": ["ocr:ocr-1:p1:b0002"]
       }
     ],
+    "parts": [
+      {
+        "part_id": "side-left",
+        "material_requirement_id": "material-e01-1",
+        "quantity": 2,
+        "length_mm": 720,
+        "width_mm": 560,
+        "rotation_allowed": true,
+        "evidence_refs": ["ocr:ocr-1:p1:b0003"]
+      },
+      {
+        "part_id": "shelf",
+        "material_requirement_id": "material-e01-1",
+        "quantity": 2,
+        "length_mm": 1164,
+        "width_mm": 560,
+        "rotation_allowed": true,
+        "evidence_refs": ["ocr:ocr-1:p1:b0003"]
+      }
+    ],
     "features": {
       "shelf_count": 2,
       "door_count": 0,

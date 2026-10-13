@@ -304,6 +304,15 @@ The subsequent integration task must first extend the agent contract with
 calculation-local part geometry, run a read-only shadow comparison, and only
 then replace legacy per-line selection.
 
+ACTIVE, P0, USER REQUEST, 3.17.3.2 Calculation-local part geometry and
+shadow planning: extend the compact Estimation facts transport with rectangular
+parts linked to material requirements, full geometry, quantity and rotation
+permission. These parts remain inside one estimate and never become Global
+catalog entities. Version the page Facts Agent to invalidate legacy cached
+results. Feed the new Material Engine only in read-only shadow mode until its
+plan, candidate coverage and material totals can be compared against the
+current publisher without replacing any displayed cost line.
+
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
 name solely as `Entity -> one or two proven key attributes -> confirmed brand

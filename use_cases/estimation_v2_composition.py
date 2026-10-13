@@ -62,9 +62,14 @@ _FACT_FIELDS = frozenset({
     "materials", "features", "manufacturing_features", "purchased_components",
     "labor_operations", "source_facts", "review_items", "primary_preview_ref",
 })
+_OPTIONAL_FACT_FIELDS = frozenset({"parts"})
 _MATERIAL_FIELDS = frozenset({
     "requirement_id", "source_name", "family", "specification", "quantity", "unit",
     "evidence_refs",
+})
+_PART_FIELDS = frozenset({
+    "part_id", "material_requirement_id", "quantity", "length_mm", "width_mm",
+    "rotation_allowed", "evidence_refs",
 })
 _SOURCE_FACT_FIELDS = frozenset({"path", "value", "provenance", "evidence_refs"})
 _REVIEW_ITEM_FIELDS = frozenset({"code", "severity", "path", "message", "evidence_refs"})
@@ -209,7 +214,13 @@ def validate_object_facts(
 ) -> dict[str, Any]:
     """Validate bounded extraction output without deriving or pricing anything."""
     facts = dict(_mapping(payload, "facts"))
-    _exact_keys(facts, _FACT_FIELDS, "facts")
+    missing_top_level = _FACT_FIELDS - set(facts)
+    unexpected_top_level = set(facts) - _FACT_FIELDS - _OPTIONAL_FACT_FIELDS
+    if missing_top_level or unexpected_top_level:
+        raise EstimationV2ContractError(
+            f"facts must contain exactly the supported fields; missing={sorted(missing_top_level)}, "
+            f"unexpected={sorted(unexpected_top_level)}"
+        )
     _reject_forbidden_keys(facts)
     if facts["contract_version"] != OBJECT_FACTS_CONTRACT_VERSION:
         raise EstimationV2ContractError("facts.contract_version is unsupported")
@@ -255,6 +266,33 @@ def validate_object_facts(
         _text(material["unit"], f"facts.materials[{index}].unit")
         material_refs = _evidence_refs(material["evidence_refs"], f"facts.materials[{index}].evidence_refs")
         material_evidence_complete = material_evidence_complete and bool(material_refs)
+
+    # Parts are calculation-local geometry. They remain optional while newly
+    # versioned page facts coexist with legacy results, but any supplied part
+    # must be complete before Material Engine can consume it.
+    part_ids: set[str] = set()
+    for index, value in enumerate(_sequence(facts.get("parts", []), "facts.parts")):
+        part = _mapping(value, f"facts.parts[{index}]")
+        _exact_keys(part, _PART_FIELDS, f"facts.parts[{index}]")
+        part_id = _identifier(part["part_id"], f"facts.parts[{index}].part_id")
+        if part_id in part_ids:
+            raise EstimationV2ContractError("part ids must be unique")
+        part_ids.add(part_id)
+        material_requirement_id = _identifier(
+            part["material_requirement_id"], f"facts.parts[{index}].material_requirement_id"
+        )
+        if material_requirement_id not in material_requirement_ids:
+            raise EstimationV2ContractError(
+                f"facts.parts[{index}] references an unknown material"
+            )
+        _positive_number(part["quantity"], f"facts.parts[{index}].quantity")
+        _positive_number(part["length_mm"], f"facts.parts[{index}].length_mm")
+        _positive_number(part["width_mm"], f"facts.parts[{index}].width_mm")
+        if not isinstance(part["rotation_allowed"], bool):
+            raise EstimationV2ContractError(
+                f"facts.parts[{index}].rotation_allowed must be boolean"
+            )
+        _evidence_refs(part["evidence_refs"], f"facts.parts[{index}].evidence_refs")
 
     features = _mapping(facts["features"], "facts.features")
     extra_features = set(features) - set(_ALLOWED_FEATURE_FIELDS)

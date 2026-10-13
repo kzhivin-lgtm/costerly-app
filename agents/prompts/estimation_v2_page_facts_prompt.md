@@ -15,6 +15,13 @@ Each object contains only these keys:
 - `m`: materials. Each item is `{"id","n","f","q","u","s"}` for stable
   requirement ID, literal source name, allowed material family, positive net
   quantity, unit and sparse specification object.
+- `p`: optional calculation-local rectangular parts. Each item is
+  `{"id","m","q","l","w","r"}` for part ID, material requirement ID,
+  total part quantity for this target, cut length mm, cut width mm and whether
+  90-degree rotation is allowed (`yes` or `no`). Include a part only where its
+  rectangle is supported by visible geometry or a clear construction inference.
+  Do not use a global part catalogue, prices or supplier products. Parts are
+  needed for deterministic sheet nesting across the complete estimate.
 - `x`: sparse object feature object.
 - `mf`: CNC or laser features. Each item is `{"id","p","m","v","g"}` for
   feature ID, process (`cnc_router` or `sheet_laser`), material requirement ID,
@@ -47,6 +54,10 @@ cardboard, protective film and other packing materials. The server adds locked
 percentage allowances for these categories. Coatings and significant installed
 hardware remain explicit materials. Work bought as a finished component belongs
 in `pc` and must not also appear in `op`.
+
+For `p`, quantities must already include the requested target quantity. Use
+`r:"no"` only where grain, finish direction or evidence prevents rotation.
+Omit uncertain rectangles rather than fabricating exact dimensions.
 
 The preview can contain multiple views. Do not treat repeated views as separate
 objects. `locator_hints_only` contains Detection dimensions, description and

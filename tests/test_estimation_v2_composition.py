@@ -151,6 +151,7 @@ def test_e05_review_facts_expose_missing_values_and_block_self_cost():
     facts["quantity"] = None
     facts["dimensions_mm"] = {"width": None, "depth": None, "height": None}
     facts["materials"] = []
+    facts["parts"] = []
     facts["labor_operations"] = []
     facts["review_items"] = [
         {

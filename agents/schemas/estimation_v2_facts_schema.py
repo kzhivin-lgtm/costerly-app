@@ -26,8 +26,13 @@ PURCHASED_SPECIFICATION_KEYS = (
     "width_mm", "depth_mm", "height_mm", "thickness_mm", "material", "finish",
     "cutout_count", "installation_scope",
 )
+PART_KEYS = (
+    "part_id", "material_requirement_id", "quantity", "length_mm", "width_mm",
+    "rotation_allowed", "evidence_refs",
+)
+COMPACT_PART_KEYS = ("id", "m", "q", "l", "w", "r")
 TRANSPORT_FIELDS = frozenset({
     "status", "dimensions_mm", "materials", "features", "manufacturing_features",
     "purchased_components", "source_facts", "review_items",
-    "labor_operations",
+    "labor_operations", "parts",
 })
