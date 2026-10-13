@@ -11,6 +11,7 @@ from use_cases.estimation_artifacts import persist_page_artifact, persist_previe
 from use_cases.estimation_evidence import EvidenceArtifact
 from use_cases.estimation_evidence import build_estimation_input, resolve_anchor_bbox
 from use_cases.estimation_originals import StoredOriginal
+from use_cases.detection_previews import normalize_preview_bbox
 from use_cases.evidence_preview import crop_ocr_region_to_webp
 
 
@@ -118,11 +119,34 @@ def persist_estimation_inputs(
             skipped[object_id] = "evidence_page_not_renderable"
             continue
         if not artifact:
-            preview = crop_ocr_region_to_webp(
-                page_image=pages[page_number - 1],
-                page_dimensions=ocr_page.get("dimensions") or {},
-                bbox=resolved["bbox"],
-            )
+            page_dimensions = ocr_page.get("dimensions") or {}
+            try:
+                preview_bbox = normalize_preview_bbox(resolved["bbox"], page_dimensions)
+                preview = crop_ocr_region_to_webp(
+                    page_image=pages[page_number - 1],
+                    page_dimensions=page_dimensions,
+                    bbox=preview_bbox,
+                )
+            except ValueError:
+                # OCR and visual-detection coordinates can disagree. Never let
+                # a stale or malformed isolated preview abort the whole
+                # estimate. Keep the physical page as the immutable evidence,
+                # but do not retain OCR text as if its anchor had been exact.
+                try:
+                    preview = crop_ocr_region_to_webp(
+                        page_image=pages[page_number - 1],
+                        page_dimensions=page_dimensions,
+                        bbox={
+                            "top_left_x": 0,
+                            "top_left_y": 0,
+                            "bottom_right_x": page_dimensions["width"],
+                            "bottom_right_y": page_dimensions["height"],
+                        },
+                    )
+                except (KeyError, TypeError, ValueError):
+                    skipped[object_id] = "evidence_preview_bbox_invalid"
+                    continue
+                exact_ocr_anchor = False
             artifact = persist_preview_artifact(
                 client=client, company_id=str(run["company_id"]), run_id=str(run["run_id"]),
                 object_id=object_id, page_number=page_number, webp_bytes=preview,

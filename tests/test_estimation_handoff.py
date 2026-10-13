@@ -155,6 +155,37 @@ def test_shadow_handoff_prefers_vnext_object_preview_bbox_over_label_anchor():
     assert Image.open(BytesIO(stored_webp)).size == (100, 100)
 
 
+def test_shadow_handoff_falls_back_to_full_page_for_invalid_preview_bbox():
+    source = _image_bytes()
+    client = _Client()
+    result = persist_estimation_v2_inputs(
+        client=client,
+        run={"run_id": "run-1", "company_id": "company-1", "file_name": "drawing.png"},
+        objects=[{
+            "object_id": "object-1", "object_name": "Desk", "quantity": 1,
+            "quantity_explicit": True, "dimensions_json": {}, "notes": "",
+            "evidence_page_refs": [{
+                "page_number": 1, "source_label": "A-01",
+                "preview_bbox": {
+                    "top_left_x": 0, "top_left_y": 0,
+                    "bottom_right_x": 101, "bottom_right_y": 100,
+                },
+            }],
+        }],
+        ignored_object_ids=set(), file_name="drawing.png", file_bytes=source,
+        ocr_event_id="ocr-1",
+        ocr_package={"contract_version": "ocr_v2", "pages": [{"page_number": 1, "dimensions": {"width": 100, "height": 100}}],
+                     "evidence": {"text_blocks": [{"page_number": 1, "text": "Desk", "bbox": {"top_left_x": 1, "top_left_y": 1, "bottom_right_x": 20, "bottom_right_y": 20}}]}},
+        original=describe_estimation_original(company_id="company-1", file_name="drawing.png", file_bytes=source),
+        versions={"detection": "test"},
+    )
+
+    assert result["created_input_ids"] == ["input-1"]
+    assert result["skipped"] == {}
+    assert Image.open(BytesIO(client.uploads[0][1])).size == (100, 100)
+    assert client.rows["rfq_estimation_object_inputs"]["input_payload"]["evidence"]["ocr_blocks"] == []
+
+
 def test_shadow_handoff_reuses_detection_preview_and_persists_full_evidence_page():
     source = _image_bytes()
     client = _Client()
