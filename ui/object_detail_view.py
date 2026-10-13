@@ -235,7 +235,14 @@ def _final_html(data: dict[str, object]) -> str:
     )
 
 
-def _footer_html(run_id: object, estimate_id: object, object_id: object, *, approval_ready: bool) -> str:
+def _footer_html(
+    run_id: object,
+    estimate_id: object,
+    object_id: object,
+    *,
+    approval_ready: bool,
+    blocking_label: object = "MATERIALS FINALIZING",
+) -> str:
     back_params = (
         f"screen=objects&run_id={html.escape(str(run_id or ''))}"
         f"&estimate_id={html.escape(str(estimate_id or ''))}"
@@ -255,7 +262,7 @@ def _footer_html(run_id: object, estimate_id: object, object_id: object, *, appr
         if approval_ready else
         '<span class="object-detail-footer-button object-detail-footer-button--primary '
         'object-detail-footer-button--disabled" aria-disabled="true">'
-        'MATERIALS FINALIZING'
+        f'{_escape(blocking_label)}'
         '</span>'
     )
     return (
@@ -369,5 +376,6 @@ def detail_html(
             estimate_id=estimate_id,
             object_id=object_id,
             approval_ready=bool(data.get("material_plan_ready")),
+            blocking_label=data.get("material_plan_blocking_label") or "MATERIALS FINALIZING",
         )
     )

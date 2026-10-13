@@ -149,7 +149,7 @@ def _render_object_detail(
         unsafe_allow_html=True,
     )
     if not approval_ready:
-        st.info("Approval becomes available after materials for every object are finalized.")
+        st.info(str(data.get("material_plan_blocking_message") or "Materials are being finalized."))
     if st.session_state.get("object_detail_approval_error"):
         st.error(st.session_state.pop("object_detail_approval_error"))
     with st.container(key="object_detail_navigation_bridges"):
@@ -239,10 +239,8 @@ def _approve_current_object_and_return(
         client = get_supabase_client()
         try:
             _require_final_material_plan(client, estimate_id)
-        except ValueError:
-            st.session_state.object_detail_approval_error = (
-                "Materials are still being finalized for this estimate."
-            )
+        except ValueError as exc:
+            st.session_state.object_detail_approval_error = str(exc)
             return
         edits = fetch_rfq_object_detail_draft(
             client,

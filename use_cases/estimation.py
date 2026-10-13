@@ -43,6 +43,30 @@ def _material_plan_status(row: Any) -> str:
     return str(row.get("plan_status") or (row.get("plan_payload") or {}).get("status") or "pending")
 
 
+def _material_plan_blocking_state(row: Any) -> tuple[str, str]:
+    """Return a truthful visible state for an estimate-wide material plan."""
+    status = _material_plan_status(row)
+    if status == "needs_review":
+        payload = dict((row or {}).get("plan_payload") or {}) if isinstance(row, dict) else {}
+        unresolved_count = len(payload.get("unresolved_requirement_ids") or [])
+        count_text = f"{unresolved_count} material requirement{'s' if unresolved_count != 1 else ''}"
+        return (
+            "MATERIALS NEED REVIEW",
+            f"Materials need review: {count_text} could not be placed in the Company or Israel catalog. "
+            "Approval remains unavailable.",
+        )
+    if status == "failed":
+        return (
+            "MATERIAL PLAN FAILED",
+            "The estimate-wide material plan could not be calculated. Approval remains unavailable.",
+        )
+    return (
+        "MATERIALS FINALIZING",
+        "Materials are being recalculated for every object. Approval becomes available when the "
+        "estimate-wide purchase plan is ready.",
+    )
+
+
 def _invalidate_and_queue_material_plan(
     client: Any,
     *,
@@ -126,6 +150,8 @@ def start_estimation_for_run(
         object_estimates=object_estimates,
     )
 
+    plan_status = _material_plan_status(material_plan_row)
+    plan_blocking_label, plan_blocking_message = _material_plan_blocking_state(material_plan_row)
     return {
         "estimate_id": estimate_id,
         "run_id": run_id,
@@ -468,8 +494,10 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
         "name": object_row.get("object_name"),
         "quantity": canonical_quantity,
         "approved": bool(object_row.get("approved")),
-        "material_plan_ready": _material_plan_status(material_plan_row) == "planned",
-        "material_plan_status": _material_plan_status(material_plan_row),
+        "material_plan_ready": plan_status == "planned",
+        "material_plan_status": plan_status,
+        "material_plan_blocking_label": plan_blocking_label,
+        "material_plan_blocking_message": plan_blocking_message,
         "confidence": round(sum(operation_confidences) / len(operation_confidences))
         if operation_confidences else "—",
         "preview_label": "Object preview",
@@ -605,7 +633,7 @@ def _require_final_material_plan(client: Any, estimate_id: str) -> None:
         raise ValueError("Materials are still being finalized for this estimate")
     row = plan_df.iloc[0].to_dict()
     if _material_plan_status(row) != "planned":
-        raise ValueError("Materials are still being finalized for this estimate")
+        raise ValueError(_material_plan_blocking_state(row)[1])
 
 
 def _object_material_context(client: Any, *, estimate_id: str, object_id: str) -> dict[str, Any]:
