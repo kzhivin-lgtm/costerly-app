@@ -150,8 +150,6 @@ def start_estimation_for_run(
         object_estimates=object_estimates,
     )
 
-    plan_status = _material_plan_status(material_plan_row)
-    plan_blocking_label, plan_blocking_message = _material_plan_blocking_state(material_plan_row)
     return {
         "estimate_id": estimate_id,
         "run_id": run_id,
