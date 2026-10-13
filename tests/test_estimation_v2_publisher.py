@@ -458,7 +458,7 @@ def test_publisher_writes_agent_materials_operations_totals_and_completed_status
     facts = _ready_facts()
     events = []
     monkeypatch.setattr(publisher, "fetch_estimation_v2_fact_result", lambda *_args, **_kwargs: {"facts_payload": facts})
-    monkeypatch.setattr(publisher, "fetch_active_israel_material_families", lambda _client: {"mdf"})
+    monkeypatch.setattr(publisher, "fetch_estimation_resolver_material_families", lambda _client: {"mdf"})
     monkeypatch.setattr(publisher, "validate_object_facts", lambda *_args, **_kwargs: facts)
     monkeypatch.setattr(publisher, "_settings", lambda *_args: ({"vat_percent": 18}, {}))
     monkeypatch.setattr(publisher, "_catalogs", lambda *_args: {})
@@ -497,7 +497,7 @@ def test_publisher_costs_review_required_facts_with_logged_approximation(monkeyp
     }
     events = []
     monkeypatch.setattr(publisher, "fetch_estimation_v2_fact_result", lambda *_args, **_kwargs: {"facts_payload": facts})
-    monkeypatch.setattr(publisher, "fetch_active_israel_material_families", lambda _client: {"mdf"})
+    monkeypatch.setattr(publisher, "fetch_estimation_resolver_material_families", lambda _client: {"mdf"})
     monkeypatch.setattr(publisher, "validate_object_facts", lambda *_args, **_kwargs: facts)
     monkeypatch.setattr(publisher, "_material_rows_and_costs", lambda **_kwargs: ([{"line_id": "m1"}], []))
     monkeypatch.setattr(publisher, "_purchased_component_rows_and_costs", lambda _facts, _catalogs: ([], []))

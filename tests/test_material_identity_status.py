@@ -1,4 +1,7 @@
-from use_cases.material_identity_status import material_identity_status
+from use_cases.material_identity_status import (
+    material_identity_status,
+    material_pricing_selection_key,
+)
 
 
 _DRAWER_SLIDE_POLICY = {
@@ -79,3 +82,15 @@ def test_sheet_policy_requires_two_sided_offer_format():
     assert incomplete.tone == "yellow"
     assert incomplete.missing == ("purchase format",)
     assert complete.tone == "blue"
+
+
+def test_global_family_code_is_a_valid_resolver_family_without_source_alias():
+    key = material_pricing_selection_key(
+        material_family="compact_laminate",
+        specifications={"thickness_mm": 20},
+        pricing_policies={
+            "compact_laminate": {"pricing_key_attribute_codes": ["thickness"]}
+        },
+    )
+
+    assert key == "compact_laminate|thickness=20"

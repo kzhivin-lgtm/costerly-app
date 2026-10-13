@@ -42,6 +42,12 @@ Purchased-component `t` is a lowercase snake_case identifier such as
 `glass_door_panel` or `drawer_runner`, never a display phrase. The server also
 normalizes this field before validation.
 
+`f` is always the purchasable physical family from `allowed_material_families`,
+never an alloy, steel grade, colour or coating. For example, a square hollow
+profile is `metal tube`; put a stated alloy only in `s.metal_type`. A perforated
+plate is `metal sheet`; put its stated thickness in `s.thickness_mm`. Never
+invent `stainless steel`, wall thickness, alloy or other missing material facts.
+
 Do not return source facts, review items, prose, basis, evidence references,
 confidence, provenance, routes, machines or unknown/default fields. The server
 adds them deterministically and validates all families, operation codes and

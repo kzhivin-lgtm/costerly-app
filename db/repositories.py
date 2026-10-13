@@ -5,6 +5,7 @@ import json
 
 import pandas as pd
 from supabase import Client
+from use_cases.price_source_taxonomy import source_family_for_catalog_v2_family
 
 
 def fetch_table(
@@ -247,6 +248,43 @@ def fetch_active_israel_material_families(client: Client) -> set[str]:
             break
         start += page_size
     return {family for family in families if family}
+
+
+def fetch_estimation_resolver_material_families(client: Client) -> set[str]:
+    """Load only purchasable material families supported by active policies.
+
+    ``reference_material_pricing_identities`` contains historical pricing
+    classes such as ``stainless_steel``.  They are valid evidence categories,
+    but not necessarily Resolver families.  Giving those to the extraction
+    agent lets it confuse a material grade with a purchasable form, for example
+    emitting ``stainless_steel`` instead of ``metal tube``.
+    """
+    family_rows = (
+        client.table("reference_material_families")
+        .select("family_id,family_code")
+        .eq("active", True)
+        .execute()
+        .data
+        or []
+    )
+    family_by_id = {
+        str(row.get("family_id") or ""): str(row.get("family_code") or "").strip()
+        for row in family_rows
+        if row.get("family_id") and str(row.get("family_code") or "").strip()
+    }
+    policy_rows = (
+        client.table("reference_material_family_pricing_policies")
+        .select("family_id")
+        .eq("active", True)
+        .execute()
+        .data
+        or []
+    )
+    return {
+        source_family_for_catalog_v2_family(family_by_id[str(row.get("family_id") or "")])
+        for row in policy_rows
+        if family_by_id.get(str(row.get("family_id") or ""))
+    }
 
 
 def insert_estimation_v2_fact_result(

@@ -108,6 +108,11 @@ def material_pricing_selection_key(
         return None
     item = {"specifications": {**specs, "material_family": family}}
     family_code = _family_code(item, item["specifications"])
+    # Object Facts can safely use a Global family code when that family has no
+    # source-taxonomy alias (for example ``compact_laminate``).  A stale price
+    # class such as ``stainless_steel`` still has no policy and is rejected.
+    if not family_code and family in pricing_policies:
+        family_code = family
     policy = pricing_policies.get(family_code)
     if policy is None:
         return None

@@ -14,7 +14,7 @@ from statistics import median
 from typing import Any, Mapping, Sequence
 
 from db.repositories import (
-    fetch_active_israel_material_families,
+    fetch_estimation_resolver_material_families,
     fetch_estimation_v2_fact_result,
     replace_rfq_estimate_lines_for_object,
     update_rfq_object_estimate_progress,
@@ -878,7 +878,7 @@ def _safe_db_lines(lines: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
 def build_estimation_v2_context(client: Any, company_id: str) -> dict[str, Any]:
     settings, overhead_monthly = _settings(client, company_id)
     return {
-        "families": fetch_active_israel_material_families(client),
+        "families": fetch_estimation_resolver_material_families(client),
         "catalogs": _catalogs(client, company_id),
         "settings": settings,
         "overhead_monthly": overhead_monthly,

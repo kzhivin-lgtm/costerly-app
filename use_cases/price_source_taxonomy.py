@@ -365,6 +365,17 @@ def catalog_v2_taxonomy_for_family(material_family: str) -> dict[str, str] | Non
     return payload
 
 
+def source_family_for_catalog_v2_family(family_code: str) -> str:
+    """Return the Resolver-facing family name for one Global family code.
+
+    Object Facts must classify a purchasable form, not a material grade.  The
+    source family is therefore preferred where the source taxonomy has one;
+    otherwise the stable Global family code itself is the valid vocabulary.
+    """
+    normalized = str(family_code or "").strip()
+    return _SOURCE_FAMILY_BY_V2_FAMILY.get(normalized, normalized)
+
+
 # The curated catalogue is deliberately multilingual. Each entry has one
 # English canonical display name and recognises Latin spelling, Israeli Hebrew
 # transliteration, and only safe OCR variants. It is still not a fuzzy

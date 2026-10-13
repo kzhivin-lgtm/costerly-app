@@ -3,12 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, Callable, Mapping, Sequence
 from agents.estimation_v2_page_facts_agent import ESTIMATION_V2_FACTS_AGENT_VERSION, run_estimation_v2_page_facts_agent
-from db.repositories import fetch_active_israel_material_families, fetch_estimation_v2_fact_result, insert_agent_usage_event_returning_id, insert_estimation_v2_fact_result
+from db.repositories import fetch_estimation_resolver_material_families, fetch_estimation_v2_fact_result, insert_agent_usage_event_returning_id, insert_estimation_v2_fact_result
 from use_cases.estimation_artifacts import download_evidence_artifact
 
 
 def run_estimation_v2_facts_batch(*, client: Any, inputs: Sequence[Mapping[str, Any]], on_object_start: Callable[[Mapping[str, Any]], None] | None = None) -> dict[str, Any]:
-    families = fetch_active_israel_material_families(client)
+    families = fetch_estimation_resolver_material_families(client)
     if not families:
         return {"created_result_ids": [], "reused_input_ids": [], "failed": {str(row.get("input_id") or "unknown"): "active_israel_material_family_catalog_empty" for row in inputs}}
     created: list[str] = []

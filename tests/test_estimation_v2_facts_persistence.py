@@ -4,6 +4,7 @@ import use_cases.estimation_v2_facts_shadow as shadow
 from agents.estimation_v2_page_facts_agent import ESTIMATION_V2_FACTS_AGENT_VERSION
 from db.repositories import (
     fetch_active_israel_material_families,
+    fetch_estimation_resolver_material_families,
     insert_estimation_v2_fact_result,
 )
 
@@ -115,6 +116,27 @@ def test_repository_pages_past_postgrest_thousand_row_limit():
     ]
 
 
+def test_repository_loads_only_active_resolver_families_not_price_classes():
+    client = _Client({
+        "reference_material_families": [
+            {"family_id": "tube", "family_code": "metal_tube"},
+            {"family_id": "mdf", "family_code": "mdf_hdf"},
+            {"family_id": "laminate", "family_code": "compact_laminate"},
+        ],
+        "reference_material_family_pricing_policies": [
+            {"family_id": "tube"},
+            {"family_id": "mdf"},
+            {"family_id": "laminate"},
+        ],
+    })
+
+    assert fetch_estimation_resolver_material_families(client) == {
+        "metal tube", "mdf", "compact_laminate"
+    }
+    assert ("reference_material_families", "active", True) in client.filters
+    assert ("reference_material_family_pricing_policies", "active", True) in client.filters
+
+
 def test_repository_persists_only_validated_fact_envelope():
     client = _Client()
     facts = {"contract_version": "estimation_object_facts_v2", "status": "review_required"}
@@ -140,7 +162,7 @@ def test_repository_persists_only_validated_fact_envelope():
 
 def test_shadow_batch_persists_validated_facts_and_usage(monkeypatch):
     calls = []
-    monkeypatch.setattr(shadow, "fetch_active_israel_material_families", lambda _client: {"birch_plywood"})
+    monkeypatch.setattr(shadow, "fetch_estimation_resolver_material_families", lambda _client: {"birch_plywood"})
     monkeypatch.setattr(shadow, "fetch_estimation_v2_fact_result", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(shadow, "download_evidence_artifact", lambda **_kwargs: b"preview")
     monkeypatch.setattr(
@@ -170,7 +192,7 @@ def test_shadow_batch_persists_validated_facts_and_usage(monkeypatch):
 
 
 def test_shadow_batch_reuses_exact_agent_version_without_model_call(monkeypatch):
-    monkeypatch.setattr(shadow, "fetch_active_israel_material_families", lambda _client: {"mdf"})
+    monkeypatch.setattr(shadow, "fetch_estimation_resolver_material_families", lambda _client: {"mdf"})
     monkeypatch.setattr(shadow, "fetch_estimation_v2_fact_result", lambda *_args, **_kwargs: {"fact_result_id": "facts-1"})
     monkeypatch.setattr(
         shadow,
@@ -188,7 +210,7 @@ def test_shadow_batch_reuses_exact_agent_version_without_model_call(monkeypatch)
 
 
 def test_shadow_batch_is_fail_isolated_per_object(monkeypatch):
-    monkeypatch.setattr(shadow, "fetch_active_israel_material_families", lambda _client: {"mdf"})
+    monkeypatch.setattr(shadow, "fetch_estimation_resolver_material_families", lambda _client: {"mdf"})
     monkeypatch.setattr(shadow, "fetch_estimation_v2_fact_result", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(shadow, "download_evidence_artifact", lambda **_kwargs: b"preview")
     monkeypatch.setattr(
@@ -208,7 +230,7 @@ def test_shadow_batch_is_fail_isolated_per_object(monkeypatch):
 
 def test_shadow_batch_attaches_each_objects_own_preview(monkeypatch):
     captured = {}
-    monkeypatch.setattr(shadow, "fetch_active_israel_material_families", lambda _client: {"mdf"})
+    monkeypatch.setattr(shadow, "fetch_estimation_resolver_material_families", lambda _client: {"mdf"})
     monkeypatch.setattr(shadow, "fetch_estimation_v2_fact_result", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         shadow, "download_evidence_artifact",
