@@ -402,6 +402,17 @@ metal, section and wall thickness without turning absent evidence into a
 model-generated specification. Cache version `estimation_material_facts_v3_2`
 separates these facts from prior runs.
 
+Furniture metal-profile policy correction, 2026-10-13: wall thickness is not
+a Pricing Key fact for `metal_tube` or `metal_profile_angle_channel`. An
+unstated furniture-profile wall uses the manufacturing default of 1.5 mm;
+an explicit wall remains secondary source provenance. `metal_flat_bar` is
+deliberately excluded because its thickness is a physical cross-section fact
+and can affect price. The corrective SQL is
+`2026_10_13_furniture_profile_wall_thickness_default.sql`. MDF 20 mm and
+perforated steel sheet 5 mm are confirmed catalog gaps, not extraction gaps:
+each still needs an authoritative active price and supply format before the
+Resolver can yield a candidate.
+
 Resolver correction, 2026-10-13: the first live multi-object Material Plan
 proved that Object Facts had been given legacy Israel price classes rather
 than the Resolver's purchasable-family vocabulary. That allowed an unsupported

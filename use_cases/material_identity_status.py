@@ -167,10 +167,13 @@ _REQUIRED_BY_FAMILY: dict[str, tuple[str, ...]] = {
     "solid surface": ("thickness_mm",),
     "terrazzo": ("thickness_mm",),
     "metal sheet": ("metal_type", "thickness_mm"),
-    "metal tube": ("metal_type", "section_profile", "wall_thickness_mm"),
-    "metal angle": ("metal_type", "section_profile", "wall_thickness_mm"),
-    "metal channel": ("metal_type", "section_profile", "wall_thickness_mm"),
-    "metal profile": ("metal_type", "section_profile", "wall_thickness_mm"),
+    # Furniture profiles use a technical default wall thickness of 1.5 mm
+    # when the evidence does not state one.  It remains useful secondary
+    # provenance when explicit, but never blocks material identity or pricing.
+    "metal tube": ("metal_type", "section_profile"),
+    "metal angle": ("metal_type", "section_profile"),
+    "metal channel": ("metal_type", "section_profile"),
+    "metal profile": ("metal_type", "section_profile"),
     "metal bar": ("metal_type", "diameter_mm"),
     "powder coating": ("coating_system",),
     "epoxy coating": ("coating_system",),

@@ -62,7 +62,7 @@ def test_v3_exposes_only_existing_pricing_key_facts_to_extraction():
             {"family_id": "mdf", "pricing_key_attribute_codes": ["thickness"], "active": True},
             {
                 "family_id": "tube",
-                "pricing_key_attribute_codes": ["metal_type", "section_profile", "wall_thickness"],
+                "pricing_key_attribute_codes": ["metal_type", "section_profile"],
                 "active": True,
             },
         ],
@@ -70,5 +70,5 @@ def test_v3_exposes_only_existing_pricing_key_facts_to_extraction():
 
     assert requirements == {
         "mdf": ("thickness_mm", "thickness"),
-        "metal tube": ("metal_type", "profile_section", "wall_thickness_mm", "wall_thickness"),
+        "metal tube": ("metal_type", "profile_section"),
     }

@@ -94,3 +94,22 @@ def test_global_family_code_is_a_valid_resolver_family_without_source_alias():
     )
 
     assert key == "compact_laminate|thickness=20"
+
+
+def test_furniture_profile_identity_does_not_require_wall_thickness():
+    status = material_identity_status({
+        "specifications": {
+            "material_family": "metal tube",
+            "metal_type": "steel",
+            "section_profile": "20 x 20 mm",
+        },
+    }, pricing_policies={
+        "metal_tube": {
+            "pricing_key_attribute_codes": ["metal_type", "section_profile"],
+            "purchase_format_policy": "required",
+            "active": True,
+        },
+    })
+
+    assert status.tone == "yellow"
+    assert status.missing == ("purchase format",)
