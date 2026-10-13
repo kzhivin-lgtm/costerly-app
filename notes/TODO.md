@@ -327,6 +327,12 @@ needed and never writes back to either catalog. Catalog V2 already has the
 target persistence contract: case-local assumption, deduplicated staff-only
 Catalog Gap Ticket and occurrence. Runtime creation, Staff Admin review UI and
 authoritative catalog-resolution workflow remain unimplemented follow-up work.
+Name accepted: `Assumption Fallback`. It is a separate Estimate-orchestration
+service after Material Engine, not an Estimation Agent or Engine subsystem.
+Build it after Company and Israel candidate planning is accepted and the
+Material Engine replaces legacy material selection; it must consume an
+Engine-produced `assumption_required` outcome rather than re-run material
+selection itself.
 
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
