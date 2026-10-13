@@ -47,6 +47,9 @@ and Company or Israel-reference authority.
    Within that authority lane, select the lowest complete basket cost. Candidate
    ID is the final stable tie breaker. A candidate that cannot physically supply
    every demand is not eligible.
+7. If neither Company nor Israel Reference can provide a complete candidate,
+   emit an estimate-local assumption. It must carry its reason and remain
+   `review required`; it is not a Company Catalog or Israel Price List write.
 7. Preserve allocations from each purchase unit back to every demand. V1 does
    not assign offcuts to a later estimate.
 

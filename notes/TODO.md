@@ -320,7 +320,10 @@ converts source prices to ex-VAT physical purchase-unit price, and groups only
 the active family Pricing Key. The runtime returns only shadow diagnostics;
 the live publisher still owns displayed per-object material lines. Israel
 Reference candidate conversion and accepted benchmark comparison remain before
-the legacy selection replacement.
+the legacy selection replacement. Accepted fallback chain: complete Company
+basket, otherwise complete Israel Reference basket, otherwise an
+estimate-local, review-required assumption. The assumption records why it was
+needed and never writes back to either catalog.
 
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
