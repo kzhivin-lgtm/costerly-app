@@ -175,6 +175,33 @@ only the catalog-V2, case-local-assumption and Catalog-Gap-Job contracts in
 `db/sql/2026_10_11_catalog_v2_contract_foundation.sql`; it does not apply the
 migration, switch readers, write research into canonical catalog rows or expose
 the Staff Admin Inbox. Contract: `notes/PROVISIONAL_ESTIMATE_CONTRACT_3_17_1.md`.
+
+Decision correction, 2026-10-13, Material defaults versus assumptions: a
+Family Default is not an assumption and never alters OCR evidence. It may fill
+only a missing Pricing Key fact after the material family itself is proven,
+then continues through the normal Company-first, Israel-second Resolver path.
+Its trace records each policy-applied value. A missing family is not eligible
+for a Family Default. A deterministic construction rule may make a
+case-local `material_family_assumption` from object type and part role, for
+example a kitchen-cabinet carcass to melamine-faced particleboard; it remains
+review-visible because the input did not prove that family, but it is not a
+Catalog Gap. A complete uncommon specification with no Company or Israel
+candidate is the separate `catalog_gap_assumption` path and creates the
+deduplicated Catalog Gap Ticket. Initial Family Default values require an
+owner-approved, versioned baseline matrix rather than implicit selection from
+whatever prices happen to exist.
+
+Implementation increment, 2026-10-13, 3.17.4.1: `reference_material_family_default_variants`
+stores ordered default variants anchored to an active Israel pricing identity.
+The V3 Material Engine applies a variant only to a proven family with missing
+facts, verifies that anchor still has an active material-only Israel price,
+and persists the applied values in the Material Plan trace. The initial matrix
+contains raw MDF 17 mm and raw plywood 17 mm because each has a live Israel
+candidate. LDSP 15/17 cannot be activated yet: the active Israel Reference has
+no corresponding price identity, which is a catalog-enrichment task rather
+than a reason to invent an anchor. Missing-family construction assumptions are
+not part of this increment.
+
 Reader/UI scope is mandatory, not a later cosmetic pass: migrate Price Source
 ingestion and review/list behaviour, Company Catalog, Estimation/Object Detail
 and Staff Admin to the same V2 taxonomy contract. Preserve the accepted Price

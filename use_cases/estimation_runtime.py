@@ -66,6 +66,7 @@ def _build_and_persist_material_plan(
     fingerprint = material_plan_input_fingerprint(
         facts_by_object=facts_by_object,
         material_norm_overrides=overrides,
+        material_default_variants=shared_catalogs.get("material_default_variants") or (),
     )
     shadow = shadow_material_plan(
         facts_by_object=facts_by_object,

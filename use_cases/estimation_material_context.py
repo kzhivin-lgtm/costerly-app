@@ -20,6 +20,20 @@ def _rows(client: Any, table: str, *, filters: Mapping[str, Any]) -> list[dict[s
         start += page_size
 
 
+def _optional_rows(client: Any, table: str, *, filters: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Read a newly introduced catalog extension without breaking a staged deploy."""
+    try:
+        return _rows(client, table, filters=filters)
+    except Exception as exc:
+        # PostgREST can expose either PostgreSQL 42P01 or PGRST205 while the
+        # application deploy arrives before its additive migration. Do not
+        # conceal any other catalog read failure.
+        message = str(exc)
+        if table in message and ("42P01" in message or "PGRST205" in message or "does not exist" in message):
+            return []
+        raise
+
+
 def build_estimation_material_context(client: Any, company_id: str) -> dict[str, Any]:
     """Load only catalog data needed for deterministic material purchasing."""
     return {
@@ -32,5 +46,10 @@ def build_estimation_material_context(client: Any, company_id: str) -> dict[str,
             "material_families": _rows(client, "reference_material_families", filters={"active": True}),
             "material_pricing_policies": _rows(client, "reference_material_family_pricing_policies", filters={"active": True}),
             "family_supply_formats": _rows(client, "reference_material_family_supply_formats", filters={"active": True}),
+            "material_default_variants": _optional_rows(
+                client,
+                "reference_material_family_default_variants",
+                filters={"active": True},
+            ),
         },
     }

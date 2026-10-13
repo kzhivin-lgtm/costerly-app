@@ -74,12 +74,14 @@ class MaterialEngineShadow:
     unresolved_requirement_ids: tuple[str, ...] = ()
     reason_codes: tuple[str, ...] = ()
     candidate_authorities: tuple[tuple[str, str], ...] = ()
+    applied_defaults: tuple[Mapping[str, Any], ...] = ()
 
 
 def material_plan_input_fingerprint(
     *,
     facts_by_object: Mapping[str, Mapping[str, Any]],
     material_norm_overrides: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
+    material_default_variants: Sequence[Mapping[str, Any]] = (),
 ) -> str:
     """Fingerprint the complete Material Engine input, including manual norms."""
     payload = {
@@ -88,6 +90,16 @@ def material_plan_input_fingerprint(
             f"{object_id}:{requirement_id}": dict(value)
             for (object_id, requirement_id), value in sorted((material_norm_overrides or {}).items())
         },
+        "material_default_variants": [
+            dict(value) for value in sorted(
+                material_default_variants,
+                key=lambda row: (
+                    str(row.get("family_id") or ""),
+                    int(row.get("priority") or 0),
+                    str(row.get("default_variant_id") or ""),
+                ),
+            )
+        ],
     }
     encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
     return sha256(encoded.encode("utf-8")).hexdigest()
@@ -196,6 +208,7 @@ def material_plan_snapshot(
                 material_plan_object_cost_allocations(result).items()
             )
         ],
+        "applied_material_defaults": [dict(value) for value in result.applied_defaults],
     }
 
 
@@ -216,6 +229,97 @@ def _positive(value: Any) -> Decimal | None:
 
 def _canonical_requirement_unit(value: Any) -> str:
     return _canonical_unit(str(value or "")).replace("²", "2")
+
+
+def _present_value(value: Any) -> bool:
+    return value not in (None, "", [], {})
+
+
+def _resolver_family_code(
+    material_family: str,
+    *,
+    policies: Mapping[str, Mapping[str, Any]],
+) -> str | None:
+    taxonomy = catalog_v2_taxonomy_for_family(material_family)
+    family_code = str((taxonomy or {}).get("family_code") or "").strip()
+    if family_code in policies:
+        return family_code
+    normalized = str(material_family or "").strip()
+    return normalized if normalized in policies else None
+
+
+def _active_default_specifications(
+    *,
+    material_family: str,
+    specifications: Mapping[str, Any],
+    material_default_variants: Sequence[Mapping[str, Any]],
+    pricing_identities: Sequence[Mapping[str, Any]],
+    pricing_identity_prices: Sequence[Mapping[str, Any]],
+    material_pricing_policies: Sequence[Mapping[str, Any]],
+    material_families: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], Mapping[str, Any] | None]:
+    """Complete an evidenced family from a live Israel-backed default variant.
+
+    Defaults fill only facts absent from OCR. They cannot infer a missing
+    family and they become ineligible if their linked Israel price is inactive.
+    """
+    policies = pricing_policy_by_family_code(material_pricing_policies, families=material_families)
+    family_code = _resolver_family_code(material_family, policies=policies)
+    policy = policies.get(str(family_code or ""))
+    family_id = str((policy or {}).get("family_id") or "")
+    if not family_id:
+        return dict(specifications), None
+    identities = {
+        str(row.get("pricing_identity_id") or ""): row
+        for row in pricing_identities
+        if str(row.get("market_code") or "IL") == "IL" and str(row.get("status") or "") == "active"
+    }
+    active_price_ids = {
+        str(row.get("pricing_identity_id") or "")
+        for row in pricing_identity_prices
+        if str(row.get("status") or "") == "active"
+        and str(row.get("price_scope") or "") == "material_only"
+        and _positive(row.get("price_typical")) is not None
+    }
+    for variant in sorted(
+        material_default_variants,
+        key=lambda row: (int(row.get("priority") or 0), str(row.get("default_variant_id") or "")),
+    ):
+        if str(variant.get("family_id") or "") != family_id:
+            continue
+        identity_id = str(variant.get("reference_pricing_identity_id") or "")
+        identity = identities.get(identity_id)
+        if identity is None or identity_id not in active_price_ids:
+            continue
+        defaults = dict(variant.get("default_specifications") or {})
+        applied = {key: value for key, value in defaults.items() if not _present_value(specifications.get(key))}
+        if not applied:
+            continue
+        effective = {**specifications, **applied}
+        selection_key = material_pricing_selection_key(
+            material_family=material_family,
+            specifications=effective,
+            pricing_policies=policies,
+        )
+        identity_attributes = dict(identity.get("price_attributes") or {})
+        identity_family = _catalog_family_for_reference_identity(
+            identity_attributes.get("material_family") or material_family,
+            pricing_policies=policies,
+        )
+        identity_key = material_pricing_selection_key(
+            material_family=str(identity_family or ""),
+            specifications={**identity_attributes, "material_family": identity_family},
+            pricing_policies=policies,
+        )
+        if selection_key is None or identity_key != selection_key:
+            continue
+        return effective, {
+            "default_variant_id": str(variant.get("default_variant_id") or ""),
+            "reference_pricing_identity_id": identity_id,
+            "family_code": family_code,
+            "applied_specifications": applied,
+        }
+    return dict(specifications), None
 
 
 def _demand_from_net_requirement(
@@ -560,6 +664,7 @@ def shadow_material_plan(
     candidates: dict[str, MaterialSupplyCandidate] = {}
     unresolved: list[str] = []
     reasons: set[str] = set()
+    applied_defaults: list[Mapping[str, Any]] = []
     candidate_cache: dict[tuple[str, str, tuple[tuple[str, str], ...]], tuple[str | None, tuple[MaterialSupplyCandidate, ...]]] = {}
 
     overrides = material_norm_overrides or {}
@@ -578,7 +683,21 @@ def shadow_material_plan(
                 parts_by_requirement.setdefault(str(part.get("material_requirement_id") or ""), []).append(part)
         for requirement_id, material in sorted(materials.items()):
             parts = parts_by_requirement.get(requirement_id) or []
-            specs = dict(material.get("specification") or {})
+            specs, default_trace = _active_default_specifications(
+                material_family=str(material.get("family") or ""),
+                specifications=dict(material.get("specification") or {}),
+                material_default_variants=catalogs.get("material_default_variants") or (),
+                pricing_identities=catalogs.get("identities") or (),
+                pricing_identity_prices=catalogs.get("prices") or (),
+                material_pricing_policies=catalogs.get("material_pricing_policies") or (),
+                material_families=catalogs.get("material_families") or (),
+            )
+            if default_trace is not None:
+                applied_defaults.append({
+                    "object_id": str(object_id),
+                    "material_requirement_id": requirement_id,
+                    **default_trace,
+                })
             cache_key = (
                 str(material.get("source_name") or material.get("family") or ""),
                 str(material.get("family") or ""),
@@ -717,5 +836,9 @@ def shadow_material_plan(
         candidate_authorities=tuple(sorted(
             (candidate_id, candidate.authority)
             for candidate_id, candidate in candidates.items()
+        )),
+        applied_defaults=tuple(sorted(
+            applied_defaults,
+            key=lambda row: (str(row["object_id"]), str(row["material_requirement_id"])),
         )),
     )

@@ -290,6 +290,44 @@ def test_shadow_keeps_complete_company_basket_even_when_reference_is_cheaper():
     assert shadow.plan.lines[0].candidate_id == "company-offer:company"
 
 
+def test_shadow_completes_a_proven_family_from_an_active_israel_default():
+    facts = _facts("cabinet-a", "side-a")
+    facts["materials"][0]["specification"] = {}
+    identity = {**_reference_identity(), "market_code": "IL", "status": "active"}
+    catalogs = _catalogs(
+        identities=[identity],
+        prices=[_reference_price()],
+        formats=[_reference_format()],
+    )
+    catalogs["material_default_variants"] = [{
+        "default_variant_id": "plywood-18-default",
+        "family_id": "family-plywood",
+        "reference_pricing_identity_id": "reference-plywood-18",
+        "default_specifications": {"thickness_mm": 18},
+        "priority": 10,
+        "active": True,
+    }]
+
+    shadow = shadow_material_plan(
+        facts_by_object={"cabinet-a": facts},
+        catalogs=catalogs,
+    )
+
+    assert shadow.plan is not None
+    assert shadow.plan.status == "planned"
+    assert shadow.applied_defaults == ({
+        "object_id": "cabinet-a",
+        "material_requirement_id": "plywood",
+        "default_variant_id": "plywood-18-default",
+        "reference_pricing_identity_id": "reference-plywood-18",
+        "family_code": "plywood",
+        "applied_specifications": {"thickness_mm": 18},
+    },)
+    assert material_plan_snapshot(shadow)["applied_material_defaults"] == [
+        dict(shadow.applied_defaults[0])
+    ]
+
+
 def test_material_plan_snapshot_preserves_purchase_and_object_traceability():
     shadow = shadow_material_plan(
         facts_by_object={"cabinet-a": _facts("cabinet-a", "side-a", length=1200, width=600)},
