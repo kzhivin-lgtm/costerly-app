@@ -313,6 +313,15 @@ results. Feed the new Material Engine only in read-only shadow mode until its
 plan, candidate coverage and material totals can be compared against the
 current publisher without replacing any displayed cost line.
 
+Implementation stage, 2026-10-13, 3.17.3.3: Resolver-cleared Company offers
+now bridge to physical Material Engine candidates in a non-blocking
+document-wide shadow plan. The bridge preserves offer-level purchase format,
+converts source prices to ex-VAT physical purchase-unit price, and groups only
+the active family Pricing Key. The runtime returns only shadow diagnostics;
+the live publisher still owns displayed per-object material lines. Israel
+Reference candidate conversion and accepted benchmark comparison remain before
+the legacy selection replacement.
+
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
 name solely as `Entity -> one or two proven key attributes -> confirmed brand

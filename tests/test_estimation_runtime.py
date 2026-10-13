@@ -1,4 +1,6 @@
 import use_cases.estimation_runtime as runtime
+from decimal import Decimal
+from types import SimpleNamespace
 
 
 def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
@@ -104,6 +106,44 @@ def test_all_ignored_objects_finish_as_empty_v2_estimate(monkeypatch):
 
     assert result["estimation"] == {
         "status": "no_objects", "estimated_objects": 0, "failed_objects": {}
+    }
+
+
+def test_material_engine_shadow_runs_after_facts_and_cannot_block_legacy_publishing(monkeypatch):
+    events = []
+    facts = {
+        "object-1": {"facts_payload": {"object_id": "object-1", "materials": [], "parts": []}},
+    }
+
+    monkeypatch.setattr(runtime, "build_estimation_v2_context", lambda *_args: {"catalogs": {}})
+    monkeypatch.setattr(runtime, "run_estimation_v2_facts_batch", lambda **_kwargs: events.append("facts") or {"failed": {}})
+    monkeypatch.setattr(runtime, "fetch_latest_estimation_v2_facts_by_object", lambda _client, **_kwargs: facts)
+    monkeypatch.setattr(
+        runtime,
+        "shadow_material_plan",
+        lambda **_kwargs: events.append("shadow") or SimpleNamespace(
+            plan=SimpleNamespace(status="planned", lines=[SimpleNamespace(total_cost=Decimal("42"))]),
+            demand_count=1, candidate_count=1, unresolved_requirement_ids=(), reason_codes=(),
+        ),
+    )
+    monkeypatch.setattr(runtime, "publish_estimation_v2_object", lambda **_kwargs: events.append("publish") or {"status": "complete"})
+    monkeypatch.setattr(runtime, "_set_object_progress", lambda _client, **_kwargs: None)
+    monkeypatch.setattr(runtime, "update_rfq_object_estimate_progress", lambda _client, **_kwargs: None)
+
+    result = runtime._run_estimation_v2_for_all_objects(
+        client=object(), estimate_id="estimate-1",
+        created_inputs=[{
+            "input_id": "input-1", "object_id": "object-1",
+            "input_payload": {"company_id": "company-1", "run_id": "run-1"},
+        }],
+    )
+
+    assert events == ["facts", "shadow", "publish"]
+    assert result["processed_input_ids"] == ["input-1"]
+    assert result["material_engine_shadow"] == {
+        "status": "planned", "demand_count": 1, "candidate_count": 1,
+        "planned_line_count": 1, "planned_material_cost_ex_vat": 42.0,
+        "unresolved_requirement_ids": [], "reason_codes": [],
     }
 
 

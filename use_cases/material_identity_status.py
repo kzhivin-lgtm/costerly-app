@@ -66,6 +66,60 @@ _PRICING_KEY_LABELS = {
 }
 
 
+def _selection_value(value: Any) -> str:
+    """Return a stable, comparison-safe representation of one Pricing Key fact."""
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if isinstance(value, (int, float)):
+        return _display(value).casefold()
+    return " ".join(str(value or "").strip().casefold().split())
+
+
+def _pricing_key_value(specifications: Mapping[str, Any], code: str) -> str | None:
+    fields = _PRICING_KEY_FIELDS.get(code, (code,))
+    # The estimation-facts contract calls this ``profile_section`` while the
+    # catalog family registry calls it ``section_profile``. They are one fact,
+    # not a reason to split otherwise compatible stock.
+    if code == "section_profile":
+        fields = ("section_profile", "profile_section")
+    for field in fields:
+        value = specifications.get(field)
+        if _present(value):
+            return _selection_value(value)
+    return None
+
+
+def material_pricing_selection_key(
+    *,
+    material_family: str,
+    specifications: Mapping[str, Any] | None,
+    pricing_policies: Mapping[str, Mapping[str, Any]],
+) -> str | None:
+    """Build the minimum completed Pricing Key used to group Engine demands.
+
+    This is intentionally smaller than a display name. Decorative labels,
+    supplier SKU, brand and product system do not fragment a purchasable
+    material group unless the active family policy explicitly makes them a
+    price-bearing fact.
+    """
+    specs = dict(specifications or {})
+    family = str(material_family or specs.get("material_family") or "").strip()
+    if not family:
+        return None
+    item = {"specifications": {**specs, "material_family": family}}
+    family_code = _family_code(item, item["specifications"])
+    policy = pricing_policies.get(family_code)
+    if policy is None:
+        return None
+    values: list[str] = []
+    for code in policy.get("pricing_key_attribute_codes") or ():
+        text = _pricing_key_value(specs, str(code))
+        if text is None:
+            return None
+        values.append(f"{code}={text}")
+    return "|".join((family_code, *values))
+
+
 # Required V1 endpoint facts. Brand and Product System enrich the canonical
 # path but deliberately never block preliminary estimation on their own.
 _REQUIRED_BY_FAMILY: dict[str, tuple[str, ...]] = {

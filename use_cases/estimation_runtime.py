@@ -6,11 +6,17 @@ from typing import Mapping
 from use_cases.estimation import start_estimation_for_run
 from use_cases.rfq_processing import apply_file_review_edits
 from agents.anthropic_adapter import DETECTION_PROMPT_VERSION
-from db.repositories import fetch_latest_ocr_result, fetch_rfq_detected_objects, fetch_rfq_run
+from db.repositories import (
+    fetch_latest_estimation_v2_facts_by_object,
+    fetch_latest_ocr_result,
+    fetch_rfq_detected_objects,
+    fetch_rfq_run,
+)
 from db.supabase_client import get_supabase_client
 from use_cases.estimation_handoff import persist_estimation_v2_inputs
 from use_cases.estimation_originals import describe_estimation_original
 from use_cases.estimation_v2_facts_shadow import run_estimation_v2_facts_batch
+from use_cases.material_engine_adapter import shadow_material_plan
 from use_cases.estimation_v2_publisher import (
     build_estimation_v2_context,
     publish_estimation_v2_object,
@@ -87,6 +93,36 @@ def _run_estimation_v2_for_all_objects(
         mark_facts_start(input_row)
     facts_result = run_estimation_v2_facts_batch(client=client, inputs=valid_inputs)
 
+    shadow_summary: dict[str, object] = {"status": "not_run"}
+    if shared_context and valid_inputs:
+        first_payload = valid_inputs[0].get("input_payload")
+        run_id = str(first_payload.get("run_id") or "") if isinstance(first_payload, Mapping) else ""
+        if run_id:
+            try:
+                shadow = shadow_material_plan(
+                    facts_by_object=fetch_latest_estimation_v2_facts_by_object(client, run_id=run_id),
+                    catalogs=shared_context["catalogs"],
+                )
+                plan = shadow.plan
+                shadow_summary = {
+                    "status": plan.status if plan else "needs_review",
+                    "demand_count": shadow.demand_count,
+                    "candidate_count": shadow.candidate_count,
+                    "planned_line_count": len(plan.lines) if plan else 0,
+                    "planned_material_cost_ex_vat": (
+                        float(sum((line.total_cost for line in plan.lines), start=0)) if plan else None
+                    ),
+                    "unresolved_requirement_ids": list(shadow.unresolved_requirement_ids),
+                    "reason_codes": list(shadow.reason_codes),
+                }
+            except Exception as exc:
+                # Shadow planning is deliberately non-blocking until it has
+                # matched the legacy publisher over accepted benchmark runs.
+                shadow_summary = {
+                    "status": "failed",
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+
     for input_row in valid_inputs:
         object_id = str(input_row["object_id"])
         input_id = str(input_row["input_id"])
@@ -129,7 +165,11 @@ def _run_estimation_v2_for_all_objects(
                 progress_percent=100,
                 progress_label="v2_publisher_failed",
             )
-    return {"processed_input_ids": completed_inputs, "failed": failed}
+    return {
+        "processed_input_ids": completed_inputs,
+        "failed": failed,
+        "material_engine_shadow": shadow_summary,
+    }
 
 
 def submit_estimation_job(
