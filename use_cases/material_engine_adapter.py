@@ -8,7 +8,7 @@ project-level purchase-plan presentation is being connected.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from hashlib import sha256
@@ -674,6 +674,17 @@ def shadow_material_plan(
                 continue
             demands.append(direct_demand)
     plan = plan_material_purchases(demands=demands, candidates=tuple(candidates.values())) if demands else None
+    if plan and unresolved:
+        # A partially priced document is not Final Approval-ready. Keep the
+        # resolved purchase lines as traceable diagnostics, but carry every
+        # earlier Resolver gap into the plan status rather than allowing one
+        # successful demand to turn the whole estimate green.
+        plan = replace(
+            plan,
+            status="needs_review",
+            unresolved_demand_ids=tuple(sorted(set((*plan.unresolved_demand_ids, *unresolved)))),
+            reason_codes=tuple(sorted(set((*plan.reason_codes, *reasons)))),
+        )
     if plan and plan.status == "needs_review":
         unresolved.extend(plan.unresolved_demand_ids)
         reasons.update(plan.reason_codes)

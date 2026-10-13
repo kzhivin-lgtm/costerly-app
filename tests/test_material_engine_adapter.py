@@ -392,3 +392,22 @@ def test_shadow_marks_assumption_required_only_after_company_and_israel_have_no_
     assert shadow.plan is None
     assert shadow.unresolved_requirement_ids == ("cabinet-a:plywood",)
     assert shadow.reason_codes == ("assumption_required",)
+
+
+def test_partial_purchase_plan_stays_review_required_when_another_fact_is_unresolved():
+    facts = _facts("cabinet-a", "side-a")
+    facts["materials"].append({
+        "requirement_id": "unknown", "source_name": "Unknown", "family": "unknown",
+        "specification": {}, "quantity": 1, "unit": "piece",
+    })
+
+    shadow = shadow_material_plan(
+        facts_by_object={"cabinet-a": facts},
+        catalogs=_catalogs(_offer("sheet", price="100")),
+    )
+
+    assert shadow.plan is not None
+    assert shadow.plan.status == "needs_review"
+    assert len(shadow.plan.lines) == 1
+    assert shadow.unresolved_requirement_ids == ("cabinet-a:unknown",)
+    assert "material_pricing_key_incomplete" in shadow.reason_codes

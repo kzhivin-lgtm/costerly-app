@@ -398,7 +398,10 @@ Family code before comparing the unchanged Pricing Key. It does not widen
 attributes, select a different thickness or manufacture a candidate. The
 first live V3 plan confirmed that this restores 14 physical Israel candidates
 for acrylic 20 mm; faced MDF 20 mm remains an explicit Catalog Gap and
-incomplete facts remain review-required.
+incomplete facts remain review-required. A plan with any earlier Resolver gap
+is always `needs_review`, even when other requirements already have concrete
+purchase lines. Those partial lines remain traceable diagnostics but can never
+unlock Final Approval.
 
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
