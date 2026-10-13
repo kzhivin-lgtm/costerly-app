@@ -22,8 +22,8 @@ The page Facts Agent now emits these rectangles as `parts`: `part_id`, linked
 `material_requirement_id`, total part quantity for the target object, cut
 length and width in mm, and `rotation_allowed`. Evidence references are added
 by the server. A part is omitted when geometry is genuinely uncertain; this is
-not permission to invent a dimension. The field is additive while legacy facts
-remain readable, and the page-agent version invalidates its own old cache.
+not permission to invent a dimension. The field is additive, and the
+page-agent version invalidates its own old cache.
 
 `MaterialSupplyCandidate` is produced only after Material Resolver has checked
 family compatibility and Estimate Ready status. It holds the exact purchasable
@@ -63,9 +63,8 @@ records.
 
 ## Explicit boundary
 
-The current Estimation V2 facts provide family, quantity and unit, but do not
-yet carry per-part rectangles. Therefore this first Engine task is pure and is
-not wired into the live publisher. Connecting it requires a later agent-output
-contract addition for calculation-local part geometry, followed by a read-only
-shadow comparison. The existing Resolver's legacy per-unit winner is not used
-by this Engine contract and will be replaced at the integration task.
+The Estimation V2 facts now carry calculation-local per-part rectangles. The
+Engine receives a document-wide read-only plan while project-level purchase
+plan persistence and rendering are connected. This stage does not compare its
+output to any prior estimator. It establishes the Engine's own deterministic
+Company, Israel Reference, then Assumption Fallback boundary.

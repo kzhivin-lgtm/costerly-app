@@ -173,6 +173,9 @@ def _catalogs(client: Any, company_id: str) -> dict[str, Any]:
     material_pricing_policies = _paged_rows(
         client, "reference_material_family_pricing_policies", filters={"active": True}
     )
+    family_supply_formats = _paged_rows(
+        client, "reference_material_family_supply_formats", filters={"active": True}
+    )
     identity_attributes = {
         str(row.get("pricing_identity_id") or ""): dict(row.get("price_attributes") or {})
         for row in identities
@@ -219,6 +222,7 @@ def _catalogs(client: Any, company_id: str) -> dict[str, Any]:
         "pricing_identity_members": pricing_identity_members,
         "material_families": material_families,
         "material_pricing_policies": material_pricing_policies,
+        "family_supply_formats": family_supply_formats,
     }
 
 

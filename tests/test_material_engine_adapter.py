@@ -1,7 +1,11 @@
 from datetime import date
 from decimal import Decimal
 
-from use_cases.material_engine_adapter import company_supply_candidates, shadow_material_plan
+from use_cases.material_engine_adapter import (
+    company_supply_candidates,
+    israel_reference_supply_candidates,
+    shadow_material_plan,
+)
 
 
 AS_OF = date(2026, 10, 13)
@@ -53,12 +57,43 @@ def _offer(offer_id: str, *, item_id: str = "plywood-18", price="100", dimension
     return values
 
 
-def _catalogs(*offers):
+def _catalogs(*offers, identities=(), prices=(), formats=()):
     return {
         "items": [_item()],
         "offers": list(offers),
+        "identities": list(identities),
+        "prices": list(prices),
         "material_pricing_policies": [_policy()],
         "material_families": [_family()],
+        "family_supply_formats": list(formats),
+    }
+
+
+def _reference_identity(identity_id="reference-plywood-18"):
+    return {
+        "pricing_identity_id": identity_id,
+        "price_attributes": {"material_family": "plywood", "thickness_mm": 18},
+    }
+
+
+def _reference_price(price_id="reference-price-plywood-18", *, identity_id="reference-plywood-18", unit="sqm", typical="50"):
+    return {
+        "pricing_identity_price_id": price_id,
+        "pricing_identity_id": identity_id,
+        "status": "active",
+        "currency": "ILS",
+        "price_scope": "material_only",
+        "unit": unit,
+        "price_typical": typical,
+    }
+
+
+def _reference_format(format_id="reference-format-plywood-2440", *, length=2440, width=1220):
+    return {
+        "supply_format_id": format_id,
+        "family_id": "family-plywood",
+        "active": True,
+        "purchasable_dimensions": {"length_mm": length, "width_mm": width},
     }
 
 
@@ -136,6 +171,41 @@ def test_piece_offer_preserves_source_set_price_and_calculation_package_quantity
     assert candidates[0].package_quantity == Decimal("2")
 
 
+def test_israel_reference_candidate_uses_active_pricing_identity_and_physical_format():
+    selection_key, candidates = israel_reference_supply_candidates(
+        material_family="plywood",
+        specifications={"thickness_mm": 18},
+        pricing_identities=[_reference_identity()],
+        pricing_identity_prices=[_reference_price()],
+        material_pricing_policies=[_policy()],
+        material_families=[_family()],
+        family_supply_formats=[_reference_format()],
+        as_of=AS_OF,
+    )
+
+    assert selection_key == "plywood|thickness=18"
+    assert len(candidates) == 1
+    assert candidates[0].candidate_id == "israel-reference:reference-price-plywood-18:reference-format-plywood-2440"
+    assert candidates[0].authority == "israel_reference"
+    assert candidates[0].purchase_kind == "sheet"
+    assert candidates[0].price_per_purchase_unit == Decimal("148.840")
+
+
+def test_reference_sheet_price_is_not_assigned_to_an_unlinked_generic_format():
+    _key, candidates = israel_reference_supply_candidates(
+        material_family="plywood",
+        specifications={"thickness_mm": 18},
+        pricing_identities=[_reference_identity()],
+        pricing_identity_prices=[_reference_price(unit="sheet", typical="150")],
+        material_pricing_policies=[_policy()],
+        material_families=[_family()],
+        family_supply_formats=[_reference_format()],
+        as_of=AS_OF,
+    )
+
+    assert candidates == ()
+
+
 def test_shadow_plan_combines_part_demands_across_objects_before_sheet_rounding():
     shadow = shadow_material_plan(
         facts_by_object={
@@ -154,7 +224,39 @@ def test_shadow_plan_combines_part_demands_across_objects_before_sheet_rounding(
     }
 
 
-def test_shadow_records_missing_parts_without_reverting_to_legacy_area_pricing():
+def test_shadow_uses_israel_reference_when_no_complete_company_basket_exists():
+    shadow = shadow_material_plan(
+        facts_by_object={"cabinet-a": _facts("cabinet-a", "side-a", length=2000, width=1000)},
+        catalogs=_catalogs(
+            _offer("small", price="80", dimensions={"length_mm": 1600, "width_mm": 800}),
+            identities=[_reference_identity()],
+            prices=[_reference_price()],
+            formats=[_reference_format()],
+        ),
+    )
+
+    assert shadow.plan is not None
+    assert shadow.plan.status == "planned"
+    assert shadow.plan.lines[0].candidate_id.startswith("israel-reference:")
+
+
+def test_shadow_keeps_complete_company_basket_even_when_reference_is_cheaper():
+    shadow = shadow_material_plan(
+        facts_by_object={"cabinet-a": _facts("cabinet-a", "side-a", length=1200, width=600)},
+        catalogs=_catalogs(
+            _offer("company", price="500"),
+            identities=[_reference_identity()],
+            prices=[_reference_price()],
+            formats=[_reference_format()],
+        ),
+    )
+
+    assert shadow.plan is not None
+    assert shadow.plan.status == "planned"
+    assert shadow.plan.lines[0].candidate_id == "company-offer:company"
+
+
+def test_shadow_records_missing_parts_without_inventing_area_pricing():
     facts = _facts("cabinet-a", "side-a")
     facts["parts"] = []
 
@@ -166,3 +268,14 @@ def test_shadow_records_missing_parts_without_reverting_to_legacy_area_pricing()
     assert shadow.plan is None
     assert shadow.unresolved_requirement_ids == ("cabinet-a:plywood",)
     assert shadow.reason_codes == ("material_parts_missing",)
+
+
+def test_shadow_marks_assumption_required_only_after_company_and_israel_have_no_candidate():
+    shadow = shadow_material_plan(
+        facts_by_object={"cabinet-a": _facts("cabinet-a", "side-a")},
+        catalogs=_catalogs(),
+    )
+
+    assert shadow.plan is None
+    assert shadow.unresolved_requirement_ids == ("cabinet-a:plywood",)
+    assert shadow.reason_codes == ("assumption_required",)

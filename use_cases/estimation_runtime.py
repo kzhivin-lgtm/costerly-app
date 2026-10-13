@@ -116,8 +116,9 @@ def _run_estimation_v2_for_all_objects(
                     "reason_codes": list(shadow.reason_codes),
                 }
             except Exception as exc:
-                # Shadow planning is deliberately non-blocking until it has
-                # matched the legacy publisher over accepted benchmark runs.
+                # Project-level purchase-plan persistence and rendering are a
+                # follow-up. Facts extraction and object publishing must stay
+                # usable if diagnostic planning itself encounters bad data.
                 shadow_summary = {
                     "status": "failed",
                     "error": f"{type(exc).__name__}: {exc}",

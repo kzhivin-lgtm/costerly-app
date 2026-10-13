@@ -1,8 +1,9 @@
 """Bridge Resolver-cleared catalog offers into Material Engine inputs.
 
 This module deliberately has no database or UI dependency.  It converts
-immutable Object Facts plus already-loaded catalog rows into a *shadow* plan:
-the plan is inspectable, but does not replace the legacy estimate lines yet.
+immutable Object Facts plus already-loaded catalog rows into a document-wide
+plan. The runtime currently exposes that plan as diagnostics while the
+project-level purchase-plan presentation is being connected.
 """
 
 from __future__ import annotations
@@ -29,6 +30,12 @@ from use_cases.material_price_resolver import _canonical_unit, _effective
 
 
 _LINEAR_UNITS = frozenset({"lm", "mm", "cm"})
+_REFERENCE_DISCRETE_PACKAGE_QUANTITIES = {
+    "ea": Decimal("1"),
+    "set": Decimal("1"),
+    "pair": Decimal("2"),
+    "dozen": Decimal("12"),
+}
 
 
 @dataclass(frozen=True)
@@ -210,6 +217,126 @@ def company_supply_candidates(
     return selection_key, tuple(sorted(result, key=lambda candidate: candidate.candidate_id))
 
 
+def israel_reference_supply_candidates(
+    *,
+    material_family: str,
+    specifications: Mapping[str, Any] | None,
+    pricing_identities: Sequence[Mapping[str, Any]],
+    pricing_identity_prices: Sequence[Mapping[str, Any]],
+    material_pricing_policies: Sequence[Mapping[str, Any]],
+    material_families: Sequence[Mapping[str, Any]],
+    family_supply_formats: Sequence[Mapping[str, Any]],
+    currency: str = "ILS",
+    price_scope: str = "material_only",
+    as_of: date | None = None,
+) -> tuple[str | None, tuple[MaterialSupplyCandidate, ...]]:
+    """Return concrete Israel Reference candidates for one complete Pricing Key.
+
+    A family format is paired only with a price expressed in its continuous
+    basis: square metre for sheets and linear metre for stock. A reference
+    price per sheet is never copied onto every generic family format, because
+    the catalog does not establish that pairing. Discrete prices need no
+    geometric format.
+    """
+    effective_date = as_of or date.today()
+    normalized_currency = str(currency or "").upper().strip()
+    if len(normalized_currency) != 3:
+        raise ValueError("currency is required")
+    policies = pricing_policy_by_family_code(material_pricing_policies, families=material_families)
+    selection_key = material_pricing_selection_key(
+        material_family=material_family,
+        specifications=specifications,
+        pricing_policies=policies,
+    )
+    if selection_key is None:
+        return None, ()
+    family_code = selection_key.split("|", 1)[0]
+    family_id = str((policies.get(family_code) or {}).get("family_id") or "")
+    prices_by_identity: dict[str, list[Mapping[str, Any]]] = {}
+    for price in pricing_identity_prices:
+        identity_id = str(price.get("pricing_identity_id") or "")
+        if identity_id:
+            prices_by_identity.setdefault(identity_id, []).append(price)
+    formats = [
+        row for row in family_supply_formats
+        if row.get("active") is not False and str(row.get("family_id") or "") == family_id
+    ]
+
+    result: list[MaterialSupplyCandidate] = []
+    for identity in pricing_identities:
+        identity_id = str(identity.get("pricing_identity_id") or "").strip()
+        attributes = dict(identity.get("price_attributes") or {})
+        identity_key = material_pricing_selection_key(
+            material_family=str(attributes.get("material_family") or material_family),
+            specifications=attributes,
+            pricing_policies=policies,
+        )
+        if not identity_id or identity_key != selection_key:
+            continue
+        for price in prices_by_identity.get(identity_id, ()):
+            if str(price.get("status") or "") != "active" or not _effective(price, effective_date):
+                continue
+            if str(price.get("currency") or "").upper() != normalized_currency:
+                continue
+            if str(price.get("price_scope") or "") != price_scope:
+                continue
+            price_id = str(price.get("pricing_identity_price_id") or "").strip()
+            typical = _positive(price.get("price_typical"))
+            if not price_id or typical is None:
+                continue
+            unit = _canonical_unit(price.get("unit"))
+            if unit == "sqm":
+                for supply_format in formats:
+                    dimensions = dict(supply_format.get("purchasable_dimensions") or {})
+                    length = _positive(dimensions.get("length_mm"))
+                    width = _positive(dimensions.get("width_mm"))
+                    format_id = str(supply_format.get("supply_format_id") or "").strip()
+                    if not format_id or length is None or width is None:
+                        continue
+                    result.append(MaterialSupplyCandidate(
+                        candidate_id=f"israel-reference:{price_id}:{format_id}",
+                        material_family=material_family,
+                        selection_key=selection_key,
+                        purchase_kind="sheet",
+                        price_per_purchase_unit=typical * length * width / Decimal("1000000"),
+                        currency=normalized_currency,
+                        purchasable_dimensions=dimensions,
+                        authority="israel_reference",
+                        reference_price_id=price_id,
+                    ))
+            elif unit in _LINEAR_UNITS:
+                for supply_format in formats:
+                    dimensions = dict(supply_format.get("purchasable_dimensions") or {})
+                    length = _positive(dimensions.get("length_mm"))
+                    format_id = str(supply_format.get("supply_format_id") or "").strip()
+                    if not format_id or length is None:
+                        continue
+                    result.append(MaterialSupplyCandidate(
+                        candidate_id=f"israel-reference:{price_id}:{format_id}",
+                        material_family=material_family,
+                        selection_key=selection_key,
+                        purchase_kind="linear_stock",
+                        price_per_purchase_unit=typical * length / Decimal("1000"),
+                        currency=normalized_currency,
+                        purchasable_dimensions=dimensions,
+                        authority="israel_reference",
+                        reference_price_id=price_id,
+                    ))
+            elif unit in _REFERENCE_DISCRETE_PACKAGE_QUANTITIES:
+                result.append(MaterialSupplyCandidate(
+                    candidate_id=f"israel-reference:{price_id}",
+                    material_family=material_family,
+                    selection_key=selection_key,
+                    purchase_kind="piece",
+                    price_per_purchase_unit=typical,
+                    currency=normalized_currency,
+                    package_quantity=_REFERENCE_DISCRETE_PACKAGE_QUANTITIES[unit],
+                    authority="israel_reference",
+                    reference_price_id=price_id,
+                ))
+    return selection_key, tuple(sorted(result, key=lambda candidate: candidate.candidate_id))
+
+
 def shadow_material_plan(
     *,
     facts_by_object: Mapping[str, Mapping[str, Any]],
@@ -218,8 +345,8 @@ def shadow_material_plan(
 ) -> MaterialEngineShadow:
     """Build one document-wide plan from rectangular parts, without writes.
 
-    Requirements without complete part geometry remain explicit shadow gaps.
-    They are not silently converted into an area percentage or legacy price.
+    Requirements without complete part geometry remain explicit gaps. They are
+    not silently converted into an area percentage or invented price.
     """
     demands: list[MaterialDemand] = []
     candidates: dict[str, MaterialSupplyCandidate] = {}
@@ -252,7 +379,7 @@ def shadow_material_plan(
                 str(material.get("family") or ""),
                 tuple(sorted((str(key), str(value)) for key, value in specs.items())),
             )
-            selection_key, compatible = candidate_cache.setdefault(
+            selection_key, company_candidates = candidate_cache.setdefault(
                 cache_key,
                 company_supply_candidates(
                     requirement_name=cache_key[0], material_family=cache_key[1], specifications=specs,
@@ -267,12 +394,22 @@ def shadow_material_plan(
                 unresolved.append(f"{object_id}:{requirement_id}")
                 reasons.add("material_pricing_key_incomplete")
                 continue
+            _reference_key, reference_candidates = israel_reference_supply_candidates(
+                material_family=cache_key[1],
+                specifications=specs,
+                pricing_identities=catalogs.get("identities") or (),
+                pricing_identity_prices=catalogs.get("prices") or (),
+                material_pricing_policies=catalogs.get("material_pricing_policies") or (),
+                material_families=catalogs.get("material_families") or (),
+                family_supply_formats=catalogs.get("family_supply_formats") or (),
+            )
+            compatible = (*company_candidates, *reference_candidates)
             for candidate in compatible:
                 candidates[candidate.candidate_id] = candidate
             candidate_ids = tuple(candidate.candidate_id for candidate in compatible)
             if not candidate_ids:
                 unresolved.append(f"{object_id}:{requirement_id}")
-                reasons.add("no_company_material_supply_candidate")
+                reasons.add("assumption_required")
                 continue
             for part in parts:
                 demand_id = f"{object_id}:{part.get('part_id')}"

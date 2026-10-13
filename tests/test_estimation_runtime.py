@@ -50,7 +50,7 @@ def test_submit_creates_estimate_shell_before_background_job(monkeypatch):
     }
 
 
-def test_v2_publisher_replaces_legacy_estimation_for_all_objects(monkeypatch):
+def test_v2_publisher_routes_all_objects_through_the_current_path(monkeypatch):
     events = []
     monkeypatch.setattr(runtime, "get_supabase_client", lambda: object())
     monkeypatch.setattr(runtime, "fetch_rfq_run", lambda _client, _run_id: _Frame([{}]))
@@ -109,7 +109,7 @@ def test_all_ignored_objects_finish_as_empty_v2_estimate(monkeypatch):
     }
 
 
-def test_material_engine_shadow_runs_after_facts_and_cannot_block_legacy_publishing(monkeypatch):
+def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishing(monkeypatch):
     events = []
     facts = {
         "object-1": {"facts_payload": {"object_id": "object-1", "materials": [], "parts": []}},

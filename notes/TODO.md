@@ -300,18 +300,17 @@ basket, not a per-unit-price winner. Scope covers rectangular sheet nesting
 with explicit kerf, linear-stock packing, piece-package rounding, direct-unit
 purchase and demand-to-purchase traceability. It must not alter the Estimation
 Agent, live Estimate publisher, Labor Resolver or catalog data in this task.
-The subsequent integration task must first extend the agent contract with
-calculation-local part geometry, run a read-only shadow comparison, and only
-then replace legacy per-line selection.
+The subsequent integration task must extend the agent contract with
+calculation-local part geometry and connect Engine candidates directly to the
+project-level material-plan path.
 
 ACTIVE, P0, USER REQUEST, 3.17.3.2 Calculation-local part geometry and
 shadow planning: extend the compact Estimation facts transport with rectangular
 parts linked to material requirements, full geometry, quantity and rotation
 permission. These parts remain inside one estimate and never become Global
-catalog entities. Version the page Facts Agent to invalidate legacy cached
-results. Feed the new Material Engine only in read-only shadow mode until its
-plan, candidate coverage and material totals can be compared against the
-current publisher without replacing any displayed cost line.
+catalog entities. Version the page Facts Agent to invalidate its own stale
+cache. Feed the new Material Engine as a document-wide read-only plan until
+project-level material-plan persistence and rendering are connected.
 
 Implementation stage, 2026-10-13, 3.17.3.3: Resolver-cleared Company offers
 now bridge to physical Material Engine candidates in a non-blocking
@@ -319,8 +318,8 @@ document-wide shadow plan. The bridge preserves offer-level purchase format,
 converts source prices to ex-VAT physical purchase-unit price, and groups only
 the active family Pricing Key. The runtime returns only shadow diagnostics;
 the live publisher still owns displayed per-object material lines. Israel
-Reference candidate conversion and accepted benchmark comparison remain before
-the legacy selection replacement. Accepted fallback chain: complete Company
+Reference candidate conversion remains before direct project-level material
+plan output. Accepted fallback chain: complete Company
 basket, otherwise complete Israel Reference basket, otherwise an
 estimate-local, review-required assumption. The assumption records why it was
 needed and never writes back to either catalog. Catalog V2 already has the
@@ -330,9 +329,21 @@ authoritative catalog-resolution workflow remain unimplemented follow-up work.
 Name accepted: `Assumption Fallback`. It is a separate Estimate-orchestration
 service after Material Engine, not an Estimation Agent or Engine subsystem.
 Build it after Company and Israel candidate planning is accepted and the
-Material Engine replaces legacy material selection; it must consume an
+Material Engine produces the project-level material plan; it must consume an
 Engine-produced `assumption_required` outcome rather than re-run material
 selection itself.
+
+Implementation stage, 2026-10-13, 3.17.3.4: Israel Reference is now in the
+same Material Engine candidate bridge. An active IL pricing identity must match
+the exact completed Family Pricing Key, have an active material-only ILS price,
+and have a compatible physical supply format. Square-metre prices become real
+sheet candidates through documented family formats, linear prices become stock
+candidates, and discrete prices become package candidates. A price per sheet
+is intentionally not copied onto every generic family format. The Engine uses
+a complete Company basket first, then a complete Israel basket, otherwise
+returns `assumption_required`. This stage does not compare against, or depend
+on, any former estimator. Project-level plan persistence, rendering and the
+separate Assumption Fallback service remain the next work.
 
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
