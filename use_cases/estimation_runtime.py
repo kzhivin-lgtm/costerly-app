@@ -201,7 +201,11 @@ def _run_estimation_v3_for_all_objects(
 
     for input_row in valid_inputs:
         mark_facts_start(input_row)
-    facts_result = run_estimation_v3_material_facts_batch(client=client, inputs=valid_inputs)
+    facts_result = run_estimation_v3_material_facts_batch(
+        client=client,
+        inputs=valid_inputs,
+        material_context=shared_context,
+    )
 
     shadow_summary: dict[str, object] = {"status": "not_run"}
     material_plan_snapshot_data: dict[str, object] | None = None

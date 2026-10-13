@@ -32,7 +32,7 @@ from use_cases.estimation_v3_material_contract import (
 # The unit and purchasable quantity belong to the selected supply candidate,
 # not to the vision model.  Bump the extraction version so cached facts that
 # contained model-guessed units can never feed the current Material Engine.
-ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_1"
+ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_2"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v3_material_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 8_000
 TIMEOUT_SECONDS = 180.0
@@ -150,7 +150,9 @@ def _expand(
 
 def run_estimation_v3_material_facts_agent(
     *, inputs: Sequence[Mapping[str, Any]], allowed_material_families: AbstractSet[str],
-    preview_bytes_by_input: Mapping[str, bytes], model: str | None = None,
+    preview_bytes_by_input: Mapping[str, bytes],
+    pricing_key_fields_by_family: Mapping[str, Sequence[str]] | None = None,
+    model: str | None = None,
 ) -> dict[str, Any]:
     if not inputs:
         raise ValueError("inputs are required")
@@ -168,6 +170,10 @@ def run_estimation_v3_material_facts_agent(
     request = {
         "targets": targets, "allowed_material_families": sorted(allowed_material_families),
         "specification_keys": list(SPECIFICATION_KEYS), "part_keys": list(COMPACT_PART_KEYS),
+        "pricing_key_fields_by_family": {
+            str(family): list(fields)
+            for family, fields in sorted((pricing_key_fields_by_family or {}).items())
+        },
     }
     content: list[dict[str, Any]] = []
     for row in inputs:

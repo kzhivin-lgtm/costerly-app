@@ -1,4 +1,5 @@
 from agents.estimation_v3_material_facts_agent import _expand
+from use_cases.estimation_v3_material_facts import _pricing_key_fields_by_resolver_family
 
 
 def test_v3_expands_only_material_demands_and_cut_geometry():
@@ -48,3 +49,26 @@ def test_v3_ignores_model_guessed_purchase_units_for_geometry_free_materials():
     assert material["family"] == "metal tube"
     assert material["quantity"] == 1
     assert material["unit"] is None
+
+
+def test_v3_exposes_only_existing_pricing_key_facts_to_extraction():
+    requirements = _pricing_key_fields_by_resolver_family(
+        families={"mdf", "metal tube"},
+        material_families=[
+            {"family_id": "mdf", "family_code": "mdf_hdf", "active": True},
+            {"family_id": "tube", "family_code": "metal_tube", "active": True},
+        ],
+        material_pricing_policies=[
+            {"family_id": "mdf", "pricing_key_attribute_codes": ["thickness"], "active": True},
+            {
+                "family_id": "tube",
+                "pricing_key_attribute_codes": ["metal_type", "section_profile", "wall_thickness"],
+                "active": True,
+            },
+        ],
+    )
+
+    assert requirements == {
+        "mdf": ("thickness_mm", "thickness"),
+        "metal tube": ("metal_type", "profile_section", "wall_thickness_mm", "wall_thickness"),
+    }

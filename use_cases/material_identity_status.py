@@ -66,6 +66,19 @@ _PRICING_KEY_LABELS = {
 }
 
 
+def pricing_key_fact_fields(attribute_code: str) -> tuple[str, ...]:
+    """Return accepted source-fact fields for one stable Pricing Key fact.
+
+    This is deliberately the same bridge used by deterministic resolution.
+    Extraction may use it to look for an evidenced fact, but cannot infer a
+    value or expand the Pricing Key itself.
+    """
+    code = str(attribute_code or "")
+    if code == "section_profile":
+        return ("profile_section",)
+    return _PRICING_KEY_FIELDS.get(code, (code,))
+
+
 def _selection_value(value: Any) -> str:
     """Return a stable, comparison-safe representation of one Pricing Key fact."""
     if isinstance(value, bool):

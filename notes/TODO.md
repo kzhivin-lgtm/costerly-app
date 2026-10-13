@@ -393,6 +393,15 @@ rerun the same three-object document and verify that a resolved part-backed
 material receives a deterministic unit and norm, while an unresolved profile
 does not receive a cost or unlock approval.
 
+Pricing Key extraction correction, 2026-10-13: V3 now receives the required
+evidence-field names from the active Pricing Key registry for every allowed
+Resolver family. It searches source evidence for those facts, but Resolver
+remains the only authority that decides whether they form a completed key.
+This allows the prompt to actively seek, for example, MDF thickness and tube
+metal, section and wall thickness without turning absent evidence into a
+model-generated specification. Cache version `estimation_material_facts_v3_2`
+separates these facts from prior runs.
+
 Resolver correction, 2026-10-13: the first live multi-object Material Plan
 proved that Object Facts had been given legacy Israel price classes rather
 than the Resolver's purchasable-family vocabulary. That allowed an unsupported

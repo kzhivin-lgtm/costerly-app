@@ -252,6 +252,18 @@ def _demand_from_net_requirement(
     return None
 
 
+def _direct_count_unit(candidates: Sequence[MaterialSupplyCandidate]) -> str | None:
+    """Allow an extracted count only for an unambiguously discrete material.
+
+    A raw count without rectangular parts cannot establish metres or square
+    metres. It can still be a useful fact for hinges, handles and other
+    discrete hardware, provided every Resolver-cleared candidate is a
+    discrete purchase. The candidate, not the extraction model, supplies the
+    unit.
+    """
+    return "piece" if candidates and all(candidate.purchase_kind == "piece" for candidate in candidates) else None
+
+
 def _ex_vat(value: Decimal, offer: Mapping[str, Any], vat_percent: Decimal) -> Decimal:
     return value / (Decimal("1") + vat_percent / Decimal("100")) if offer.get("vat_included") is True else value
 
@@ -658,6 +670,14 @@ def shadow_material_plan(
                 unresolved.append(f"{object_id}:{requirement_id}")
                 reasons.add("material_quantity_missing")
                 continue
+            # Explicit historical/manual units remain supported. Newly
+            # extracted V3 facts leave this null and obtain a unit only from a
+            # discrete resolved candidate.
+            direct_unit = str(material.get("unit") or "").strip() or _direct_count_unit(compatible)
+            if direct_unit is None:
+                unresolved.append(f"{object_id}:{requirement_id}")
+                reasons.add("material_geometry_required")
+                continue
             direct_demand = _demand_from_net_requirement(
                 demand_id=f"{object_id}:{requirement_id}:net-demand",
                 object_id=str(object_id),
@@ -665,7 +685,7 @@ def shadow_material_plan(
                 material_family=str(material.get("family") or ""),
                 selection_key=selection_key,
                 total_quantity=material_quantity,
-                unit=str(material.get("unit") or ""),
+                unit=direct_unit,
                 candidate_ids=candidate_ids,
             )
             if direct_demand is None:

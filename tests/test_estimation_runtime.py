@@ -116,7 +116,12 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
     }
 
     monkeypatch.setattr(runtime, "build_estimation_material_context", lambda *_args: {"catalogs": {}, "families": {"mdf"}})
-    monkeypatch.setattr(runtime, "run_estimation_v3_material_facts_batch", lambda **_kwargs: events.append("facts") or {"failed": {}})
+    captured_facts = {}
+    monkeypatch.setattr(
+        runtime,
+        "run_estimation_v3_material_facts_batch",
+        lambda **kwargs: captured_facts.update(kwargs) or events.append("facts") or {"failed": {}},
+    )
     monkeypatch.setattr(runtime, "fetch_latest_estimation_facts_by_object", lambda _client, **_kwargs: facts)
     monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_norm_overrides", lambda *_args, **_kwargs: SimpleNamespace(empty=True))
     monkeypatch.setattr(
@@ -149,6 +154,7 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
     )
 
     assert events == ["facts", "shadow", "material_plan_persisted", "publish"]
+    assert captured_facts["material_context"] == {"catalogs": {}, "families": {"mdf"}}
     assert result["processed_input_ids"] == ["input-1"]
     assert result["material_engine_shadow"] == {
         "status": "planned", "demand_count": 1, "candidate_count": 1,

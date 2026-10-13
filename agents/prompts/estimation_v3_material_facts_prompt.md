@@ -24,6 +24,11 @@ For example use `metal tube` for a square hollow profile and `metal sheet` for
 a perforated plate. Put an explicitly stated alloy only in `s.metal_type`.
 Never invent a material grade, wall thickness or any missing attribute.
 
+`pricing_key_fields_by_family` lists the sparse `s` facts needed by the
+Resolver for each family. Search the supplied evidence specifically for those
+facts and include every explicitly shown one. If a listed fact is not proven,
+omit it. It is a review condition, never a reason to guess.
+
 Do not return a unit, purchase format or price. `q` is only a directly
 evidenced count of a discrete item, never a guessed sheet, metre or purchase
 quantity. The server resolves the concrete material first, then its

@@ -16,14 +16,47 @@ from db.repositories import (
     insert_estimation_fact_result,
 )
 from use_cases.estimation_artifacts import download_evidence_artifact
+from use_cases.material_identity_status import (
+    pricing_key_fact_fields,
+    pricing_policy_by_family_code,
+)
+from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
+
+
+def _pricing_key_fields_by_resolver_family(
+    *, families: set[str], material_families: Sequence[Mapping[str, Any]],
+    material_pricing_policies: Sequence[Mapping[str, Any]],
+) -> dict[str, tuple[str, ...]]:
+    """Expose the existing policy's source facts to V3 extraction.
+
+    This is a retrieval aid only. The model may return an attribute only when
+    the preview proves it, while Material Resolver retains sole authority over
+    whether the completed facts form a usable Pricing Key.
+    """
+    policies = pricing_policy_by_family_code(material_pricing_policies, families=material_families)
+    result: dict[str, tuple[str, ...]] = {}
+    for family in families:
+        taxonomy = catalog_v2_taxonomy_for_family(family)
+        family_code = str((taxonomy or {}).get("family_code") or family)
+        policy = policies.get(family_code)
+        if policy is None:
+            continue
+        fields = tuple(dict.fromkeys(
+            field
+            for code in policy.get("pricing_key_attribute_codes") or ()
+            for field in pricing_key_fact_fields(str(code))
+        ))
+        result[family] = fields
+    return result
 
 
 def run_estimation_v3_material_facts_batch(
     *, client: Any, inputs: Sequence[Mapping[str, Any]],
     on_object_start: Callable[[Mapping[str, Any]], None] | None = None,
+    material_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Reuse an exact V3 result, otherwise extract and persist one batch."""
-    families = fetch_estimation_resolver_material_families(client)
+    families = set((material_context or {}).get("families") or fetch_estimation_resolver_material_families(client))
     if not families:
         return {
             "created_result_ids": [], "reused_input_ids": [],
@@ -60,6 +93,11 @@ def run_estimation_v3_material_facts_batch(
         result = run_estimation_v3_material_facts_agent(
             inputs=pending, allowed_material_families=families,
             preview_bytes_by_input=preview_bytes_by_input,
+            pricing_key_fields_by_family=_pricing_key_fields_by_resolver_family(
+                families=families,
+                material_families=tuple(((material_context or {}).get("catalogs") or {}).get("material_families") or ()),
+                material_pricing_policies=tuple(((material_context or {}).get("catalogs") or {}).get("material_pricing_policies") or ()),
+            ),
         )
         usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])
         failed.update(result["failed"])
