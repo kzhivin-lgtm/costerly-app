@@ -323,7 +323,10 @@ Reference candidate conversion and accepted benchmark comparison remain before
 the legacy selection replacement. Accepted fallback chain: complete Company
 basket, otherwise complete Israel Reference basket, otherwise an
 estimate-local, review-required assumption. The assumption records why it was
-needed and never writes back to either catalog.
+needed and never writes back to either catalog. Catalog V2 already has the
+target persistence contract: case-local assumption, deduplicated staff-only
+Catalog Gap Ticket and occurrence. Runtime creation, Staff Admin review UI and
+authoritative catalog-resolution workflow remain unimplemented follow-up work.
 
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
