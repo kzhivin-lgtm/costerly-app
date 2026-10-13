@@ -35,6 +35,21 @@ failure in authenticated production, and inspect the actual Streamlit tab DOM
 and browser message delivery before changing routing again. Do not stack another
 client-side route synchronization experiment onto this checkpoint.
 
+### Deferred: deploy-transition resilience, recorded 2026-10-12
+
+P1, deferred. Immediately after a Railway process replacement, the Cloudflare
+shell may reveal Upload from its fallback timer before a new Streamlit process
+has delivered `app-ready`. A header click in that window can be lost with the
+old websocket. In the observed case, the recovery intent expired after 15 s
+while the first `app-ready` arrived at 16.7 s.
+
+Before implementation, decide and verify the user-facing contract: either keep
+the shell non-interactive in an explicit updating state until readiness is
+confirmed, or accept the visible fallback. If adopting protection, retain only
+the last safe header intent until the first ready response, with a bounded
+failure state and one-time recovery. Do not change ordinary authenticated
+navigation, Profile-tab behaviour, or Price Lists while evaluating this work.
+
 ## 3.18.2 Profile first-paint and tab-latency measurement checkpoint
 
 Status: owner accepted in authenticated production on 2026-10-10.

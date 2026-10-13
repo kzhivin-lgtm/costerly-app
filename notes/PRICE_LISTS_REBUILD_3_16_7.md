@@ -674,6 +674,14 @@ The workspace requirements are:
   line-price error.
 - Source Library label: show the extracted invoice number beneath the canonical
   supplier name when it is present, otherwise retain the uploaded file name.
+- P1, deferred 2026-10-12: repair Price Source merge/delete ownership. A
+  source row that is collapsed because an equivalent price already exists must
+  not become dependent on another source's sole active offer. Deleting one
+  source must preserve a price while an equivalent ready row remains in another
+  source. Investigate and choose the durable contract before implementation:
+  source-owned offers with Catalog-only grouping, or explicit persisted offer
+  lineage plus atomic promotion during purge. Also repair the affected company
+  state only after the contract and scoped recovery plan are approved.
 
 ### Increment, 2026-10-06, terminal extraction dashboard lifecycle
 
