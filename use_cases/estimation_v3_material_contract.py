@@ -108,9 +108,13 @@ def validate_material_facts_v3(
             raise ValueError(f"materials[{index}] has no source_name")
         if material.get("family") not in allowed_material_families:
             raise ValueError(f"materials[{index}] family is not supported")
-        if _number(material.get("quantity"), positive=True) is None:
-            raise ValueError(f"materials[{index}] must have a positive quantity")
-        if material.get("unit") not in _VALID_UNITS:
+        # A material identity can be established before its geometry is
+        # complete.  Quantity and unit are consequently nullable facts.  They
+        # are populated only by a deterministic Material Engine plan or an
+        # explicit user norm, never by the extraction model.
+        if material.get("quantity") is not None and _number(material.get("quantity"), positive=True) is None:
+            raise ValueError(f"materials[{index}] quantity must be positive when present")
+        if material.get("unit") is not None and material.get("unit") not in _VALID_UNITS:
             raise ValueError(f"materials[{index}] unit is not supported")
         specification = _require_mapping(material.get("specification"), f"materials[{index}].specification")
         if set(specification) - SPECIFICATION_KEYS:

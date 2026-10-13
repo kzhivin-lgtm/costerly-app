@@ -29,7 +29,10 @@ from use_cases.estimation_v3_material_contract import (
 )
 
 
-ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3"
+# The unit and purchasable quantity belong to the selected supply candidate,
+# not to the vision model.  Bump the extraction version so cached facts that
+# contained model-guessed units can never feed the current Material Engine.
+ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_1"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v3_material_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 8_000
 TIMEOUT_SECONDS = 180.0
@@ -83,8 +86,7 @@ def _expand(
         if not isinstance(raw, Mapping):
             continue
         family = str(raw.get("f") or "")
-        quantity = _number(raw.get("q"), positive=True)
-        if family not in families or quantity is None:
+        if family not in families:
             continue
         requirement_id = _identifier(raw.get("id"), f"m{index}", material_ids)
         materials.append({
@@ -92,8 +94,13 @@ def _expand(
             "source_name": str(raw.get("n") or family),
             "family": family,
             "specification": _sparse(raw.get("s")),
-            "quantity": quantity,
-            "unit": str(raw.get("u") or "piece"),
+            # The extractor establishes material identity, evidence-backed
+            # direct counts and geometry only.
+            # Resolver supplies the concrete purchasable form and Engine owns
+            # its unit and conversion.  Keeping them null here prevents a
+            # guessed "piece" from becoming a false purchase demand.
+            "quantity": _number(raw.get("q"), positive=True),
+            "unit": None,
             "evidence_refs": [preview],
         })
     parts, part_ids = [], set()

@@ -10,10 +10,10 @@ every requested `id`. Each object contains only:
 
 - `id`: exact target object ID.
 - `d`: `[width_mm, depth_mm, height_mm]`, use `0` when not known.
-- `m`: material demands. Each is `{ "id","n","f","q","u","s" }`:
+- `m`: material requirements. Each is `{ "id","n","f","q","s" }`:
   stable ID, literal English material name, a family from
-  `allowed_material_families`, net total quantity for the requested object
-  quantity, canonical unit, and sparse specification.
+  `allowed_material_families`, optional evidenced direct count, and sparse
+  specification. Return `q: 0` when no direct count is visible.
 - `p`: optional rectangular parts `{ "id","m","q","l","w","r" }`:
   material ID, total quantity, cut length and width in mm, rotation `yes`/`no`.
   Include only geometry supported by visible evidence or a clear construction
@@ -24,6 +24,7 @@ For example use `metal tube` for a square hollow profile and `metal sheet` for
 a perforated plate. Put an explicitly stated alloy only in `s.metal_type`.
 Never invent a material grade, wall thickness or any missing attribute.
 
-Use English and only canonical units: `m²`, `m`, `mm`, `kg`, `l`, `sheet` or
-`piece`. Quantities already include the requested object quantity. Do not use
-object templates or a catalog. The server resolves material identity and price.
+Do not return a unit, purchase format or price. `q` is only a directly
+evidenced count of a discrete item, never a guessed sheet, metre or purchase
+quantity. The server resolves the concrete material first, then its
+purchasable unit. Use English. Do not use object templates or a catalog.

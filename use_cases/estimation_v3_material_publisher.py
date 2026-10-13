@@ -33,7 +33,7 @@ def publish_estimation_v3_material_object(
     object_quantity = float(facts["quantity"])
     lines = []
     for index, material in enumerate(facts["materials"], start=1):
-        total_quantity = float(material["quantity"])
+        total_quantity = material.get("quantity")
         lines.append({
             "estimate_id": estimate_id,
             "object_id": object_id,
@@ -43,9 +43,9 @@ def publish_estimation_v3_material_object(
             "group_name": "Materials",
             "item_name": str(material["source_name"]),
             "catalog_match_query": str(material["family"]),
-            "unit": str(material["unit"]),
+            "unit": material.get("unit"),
             "unit_cost": None,
-            "quantity": total_quantity / object_quantity,
+            "quantity": (float(total_quantity) / object_quantity) if total_quantity is not None else None,
             "cost": None,
             "source": "estimation_v3_material_facts",
             "sort_order": index * 10,
@@ -53,7 +53,7 @@ def publish_estimation_v3_material_object(
             "needs_review": True,
             "confidence": None,
             "quantity_basis": "per_finished_item",
-            "notes": "Awaiting estimate-wide Material Plan",
+            "notes": "Material identified. Awaiting deterministic Material Plan.",
             "raw_agent_json": {
                 "facts": dict(material),
                 "v3_contract": facts["contract_version"],

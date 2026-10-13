@@ -394,6 +394,81 @@ def test_shadow_marks_assumption_required_only_after_company_and_israel_have_no_
     assert shadow.reason_codes == ("assumption_required",)
 
 
+def test_shadow_uses_evidenced_count_only_for_discrete_resolved_materials():
+    facts = {
+        "object_id": "cabinet-a",
+        "materials": [{
+            "requirement_id": "hinge", "source_name": "Cabinet hinge", "family": "hardware_hinge",
+            "specification": {}, "quantity": 4, "unit": None,
+        }],
+        "parts": [],
+    }
+    catalogs = {
+        "items": [{
+            "company_material_id": "hinge", "canonical_name": "Cabinet hinge",
+            "normalized_name": "cabinet hinge", "status": "private",
+            "specifications": {"material_family": "hardware_hinge"},
+        }],
+        "offers": [{
+            "offer_id": "hinge-piece", "company_material_id": "hinge", "status": "active",
+            "currency": "ILS", "price_scope": "material_only", "source_price": "10",
+            "source_unit": "piece", "purchase_unit": "piece", "calculation_unit": "piece",
+            "conversion_factor": "1", "normalized_price": "10", "normalized_unit": "ea",
+            "vat_included": False, "purchasable_dimensions": None,
+        }],
+        "identities": [], "prices": [], "family_supply_formats": [],
+        "material_pricing_policies": [{
+            "family_id": "family-hinge", "pricing_key_attribute_codes": [],
+            "purchase_format_policy": "discrete", "active": True,
+        }],
+        "material_families": [{"family_id": "family-hinge", "family_code": "hardware_hinge", "active": True}],
+    }
+
+    shadow = shadow_material_plan(facts_by_object={"cabinet-a": facts}, catalogs=catalogs)
+
+    assert shadow.plan is not None
+    assert shadow.plan.status == "planned"
+    assert shadow.plan.lines[0].purchase_kind == "piece"
+    assert shadow.plan.lines[0].purchase_quantity == Decimal("4")
+
+
+def test_shadow_does_not_treat_a_profile_count_as_a_linear_demand():
+    facts = {
+        "object_id": "shelf-a",
+        "materials": [{
+            "requirement_id": "tube", "source_name": "Square steel tube", "family": "metal tube",
+            "specification": {}, "quantity": 1, "unit": None,
+        }],
+        "parts": [],
+    }
+    catalogs = {
+        "items": [{
+            "company_material_id": "tube", "canonical_name": "Square steel tube",
+            "normalized_name": "square steel tube", "status": "private",
+            "specifications": {"material_family": "metal tube"},
+        }],
+        "offers": [{
+            "offer_id": "tube-linear", "company_material_id": "tube", "status": "active",
+            "currency": "ILS", "price_scope": "material_only", "source_price": "30",
+            "source_unit": "m", "purchase_unit": "m", "calculation_unit": "m",
+            "conversion_factor": "1", "normalized_price": "30", "normalized_unit": "lm",
+            "vat_included": False, "purchasable_dimensions": {"length_mm": 6000},
+        }],
+        "identities": [], "prices": [], "family_supply_formats": [],
+        "material_pricing_policies": [{
+            "family_id": "family-tube", "pricing_key_attribute_codes": [],
+            "purchase_format_policy": "linear", "active": True,
+        }],
+        "material_families": [{"family_id": "family-tube", "family_code": "metal_tube", "active": True}],
+    }
+
+    shadow = shadow_material_plan(facts_by_object={"shelf-a": facts}, catalogs=catalogs)
+
+    assert shadow.plan is None
+    assert shadow.unresolved_requirement_ids == ("shelf-a:tube",)
+    assert shadow.reason_codes == ("material_geometry_required",)
+
+
 def test_partial_purchase_plan_stays_review_required_when_another_fact_is_unresolved():
     facts = _facts("cabinet-a", "side-a")
     facts["materials"].append({

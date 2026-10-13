@@ -378,6 +378,21 @@ destructive removal task. Acceptance: active runtime and UI read V3 facts,
 publish only material norms, persist the project-level Material Plan, and do
 not contain an active V2 dependency.
 
+Material-fact boundary correction, 2026-10-13: V3 must establish only
+material family, proven Pricing Key facts and evidenced part geometry. It must
+not guess a unit or a purchasable format. A directly evidenced discrete count
+may remain in facts, but is not a purchase quantity. The Resolver
+selects a compatible Company or Israel candidate first. The Material Engine
+then derives the Object Detail net norm from candidate form plus allocations:
+sheet allocations render as square metres, linear stock as metres and discrete
+stock as pieces. A material with no evidenced usable geometry may remain
+identified, but remains review-required and unpriced instead of receiving a
+fictional `1 piece` demand. The V3 facts-agent cache version is bumped so the
+old guessed-unit facts cannot enter a new plan. Pending production acceptance:
+rerun the same three-object document and verify that a resolved part-backed
+material receives a deterministic unit and norm, while an unresolved profile
+does not receive a cost or unlock approval.
+
 Resolver correction, 2026-10-13: the first live multi-object Material Plan
 proved that Object Facts had been given legacy Israel price classes rather
 than the Resolver's purchasable-family vocabulary. That allowed an unsupported

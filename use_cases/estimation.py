@@ -638,6 +638,62 @@ def _material_total_cost(*, unit_cost: float, quantity_per_item: float, object_q
     return round(unit_cost * quantity_per_item * max(object_quantity, 1), 2)
 
 
+def _material_norms_from_plan(plan_snapshot: dict[str, Any]) -> dict[tuple[str, str], tuple[str, float]]:
+    """Return deterministic net norms, never rounded purchase quantities.
+
+    Object Detail describes what one finished item consumes.  A plan line may
+    buy whole sheets or stock bars, but those purchasing units must not be
+    copied into an individual object's norm.  The selected candidate supplies
+    the physical form, while its allocations supply the net area, length or
+    count for each material requirement.
+    """
+    result: dict[tuple[str, str], tuple[str, float]] = {}
+    for line in plan_snapshot.get("lines") or []:
+        if not isinstance(line, dict):
+            continue
+        purchase_kind = str(line.get("purchase_kind") or "")
+        if purchase_kind == "sheet":
+            unit, divisor, dimension = "m²", 1_000_000.0, "area"
+        elif purchase_kind == "linear_stock":
+            unit, divisor, dimension = "m", 1_000.0, "length"
+        elif purchase_kind == "piece":
+            unit, divisor, dimension = "piece", 1.0, "quantity"
+        else:
+            continue
+        for allocation in line.get("allocations") or []:
+            if not isinstance(allocation, dict):
+                continue
+            object_id = str(allocation.get("object_id") or "")
+            requirement_id = str(allocation.get("material_requirement_id") or "")
+            if not object_id or not requirement_id:
+                continue
+            if dimension == "area":
+                amount = _number(allocation.get("area_mm2"), 0) / divisor
+                if amount <= 0:
+                    amount = (
+                        _number(allocation.get("length_mm"), 0)
+                        * _number(allocation.get("width_mm"), 0)
+                        * _number(allocation.get("quantity"), 1)
+                        / divisor
+                    )
+            elif dimension == "length":
+                amount = _number(allocation.get("length_mm"), 0) / divisor
+                amount *= _number(allocation.get("quantity"), 1)
+            else:
+                amount = _number(allocation.get("quantity"), 0)
+            if amount <= 0:
+                continue
+            key = (object_id, requirement_id)
+            existing = result.get(key)
+            # One pricing key must map to one purchase form.  If a malformed
+            # plan violates that invariant, do not publish an arbitrary unit.
+            if existing and existing[0] != unit:
+                result.pop(key, None)
+                continue
+            result[key] = (unit, (existing[1] if existing else 0.0) + amount)
+    return result
+
+
 def apply_material_plan_allocations(
     client: Any,
     *,
@@ -654,7 +710,8 @@ def apply_material_plan_allocations(
         for row in plan_snapshot.get("object_material_costs") or []
         if isinstance(row, dict)
     }
-    if not allocation_costs:
+    material_norms = _material_norms_from_plan(plan_snapshot)
+    if not allocation_costs or not material_norms:
         return
     lines_df = fetch_rfq_estimate_lines(client, estimate_id)
     objects_df = fetch_rfq_object_estimates(client, estimate_id)
@@ -670,12 +727,13 @@ def apply_material_plan_allocations(
         object_id = str(line.get("object_id") or "")
         requirement_id = _material_requirement_id(line)
         allocated_cost = allocation_costs.get((object_id, requirement_id))
-        if allocated_cost is None:
+        norm = material_norms.get((object_id, requirement_id))
+        if allocated_cost is None or norm is None:
             continue
-        quantity_per_item = _number(line.get("quantity"), 0)
-        total_required_quantity = quantity_per_item * max(object_quantities.get(object_id, 1), 1)
+        unit, total_required_quantity = norm
         if total_required_quantity <= 0:
             continue
+        quantity_per_item = total_required_quantity / max(object_quantities.get(object_id, 1), 1)
         effective_unit_cost = round(allocated_cost / total_required_quantity, 4)
         update_rfq_estimate_line(
             client,
@@ -683,6 +741,8 @@ def apply_material_plan_allocations(
             line_id=str(line.get("line_id") or ""),
             values={
                 "unit_cost": effective_unit_cost,
+                "unit": unit,
+                "quantity": quantity_per_item,
                 "cost": round(allocated_cost, 2),
                 "notes": "Allocated from the estimate-wide Material Plan",
                 "updated_at": datetime.now(UTC).isoformat(),
