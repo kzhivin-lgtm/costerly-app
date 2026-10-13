@@ -2253,22 +2253,60 @@ _INVOICE_NUMBER_LABEL = (
     r"(?:חשבונית\s*(?:מס\s*[-–]?\s*קבלה|מס)?|חשבון\s*מס|"
     r"tax\s*invoice(?:\s*(?:no|number|#))?|invoice(?:\s*(?:no|number|#))?)"
 )
+_INVOICE_NUMBER_VALUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/\-]{2,31}$")
+_NON_IDENTIFYING_INVOICE_VALUES = frozenset({"tax", "invoice", "receipt", "taxinvoice"})
+
+
+def _is_strong_invoice_number(value: object) -> bool:
+    """Return whether a value can safely identify one supplier invoice."""
+    candidate = str(value or "").strip()
+    normalized = normalize_invoice_number(candidate)
+    return bool(
+        _INVOICE_NUMBER_VALUE.fullmatch(candidate)
+        and any(character.isdigit() for character in normalized)
+        and normalized not in _NON_IDENTIFYING_INVOICE_VALUES
+    )
 
 
 def invoice_number_from_source_text(text: object) -> str:
-    """Read a printed invoice number without asking the extraction model twice."""
+    """Read a strong printed invoice number without mistaking a title for one."""
     # OCR evidence is Markdown. A printed number can sit immediately above an
     # OCR heading such as ``## חשבונית מס - קבלה``. Heading punctuation is not
     # document evidence and must not break the label-bound identifier match.
     source_text = re.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", str(text or ""))
-    patterns = (
-        rf"{_INVOICE_NUMBER_LABEL}\s*(?:מס[׳'\"״.]*)?\s*[:#.\-]?\s*(?P<number>[A-Za-z0-9][A-Za-z0-9._/\-]{{2,31}})",
-        rf"(?P<number>[A-Za-z0-9][A-Za-z0-9._/\-]{{2,31}})\s*[:#.\-]?\s*{_INVOICE_NUMBER_LABEL}",
+    value_pattern = r"(?P<number>[A-Za-z0-9][A-Za-z0-9._/\-]{2,31})"
+
+    # Spreadsheet text preserves cells with pipes. Prefer a value in the cell
+    # immediately following an explicit invoice-number label over any prose or
+    # document title elsewhere in the sheet.
+    for line in source_text.splitlines():
+        cells = [cell.strip() for cell in line.split("|")]
+        for index, cell in enumerate(cells[:-1]):
+            if not re.fullmatch(_INVOICE_NUMBER_LABEL, cell, flags=re.IGNORECASE | re.UNICODE):
+                continue
+            candidate = cells[index + 1]
+            if _is_strong_invoice_number(candidate):
+                return candidate
+
+    # Keep the label and candidate on one printed line. This prevents a bare
+    # `Tax invoice` title from consuming the first word of the next row.
+    forward_pattern = re.compile(
+        rf"{_INVOICE_NUMBER_LABEL}\s*(?:מס[׳'\"״.]*)?\s*[:#.\-]?\s*{value_pattern}",
+        flags=re.IGNORECASE | re.UNICODE,
     )
-    for pattern in patterns:
-        match = re.search(pattern, source_text, flags=re.IGNORECASE | re.UNICODE)
-        if match:
+    for line in source_text.splitlines():
+        match = forward_pattern.search(line)
+        if match and _is_strong_invoice_number(match.group("number")):
             return str(match.group("number"))
+
+    # Some OCR layouts print the identifier immediately above its heading.
+    reverse_pattern = re.compile(
+        rf"{value_pattern}\s*(?:[:#.\-]|\n\s*)\s*{_INVOICE_NUMBER_LABEL}",
+        flags=re.IGNORECASE | re.UNICODE,
+    )
+    match = reverse_pattern.search(source_text)
+    if match and _is_strong_invoice_number(match.group("number")):
+        return str(match.group("number"))
     return ""
 
 
@@ -2281,7 +2319,9 @@ def find_invoice_source(
 ) -> dict | None:
     """Return the one aggregate source for a supplier invoice, if identifiable."""
     normalized_number = normalize_invoice_number(document_number)
-    if not supplier_id or not normalized_number:
+    # Aggregation is irreversible at the source level. An uncertain label such
+    # as `Tax` must create its own source rather than join a different invoice.
+    if not supplier_id or not normalized_number or not _is_strong_invoice_number(document_number):
         return None
     candidates = (
         client.table("company_price_sources")

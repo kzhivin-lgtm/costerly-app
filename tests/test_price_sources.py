@@ -5229,7 +5229,11 @@ def test_canonical_supplier_resolution_releases_only_stale_supplier_review_rows(
 
 
 def test_invoice_source_identity_requires_supplier_and_invoice_number():
-    from use_cases.price_sources import invoice_number_from_source_text, normalize_invoice_number
+    from use_cases.price_sources import (
+        find_invoice_source,
+        invoice_number_from_source_text,
+        normalize_invoice_number,
+    )
 
     assert normalize_invoice_number("Invoice 62-336") == "invoice62336"
     assert normalize_invoice_number("") == ""
@@ -5239,6 +5243,17 @@ def test_invoice_source_identity_requires_supplier_and_invoice_number():
     assert invoice_number_from_source_text(
         "DT19.24016853\n\n## חשבונית מס - קבלה\n\nמספרכם: 39900"
     ) == "DT19.24016853"
+    assert invoice_number_from_source_text(
+        "Tax invoice\n"
+        "Supplier name | 610 Test Materials Ltd. | Invoice number | CTRL-610-002"
+    ) == "CTRL-610-002"
+    assert invoice_number_from_source_text("Tax invoice") == ""
+    assert find_invoice_source(
+        object(),
+        company_id="company-1",
+        supplier_id="supplier-1",
+        document_number="Tax",
+    ) is None
 
 
 def test_price_source_arithmetic_recheck_prefers_original_visual_evidence():
