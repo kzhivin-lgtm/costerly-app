@@ -47,8 +47,6 @@ def publish_estimation_v3_material_object(
             "unit_cost": None,
             "quantity": total_quantity / object_quantity,
             "cost": None,
-            "currency": "ILS",
-            "status": "review_required",
             "source": "estimation_v3_material_facts",
             "sort_order": index * 10,
             "needs_price": True,

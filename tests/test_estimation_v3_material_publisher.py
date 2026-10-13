@@ -36,3 +36,4 @@ def test_v3_publisher_writes_only_net_material_norms(monkeypatch):
     assert line["unit_cost"] is None and line["cost"] is None
     assert line["raw_agent_json"]["facts"]["requirement_id"] == "m1"
     assert "labor" not in line and "overhead" not in line
+    assert "currency" not in line and "status" not in line
