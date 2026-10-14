@@ -1,4 +1,4 @@
--- Correct nine early experimental Global Models whose saved names prove that
+-- Correct eight early experimental Global Models whose saved names prove that
 -- their original MDF Family was wrong.  No price, Israel Listing, raw source
 -- evidence or attribute value is discarded.  Attribute and legacy-mapping
 -- rows are temporarily reconstructed only because their composite foreign
@@ -132,7 +132,7 @@ from _experimental_mapping_snapshot;
 
 do $$
 declare
-    expected_count integer := 9;
+    expected_count integer := 8;
     corrected_count integer;
     mismatches integer;
     timber_missing_species integer;
