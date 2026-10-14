@@ -176,8 +176,3 @@ def build_estimation_input(
         },
         "versions": {key: str(value) for key, value in versions.items()},
     }
-
-
-# Retained only so historical V2 tests and records remain readable during the
-# one-way cutover. Active V3 runtime imports build_estimation_input directly.
-build_estimation_input_v2 = build_estimation_input

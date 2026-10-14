@@ -2,6 +2,7 @@ from tools.seed_material_pricing_identities import (
     build_identities,
     build_policy_identities,
 )
+from tests.helpers.shared_alias_context import shared_alias_context
 
 
 def _material(material_id, name, *, thickness, subcategory="Plywood"):
@@ -52,7 +53,7 @@ def test_concrete_mdf_name_wins_over_shared_mdf_and_hdf_subcategory():
     assert {item.price_attributes["material_family"] for item in identities} == {"mdf", "hdf"}
 
 
-def test_policy_seed_uses_v2_family_and_only_approved_price_key_facts():
+def test_policy_seed_uses_current_family_code_and_only_approved_price_key_facts():
     materials = (
         {
             **_material("mdf-white", "MDF white 19 mm", thickness=19, subcategory="MDF and HDF"),
@@ -76,7 +77,11 @@ def test_policy_seed_uses_v2_family_and_only_approved_price_key_facts():
         "metal_tube": {"pricing_key_attribute_codes": ["metal_type", "section_profile", "wall_thickness"]},
     }
 
-    identities = build_policy_identities(materials, pricing_policies=policies)
+    identities = build_policy_identities(
+        materials,
+        pricing_policies=policies,
+        alias_context=shared_alias_context(),
+    )
 
     assert {item.price_attributes["material_family"] for item in identities} == {"faced_mdf", "metal_tube"}
     faced_mdf = next(item for item in identities if item.price_attributes["material_family"] == "faced_mdf")

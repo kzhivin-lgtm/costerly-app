@@ -214,7 +214,3 @@ def persist_estimation_inputs(
         "created_inputs": created_inputs,
         "skipped": skipped,
     }
-
-
-# Temporary reader compatibility for V2 history. Active V3 uses the neutral name.
-persist_estimation_v2_inputs = persist_estimation_inputs

@@ -10,7 +10,6 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping, Sequence
 
-from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
 
 
 def _positive_mm(value: object) -> int:
@@ -130,8 +129,7 @@ def purchasable_dimensions_for_row(
     completed only when exactly one active family format contains that side.
     With several candidates it stays unresolved for now.
     """
-    taxonomy = catalog_v2_taxonomy_for_family(str(row.get("material_family") or "")) or {}
-    family_code = str(taxonomy.get("family_code") or "")
+    family_code = str(row.get("material_family") or "").strip()
     attributes = row.get("identity_attributes")
     attributes = attributes if isinstance(attributes, Mapping) else {}
     literal = _normalised_dimensions(attributes)

@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import fitz
 import pandas as pd
 import pytest
+import use_cases.price_source_taxonomy as price_source_taxonomy
 from openpyxl import Workbook
 from PIL import Image
 
@@ -21,7 +22,6 @@ from agents.schemas.price_source_schema import (
     guard_price_source_document_totals,
     guard_price_source_row_activation,
     normalize_price_source_row_identity_fields,
-    normalize_price_source_units,
     normalize_price_source_optional_numbers,
     normalize_price_source_confidence_scale,
     reconcile_price_source_arithmetic,
@@ -29,7 +29,6 @@ from agents.schemas.price_source_schema import (
 )
 from agents.price_source_agent import (
     PRICE_SOURCE_MAX_OUTPUT_TOKENS,
-    _apply_material_taxonomy_to_rows,
     _line_arithmetic_conflicts,
     _mark_unverified_source_table_rows_for_review,
     _mark_unrepaired_fractional_hardware_for_review,
@@ -108,6 +107,83 @@ from use_cases.material_supply_format import (
     apply_price_source_purchasable_dimensions,
     purchasable_dimensions_for_row,
 )
+from use_cases.catalog_aliases import PriceSourceAliasContext
+from tests.helpers.shared_alias_context import shared_alias_context
+
+
+@pytest.fixture(autouse=True)
+def _bind_shared_catalog_alias_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Exercise taxonomy through the persisted SQL seed, never Python rules."""
+    context = shared_alias_context()
+    material = price_source_taxonomy.apply_material_taxonomy
+    operation = price_source_taxonomy.apply_operation_taxonomy
+    rule = price_source_taxonomy.material_rule_for_text
+    job = price_source_taxonomy.job_operation_for_text
+    normalise_rows = normalize_price_source_rows
+    normalise_sheets = normalize_price_source_sheet_rows
+    prepare_operations = prepare_price_source_operation_rows
+
+    def apply_material(row, *, alias_context=None):
+        return material(row, alias_context=alias_context or context)
+
+    def apply_operation(row, *, alias_context=None):
+        return operation(row, alias_context=alias_context or context)
+
+    def material_rule(text, *, alias_context=None):
+        return rule(text, alias_context=alias_context or context)
+
+    def operation_for_text(text, *, alias_context=None):
+        return job(text, alias_context=alias_context or context)
+
+    def normalise_all(result, **kwargs):
+        return normalise_rows(result, alias_context=kwargs.pop("alias_context", context), **kwargs)
+
+    def normalise_sheet(result, **kwargs):
+        return normalise_sheets(result, alias_context=kwargs.pop("alias_context", context), **kwargs)
+
+    def prepare_operations_with_context(result, **kwargs):
+        return prepare_operations(result, alias_context=kwargs.pop("alias_context", context), **kwargs)
+
+    monkeypatch.setattr(price_source_taxonomy, "apply_material_taxonomy", apply_material)
+    monkeypatch.setattr(price_source_taxonomy, "apply_operation_taxonomy", apply_operation)
+    monkeypatch.setattr(price_source_taxonomy, "material_rule_for_text", material_rule)
+    monkeypatch.setattr(price_source_taxonomy, "job_operation_for_text", operation_for_text)
+    monkeypatch.setitem(globals(), "apply_material_taxonomy", apply_material)
+    monkeypatch.setitem(globals(), "apply_operation_taxonomy", apply_operation)
+    monkeypatch.setitem(globals(), "material_rule_for_text", material_rule)
+    monkeypatch.setitem(globals(), "job_operation_for_text", operation_for_text)
+    monkeypatch.setitem(globals(), "normalize_price_source_rows", normalise_all)
+    monkeypatch.setitem(globals(), "normalize_price_source_sheet_rows", normalise_sheet)
+    monkeypatch.setitem(globals(), "prepare_price_source_operation_rows", prepare_operations_with_context)
+
+
+def _review_alias_context() -> PriceSourceAliasContext:
+    """The Review save path must use the catalog context, never Python rules."""
+    return PriceSourceAliasContext(
+        family_aliases={
+            "plywood": ("plywood", "фанера", "twin", "טווין"),
+            "hardware_drawer_slide": ("drawer slide", "concealed drawer slide", "movento", "מסילה למגירה"),
+        },
+        family_categories={
+            "plywood": "Wood panels",
+            "hardware_drawer_slide": "Hardware",
+        },
+        ambiguous_family_aliases=frozenset(),
+        attribute_value_aliases={},
+        brand_aliases={"blum": "Blum"},
+        product_system_aliases={"movento": ("Movento", "Blum", "hardware_drawer_slide")},
+        operation_aliases={},
+        measurement_unit_aliases={
+            "יח": {"unit_code": "piece", "dimension_code": "count", "conversion_factor": 1},
+        },
+    )
+
+
+def _use_review_alias_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "use_cases.price_sources.load_price_source_alias_context",
+        lambda _client: _review_alias_context(),
+    )
 
 
 @pytest.mark.parametrize(
@@ -348,6 +424,33 @@ def test_all_source_normalizer_applies_family_pricing_contract_after_taxonomy():
     assert row["identity_attributes"]["wall_thickness_mm"] == 2
 
 
+def test_catalog_context_classifies_russian_square_tube_without_static_rules():
+    row = {
+        "item_kind": "material",
+        "raw_description": "Профиль квадратный 20 x 20 мм",
+        "normalized_name": "Unclassified material",
+        "identity_attributes": {},
+        "status": "unresolved",
+        "reason_codes": ["unknown_product_term"],
+    }
+    context = PriceSourceAliasContext(
+        family_aliases={"metal_tube": ("квадратный профиль",)},
+        family_categories={"metal_tube": "Metal Profiles"},
+        ambiguous_family_aliases=frozenset(),
+        attribute_value_aliases={
+            "metal_tube": {
+                "section_profile": {"square tube": ("квадратный профиль",)},
+            },
+        },
+        brand_aliases={}, product_system_aliases={}, operation_aliases={},
+        measurement_unit_aliases={},
+    )
+
+    assert apply_material_taxonomy(row, alias_context=context) is True
+    assert row["material_family"] == "metal tube"
+    assert row["identity_attributes"]["section_profile"] == "square tube"
+
+
 @pytest.mark.parametrize(
     ("description", "family", "expected"),
     [
@@ -416,7 +519,6 @@ def test_hardware_force_rating_is_not_misread_as_thickness_or_a_brand():
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
-    catalog_v2_taxonomy_for_family,
     job_operation_for_text,
     material_rule_for_text,
 )
@@ -1204,7 +1306,7 @@ def test_proven_sheet_defaults_before_review_and_retains_3100_span():
         "identity_attributes": {"thickness_mm": 17},
     })
 
-    _apply_material_taxonomy_to_rows(result)
+    apply_material_taxonomy(row, alias_context=_review_alias_context())
     apply_price_source_material_unit_defaults(result)
     guarded = guard_price_source_row_activation(result)
 
@@ -1973,15 +2075,15 @@ def test_mdf_taxonomy_covers_safe_english_hebrew_and_ocr_variants(alias):
 
 
 def test_each_active_source_family_and_attribute_has_a_hebrew_alias():
-    """Hebrew input coverage is a contract, rather than a best-effort note."""
-    from use_cases.price_source_taxonomy import ATTRIBUTE_RULES, MATERIAL_RULES
-
+    """Hebrew input coverage is a catalog-data contract, not a Python rule."""
+    context = shared_alias_context()
     has_hebrew = lambda values: any("\u0590" <= char <= "\u05ff" for value in values for char in value)
-    assert all(has_hebrew(rule.aliases) for rule in MATERIAL_RULES)
-    assert all(
+    assert all(has_hebrew(aliases) for aliases in context.family_aliases.values())
+    assert any(
         has_hebrew(aliases)
-        for attribute_values in ATTRIBUTE_RULES.values()
-        for _value, aliases in attribute_values
+        for fields in context.attribute_value_aliases.values()
+        for values in fields.values()
+        for aliases in values.values()
     )
 
 
@@ -1990,8 +2092,7 @@ def test_hebrew_item_abbreviation_normalizes_before_sheet_rules():
     row = result["rows"][0]
     row.update({"raw_unit": "יח", "purchase_unit": "sheet", "calculation_unit": "sheet"})
 
-    normalize_price_source_units(result)
-    normalize_price_source_sheet_rows(result)
+    normalize_price_source_sheet_rows(result, alias_context=_review_alias_context())
 
     assert row["raw_unit"] == "sheet"
 
@@ -2128,7 +2229,7 @@ def test_bilingual_taxonomy_covers_all_material_departments(description, categor
         }),
     ],
 )
-def test_taxonomy_emits_v2_family_facts_without_creating_a_catalog_link(description, expected):
+def test_taxonomy_emits_current_family_code_without_creating_a_catalog_link(description, expected):
     row = _result()["rows"][0]
     row.update({
         "raw_description": description,
@@ -2138,7 +2239,7 @@ def test_taxonomy_emits_v2_family_facts_without_creating_a_catalog_link(descript
     })
 
     assert apply_material_taxonomy(row) is True
-    assert catalog_v2_taxonomy_for_family(row["material_family"]) == expected
+    assert row["material_family"] == expected["family_code"]
 
 
 def test_taxonomy_preserves_a_category_scoped_brand_and_sheet_primary_attribute():
@@ -3872,6 +3973,7 @@ def test_review_activate_and_remove_row_are_auditable(monkeypatch):
     client = _MutableClient(tables)
     monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
     monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+    _use_review_alias_context(monkeypatch)
     access = SimpleNamespace(company_id="company-1", user_id="user-1")
 
     saved = save_price_source_row(
@@ -3924,6 +4026,7 @@ def test_review_save_builds_structured_identity_from_approved_name_and_source_te
     client = _MutableClient(tables)
     monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
     monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+    _use_review_alias_context(monkeypatch)
 
     save_price_source_row(
         SimpleNamespace(company_id="company-1", user_id="user-1"), "source-1", "row-1",
@@ -3971,6 +4074,7 @@ def test_catalog_edit_enriches_attributes_without_renaming_or_rewriting_source_e
     client = _MutableClient(tables)
     monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
     monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+    _use_review_alias_context(monkeypatch)
 
     save_price_source_row(
         SimpleNamespace(company_id="company-1", user_id="user-1"), "source-1", "row-1",
@@ -4121,6 +4225,7 @@ def test_reviewed_internal_price_supersedes_only_its_recurring_internal_lane(mon
     client = _MutableClient(tables)
     monkeypatch.setattr("use_cases.price_sources.get_supabase_client", lambda: client)
     monkeypatch.setattr("use_cases.price_sources.assert_company_owner", lambda *_args: None)
+    _use_review_alias_context(monkeypatch)
 
     saved = save_price_source_row(
         SimpleNamespace(company_id="company-1", user_id="user-1"),

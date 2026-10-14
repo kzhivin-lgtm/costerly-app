@@ -14,10 +14,6 @@ from collections.abc import Mapping
 import re
 from typing import Any
 
-from use_cases.hardware_product_system_registry import (
-    HARDWARE_BRAND_SEEDS,
-    PRODUCT_SYSTEM_SEEDS,
-)
 
 
 # This is an allowlist by design. A new key is a domain decision, not something
@@ -72,42 +68,24 @@ _ENTITY_DISPLAY_OVERRIDES = {
 }
 
 
-def _product_system_key(value: object) -> str:
-    """Compare a Product System independently of source capitalization."""
-    return re.sub(r"[^\w]+", "", str(value or "").casefold(), flags=re.UNICODE)
-
-
 def _title_case_catalog_label(value: object) -> str:
     """Give source-provided catalog labels one calm, uniform display case."""
     return " ".join(str(value or "").strip().title().split())
 
 
 def _canonical_brand_name(value: object) -> str:
-    """Resolve a known Hardware brand, then use uniform title case for display."""
-    candidate = str(value or "").strip()
-    key = _product_system_key(candidate)
-    if not key:
-        return ""
-    for seed in HARDWARE_BRAND_SEEDS:
-        if any(_product_system_key(alias) == key for alias in (seed.canonical_name, *seed.aliases)):
-            return _title_case_catalog_label(seed.canonical_name)
-    return _title_case_catalog_label(candidate)
+    """Format source-proven brand text without maintaining a second alias list.
+
+    Catalog recognition happens in the shared alias context.  The normalizer
+    must not quietly recognise another spelling before that deterministic
+    catalog pass has run.
+    """
+    return _title_case_catalog_label(value)
 
 
 def _canonical_product_system_name(value: object) -> str:
-    """Return a curated Product System spelling when the value is recognised.
-
-    This is formatting and identity normalisation only. An unknown user-supplied
-    system remains intact rather than being guessed or silently discarded.
-    """
-    candidate = str(value or "").strip()
-    key = _product_system_key(candidate)
-    if not key:
-        return ""
-    for seed in PRODUCT_SYSTEM_SEEDS:
-        if any(_product_system_key(alias) == key for alias in (seed.canonical_name, *seed.aliases)):
-            return _title_case_catalog_label(seed.canonical_name)
-    return _title_case_catalog_label(candidate)
+    """Format source-proven system text without maintaining a second alias list."""
+    return _title_case_catalog_label(value)
 
 
 def normalize_identity_attributes(values: Mapping[str, Any] | None) -> dict[str, Any]:

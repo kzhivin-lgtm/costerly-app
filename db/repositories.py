@@ -5,7 +5,6 @@ import json
 
 import pandas as pd
 from supabase import Client
-from use_cases.price_source_taxonomy import source_family_for_catalog_family
 
 
 def fetch_table(
@@ -286,7 +285,7 @@ def fetch_estimation_resolver_material_families(client: Client) -> set[str]:
         or []
     )
     return {
-        source_family_for_catalog_family(family_by_id[str(row.get("family_id") or "")])
+        family_by_id[str(row.get("family_id") or "")]
         for row in policy_rows
         if family_by_id.get(str(row.get("family_id") or ""))
     }
@@ -313,13 +312,6 @@ def insert_estimation_fact_result(
     if len(rows) != 1 or not rows[0].get("fact_result_id"):
         raise RuntimeError("Estimation Object Facts insert did not return fact_result_id.")
     return str(rows[0]["fact_result_id"])
-
-
-# Temporary compatibility surface for frozen V2 history only. New runtime code
-# must use the neutral names above with an explicit V3 agent version.
-fetch_estimation_v2_fact_result = fetch_estimation_fact_result
-fetch_latest_estimation_v2_facts_by_object = fetch_latest_estimation_facts_by_object
-insert_estimation_v2_fact_result = insert_estimation_fact_result
 
 
 def insert_agent_usage_events(client: Client, usage_events: list[dict]) -> None:

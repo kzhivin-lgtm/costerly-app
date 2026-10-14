@@ -10,9 +10,6 @@ capabilities only. It never classifies objects or selects work by object name.
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
-from use_cases.estimation_v2_composition import LABOR_OPERATION_VALUES
-
-
 LABOR_BASELINE_VERSION = "labor_time_v1"
 
 
@@ -203,7 +200,7 @@ def estimate_labor(object_fact: Mapping[str, Any], company_context: Mapping[str,
         if not operation_id or operation_id in seen_ids:
             return _review("labor_operation_id_invalid")
         seen_ids.add(operation_id)
-        if code not in LABOR_OPERATION_VALUES or code not in BASELINES:
+        if code not in BASELINES:
             return _review(f"labor_operation_unsupported:{code}")
         required_machine = MACHINE_REQUIREMENTS.get(code)
         declared_machine = value.get("machine_code")

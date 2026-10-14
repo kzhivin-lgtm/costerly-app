@@ -52,13 +52,13 @@ def sheet_estimation_specifications(
         result.pop("plywood_variant", None)
         return result
 
-    if family in {"mdf", "faced mdf"}:
+    if family in {"mdf_hdf", "faced_mdf"}:
         facts = " ".join((surface, coating, construction))
         if any(token in facts for token in ("veneer", "veneered")):
             result["construction"] = VENEER_FACED
         elif any(token in facts for token in ("hpl", "formica")):
             result["construction"] = HPL_FACED
-        elif family == "faced mdf" or colour or any(
+        elif family == "faced_mdf" or colour or any(
             token in facts for token in ("melamine", "laminate", "laminated", "plastic")
         ):
             # Existing Israel reference seeds label the ordinary melamine/decor
@@ -86,7 +86,7 @@ def canonical_sheet_name_tokens(
     required = {thickness, "mm"}
     if family == "plywood":
         required.add("plywood")
-    elif family in {"mdf", "faced mdf"}:
+    elif family in {"mdf_hdf", "faced_mdf"}:
         required.add("mdf")
     else:
         return set()

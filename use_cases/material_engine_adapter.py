@@ -29,7 +29,6 @@ from use_cases.material_identity_status import (
     pricing_policy_by_family_code,
 )
 from use_cases.material_price_resolver import _canonical_unit, _effective
-from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
 
 
 _LINEAR_UNITS = frozenset({"lm", "mm", "cm"})
@@ -46,21 +45,8 @@ def _catalog_family_for_reference_identity(
     *,
     pricing_policies: Mapping[str, Mapping[str, Any]],
 ) -> str | None:
-    """Map an older Reference family label onto the active Family registry.
-
-    Israel Reference identities predate the current Family codes. Their stored
-    labels such as ``acrylic_sheet`` are provenance, not a second resolver
-    vocabulary. This is a deterministic spelling bridge only: it does not
-    broaden attributes or manufacture a compatible Pricing Key.
-    """
+    """Return a current Family code stored by an Israel Reference position."""
     raw = str(material_family or "").strip()
-    if not raw:
-        return None
-    source_family = raw.replace("_", " ")
-    taxonomy = catalog_v2_taxonomy_for_family(source_family)
-    projected = str((taxonomy or {}).get("family_code") or "").strip()
-    if projected in pricing_policies:
-        return projected
     return raw if raw in pricing_policies else None
 
 
@@ -240,12 +226,8 @@ def _resolver_family_code(
     *,
     policies: Mapping[str, Mapping[str, Any]],
 ) -> str | None:
-    taxonomy = catalog_v2_taxonomy_for_family(material_family)
-    family_code = str((taxonomy or {}).get("family_code") or "").strip()
-    if family_code in policies:
-        return family_code
-    normalized = str(material_family or "").strip()
-    return normalized if normalized in policies else None
+    family_code = str(material_family or "").strip()
+    return family_code if family_code in policies else None
 
 
 def _active_default_specifications(

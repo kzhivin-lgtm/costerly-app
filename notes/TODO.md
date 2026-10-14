@@ -454,7 +454,7 @@ across families. The standalone source-taxonomy product-system lookup is also
 kept on the same canonical Global-family projection, so Hardware rows cannot
 fail before taxonomy is established.
 
-ACTIVE, P0, USER REQUEST, 3.17.1.4 Shared aliases for incoming material text:
+COMPLETED, P0, USER ACCEPTED, 3.17.1.4 Shared aliases for incoming material text:
 move every Family alias, Pricing Key label/value alias, brand alias and unit
 alias out of runtime dictionaries into the catalog. Both Estimation and Price
 Source must read the same active rows. An alias may establish only a Family,
@@ -467,10 +467,17 @@ the seed from the former Estimation registry in
 `db/sql/2026_10_14_shared_material_aliases_seed.sql`, plus the existing
 non-Hardware Price Source brand inventory in
 `db/sql/2026_10_14_shared_brand_aliases_seed.sql`. Estimation V3 now reads
-only the new persistent rows. Price Source remains on its old static rules
-until the SQL is applied and its full Family, Pricing Key, brand and unit path
-can be switched atomically. Do not remove its rules piecemeal or permit an
-unapplied migration to make imports unclassifiable.
+only the new persistent rows. Price Source reads the same persistent rows for
+Family, Pricing Key, brand and unit interpretation. No local synonym fallback
+is permitted after cutover.
+
+Accepted 2026-10-14: live catalog audit confirms 54 multilingual Families,
+845 Family aliases, 411 Pricing Key labels, 268 Pricing Key value aliases,
+162 unit aliases, 264 brand aliases and 379 product-system aliases. Every
+live Family has EN/HE/RU coverage; every multi-Family spelling is explicitly
+ambiguous, with no unapproved collision. Estimation V3 and Price Source both
+read this shared catalog. Deployment and a production end-to-end check remain
+a separate release checkpoint, not unfinished alias-catalog work.
 
 Furniture metal-profile policy correction, 2026-10-13: wall thickness is not
 a Pricing Key fact for `metal_tube` or `metal_profile_angle_channel`. An
@@ -495,14 +502,21 @@ Resolver families. A 20 mm MDF requirement correctly remains a Catalog Gap
 until an authoritative Company or Israel offer is added: current Company data
 contains 18/19 mm only and current Israel Reference has no 20 mm MDF price.
 
-Reference bridge correction, 2026-10-13: active Israel Reference price
-identities retain older source-facing Family spellings such as
-`acrylic_sheet`, while the active registry uses `acrylic_pmma`. Material
-Engine now deterministically projects only that spelling onto the active
-Family code before comparing the unchanged Pricing Key. It does not widen
-attributes, select a different thickness or manufacture a candidate. The
-first live V3 plan confirmed that this restores 14 physical Israel candidates
-for acrylic 20 mm; faced MDF 20 mm remains an explicit Catalog Gap and
+V2 Family bridge removal, 2026-10-14: active taxonomy, Resolver, Material
+Engine, V3 facts and Israel identity seeding use only current `family_code`
+values. The former source-label projection, including mappings such as
+`drawer slide` to `hardware_drawer_slide`, is removed rather than renamed.
+The remaining test migration must replace old source-label expectations with
+current Family codes; no product fallback may be restored to satisfy them.
+Historical records with an old stored Family spelling require a one-time data
+audit before their next Resolver run. Faced MDF 20 mm remains an explicit Catalog Gap and
+
+Release audit update, 2026-10-14: the live catalog has 54 active Families,
+845 Family aliases, 411 Pricing Key labels, 268 Pricing Key value aliases,
+162 unit aliases, 264 brand aliases and 379 product-system aliases. Every
+active Family has English, Hebrew and Russian coverage. The audit found 16
+additional multi-Family spellings; the follow-up seed records each as
+ambiguous with explicit candidate Families, so none is resolved by ordering.
 incomplete facts remain review-required. A plan with any earlier Resolver gap
 is always `needs_review`, even when other requirements already have concrete
 purchase lines. Those partial lines remain traceable diagnostics but can never

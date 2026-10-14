@@ -3,7 +3,7 @@ from io import BytesIO
 from PIL import Image
 
 from use_cases import estimation_handoff
-from use_cases.estimation_handoff import persist_estimation_v2_inputs
+from use_cases.estimation_handoff import persist_estimation_inputs
 from use_cases.estimation_originals import describe_estimation_original
 
 
@@ -49,7 +49,7 @@ def _image_bytes():
 def test_shadow_handoff_persists_preview_input_and_artifact():
     source = _image_bytes()
     client = _Client()
-    result = persist_estimation_v2_inputs(
+    result = persist_estimation_inputs(
         client=client,
         run={"run_id": "run-1", "company_id": "company-1", "file_name": "drawing.png"},
         objects=[{
@@ -83,7 +83,7 @@ def test_shadow_handoff_persists_preview_input_and_artifact():
 def test_shadow_handoff_uses_source_page_when_image_only_ocr_cannot_resolve_anchor():
     source = _image_bytes()
     client = _Client()
-    result = persist_estimation_v2_inputs(
+    result = persist_estimation_inputs(
         client=client,
         run={"run_id": "run-1", "company_id": "company-1", "file_name": "drawing.png"},
         objects=[{
@@ -125,7 +125,7 @@ def test_shadow_handoff_uses_source_page_when_image_only_ocr_cannot_resolve_anch
 def test_shadow_handoff_prefers_vnext_object_preview_bbox_over_label_anchor():
     source = _image_bytes()
     client = _Client()
-    result = persist_estimation_v2_inputs(
+    result = persist_estimation_inputs(
         client=client,
         run={"run_id": "run-1", "company_id": "company-1", "file_name": "drawing.png"},
         objects=[{
@@ -158,7 +158,7 @@ def test_shadow_handoff_prefers_vnext_object_preview_bbox_over_label_anchor():
 def test_shadow_handoff_falls_back_to_full_page_for_invalid_preview_bbox():
     source = _image_bytes()
     client = _Client()
-    result = persist_estimation_v2_inputs(
+    result = persist_estimation_inputs(
         client=client,
         run={"run_id": "run-1", "company_id": "company-1", "file_name": "drawing.png"},
         objects=[{
@@ -189,7 +189,7 @@ def test_shadow_handoff_falls_back_to_full_page_for_invalid_preview_bbox():
 def test_shadow_handoff_reuses_detection_preview_and_persists_full_evidence_page():
     source = _image_bytes()
     client = _Client()
-    result = persist_estimation_v2_inputs(
+    result = persist_estimation_inputs(
         client=client, run={"run_id": "run-1", "company_id": "company-1"},
         objects=[{"object_id": "object-1", "object_name": "Desk", "quantity": 1,
                   "dimensions_json": {}, "notes": "", "evidence_page_refs": [{

@@ -1,6 +1,6 @@
 -- 3.17.2.2 Global family registry seed.
 --
--- Depends on 2026_10_11_catalog_v2_contract_foundation.sql. This is an
+-- Depends on 2026_10_11_catalog_contract_foundation.sql. This is an
 -- unapplied seed: it establishes Global vocabulary only. It does not import
 -- legacy materials, create Israel listings, alter Company Price Catalog data,
 -- or switch any reader.
@@ -26,7 +26,7 @@ with category_seed (
         ('consumables', 'Consumables', null, 'consumable', 130),
         ('packaging', 'Packaging', null, 'packaging', 140)
 )
-insert into public.reference_material_categories_v2 (
+insert into public.reference_material_categories (
     category_code, category_name, production_department_code, entity_role_code, sort_order, active
 )
 select category_code, category_name, production_department_code, entity_role_code, sort_order, true
@@ -110,7 +110,7 @@ select
     seed.entity_role_code,
     true
 from family_seed seed
-join public.reference_material_categories_v2 category using (category_code)
+join public.reference_material_categories category using (category_code)
 on conflict (family_code) do update set
     family_name = excluded.family_name,
     category_id = excluded.category_id,

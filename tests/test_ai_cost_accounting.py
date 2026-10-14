@@ -4,7 +4,7 @@ from use_cases.rfq_processing import _runtime_event
 
 def test_all_agent_version_families_have_a_dashboard_cost_category():
     assert agent_cost_category("estimation") == "estimation"
-    assert agent_cost_category("estimation_v2_facts") == "estimation"
+    assert agent_cost_category("estimation_v3_material_facts") == "estimation"
     assert agent_cost_category("price_source_v3") == "price_source"
     assert agent_cost_category("new_external_worker") == "detection"
 

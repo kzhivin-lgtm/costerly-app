@@ -1,4 +1,4 @@
-"""Private immutable storage for RFQ originals used by Estimation v2."""
+"""Private immutable storage for RFQ originals used by Estimation."""
 
 from __future__ import annotations
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal, Mapping, Sequence
 
-from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
 
 
 IdentityTone = Literal["green", "yellow", "blue", "red"]
@@ -141,58 +140,48 @@ def material_pricing_selection_key(
 # Required V1 endpoint facts. Brand and Product System enrich the canonical
 # path but deliberately never block preliminary estimation on their own.
 _REQUIRED_BY_FAMILY: dict[str, tuple[str, ...]] = {
-    "mdf": ("thickness_mm",),
+    "mdf_hdf": ("thickness_mm",),
     "particleboard": ("thickness_mm",),
-    "hardboard": ("thickness_mm",),
+    "fibreboard_hardboard": ("thickness_mm",),
     "osb": ("thickness_mm",),
-    "laminated panel": ("thickness_mm",),
+    "melamine_faced_particleboard": ("thickness_mm",),
     "plywood": ("thickness_mm",),
-    "solid timber": ("species", "thickness_mm"),
-    "veneer": ("species",),
-    "edge banding": ("width_mm", "thickness_mm", "substrate"),
+    "timber_solid_wood_panel": ("species", "thickness_mm"),
+    "wood_veneer": ("species",),
+    "edge_banding": ("width_mm", "thickness_mm", "substrate"),
     "glass": ("thickness_mm",),
-    "acrylic sheet": ("thickness_mm",),
-    "abs sheet": ("thickness_mm",),
-    "polycarbonate sheet": ("thickness_mm",),
-    "petg sheet": ("thickness_mm",),
-    "pvc sheet": ("thickness_mm",),
-    "plastic sheet": ("thickness_mm",),
-    "aluminium composite panel": ("thickness_mm",),
-    "composite sandwich panel": ("thickness_mm",),
-    "vinyl film": ("width_mm",),
-    "natural stone": ("thickness_mm",),
-    "engineered quartz": ("thickness_mm",),
-    "sintered stone": ("thickness_mm",),
-    "porcelain": ("thickness_mm",),
-    "solid surface": ("thickness_mm",),
-    "terrazzo": ("thickness_mm",),
-    "metal sheet": ("metal_type", "thickness_mm"),
+    "acrylic_pmma": ("thickness_mm",),
+    "polycarbonate_petg_pvc_abs": ("thickness_mm",),
+    "sheet_plastic": ("thickness_mm",),
+    "aluminium_composite_panel": ("thickness_mm",),
+    "composite_sandwich_panel": ("thickness_mm",),
+    "vinyl_film": ("width_mm",),
+    "natural_stone_slab": ("thickness_mm",),
+    "engineered_quartz_mineral_hybrid": ("thickness_mm",),
+    "sintered_ultra_compact_surface": ("thickness_mm",),
+    "porcelain_ceramic_slab": ("thickness_mm",),
+    "solid_surface": ("thickness_mm",),
+    "terrazzo_engineered_agglomerate": ("thickness_mm",),
+    "sheet_metal": ("metal_type", "thickness_mm"),
     # Furniture profiles use a technical default wall thickness of 1.5 mm
     # when the evidence does not state one.  It remains useful secondary
     # provenance when explicit, but never blocks material identity or pricing.
-    "metal tube": ("metal_type", "section_profile"),
-    "metal angle": ("metal_type", "section_profile"),
-    "metal channel": ("metal_type", "section_profile"),
-    "metal profile": ("metal_type", "section_profile"),
-    "metal bar": ("metal_type", "diameter_mm"),
-    "powder coating": ("coating_system",),
-    "epoxy coating": ("coating_system",),
-    "polyurethane coating": ("coating_system",),
+    "metal_tube": ("metal_type", "section_profile"),
+    "metal_profile_angle_channel": ("metal_type", "section_profile"),
+    "metal_round_bar_rod_wire": ("metal_type", "diameter_mm"),
+    "powder_coating": ("coating_system",),
+    "paint_lacquer_stain": ("coating_system",),
     "primer": ("coating_system",),
-    "lacquer": ("coating_system",),
-    "paint": ("coating_system",),
-    "coating material": ("coating_system",),
-    "drawer slide": ("depth_mm",),
-    "drawer system": (),
-    "hinge": (),
-    "door closure": (),
-    "handle": (),
-    "furniture leg": (),
-    "caster": (),
-    "plinth profile": (),
-    "drilling fixture": (),
-    "furniture connector": (),
-    "lift mechanism": (),
+    "filler_hardener_thinner": ("coating_system",),
+    "hardware_drawer_slide": ("depth_mm",),
+    "hardware_drawer_system": (),
+    "hardware_hinge": (),
+    "hardware_lock_latch": (),
+    "hardware_handle": (),
+    "hardware_leg_caster": (),
+    "hardware_mounting_part": (),
+    "hardware_connector": (),
+    "hardware_lift_system": (),
 }
 
 
@@ -206,15 +195,12 @@ def _display(value: Any) -> str:
 
 def _family_code(item: Mapping[str, Any], specs: Mapping[str, Any]) -> str:
     explicit = str(
-        specs.get("catalog_v2_family_code")
+        specs.get("material_family")
         or specs.get("global_family_code")
-        or item.get("catalog_v2_family_code")
+        or item.get("material_family")
         or ""
     ).strip()
-    if explicit:
-        return explicit
-    taxonomy = catalog_v2_taxonomy_for_family(str(specs.get("material_family") or ""))
-    return str((taxonomy or {}).get("family_code") or "")
+    return explicit
 
 
 def pricing_policy_by_family_code(

@@ -1,10 +1,3 @@
-import copy
-import json
-from pathlib import Path
-
-import pytest
-
-from use_cases.estimation_v2_labor_adapter import build_labor_input
 from use_cases.labor_engine import BASELINES, estimate_labor
 
 
@@ -103,30 +96,6 @@ def test_manual_operation_cannot_claim_a_machine_route():
 def test_identical_operation_plans_produce_identical_labor_trace():
     plan = _plan(_operation("weld", "mig_mag_welding", 1.4, unit="weld_m"))
     assert estimate_labor(plan, _context()) == estimate_labor(plan, _context())
-
-
-def test_estimation_ready_facts_adapt_without_object_classification():
-    facts = json.loads(
-        Path("tests/fixtures/estimation_v2/e01_complete_object.json").read_text()
-    )["facts"]
-
-    labor_input = build_labor_input(facts)
-    result = estimate_labor(labor_input, _context("wood_panel_saw"))
-
-    assert labor_input["labor_operations"] == facts["labor_operations"]
-    assert result["status"] == "estimated"
-    assert _codes(result) == ["panel_saw_cutting", "carcass_assembly"]
-
-
-def test_labor_adapter_accepts_review_facts_for_approximate_costing():
-    facts = json.loads(
-        Path("tests/fixtures/estimation_v2/e01_complete_object.json").read_text()
-    )["facts"]
-    facts = copy.deepcopy(facts)
-    facts["status"] = "review_required"
-
-    labor_input = build_labor_input(facts)
-    assert labor_input["labor_operations"] == facts["labor_operations"]
 
 
 def test_delivery_and_site_installation_are_not_labor_baselines():

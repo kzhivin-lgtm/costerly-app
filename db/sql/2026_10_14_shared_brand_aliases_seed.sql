@@ -257,10 +257,38 @@ with brand_alias_seed (brand_code, language_code, alias_text) as (
         ('reynobond', 'he', 'ריינובונד')
 )
 insert into public.reference_brand_aliases (brand_id, market_code, language_code, alias_text, alias_key, active)
-select brand.brand_id, 'IL', seed.language_code, seed.alias_text,
+select distinct on (brand.brand_id, public.normalize_reference_material_alias(seed.alias_text))
+       brand.brand_id, 'IL', seed.language_code, seed.alias_text,
        public.normalize_reference_material_alias(seed.alias_text), true
 from brand_alias_seed seed
 join public.reference_brands brand using (brand_code)
+order by brand.brand_id, public.normalize_reference_material_alias(seed.alias_text),
+         seed.language_code, seed.alias_text
+on conflict (brand_id, market_code, alias_key) do update set
+    language_code = excluded.language_code, active = true;
+
+-- Most manufacturers are printed in Latin script even in Russian documents.
+-- These are the established Cyrillic spellings that occur in Russian
+-- furniture specifications and therefore need explicit recognition too.
+with russian_brand_alias_seed (brand_code, alias_text) as ( values
+    ('blum', 'блюм'), ('hettich', 'хеттих'), ('hafele', 'хефеле'),
+    ('grass', 'грасс'), ('fgv', 'фгв'), ('salice', 'саличе'),
+    ('titus', 'титус'), ('sugatsune', 'сугацуне'), ('accuride', 'аккурайд'),
+    ('dtc', 'дтс'), ('kessebohmer', 'кессебёмер'), ('vauth_sagel', 'ваут сагель'),
+    ('vibo', 'вибо'), ('emuca', 'емука'), ('lamello', 'ламелло'),
+    ('egger', 'эггер'), ('kronospan', 'кроношпан'), ('finsa', 'финса'),
+    ('kaindl', 'кайндл'), ('rehau', 'рехау'), ('dollken', 'долкен'),
+    ('ostermann', 'остерманн'), ('klil', 'клиль'), ('palram', 'палрам'),
+    ('alucobond', 'алюкобонд'), ('dibond', 'дибонд'), ('plexiglas', 'плексиглас')
+)
+insert into public.reference_brand_aliases (brand_id, market_code, language_code, alias_text, alias_key, active)
+select distinct on (brand.brand_id, public.normalize_reference_material_alias(seed.alias_text))
+       brand.brand_id, 'IL', 'ru', seed.alias_text,
+       public.normalize_reference_material_alias(seed.alias_text), true
+from russian_brand_alias_seed seed
+join public.reference_brands brand using (brand_code)
+order by brand.brand_id, public.normalize_reference_material_alias(seed.alias_text),
+         seed.alias_text
 on conflict (brand_id, market_code, alias_key) do update set
     language_code = excluded.language_code, active = true;
 

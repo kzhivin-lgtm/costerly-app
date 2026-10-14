@@ -24,7 +24,6 @@ import httpx
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
 
-from agents.material_identity_agent import run_material_identity_agent
 from agents.price_source_agent import run_price_source_agent
 from agents.schemas.price_source_schema import (
     CANONICAL_UNIT_CODES,
@@ -38,16 +37,17 @@ from use_cases.price_source_ocr import (
     open_price_source_image,
     prepare_price_source_text_layer,
 )
-from use_cases.price_source_material_resolution import (
-    resolve_price_source_material_identities,
-)
 from use_cases.material_identity_status import material_identity_status, pricing_policy_by_family_code
+from use_cases.catalog_aliases import (
+    PriceSourceAliasContext,
+    load_price_source_alias_context,
+    normalize_measurement_unit,
+)
 from use_cases.material_normalization import canonical_material_display_name
 from use_cases.material_supply_format import apply_price_source_purchasable_dimensions
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
-    catalog_v2_taxonomy_for_family,
     job_operation_for_text,
     source_row_text,
 )
@@ -181,6 +181,7 @@ def normalize_price_source_rows(
     result: dict[str, Any],
     *,
     pricing_policies: Mapping[str, Mapping[str, Any]] | None = None,
+    alias_context: PriceSourceAliasContext,
 ) -> dict[str, Any]:
     """Apply one deterministic material contract after every ingestion route.
 
@@ -192,15 +193,19 @@ def normalize_price_source_rows(
     for row in result.get("rows") or []:
         if not isinstance(row, dict):
             continue
+        resolved_unit = normalize_measurement_unit(
+            row.get("raw_unit"), alias_context=alias_context,
+        )
+        if resolved_unit:
+            row["raw_unit"] = resolved_unit
         # An explicit paid-work phrase is more specific than the material
         # dictionary. It must reach Material Jobs before a word such as "edge
         # band" can classify it as a Wood Supplies product.
-        apply_operation_taxonomy(row)
+        apply_operation_taxonomy(row, alias_context=alias_context)
         if row.get("item_kind") != "material":
             continue
-        apply_material_taxonomy(row)
-        taxonomy = catalog_v2_taxonomy_for_family(str(row.get("material_family") or "")) or {}
-        family_code = str(taxonomy.get("family_code") or "")
+        apply_material_taxonomy(row, alias_context=alias_context)
+        family_code = str(row.get("material_family") or "").strip()
         policy = (pricing_policies or {}).get(family_code) or {}
         # Processing-only context. It makes the family-first contract explicit
         # without persisting derived guesses in source evidence.
@@ -239,7 +244,7 @@ def normalize_price_source_rows(
         # taxonomy has formed its display name. Reapply the same deterministic
         # taxonomy so the persisted Wood Sheets name carries that proven fact.
         # This has no supplier inputs and is idempotent for every other row.
-        apply_material_taxonomy(row)
+        apply_material_taxonomy(row, alias_context=alias_context)
         has_sheet_evidence = (
             row.get("material_type") == "Wood Sheets"
             or "sheet" in text
@@ -274,7 +279,8 @@ def normalize_price_source_rows(
         # A full wood sheet quoted as a piece, panel or board is still the same
         # purchasable sheet. Cut parts are represented by supplier Material Jobs,
         # not by a second material unit.
-        if _normalized_unit(str(row.get("raw_unit") or "")) in {"piece", "sheet"}:
+        source_unit = normalize_measurement_unit(row.get("raw_unit"), alias_context=alias_context)
+        if source_unit in {"piece", "sheet"}:
             row["raw_unit"] = "sheet"
             row["purchase_unit"] = "sheet"
             row["calculation_unit"] = "sheet"
@@ -285,9 +291,11 @@ def normalize_price_source_rows(
     return result
 
 
-def normalize_price_source_sheet_rows(result: dict[str, Any]) -> dict[str, Any]:
-    """Compatibility alias for callers predating the all-source contract."""
-    return normalize_price_source_rows(result)
+def normalize_price_source_sheet_rows(
+    result: dict[str, Any], *, alias_context: PriceSourceAliasContext,
+) -> dict[str, Any]:
+    """Normalize spreadsheet rows through the required shared catalog context."""
+    return normalize_price_source_rows(result, alias_context=alias_context)
 
 
 def active_material_family_supply_formats(client) -> dict[str, list[dict[str, Any]]]:
@@ -922,19 +930,27 @@ def discard_price_source_non_candidates(result: dict[str, Any]) -> int:
     return discarded
 
 
-def price_source_service_operation_code(row: Mapping[str, Any]) -> str | None:
+def price_source_service_operation_code(
+    row: Mapping[str, Any],
+    *,
+    alias_context: PriceSourceAliasContext,
+) -> str | None:
     """Map an extracted supplier service to an existing reference operation."""
     text = " ".join(str(row.get(key) or "") for key in ("raw_description", "normalized_name", "material_family")).casefold()
-    return job_operation_for_text(text)
+    return job_operation_for_text(text, alias_context=alias_context)
 
 
-def prepare_price_source_operation_rows(result: dict[str, Any]) -> dict[int, str]:
+def prepare_price_source_operation_rows(
+    result: dict[str, Any],
+    *,
+    alias_context: PriceSourceAliasContext,
+) -> dict[int, str]:
     """Retain only safely normalised supplier services for operation-offer storage."""
     mapped: dict[int, str] = {}
     for row in result.get("rows") or []:
         if row.get("item_kind") != "operation_service":
             continue
-        code = price_source_service_operation_code(row)
+        code = price_source_service_operation_code(row, alias_context=alias_context)
         if code:
             # The canonical operation itself supplies the department and the
             # supplier-defined billing basis. An invoice's missing reusable
@@ -1703,38 +1719,12 @@ def _normalized_name(value: str) -> str:
 
 
 def _normalized_unit(value: str) -> str:
-    unit = _normalized_name(value).replace(" ", "")
-    aliases = {
-        "sqm": "m2",
-        "m²": "m2",
-        "squaremeter": "m2",
-        "squaremeters": "m2",
-        "m2": "m2",
-        "sqmeter": "m2",
-        "sqmeters": "m2",
-        "squaremetre": "m2",
-        "squaremetres": "m2",
-        "lm": "linear_m",
-        "linm": "linear_m",
-        "runningmeter": "linear_m",
-        "runningmeters": "linear_m",
-        "linearmeter": "linear_m",
-        "linearmeters": "linear_m",
-        "unit": "piece",
-        "units": "piece",
-        "pcs": "piece",
-        "pc": "piece",
-        "יח": "piece",
-        "יחידה": "piece",
-        "יחידות": "piece",
-        "sheet": "sheet",
-        "sheets": "sheet",
-        "panel": "sheet",
-        "panels": "sheet",
-        "board": "sheet",
-        "boards": "sheet",
-    }
-    return aliases.get(unit, unit)
+    """Compare persisted canonical unit codes, not incoming unit aliases.
+
+    Incoming wording is resolved once through ``reference_measurement_unit_aliases``
+    during ingestion.  This helper deliberately performs no synonym mapping.
+    """
+    return str(value or "").strip().casefold()
 
 
 def _decimal_equal(left: object, right: object, places: str) -> bool:
@@ -3159,7 +3149,7 @@ def list_price_catalog(access) -> list[dict]:
         source = source_by_id.get(str(offer.get("source_id")), {})
         category = canonical_price_source_category(str(material.get("category") or "Other"))
         # ``Other`` remains a temporary compatibility bucket. It cannot claim
-        # a production department until Source Agent proves a V2 family.
+        # a production department until Source Agent proves a catalog family.
         department = PRICE_CATALOG_DEPARTMENTS.get(category, "Wood")
         source_summary = source.get("processing_summary") or {}
         supplier_name = str(supplier.get("supplier_name") or "Unknown supplier")
@@ -3677,54 +3667,6 @@ def _refresh_price_source_summary(client, company_id: str, source_id: str) -> No
     ).eq("company_id", company_id).eq("source_id", source_id).execute()
 
 
-def _record_identity_resolution_summary(
-    client,
-    *,
-    company_id: str,
-    source_id: str,
-    summary: Mapping[str, Any],
-) -> None:
-    source = _owned_price_source(client, company_id, source_id)
-    processing_summary = dict(source.get("processing_summary") or {})
-    processing_summary["material_identity"] = dict(summary)
-    client.table("company_price_sources").update(
-        {"processing_summary": processing_summary}
-    ).eq("company_id", company_id).eq("source_id", source_id).execute()
-
-
-def _resolve_and_record_price_source_identities(
-    client,
-    *,
-    company_id: str,
-    source_id: str,
-    row_id: str | None = None,
-    force: bool = False,
-    trace=None,
-) -> dict[str, Any]:
-    """Run the additive identity stage without invalidating a completed import."""
-    try:
-        batch = resolve_price_source_material_identities(
-            client,
-            company_id=company_id,
-            source_id=source_id,
-            row_id=row_id,
-            force=force,
-            identity_agent=run_material_identity_agent,
-            trace=trace,
-        )
-        summary: dict[str, Any] = {"status": "complete", **batch.as_summary()}
-    except Exception:
-        logger.exception("Price source material identity resolution failed")
-        summary = {"status": "retry_required"}
-    _record_identity_resolution_summary(
-        client,
-        company_id=company_id,
-        source_id=source_id,
-        summary=summary,
-    )
-    return summary
-
-
 _SOURCE_DEFAULT_RESOLVED_REASONS = {
     "below_auto_activation_threshold",
     "unknown_currency",
@@ -4043,11 +3985,6 @@ def apply_price_source_defaults(
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
     ).eq("company_id", company_id).eq("source_id", source_id).execute()
-    _resolve_and_record_price_source_identities(
-        client,
-        company_id=company_id,
-        source_id=source_id,
-    )
     _refresh_price_source_summary(client, company_id, source_id)
     return {
         "activated": activated,
@@ -4062,6 +3999,7 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
     client = get_supabase_client()
     company_id = str(access.company_id)
     assert_company_owner(client, str(access.user_id), company_id)
+    alias_context = load_price_source_alias_context(client)
     source = _owned_price_source(client, company_id, source_id)
     matches = (
         client.table("company_price_source_rows")
@@ -4134,7 +4072,10 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
             "raw_description": review_context,
             "identity_attributes": {},
         }
-        if apply_material_taxonomy(review_candidate):
+        if apply_material_taxonomy(
+            review_candidate,
+            alias_context=alias_context,
+        ):
             reviewed_specifications = dict(review_candidate.get("identity_attributes") or {})
             family = str(review_candidate.get("material_family") or "").strip()
             if family:
@@ -4164,7 +4105,10 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
             "raw_description": context,
             "identity_attributes": retained,
         }
-        if not apply_material_taxonomy(candidate):
+        if not apply_material_taxonomy(
+            candidate,
+            alias_context=alias_context,
+        ):
             return retained, None
         derived = dict(candidate.get("identity_attributes") or {})
         for key, value in derived.items():
@@ -4357,13 +4301,6 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
             "confidence": row.get("confidence") or 0,
         }
     ).execute()
-    _resolve_and_record_price_source_identities(
-        client,
-        company_id=company_id,
-        source_id=source_id,
-        row_id=row_id,
-        force=True,
-    )
     if not source.get("currency"):
         client.table("company_price_sources").update({"currency": raw_currency}).eq(
             "company_id", company_id
@@ -4700,9 +4637,11 @@ def process_price_source(
         result["document_number"] = header_document_number
     # The Global Pricing Key registry makes the family-first extraction
     # contract explicit for every source type before formats and resolution.
+    alias_context = load_price_source_alias_context(client)
     normalize_price_source_rows(
         result,
         pricing_policies=_active_pricing_policies_by_family(client),
+        alias_context=alias_context,
     )
     apply_price_source_purchasable_dimensions(
         result,
@@ -4718,7 +4657,9 @@ def process_price_source(
     extracted_row_count = len(result.get("rows") or [])
     discarded_non_candidates = discard_price_source_non_candidates(result)
     discarded_consumables = discard_price_source_consumables(result)
-    operation_code_by_row_number = prepare_price_source_operation_rows(result)
+    operation_code_by_row_number = prepare_price_source_operation_rows(
+        result, alias_context=alias_context,
+    )
     operation_catalog_rows = (
         client.table("reference_operations")
         .select("operation_id,operation_code")
@@ -5557,9 +5498,6 @@ def process_price_source(
                         "item_kind": row["item_kind"],
                         "material_family": row["material_family"],
                         "identity_attributes": row["identity_attributes"],
-                        "catalog_v2_taxonomy": catalog_v2_taxonomy_for_family(
-                            str(row.get("material_family") or "")
-                        ),
                         "discount_percent": row["raw_discount_percent"],
                         "discount_amount": row["raw_discount_amount"],
                         "comparison_status": result_status,
@@ -5699,29 +5637,12 @@ def process_price_source(
                 "company_material_id", sorted(material_ids_to_restore)
             ).execute()
 
-        identity_started = time.perf_counter()
-        identity_summary = _resolve_and_record_price_source_identities(
-            client,
-            company_id=company_id,
-            source_id=source_id,
-            trace=trace,
-        )
-        _emit_duration(
-            trace,
-            "server.price_source_identity_stage",
-            identity_started,
-            examined=int(identity_summary.get("examined") or 0),
-            resolved=int(identity_summary.get("resolved") or 0),
-            shortlisted=int(identity_summary.get("shortlisted") or 0),
-        )
-
         source_summary.update(
             {
                 "new": new_count,
                 "updated": updated_count,
                 "unchanged": unchanged_count,
                 "merged": merged_count,
-                "material_identity": identity_summary,
                 "processing_duration_seconds": time.perf_counter() - process_started,
             }
         )

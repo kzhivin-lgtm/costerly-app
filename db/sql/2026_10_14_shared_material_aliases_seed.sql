@@ -114,6 +114,7 @@ with family_alias_seed (family_code, language_code, alias_text) as (
         ('decorative_film_foil', 'he', 'נייר דקורטיבי'),
         ('timber_solid_wood_panel', 'en', 'solid wood'),
         ('timber_solid_wood_panel', 'en', 'solid timber'),
+        ('timber_solid_wood_panel', 'en', 'solid oak panel'),
         ('timber_solid_wood_panel', 'en', 'furniture panel'),
         ('timber_solid_wood_panel', 'en', 'butcher block'),
         ('timber_solid_wood_panel', 'ru', 'массив дерева'),
@@ -438,10 +439,13 @@ with family_alias_seed (family_code, language_code, alias_text) as (
         ('packaging_material', 'he', 'קרטון')
 )
 insert into public.reference_material_family_aliases (family_id, language_code, alias_text, alias_key, active)
-select family.family_id, seed.language_code, seed.alias_text,
+select distinct on (family.family_id, public.normalize_reference_material_alias(seed.alias_text))
+       family.family_id, seed.language_code, seed.alias_text,
        public.normalize_reference_material_alias(seed.alias_text), true
 from family_alias_seed seed
 join public.reference_material_families family using (family_code)
+order by family.family_id, public.normalize_reference_material_alias(seed.alias_text),
+         seed.language_code, seed.alias_text
 on conflict (family_id, alias_key) do update set
     language_code = excluded.language_code, active = true, updated_at = now();
 
@@ -528,12 +532,29 @@ with pricing_key_alias_seed (fact_field, language_code, alias_text) as (
         ('packaging_type', 'en', 'packaging type'),
         ('packaging_type', 'ru', 'тип упаковки'),
         ('packaging_type', 'he', 'סוג אריזה')
+), pricing_key_field_policy_map (fact_field, pricing_key_attribute_code) as (
+    values
+        ('thickness_mm', 'thickness'), ('species', 'species'),
+        ('width_mm', 'width'), ('width_mm', 'width_thickness'), ('width_mm', 'dimensions'),
+        ('length_mm', 'dimensions'), ('depth_mm', 'dimensions'), ('diameter_mm', 'dimensions'),
+        ('depth_mm', 'nominal_length'), ('length_mm', 'nominal_length'),
+        ('diameter_mm', 'diameter'), ('profile_section', 'section_profile'),
+        ('metal_type', 'metal_type'), ('coating_system', 'coating_system'),
+        ('stone_type', 'stone_type'), ('chemistry_product_type', 'chemistry_product_type'),
+        ('component_type', 'component_type'), ('packaging_type', 'packaging_type')
 )
 insert into public.reference_material_pricing_key_aliases (family_id, fact_field, language_code, alias_text, alias_key, active)
-select family.family_id, seed.fact_field, seed.language_code, seed.alias_text,
+select distinct on (family.family_id, seed.fact_field, public.normalize_reference_material_alias(seed.alias_text))
+       family.family_id, seed.fact_field, seed.language_code, seed.alias_text,
        public.normalize_reference_material_alias(seed.alias_text), true
 from pricing_key_alias_seed seed
 cross join public.reference_material_families family
+join pricing_key_field_policy_map field_map using (fact_field)
+join public.reference_material_family_pricing_policies policy
+ on policy.family_id = family.family_id and policy.active
+ and field_map.pricing_key_attribute_code = any(policy.pricing_key_attribute_codes)
+order by family.family_id, seed.fact_field, public.normalize_reference_material_alias(seed.alias_text),
+         seed.language_code, seed.alias_text
 on conflict (family_id, fact_field, alias_key) do update set
     language_code = excluded.language_code, active = true, updated_at = now();
 
@@ -549,6 +570,8 @@ with value_alias_seed (fact_field, canonical_value, language_code, alias_text) a
         ('metal_type', 'carbon steel', 'he', 'פלדה'),
         ('metal_type', 'stainless steel', 'en', 'stainless'),
         ('metal_type', 'stainless steel', 'en', 'stainless steel'),
+        ('metal_type', 'stainless steel 304', 'en', 'stainless steel 304'),
+        ('metal_type', 'stainless steel 304', 'en', 'aisi 304'),
         ('metal_type', 'stainless steel', 'en', 'inox'),
         ('metal_type', 'stainless steel', 'ru', 'нержавейка'),
         ('metal_type', 'stainless steel', 'ru', 'нержавеющая сталь'),
@@ -570,60 +593,104 @@ with value_alias_seed (fact_field, canonical_value, language_code, alias_text) a
         ('species', 'walnut', 'ru', 'орех'),
         ('species', 'walnut', 'he', 'אגוז'),
         ('coating_system', 'powder coating', 'en', 'powder coat'),
+        ('coating_system', 'powder coating', 'en', 'powder coating'),
         ('coating_system', 'powder coating', 'ru', 'порошковая окраска'),
         ('coating_system', 'powder coating', 'he', 'צביעה באבקה'),
-        ('coating_system', 'semi-matte', 'en', 'semi matte'),
-        ('coating_system', 'semi-matte', 'en', 'semi-matt'),
-        ('coating_system', 'semi-matte', 'ru', 'полуматовый'),
-        ('coating_system', 'semi-matte', 'ru', 'полуматовая'),
-        ('coating_system', 'semi-matte', 'he', 'חצי מט')
+        ('section_profile', 'square tube', 'en', 'square tube'),
+        ('section_profile', 'square tube', 'en', 'square hollow section'),
+        ('section_profile', 'square tube', 'en', 'square profile'),
+        ('section_profile', 'square tube', 'ru', 'квадратная труба'),
+        ('section_profile', 'square tube', 'ru', 'квадратный профиль'),
+        ('section_profile', 'square tube', 'he', 'צינור מרובע'),
+        ('section_profile', 'square tube', 'he', 'פרופיל מרובע'),
+        ('section_profile', 'rectangular tube', 'en', 'rectangular tube'),
+        ('section_profile', 'rectangular tube', 'en', 'rectangular hollow section'),
+        ('section_profile', 'rectangular tube', 'en', 'rectangular profile'),
+        ('section_profile', 'rectangular tube', 'ru', 'прямоугольная труба'),
+        ('section_profile', 'rectangular tube', 'ru', 'прямоугольный профиль'),
+        ('section_profile', 'rectangular tube', 'he', 'צינור מלבני'),
+        ('section_profile', 'rectangular tube', 'he', 'פרופיל מלבני'),
+        ('section_profile', 'round tube', 'en', 'round tube'),
+        ('section_profile', 'round tube', 'en', 'round hollow section'),
+        ('section_profile', 'round tube', 'ru', 'круглая труба'),
+        ('section_profile', 'round tube', 'he', 'צינור עגול'),
+        ('section_profile', 'angle', 'en', 'metal angle'),
+        ('section_profile', 'angle', 'en', 'angle iron'),
+        ('section_profile', 'angle', 'ru', 'металлический уголок'),
+        ('section_profile', 'angle', 'he', 'זווית'),
+        ('section_profile', 'channel', 'en', 'metal channel'),
+        ('section_profile', 'channel', 'en', 'u channel'),
+        ('section_profile', 'channel', 'ru', 'швеллер'),
+        ('section_profile', 'channel', 'he', 'תעלה')
+), pricing_key_field_policy_map (fact_field, pricing_key_attribute_code) as (
+    values
+        ('metal_type', 'metal_type'), ('species', 'species'),
+        ('section_profile', 'section_profile'),
+        ('coating_system', 'coating_system'), ('stone_type', 'stone_type'),
+        ('chemistry_product_type', 'chemistry_product_type'),
+        ('component_type', 'component_type'), ('packaging_type', 'packaging_type')
 )
 insert into public.reference_material_pricing_key_value_aliases (family_id, fact_field, canonical_value, language_code, alias_text, alias_key, active)
-select family.family_id, seed.fact_field, seed.canonical_value, seed.language_code, seed.alias_text,
+select distinct on (
+       family.family_id, seed.fact_field, seed.canonical_value,
+       public.normalize_reference_material_alias(seed.alias_text)
+     ) family.family_id, seed.fact_field, seed.canonical_value, seed.language_code, seed.alias_text,
        public.normalize_reference_material_alias(seed.alias_text), true
 from value_alias_seed seed
 cross join public.reference_material_families family
+join pricing_key_field_policy_map field_map using (fact_field)
+join public.reference_material_family_pricing_policies policy
+ on policy.family_id = family.family_id and policy.active
+ and field_map.pricing_key_attribute_code = any(policy.pricing_key_attribute_codes)
+order by family.family_id, seed.fact_field, seed.canonical_value,
+         public.normalize_reference_material_alias(seed.alias_text),
+         seed.language_code, seed.alias_text
 on conflict (family_id, fact_field, canonical_value, alias_key) do update set
     language_code = excluded.language_code, active = true, updated_at = now();
 
-with unit_alias_seed (unit_code, language_code, alias_text) as (
+with unit_alias_seed (unit_code, dimension_code, conversion_factor, language_code, alias_text) as (
     values
-        ('mm', 'en', 'mm'),
-        ('mm', 'ru', 'мм'),
-        ('mm', 'he', 'ממ'),
-        ('m', 'en', 'm'),
-        ('m', 'ru', 'м'),
-        ('m', 'he', 'מטר'),
-        ('sqm', 'en', 'm2'),
-        ('sqm', 'en', 'm²'),
-        ('sqm', 'ru', 'м2'),
-        ('sqm', 'ru', 'м²'),
-        ('sqm', 'he', 'מר'),
-        ('kg', 'en', 'kg'),
-        ('kg', 'ru', 'кг'),
-        ('kg', 'he', 'קג'),
-        ('l', 'en', 'l'),
-        ('l', 'ru', 'л'),
-        ('l', 'he', 'ליטר'),
-        ('piece', 'en', 'piece'),
-        ('piece', 'en', 'pc'),
-        ('piece', 'ru', 'шт'),
-        ('piece', 'he', 'יח'),
-        ('set', 'en', 'set'),
-        ('set', 'ru', 'комплект'),
-        ('set', 'he', 'סט'),
-        ('sheet', 'en', 'sheet'),
-        ('sheet', 'ru', 'лист'),
-        ('sheet', 'he', 'לוח'),
-        ('roll', 'en', 'roll'),
-        ('roll', 'ru', 'рулон'),
-        ('roll', 'he', 'גליל')
+        ('mm', 'length', 1, 'en', 'mm'),
+        ('mm', 'length', 1, 'ru', 'мм'),
+        ('mm', 'length', 1, 'he', 'ממ'),
+        ('m', 'length', 1, 'en', 'm'),
+        ('m', 'length', 1, 'ru', 'м'),
+        ('m', 'length', 1, 'he', 'מטר'),
+        ('sqm', 'area', 1, 'en', 'm2'),
+        ('sqm', 'area', 1, 'en', 'm²'),
+        ('sqm', 'area', 1, 'ru', 'м2'),
+        ('sqm', 'area', 1, 'ru', 'м²'),
+        ('sqm', 'area', 1, 'he', 'מר'),
+        ('kg', 'mass', 1, 'en', 'kg'),
+        ('kg', 'mass', 1, 'ru', 'кг'),
+        ('kg', 'mass', 1, 'he', 'קג'),
+        ('l', 'volume', 1, 'en', 'l'),
+        ('l', 'volume', 1, 'ru', 'л'),
+        ('l', 'volume', 1, 'he', 'ליטר'),
+        ('piece', 'count', 1, 'en', 'piece'),
+        ('piece', 'count', 1, 'en', 'pc'),
+        ('piece', 'count', 1, 'ru', 'шт'),
+        ('piece', 'count', 1, 'he', 'יח'),
+        ('set', 'package', 1, 'en', 'set'),
+        ('set', 'package', 1, 'ru', 'комплект'),
+        ('set', 'package', 1, 'he', 'סט'),
+        ('sheet', 'package', 1, 'en', 'sheet'),
+        ('sheet', 'package', 1, 'ru', 'лист'),
+        ('sheet', 'package', 1, 'he', 'לוח'),
+        ('roll', 'package', 1, 'en', 'roll'),
+        ('roll', 'package', 1, 'ru', 'рулон'),
+        ('roll', 'package', 1, 'he', 'גליל')
 )
-insert into public.reference_measurement_unit_aliases (unit_code, language_code, alias_text, alias_key, active)
-select seed.unit_code, seed.language_code, seed.alias_text,
+insert into public.reference_measurement_unit_aliases (unit_code, dimension_code, conversion_factor, language_code, alias_text, alias_key, active)
+select distinct on (seed.unit_code, public.normalize_reference_material_alias(seed.alias_text))
+       seed.unit_code, seed.dimension_code, seed.conversion_factor, seed.language_code, seed.alias_text,
        public.normalize_reference_material_alias(seed.alias_text), true
 from unit_alias_seed seed
+order by seed.unit_code, public.normalize_reference_material_alias(seed.alias_text),
+         seed.language_code, seed.alias_text
 on conflict (unit_code, alias_key) do update set
+    dimension_code = excluded.dimension_code,
+    conversion_factor = excluded.conversion_factor,
     language_code = excluded.language_code, active = true, updated_at = now();
 
 commit;

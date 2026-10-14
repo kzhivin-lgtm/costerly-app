@@ -59,7 +59,7 @@ def test_v3_ignores_model_guessed_purchase_units_for_geometry_free_materials():
 
 def test_v3_exposes_only_existing_pricing_key_facts_to_extraction():
     requirements = _pricing_key_fields_by_resolver_family(
-        families={"mdf", "metal tube"},
+        families={"mdf_hdf", "metal_tube"},
         material_families=[
             {"family_id": "mdf", "family_code": "mdf_hdf", "active": True},
             {"family_id": "tube", "family_code": "metal_tube", "active": True},
@@ -75,8 +75,8 @@ def test_v3_exposes_only_existing_pricing_key_facts_to_extraction():
     )
 
     assert requirements == {
-        "mdf": ("thickness_mm", "thickness"),
-        "metal tube": ("metal_type", "profile_section"),
+        "mdf_hdf": ("thickness_mm", "thickness"),
+        "metal_tube": ("metal_type", "profile_section"),
     }
 
 
@@ -84,12 +84,12 @@ def test_v3_builds_multilingual_intake_context_for_allowed_families(monkeypatch)
     monkeypatch.setattr(
         "use_cases.estimation_v3_material_facts.load_estimation_alias_context",
         lambda _client, **_kwargs: {
-            "mdf": {
+            "mdf_hdf": {
                 "catalog_family": "mdf_hdf",
                 "family_aliases": ["панель мдф"],
                 "pricing_key_aliases": {"thickness_mm": ["толщина"]},
             },
-            "metal profile": {
+            "metal_profile_angle_channel": {
                 "catalog_family": "metal_profile_angle_channel",
                 "family_aliases": ["профиль металлический"],
                 "pricing_key_aliases": {},
@@ -98,19 +98,19 @@ def test_v3_builds_multilingual_intake_context_for_allowed_families(monkeypatch)
     )
     context = _family_alias_context_by_resolver_family(
         client=object(),
-        families={"mdf", "metal profile"},
+        families={"mdf_hdf", "metal_profile_angle_channel"},
         pricing_key_fields_by_family={
-            "mdf": ("thickness_mm",),
-            "metal profile": ("profile_section", "metal_type"),
+            "mdf_hdf": ("thickness_mm",),
+            "metal_profile_angle_channel": ("profile_section", "metal_type"),
         },
     )
 
-    assert set(context) == {"mdf", "metal profile"}
-    assert context["mdf"]["catalog_family"] == "mdf_hdf"
-    assert "панель мдф" in context["mdf"]["family_aliases"]
-    assert "толщина" in context["mdf"]["pricing_key_aliases"]["thickness_mm"]
-    assert context["metal profile"]["catalog_family"] == "metal_profile_angle_channel"
-    assert "профиль металлический" in context["metal profile"]["family_aliases"]
+    assert set(context) == {"mdf_hdf", "metal_profile_angle_channel"}
+    assert context["mdf_hdf"]["catalog_family"] == "mdf_hdf"
+    assert "панель мдф" in context["mdf_hdf"]["family_aliases"]
+    assert "толщина" in context["mdf_hdf"]["pricing_key_aliases"]["thickness_mm"]
+    assert context["metal_profile_angle_channel"]["catalog_family"] == "metal_profile_angle_channel"
+    assert "профиль металлический" in context["metal_profile_angle_channel"]["family_aliases"]
 
 
 def test_v3_sends_bounded_multilingual_alias_context_to_the_agent(monkeypatch):

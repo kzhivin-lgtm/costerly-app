@@ -21,7 +21,6 @@ from use_cases.material_identity_status import (
     pricing_policy_by_family_code,
 )
 from use_cases.catalog_aliases import load_estimation_alias_context
-from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
 
 
 def _pricing_key_fields_by_resolver_family(
@@ -37,9 +36,7 @@ def _pricing_key_fields_by_resolver_family(
     policies = pricing_policy_by_family_code(material_pricing_policies, families=material_families)
     result: dict[str, tuple[str, ...]] = {}
     for family in families:
-        taxonomy = catalog_v2_taxonomy_for_family(family)
-        family_code = str((taxonomy or {}).get("family_code") or family)
-        policy = policies.get(family_code)
+        policy = policies.get(family)
         if policy is None:
             continue
         fields = tuple(dict.fromkeys(
@@ -58,13 +55,9 @@ def _family_alias_context_by_resolver_family(
     pricing_key_fields_by_family: Mapping[str, Sequence[str]],
 ) -> dict[str, dict[str, object]]:
     """Give V3 only the multilingual grammar relevant to its allowed families."""
-    source_to_catalog = {
-        family: str((catalog_v2_taxonomy_for_family(family) or {}).get("family_code") or family)
-        for family in families
-    }
     return load_estimation_alias_context(
         client,
-        source_family_to_catalog_family=source_to_catalog,
+        family_codes=families,
         pricing_key_fields_by_family=pricing_key_fields_by_family,
     )
 

@@ -26,10 +26,10 @@ from uuid import NAMESPACE_URL, uuid5
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from db.supabase_client import get_supabase_client
+from use_cases.catalog_aliases import PriceSourceAliasContext, load_price_source_alias_context
 from use_cases.material_identity_resolution import normalize_material_phrase
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
-    catalog_v2_taxonomy_for_family,
 )
 from use_cases.sheet_material_family_policy import sheet_estimation_specifications
 
@@ -207,8 +207,9 @@ def _policy_family_and_facts(
     material: dict[str, Any],
     *,
     pricing_policies: dict[str, dict[str, Any]],
+    alias_context: PriceSourceAliasContext,
 ) -> dict[str, Any] | None:
-    """Project a priced Global material onto one approved V2 Pricing Key.
+    """Project a priced Israel Reference material onto one approved Pricing Key.
 
     The previous seed treated every non-sheet material as a detailed SKU
     identity. That made the pricing resolver unable to use the new Family
@@ -217,7 +218,6 @@ def _policy_family_and_facts(
     """
     specifications = dict(material.get("specifications") or {})
     source_family = normalize_material_phrase(specifications.get("material_family"))
-    projection = catalog_v2_taxonomy_for_family(source_family)
 
     taxonomy_row = {
         "item_kind": "material",
@@ -227,12 +227,9 @@ def _policy_family_and_facts(
         "status": "ready",
         "reason_codes": [],
     }
-    apply_material_taxonomy(taxonomy_row)
+    apply_material_taxonomy(taxonomy_row, alias_context=alias_context)
     parsed_family = normalize_material_phrase(taxonomy_row.get("material_family"))
-    projection = projection or catalog_v2_taxonomy_for_family(parsed_family)
-    family_code = str((projection or {}).get("family_code") or "")
-    if not family_code and source_family in pricing_policies:
-        family_code = source_family
+    family_code = parsed_family or source_family
 
     facts = {
         **dict(taxonomy_row.get("identity_attributes") or {}),
@@ -241,7 +238,7 @@ def _policy_family_and_facts(
     # A catalog name such as ``MDF white 19 mm`` denotes the established
     # faced class.  The exact decor remains supplier evidence, not a price
     # class.  Plywood variants likewise collapse only for the pricing class.
-    pricing_source_family = source_family or parsed_family
+    pricing_source_family = family_code
     if pricing_source_family:
         facts = sheet_estimation_specifications(
             material_family=pricing_source_family,
@@ -265,7 +262,7 @@ def _policy_family_and_facts(
                 return None
             attributes[field] = value
     # Construction is a real price-bearing boundary for sheet families even
-    # where the V2 Family separates only the ordinary faced MDF case.
+    # where the Family separates only the ordinary faced MDF case.
     if construction and family_code in {"mdf_hdf", "faced_mdf", "plywood"}:
         attributes["construction"] = construction
     return attributes
@@ -275,12 +272,17 @@ def build_policy_identities(
     materials: Iterable[dict[str, Any]],
     *,
     pricing_policies: dict[str, dict[str, Any]],
+    alias_context: PriceSourceAliasContext,
 ) -> list[SeedIdentity]:
     """Build only policy-complete Global classes from already priced material data."""
     grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
     attributes_by_group: dict[tuple[str, str, str], dict[str, Any]] = {}
     for material in materials:
-        attributes = _policy_family_and_facts(material, pricing_policies=pricing_policies)
+        attributes = _policy_family_and_facts(
+            material,
+            pricing_policies=pricing_policies,
+            alias_context=alias_context,
+        )
         if not attributes:
             continue
         key = (
@@ -398,7 +400,11 @@ def main() -> None:
         for row in policy_rows
         if str((row.get("reference_material_families") or {}).get("family_code") or "")
     }
-    identities = build_policy_identities(materials, pricing_policies=pricing_policies)
+    identities = build_policy_identities(
+        materials,
+        pricing_policies=pricing_policies,
+        alias_context=load_price_source_alias_context(client),
+    )
     identity_rows = [
         {
             "pricing_identity_id": item.pricing_identity_id,

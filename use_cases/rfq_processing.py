@@ -473,7 +473,7 @@ def process_uploaded_rfq(
         run_id=run_id,
         file_name=file_name,
         model="deterministic",
-        prompt_version="rfq_processing_v2_deferred_naming",
+        prompt_version="rfq_processing_deferred_naming",
         started_at=cycle_started_at,
         finished_at=cycle_finished_at,
         duration_seconds=total_seconds,
@@ -513,7 +513,7 @@ def process_uploaded_rfq(
     try:
         ocr_event_id = insert_agent_usage_event_returning_id(client, ocr_event)
     except Exception as exc:
-        print(f"[Estimation v2] Could not persist OCR handoff event: {exc}")
+        print(f"[Estimation] Could not persist OCR handoff event: {exc}")
     original = None
     try:
         original = original_future.result()

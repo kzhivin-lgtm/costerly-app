@@ -58,7 +58,7 @@ def build_overhead_lines(
 def _overhead_line(**values: Any) -> dict[str, Any]:
     raw_json = values.pop("raw_json")
     return {
-        **values, "section": "overhead", "source": "overhead_engine_v2",
+        **values, "section": "overhead", "source": "overhead_engine",
         "sort_order": values["sort_order"], "needs_price": False,
         "needs_review": False, "raw_agent_json": raw_json,
     }

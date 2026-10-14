@@ -1,6 +1,6 @@
 -- 3.17.2.7 Hardware brand and Product System registry.
 --
--- Depends on the applied V2 contract and Global family registry seed. This is
+-- Depends on the applied catalog contract and Global family registry seed. This is
 -- additive and idempotent: it creates no material model, market listing,
 -- company item, supplier offer, SKU crosswalk or price.
 
@@ -10,7 +10,7 @@ do $$
 begin
     if to_regclass('public.reference_brands') is null
        or to_regclass('public.reference_material_families') is null then
-        raise exception 'Apply the Catalog V2 foundation and Global family seed first';
+        raise exception 'Apply the catalog foundation and Global family seed first';
     end if;
 end $$;
 
