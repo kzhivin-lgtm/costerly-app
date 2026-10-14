@@ -125,7 +125,13 @@ def _default_mode(family_code: str, key_fields: Iterable[str]) -> str:
     return "Pricing-Key default after family is proven"
 
 
-def _gap(row: Mapping[str, Any]) -> str:
+def _normalization_state(row: Mapping[str, Any]) -> str:
+    """Whether existing Israel Reference positions are usable through Pricing Key.
+
+    This intentionally excludes purchase format and default policy.  Those are
+    later layers and must not make a correctly named, keyed and priced position
+    appear unnormalised.
+    """
     if row["models"] == 0:
         return "no canonical model"
     if row["listings"] == 0:
@@ -135,14 +141,26 @@ def _gap(row: Mapping[str, Any]) -> str:
     if row["active_price_models"] == 0:
         return "no active Israel price"
     if str(row["family_code"]).startswith("hardware_"):
-        return "covered" if row["retail_package_models"] else "no active package price"
+        return "normalised" if row["retail_package_models"] else "no active package price"
     if row["material_only_models"] == 0:
         return "no active material-only price"
+    return "normalised"
+
+
+def _purchase_format_state(row: Mapping[str, Any]) -> str:
+    if row["format_policy"] == "not_required":
+        return "not required"
     if row["format_policy"] != "not_required" and row["formats"] == 0:
         return "no approved purchase format"
+    return "ready"
+
+
+def _default_state(row: Mapping[str, Any]) -> str:
     if row["default_specs"] and row["default_match_models"] == 0:
         return "default baseline pending"
-    return "covered"
+    if not row["default_specs"]:
+        return "no default policy"
+    return "ready"
 
 
 def _write_default_matrix(path: Path, rows: list[dict[str, Any]], *, summary: str) -> None:
@@ -156,31 +174,38 @@ def _write_default_matrix(path: Path, rows: list[dict[str, Any]], *, summary: st
         "- A default completes missing Pricing Key facts only after Family is proven. It never infers Family.",
         "- Hardware uses a deterministic package-selection branch, Company first and Israel second.", "",
         f"Live snapshot: {summary}", "",
-        "| Family | Pricing Key | Default policy | Confirmed baseline | Purchase format | Catalog state |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| Family | Pricing Key | Default policy | Confirmed baseline | Purchase format | Normalization | Format | Default |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for row in rows:
         body.append(
             f"| {row['family_code']} | {', '.join(row['key_fields']) or 'none'} | "
             f"{row['default_mode']} | {_display_specs(row['default_specs'])} | "
-            f"{row['format_policy']} | {row['gap']} |"
+            f"{row['format_policy']} | {row['normalization_state']} | {row['purchase_format_state']} | {row['default_state']} |"
         )
     path.write_text("\n".join(body) + "\n", encoding="utf-8")
 
 
 def _write_coverage_audit(path: Path, rows: list[dict[str, Any]], *, summary: str) -> None:
-    totals = Counter(row["gap"] for row in rows)
+    normalization_totals = Counter(row["normalization_state"] for row in rows)
+    format_totals = Counter(row["purchase_format_state"] for row in rows)
+    default_totals = Counter(row["default_state"] for row in rows)
     body = [
         "# Israel Reference Coverage Audit, 3.17.4.1", "",
         "Status: read-only snapshot of Global Family -> Global Model -> Israel Listing -> Israel Price and Purchase Format.", "",
-        f"Summary: {summary}", "", "## Gap totals", "",
-        *(f"- {gap}: {count}" for gap, count in sorted(totals.items())), "", "## Family coverage", "",
-        "| Family | Models | IL listings | Key-complete models | Priced positions | Material-only | Package prices | Formats | Default match | Gap |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+        f"Summary: {summary}", "", "## Normalization", "",
+        *(f"- {state}: {count}" for state, count in sorted(normalization_totals.items())),
+        "", "## Purchase format", "",
+        *(f"- {state}: {count}" for state, count in sorted(format_totals.items())),
+        "", "## Default position", "",
+        *(f"- {state}: {count}" for state, count in sorted(default_totals.items())),
+        "", "## Family coverage", "",
+        "| Family | Models | IL listings | Key-complete models | Priced positions | Material-only | Package prices | Formats | Default match | Normalization | Format | Default |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |",
     ]
     for row in rows:
         body.append(
-            "| {family_code} | {models} | {listings} | {key_complete_models} | {active_price_models} | {material_only_models} | {retail_package_models} | {formats} | {default_match_models} | {gap} |".format(**row)
+            "| {family_code} | {models} | {listings} | {key_complete_models} | {active_price_models} | {material_only_models} | {retail_package_models} | {formats} | {default_match_models} | {normalization_state} | {purchase_format_state} | {default_state} |".format(**row)
         )
     path.write_text("\n".join(body) + "\n", encoding="utf-8")
 
@@ -249,10 +274,12 @@ def main() -> int:
             "retail_package_models": len(package), "formats": sum(len(formats_by_listing[x]) for x in listing_ids),
             "default_match_models": len(default_matches),
         }
-        row["gap"] = _gap(row)
+        row["normalization_state"] = _normalization_state(row)
+        row["purchase_format_state"] = _purchase_format_state(row)
+        row["default_state"] = _default_state(row)
         audit_rows.append(row)
-    covered = sum(row["gap"] == "covered" for row in audit_rows)
-    summary = f"{len(audit_rows)} active families, {covered} covered by canonical Israel positions"
+    normalised = sum(row["normalization_state"] == "normalised" for row in audit_rows)
+    summary = f"{len(audit_rows)} active families, {normalised} normalised through Family, Pricing Key and active price"
     args.default_output.parent.mkdir(parents=True, exist_ok=True)
     args.coverage_output.parent.mkdir(parents=True, exist_ok=True)
     default_tmp = args.default_output.with_suffix(args.default_output.suffix + ".tmp")
