@@ -385,7 +385,7 @@ def test_structured_spreadsheet_columns_enrich_taxonomy_without_replacing_raw_de
     assert tube["identity_attributes"]["section_profile"] == "rectangular tube"
     assert tube["identity_attributes"]["wall_thickness_mm"] == 2
     assert tube["purchasable_dimensions"] == {"length_mm": 6000}
-    assert edge["material_family"] == "edge banding"
+    assert edge["material_family"] == "edge_banding"
     assert edge["identity_attributes"]["substrate"] == "pvc"
     assert edge["identity_attributes"]["width_mm"] == 22
     assert edge["identity_attributes"]["thickness_mm"] == 2
@@ -415,7 +415,7 @@ def test_all_source_normalizer_applies_family_pricing_contract_after_taxonomy():
     )
 
     row = payload["rows"][0]
-    assert row["material_family"] == "metal tube"
+    assert row["material_family"] == "metal_tube"
     assert row["_pricing_key_attribute_codes"] == (
         "metal_type", "section_profile", "wall_thickness",
     )
@@ -447,8 +447,37 @@ def test_catalog_context_classifies_russian_square_tube_without_static_rules():
     )
 
     assert apply_material_taxonomy(row, alias_context=context) is True
-    assert row["material_family"] == "metal tube"
+    assert row["material_family"] == "metal_tube"
     assert row["identity_attributes"]["section_profile"] == "square tube"
+
+
+def test_table_headers_and_dimensions_cannot_turn_mdf_into_a_hardware_system():
+    row = {
+        "item_kind": "material",
+        "raw_description": "MDF panel, raw 20 mm, 2440 x 1220 mm",
+        "_source_table_evidence": (
+            "Item description: MDF panel, raw 20 mm, 2440 x 1220 mm | "
+            "Line total ex VAT: 320"
+        ),
+        "normalized_name": "Unclassified material",
+        "identity_attributes": {},
+        "status": "unresolved",
+        "reason_codes": ["unknown_product_term"],
+    }
+    context = PriceSourceAliasContext(
+        family_aliases={"hardware_door_system": ("lin-x",)},
+        family_categories={"hardware_door_system": "Hardware"},
+        ambiguous_family_aliases=frozenset(),
+        attribute_value_aliases={},
+        brand_aliases={},
+        product_system_aliases={"lin-x": ("Lin-X", "Sugatsune", "hardware_door_system")},
+        operation_aliases={},
+        measurement_unit_aliases={},
+    )
+
+    assert apply_material_taxonomy(row, alias_context=context) is True
+    assert row["material_family"] == "mdf_hdf"
+    assert row["material_type"] == "Wood Sheets"
 
 
 @pytest.mark.parametrize(
@@ -496,7 +525,9 @@ def test_family_first_taxonomy_extracts_only_price_bearing_facts(
     }
 
     assert apply_material_taxonomy(row) is True
-    assert row["material_family"] == family
+    assert row["material_family"] == (
+        price_source_taxonomy.catalog_taxonomy_for_family(family) or {"family_code": family}
+    )["family_code"]
     for key, value in expected.items():
         assert row["identity_attributes"][key] == value
 
@@ -512,7 +543,7 @@ def test_hardware_force_rating_is_not_misread_as_thickness_or_a_brand():
     }
 
     assert apply_material_taxonomy(row) is True
-    assert row["material_family"] == "lift mechanism"
+    assert row["material_family"] == "hardware_lift_system"
     assert row["identity_attributes"]["thickness_mm"] == 0
     assert row["identity_attributes"]["primary_attribute"] == ""
     assert row["identity_attributes"]["brand"] == ""
@@ -1051,7 +1082,7 @@ def test_hebrew_shelf_hanger_never_becomes_mdf_and_is_excluded_as_a_small_fittin
 
     assert apply_material_taxonomy(row) is True
     assert row["material_type"] == "Hardware"
-    assert row["material_family"] == "mounting plate"
+    assert row["material_family"] == "hardware_mounting_part"
     assert discard_price_source_consumables(result) == 1
     assert result["rows"] == []
 
@@ -1232,7 +1263,7 @@ def test_push_to_open_is_a_door_closure_not_a_hinge(description):
 
     assert apply_material_taxonomy(row) is True
     assert row["material_type"] == "Hardware"
-    assert row["material_family"] == "door closure"
+    assert row["material_family"] == "hardware_lock_latch"
 
 
 @pytest.mark.parametrize(
@@ -1261,7 +1292,7 @@ def test_plinth_clip_is_a_piece_not_a_drawer_runner_set(description):
     assert apply_material_taxonomy(row) is True
     prepared = apply_price_source_hardware_defaults(result)
 
-    assert prepared["rows"][0]["material_family"] == "plinth clip"
+    assert prepared["rows"][0]["material_family"] == "hardware_mounting_part"
     assert prepared["rows"][0]["purchase_unit"] == "piece"
     assert prepared["rows"][0]["calculation_unit"] == "piece"
 
@@ -2040,7 +2071,7 @@ def test_sheet_taxonomy_accepts_compact_hebrew_mdf_abbreviation():
 
     assert row["status"] == "ready"
     assert row["material_type"] == "Wood Sheets"
-    assert row["material_family"] == "mdf"
+    assert row["material_family"] == "mdf_hdf"
     assert row["normalized_name"] == "MDF 19 mm, white"
 
 
@@ -2210,7 +2241,9 @@ def test_bilingual_taxonomy_covers_all_material_departments(description, categor
 
     assert apply_material_taxonomy(row) is True
     assert row["material_type"] == category
-    assert row["material_family"] == family
+    assert row["material_family"] == (
+        price_source_taxonomy.catalog_taxonomy_for_family(family) or {"family_code": family}
+    )["family_code"]
 
 
 @pytest.mark.parametrize(
@@ -2355,7 +2388,7 @@ def test_glass_door_closure_is_hardware_not_glass_and_keeps_compact_brand_candid
 
     assert apply_material_taxonomy(row) is True
     assert row["material_type"] == "Hardware"
-    assert row["material_family"] == "door closure"
+    assert row["material_family"] == "hardware_lock_latch"
     assert row["identity_attributes"]["primary_attribute"] == "550 mm"
     assert row["identity_attributes"]["brand"] == "Mario Box"
     assert row["normalized_name"] == "Door Closure 550 mm, white"
@@ -2373,7 +2406,7 @@ def test_exact_merivobox_is_drawer_system_not_glass_or_metal_profile():
 
     assert apply_material_taxonomy(row) is True
     assert row["material_type"] == "Hardware"
-    assert row["material_family"] == "drawer system"
+    assert row["material_family"] == "hardware_drawer_system"
     assert row["identity_attributes"]["brand"] == "Blum"
     assert row["identity_attributes"]["product_system"] == "Merivobox"
 
@@ -2397,7 +2430,7 @@ def test_drawer_slide_uses_explicit_nominal_depth_as_primary_attribute(descripti
 
     assert apply_material_taxonomy(row) is True
     assert row["material_type"] == "Hardware"
-    assert row["material_family"] == "drawer slide"
+    assert row["material_family"] == "hardware_drawer_slide"
     assert row["identity_attributes"]["depth_mm"] == expected_depth
     assert row["identity_attributes"]["primary_attribute"] == f"{expected_depth} mm"
     expected_name = f"Drawer Slide {expected_depth} mm Blum"
@@ -2418,7 +2451,7 @@ def test_known_hardware_system_can_supply_its_brand_but_not_an_unstated_variant(
 
     assert apply_material_taxonomy(row) is True
     assert row["material_type"] == "Hardware"
-    assert row["material_family"] == "drawer slide"
+    assert row["material_family"] == "hardware_drawer_slide"
     assert row["identity_attributes"]["brand"] == "Blum"
     assert row["identity_attributes"]["brand_basis"] == "catalog"
     assert row["identity_attributes"]["product_system"] == "Movento"
@@ -2460,7 +2493,7 @@ def test_product_system_aliases_cover_transliteration_and_safe_ocr_variants(desc
 
     assert apply_material_taxonomy(row) is True
     assert row["material_type"] == "Hardware"
-    assert row["material_family"] == "drawer slide"
+    assert row["material_family"] == "hardware_drawer_slide"
     assert row["identity_attributes"]["brand"] == "Blum"
     assert row["identity_attributes"]["product_system"] == "Movento"
     assert row["identity_attributes"]["depth_mm"] == 0
@@ -2976,7 +3009,7 @@ def test_price_offer_diff_ignores_representation_but_detects_price_affecting_cha
     row = _result()["rows"][0]
     offer = {
         "source_price": "90.0000",
-        "source_unit": "sheets",
+        "source_unit": "sheet",
         "purchase_unit": "sheet",
         "calculation_unit": "m2",
         "conversion_factor": "2.97680000",
@@ -4043,7 +4076,7 @@ def test_review_save_builds_structured_identity_from_approved_name_and_source_te
     assert item["specifications"]["brand"] == "Blum"
     assert item["specifications"]["product_system"] == "Movento"
     assert item["specifications"]["depth_mm"] == 750
-    assert item["specifications"]["material_family"] == "drawer slide"
+    assert item["specifications"]["material_family"] == "hardware_drawer_slide"
     assert "SUPPLIER-ONLY-750" not in item["specifications"].values()
 
 

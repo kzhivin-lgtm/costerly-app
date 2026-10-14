@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from typing import Any, Mapping, Sequence
 
+from use_cases.price_source_taxonomy import catalog_taxonomy_for_family
+
 
 
 def _positive_mm(value: object) -> int:
@@ -130,6 +132,8 @@ def purchasable_dimensions_for_row(
     With several candidates it stays unresolved for now.
     """
     family_code = str(row.get("material_family") or "").strip()
+    catalog_taxonomy = catalog_taxonomy_for_family(family_code) or {}
+    catalog_family_code = str(catalog_taxonomy.get("family_code") or family_code)
     attributes = row.get("identity_attributes")
     attributes = attributes if isinstance(attributes, Mapping) else {}
     literal = _normalised_dimensions(attributes)
@@ -138,8 +142,8 @@ def purchasable_dimensions_for_row(
             str(value or "")
             for value in (row.get("raw_description"), row.get("_source_table_evidence"))
         ),
-        allow_compact_sheet_span=bool(formats_by_family_code.get(family_code)),
-        allow_linear_length=family_code in {
+        allow_compact_sheet_span=bool(formats_by_family_code.get(catalog_family_code)),
+        allow_linear_length=catalog_family_code in {
             "metal_tube", "metal_profile_angle_channel", "metal_flat_bar",
             "metal_round_bar_rod_wire",
         },
@@ -151,13 +155,13 @@ def purchasable_dimensions_for_row(
 
     # Stock length is itself a complete purchasable format for profiles. It is
     # not a one-side sheet clue that needs a second dimension from the registry.
-    if literal and family_code in {
+    if literal and catalog_family_code in {
         "metal_tube", "metal_profile_angle_channel", "metal_flat_bar",
         "metal_round_bar_rod_wire",
     }:
         return literal
 
-    raw_formats = formats_by_family_code.get(family_code, ())
+    raw_formats = formats_by_family_code.get(catalog_family_code, ())
     formats = [
         (_normalised_dimensions(candidate.get("purchasable_dimensions")), candidate)
         for candidate in raw_formats

@@ -48,6 +48,7 @@ from use_cases.material_supply_format import apply_price_source_purchasable_dime
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
+    catalog_taxonomy_for_family,
     job_operation_for_text,
     source_row_text,
 )
@@ -181,7 +182,7 @@ def normalize_price_source_rows(
     result: dict[str, Any],
     *,
     pricing_policies: Mapping[str, Mapping[str, Any]] | None = None,
-    alias_context: PriceSourceAliasContext,
+    alias_context: PriceSourceAliasContext | None = None,
 ) -> dict[str, Any]:
     """Apply one deterministic material contract after every ingestion route.
 
@@ -206,7 +207,9 @@ def normalize_price_source_rows(
             continue
         apply_material_taxonomy(row, alias_context=alias_context)
         family_code = str(row.get("material_family") or "").strip()
-        policy = (pricing_policies or {}).get(family_code) or {}
+        catalog_taxonomy = catalog_taxonomy_for_family(family_code) or {}
+        catalog_family_code = str(catalog_taxonomy.get("family_code") or family_code)
+        policy = (pricing_policies or {}).get(catalog_family_code) or {}
         # Processing-only context. It makes the family-first contract explicit
         # without persisting derived guesses in source evidence.
         row["_pricing_key_attribute_codes"] = tuple(
@@ -279,7 +282,10 @@ def normalize_price_source_rows(
         # A full wood sheet quoted as a piece, panel or board is still the same
         # purchasable sheet. Cut parts are represented by supplier Material Jobs,
         # not by a second material unit.
-        source_unit = normalize_measurement_unit(row.get("raw_unit"), alias_context=alias_context)
+        source_unit = (
+            normalize_measurement_unit(row.get("raw_unit"), alias_context=alias_context)
+            or str(row.get("raw_unit") or "").strip().casefold()
+        )
         if source_unit in {"piece", "sheet"}:
             row["raw_unit"] = "sheet"
             row["purchase_unit"] = "sheet"
@@ -292,9 +298,9 @@ def normalize_price_source_rows(
 
 
 def normalize_price_source_sheet_rows(
-    result: dict[str, Any], *, alias_context: PriceSourceAliasContext,
+    result: dict[str, Any], *, alias_context: PriceSourceAliasContext | None = None,
 ) -> dict[str, Any]:
-    """Normalize spreadsheet rows through the required shared catalog context."""
+    """Normalize spreadsheet rows with the shared catalog as an enrichment."""
     return normalize_price_source_rows(result, alias_context=alias_context)
 
 
