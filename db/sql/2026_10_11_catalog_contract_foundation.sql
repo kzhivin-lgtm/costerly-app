@@ -25,7 +25,7 @@ create table if not exists public.reference_entity_roles (
     active boolean not null default true
 );
 
-create table if not exists public.reference_material_categories (
+create table if not exists public.reference_material_family_categories (
     category_id uuid primary key default gen_random_uuid(),
     category_code text not null unique check (
         category_code = lower(category_code) and category_code !~ '[^a-z0-9_]'
@@ -33,7 +33,7 @@ create table if not exists public.reference_material_categories (
     category_name text not null check (length(trim(category_name)) between 1 and 160),
     production_department_code text references public.reference_production_departments(department_code),
     entity_role_code text not null references public.reference_entity_roles(entity_role_code),
-    parent_category_id uuid references public.reference_material_categories(category_id),
+    parent_category_id uuid references public.reference_material_family_categories(category_id),
     sort_order integer not null default 0,
     active boolean not null default true,
     unique (parent_category_id, category_code)
@@ -45,7 +45,7 @@ create table if not exists public.reference_material_families (
         family_code = lower(family_code) and family_code !~ '[^a-z0-9_]'
     ),
     family_name text not null check (length(trim(family_name)) between 1 and 200),
-    category_id uuid references public.reference_material_categories(category_id),
+    category_id uuid references public.reference_material_family_categories(category_id),
     production_department_code text references public.reference_production_departments(department_code),
     entity_role_code text not null references public.reference_entity_roles(entity_role_code),
     active boolean not null default true,
@@ -361,7 +361,7 @@ on conflict (entity_role_code) do update set
 
 alter table public.reference_production_departments enable row level security;
 alter table public.reference_entity_roles enable row level security;
-alter table public.reference_material_categories enable row level security;
+alter table public.reference_material_family_categories enable row level security;
 alter table public.reference_material_families enable row level security;
 alter table public.reference_material_family_attributes enable row level security;
 alter table public.reference_material_family_department_affinities enable row level security;
@@ -393,7 +393,7 @@ create policy estimate_case_assumptions_company_member_read
 
 revoke all on public.reference_production_departments,
     public.reference_entity_roles,
-    public.reference_material_categories,
+    public.reference_material_family_categories,
     public.reference_material_families,
     public.reference_material_family_attributes,
     public.reference_material_family_department_affinities,
@@ -416,7 +416,7 @@ from public, anon, authenticated;
 grant select on public.estimate_case_assumptions to authenticated;
 grant all on public.reference_production_departments,
     public.reference_entity_roles,
-    public.reference_material_categories,
+    public.reference_material_family_categories,
     public.reference_material_families,
     public.reference_material_family_attributes,
     public.reference_material_family_department_affinities,

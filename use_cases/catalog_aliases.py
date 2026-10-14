@@ -279,7 +279,7 @@ def load_price_source_alias_context(client: Any) -> PriceSourceAliasContext:
         .eq("active", True)
     )
     category_rows = _rows(
-        client.table("reference_material_categories")
+        client.table("reference_material_family_categories")
         .select("category_id,category_name")
         .eq("active", True)
     )

@@ -26,7 +26,7 @@ with category_seed (
         ('consumables', 'Consumables', null, 'consumable', 130),
         ('packaging', 'Packaging', null, 'packaging', 140)
 )
-insert into public.reference_material_categories (
+insert into public.reference_material_family_categories (
     category_code, category_name, production_department_code, entity_role_code, sort_order, active
 )
 select category_code, category_name, production_department_code, entity_role_code, sort_order, true
@@ -110,7 +110,7 @@ select
     seed.entity_role_code,
     true
 from family_seed seed
-join public.reference_material_categories category using (category_code)
+join public.reference_material_family_categories category using (category_code)
 on conflict (family_code) do update set
     family_name = excluded.family_name,
     category_id = excluded.category_id,
