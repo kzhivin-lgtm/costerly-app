@@ -4,11 +4,11 @@
 
 begin;
 
--- Faced MDF is priced by thickness.  Surface remains an explicit secondary
--- attribute for the display name and source interpretation, not a Pricing Key.
+-- Faced MDF is priced by thickness and type of facing.  The surface attribute
+-- stores that type, including one- or two-sided variants where they are known.
 update public.reference_material_family_attributes attribute
-set required = false,
-    attribute_role = 'secondary',
+set required = true,
+    attribute_role = 'primary',
     value_type = 'enum',
     sort_order = 20
 from public.reference_material_families family
@@ -17,7 +17,7 @@ where attribute.family_id = family.family_id
   and attribute.attribute_code = 'surface';
 
 update public.reference_material_family_pricing_policies policy
-set pricing_key_attribute_codes = array['thickness']::text[],
+set pricing_key_attribute_codes = array['thickness', 'surface']::text[],
     updated_at = now()
 from public.reference_material_families family
 where policy.family_id = family.family_id

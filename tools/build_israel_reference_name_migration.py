@@ -244,7 +244,7 @@ def _name(*, family: str, raw_name: str, key_codes: Iterable[str], facts: Mappin
                 parts.append(part)
         return ", ".join(parts)
     if family == "faced_mdf":
-        if surface := _key_value("surface", facts):
+        if "surface" not in set(key_codes) and (surface := _key_value("surface", facts)):
             parts.append(surface)
         return ", ".join(parts)
     # A fact that is not a Pricing Key is a proven secondary attribute.  The
