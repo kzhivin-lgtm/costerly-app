@@ -454,6 +454,24 @@ across families. The standalone source-taxonomy product-system lookup is also
 kept on the same canonical Global-family projection, so Hardware rows cannot
 fail before taxonomy is established.
 
+ACTIVE, P0, USER REQUEST, 3.17.1.4 Shared aliases for incoming material text:
+move every Family alias, Pricing Key label/value alias, brand alias and unit
+alias out of runtime dictionaries into the catalog. Both Estimation and Price
+Source must read the same active rows. An alias may establish only a Family,
+Pricing Key fact, brand or unit. It never selects a price, purchase format,
+Company Catalog offer or Israel Reference Position. Exact aliases for a known
+Israel Reference Position remain a separate later mapping, after Family and
+Pricing Key are proven. Initial implementation adds the protected tables and
+the seed from the former Estimation registry in
+`db/sql/2026_10_14_shared_material_aliases.sql` and
+`db/sql/2026_10_14_shared_material_aliases_seed.sql`, plus the existing
+non-Hardware Price Source brand inventory in
+`db/sql/2026_10_14_shared_brand_aliases_seed.sql`. Estimation V3 now reads
+only the new persistent rows. Price Source remains on its old static rules
+until the SQL is applied and its full Family, Pricing Key, brand and unit path
+can be switched atomically. Do not remove its rules piecemeal or permit an
+unapplied migration to make imports unclassifiable.
+
 Furniture metal-profile policy correction, 2026-10-13: wall thickness is not
 a Pricing Key fact for `metal_tube` or `metal_profile_angle_channel`. An
 unstated furniture-profile wall uses the manufacturing default of 1.5 mm;

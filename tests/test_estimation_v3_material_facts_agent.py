@@ -80,8 +80,24 @@ def test_v3_exposes_only_existing_pricing_key_facts_to_extraction():
     }
 
 
-def test_v3_builds_multilingual_intake_context_for_allowed_families():
+def test_v3_builds_multilingual_intake_context_for_allowed_families(monkeypatch):
+    monkeypatch.setattr(
+        "use_cases.estimation_v3_material_facts.load_estimation_alias_context",
+        lambda _client, **_kwargs: {
+            "mdf": {
+                "catalog_family": "mdf_hdf",
+                "family_aliases": ["панель мдф"],
+                "pricing_key_aliases": {"thickness_mm": ["толщина"]},
+            },
+            "metal profile": {
+                "catalog_family": "metal_profile_angle_channel",
+                "family_aliases": ["профиль металлический"],
+                "pricing_key_aliases": {},
+            },
+        },
+    )
     context = _family_alias_context_by_resolver_family(
+        client=object(),
         families={"mdf", "metal profile"},
         pricing_key_fields_by_family={
             "mdf": ("thickness_mm",),

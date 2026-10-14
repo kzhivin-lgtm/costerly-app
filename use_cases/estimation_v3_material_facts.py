@@ -20,7 +20,7 @@ from use_cases.material_identity_status import (
     pricing_key_fact_fields,
     pricing_policy_by_family_code,
 )
-from use_cases.material_input_alias_registry import alias_context_for_v3
+from use_cases.catalog_aliases import load_estimation_alias_context
 from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
 
 
@@ -53,6 +53,7 @@ def _pricing_key_fields_by_resolver_family(
 
 def _family_alias_context_by_resolver_family(
     *,
+    client: Any,
     families: set[str],
     pricing_key_fields_by_family: Mapping[str, Sequence[str]],
 ) -> dict[str, dict[str, object]]:
@@ -61,7 +62,8 @@ def _family_alias_context_by_resolver_family(
         family: str((catalog_v2_taxonomy_for_family(family) or {}).get("family_code") or family)
         for family in families
     }
-    return alias_context_for_v3(
+    return load_estimation_alias_context(
+        client,
         source_family_to_catalog_family=source_to_catalog,
         pricing_key_fields_by_family=pricing_key_fields_by_family,
     )
@@ -117,6 +119,7 @@ def run_estimation_v3_material_facts_batch(
             preview_bytes_by_input=preview_bytes_by_input,
             pricing_key_fields_by_family=pricing_key_fields_by_family,
             family_alias_context=_family_alias_context_by_resolver_family(
+                client=client,
                 families=families,
                 pricing_key_fields_by_family=pricing_key_fields_by_family,
             ),
