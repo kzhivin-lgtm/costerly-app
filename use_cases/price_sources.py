@@ -50,6 +50,7 @@ from use_cases.price_source_taxonomy import (
     apply_operation_taxonomy,
     catalog_taxonomy_for_family,
     job_operation_for_text,
+    source_family_for_catalog_family,
     source_row_text,
 )
 
@@ -3169,10 +3170,8 @@ def list_price_catalog(access) -> list[dict]:
         specifications = dict(material.get("specifications") or {})
         material_family = str(specifications.get("material_family") or "").strip()
         canonical_name = str(material.get("canonical_name") or "Material")
-        # Existing catalog rows can predate a formatting refinement in the
-        # curated registry. An offer's purchasable sheet format is a proven
-        # second key attribute for this catalog row, while raw source evidence
-        # remains untouched.
+        # Format through the material component, but translate the global
+        # resolver key back into its established user-facing entity first.
         if material_family:
             display_specifications = dict(specifications)
             offer_dimensions = offer.get("purchasable_dimensions") or {}
@@ -3181,7 +3180,7 @@ def list_price_catalog(access) -> list[dict]:
                     if not display_specifications.get(field) and offer_dimensions.get(field):
                         display_specifications[field] = offer_dimensions[field]
             canonical_name = canonical_material_display_name(
-                material_family,
+                source_family_for_catalog_family(material_family),
                 display_specifications,
                 fallback=canonical_name,
             )
@@ -3387,7 +3386,7 @@ def price_source_row_canonical_name(row: Mapping[str, Any]) -> str:
     if not isinstance(attributes, Mapping):
         attributes = evidence.get("identity_attributes")
     return canonical_material_display_name(
-        family,
+        source_family_for_catalog_family(family),
         attributes if isinstance(attributes, Mapping) else {},
         fallback=row.get("normalized_name") or row.get("raw_description"),
     )
