@@ -465,6 +465,19 @@ is always `needs_review`, even when other requirements already have concrete
 purchase lines. Those partial lines remain traceable diagnostics but can never
 unlock Final Approval.
 
+Lighting-material request, 2026-10-14: lighting is not one generic Hardware
+line. The catalog and Resolver need distinct purchasable families for LED
+strip, aluminium LED profile with diffuser, LED power supply and lighting
+connector/cable. Candidate Default Matrix baseline: an 8 W/m strip sold in
+5 m coils and a 2 m profile with diffuser. Material Engine must group matching
+lighting runs across the entire Estimate, round strip to 5 m coils and profile
+to 2 m lengths, then derive compatible power-supply capacity from total
+installed strip length and strip W/m. The configured power headroom, default
+colour temperature and default profile form remain pending owner approval. A
+user-specified voltage, colour temperature, strip power, profile form or
+power-supply capacity always overrides the default and is retained as source
+evidence.
+
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
 name solely as `Entity -> one or two proven key attributes -> confirmed brand
