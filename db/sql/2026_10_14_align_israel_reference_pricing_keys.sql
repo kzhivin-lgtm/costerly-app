@@ -4,11 +4,13 @@
 
 begin;
 
--- Faced MDF is priced by thickness and type of facing.  The surface attribute
--- stores that type, including one- or two-sided variants where they are known.
+-- Faced MDF is priced by thickness and type of facing.  `primary` is a
+-- one-per-Family schema field, not the Pricing Key itself, so thickness keeps
+-- that role.  Surface is required, remains secondary, and is the second
+-- Pricing Key attribute.
 update public.reference_material_family_attributes attribute
 set required = true,
-    attribute_role = 'primary',
+    attribute_role = 'secondary',
     value_type = 'enum',
     sort_order = 20
 from public.reference_material_families family
