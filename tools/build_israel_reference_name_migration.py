@@ -38,7 +38,7 @@ _ENTITY_BY_FAMILY = {
     "fibreboard_hardboard": "Hardboard",
     "glass": "Glass",
     "lightweight_sandwich_panel": "Lightweight sandwich panel",
-    "melamine_faced_particleboard": "Melamine-faced particleboard",
+    "melamine_faced_particleboard": "LDSP",
     "metal_flat_bar": "Metal flat bar",
     "metal_profile_angle_channel": "Metal profile",
     "metal_round_bar_rod_wire": "Metal round bar",
@@ -74,6 +74,50 @@ _EXPERIMENTAL_FAMILY_CORRECTIONS: dict[str, tuple[str, Mapping[str, Any]]] = {
     "gcm_v1_exp_mdf_laminate_17": ("faced_mdf", {}),
     "gcm_v1_exp_melamine_17": ("melamine_faced_particleboard", {}),
     "gcm_v1_exp_melamine_27": ("melamine_faced_particleboard", {}),
+}
+
+_SURFACE_BY_MODEL_PREFIX = (
+    ("gcm_v1_mdf_faced_acrylic", "acrylic"),
+    ("gcm_v1_mdf_faced_hpl_one_side", "hpl_one_sided"),
+    ("gcm_v1_mdf_faced_hpl_two_sides", "hpl_two_sided"),
+    ("gcm_v1_mdf_faced_lacquered_one_side", "lacquered_one_sided"),
+    ("gcm_v1_mdf_faced_lacquered_two_sides", "lacquered_two_sided"),
+    ("gcm_v1_mdf_faced_melamine_one_side", "melamine_one_sided"),
+    ("gcm_v1_mdf_faced_melamine_two_sides", "melamine_two_sided"),
+    ("gcm_v1_mdf_faced_pet", "pet"),
+    ("gcm_v1_mdf_faced_veneer_one_side", "veneer_one_sided"),
+    ("gcm_v1_mdf_faced_veneer_two_sides", "veneer_two_sided"),
+)
+
+_SECTION_PROFILE_DEFAULTS = {
+    "square_tube": "square_tube_20x20",
+    "rectangular_tube": "rectangular_tube_40x20",
+    "round_tube": "round_tube_d20",
+    "angle": "angle_30x30",
+}
+
+_DISPLAY_VALUES = {
+    "surface": {
+        "acrylic": "Acrylic",
+        "hpl_one_sided": "HPL, one-sided",
+        "hpl_two_sided": "HPL, two-sided",
+        "lacquered_one_sided": "Lacquered, one-sided",
+        "lacquered_two_sided": "Lacquered, two-sided",
+        "laminated": "Laminated",
+        "melamine_one_sided": "Melamine, one-sided",
+        "melamine_two_sided": "Melamine, two-sided",
+        "pet": "PET",
+        "veneer_one_sided": "Veneer, one-sided",
+        "veneer_two_sided": "Veneer, two-sided",
+    },
+    "section_profile": {
+        "square_tube_20x20": "Square tube 20 × 20 mm",
+        "rectangular_tube_40x20": "Rectangular tube 40 × 20 mm",
+        "round_tube_d20": "Round tube Ø20 mm",
+        "angle_30x30": "Angle 30 × 30 mm",
+        "channel": "Channel",
+        "beam": "Beam",
+    },
 }
 
 def _rows(client: Any, table: str, fields: str, **filters: Any) -> list[dict[str, Any]]:
@@ -121,6 +165,8 @@ def _entity(family: str, raw_name: str) -> str:
 
 def _key_value(code: str, facts: Mapping[str, Any]) -> str:
     value = facts.get(code)
+    if code in _DISPLAY_VALUES and value in _DISPLAY_VALUES[code]:
+        return _DISPLAY_VALUES[code][value]
     if code == "thickness":
         return f"{_number(value)} mm" if value not in (None, "") else ""
     if code == "width":
@@ -129,6 +175,8 @@ def _key_value(code: str, facts: Mapping[str, Any]) -> str:
         return f"Ø{_number(value)} mm" if value not in (None, "") else ""
     if code == "nominal_length":
         return f"{_number(value)} mm" if value not in (None, "") else ""
+    if code == "alloy":
+        return str(value or "").strip()
     if code == "width_thickness" and isinstance(value, Mapping):
         width, thickness = _number(value.get("width_mm")), _number(value.get("thickness_mm"))
         return f"{width} × {thickness} mm" if width and thickness else ""
@@ -164,6 +212,14 @@ def _clean_secondary(raw_name: str, entity: str, key_parts: Iterable[str], brand
     # retained separately and never overwritten by this display-name migration.
     if family == "timber_solid_wood_panel":
         text = re.sub(r"laminated\s+solid\s+wood\s+panel", "edge-glued", text, flags=re.IGNORECASE)
+    if family == "melamine_faced_particleboard":
+        text = re.sub(r"melamine-faced\s+particleboard", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\bmelamine\s+faced\b", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"^\s*melamine\s*,?", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\b1\s+side\b", "one-sided", text, flags=re.IGNORECASE)
+        text = re.sub(r"\b2\s+sides\b", "two-sided", text, flags=re.IGNORECASE)
+    if family == "plywood":
+        text = re.sub(r"plastic\s+laminate\s+faced", "laminated", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*,\s*", ", ", text)
     text = re.sub(r"(?:,\s*){2,}", ", ", text)
     return text.strip(" ,-")
@@ -180,6 +236,17 @@ def _name(*, family: str, raw_name: str, key_codes: Iterable[str], facts: Mappin
     parts = [entity, *key_parts]
     if brand:
         parts.append(brand)
+    # These Families have controlled name segments. Do not append a source-text
+    # tail such as "faced", "substrate" or a repeated dimension.
+    if family in {"metal_tube", "metal_profile_angle_channel"}:
+        for code in ("alloy", "finish"):
+            if part := _key_value(code, facts):
+                parts.append(part)
+        return ", ".join(parts)
+    if family == "faced_mdf":
+        if surface := _key_value("surface", facts):
+            parts.append(surface)
+        return ", ".join(parts)
     # A fact that is not a Pricing Key is a proven secondary attribute.  The
     # solid-timber Family prices by species, while thickness remains material
     # information that must continue to be displayed.
@@ -228,6 +295,37 @@ def main() -> int:
         if correction:
             family, extra_facts = correction
             facts.update(extra_facts)
+        model_code = str(model["material_model_code"])
+        if family == "faced_mdf":
+            for prefix, surface in _SURFACE_BY_MODEL_PREFIX:
+                if model_code.startswith(prefix):
+                    facts["surface"] = surface
+                    break
+            if model_code == "gcm_v1_exp_mdf_laminate_17":
+                facts["surface"] = "laminated"
+        if family in {"metal_tube", "metal_profile_angle_channel"}:
+            section_profile = facts.get("section_profile")
+            if section_profile in _SECTION_PROFILE_DEFAULTS:
+                facts["section_profile"] = _SECTION_PROFILE_DEFAULTS[section_profile]
+            if not facts.get("metal_type") and "brass_cuzn37" in model_code:
+                facts["metal_type"] = "brass"
+            alloy_match = re.match(
+                r"^(?:Aluminium|Brass|Carbon steel|Copper|Galvanized steel|Stainless steel)\s+([^,]+),",
+                str(model["canonical_name"]),
+                flags=re.IGNORECASE,
+            )
+            if alloy_match:
+                facts["alloy"] = alloy_match.group(1)
+            for suffix, finish in (
+                ("anodized", "anodized"),
+                ("mill finish", "mill_finish"),
+                ("powder-coat ready", "powder_coat_ready"),
+                ("brushed", "brushed"),
+                ("mirror polished", "mirror_polished"),
+            ):
+                if str(model["canonical_name"]).casefold().endswith(suffix):
+                    facts["finish"] = finish
+                    break
         name = _name(
             family=family,
             raw_name=str(model["canonical_name"]),
