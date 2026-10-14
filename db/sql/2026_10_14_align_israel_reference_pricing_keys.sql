@@ -72,22 +72,26 @@ where attribute.material_model_id = model.material_model_id
   and family.family_code in ('metal_tube', 'metal_profile_angle_channel')
   and attribute.attribute_code = 'section_profile';
 
--- Brass was explicit in the saved source name but missing from the normalized
--- key.  Backfill only those missing material-type values.
+-- Brass and copper were explicit in the saved source name but missing from
+-- the normalized key. Backfill only those missing material-type values.
 insert into public.reference_material_model_attribute_values (
     material_model_id, family_id, attribute_code, attribute_value
 )
 select model.material_model_id,
        model.family_id,
        'metal_type',
-       to_jsonb('brass'::text)
+       to_jsonb((case
+           when model.canonical_name ilike 'Brass %' then 'brass'
+           when model.canonical_name ilike 'Copper %' then 'copper'
+       end)::text)
 from public.reference_material_models model
 join public.reference_material_families family on family.family_id = model.family_id
 left join public.reference_material_model_attribute_values attribute
   on attribute.material_model_id = model.material_model_id
  and attribute.attribute_code = 'metal_type'
 where family.family_code in ('metal_tube', 'metal_profile_angle_channel')
-  and model.canonical_name ilike 'Brass CuZn37%'
+  and (model.canonical_name ilike 'Brass %'
+       or model.canonical_name ilike 'Copper %')
   and attribute.material_model_id is null
 on conflict (material_model_id, attribute_code) do nothing;
 
@@ -137,7 +141,7 @@ do $$
 declare
     missing_faced_mdf_surface integer;
     missing_metal_key integer;
-    brass_missing integer;
+    nonferrous_missing integer;
     metal_secondary_missing integer;
 begin
     select count(*) into missing_faced_mdf_surface
@@ -169,17 +173,19 @@ begin
         raise exception 'Metal profile/tube has % models without a Pricing Key', missing_metal_key;
     end if;
 
-    select count(*) into brass_missing
+    select count(*) into nonferrous_missing
     from public.reference_material_models model
     join public.reference_material_families family on family.family_id = model.family_id
     left join public.reference_material_model_attribute_values metal
       on metal.material_model_id = model.material_model_id
      and metal.attribute_code = 'metal_type'
     where family.family_code in ('metal_tube', 'metal_profile_angle_channel')
-      and model.canonical_name ilike 'Brass CuZn37%'
-      and metal.attribute_value <> to_jsonb('brass'::text);
-    if brass_missing <> 0 then
-        raise exception 'Brass backfill failed for % metal models', brass_missing;
+      and ((model.canonical_name ilike 'Brass %'
+            and metal.attribute_value <> to_jsonb('brass'::text))
+        or (model.canonical_name ilike 'Copper %'
+            and metal.attribute_value <> to_jsonb('copper'::text)));
+    if nonferrous_missing <> 0 then
+        raise exception 'Brass/copper backfill failed for % metal models', nonferrous_missing;
     end if;
 
     select count(*) into metal_secondary_missing
