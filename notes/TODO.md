@@ -405,6 +405,20 @@ destructive removal task. Acceptance: active runtime and UI read V3 facts,
 publish only material norms, persist the project-level Material Plan, and do
 not contain an active V2 dependency.
 
+Israel Reference rebuild, points 1-2, 2026-10-14: this task now starts with a
+versioned Default Policy Matrix and a read-only live Coverage Audit, generated
+by `tools/audit_israel_reference_catalog.py`. Identity stops at the approved
+Family Pricing Key, while all remaining attributes stay secondary and do not
+multiply catalog identities. The first snapshot has 54 active families and
+only two fully covered under the present material-only default-anchor model.
+The remaining gaps are explicit, per family: no active Israel identity,
+incomplete Pricing Key, no purchase format, or no active default anchor.
+Do not seed a default row from an unreviewed price, and do not treat a
+hardware retail-package candidate as a missing material-only price. The next
+catalog action is an owner-reviewed fill plan that creates authoritative
+identities and prices, then activates Family Default only where its anchor
+matches the Pricing Key.
+
 Material-fact boundary correction, 2026-10-13: V3 must establish only
 material family, proven Pricing Key facts and evidenced part geometry. It must
 not guess a unit or a purchasable format. A directly evidenced discrete count
