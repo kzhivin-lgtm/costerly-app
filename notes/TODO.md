@@ -405,19 +405,20 @@ destructive removal task. Acceptance: active runtime and UI read V3 facts,
 publish only material norms, persist the project-level Material Plan, and do
 not contain an active V2 dependency.
 
-Israel Reference rebuild, points 1-2, 2026-10-14: this task now starts with a
-versioned Default Policy Matrix and a read-only live Coverage Audit, generated
-by `tools/audit_israel_reference_catalog.py`. Identity stops at the approved
-Family Pricing Key, while all remaining attributes stay secondary and do not
-multiply catalog identities. The first snapshot has 54 active families and
-only two fully covered under the present material-only default-anchor model.
-The remaining gaps are explicit, per family: no active Israel identity,
-incomplete Pricing Key, no purchase format, or no active default anchor.
-Do not seed a default row from an unreviewed price, and do not treat a
-hardware retail-package candidate as a missing material-only price. The next
-catalog action is an owner-reviewed fill plan that creates authoritative
-identities and prices, then activates Family Default only where its anchor
-matches the Pricing Key.
+Israel Reference rebuild, points 1-2, 2026-10-14: the earlier Coverage Audit
+incorrectly treated the legacy `reference_material_pricing_identities` bridge
+as the Israel catalog. It is superseded. `tools/audit_israel_reference_catalog.py`
+now reads the actual canonical chain: Family -> Global Model -> Israel Listing
+-> Israel Price and Purchase Format. A Company row maps many-to-one to an
+Israel Listing by Family and Pricing Key. Secondary fields never create a new
+price class. The corrected snapshot has 54 active families: 18 lack a
+canonical model, 19 have a canonical priced position but no purchase format,
+six hardware families have no active package price, and five contain models
+without their required Pricing Key. It also exposed incorrect backfill data,
+including Plywood-named rows assigned to the MDF family. Do not seed further
+defaults or prices until the owner and team have reviewed the catalog-layer
+contract and the bad family assignments. Hardware package selection remains a
+separate deterministic Company-first, Israel-second branch.
 
 Material-fact boundary correction, 2026-10-13: V3 must establish only
 material family, proven Pricing Key facts and evidenced part geometry. It must
