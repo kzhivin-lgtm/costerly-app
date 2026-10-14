@@ -1,5 +1,19 @@
 # Done Log
 
+3.17.4.1 Israel Reference normalization checkpoint: owner applied the three
+catalog migrations in Supabase. The live audit confirms 54/54 active Families
+are normalized through Family, complete Pricing Key, active Israel price and
+matching canonical names; 4,052 Models map to 4,052 active Israel Listings,
+with zero missing Listings, name mismatches, duplicate names, blank names or
+underscored display names. `faced_mdf` now keys by `thickness + surface`;
+metal tubes and profiles key by `section_profile + metal_type`. Source evidence,
+prices and purchasing formats were preserved. Default-variant and purchase-
+format coverage are explicitly not complete: only MDF/HDF and plywood have
+active live defaults, and 20 Families still lack approved purchase formats.
+The next task is to complete these deterministic Material Engine inputs,
+not revisit canonical identity or names. Verified against live Supabase,
+завершена 14.10
+
 3.15.25 owner-accepted production checkpoint `5c322bf`: the first File Review
 render reuses the normalized Detection result already persisted by Processing;
 refresh and restored sessions still load Supabase. The rejected zero-delay
