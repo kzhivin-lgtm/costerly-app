@@ -20,6 +20,7 @@ from use_cases.material_identity_status import (
     pricing_key_fact_fields,
     pricing_policy_by_family_code,
 )
+from use_cases.material_input_alias_registry import alias_context_for_v3
 from use_cases.price_source_taxonomy import catalog_v2_taxonomy_for_family
 
 
@@ -48,6 +49,22 @@ def _pricing_key_fields_by_resolver_family(
         ))
         result[family] = fields
     return result
+
+
+def _family_alias_context_by_resolver_family(
+    *,
+    families: set[str],
+    pricing_key_fields_by_family: Mapping[str, Sequence[str]],
+) -> dict[str, dict[str, object]]:
+    """Give V3 only the multilingual grammar relevant to its allowed families."""
+    source_to_catalog = {
+        family: str((catalog_v2_taxonomy_for_family(family) or {}).get("family_code") or family)
+        for family in families
+    }
+    return alias_context_for_v3(
+        source_family_to_catalog_family=source_to_catalog,
+        pricing_key_fields_by_family=pricing_key_fields_by_family,
+    )
 
 
 def run_estimation_v3_material_facts_batch(
@@ -90,13 +107,18 @@ def run_estimation_v3_material_facts_batch(
             )
             for row in pending
         }
+        pricing_key_fields_by_family = _pricing_key_fields_by_resolver_family(
+            families=families,
+            material_families=tuple(((material_context or {}).get("catalogs") or {}).get("material_families") or ()),
+            material_pricing_policies=tuple(((material_context or {}).get("catalogs") or {}).get("material_pricing_policies") or ()),
+        )
         result = run_estimation_v3_material_facts_agent(
             inputs=pending, allowed_material_families=families,
             preview_bytes_by_input=preview_bytes_by_input,
-            pricing_key_fields_by_family=_pricing_key_fields_by_resolver_family(
+            pricing_key_fields_by_family=pricing_key_fields_by_family,
+            family_alias_context=_family_alias_context_by_resolver_family(
                 families=families,
-                material_families=tuple(((material_context or {}).get("catalogs") or {}).get("material_families") or ()),
-                material_pricing_policies=tuple(((material_context or {}).get("catalogs") or {}).get("material_pricing_policies") or ()),
+                pricing_key_fields_by_family=pricing_key_fields_by_family,
             ),
         )
         usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])

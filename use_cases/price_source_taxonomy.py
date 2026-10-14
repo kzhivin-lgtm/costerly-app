@@ -61,7 +61,7 @@ def product_system_for_text(
     matches = [
         seed
         for seed in PRODUCT_SYSTEM_SEEDS
-        if _SOURCE_FAMILY_BY_V2_FAMILY.get(seed.family_code) == material_family
+        if _SOURCE_FAMILY_BY_CATALOG_FAMILY.get(seed.family_code) == material_family
         and _has_alias(text, seed.aliases)
         and (not requested_brand or BRAND_NAME_BY_CODE[seed.brand_code].casefold() == requested_brand)
     ]

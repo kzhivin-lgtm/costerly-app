@@ -29,6 +29,14 @@ Resolver for each family. Search the supplied evidence specifically for those
 facts and include every explicitly shown one. If a listed fact is not proven,
 omit it. It is a review condition, never a reason to guess.
 
+`family_alias_context` is the authoritative multilingual intake grammar for
+the allowed families. It contains English, Russian and Hebrew family names,
+plus labels for each permitted Pricing Key field. Use it to recognise the
+family and the role of a stated dimension, but never treat an alias as proof
+of an absent number or material value. For example, `20 x 20`, `20 на 20`,
+`20×20 мм` and `20×20 מ״מ` can all be a profile section only when the source
+also proves the profile family.
+
 Do not return a unit, purchase format or price. `q` is only a directly
 evidenced count of a discrete item, never a guessed sheet, metre or purchase
 quantity. The server resolves the concrete material first, then its

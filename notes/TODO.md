@@ -429,6 +429,16 @@ metal, section and wall thickness without turning absent evidence into a
 model-generated specification. Cache version `estimation_material_facts_v3_2`
 separates these facts from prior runs.
 
+Multilingual intake grammar correction, 2026-10-14: each active Global
+Catalog family has an explicit English, Russian and Hebrew alias set, and each
+Pricing Key fact has the corresponding field labels. V3 receives only the
+aliases and fact labels relevant to its currently allowed Resolver families.
+They guide family and attribute recognition, but cannot prove a missing number,
+select a purchasable offer or create a catalog link. Exact aliases are unique
+across families. The standalone source-taxonomy product-system lookup is also
+kept on the same canonical Global-family projection, so Hardware rows cannot
+fail before taxonomy is established.
+
 Furniture metal-profile policy correction, 2026-10-13: wall thickness is not
 a Pricing Key fact for `metal_tube` or `metal_profile_angle_channel`. An
 unstated furniture-profile wall uses the manufacturing default of 1.5 mm;
@@ -477,6 +487,18 @@ colour temperature and default profile form remain pending owner approval. A
 user-specified voltage, colour temperature, strip power, profile form or
 power-supply capacity always overrides the default and is retained as source
 evidence.
+
+DEFERRED, P1, USER REQUEST, Aluminium/PVC glazing and enclosure pilot:
+prepare a separate catalog and Resolver program for the prospective aluminium
+and glazing company pilot. Scope: aluminium square, rectangular and glazing
+system profiles; thermal-break variants; glazing beads and gaskets; glass-unit
+types; aluminium/PVC hybrid profiles; fasteners and accessories; supplier
+lengths and compatible cut/waste rules. These are not generic furniture-metal
+families. Their family taxonomy, Pricing Keys, aliases, default variants and
+Material Engine purchase rules must be designed from the pilot supplier
+catalogue and real glazing estimates. Do not make square or rectangular
+aluminium glazing profiles a substitute for the existing carbon-steel square
+and rectangular furniture profiles.
 
 ACTIVE, P0, USER REQUEST, 3.17.2.11 Universal canonical material-name
 contract: at source-row processing time, build every company-catalog display
