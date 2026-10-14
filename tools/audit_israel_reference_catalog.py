@@ -88,6 +88,13 @@ def _has_value(values: Mapping[str, Any], code: str) -> bool:
 
 def _key_complete(values: Mapping[str, Any], key_fields: Iterable[str]) -> bool:
     for field in key_fields:
+        if field == "width_thickness":
+            compound = values.get("width_thickness")
+            if isinstance(compound, Mapping) and all(
+                _has_value(compound, key)
+                for key in ("width_mm", "thickness_mm")
+            ):
+                continue
         alternatives = _KEY_ATTRIBUTE_CODES.get(field, (field,))
         if not any(_has_value(values, candidate) for candidate in alternatives):
             return False

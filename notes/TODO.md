@@ -420,6 +420,20 @@ defaults or prices until the owner and team have reviewed the catalog-layer
 contract and the bad family assignments. Hardware package selection remains a
 separate deterministic Company-first, Israel-second branch.
 
+ACTIVE, owner-approved, 2026-10-14, Israel Reference normalization: convert
+the actual Israel catalog chain into usable resolver data. Every active
+listing must have one Family, a complete Pricing Key, an active Israel price
+row and, where its Family requires it, an approved purchase format. Every
+Family must have one active default listing only when that listing already
+has an active Israel price. Do not fabricate a source price. The first
+migration is `db/sql/2026_10_14_normalize_israel_reference_foundation.sql`:
+it removes wall thickness from furniture-profile Pricing Keys, corrects the
+three Plywood rows wrongly placed in MDF, and separates explicit hardware
+names from the generic furniture-system Family while preserving their legacy
+source and price anchors. The next migration must cover remaining broad
+Family splits, default listings and supply formats, followed by the existing
+read-only catalog audit.
+
 Material-fact boundary correction, 2026-10-13: V3 must establish only
 material family, proven Pricing Key facts and evidenced part geometry. It must
 not guess a unit or a purchasable format. A directly evidenced discrete count
