@@ -43,6 +43,7 @@ IDENTITY_ATTRIBUTE_FIELDS = (
     "plywood_variant",
     "species",
     "substrate",
+    "board_type",
     "surface",
     "coating",
     "colour",
@@ -301,6 +302,7 @@ PRICE_SOURCE_RESULT_JSON_SCHEMA: dict[str, Any] = {
                             "plywood_variant": {"type": "string"},
                             "species": {"type": "string"},
                             "substrate": {"type": "string"},
+                            "board_type": {"type": "string"},
                             "surface": {"type": "string"},
                             "coating": {"type": "string"},
                             "colour": {"type": "string"},
@@ -711,6 +713,7 @@ def validate_price_source_result(result: dict[str, Any]) -> dict[str, Any]:
         if isinstance(attributes, dict) and "product_system" not in attributes:
             attributes["product_system"] = ""
         if isinstance(attributes, dict):
+            attributes.setdefault("board_type", "")
             attributes.setdefault("plywood_variant", "")
             attributes.setdefault("wall_thickness_mm", 0)
             for field in (

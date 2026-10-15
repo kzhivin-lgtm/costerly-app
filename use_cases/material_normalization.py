@@ -32,6 +32,7 @@ IDENTITY_ATTRIBUTE_DEFAULTS: dict[str, Any] = {
     "plywood_variant": "",
     "species": "",
     "substrate": "",
+    "board_type": "",
     "surface": "",
     "coating": "",
     "colour": "",
