@@ -1,5 +1,11 @@
 # Materials catalog and Material Engine handoff, 2026-10-15
 
+> Superseded for current runtime status by
+> `notes/ESTIMATION_V3_MATERIAL_PIPELINE_CHECKPOINT_2026_10_15.md` and the
+> full handoff's "Superseding integration checkpoint". This compact handoff
+> remains historical catalog context only. Its statements about uncommitted
+> implementation or the immediate drawer-slide next step are no longer current.
+
 ## Status at handoff
 
 The static catalog-default layer is closed. The remaining drawer-slide rule is

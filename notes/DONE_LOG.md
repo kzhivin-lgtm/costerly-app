@@ -1,5 +1,19 @@
 # Done Log
 
+3.17.4.1 integration checkpoint `111805f`: V3 now carries resolved canonical
+Company Catalog or Israel Reference allocations from a partial Material Plan to
+Object Detail. Priced lines render while the plan remains `needs_review` and
+unresolved requirements remain unpriced, so partial output cannot unlock Final
+Approval. The active route is V3 facts -> Resolver -> Material Engine -> UI;
+there is no active V2 pricing fallback. Focused verification passed 61 tests.
+The first live run is deliberately not marked accepted because its Estimation
+facts fabricated MDF parts, replaced an evidenced 4.130 m track with a
+14.25 m proxy, defaulted unsupported Oak/30-mm timber, and selected a folding
+door system for sliding-door evidence. The authoritative next repair remains
+inside 3.17.4.1 and is recorded in
+`notes/ESTIMATION_V3_MATERIAL_PIPELINE_CHECKPOINT_2026_10_15.md`, завершена
+как integration checkpoint 15.10
+
 3.17.4.1 Israel Reference normalization checkpoint: owner applied the three
 catalog migrations in Supabase. The live audit confirms 54/54 active Families
 are normalized through Family, complete Pricing Key, active Israel price and

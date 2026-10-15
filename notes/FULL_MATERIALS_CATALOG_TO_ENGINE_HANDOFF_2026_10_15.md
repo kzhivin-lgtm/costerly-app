@@ -412,3 +412,24 @@ Labor Resolver and Labor Engine begin only after material flow is accepted.
 When starting the next chat, read this file first, then inspect the live
 catalog before changing code or data. Do not clear the worktree or rerun old
 migrations merely to obtain a clean-looking history.
+
+## Superseding integration checkpoint, 2026-10-15
+
+The catalog closure described above has now been connected to active Estimation
+V3, Resolver, Material Engine and Object Detail. The earlier statements that
+there was no commit for this runtime work are superseded by
+`80937fb`, `8973c01`, `00446db`, `fff7a67` and `111805f` on `main`.
+
+The connection is verified as a partial-plan path, not as accepted estimating
+quality. Resolved allocations now display their exact selected canonical names
+and prices while unresolved requirements remain unpriced and the plan stays
+`needs_review`. The first live run exposed evidence-bound facts defects,
+including invented MDF cut rectangles, use of a 14.25 m proxy instead of the
+evidenced 4.130 m track, unsupported solid-timber detail and a folding-door
+selection for sliding-door evidence. Do not treat the displayed total as a
+valid estimate.
+
+The authoritative continuation record is
+`notes/ESTIMATION_V3_MATERIAL_PIPELINE_CHECKPOINT_2026_10_15.md`. Its next
+task remains within `3.17.4.1`: correct fact extraction and compatibility
+before enriching unresolved metal candidates or building Assumption Fallback.

@@ -25,6 +25,13 @@ by the server. A part is omitted when geometry is genuinely uncertain; this is
 not permission to invent a dimension. The field is additive, and the
 page-agent version invalidates its own old cache.
 
+An exact measurement present in the bounded evidence always wins over an
+envelope proxy. A proxy can exist only as an explicit review-visible assumption
+when no exact measurement exists. In particular, Estimation must not turn an
+object envelope into fabricated cut rectangles, dimensions, quantities or a
+physical subtype. The Engine may pack supplied supported parts, but does not
+validate or repair document interpretation.
+
 `MaterialSupplyCandidate` is produced only after Material Resolver has checked
 family compatibility and Estimate Ready status. It holds the exact purchasable
 unit, ex-VAT price per purchasable unit, purchase format or package size, kerf,
@@ -61,6 +68,10 @@ records.
 7. Preserve allocations from each purchase unit back to every demand. V1 does
    not assign offcuts to a later estimate.
 
+8. A candidate must also be physically subtype-compatible with the evidence.
+   A generic `hardware_door_system` candidate that describes a folding door is
+   not eligible for an evidenced sliding-door or track system.
+
 ## Explicit boundary
 
 The Estimation V2 facts now carry calculation-local per-part rectangles. The
@@ -68,3 +79,12 @@ Engine receives a document-wide read-only plan while project-level purchase
 plan persistence and rendering are connected. This stage does not compare its
 output to any prior estimator. It establishes the Engine's own deterministic
 Company, Israel Reference, then Assumption Fallback boundary.
+
+## Publication while review remains required
+
+A persisted plan may have both resolved and unresolved demands. In that case
+the plan remains `needs_review`, Final Approval remains blocked, and Object
+Detail publishes only the resolved allocations with their selected canonical
+names and allocated cost. Unresolved requirements stay visible without a
+price. This is not a fallback price and does not make the partial plan
+approved.

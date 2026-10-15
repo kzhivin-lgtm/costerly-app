@@ -430,6 +430,20 @@ destructive removal task. Acceptance: active runtime and UI read V3 facts,
 publish only material norms, persist the project-level Material Plan, and do
 not contain an active V2 dependency.
 
+Checkpoint, 2026-10-15: the active end-to-end path now persists and renders a
+partial V3 Material Plan. Resolved allocations publish the exact selected
+canonical Company Catalog or Israel Reference name and allocated cost while
+the overall plan remains `needs_review`; unresolved lines remain unpriced.
+The first live run is not accepted as a correct estimate. It exposed
+unsupported inferred MDF parts, a 14.25 m envelope proxy in place of the
+explicit 4.130 m track, unsupported Oak/30-mm timber selection, and a
+sliding-door requirement incorrectly selecting `Folding door system`.
+Continue this same task with evidence-bound facts: prohibit invented part
+rectangles, prefer exact measurements, make any proxy explicit and
+review-visible, and guard physical subtype compatibility before selection.
+The complete evidence and commit checkpoint is
+`notes/ESTIMATION_V3_MATERIAL_PIPELINE_CHECKPOINT_2026_10_15.md`.
+
 Israel Reference rebuild, points 1-2, 2026-10-14: the earlier Coverage Audit
 incorrectly treated the legacy `reference_material_pricing_identities` bridge
 as the Israel catalog. It is superseded. `tools/audit_israel_reference_catalog.py`
