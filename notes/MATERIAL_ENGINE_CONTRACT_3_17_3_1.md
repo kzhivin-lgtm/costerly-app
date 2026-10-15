@@ -119,3 +119,16 @@ approved Russian and Hebrew forms are aliases for `steel`. Stainless steel and
 aluminium remain separate canonical values. A supplied `metal_type=steel` and
 `section_profile=square_tube_20x20` must resolve by that complete key or
 produce Assumption Fallback. It must never activate a Family Default.
+
+## Alias safety audit, 2026-10-15
+
+An active Pricing Key value alias may target only a canonical value that exists
+in the same active Family. It must not convert a broad term such as `round
+tube`, `oak`, or `powder coating` into a non-existent pseudo-position. Where
+the wording lacks a concrete purchasable subtype, Resolver preserves that
+incompleteness for a Family Default decision or Assumption Fallback under the
+strict-default rule above.
+
+All active Family aliases have English, Russian and Hebrew coverage. A phrase
+that can honestly identify more than one Family remains in the explicit
+ambiguous-alias registry and cannot select a Family by insertion order.
