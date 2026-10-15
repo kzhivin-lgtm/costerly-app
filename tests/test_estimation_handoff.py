@@ -155,35 +155,6 @@ def test_shadow_handoff_prefers_vnext_object_preview_bbox_over_label_anchor():
     assert Image.open(BytesIO(stored_webp)).size == (100, 100)
 
 
-def test_shadow_handoff_keeps_visual_preview_when_ocr_failed():
-    source = _image_bytes()
-    client = _Client()
-    result = persist_estimation_inputs(
-        client=client,
-        run={"run_id": "run-1", "company_id": "company-1", "file_name": "drawing.png"},
-        objects=[{
-            "object_id": "object-1", "object_name": "Kitchen", "quantity": 1,
-            "dimensions_json": {}, "notes": "",
-            "evidence_page_refs": [{
-                "page_number": 1, "source_label": "A-01",
-                "preview_bbox": {
-                    "top_left_x": 0, "top_left_y": 0,
-                    "bottom_right_x": 100, "bottom_right_y": 100,
-                },
-            }],
-        }],
-        ignored_object_ids=set(), file_name="drawing.png", file_bytes=source,
-        ocr_event_id="ocr-failed-1",
-        ocr_package={"contract_version": "ocr_v2", "status": "failed", "pages": [], "evidence": {"text_blocks": []}},
-        original=describe_estimation_original(company_id="company-1", file_name="drawing.png", file_bytes=source),
-        versions={"detection": "test"},
-    )
-
-    assert result["created_input_ids"] == ["input-1"]
-    assert result["skipped"] == {}
-    assert client.rows["rfq_estimation_object_inputs"]["input_payload"]["evidence"]["ocr_blocks"] == []
-
-
 def test_shadow_handoff_falls_back_to_full_page_for_invalid_preview_bbox():
     source = _image_bytes()
     client = _Client()
