@@ -26,7 +26,7 @@ def test_v3_expands_only_material_demands_and_cut_geometry():
     assert facts["contract_version"] == "estimation_material_facts_v3"
     assert facts["materials"][0]["family"] == "mdf"
     assert facts["materials"][0]["quantity"] == 2.4
-    assert facts["materials"][0]["unit"] is None
+    assert facts["materials"][0]["unit"] == "m²"
     assert facts["parts"][0]["material_requirement_id"] == "m1"
     assert set(facts) == {
         "contract_version", "input_id", "object_input_revision", "run_id",
@@ -35,12 +35,12 @@ def test_v3_expands_only_material_demands_and_cut_geometry():
     }
 
 
-def test_v3_ignores_model_guessed_purchase_units_for_geometry_free_materials():
+def test_v3_keeps_unit_empty_when_evidence_does_not_support_net_measurement():
     facts = _expand(
         {
             "m": [{
                 "id": "profile", "n": "square steel tube", "f": "metal tube",
-                "q": 1, "u": "piece", "s": {"profile_section": "20x20 mm square"},
+                "q": 1, "s": {"profile_section": "20x20 mm square"},
             }],
         },
         {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
@@ -55,6 +55,48 @@ def test_v3_ignores_model_guessed_purchase_units_for_geometry_free_materials():
     assert material["family"] == "metal tube"
     assert material["quantity"] == 1
     assert material["unit"] is None
+
+
+def test_v3_preserves_evidence_backed_net_linear_demand():
+    facts = _expand(
+        {
+            "m": [{
+                "id": "frame", "n": "steel square tube", "f": "metal_tube",
+                "q": 18.6, "u": "m", "s": {"profile_section": "20x20 mm"},
+            }],
+        },
+        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
+            "run_id": "run-1", "company_id": "company-1",
+            "object": {"object_id": "object-1", "object_name": "Shelf", "quantity": 1},
+            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
+        }},
+        {"metal_tube"},
+    )
+
+    assert facts["materials"][0]["quantity"] == 18.6
+    assert facts["materials"][0]["unit"] == "m"
+
+
+def test_v3_preserves_every_distinct_material_requirement():
+    facts = _expand(
+        {"m": [
+            {"id": "frame", "n": "metal frame", "f": "metal_tube", "q": 18.6, "u": "m", "s": {"profile_section": "20x20 mm"}},
+            {"id": "backing", "n": "perforated metal backing", "f": "metal_sheet", "q": 4.2, "u": "m²", "s": {"thickness_mm": 5}},
+            {"id": "panels", "n": "raw MDF panel", "f": "mdf_hdf", "q": 6.0, "u": "m²", "s": {"thickness_mm": 20}},
+            {"id": "doors", "n": "wood board", "f": "solid_timber", "q": 2.1, "u": "m²", "s": {}},
+        ]},
+        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
+            "run_id": "run-1", "company_id": "company-1",
+            "object": {"object_id": "object-1", "object_name": "Wall unit", "quantity": 1},
+            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
+        }},
+        {"metal_tube", "metal_sheet", "mdf_hdf", "solid_timber"},
+    )
+
+    assert [(row["source_name"], row["unit"]) for row in facts["materials"]] == [
+        ("metal frame", "m"), ("perforated metal backing", "m²"),
+        ("raw MDF panel", "m²"), ("wood board", "m²"),
+    ]
 
 
 def test_v3_normalizes_bare_mdf_to_raw_board_identity():
@@ -160,7 +202,12 @@ def test_v3_sends_bounded_multilingual_alias_context_to_the_agent(monkeypatch):
             "object_input_revision": 1,
             "input_payload": {
                 "run_id": "run-1", "company_id": "company-1",
-                "object": {"object_id": "object-1", "object_name": "Shelf", "quantity": 1},
+                "object": {
+                    "object_id": "object-1", "object_name": "Shelf", "quantity": 1,
+                    "dimensions": {"width_mm": 1200, "height_mm": 800},
+                    "notes": "MDF carcass with steel frame",
+                    "detected_materials": "MDF panels, 20x20 metal tube",
+                },
                 "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
             },
         }],
@@ -183,4 +230,9 @@ def test_v3_sends_bounded_multilingual_alias_context_to_the_agent(monkeypatch):
             "family_aliases": ["mdf", "мдф", "מדפ"],
             "pricing_key_aliases": {"thickness_mm": ["thickness", "толщина", "עובי"]},
         },
+    }
+    assert request["targets"][0]["evidence_backed_object_handoff"] == {
+        "dimensions": {"width_mm": 1200, "height_mm": 800},
+        "description": "MDF carcass with steel frame",
+        "detected_materials": "MDF panels, 20x20 metal tube",
     }

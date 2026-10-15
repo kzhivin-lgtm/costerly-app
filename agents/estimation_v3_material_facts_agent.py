@@ -32,7 +32,7 @@ from use_cases.estimation_v3_material_contract import (
 # The unit and purchasable quantity belong to the selected supply candidate,
 # not to the vision model.  Bump the extraction version so cached facts that
 # contained model-guessed units can never feed the current Material Engine.
-ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_4"
+ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_5"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v3_material_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 8_000
 TIMEOUT_SECONDS = 180.0
@@ -44,6 +44,16 @@ def _number(value: Any, *, positive: bool = False) -> float | None:
     except (TypeError, ValueError):
         return None
     return result if not positive or result > 0 else None
+
+
+def _net_unit(value: Any) -> str | None:
+    """Accept only a material's net measurement, never a guessed purchase unit."""
+    normalized = " ".join(str(value or "").casefold().split())
+    return {
+        "m2": "m²", "m²": "m²", "sqm": "m²", "square metre": "m²", "square meter": "m²",
+        "m": "m", "metre": "m", "meter": "m", "lm": "m",
+        "mm": "mm", "kg": "kg", "l": "l", "piece": "piece", "sheet": "sheet",
+    }.get(normalized)
 
 
 def _identifier(value: Any, default: str, used: set[str]) -> str:
@@ -125,13 +135,10 @@ def _expand(
             "specification": _normalise_material_specification(
                 family=family, source_name=source_name, value=raw.get("s"),
             ),
-            # The extractor establishes material identity, evidence-backed
-            # direct counts and geometry only.
-            # Resolver supplies the concrete purchasable form and Engine owns
-            # its unit and conversion.  Keeping them null here prevents a
-            # guessed "piece" from becoming a false purchase demand.
+            # This is a net physical requirement, never a guessed supplier
+            # pack, bar or sheet. Resolver supplies the purchasable form.
             "quantity": _number(raw.get("q"), positive=True),
-            "unit": None,
+            "unit": _net_unit(raw.get("u")),
             "evidence_refs": [preview],
         })
     parts, part_ids = [], set()
@@ -193,7 +200,7 @@ def run_estimation_v3_material_facts_agent(
         "id": row["input_payload"]["object"]["object_id"],
         "name": row["input_payload"]["object"]["object_name"],
         "quantity": row["input_payload"]["object"].get("quantity") or 1,
-        "locator_hints_only": {
+        "evidence_backed_object_handoff": {
             "dimensions": row["input_payload"]["object"].get("dimensions"),
             "description": row["input_payload"]["object"].get("notes"),
             "detected_materials": row["input_payload"]["object"].get("detected_materials"),

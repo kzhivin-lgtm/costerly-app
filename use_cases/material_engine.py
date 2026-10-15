@@ -95,6 +95,7 @@ class MaterialSupplyCandidate:
     package_quantity: Decimal | int | float | str = Decimal("1")
     kerf_mm: Decimal | int | float | str = Decimal("0")
     authority: Literal["company", "israel_reference"] = "company"
+    display_name: str = ""
     offer_id: str | None = None
     reference_price_id: str | None = None
 

@@ -53,6 +53,7 @@ class MaterialEngineResult:
     unresolved_requirement_ids: tuple[str, ...] = ()
     reason_codes: tuple[str, ...] = ()
     candidate_authorities: tuple[tuple[str, str], ...] = ()
+    candidate_display_names: tuple[tuple[str, str], ...] = ()
     applied_defaults: tuple[Mapping[str, Any], ...] = ()
 
 
@@ -141,12 +142,14 @@ def material_plan_snapshot(
     """
     plan = result.plan
     authorities = dict(result.candidate_authorities)
+    display_names = dict(result.candidate_display_names)
     lines = []
     for line in plan.lines if plan else ():
         lines.append({
             "selection_key": line.selection_key,
             "candidate_id": line.candidate_id,
             "authority": authorities.get(line.candidate_id),
+            "display_name": display_names.get(line.candidate_id),
             "purchase_kind": line.purchase_kind,
             "purchase_quantity": float(line.purchase_quantity),
             "price_per_purchase_unit": float(line.price_per_purchase_unit),
@@ -589,6 +592,7 @@ def company_supply_candidates(
                 purchasable_dimensions=offer.get("purchasable_dimensions") or None,
                 package_quantity=package_quantity,
                 authority="company",
+                display_name=str(item.get("canonical_name") or item.get("normalized_name") or ""),
                 offer_id=offer_id,
             ))
     return selection_key, tuple(sorted(result, key=lambda candidate: candidate.candidate_id))
@@ -673,6 +677,7 @@ def israel_reference_supply_candidates(
                         currency=normalized_currency,
                         purchasable_dimensions=dimensions,
                         authority="israel_reference",
+                        display_name=str(position.get("canonical_name") or ""),
                         reference_price_id=price_id,
                     ))
             elif unit == "sheet":
@@ -696,6 +701,7 @@ def israel_reference_supply_candidates(
                         currency=normalized_currency,
                         purchasable_dimensions=dimensions,
                         authority="israel_reference",
+                        display_name=str(position.get("canonical_name") or ""),
                         reference_price_id=price_id,
                     ))
             elif unit in _LINEAR_UNITS:
@@ -715,6 +721,7 @@ def israel_reference_supply_candidates(
                         currency=normalized_currency,
                         purchasable_dimensions=dimensions,
                         authority="israel_reference",
+                        display_name=str(position.get("canonical_name") or ""),
                         reference_price_id=price_id,
                     ))
             elif unit == "kg":
@@ -744,7 +751,8 @@ def israel_reference_supply_candidates(
                         material_family=material_family, selection_key=selection_key,
                         purchase_kind=kind, price_per_purchase_unit=typical * kilograms,
                         currency=normalized_currency, purchasable_dimensions=dimensions,
-                        authority="israel_reference", reference_price_id=price_id,
+                        authority="israel_reference", display_name=str(position.get("canonical_name") or ""),
+                        reference_price_id=price_id,
                     ))
             elif unit == "m3":
                 result.append(MaterialSupplyCandidate(
@@ -752,6 +760,7 @@ def israel_reference_supply_candidates(
                     material_family=material_family, selection_key=selection_key,
                     purchase_kind="volume_direct", price_per_purchase_unit=typical,
                     currency=normalized_currency, authority="israel_reference",
+                    display_name=str(position.get("canonical_name") or ""),
                     reference_price_id=price_id,
                 ))
             elif unit in _REFERENCE_DISCRETE_PACKAGE_QUANTITIES:
@@ -764,6 +773,7 @@ def israel_reference_supply_candidates(
                     currency=normalized_currency,
                     package_quantity=_REFERENCE_DISCRETE_PACKAGE_QUANTITIES[unit],
                     authority="israel_reference",
+                    display_name=str(position.get("canonical_name") or ""),
                     reference_price_id=price_id,
                 ))
     return selection_key, tuple(sorted(result, key=lambda candidate: candidate.candidate_id))
@@ -995,6 +1005,11 @@ def build_material_plan(
         candidate_authorities=tuple(sorted(
             (candidate_id, candidate.authority)
             for candidate_id, candidate in candidates.items()
+        )),
+        candidate_display_names=tuple(sorted(
+            (candidate_id, candidate.display_name)
+            for candidate_id, candidate in candidates.items()
+            if candidate.display_name
         )),
         applied_defaults=tuple(sorted(
             applied_defaults,

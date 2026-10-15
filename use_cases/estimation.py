@@ -711,6 +711,14 @@ def apply_material_plan_allocations(
         if isinstance(row, dict)
     }
     material_norms = _material_norms_from_plan(plan_snapshot)
+    resolved_names = {
+        (str(allocation.get("object_id") or ""), str(allocation.get("material_requirement_id") or "")):
+        str(line.get("display_name") or "")
+        for line in plan_snapshot.get("lines") or []
+        if isinstance(line, dict)
+        for allocation in line.get("allocations") or []
+        if isinstance(allocation, dict) and str(line.get("display_name") or "")
+    }
     if not allocation_costs or not material_norms:
         return
     lines_df = fetch_rfq_estimate_lines(client, estimate_id)
@@ -746,6 +754,8 @@ def apply_material_plan_allocations(
                 "cost": round(allocated_cost, 2),
                 "notes": "Allocated from the estimate-wide Material Plan",
                 "updated_at": datetime.now(UTC).isoformat(),
+                **({"item_name": resolved_names[(object_id, requirement_id)]}
+                   if resolved_names.get((object_id, requirement_id)) else {}),
             },
         )
         affected_object_ids.add(object_id)
