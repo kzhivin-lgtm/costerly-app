@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 import json
 from pathlib import Path
 import re
+from threading import Thread
 from typing import Any, AbstractSet, Mapping, Sequence
 
 from agents.anthropic_adapter import (
@@ -35,7 +36,46 @@ from use_cases.estimation_v3_material_contract import (
 ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_8"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v3_material_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 8_000
-TIMEOUT_SECONDS = 180.0
+# The SDK timeout cannot guarantee a return if its transport stalls before it
+# receives a response byte. The application deadline below protects the sole
+# Estimation worker from an indefinite external call.
+TIMEOUT_SECONDS = 90.0
+
+
+def _create_message_with_hard_timeout(
+    client: anthropic.Anthropic,
+    *,
+    timeout_seconds: float,
+    **kwargs: Any,
+) -> Any:
+    """Return a Claude response or release Estimation after a hard deadline.
+
+    Python cannot safely kill a blocked network thread. It is daemonized so a
+    stale transport cannot retain the one estimation executor or future runs.
+    The caller receives an explicit failure and may retry as a fresh request.
+    """
+    result: list[Any] = []
+    failure: list[BaseException] = []
+
+    def invoke() -> None:
+        try:
+            result.append(create_claude_message(client, **kwargs))
+        except BaseException as exc:
+            failure.append(exc)
+
+    request_thread = Thread(target=invoke, name="estimation-v3-material-facts", daemon=True)
+    request_thread.start()
+    request_thread.join(timeout=max(0.0, timeout_seconds))
+    if request_thread.is_alive():
+        raise RuntimeError(
+            f"Estimation material-facts request exceeded the {timeout_seconds:.0f}-second limit. "
+            "Try the estimate again."
+        )
+    if failure:
+        raise failure[0]
+    if not result:
+        raise RuntimeError("Estimation material-facts request ended without a response.")
+    return result[0]
 
 
 def _number(value: Any, *, positive: bool = False) -> float | None:
@@ -367,8 +407,9 @@ def run_estimation_v3_material_facts_agent(
         ])
     content.append({"type": "text", "text": json.dumps(request, ensure_ascii=False, separators=(",", ":"))})
     started_at = datetime.now(UTC).isoformat()
-    response = create_claude_message(
+    response = _create_message_with_hard_timeout(
         get_anthropic_client().with_options(timeout=TIMEOUT_SECONDS, max_retries=0),
+        timeout_seconds=TIMEOUT_SECONDS,
         model=selected_model, max_tokens=MAX_OUTPUT_TOKENS, temperature=0,
         system=PROMPT_PATH.read_text(encoding="utf-8").strip(),
         messages=[{"role": "user", "content": content}],

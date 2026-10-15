@@ -1,11 +1,26 @@
 import json
+import threading
 
+import pytest
 import agents.estimation_v3_material_facts_agent as agent
-from agents.estimation_v3_material_facts_agent import _expand
+from agents.estimation_v3_material_facts_agent import _create_message_with_hard_timeout, _expand
 from use_cases.estimation_v3_material_facts import (
     _family_alias_context_by_resolver_family,
     _pricing_key_fields_by_resolver_family,
 )
+
+
+def test_v3_facts_hard_timeout_releases_estimation_worker(monkeypatch):
+    blocked = threading.Event()
+    monkeypatch.setattr(
+        "agents.estimation_v3_material_facts_agent.create_claude_message",
+        lambda *_args, **_kwargs: blocked.wait(60),
+    )
+
+    with pytest.raises(RuntimeError, match="exceeded the 0-second limit"):
+        _create_message_with_hard_timeout(object(), timeout_seconds=0, model="test")
+
+    blocked.set()
 
 
 def test_v3_expands_only_material_demands_and_cut_geometry():
