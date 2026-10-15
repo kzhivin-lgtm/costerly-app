@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from io import BytesIO
 from typing import Any, Mapping, Sequence
 
+from PIL import Image
 from agents.detection_page_images import render_detection_pdf_pages
 from db.repositories import insert_estimation_object_input, next_estimation_object_input_revision
 from use_cases.estimation_artifacts import persist_page_artifact, persist_preview_artifact
@@ -115,11 +117,20 @@ def persist_estimation_inputs(
             continue
         page_number = int(resolved["page_number"])
         ocr_page = ocr_pages.get(page_number)
-        if not ocr_page or (not artifact and page_number > len(pages)):
+        if not artifact and page_number > len(pages):
             skipped[object_id] = "evidence_page_not_renderable"
             continue
         if not artifact:
-            page_dimensions = ocr_page.get("dimensions") or {}
+            page_dimensions = dict((ocr_page or {}).get("dimensions") or {})
+            if not page_dimensions:
+                with Image.open(BytesIO(pages[page_number - 1])) as page_image:
+                    page_dimensions = {
+                        "width": page_image.width,
+                        "height": page_image.height,
+                    }
+                # A visual Detection bbox is valid source evidence, but it
+                # cannot make absent OCR text appear in the V3 handoff.
+                exact_ocr_anchor = False
             try:
                 preview_bbox = normalize_preview_bbox(resolved["bbox"], page_dimensions)
                 preview = crop_ocr_region_to_webp(
