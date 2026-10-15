@@ -8,7 +8,7 @@ def _section():
     return {
         "key": "material",
         "title": "Materials",
-        "columns": ["Material", "Unit", "Unit cost", "Per item", "Cost"],
+        "columns": ["Material", "Unit", "Material per item", "Unit cost", "Final cost"],
         "rows": [],
     }
 
@@ -24,8 +24,36 @@ def test_pricing_policy_material_row_is_locked_and_exposes_formula_percent():
     html = _table_html({**_section(), "rows": [row]})
 
     assert all("contenteditable" not in value for value in values)
-    assert "5%" in values[2]
+    assert "5%" in values[3]
     assert 'data-policy-percent="5"' in html
+
+
+def test_material_cells_swap_quantity_and_unit_cost_without_changing_grid_shape():
+    row = {
+        "item": "MDF", "unit": "m²", "qty": 2.5, "unit_cost": 104,
+        "cost": 260, "locked": False,
+    }
+
+    values = _row_values(_section(), row)
+
+    assert len(values) == 5
+    assert 'data-field="quantity"' in values[2]
+    assert "2.5" in values[2]
+    assert 'data-field="unit_cost"' in values[3]
+    assert "₪104" in values[3]
+
+
+def test_assumption_is_shown_in_unit_cost_input_not_in_material_name():
+    row = {
+        "item": "Metal profile angle", "unit": "m", "qty": 6.59,
+        "unit_cost": None, "cost": None, "assumption": True,
+    }
+
+    values = _row_values(_section(), row)
+
+    assert values[0] == "Metal profile angle"
+    assert "Assumption" in values[3]
+    assert 'data-field="unit_cost"' not in values[3]
 
 
 def test_nan_values_do_not_crash_object_detail_number_rendering():

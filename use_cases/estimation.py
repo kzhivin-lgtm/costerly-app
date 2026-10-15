@@ -427,6 +427,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                     "unit_cost": item.get("unit_cost"),
                     "qty": item.get("quantity"),
                     "cost": item.get("cost"),
+                    "assumption": str(item.get("notes") or "").startswith("Assumption Fallback"),
                     "locked": item.get("source") == "pricing_policy",
                     "policy_percent": (
                         raw_agent_json.get("percent")
@@ -524,7 +525,7 @@ def load_object_detail_data(*, estimate_id: str, object_id: str) -> dict[str, An
                     (f"VAT {_format_number(vat_percent)}%", round(material_total * vat_percent / 100, 2)),
                     ("Total", round(material_total * (1 + vat_percent / 100), 2)),
                 ],
-                "columns": ["Item", "Unit", "Unit cost", "Per item", "Cost"],
+                "columns": ["Item", "Unit", "Material per item", "Unit cost", "Final cost"],
                 "rows": material_rows,
             },
         ],

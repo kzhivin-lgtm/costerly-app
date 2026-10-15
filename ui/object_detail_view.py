@@ -105,15 +105,20 @@ def _row_values(section: dict[str, object], row: dict[str, object]) -> list[str]
         return [
             _escape(row.get("item")),
             _escape(row.get("unit")),
-            _escape(f"{percent}%" if percent else ""),
             _escape("—"),
+            _escape(f"{percent}%" if percent else ""),
             f'<span class="object-detail-row-cost">{_money(row.get("cost"))}</span>',
         ]
+    unit_cost = (
+        _input_html("Assumption", "money")
+        if row.get("assumption")
+        else _input_html(_money(row.get("unit_cost")), "money", "unit_cost")
+    )
     return [
         _escape(row.get("item")),
         _escape(row.get("unit")),
-        _input_html(_money(row.get("unit_cost")), "money", "unit_cost"),
         _input_html(_number_text(row.get("qty")), "number", "quantity"),
+        unit_cost,
         f'<span class="object-detail-row-cost">{_money(row.get("cost"))}</span>',
     ]
 
