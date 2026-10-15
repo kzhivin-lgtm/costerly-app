@@ -104,3 +104,18 @@ approved concrete position. It must not change a provided thickness, section,
 metal type, species, depth, or other Pricing Key fact. Thus a `metal tube
 20x20` is exact Resolver work: resolve that key or produce Assumption Fallback,
 never a default round tube.
+
+## Canonical Pricing Key values, 2026-10-15
+
+Pricing Key aliases are deterministic catalog vocabulary. They are not a
+default and do not supply a missing fact. Once Estimation V3 has selected a
+Family and extracted an evidenced value, the system canonicalizes only an
+exact active value alias before Material Resolver builds its selection key.
+Price Source and Estimation therefore use the same stored aliases.
+
+For ordinary construction steel, the sole canonical `metal_type` is `steel`.
+`carbon steel`, `mild steel`, `regular steel`, `standard steel` and their
+approved Russian and Hebrew forms are aliases for `steel`. Stainless steel and
+aluminium remain separate canonical values. A supplied `metal_type=steel` and
+`section_profile=square_tube_20x20` must resolve by that complete key or
+produce Assumption Fallback. It must never activate a Family Default.

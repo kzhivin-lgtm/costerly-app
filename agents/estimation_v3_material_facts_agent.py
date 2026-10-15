@@ -32,7 +32,7 @@ from use_cases.estimation_v3_material_contract import (
 # The unit and purchasable quantity belong to the selected supply candidate,
 # not to the vision model.  Bump the extraction version so cached facts that
 # contained model-guessed units can never feed the current Material Engine.
-ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_7"
+ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_8"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v3_material_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 8_000
 TIMEOUT_SECONDS = 180.0

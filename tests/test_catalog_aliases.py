@@ -1,8 +1,31 @@
 from use_cases.catalog_aliases import (
     build_estimation_alias_context,
     build_price_source_alias_context,
+    canonicalize_estimation_pricing_key_values,
     normalize_measurement_unit,
 )
+
+
+def test_estimation_canonicalizes_exact_shared_pricing_key_value_aliases():
+    facts = {
+        "materials": [{
+            "family": "metal_tube",
+            "specification": {"metal_type": "Carbon Steel", "profile_section": "20x20"},
+        }],
+    }
+
+    assert canonicalize_estimation_pricing_key_values(
+        facts,
+        family_alias_context={
+            "metal_tube": {
+                "pricing_key_value_aliases": {
+                    "metal_type": {"steel": ["steel", "carbon steel", "regular steel"]},
+                },
+            },
+        },
+    )["materials"][0]["specification"] == {
+        "metal_type": "steel", "profile_section": "20x20",
+    }
 
 
 def test_estimation_context_uses_only_active_catalog_aliases_for_requested_families():
