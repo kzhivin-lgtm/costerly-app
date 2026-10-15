@@ -157,6 +157,53 @@ def test_engine_rounds_profile_stock_after_combining_parts():
     assert plan.lines[0].total_cost == Decimal("90")
 
 
+def test_engine_treats_owner_approved_one_metre_cut_as_a_physical_sheet():
+    plan = plan_material_purchases(
+        demands=(_demand("veneer", length_mm=900, width_mm=600, material_family="wood_veneer",
+                         selection_key="veneer|oak", compatible_candidate_ids=("veneer-cut",)),),
+        candidates=(MaterialSupplyCandidate(
+            candidate_id="veneer-cut", material_family="wood_veneer", selection_key="veneer|oak",
+            purchase_kind="sheet", price_per_purchase_unit="61",
+            purchasable_dimensions={"length_mm": 1000, "width_mm": 1220},
+        ),),
+    )
+
+    assert plan.status == "planned"
+    assert plan.lines[0].purchase_quantity == Decimal("1")
+
+
+def test_engine_prices_edge_banding_by_metre_without_rounding_to_the_roll():
+    plan = plan_material_purchases(
+        demands=(_demand("edge", quantity=1, length_mm=None, width_mm=None, linear_length_mm=2500,
+                         material_family="edge_banding", selection_key="edge|24x5",
+                         compatible_candidate_ids=("edge-cut",)),),
+        candidates=(MaterialSupplyCandidate(
+            candidate_id="edge-cut", material_family="edge_banding", selection_key="edge|24x5",
+            purchase_kind="linear_cut", price_per_purchase_unit="3.2",
+        ),),
+    )
+
+    assert plan.status == "planned"
+    assert plan.lines[0].purchase_quantity == Decimal("2.5")
+    assert plan.lines[0].total_cost == Decimal("8.0")
+
+
+def test_engine_prices_solid_timber_by_exact_part_volume():
+    plan = plan_material_purchases(
+        demands=(_demand("oak", quantity=1, length_mm=1000, width_mm=500,
+                         volume_mm3=Decimal("10000000"), material_family="timber_solid_wood_panel",
+                         selection_key="timber|oak", compatible_candidate_ids=("oak-m3",)),),
+        candidates=(MaterialSupplyCandidate(
+            candidate_id="oak-m3", material_family="timber_solid_wood_panel", selection_key="timber|oak",
+            purchase_kind="volume_direct", price_per_purchase_unit="5000",
+        ),),
+    )
+
+    assert plan.status == "planned"
+    assert plan.lines[0].purchase_quantity == Decimal("0.01")
+    assert plan.lines[0].total_cost == Decimal("50")
+
+
 def test_engine_marks_demand_for_review_when_no_candidate_can_physically_supply_it():
     plan = plan_material_purchases(
         demands=(_demand("oversize", length_mm=2500, width_mm=1200),),

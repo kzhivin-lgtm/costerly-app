@@ -331,6 +331,31 @@ The subsequent integration task must extend the agent contract with
 calculation-local part geometry and connect Engine candidates directly to the
 project-level material-plan path.
 
+ACTIVE, P0, USER-APPROVED, 3.17.3.6 Drawer-slide 400 mm last-resort default:
+the prior derived-length rule is cancelled. Estimation V3 retains only
+evidenced facts. When an otherwise unresolved `hardware_drawer_slide` lacks
+an explicit depth, Material Engine deterministically supplies `400 mm`, then
+uses the ordinary Company-first, Israel-Reference-second resolver path. The
+400-mm value is a runtime last-resort policy, not a source fact or catalog
+default variant, and must be persisted in the plan trace. Explicit source
+depth always wins.
+
+ACTIVE, P0, USER-APPROVED, 3.17.3.7 Catalog-driven Material pipeline audit:
+verify the one shared Family, Pricing Key, alias and purchase-format contract
+for every active Family, rather than a hand-picked material fixture. The
+read-only audit must expose unsupported V3 Pricing-Key fields, Price Source or
+Estimation alias gaps, and Israel Reference positions that cannot become
+Resolver candidates. It must not create a new material model, write Catalog
+data, select a price, or treat catalog gaps as assumptions.
+
+ACTIVE, P0, USER-APPROVED, 3.17.3.8 Resolver eligibility closure: close the
+catalog-driven audit gaps Family by Family. Owner-approved first rule: every
+active `acrylic_pmma` Israel listing receives the `2400 x 1220 mm` catalog
+default purchase format. `packaging_material`, `paint_lacquer_stain`,
+`powder_coating`, `primer`, and `filler_hardener_thinner` are deterministic
+formula-overhead scope, not Resolver Material Demands. Do not silently remove
+their cost from runtime before formula rows are connected.
+
 ACTIVE, P0, USER REQUEST, 3.17.3.2 Calculation-local part geometry and
 shadow planning: extend the compact Estimation facts transport with rectangular
 parts linked to material requirements, full geometry, quantity and rotation

@@ -15,7 +15,7 @@ from hashlib import sha256
 import json
 from typing import Any, Mapping, Sequence
 
-from use_cases.estimate_material_resolution import _company_candidates
+from use_cases.material_identity_resolution import _hard_compatibility, normalize_material_phrase
 from use_cases.material_engine import (
     MaterialDemand,
     MaterialEngineError,
@@ -26,9 +26,11 @@ from use_cases.material_engine import (
 from use_cases.material_identity_status import (
     material_identity_status,
     material_pricing_selection_key,
+    pricing_key_fact_fields,
     pricing_policy_by_family_code,
 )
 from use_cases.material_price_resolver import _canonical_unit, _effective
+from use_cases.metal_mass_calculator import kilograms_per_metre, kilograms_per_sheet
 
 
 _LINEAR_UNITS = frozenset({"lm", "mm", "cm"})
@@ -38,21 +40,12 @@ _REFERENCE_DISCRETE_PACKAGE_QUANTITIES = {
     "pair": Decimal("2"),
     "dozen": Decimal("12"),
 }
-
-
-def _catalog_family_for_reference_identity(
-    material_family: Any,
-    *,
-    pricing_policies: Mapping[str, Mapping[str, Any]],
-) -> str | None:
-    """Return a current Family code stored by an Israel Reference position."""
-    raw = str(material_family or "").strip()
-    return raw if raw in pricing_policies else None
+_DRAWER_SLIDE_LAST_RESORT_DEPTH_MM = 400
 
 
 @dataclass(frozen=True)
-class MaterialEngineShadow:
-    """Read-only document-wide Material Engine outcome and explicit gaps."""
+class MaterialEngineResult:
+    """Document-wide Material Engine outcome and explicit catalog gaps."""
 
     plan: MaterialPlan | None
     demand_count: int
@@ -101,7 +94,7 @@ def _allocation_weight(allocation: Any) -> Decimal:
     return allocation.quantity or Decimal("1")
 
 
-def material_plan_object_cost_allocations(result: MaterialEngineShadow) -> dict[tuple[str, str], Decimal]:
+def material_plan_object_cost_allocations(result: MaterialEngineResult) -> dict[tuple[str, str], Decimal]:
     """Allocate every rounded project purchase cost back to its material demand."""
     result_by_requirement: dict[tuple[str, str], Decimal] = {}
     for line in result.plan.lines if result.plan else ():
@@ -135,7 +128,7 @@ def material_plan_object_cost_allocations(result: MaterialEngineShadow) -> dict[
 
 
 def material_plan_snapshot(
-    result: MaterialEngineShadow,
+    result: MaterialEngineResult,
     *,
     input_fingerprint: str | None = None,
 ) -> dict[str, Any]:
@@ -230,13 +223,42 @@ def _resolver_family_code(
     return family_code if family_code in policies else None
 
 
+def _company_candidates(
+    *,
+    requirement_name: str,
+    material_family: str | None,
+    specifications: Mapping[str, Any],
+    company_material_items: Sequence[Mapping[str, Any]],
+) -> tuple[Mapping[str, Any], ...]:
+    """Find compatible Company items without consulting a retired resolver."""
+    normalized_name = normalize_material_phrase(requirement_name)
+    candidates: list[Mapping[str, Any]] = []
+    for item in company_material_items:
+        if str(item.get("status") or "private") == "archived":
+            continue
+        item_specs = dict(item.get("specifications") or {})
+        same_name = bool(normalized_name) and normalize_material_phrase(
+            item.get("normalized_name") or item.get("canonical_name")
+        ) == normalized_name
+        same_family = bool(material_family) and normalize_material_phrase(
+            item_specs.get("material_family")
+        ) == normalize_material_phrase(material_family)
+        if not same_name and not same_family:
+            continue
+        compatible, _matched = _hard_compatibility(
+            item, category_code=None, specifications=specifications,
+        )
+        if compatible:
+            candidates.append(item)
+    return tuple(candidates)
+
+
 def _active_default_specifications(
     *,
     material_family: str,
     specifications: Mapping[str, Any],
     material_default_variants: Sequence[Mapping[str, Any]],
-    pricing_identities: Sequence[Mapping[str, Any]],
-    pricing_identity_prices: Sequence[Mapping[str, Any]],
+    reference_positions: Sequence[Mapping[str, Any]],
     material_pricing_policies: Sequence[Mapping[str, Any]],
     material_families: Sequence[Mapping[str, Any]],
 ) -> tuple[dict[str, Any], Mapping[str, Any] | None]:
@@ -251,31 +273,36 @@ def _active_default_specifications(
     family_id = str((policy or {}).get("family_id") or "")
     if not family_id:
         return dict(specifications), None
-    identities = {
-        str(row.get("pricing_identity_id") or ""): row
-        for row in pricing_identities
-        if str(row.get("market_code") or "IL") == "IL" and str(row.get("status") or "") == "active"
+    positions = {
+        str(row.get("reference_position_id") or ""): row
+        for row in reference_positions
+        if str(row.get("family_code") or "") == family_code
     }
-    active_price_ids = {
-        str(row.get("pricing_identity_id") or "")
-        for row in pricing_identity_prices
-        if str(row.get("status") or "") == "active"
-        and str(row.get("price_scope") or "") == "material_only"
-        and _positive(row.get("price_typical")) is not None
-    }
+    price_scope = "retail_package" if str(family_code or "").startswith("hardware_") else "material_only"
     for variant in sorted(
         material_default_variants,
         key=lambda row: (int(row.get("priority") or 0), str(row.get("default_variant_id") or "")),
     ):
         if str(variant.get("family_id") or "") != family_id:
             continue
-        identity_id = str(variant.get("reference_pricing_identity_id") or "")
-        identity = identities.get(identity_id)
-        if identity is None or identity_id not in active_price_ids:
+        position_id = str(variant.get("reference_position_id") or "")
+        position = positions.get(position_id)
+        if position is None:
+            continue
+        has_active_price = any(
+            str(price.get("status") or "") == "active"
+            and str(price.get("price_scope") or "") == price_scope
+            and _positive(price.get("price_typical")) is not None
+            for price in position.get("prices") or ()
+        )
+        if not has_active_price:
+            continue
+        applicability = dict(variant.get("applicability_specifications") or {})
+        if any(specifications.get(key) != value for key, value in applicability.items()):
             continue
         defaults = dict(variant.get("default_specifications") or {})
         applied = {key: value for key, value in defaults.items() if not _present_value(specifications.get(key))}
-        if not applied:
+        if not applied and price_scope != "retail_package":
             continue
         effective = {**specifications, **applied}
         selection_key = material_pricing_selection_key(
@@ -283,25 +310,73 @@ def _active_default_specifications(
             specifications=effective,
             pricing_policies=policies,
         )
-        identity_attributes = dict(identity.get("price_attributes") or {})
-        identity_family = _catalog_family_for_reference_identity(
-            identity_attributes.get("material_family") or material_family,
+        position_key = material_pricing_selection_key(
+            material_family=family_code,
+            specifications=dict(position.get("specifications") or {}),
             pricing_policies=policies,
         )
-        identity_key = material_pricing_selection_key(
-            material_family=str(identity_family or ""),
-            specifications={**identity_attributes, "material_family": identity_family},
-            pricing_policies=policies,
-        )
-        if selection_key is None or identity_key != selection_key:
+        if selection_key is None:
             continue
-        return effective, {
+        purchase_specifications = effective
+        if position_key != selection_key:
+            # A default may legitimately connect a more detailed requirement
+            # to its approved generic purchasable baseline.  Example:
+            # melamine-one-sided MDF without a thickness uses the 17-mm
+            # generic laminated MDF position.  The original surface stays in
+            # the immutable Object Facts; only the purchase request is mapped
+            # to the baseline position.
+            if not applicability:
+                continue
+            purchase_specifications = dict(effective)
+            position_specs = dict(position.get("specifications") or {})
+            for attribute_code in (policy or {}).get("pricing_key_attribute_codes") or ():
+                for field in pricing_key_fact_fields(str(attribute_code)):
+                    if _present_value(position_specs.get(field)):
+                        purchase_specifications[field] = position_specs[field]
+                        break
+            purchase_key = material_pricing_selection_key(
+                material_family=material_family,
+                specifications=purchase_specifications,
+                pricing_policies=policies,
+            )
+            if purchase_key != position_key:
+                continue
+        trace = {
             "default_variant_id": str(variant.get("default_variant_id") or ""),
-            "reference_pricing_identity_id": identity_id,
+            "reference_position_id": position_id,
             "family_code": family_code,
             "applied_specifications": applied,
         }
+        if purchase_specifications != effective:
+            trace["source_specifications"] = dict(specifications)
+            trace["purchase_specifications"] = purchase_specifications
+        return purchase_specifications, trace
     return dict(specifications), None
+
+
+def _apply_drawer_slide_last_resort_default(
+    *,
+    material_family: str,
+    specifications: Mapping[str, Any],
+    material_pricing_policies: Sequence[Mapping[str, Any]],
+    material_families: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], Mapping[str, Any] | None]:
+    """Complete an otherwise unspecified drawer slide with the approved fallback.
+
+    This is deterministic Material Engine policy, not an Estimation Agent fact
+    and not a catalog default variant.  An explicit source depth always wins.
+    """
+    policies = pricing_policy_by_family_code(material_pricing_policies, families=material_families)
+    if _resolver_family_code(material_family, policies=policies) != "hardware_drawer_slide":
+        return dict(specifications), None
+    if _present_value(specifications.get("depth_mm")):
+        return dict(specifications), None
+    effective = {**specifications, "depth_mm": _DRAWER_SLIDE_LAST_RESORT_DEPTH_MM}
+    return effective, {
+        "policy": "drawer_slide_last_resort_depth",
+        "family_code": "hardware_drawer_slide",
+        "applied_specifications": {"depth_mm": _DRAWER_SLIDE_LAST_RESORT_DEPTH_MM},
+    }
 
 
 def _demand_from_net_requirement(
@@ -474,16 +549,22 @@ def company_supply_candidates(
                 continue
             if str(offer.get("price_scope") or "material_only") != price_scope:
                 continue
+            kind = _offer_kind(offer)
+            # A discrete package is itself the required purchase format.  It
+            # has no geometric dimensions to provide.
+            status_dimensions = offer.get("purchasable_dimensions") or (
+                {} if kind == "piece" else None
+            )
             status = material_identity_status(
                 item, pricing_policies=policies,
-                purchasable_dimensions=offer.get("purchasable_dimensions"),
+                purchasable_dimensions=status_dimensions,
             )
-            if status.tone not in {"blue", "green"}:
+            package_is_complete = kind == "piece" and status.missing == ("purchase format",)
+            if status.tone not in {"blue", "green"} and not package_is_complete:
                 continue
             offer_id = str(offer.get("offer_id") or "").strip()
             if not offer_id:
                 continue
-            kind = _offer_kind(offer)
             price_and_quantity = _purchase_price_and_quantity(offer, kind=kind, vat_percent=vat)
             if price_and_quantity is None:
                 continue
@@ -507,22 +588,19 @@ def israel_reference_supply_candidates(
     *,
     material_family: str,
     specifications: Mapping[str, Any] | None,
-    pricing_identities: Sequence[Mapping[str, Any]],
-    pricing_identity_prices: Sequence[Mapping[str, Any]],
+    reference_positions: Sequence[Mapping[str, Any]],
     material_pricing_policies: Sequence[Mapping[str, Any]],
     material_families: Sequence[Mapping[str, Any]],
-    family_supply_formats: Sequence[Mapping[str, Any]],
     currency: str = "ILS",
     price_scope: str = "material_only",
+    reference_position_id: str | None = None,
     as_of: date | None = None,
 ) -> tuple[str | None, tuple[MaterialSupplyCandidate, ...]]:
-    """Return concrete Israel Reference candidates for one complete Pricing Key.
+    """Return candidates from one exact Israel Reference position.
 
-    A family format is paired only with a price expressed in its continuous
-    basis: square metre for sheets and linear metre for stock. A reference
-    price per sheet is never copied onto every generic family format, because
-    the catalog does not establish that pairing. Discrete prices need no
-    geometric format.
+    A position is a completed Family plus Pricing Key.  Its price and physical
+    purchase formats belong together.  No historical price identity or generic
+    Family format is eligible here.
     """
     effective_date = as_of or date.today()
     normalized_currency = str(currency or "").upper().strip()
@@ -536,43 +614,34 @@ def israel_reference_supply_candidates(
     )
     if selection_key is None:
         return None, ()
-    family_code = selection_key.split("|", 1)[0]
-    family_id = str((policies.get(family_code) or {}).get("family_id") or "")
-    prices_by_identity: dict[str, list[Mapping[str, Any]]] = {}
-    for price in pricing_identity_prices:
-        identity_id = str(price.get("pricing_identity_id") or "")
-        if identity_id:
-            prices_by_identity.setdefault(identity_id, []).append(price)
-    formats = [
-        row for row in family_supply_formats
-        if row.get("active") is not False and str(row.get("family_id") or "") == family_id
-    ]
-
     result: list[MaterialSupplyCandidate] = []
-    for identity in pricing_identities:
-        identity_id = str(identity.get("pricing_identity_id") or "").strip()
-        attributes = dict(identity.get("price_attributes") or {})
-        identity_family = _catalog_family_for_reference_identity(
-            attributes.get("material_family") or material_family,
+    for position in reference_positions:
+        if reference_position_id and str(position.get("reference_position_id") or "") != reference_position_id:
+            continue
+        family_code = str(position.get("family_code") or "")
+        if family_code not in policies:
+            continue
+        position_key = material_pricing_selection_key(
+            material_family=family_code,
+            specifications=dict(position.get("specifications") or {}),
             pricing_policies=policies,
         )
-        if identity_family is None:
+        if position_key != selection_key:
             continue
-        identity_key = material_pricing_selection_key(
-            material_family=identity_family,
-            specifications={**attributes, "material_family": identity_family},
-            pricing_policies=policies,
-        )
-        if not identity_id or identity_key != selection_key:
+        position_id = str(position.get("reference_position_id") or "").strip()
+        if not position_id:
             continue
-        for price in prices_by_identity.get(identity_id, ()):
+        formats = [
+            row for row in position.get("supply_formats") or () if row.get("active") is not False
+        ]
+        for price in position.get("prices") or ():
             if str(price.get("status") or "") != "active" or not _effective(price, effective_date):
                 continue
             if str(price.get("currency") or "").upper() != normalized_currency:
                 continue
             if str(price.get("price_scope") or "") != price_scope:
                 continue
-            price_id = str(price.get("pricing_identity_price_id") or "").strip()
+            price_id = str(price.get("model_price_id") or "").strip()
             typical = _positive(price.get("price_typical"))
             if not price_id or typical is None:
                 continue
@@ -586,11 +655,34 @@ def israel_reference_supply_candidates(
                     if not format_id or length is None or width is None:
                         continue
                     result.append(MaterialSupplyCandidate(
-                        candidate_id=f"israel-reference:{price_id}:{format_id}",
+                        candidate_id=f"israel-reference:{position_id}:{price_id}:{format_id}",
                         material_family=material_family,
                         selection_key=selection_key,
                         purchase_kind="sheet",
                         price_per_purchase_unit=typical * length * width / Decimal("1000000"),
+                        currency=normalized_currency,
+                        purchasable_dimensions=dimensions,
+                        authority="israel_reference",
+                        reference_price_id=price_id,
+                    ))
+            elif unit == "sheet":
+                # A source price expressed per sheet is safe only when the
+                # physical sheet format belongs to this exact Reference
+                # listing.  It must never be combined with a Family default
+                # or another listing's format.
+                for supply_format in formats:
+                    dimensions = dict(supply_format.get("purchasable_dimensions") or {})
+                    length = _positive(dimensions.get("length_mm"))
+                    width = _positive(dimensions.get("width_mm"))
+                    format_id = str(supply_format.get("supply_format_id") or "").strip()
+                    if not format_id or length is None or width is None:
+                        continue
+                    result.append(MaterialSupplyCandidate(
+                        candidate_id=f"israel-reference:{position_id}:{price_id}:{format_id}",
+                        material_family=material_family,
+                        selection_key=selection_key,
+                        purchase_kind="sheet",
+                        price_per_purchase_unit=typical,
                         currency=normalized_currency,
                         purchasable_dimensions=dimensions,
                         authority="israel_reference",
@@ -603,20 +695,58 @@ def israel_reference_supply_candidates(
                     format_id = str(supply_format.get("supply_format_id") or "").strip()
                     if not format_id or length is None:
                         continue
+                    is_edge_cut = family_code == "edge_banding"
                     result.append(MaterialSupplyCandidate(
-                        candidate_id=f"israel-reference:{price_id}:{format_id}",
+                        candidate_id=f"israel-reference:{position_id}:{price_id}:{format_id}",
                         material_family=material_family,
                         selection_key=selection_key,
-                        purchase_kind="linear_stock",
-                        price_per_purchase_unit=typical * length / Decimal("1000"),
+                        purchase_kind="linear_cut" if is_edge_cut else "linear_stock",
+                        price_per_purchase_unit=typical if is_edge_cut else typical * length / Decimal("1000"),
                         currency=normalized_currency,
                         purchasable_dimensions=dimensions,
                         authority="israel_reference",
                         reference_price_id=price_id,
                     ))
+            elif unit == "kg":
+                specifications = dict(position.get("specifications") or {})
+                for supply_format in formats:
+                    dimensions = dict(supply_format.get("purchasable_dimensions") or {})
+                    length = _positive(dimensions.get("length_mm"))
+                    width = _positive(dimensions.get("width_mm"))
+                    format_id = str(supply_format.get("supply_format_id") or "").strip()
+                    if not format_id or length is None:
+                        continue
+                    if width is not None:
+                        kilograms = kilograms_per_sheet(
+                            specifications=specifications, length_mm=length, width_mm=width,
+                        )
+                        kind = "sheet"
+                    else:
+                        kilograms_per_m = kilograms_per_metre(
+                            family_code=family_code, specifications=specifications,
+                        )
+                        kilograms = None if kilograms_per_m is None else kilograms_per_m * length / Decimal("1000")
+                        kind = "linear_stock"
+                    if kilograms is None:
+                        continue
+                    result.append(MaterialSupplyCandidate(
+                        candidate_id=f"israel-reference:{position_id}:{price_id}:{format_id}",
+                        material_family=material_family, selection_key=selection_key,
+                        purchase_kind=kind, price_per_purchase_unit=typical * kilograms,
+                        currency=normalized_currency, purchasable_dimensions=dimensions,
+                        authority="israel_reference", reference_price_id=price_id,
+                    ))
+            elif unit == "m3":
+                result.append(MaterialSupplyCandidate(
+                    candidate_id=f"israel-reference:{position_id}:{price_id}",
+                    material_family=material_family, selection_key=selection_key,
+                    purchase_kind="volume_direct", price_per_purchase_unit=typical,
+                    currency=normalized_currency, authority="israel_reference",
+                    reference_price_id=price_id,
+                ))
             elif unit in _REFERENCE_DISCRETE_PACKAGE_QUANTITIES:
                 result.append(MaterialSupplyCandidate(
-                    candidate_id=f"israel-reference:{price_id}",
+                    candidate_id=f"israel-reference:{position_id}:{price_id}",
                     material_family=material_family,
                     selection_key=selection_key,
                     purchase_kind="piece",
@@ -629,13 +759,13 @@ def israel_reference_supply_candidates(
     return selection_key, tuple(sorted(result, key=lambda candidate: candidate.candidate_id))
 
 
-def shadow_material_plan(
+def build_material_plan(
     *,
     facts_by_object: Mapping[str, Mapping[str, Any]],
     catalogs: Mapping[str, Sequence[Mapping[str, Any]]],
     material_norm_overrides: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
     vat_percent: Decimal | int | float | str = Decimal("18"),
-) -> MaterialEngineShadow:
+) -> MaterialEngineResult:
     """Build one document-wide purchase plan from facts and approved norms.
 
     Geometry remains preferred for sheets and stock. A user-edited per-item
@@ -665,12 +795,17 @@ def shadow_material_plan(
                 parts_by_requirement.setdefault(str(part.get("material_requirement_id") or ""), []).append(part)
         for requirement_id, material in sorted(materials.items()):
             parts = parts_by_requirement.get(requirement_id) or []
-            specs, default_trace = _active_default_specifications(
+            specs, drawer_slide_trace = _apply_drawer_slide_last_resort_default(
                 material_family=str(material.get("family") or ""),
                 specifications=dict(material.get("specification") or {}),
+                material_pricing_policies=catalogs.get("material_pricing_policies") or (),
+                material_families=catalogs.get("material_families") or (),
+            )
+            specs, default_trace = _active_default_specifications(
+                material_family=str(material.get("family") or ""),
+                specifications=specs,
                 material_default_variants=catalogs.get("material_default_variants") or (),
-                pricing_identities=catalogs.get("identities") or (),
-                pricing_identity_prices=catalogs.get("prices") or (),
+                reference_positions=catalogs.get("reference_positions") or (),
                 material_pricing_policies=catalogs.get("material_pricing_policies") or (),
                 material_families=catalogs.get("material_families") or (),
             )
@@ -680,6 +815,23 @@ def shadow_material_plan(
                     "material_requirement_id": requirement_id,
                     **default_trace,
                 })
+            if drawer_slide_trace is not None:
+                applied_defaults.append({
+                    "object_id": str(object_id),
+                    "material_requirement_id": requirement_id,
+                    **drawer_slide_trace,
+                })
+            price_scope = (
+                "retail_package"
+                if str(_resolver_family_code(
+                    str(material.get("family") or ""),
+                    policies=pricing_policy_by_family_code(
+                        catalogs.get("material_pricing_policies") or (),
+                        families=catalogs.get("material_families") or (),
+                    ),
+                ) or "").startswith("hardware_")
+                else "material_only"
+            )
             cache_key = (
                 str(material.get("source_name") or material.get("family") or ""),
                 str(material.get("family") or ""),
@@ -693,6 +845,7 @@ def shadow_material_plan(
                     company_offers=catalogs.get("offers") or (),
                     material_pricing_policies=catalogs.get("material_pricing_policies") or (),
                     material_families=catalogs.get("material_families") or (),
+                    price_scope=price_scope,
                     vat_percent=vat_percent,
                 ),
             )
@@ -703,11 +856,14 @@ def shadow_material_plan(
             _reference_key, reference_candidates = israel_reference_supply_candidates(
                 material_family=cache_key[1],
                 specifications=specs,
-                pricing_identities=catalogs.get("identities") or (),
-                pricing_identity_prices=catalogs.get("prices") or (),
+                reference_positions=catalogs.get("reference_positions") or (),
                 material_pricing_policies=catalogs.get("material_pricing_policies") or (),
                 material_families=catalogs.get("material_families") or (),
-                family_supply_formats=catalogs.get("family_supply_formats") or (),
+                price_scope=price_scope,
+                reference_position_id=(
+                    str(default_trace.get("reference_position_id") or "")
+                    if default_trace is not None else None
+                ),
             )
             compatible = (*company_candidates, *reference_candidates)
             for candidate in compatible:
@@ -748,6 +904,10 @@ def shadow_material_plan(
             for part in parts:
                 demand_id = f"{object_id}:{part.get('part_id')}"
                 try:
+                    thickness = _positive(specs.get("thickness_mm") or specs.get("thickness"))
+                    part_quantity = _positive(part.get("quantity"))
+                    part_length = _positive(part.get("length_mm"))
+                    part_width = _positive(part.get("width_mm"))
                     demands.append(MaterialDemand(
                         demand_id=demand_id,
                         object_id=str(object_id),
@@ -760,6 +920,9 @@ def shadow_material_plan(
                         material_requirement_id=requirement_id,
                         length_mm=part.get("length_mm"),
                         width_mm=part.get("width_mm"),
+                        volume_mm3=(part_quantity * part_length * part_width * thickness
+                                    if thickness is not None and part_quantity is not None
+                                    and part_length is not None and part_width is not None else None),
                         rotation_allowed=bool(part.get("rotation_allowed")),
                     ))
                 except MaterialEngineError:
@@ -809,7 +972,7 @@ def shadow_material_plan(
     if plan and plan.status == "needs_review":
         unresolved.extend(plan.unresolved_demand_ids)
         reasons.update(plan.reason_codes)
-    return MaterialEngineShadow(
+    return MaterialEngineResult(
         plan=plan,
         demand_count=len(demands),
         candidate_count=len(candidates),

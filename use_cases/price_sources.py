@@ -45,6 +45,7 @@ from use_cases.catalog_aliases import (
 )
 from use_cases.material_normalization import canonical_material_display_name
 from use_cases.material_supply_format import apply_price_source_purchasable_dimensions
+from use_cases.price_source_reference_linking import resolve_price_source_reference_links
 from use_cases.price_source_taxonomy import (
     apply_material_taxonomy,
     apply_operation_taxonomy,
@@ -177,6 +178,22 @@ class PriceSourceError(ValueError):
 
 class PriceSourceProcessingCancelled(PriceSourceError):
     """A user cancelled a background extraction before it could persist."""
+
+
+def _link_price_source_references(
+    client: Any,
+    *,
+    company_id: str,
+    source_id: str,
+):
+    """Run the additive Israel Reference bridge without invalidating import."""
+    try:
+        return resolve_price_source_reference_links(
+            client, company_id=company_id, source_id=source_id,
+        )
+    except Exception:
+        logger.exception("Price Source to Israel Reference linking failed")
+        return None
 
 
 def normalize_price_source_rows(
@@ -715,6 +732,19 @@ def _is_hardware_material(row: Mapping[str, Any]) -> bool:
     return canonical_price_source_category(
         str(row.get("material_type") or row.get("category") or "")
     ) == "Hardware"
+
+
+def company_offer_price_scope(row: Mapping[str, Any]) -> str:
+    """Return the resolver scope of a Company Catalog offer.
+
+    Hardware has package pricing.  Every other Price Source material remains
+    a material-only candidate unless a later approved source contract adds a
+    narrower scope.  This is deterministic metadata, never an Agent choice.
+    """
+    family = str(row.get("material_family") or "").strip()
+    if family.startswith("hardware_") or _is_hardware_material(row):
+        return "retail_package"
+    return "material_only"
 
 
 def _hardware_name_tokens(row: Mapping[str, Any]) -> set[str]:
@@ -3965,6 +3995,7 @@ def apply_price_source_defaults(
                 "normalized_price": row["normalized_price"],
                 "normalized_unit": row["calculation_unit"],
                 "currency": normalized_currency,
+                "price_scope": company_offer_price_scope(row),
                 "vat_included": vat_mode == "included",
                 "valid_from": source.get("document_date"),
                 "confidence": row.get("confidence") or 0,
@@ -3990,6 +4021,7 @@ def apply_price_source_defaults(
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
     ).eq("company_id", company_id).eq("source_id", source_id).execute()
+    _link_price_source_references(client, company_id=company_id, source_id=source_id)
     _refresh_price_source_summary(client, company_id, source_id)
     return {
         "activated": activated,
@@ -4301,6 +4333,10 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
             "normalized_price": normalized_price,
             "normalized_unit": calculation_unit,
             "currency": raw_currency,
+            "price_scope": company_offer_price_scope({
+                "material_type": material_type,
+                "material_family": (reviewed_specifications or {}).get("material_family"),
+            }),
             "vat_included": vat_mode == "included",
             "valid_from": source.get("document_date"),
             "confidence": row.get("confidence") or 0,
@@ -4310,6 +4346,7 @@ def save_price_source_row(access, source_id: str, row_id: str, values: dict) -> 
         client.table("company_price_sources").update({"currency": raw_currency}).eq(
             "company_id", company_id
         ).eq("source_id", source_id).execute()
+    _link_price_source_references(client, company_id=company_id, source_id=source_id)
     _refresh_price_source_summary(client, company_id, source_id)
     return updated
 
@@ -5536,6 +5573,7 @@ def process_price_source(
                         "normalized_unit": row["calculation_unit"],
                         "purchasable_dimensions": row.get("purchasable_dimensions") or {},
                         "currency": row["raw_currency"] or result["currency"],
+                        "price_scope": company_offer_price_scope(row),
                         "vat_included": True if row["raw_vat_mode"] == "included" else False if row["raw_vat_mode"] == "excluded" else None,
                         "valid_from": _date_or_none(result["document_date"]),
                         "confidence": row["confidence"],
@@ -5642,6 +5680,11 @@ def process_price_source(
                 "company_material_id", sorted(material_ids_to_restore)
             ).execute()
 
+        reference_linking = _link_price_source_references(
+            client, company_id=company_id, source_id=source_id,
+        )
+        if reference_linking is not None:
+            source_summary["reference_linking"] = reference_linking.as_dict()
         source_summary.update(
             {
                 "new": new_count,

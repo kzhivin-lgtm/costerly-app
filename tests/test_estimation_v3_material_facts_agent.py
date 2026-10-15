@@ -75,7 +75,7 @@ def test_v3_exposes_only_existing_pricing_key_facts_to_extraction():
     )
 
     assert requirements == {
-        "mdf_hdf": ("thickness_mm", "thickness"),
+        "mdf_hdf": ("thickness_mm",),
         "metal_tube": ("metal_type", "profile_section"),
     }
 

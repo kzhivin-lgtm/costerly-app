@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Literal, Mapping, Sequence
 
 
@@ -20,6 +21,7 @@ class MaterialIdentityStatus:
 
 
 _FIELD_LABELS = {
+    "board_type": "board type",
     "thickness_mm": "thickness",
     "species": "species",
     "width_mm": "width",
@@ -38,6 +40,7 @@ _FIELD_LABELS = {
 # between the two contracts.  It is intentionally not another per-family
 # endpoint table.
 _PRICING_KEY_FIELDS: dict[str, tuple[str, ...]] = {
+    "board_type": ("board_type",),
     "thickness": ("thickness_mm", "thickness"),
     "species": ("species",),
     "width": ("width_mm", "width"),
@@ -50,7 +53,7 @@ _PRICING_KEY_FIELDS: dict[str, tuple[str, ...]] = {
     "coating_system": ("coating_system",),
     "stone_type": ("stone_type",),
     "chemistry_product_type": ("chemistry_product_type",),
-    "nominal_length": ("nominal_length_mm", "depth_mm", "length_mm"),
+    "nominal_length": ("nominal_length_mm", "depth_mm", "length_mm", "length"),
     "component_type": ("component_type",),
     "packaging_type": ("packaging_type",),
 }
@@ -87,6 +90,37 @@ def _selection_value(value: Any) -> str:
     return " ".join(str(value or "").strip().casefold().split())
 
 
+def _canonical_section_profile(value: Any) -> Any:
+    """Map source-facing tube wording to a live Israel Reference key.
+
+    ``tube`` is round by default. A literal two-sided section is stronger
+    evidence: a supplier may call 20 x 20 a tube, but it is a square profile.
+    Only the three currently catalogued baseline sections are collapsed here;
+    unknown explicit dimensions remain explicit rather than becoming a false
+    purchasable candidate.
+    """
+    if not isinstance(value, str):
+        return value
+    text = " ".join(value.casefold().replace("×", "x").split())
+    pairs = re.search(r"(?<!\d)(\d{1,3}(?:\.\d+)?)\s*x\s*(\d{1,3}(?:\.\d+)?)(?!\d)", text)
+    if pairs:
+        first, second = float(pairs.group(1)), float(pairs.group(2))
+        if first == second == 20:
+            return "square_tube_20x20"
+        if {first, second} == {20, 40}:
+            return "rectangular_tube_40x20"
+        return text
+    if re.search(r"(?:round|circular|\bø\s*20\b|\bd\s*20\b|кругл|עגול)", text):
+        return "round_tube_d20"
+    if re.search(r"(?:square|квадрат|מרובע)", text):
+        return "square_tube_20x20"
+    if re.search(r"(?:rectangular|прямоуголь|מלבני)", text):
+        return "rectangular_tube_40x20"
+    if text in {"tube", "metal tube", "steel tube", "pipe", "труба", "צינור"}:
+        return "round_tube_d20"
+    return text
+
+
 def _pricing_key_value(specifications: Mapping[str, Any], code: str) -> str | None:
     fields = _PRICING_KEY_FIELDS.get(code, (code,))
     # The estimation-facts contract calls this ``profile_section`` while the
@@ -97,6 +131,8 @@ def _pricing_key_value(specifications: Mapping[str, Any], code: str) -> str | No
     for field in fields:
         value = specifications.get(field)
         if _present(value):
+            if code == "section_profile":
+                value = _canonical_section_profile(value)
             return _selection_value(value)
     return None
 
@@ -140,7 +176,7 @@ def material_pricing_selection_key(
 # Required V1 endpoint facts. Brand and Product System enrich the canonical
 # path but deliberately never block preliminary estimation on their own.
 _REQUIRED_BY_FAMILY: dict[str, tuple[str, ...]] = {
-    "mdf_hdf": ("thickness_mm",),
+    "mdf_hdf": ("board_type", "thickness_mm"),
     "particleboard": ("thickness_mm",),
     "fibreboard_hardboard": ("thickness_mm",),
     "osb": ("thickness_mm",),

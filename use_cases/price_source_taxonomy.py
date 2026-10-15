@@ -161,6 +161,9 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
         # the letters without turning an unrelated Hebrew word into MDF.
         "מדי אף", "אמ די אף", "מדפ", "מ.ד.פ", "מ ד פ", "mdf ירוק", "מדפ ירוק",
     )),
+    TaxonomyRule("Wood Sheets", "hdf", (
+        "hdf", "high density fibreboard", "high-density fibreboard", "хдф",
+    )),
     TaxonomyRule("Wood Sheets", "particleboard", (
         "particleboard", "chipboard", "melamine board", "laminated board", "ldsp",
         "סיבית", "מלמין", "שבבית", "לוח מלמין",
@@ -288,6 +291,8 @@ MATERIAL_RULES: tuple[TaxonomyRule, ...] = (
 # making an unproven catalog link or creating a Global model.
 _CATALOG_FAMILY_PROJECTIONS: dict[str, tuple[str, str, str | None]] = {
     "mdf": ("mdf_hdf", "material", "wood"),
+    "hdf": ("mdf_hdf", "material", "wood"),
+    "laminated panel": ("mdf_hdf", "material", "wood"),
     "plywood": ("plywood", "material", "wood"),
     "particleboard": ("particleboard", "material", "wood"),
     "hardboard": ("fibreboard_hardboard", "material", "wood"),
@@ -990,6 +995,28 @@ def _profile_dimensions(text: str) -> tuple[float, float, float]:
     )
 
 
+def _profile_section_dimensions(text: str) -> tuple[float, float]:
+    """Read an explicit two-sided hollow-profile section.
+
+    A source seldom states the furniture-grade wall thickness. ``20 × 20``
+    still proves the square section and must not be discarded merely because
+    the trailing ``× 1.5`` is absent.
+    """
+    match = re.search(
+        r"(?<!\d)(\d{1,3}(?:\.\d+)?)\s*(?:x|×)\s*"
+        r"(\d{1,3}(?:\.\d+)?)\s*(mm|m\.?m\.?|cm|ס[\"״']?מ)?(?!\s*(?:x|×))",
+        str(text or ""),
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return 0, 0
+    unit = match.group(3)
+    return (
+        _metric_dimension(match.group(1), unit),
+        _metric_dimension(match.group(2), unit),
+    )
+
+
 def _round_tube_dimensions(text: str) -> tuple[float, float]:
     value = str(text or "")
     match = re.search(
@@ -1053,6 +1080,8 @@ def _apply_family_pricing_facts(
     text: str,
 ) -> None:
     """Populate only deterministic Pricing Key facts for the proven family."""
+    if family in {"mdf", "hdf"}:
+        attributes["board_type"] = family
     if family in {"metal sheet", "metal tube", "metal angle", "metal channel", "metal profile", "metal flat bar", "metal bar"}:
         if metal_type := _metal_type_for_text(text):
             attributes["metal_type"] = metal_type
@@ -1062,25 +1091,38 @@ def _apply_family_pricing_facts(
         # into later price matching.
         attributes["thickness_mm"] = 0
         canonical = _canonical_taxonomy_text(text)
-        if "rectangular" in canonical or "מלבני" in canonical:
-            attributes["section_profile"] = "rectangular tube"
-        elif "square" in canonical or "מרובע" in canonical:
-            attributes["section_profile"] = "square tube"
-        elif "round" in canonical or "עגול" in canonical:
-            attributes["section_profile"] = "round tube"
         first, second, wall = _profile_dimensions(text)
-        if first and second and wall:
-            if not attributes.get("section_profile"):
-                attributes["section_profile"] = "square tube" if first == second else "rectangular tube"
+        if not (first and second):
+            first, second = _profile_section_dimensions(text)
+        if first and second:
+            # Explicit two-sided dimensions are stronger evidence than the
+            # loose English word "tube". Furniture sources routinely call a
+            # 20 × 20 square hollow profile a tube.
+            attributes["section_profile"] = (
+                "square_tube_20x20" if first == second == 20
+                else "rectangular_tube_40x20" if {first, second} == {20, 40}
+                else "square tube" if first == second else "rectangular tube"
+            )
             attributes["primary_attribute"] = f"{_decimal_label(first)}×{_decimal_label(second)} mm"
-            attributes["wall_thickness_mm"] = wall
+            if wall:
+                attributes["wall_thickness_mm"] = wall
         else:
             diameter, wall = _round_tube_dimensions(text)
             if diameter and wall:
-                attributes["section_profile"] = "round tube"
+                attributes["section_profile"] = (
+                    "round_tube_d20" if diameter == 20 else "round tube"
+                )
                 attributes["primary_attribute"] = f"Ø{_decimal_label(diameter)} mm"
                 attributes["diameter_mm"] = diameter
                 attributes["wall_thickness_mm"] = wall
+            elif "rectangular" in canonical or "מלבני" in canonical:
+                attributes["section_profile"] = "rectangular_tube_40x20"
+            elif "square" in canonical or "מרובע" in canonical:
+                attributes["section_profile"] = "square_tube_20x20"
+            else:
+                # A bare tube means the approved round Ø20 baseline. This is
+                # deliberately last: any explicit two-sided section wins.
+                attributes["section_profile"] = "round_tube_d20"
     elif family in {"metal angle", "metal channel", "metal profile"}:
         attributes["thickness_mm"] = 0
         profile = {
@@ -1459,6 +1501,26 @@ def apply_material_taxonomy(
         attributes["width_mm"], attributes["length_mm"] = _literal_sheet_dimensions(text)
     taxonomy = catalog_taxonomy_for_family(rule.family) or {}
     catalog_family_code = str(taxonomy.get("family_code") or rule.family)
+    if catalog_family_code == "mdf_hdf":
+        # The shared alias catalog can identify this Family through historical
+        # wording such as HDF/hardboard, while source taxonomy may call the
+        # matched rule differently.  The literal source term decides the
+        # approved subfamily, never its thickness.
+        canonical_text = _canonical_taxonomy_text(text)
+        attributes["board_type"] = (
+            "hdf" if re.search(r"(?<!\w)(?:hdf|хдф)(?!\w)|high[ -]density fibreboard", canonical_text)
+            else "mdf"
+        )
+        if re.search(r"veneer|veneered|шпон|פורניר", canonical_text):
+            attributes["surface"] = "veneer_two_sided"
+        elif re.search(r"hpl|formica|פורמייקה", canonical_text):
+            attributes["surface"] = "hpl_two_sided"
+        elif re.search(r"melamine|melamin|מלמין", canonical_text):
+            attributes["surface"] = "melamine_two_sided"
+        elif re.search(r"laminat|laminated|למינציה|מצופה", canonical_text):
+            attributes["surface"] = "laminated"
+        else:
+            attributes["surface"] = "raw"
     row["identity_attributes"] = attributes
     row["material_type"] = rule.category
     row["material_family"] = catalog_family_code

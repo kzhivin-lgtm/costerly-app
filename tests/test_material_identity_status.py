@@ -96,6 +96,23 @@ def test_global_family_code_is_a_valid_resolver_family_without_source_alias():
     assert key == "compact_laminate|thickness=20"
 
 
+def test_mdf_hdf_selection_key_keeps_board_type_before_thickness():
+    policies = {
+        "mdf_hdf": {"pricing_key_attribute_codes": ["board_type", "thickness"]},
+    }
+
+    assert material_pricing_selection_key(
+        material_family="mdf_hdf",
+        specifications={"board_type": "mdf", "thickness_mm": 17},
+        pricing_policies=policies,
+    ) == "mdf_hdf|board_type=mdf|thickness=17"
+    assert material_pricing_selection_key(
+        material_family="mdf_hdf",
+        specifications={"board_type": "hdf", "thickness_mm": 8},
+        pricing_policies=policies,
+    ) == "mdf_hdf|board_type=hdf|thickness=8"
+
+
 def test_furniture_profile_identity_does_not_require_wall_thickness():
     status = material_identity_status({
         "specifications": {
@@ -113,3 +130,22 @@ def test_furniture_profile_identity_does_not_require_wall_thickness():
 
     assert status.tone == "yellow"
     assert status.missing == ("purchase format",)
+
+
+def test_explicit_tube_section_overrides_the_round_tube_default_in_selection_key():
+    policies = {
+        "metal_tube": {
+            "pricing_key_attribute_codes": ["metal_type", "section_profile"],
+        },
+    }
+
+    assert material_pricing_selection_key(
+        material_family="metal_tube",
+        specifications={"metal_type": "carbon steel", "profile_section": "tube"},
+        pricing_policies=policies,
+    ) == "metal_tube|metal_type=carbon steel|section_profile=round_tube_d20"
+    assert material_pricing_selection_key(
+        material_family="metal_tube",
+        specifications={"metal_type": "carbon steel", "profile_section": "20 × 20 mm square"},
+        pricing_policies=policies,
+    ) == "metal_tube|metal_type=carbon steel|section_profile=square_tube_20x20"

@@ -15,7 +15,7 @@ from decimal import Decimal, InvalidOperation, ROUND_CEILING
 from typing import Literal, Mapping, Sequence
 
 
-PurchaseKind = Literal["sheet", "linear_stock", "piece", "direct"]
+PurchaseKind = Literal["sheet", "linear_stock", "linear_cut", "volume_direct", "piece", "direct"]
 PlanStatus = Literal["planned", "needs_review"]
 
 
@@ -71,6 +71,7 @@ class MaterialDemand:
     width_mm: Decimal | int | float | str | None = None
     area_mm2: Decimal | int | float | str | None = None
     linear_length_mm: Decimal | int | float | str | None = None
+    volume_mm3: Decimal | int | float | str | None = None
     rotation_allowed: bool = True
 
 
@@ -107,6 +108,7 @@ class MaterialAllocation:
     length_mm: Decimal | None = None
     width_mm: Decimal | None = None
     area_mm2: Decimal | None = None
+    volume_mm3: Decimal | None = None
     quantity: Decimal | None = None
     rotated: bool = False
 
@@ -172,6 +174,12 @@ def _demand_linear_length(demand: MaterialDemand) -> Decimal | None:
     if demand.linear_length_mm is None:
         return None
     return _positive(demand.linear_length_mm, "demand.linear_length_mm")
+
+
+def _demand_volume(demand: MaterialDemand) -> Decimal | None:
+    if demand.volume_mm3 is None:
+        return None
+    return _positive(demand.volume_mm3, "demand.volume_mm3")
 
 
 def _ceil(value: Decimal) -> Decimal:
@@ -413,6 +421,41 @@ def _place_linear_stock(
     ))
 
 
+def _place_linear_cut(*, demands: Sequence[MaterialDemand], candidate: MaterialSupplyCandidate) -> _CandidatePlan:
+    total_length = Decimal("0")
+    allocations: list[MaterialAllocation] = []
+    for demand in demands:
+        length = _demand_linear_length(demand)
+        if length is None:
+            length = _positive(demand.length_mm, "demand.length_mm") * _demand_quantity(demand, whole=True)
+        total_length += length
+        allocations.append(MaterialAllocation(demand_id=demand.demand_id, purchase_index=1,
+            object_id=demand.object_id, material_requirement_id=demand.material_requirement_id, length_mm=length))
+    quantity = total_length / Decimal("1000")
+    price = _positive(candidate.price_per_purchase_unit, "candidate.price_per_purchase_unit")
+    return _CandidatePlan(line=MaterialPurchaseLine(selection_key=candidate.selection_key,
+        candidate_id=candidate.candidate_id, purchase_kind="linear_cut", purchase_quantity=quantity,
+        price_per_purchase_unit=price, total_cost=price * quantity, currency=candidate.currency,
+        allocations=tuple(allocations)))
+
+
+def _place_volume_direct(*, demands: Sequence[MaterialDemand], candidate: MaterialSupplyCandidate) -> _CandidatePlan:
+    allocations, total = [], Decimal("0")
+    for demand in demands:
+        volume = _demand_volume(demand)
+        if volume is None:
+            return _CandidatePlan(line=None, reason_code="demand_volume_required")
+        total += volume
+        allocations.append(MaterialAllocation(demand_id=demand.demand_id, purchase_index=1,
+            object_id=demand.object_id, material_requirement_id=demand.material_requirement_id, volume_mm3=volume))
+    quantity = total / Decimal("1000000000")
+    price = _positive(candidate.price_per_purchase_unit, "candidate.price_per_purchase_unit")
+    return _CandidatePlan(line=MaterialPurchaseLine(selection_key=candidate.selection_key,
+        candidate_id=candidate.candidate_id, purchase_kind="volume_direct", purchase_quantity=quantity,
+        price_per_purchase_unit=price, total_cost=price * quantity, currency=candidate.currency,
+        allocations=tuple(allocations)))
+
+
 def _plan_piece_or_direct(
     *, demands: Sequence[MaterialDemand], candidate: MaterialSupplyCandidate
 ) -> _CandidatePlan:
@@ -453,6 +496,10 @@ def _plan_candidate(
         return _place_sheet_parts(demands=demands, candidate=candidate)
     if candidate.purchase_kind == "linear_stock":
         return _place_linear_stock(demands=demands, candidate=candidate)
+    if candidate.purchase_kind == "linear_cut":
+        return _place_linear_cut(demands=demands, candidate=candidate)
+    if candidate.purchase_kind == "volume_direct":
+        return _place_volume_direct(demands=demands, candidate=candidate)
     return _plan_piece_or_direct(demands=demands, candidate=candidate)
 
 

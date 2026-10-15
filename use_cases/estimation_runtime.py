@@ -24,7 +24,7 @@ from agents.estimation_v3_material_facts_agent import ESTIMATION_V3_MATERIAL_FAC
 from use_cases.material_engine_adapter import (
     material_plan_input_fingerprint,
     material_plan_snapshot,
-    shadow_material_plan,
+    build_material_plan,
 )
 from use_cases.estimation_material_context import build_estimation_material_context
 from use_cases.estimation_v3_material_publisher import publish_estimation_v3_material_object
@@ -68,13 +68,13 @@ def _build_and_persist_material_plan(
         material_norm_overrides=overrides,
         material_default_variants=shared_catalogs.get("material_default_variants") or (),
     )
-    shadow = shadow_material_plan(
+    result = build_material_plan(
         facts_by_object=facts_by_object,
         catalogs=shared_catalogs,
         material_norm_overrides=overrides,
     )
-    snapshot = material_plan_snapshot(shadow, input_fingerprint=fingerprint)
-    plan = shadow.plan
+    snapshot = material_plan_snapshot(result, input_fingerprint=fingerprint)
+    plan = result.plan
     upsert_rfq_estimate_material_plan(
         client,
         estimate_id=estimate_id,
@@ -208,7 +208,7 @@ def _run_estimation_v3_for_all_objects(
         material_context=shared_context,
     )
 
-    shadow_summary: dict[str, object] = {"status": "not_run"}
+    material_plan_summary: dict[str, object] = {"status": "not_run"}
     material_plan_snapshot_data: dict[str, object] | None = None
     if shared_context and valid_inputs:
         first_payload = valid_inputs[0].get("input_payload")
@@ -223,7 +223,7 @@ def _run_estimation_v3_for_all_objects(
                     catalogs=shared_context["catalogs"],
                 )
                 material_plan_snapshot_data = snapshot
-                shadow_summary = {
+                material_plan_summary = {
                     "status": snapshot["status"],
                     "demand_count": snapshot["demand_count"],
                     "candidate_count": snapshot["candidate_count"],
@@ -235,10 +235,9 @@ def _run_estimation_v3_for_all_objects(
                     "reason_codes": snapshot["reason_codes"],
                 }
             except Exception as exc:
-                # Project-level purchase-plan persistence and rendering are a
-                # follow-up. Facts extraction and object publishing must stay
-                # usable if diagnostic planning itself encounters bad data.
-                shadow_summary = {
+                # Facts extraction and object publishing must stay usable if
+                # purchase planning encounters malformed catalog data.
+                material_plan_summary = {
                     "status": "failed",
                     "error": f"{type(exc).__name__}: {exc}",
                 }
@@ -296,7 +295,7 @@ def _run_estimation_v3_for_all_objects(
     return {
         "processed_input_ids": completed_inputs,
         "failed": failed,
-        "material_engine_shadow": shadow_summary,
+        "material_engine_plan": material_plan_summary,
     }
 
 

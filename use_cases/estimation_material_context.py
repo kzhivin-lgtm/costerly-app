@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from db.repositories import fetch_estimation_resolver_material_families
+from use_cases.israel_reference_catalog import load_active_israel_reference_positions
 
 
 def _rows(client: Any, table: str, *, filters: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -41,11 +42,9 @@ def build_estimation_material_context(client: Any, company_id: str) -> dict[str,
         "catalogs": {
             "items": _rows(client, "company_material_items", filters={"company_id": company_id}),
             "offers": _rows(client, "company_material_offers", filters={"company_id": company_id}),
-            "identities": _rows(client, "reference_material_pricing_identities", filters={"market_code": "IL", "status": "active"}),
-            "prices": _rows(client, "market_material_pricing_identity_prices", filters={"status": "active"}),
+            "reference_positions": load_active_israel_reference_positions(client),
             "material_families": _rows(client, "reference_material_families", filters={"active": True}),
             "material_pricing_policies": _rows(client, "reference_material_family_pricing_policies", filters={"active": True}),
-            "family_supply_formats": _rows(client, "reference_material_family_supply_formats", filters={"active": True}),
             "material_default_variants": _optional_rows(
                 client,
                 "reference_material_family_default_variants",

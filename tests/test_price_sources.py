@@ -53,6 +53,7 @@ from use_cases.price_sources import (
     accepted_price_source_uploads,
     active_material_family_supply_formats,
     canonical_price_source_category,
+    company_offer_price_scope,
     create_price_source_download_url,
     enrich_price_source_rows_from_spreadsheet,
     extract_spreadsheet_text,
@@ -103,6 +104,12 @@ from use_cases.price_sources import (
     split_price_source_uploads,
     validate_price_source_upload_selection,
 )
+
+
+def test_company_offer_scope_is_retail_package_for_hardware_only():
+    assert company_offer_price_scope({"material_family": "hardware_hinge"}) == "retail_package"
+    assert company_offer_price_scope({"material_type": "Hardware"}) == "retail_package"
+    assert company_offer_price_scope({"material_family": "mdf_hdf"}) == "material_only"
 from use_cases.material_supply_format import (
     apply_price_source_purchasable_dimensions,
     purchasable_dimensions_for_row,
@@ -382,7 +389,7 @@ def test_structured_spreadsheet_columns_enrich_taxonomy_without_replacing_raw_de
     plywood, tube, edge = payload["rows"]
     assert plywood["raw_description"] == "Plywood 5 mm, Okoume"
     assert plywood["purchasable_dimensions"] == {"length_mm": 3100, "width_mm": 1530}
-    assert tube["identity_attributes"]["section_profile"] == "rectangular tube"
+    assert tube["identity_attributes"]["section_profile"] == "rectangular_tube_40x20"
     assert tube["identity_attributes"]["wall_thickness_mm"] == 2
     assert tube["purchasable_dimensions"] == {"length_mm": 6000}
     assert edge["material_family"] == "edge_banding"
@@ -420,7 +427,7 @@ def test_all_source_normalizer_applies_family_pricing_contract_after_taxonomy():
         "metal_type", "section_profile", "wall_thickness",
     )
     assert row["identity_attributes"]["metal_type"] == "carbon steel"
-    assert row["identity_attributes"]["section_profile"] == "rectangular tube"
+    assert row["identity_attributes"]["section_profile"] == "rectangular_tube_40x20"
     assert row["identity_attributes"]["wall_thickness_mm"] == 2
 
 
@@ -448,7 +455,38 @@ def test_catalog_context_classifies_russian_square_tube_without_static_rules():
 
     assert apply_material_taxonomy(row, alias_context=context) is True
     assert row["material_family"] == "metal_tube"
-    assert row["identity_attributes"]["section_profile"] == "square tube"
+    assert row["identity_attributes"]["section_profile"] == "square_tube_20x20"
+
+
+def test_bare_tube_defaults_to_round_d20_but_explicit_section_overrides_it():
+    payload = {
+        "rows": [
+            {
+                "item_kind": "material",
+                "raw_description": "Steel tube",
+                "normalized_name": "tube",
+                "identity_attributes": {},
+                "status": "ready",
+                "reason_codes": [],
+            },
+            {
+                "item_kind": "material",
+                "raw_description": "Steel tube 20 x 20 mm",
+                "normalized_name": "tube",
+                "identity_attributes": {},
+                "status": "ready",
+                "reason_codes": [],
+            },
+        ],
+    }
+
+    normalize_price_source_rows(payload)
+
+    bare, square = payload["rows"]
+    assert bare["material_family"] == "metal_tube"
+    assert bare["identity_attributes"]["section_profile"] == "round_tube_d20"
+    assert square["material_family"] == "metal_tube"
+    assert square["identity_attributes"]["section_profile"] == "square_tube_20x20"
 
 
 def test_table_headers_and_dimensions_cannot_turn_mdf_into_a_hardware_system():
@@ -478,6 +516,37 @@ def test_table_headers_and_dimensions_cannot_turn_mdf_into_a_hardware_system():
     assert apply_material_taxonomy(row, alias_context=context) is True
     assert row["material_family"] == "mdf_hdf"
     assert row["material_type"] == "Wood Sheets"
+
+
+def test_hdf_is_normalized_as_the_hdf_subfamily_of_mdf_hdf():
+    row = {
+        "item_kind": "material",
+        "raw_description": "HDF board raw 8 mm, 2440 x 1220 mm",
+        "normalized_name": "Unclassified material",
+        "identity_attributes": {},
+        "status": "unresolved",
+        "reason_codes": ["unknown_product_term"],
+    }
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_family"] == "mdf_hdf"
+    assert row["identity_attributes"]["board_type"] == "hdf"
+
+
+def test_laminated_mdf_is_normalized_as_an_mdf_hdf_surface_subfamily():
+    row = {
+        "item_kind": "material",
+        "raw_description": "Laminated MDF panel 17 mm",
+        "normalized_name": "Unclassified material",
+        "identity_attributes": {},
+        "status": "unresolved",
+        "reason_codes": ["unknown_product_term"],
+    }
+
+    assert apply_material_taxonomy(row) is True
+    assert row["material_family"] == "mdf_hdf"
+    assert row["identity_attributes"]["board_type"] == "mdf"
+    assert row["identity_attributes"]["surface"] == "laminated"
 
 
 @pytest.mark.parametrize(
@@ -2072,7 +2141,9 @@ def test_sheet_taxonomy_accepts_compact_hebrew_mdf_abbreviation():
     assert row["status"] == "ready"
     assert row["material_type"] == "Wood Sheets"
     assert row["material_family"] == "mdf_hdf"
-    assert row["normalized_name"] == "MDF 19 mm, white"
+    assert row["normalized_name"] == "MDF 19 mm, raw, white"
+    assert row["identity_attributes"]["board_type"] == "mdf"
+    assert row["identity_attributes"]["surface"] == "raw"
 
 
 @pytest.mark.parametrize("description, expected", (
@@ -2351,7 +2422,9 @@ def test_proven_family_discards_unknown_secondary_prose_and_clears_unknown_revie
     assert apply_material_taxonomy(row) is True
     assert row["status"] == "ready"
     assert row["material_type"] == "Wood Sheets"
-    assert row["normalized_name"] == "MDF 17 mm, moisture-resistant, green"
+    assert row["normalized_name"] == "MDF 17 mm, moisture-resistant, raw, green"
+    assert row["identity_attributes"]["board_type"] == "mdf"
+    assert row["identity_attributes"]["surface"] == "raw"
     assert "unknown_product_term" not in row["reason_codes"]
 
 

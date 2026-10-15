@@ -126,8 +126,8 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
     monkeypatch.setattr(runtime, "fetch_rfq_estimate_material_norm_overrides", lambda *_args, **_kwargs: SimpleNamespace(empty=True))
     monkeypatch.setattr(
         runtime,
-        "shadow_material_plan",
-        lambda **_kwargs: events.append("shadow") or SimpleNamespace(
+        "build_material_plan",
+        lambda **_kwargs: events.append("material_plan") or SimpleNamespace(
             plan=SimpleNamespace(status="planned", lines=[SimpleNamespace(total_cost=Decimal("42"))]),
             demand_count=1, candidate_count=1, unresolved_requirement_ids=(), reason_codes=(),
         ),
@@ -153,10 +153,10 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
         }],
     )
 
-    assert events == ["facts", "shadow", "material_plan_persisted", "publish"]
+    assert events == ["facts", "material_plan", "material_plan_persisted", "publish"]
     assert captured_facts["material_context"] == {"catalogs": {}, "families": {"mdf"}}
     assert result["processed_input_ids"] == ["input-1"]
-    assert result["material_engine_shadow"] == {
+    assert result["material_engine_plan"] == {
         "status": "planned", "demand_count": 1, "candidate_count": 1,
         "planned_line_count": 1, "planned_material_cost_ex_vat": 42.0,
         "unresolved_requirement_ids": [], "reason_codes": [],

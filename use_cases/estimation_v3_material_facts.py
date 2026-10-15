@@ -9,6 +9,7 @@ from agents.estimation_v3_material_facts_agent import (
     ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
     run_estimation_v3_material_facts_agent,
 )
+from use_cases.estimation_v3_material_contract import SPECIFICATION_KEYS
 from db.repositories import (
     fetch_estimation_fact_result,
     fetch_estimation_resolver_material_families,
@@ -43,6 +44,7 @@ def _pricing_key_fields_by_resolver_family(
             field
             for code in policy.get("pricing_key_attribute_codes") or ()
             for field in pricing_key_fact_fields(str(code))
+            if field in SPECIFICATION_KEYS
         ))
         result[family] = fields
     return result

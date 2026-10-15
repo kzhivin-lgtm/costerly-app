@@ -12,9 +12,10 @@ from typing import Any, AbstractSet, Mapping
 MATERIAL_FACTS_V3_VERSION = "estimation_material_facts_v3"
 SPECIFICATION_KEYS = frozenset({
     "thickness_mm", "width_mm", "height_mm", "length_mm", "diameter_mm",
-    "wall_thickness_mm", "profile_section", "species", "grade", "alloy",
+    "wall_thickness_mm", "profile_section", "board_type", "species", "grade", "alloy",
     "metal_type", "temper", "finish", "surface", "color", "coating",
-    "density_class", "fire_rating", "moisture_resistance", "supplier_sku",
+    "density_class", "fire_rating", "moisture_resistance", "supplier_sku", "stone_type",
+    "component_type",
 })
 COMPACT_PART_KEYS = ("id", "m", "q", "l", "w", "r")
 _TOP_LEVEL_KEYS = frozenset({
