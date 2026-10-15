@@ -32,7 +32,7 @@ from use_cases.estimation_v3_material_contract import (
 # The unit and purchasable quantity belong to the selected supply candidate,
 # not to the vision model.  Bump the extraction version so cached facts that
 # contained model-guessed units can never feed the current Material Engine.
-ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_5"
+ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_6"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v3_material_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 8_000
 TIMEOUT_SECONDS = 180.0
@@ -54,6 +54,100 @@ def _net_unit(value: Any) -> str | None:
         "m": "m", "metre": "m", "meter": "m", "lm": "m",
         "mm": "mm", "kg": "kg", "l": "l", "piece": "piece", "sheet": "sheet",
     }.get(normalized)
+
+
+_FAMILY_ALIASES = {
+    "metal_sheet": "sheet_metal",
+    "metal_profile": "metal_profile_angle_channel",
+    "metal_angle": "metal_profile_angle_channel",
+}
+_AREA_PROXY_FAMILIES = frozenset({
+    "acrylic_pmma", "aluminium_composite_panel", "compact_laminate",
+    "composite_sandwich_panel", "engineered_quartz_mineral_hybrid",
+    "fibreboard_hardboard", "glass", "hpl_cpl", "lightweight_sandwich_panel",
+    "mdf_hdf", "melamine_faced_particleboard", "mirror", "natural_stone_slab",
+    "osb", "particleboard", "plywood", "plywood_special", "polycarbonate_petg_pvc_abs",
+    "porcelain_ceramic_slab", "sheet_metal", "sheet_plastic", "sintered_ultra_compact_surface",
+    "solid_surface", "terrazzo_engineered_agglomerate", "timber_solid_wood_panel",
+})
+_LINEAR_PROXY_FAMILIES = frozenset({
+    "edge_banding", "metal_flat_bar", "metal_profile_angle_channel",
+    "metal_round_bar_rod_wire", "metal_tube", "wood_veneer",
+})
+
+
+def _family_code(value: Any, families: AbstractSet[str]) -> str | None:
+    normalized = re.sub(r"[\s-]+", "_", str(value or "").strip().casefold())
+    normalized = _FAMILY_ALIASES.get(normalized, normalized)
+    return normalized if normalized in families else None
+
+
+def _positive_dimension(value: Any) -> float | None:
+    return _number(value, positive=True)
+
+
+def _envelope_pair(dimensions: Mapping[str, Any]) -> tuple[float, float] | None:
+    width = _positive_dimension(dimensions.get("width"))
+    depth = _positive_dimension(dimensions.get("depth"))
+    height = _positive_dimension(dimensions.get("height"))
+    for pair in ((width, height), (width, depth), (height, depth)):
+        if pair[0] is not None and pair[1] is not None:
+            return pair
+    return None
+
+
+def _deterministic_net_proxy(
+    *, family: str, dimensions: Mapping[str, Any], object_quantity: float,
+) -> tuple[float, str] | None:
+    """Return a reviewable net-demand proxy from the detected object envelope.
+
+    This is only used when the visual model established material identity but
+    supplied neither a cut list nor a quantity. It supplies an Estimation
+    assumption, never a catalog format or supplier price.
+    """
+    pair = _envelope_pair(dimensions)
+    if family in _AREA_PROXY_FAMILIES and pair:
+        return (pair[0] * pair[1] / 1_000_000 * object_quantity, "m²")
+    if family in _LINEAR_PROXY_FAMILIES and pair:
+        return (2 * (pair[0] + pair[1]) / 1_000 * object_quantity, "m")
+    if family.startswith("hardware_") or family == "purchased_fabricated_component":
+        return (object_quantity, "piece")
+    return None
+
+
+def _explicit_material_supplements(
+    *, object_payload: Mapping[str, Any], families: AbstractSet[str], existing_families: set[str],
+) -> list[tuple[str, str, dict[str, Any]]]:
+    """Recover material groups explicitly named by Detection if the model omitted them."""
+    text = " ".join(
+        str(object_payload.get(key) or "")
+        for key in ("detected_materials", "notes")
+    )
+    lowered = text.casefold()
+    rules: tuple[tuple[str, str, str], ...] = (
+        (r"\b(?:perforated\s+)?(?:metal|steel)\s+sheet\b", "sheet_metal", "perforated metal sheet"),
+        (r"\b(?:metal|steel)\s+(?:square\s+)?(?:tube|profile)\b", "metal_tube", "metal tube"),
+        (r"\b(?:metal|steel)\s+(?:angle|channel)\b|\bangle\s+frame\b", "metal_profile_angle_channel", "metal angle profile"),
+        (r"\b(?:overhead|sliding|continuous)\s+(?:metal\s+)?track\b", "hardware_door_system", "door track system"),
+        (r"\b(?:corner\s+)?bracket\b", "hardware_mounting_part", "corner bracket"),
+        (r"\b(?:mdf|hdf)\b", "mdf_hdf", "MDF"),
+    )
+    supplements: list[tuple[str, str, dict[str, Any]]] = []
+    for pattern, family, name in rules:
+        if family not in families or family in existing_families or not re.search(pattern, lowered):
+            continue
+        specifications: dict[str, Any] = {}
+        if family == "sheet_metal":
+            match = re.search(r"(?:perforated\s+)?(?:metal|steel)\s+sheet\s*(\d+(?:\.\d+)?)\s*mm", lowered)
+            if match:
+                specifications["thickness_mm"] = float(match.group(1))
+        if family == "metal_tube":
+            match = re.search(r"(?:metal|steel)\s+(?:square\s+)?(?:tube|profile)\s*(\d+\s*[x×]\s*\d+)", lowered)
+            if match:
+                specifications["profile_section"] = re.sub(r"\s*×\s*", "x", match.group(1))
+        supplements.append((family, name, specifications))
+        existing_families.add(family)
+    return supplements
 
 
 def _identifier(value: Any, default: str, used: set[str]) -> str:
@@ -95,7 +189,10 @@ def _normalise_material_specification(
         return specification
 
     surface = " ".join(str(specification.get("surface") or "").casefold().split())
-    if not surface or surface in {"white matte", "white mat", "color-matched", "colour-matched"}:
+    if not surface or any(marker in surface for marker in (
+        "white matte", "white mat", "color-matched", "colour-matched",
+        "paint", "wood-tone", "wood tone",
+    )):
         specification["surface"] = "raw"
     return specification
 
@@ -123,8 +220,8 @@ def _expand(
     for index, raw in enumerate(compact.get("m") or [], start=1):
         if not isinstance(raw, Mapping):
             continue
-        family = str(raw.get("f") or "")
-        if family not in families:
+        family = _family_code(raw.get("f"), families)
+        if family is None:
             continue
         requirement_id = _identifier(raw.get("id"), f"m{index}", material_ids)
         source_name = str(raw.get("n") or family)
@@ -139,6 +236,22 @@ def _expand(
             # pack, bar or sheet. Resolver supplies the purchasable form.
             "quantity": _number(raw.get("q"), positive=True),
             "unit": _net_unit(raw.get("u")),
+            "evidence_refs": [preview],
+        })
+    for family, source_name, specification in _explicit_material_supplements(
+        object_payload=object_payload,
+        families=families,
+        existing_families={str(material["family"]) for material in materials},
+    ):
+        materials.append({
+            "requirement_id": _identifier(None, f"m{len(materials) + 1}", material_ids),
+            "source_name": source_name,
+            "family": family,
+            "specification": _normalise_material_specification(
+                family=family, source_name=source_name, value=specification,
+            ),
+            "quantity": None,
+            "unit": None,
             "evidence_refs": [preview],
         })
     parts, part_ids = [], set()
@@ -157,6 +270,26 @@ def _expand(
             "length_mm": length,
             "width_mm": width,
             "rotation_allowed": str(raw.get("r") or "yes").casefold() != "no",
+            "evidence_refs": [preview],
+        })
+    object_dimensions = dict(object_payload.get("dimensions") or {})
+    object_quantity = _number(object_payload.get("quantity"), positive=True) or 1.0
+    material_ids_with_parts = {str(part["material_requirement_id"]) for part in parts}
+    for material in materials:
+        if material["quantity"] is not None or material["requirement_id"] in material_ids_with_parts:
+            continue
+        proxy = _deterministic_net_proxy(
+            family=str(material["family"]), dimensions=object_dimensions,
+            object_quantity=object_quantity,
+        )
+        if proxy is None:
+            continue
+        material["quantity"], material["unit"] = proxy
+        reviews.append({
+            "code": "material_net_demand_assumption",
+            "severity": "warning",
+            "path": f"materials.{material['requirement_id']}",
+            "message": "Net demand is an object-envelope assumption pending detailed geometry",
             "evidence_refs": [preview],
         })
     if not materials:

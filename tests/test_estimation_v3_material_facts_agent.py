@@ -48,11 +48,11 @@ def test_v3_keeps_unit_empty_when_evidence_does_not_support_net_measurement():
             "object": {"object_id": "object-1", "object_name": "Shelf", "quantity": 1},
             "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
         }},
-        {"metal tube"},
+        {"metal_tube"},
     )
 
     material = facts["materials"][0]
-    assert material["family"] == "metal tube"
+    assert material["family"] == "metal_tube"
     assert material["quantity"] == 1
     assert material["unit"] is None
 
@@ -81,7 +81,7 @@ def test_v3_preserves_every_distinct_material_requirement():
     facts = _expand(
         {"m": [
             {"id": "frame", "n": "metal frame", "f": "metal_tube", "q": 18.6, "u": "m", "s": {"profile_section": "20x20 mm"}},
-            {"id": "backing", "n": "perforated metal backing", "f": "metal_sheet", "q": 4.2, "u": "m²", "s": {"thickness_mm": 5}},
+            {"id": "backing", "n": "perforated metal backing", "f": "metal sheet", "q": 4.2, "u": "m²", "s": {"thickness_mm": 5}},
             {"id": "panels", "n": "raw MDF panel", "f": "mdf_hdf", "q": 6.0, "u": "m²", "s": {"thickness_mm": 20}},
             {"id": "doors", "n": "wood board", "f": "solid_timber", "q": 2.1, "u": "m²", "s": {}},
         ]},
@@ -90,13 +90,64 @@ def test_v3_preserves_every_distinct_material_requirement():
             "object": {"object_id": "object-1", "object_name": "Wall unit", "quantity": 1},
             "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
         }},
-        {"metal_tube", "metal_sheet", "mdf_hdf", "solid_timber"},
+        {"metal_tube", "sheet_metal", "mdf_hdf", "solid_timber"},
     )
 
     assert [(row["source_name"], row["unit"]) for row in facts["materials"]] == [
         ("metal frame", "m"), ("perforated metal backing", "m²"),
         ("raw MDF panel", "m²"), ("wood board", "m²"),
     ]
+    assert facts["materials"][1]["family"] == "sheet_metal"
+
+
+def test_v3_supplies_reviewable_envelope_proxy_when_material_has_no_demand():
+    facts = _expand(
+        {"m": [
+            {"id": "backing", "n": "perforated metal backing", "f": "sheet_metal", "q": 0, "s": {"thickness_mm": 5}},
+            {"id": "frame", "n": "metal frame", "f": "metal_tube", "q": 0, "s": {"profile_section": "20x20 mm"}},
+            {"id": "board", "n": "painted MDF", "f": "mdf_hdf", "q": 0, "s": {"surface": "painted", "thickness_mm": 20}},
+        ]},
+        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
+            "run_id": "run-1", "company_id": "company-1",
+            "object": {
+                "object_id": "object-1", "object_name": "Shelf", "quantity": 1,
+                "dimensions": {"width": 450, "height": 2995, "depth": 0},
+            },
+            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
+        }},
+        {"sheet_metal", "metal_tube", "mdf_hdf"},
+    )
+
+    assert [(row["quantity"], row["unit"]) for row in facts["materials"]] == [
+        (1.34775, "m²"), (6.89, "m"), (1.34775, "m²"),
+    ]
+    assert facts["materials"][2]["specification"]["surface"] == "raw"
+    assert len(facts["review_items"]) == 3
+    assert facts["status"] == "review_required"
+
+
+def test_v3_recovers_explicit_detected_materials_omitted_by_the_model():
+    facts = _expand(
+        {"m": [{"id": "mdf", "n": "MDF", "f": "mdf_hdf", "q": 0, "s": {"thickness_mm": 20}}]},
+        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
+            "run_id": "run-1", "company_id": "company-1",
+            "object": {
+                "object_id": "object-1", "object_name": "Shelf", "quantity": 1,
+                "dimensions": {"width": 450, "height": 2995, "depth": 0},
+                "detected_materials": "Perforated metal sheet 5mm, metal square profile 20x20mm, MDF panel 20mm",
+            },
+            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
+        }},
+        {"sheet_metal", "metal_tube", "mdf_hdf"},
+    )
+
+    assert [(row["family"], row["quantity"], row["unit"]) for row in facts["materials"]] == [
+        ("mdf_hdf", 1.34775, "m²"),
+        ("sheet_metal", 1.34775, "m²"),
+        ("metal_tube", 6.89, "m"),
+    ]
+    assert facts["materials"][1]["specification"] == {"thickness_mm": 5.0}
+    assert facts["materials"][2]["specification"] == {"profile_section": "20x20"}
 
 
 def test_v3_normalizes_bare_mdf_to_raw_board_identity():

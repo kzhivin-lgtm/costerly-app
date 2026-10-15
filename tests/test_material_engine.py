@@ -122,6 +122,28 @@ def test_engine_uses_israel_reference_only_when_no_company_candidate_can_supply_
     assert plan.lines[0].candidate_id == "company-large"
 
 
+def test_engine_skips_sheet_candidate_for_discrete_demand_without_geometry():
+    demand = _demand(
+        "door-system", quantity=1, unit="piece", length_mm=None, width_mm=None,
+        material_family="hardware_door_system", selection_key="door-system|standard",
+        compatible_candidate_ids=("company-sheet", "reference-piece"),
+    )
+    plan = plan_material_purchases(
+        demands=(demand,),
+        candidates=(
+            _sheet("company-sheet", material_family="hardware_door_system", selection_key="door-system|standard"),
+            MaterialSupplyCandidate(
+                candidate_id="reference-piece", material_family="hardware_door_system",
+                selection_key="door-system|standard", purchase_kind="piece",
+                price_per_purchase_unit="70", authority="israel_reference",
+            ),
+        ),
+    )
+
+    assert plan.status == "planned"
+    assert plan.lines[0].candidate_id == "reference-piece"
+
+
 def test_engine_rounds_piece_packages_at_group_scope():
     plan = plan_material_purchases(
         demands=(

@@ -242,6 +242,11 @@ def _place_sheet_parts(
         if area is not None:
             aggregate_demands.append((demand, area))
             continue
+        # A sheet-form Company offer is not compatible with a discrete demand
+        # such as a complete door system. Reject only this candidate so a
+        # cleared piece candidate can still supply the same requirement.
+        if demand.length_mm is None or demand.width_mm is None:
+            return _CandidatePlan(line=None, reason_code="sheet_geometry_required")
         quantity = _whole(_demand_quantity(demand, whole=True), "demand.quantity")
         length, width = _demand_dimensions(demand)
         split_parts = _split_sheet_part(

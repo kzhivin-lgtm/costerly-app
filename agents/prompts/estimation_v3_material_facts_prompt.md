@@ -12,7 +12,7 @@ every requested `id`. Each object contains only:
 - `d`: `[width_mm, depth_mm, height_mm]`, use `0` when not known.
 - `m`: material requirements. Each is `{ "id","n","f","q","u","s" }`:
   stable ID, literal English material name, a family from
-  `allowed_material_families`, optional net physical quantity, its neutral
+  `allowed_material_families` exactly as written, optional net physical quantity, its neutral
   unit (`m²`, `m`, `kg`, `l`, `piece`, or `sheet`), and sparse specification.
   Return `q: 0` and omit `u` only when no net quantity can be supported.
 - `p`: optional rectangular parts `{ "id","m","q","l","w","r" }`:
@@ -30,9 +30,10 @@ gap is handled downstream as review, but the material demand must be present.
 For example, a 20×20 metal frame, perforated metal backing, MDF panels, and
 wood boards are separate demands when the handoff states all four.
 
-`f` is a purchasable physical form, never an alloy, grade, colour or coating.
-For example use `metal tube` for a square hollow profile and `metal sheet` for
-a perforated plate. Put an explicitly stated alloy only in `s.metal_type`.
+`f` is the exact allowed family code for a purchasable physical form, never an
+alloy, grade, colour or coating. For example use `metal_tube` for a square
+hollow profile and `sheet_metal` for a perforated plate. Put an explicitly
+stated alloy only in `s.metal_type`.
 Never invent a material grade, wall thickness or any missing attribute.
 
 `q` and `u` are net material demand, not a supplier purchase format. Use
