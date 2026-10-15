@@ -25,14 +25,6 @@ _WARMUP_EVENT = threading.Event()
 _WARMUP_STARTED = False
 
 
-class MistralOcrRequestError(RuntimeError):
-    """Provider failure retaining the HTTP status needed for safe recovery."""
-
-    def __init__(self, message: str, *, status_code: int | None = None) -> None:
-        super().__init__(message)
-        self.status_code = status_code
-
-
 def get_secret(name: str, default: str | None = None) -> str | None:
     value = os.getenv(name)
     if value:
@@ -300,7 +292,7 @@ def _raise_ocr_error(exc: Exception) -> None:
         message = "Mistral OCR Free-plan rate limit reached. Try again later."
     else:
         message = f"Mistral OCR request failed: {exc}"
-    raise MistralOcrRequestError(message, status_code=status_code) from exc
+    raise RuntimeError(message) from exc
 
 
 def run_mistral_ocr(

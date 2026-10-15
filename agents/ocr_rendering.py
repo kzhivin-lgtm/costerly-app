@@ -28,10 +28,10 @@ DEFAULT_PAGE_WORKERS = 4
 
 
 def direct_pdf_ocr_enabled() -> bool:
-    """Use the saved one-PDF/one-request OCR flow by default."""
+    """Enable one-PDF/one-request OCR only for an explicit experiment."""
     if "--ocr-direct-pdf" in sys.argv:
         return True
-    value = os.getenv("MISTRAL_DIRECT_PDF_EXPERIMENT", "true")
+    value = os.getenv("MISTRAL_DIRECT_PDF_EXPERIMENT", "false")
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 

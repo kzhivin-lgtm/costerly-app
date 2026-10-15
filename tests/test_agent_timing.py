@@ -17,7 +17,7 @@ from agents.anthropic_adapter import (
     create_claude_message_streamed,
     normalize_detection_identity_fields,
 )
-from agents.ocr_adapter import MistralOcrRequestError, normalize_mistral_ocr_response
+from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
 from ui.js_guards import (
     install_company_logo_picker_guard,
@@ -408,7 +408,7 @@ def test_ocr_failure_falls_back_to_original_file_without_ocr(monkeypatch):
         raise RuntimeError("Mistral OCR request failed: timed out")
 
     monkeypatch.setattr(
-        "use_cases.rfq_processing.run_mistral_direct_pdf_evidence_ocr",
+        "use_cases.rfq_processing.run_mistral_document_evidence_ocr",
         fail_ocr,
     )
 
@@ -421,42 +421,6 @@ def test_ocr_failure_falls_back_to_original_file_without_ocr(monkeypatch):
     assert stored_package["status"] == "failed"
     assert "timed out" in stored_package["error"]
     assert build_detection_ocr_context(detection_package) == "OCR text layer: unavailable"
-
-
-def test_direct_pdf_http_400_retries_ocr_as_rendered_pages(monkeypatch):
-    def reject_direct_pdf(**_kwargs):
-        raise MistralOcrRequestError(
-            "Mistral OCR request failed: 400 Bad Request",
-            status_code=400,
-        )
-
-    recovered = {
-        "model": "mistral-ocr-4-0",
-        "profile": "evidence",
-        "pages": [{"page_number": 1, "markdown": "Recovered page"}],
-        "evidence": {"text_blocks": [], "literal_items": []},
-        "transport": {"mode": "rendered_pages", "request_count": 1},
-    }
-    monkeypatch.setattr(
-        "use_cases.rfq_processing.run_mistral_direct_pdf_evidence_ocr",
-        reject_direct_pdf,
-    )
-    monkeypatch.setattr(
-        "use_cases.rfq_processing.run_mistral_document_evidence_ocr",
-        lambda **_kwargs: recovered,
-    )
-
-    stored_package, detection_package = _run_optional_ocr(
-        file_name="drawing.pdf",
-        file_bytes=b"pdf",
-    )
-
-    assert stored_package is recovered
-    assert detection_package is recovered
-    assert stored_package["direct_pdf_recovery"] == {
-        "trigger": "http_400",
-        "error": "Mistral OCR request failed: 400 Bad Request",
-    }
 
 
 def test_usage_diagnostics_are_batched_for_legacy_schema():

@@ -32,11 +32,9 @@ from agents.naming_lab import (
     run_naming_lab_call,
 )
 from agents.ocr_rendering import (
-    direct_pdf_ocr_enabled,
-    run_mistral_direct_pdf_evidence_ocr,
     run_mistral_document_evidence_ocr,
 )
-from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL, MistralOcrRequestError
+from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL
 from config import agent_cost_category, calculate_llm_cost_usd
 from db.repositories import (
     fetch_deferred_naming_status,
@@ -199,32 +197,10 @@ def _run_optional_ocr(
     started_at = datetime.now(UTC).isoformat()
     started = time.perf_counter()
     try:
-        if direct_pdf_ocr_enabled():
-            try:
-                package = run_mistral_direct_pdf_evidence_ocr(
-                    file_name=file_name,
-                    file_bytes=file_bytes,
-                )
-            except MistralOcrRequestError as exc:
-                if exc.status_code != 400:
-                    raise
-                print(
-                    "[OCR adapter] Direct PDF request was rejected with HTTP 400; "
-                    "retrying as rendered pages."
-                )
-                package = run_mistral_document_evidence_ocr(
-                    file_name=file_name,
-                    file_bytes=file_bytes,
-                )
-                package["direct_pdf_recovery"] = {
-                    "trigger": "http_400",
-                    "error": str(exc),
-                }
-        else:
-            package = run_mistral_document_evidence_ocr(
-                file_name=file_name,
-                file_bytes=file_bytes,
-            )
+        package = run_mistral_document_evidence_ocr(
+            file_name=file_name,
+            file_bytes=file_bytes,
+        )
     except Exception as exc:
         finished_at = datetime.now(UTC).isoformat()
         elapsed_seconds = round(time.perf_counter() - started, 3)
@@ -234,7 +210,7 @@ def _run_optional_ocr(
             {
                 "model": DEFAULT_MISTRAL_OCR_MODEL,
                 "contract_version": "ocr_v2",
-                "profile": "basic" if direct_pdf_ocr_enabled() else "evidence",
+                "profile": "evidence",
                 "status": "failed",
                 "error": error,
                 "pages": [],
