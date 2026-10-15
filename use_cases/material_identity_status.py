@@ -137,6 +137,18 @@ def _pricing_key_value(specifications: Mapping[str, Any], code: str) -> str | No
     return None
 
 
+def canonical_pricing_key_fact_value(
+    specifications: Mapping[str, Any], attribute_code: str,
+) -> str | None:
+    """Return one Pricing Key value in the Resolver's comparison form.
+
+    Default applicability must compare the same canonical section values as
+    candidate selection, for example source ``20x20`` and catalog
+    ``square_tube_20x20``.
+    """
+    return _pricing_key_value(specifications, attribute_code)
+
+
 def material_pricing_selection_key(
     *,
     material_family: str,

@@ -24,6 +24,7 @@ from use_cases.material_engine import (
     plan_material_purchases,
 )
 from use_cases.material_identity_status import (
+    canonical_pricing_key_fact_value,
     material_identity_status,
     material_pricing_selection_key,
     pricing_key_fact_fields,
@@ -301,7 +302,11 @@ def _active_default_specifications(
         if not has_active_price:
             continue
         applicability = dict(variant.get("applicability_specifications") or {})
-        if any(specifications.get(key) != value for key, value in applicability.items()):
+        if not _default_applicability_matches(
+            specifications=specifications,
+            applicability=applicability,
+            policy=policy,
+        ):
             continue
         defaults = dict(variant.get("default_specifications") or {})
         applied = {key: value for key, value in defaults.items() if not _present_value(specifications.get(key))}
@@ -355,6 +360,35 @@ def _active_default_specifications(
             trace["purchase_specifications"] = purchase_specifications
         return purchase_specifications, trace
     return dict(specifications), None
+
+
+def _default_applicability_matches(
+    *,
+    specifications: Mapping[str, Any],
+    applicability: Mapping[str, Any],
+    policy: Mapping[str, Any] | None,
+) -> bool:
+    """Compare a default condition through the same key canonicalization.
+
+    The default catalog stores `section_profile`, while Object Facts expose
+    source-facing `profile_section`. Direct JSON equality would reject a
+    proven 20x20 square tube before its missing metal type can be defaulted.
+    """
+    policy_codes = tuple((policy or {}).get("pricing_key_attribute_codes") or ())
+    for field, expected in applicability.items():
+        attribute_code = next((
+            code for code in policy_codes
+            if field == code or field in pricing_key_fact_fields(str(code))
+        ), None)
+        if attribute_code is None:
+            if specifications.get(field) != expected:
+                return False
+            continue
+        actual_value = canonical_pricing_key_fact_value(specifications, str(attribute_code))
+        expected_value = canonical_pricing_key_fact_value(applicability, str(attribute_code))
+        if actual_value is None or actual_value != expected_value:
+            return False
+    return True
 
 
 def _apply_drawer_slide_last_resort_default(

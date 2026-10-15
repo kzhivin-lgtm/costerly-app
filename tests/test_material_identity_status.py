@@ -1,4 +1,5 @@
 from use_cases.material_identity_status import (
+    canonical_pricing_key_fact_value,
     material_identity_status,
     material_pricing_selection_key,
 )
@@ -11,6 +12,12 @@ _DRAWER_SLIDE_POLICY = {
         "active": True,
     }
 }
+
+
+def test_canonical_pricing_key_fact_value_normalizes_square_tube_dimensions():
+    assert canonical_pricing_key_fact_value(
+        {"profile_section": "20 x 20 mm"}, "section_profile",
+    ) == "square_tube_20x20"
 
 
 def test_drawer_slide_without_nominal_length_is_yellow_not_review_or_red():

@@ -1,6 +1,7 @@
 from use_cases.catalog_aliases import (
     build_estimation_alias_context,
     build_price_source_alias_context,
+    canonicalize_estimation_pricing_key_values,
     normalize_measurement_unit,
 )
 
@@ -26,6 +27,9 @@ def test_estimation_context_uses_only_active_catalog_aliases_for_requested_famil
             {"family_id": "profile-id", "fact_field": "metal_type", "alias_text": "сталь"},
             {"family_id": "profile-id", "fact_field": "wall_thickness_mm", "alias_text": "стенка"},
         ],
+        pricing_key_value_alias_rows=[
+            {"family_id": "profile-id", "fact_field": "metal_type", "canonical_value": "carbon steel", "alias_text": "steel"},
+        ],
     )
 
     assert context == {
@@ -33,6 +37,7 @@ def test_estimation_context_uses_only_active_catalog_aliases_for_requested_famil
             "catalog_family": "mdf_hdf",
             "family_aliases": ["МДФ"],
             "pricing_key_aliases": {"thickness_mm": ["толщина"]},
+            "pricing_key_value_aliases": {},
         },
         "metal_profile_angle_channel": {
             "catalog_family": "metal_profile_angle_channel",
@@ -41,7 +46,30 @@ def test_estimation_context_uses_only_active_catalog_aliases_for_requested_famil
                 "profile_section": ["сечение"],
                 "metal_type": ["сталь"],
             },
+            "pricing_key_value_aliases": {"metal_type": {"carbon steel": ["steel"]}},
         },
+    }
+
+
+def test_estimation_canonicalizes_only_exact_shared_pricing_key_value_aliases():
+    facts = {
+        "materials": [{
+            "family": "metal_tube",
+            "specification": {"metal_type": "Steel", "profile_section": "20x20"},
+        }],
+    }
+
+    assert canonicalize_estimation_pricing_key_values(
+        facts,
+        family_alias_context={
+            "metal_tube": {
+                "pricing_key_value_aliases": {
+                    "metal_type": {"carbon steel": ["steel", "regular steel"]},
+                },
+            },
+        },
+    )["materials"][0]["specification"] == {
+        "metal_type": "carbon steel", "profile_section": "20x20",
     }
 
 

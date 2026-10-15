@@ -62,6 +62,7 @@ def build_estimation_alias_context(
     family_rows: Sequence[Mapping[str, Any]],
     family_alias_rows: Sequence[Mapping[str, Any]],
     pricing_key_alias_rows: Sequence[Mapping[str, Any]],
+    pricing_key_value_alias_rows: Sequence[Mapping[str, Any]] = (),
 ) -> dict[str, dict[str, object]]:
     """Build the bounded alias context for one Estimation V3 request.
 
@@ -88,6 +89,17 @@ def build_estimation_alias_context(
         key = (family_id, field)
         if family_id and field and alias and alias not in aliases_by_family_field[key]:
             aliases_by_family_field[key].append(alias)
+    value_aliases_by_family_field: dict[tuple[str, str], dict[str, list[str]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for row in pricing_key_value_alias_rows:
+        family_id = str(row.get("family_id") or "")
+        field = str(row.get("fact_field") or "")
+        canonical_value = str(row.get("canonical_value") or "").strip()
+        alias = str(row.get("alias_text") or "").strip()
+        aliases = value_aliases_by_family_field[(family_id, field)][canonical_value]
+        if family_id and field and canonical_value and alias and alias not in aliases:
+            aliases.append(alias)
 
     result: dict[str, dict[str, object]] = {}
     for family_code in sorted({str(code).strip() for code in family_codes if str(code).strip()}):
@@ -100,6 +112,14 @@ def build_estimation_alias_context(
             "pricing_key_aliases": {
                 field: aliases_by_family_field.get((family_id, str(field)), [])
                 for field in pricing_key_fields_by_family.get(family_code, ())
+            },
+            "pricing_key_value_aliases": {
+                field: {
+                    value: aliases
+                    for value, aliases in value_aliases_by_family_field.get((family_id, str(field)), {}).items()
+                }
+                for field in pricing_key_fields_by_family.get(family_code, ())
+                if value_aliases_by_family_field.get((family_id, str(field)), {})
             },
         }
     return result
@@ -140,13 +160,58 @@ def load_estimation_alias_context(
         .eq("active", True)
         .in_("family_id", family_ids)
     )
+    pricing_key_value_alias_rows = _rows(
+        client.table("reference_material_pricing_key_value_aliases")
+        .select("family_id,fact_field,canonical_value,alias_text")
+        .eq("active", True)
+        .in_("family_id", family_ids)
+    )
     return build_estimation_alias_context(
         family_codes=family_codes,
         pricing_key_fields_by_family=pricing_key_fields_by_family,
         family_rows=family_rows,
         family_alias_rows=family_alias_rows,
         pricing_key_alias_rows=pricing_key_alias_rows,
+        pricing_key_value_alias_rows=pricing_key_value_alias_rows,
     )
+
+
+def canonicalize_estimation_pricing_key_values(
+    facts: Mapping[str, Any],
+    *,
+    family_alias_context: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Map a V3-extracted Pricing Key value to its shared catalog value.
+
+    The model may preserve a source spelling such as ``steel``. This function
+    maps only exact shared aliases, after the model has established a Family.
+    It neither infers a missing fact nor changes a material Family.
+    """
+    normalized = dict(facts)
+    materials: list[dict[str, Any]] = []
+    for raw in facts.get("materials") or ():
+        material = dict(raw) if isinstance(raw, Mapping) else raw
+        if not isinstance(material, dict):
+            materials.append(material)
+            continue
+        family = str(material.get("family") or "")
+        value_aliases = dict((family_alias_context.get(family) or {}).get("pricing_key_value_aliases") or {})
+        specification = dict(material.get("specification") or {})
+        for field, values in value_aliases.items():
+            if field not in specification:
+                continue
+            source_value = normalize_material_phrase(specification[field])
+            canonical_by_alias = {
+                normalize_material_phrase(alias): canonical_value
+                for canonical_value, aliases in dict(values or {}).items()
+                for alias in tuple(aliases or ()) + (canonical_value,)
+            }
+            if canonical_value := canonical_by_alias.get(source_value):
+                specification[field] = canonical_value
+        material["specification"] = specification
+        materials.append(material)
+    normalized["materials"] = materials
+    return normalized
 
 
 def build_price_source_alias_context(
