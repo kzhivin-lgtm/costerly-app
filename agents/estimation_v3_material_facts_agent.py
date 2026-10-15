@@ -32,7 +32,7 @@ from use_cases.estimation_v3_material_contract import (
 # The unit and purchasable quantity belong to the selected supply candidate,
 # not to the vision model.  Bump the extraction version so cached facts that
 # contained model-guessed units can never feed the current Material Engine.
-ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_3"
+ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_4"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v3_material_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 8_000
 TIMEOUT_SECONDS = 180.0
@@ -62,6 +62,34 @@ def _sparse(value: Any) -> dict[str, Any]:
     } if isinstance(value, Mapping) else {}
 
 
+def _normalise_material_specification(
+    *, family: str, source_name: str, value: Any,
+) -> dict[str, Any]:
+    """Apply only deterministic identity facts that the source name proves.
+
+    A bare MDF/HDF material name proves the board type.  In an object preview,
+    terms such as ``white matte`` and ``color-matched`` describe the object's
+    paint finish, not a purchasable MDF face.  The catalog's base sheet is raw;
+    coatings remain outside this material-only contract.
+    """
+    specification = _sparse(value)
+    if family != "mdf_hdf":
+        return specification
+
+    name = " ".join(source_name.casefold().replace("-", " ").split())
+    if re.search(r"\bhdf\b|хдф|\bמדף\b", name):
+        specification["board_type"] = "hdf"
+    elif re.search(r"\bmdf\b|мдф|\bmdf\b", name):
+        specification["board_type"] = "mdf"
+    else:
+        return specification
+
+    surface = " ".join(str(specification.get("surface") or "").casefold().split())
+    if not surface or surface in {"white matte", "white mat", "color-matched", "colour-matched"}:
+        specification["surface"] = "raw"
+    return specification
+
+
 def _json_object(text: str) -> Mapping[str, Any]:
     value = str(text or "").strip()
     if value.startswith("```"):
@@ -89,11 +117,14 @@ def _expand(
         if family not in families:
             continue
         requirement_id = _identifier(raw.get("id"), f"m{index}", material_ids)
+        source_name = str(raw.get("n") or family)
         materials.append({
             "requirement_id": requirement_id,
-            "source_name": str(raw.get("n") or family),
+            "source_name": source_name,
             "family": family,
-            "specification": _sparse(raw.get("s")),
+            "specification": _normalise_material_specification(
+                family=family, source_name=source_name, value=raw.get("s"),
+            ),
             # The extractor establishes material identity, evidence-backed
             # direct counts and geometry only.
             # Resolver supplies the concrete purchasable form and Engine owns

@@ -29,6 +29,11 @@ Resolver for each family. Search the supplied evidence specifically for those
 facts and include every explicitly shown one. If a listed fact is not proven,
 omit it. It is a review condition, never a reason to guess.
 
+For a bare `MDF` or `HDF` material, use that literal name in `n`. Do not put
+an object's paint colour, such as white matte or colour-matched, into `s.surface`:
+it is not evidence of a faced board. A manufactured board face must be stated
+explicitly in the evidence.
+
 `family_alias_context` is the authoritative multilingual intake grammar for
 the allowed families. It contains English, Russian and Hebrew family names,
 plus labels for each permitted Pricing Key field. Use it to recognise the

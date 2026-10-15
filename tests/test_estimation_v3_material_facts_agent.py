@@ -57,6 +57,27 @@ def test_v3_ignores_model_guessed_purchase_units_for_geometry_free_materials():
     assert material["unit"] is None
 
 
+def test_v3_normalizes_bare_mdf_to_raw_board_identity():
+    facts = _expand(
+        {
+            "m": [{
+                "id": "mdf", "n": "MDF", "f": "mdf_hdf", "q": 0,
+                "s": {"thickness_mm": 20, "surface": "white matte"},
+            }],
+        },
+        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
+            "run_id": "run-1", "company_id": "company-1",
+            "object": {"object_id": "object-1", "object_name": "Shelf", "quantity": 1},
+            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
+        }},
+        {"mdf_hdf"},
+    )
+
+    assert facts["materials"][0]["specification"] == {
+        "board_type": "mdf", "surface": "raw", "thickness_mm": 20,
+    }
+
+
 def test_v3_exposes_only_existing_pricing_key_facts_to_extraction():
     requirements = _pricing_key_fields_by_resolver_family(
         families={"mdf_hdf", "metal_tube"},
