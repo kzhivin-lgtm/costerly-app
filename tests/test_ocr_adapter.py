@@ -72,7 +72,7 @@ def test_calls_ocr4_with_structured_page_output():
     assert package["page_count"] == 1
     payload = client.kwargs["json"]
     assert client.url == "https://api.mistral.ai/v1/ocr"
-    assert payload["model"] == "mistral-ocr-4-0"
+    assert payload["model"] == "mistral-ocr-4-1"
     assert payload["include_blocks"] is True
     assert payload["include_image_base64"] is False
     assert payload["document"]["document_url"].startswith(
@@ -91,6 +91,22 @@ def test_calls_ocr_with_image_url_chunk_for_rendered_page():
     document = client.kwargs["json"]["document"]
     assert document["type"] == "image_url"
     assert document["image_url"].startswith("data:image/png;base64,")
+
+
+def test_retires_configured_ocr_4_0_model(monkeypatch):
+    client = _FakeHTTPClient(_response())
+    monkeypatch.setattr(
+        "agents.ocr_adapter.get_secret",
+        lambda name, default=None: "mistral-ocr-4-0" if name == "MISTRAL_OCR_MODEL" else default,
+    )
+
+    run_mistral_ocr(
+        file_name="drawing.pdf",
+        file_bytes=b"pdf bytes",
+        http_client=client,
+    )
+
+    assert client.kwargs["json"]["model"] == "mistral-ocr-4-1"
 
 
 def test_detection_context_labels_pages_and_untrusted_text():

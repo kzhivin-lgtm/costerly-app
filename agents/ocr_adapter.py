@@ -16,7 +16,8 @@ from agents.ocr_contract import (
 )
 
 
-DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-0"
+DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-1"
+RETIRED_MISTRAL_OCR_MODELS = {"mistral-ocr-4-0"}
 OCR_CONTRACT_VERSION = "ocr_v2"
 _HTTP_CLIENT: Any | None = None
 _HTTP_CLIENT_LOCK = threading.Lock()
@@ -311,6 +312,8 @@ def run_mistral_ocr(
         "MISTRAL_OCR_MODEL",
         DEFAULT_MISTRAL_OCR_MODEL,
     )
+    if selected_model in RETIRED_MISTRAL_OCR_MODELS:
+        selected_model = DEFAULT_MISTRAL_OCR_MODEL
     api_key = get_secret("MISTRAL_API_KEY")
 
     if not api_key and http_client is None:
