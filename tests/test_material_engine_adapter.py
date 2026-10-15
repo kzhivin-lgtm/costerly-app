@@ -285,7 +285,7 @@ def test_plan_combines_part_demands_across_objects_before_sheet_rounding():
     }
 
 
-def test_plan_uses_israel_reference_when_no_complete_company_basket_exists():
+def test_plan_keeps_company_catalog_priority_when_it_can_cover_joinable_panels():
     result = build_material_plan(
         facts_by_object={"cabinet-a": _facts("cabinet-a", "side-a", length=2000, width=1000)},
         catalogs=_catalogs(
@@ -298,7 +298,7 @@ def test_plan_uses_israel_reference_when_no_complete_company_basket_exists():
 
     assert result.plan is not None
     assert result.plan.status == "planned"
-    assert result.plan.lines[0].candidate_id.startswith("israel-reference:")
+    assert result.plan.lines[0].candidate_id == "company-offer:small"
 
 
 def test_plan_keeps_complete_company_basket_even_when_reference_is_cheaper():
@@ -745,6 +745,39 @@ def test_plan_does_not_treat_a_profile_count_as_a_linear_demand():
     assert result.plan is None
     assert result.unresolved_requirement_ids == ("shelf-a:tube",)
     assert result.reason_codes == ("material_geometry_required",)
+
+
+def test_plan_uses_a_positive_count_as_interim_sheets_only_for_sheet_candidates():
+    facts = {
+        "object_id": "shelf-a",
+        "materials": [{
+            "requirement_id": "panel", "source_name": "Plywood", "family": "plywood",
+            "specification": {"thickness_mm": 18}, "quantity": 5, "unit": None,
+        }],
+        "parts": [],
+    }
+
+    result = build_material_plan(
+        facts_by_object={"shelf-a": facts}, catalogs=_catalogs(_offer("sheet", price="100")),
+    )
+
+    assert result.plan is not None
+    assert result.plan.lines[0].purchase_quantity == Decimal("5")
+    assert result.reason_codes == ("interim_sheet_count_without_geometry",)
+
+
+def test_interim_sheet_count_receives_a_nonzero_cost_share_next_to_known_parts():
+    facts = _facts("shelf-a", "known-part")
+    facts["materials"].append({
+        "requirement_id": "fallback", "source_name": "Plywood", "family": "plywood",
+        "specification": {"thickness_mm": 18}, "quantity": 5, "unit": None,
+    })
+
+    result = build_material_plan(
+        facts_by_object={"shelf-a": facts}, catalogs=_catalogs(_offer("sheet", price="100")),
+    )
+
+    assert material_plan_object_cost_allocations(result)[("shelf-a", "fallback")] > Decimal("0")
 
 
 def test_partial_purchase_plan_stays_review_required_when_another_fact_is_unresolved():

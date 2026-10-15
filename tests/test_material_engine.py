@@ -204,12 +204,12 @@ def test_engine_prices_solid_timber_by_exact_part_volume():
     assert plan.lines[0].total_cost == Decimal("50")
 
 
-def test_engine_marks_demand_for_review_when_no_candidate_can_physically_supply_it():
+def test_engine_splits_an_oversized_finished_panel_across_joinable_stock_panels():
     plan = plan_material_purchases(
         demands=(_demand("oversize", length_mm=2500, width_mm=1200),),
         candidates=(_sheet(),),
     )
 
-    assert plan.status == "needs_review"
-    assert plan.unresolved_demand_ids == ("oversize",)
-    assert plan.reason_codes == ("demand_exceeds_purchasable_sheet",)
+    assert plan.status == "planned"
+    assert plan.lines[0].purchase_quantity == Decimal("2")
+    assert sum(allocation.length_mm * allocation.width_mm for allocation in plan.lines[0].allocations) == Decimal("3000000")

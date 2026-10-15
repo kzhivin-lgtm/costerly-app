@@ -131,7 +131,7 @@ class MaterialPlan:
     lines: tuple[MaterialPurchaseLine, ...]
     unresolved_demand_ids: tuple[str, ...] = ()
     reason_codes: tuple[str, ...] = ()
-    algorithm_version: str = "material_engine_v1"
+    algorithm_version: str = "material_engine_v2"
 
 
 @dataclass(frozen=True)
@@ -186,6 +186,28 @@ def _ceil(value: Decimal) -> Decimal:
     return value.to_integral_value(rounding=ROUND_CEILING)
 
 
+def _split_sheet_part(
+    *, length: Decimal, width: Decimal, sheet_length: Decimal, sheet_width: Decimal,
+    kerf: Decimal,
+) -> tuple[tuple[Decimal, Decimal], ...]:
+    """Split an oversized finished panel into joinable manufacturable panels.
+
+    Material demand is never discarded merely because the finished furniture
+    panel is larger than stock.  The cuts are deliberately deterministic and
+    conservative: split along the stock limits, then let the usual nesting
+    pass buy the complete set of physical sheets.  Joinery itself belongs to
+    the fabrication route, not to the material purchase plan.
+    """
+    usable_length, usable_width = sheet_length - kerf, sheet_width - kerf
+    if usable_length <= 0 or usable_width <= 0:
+        raise MaterialEngineError("sheet dimensions must exceed kerf")
+    length_count = int(_ceil(length / usable_length))
+    width_count = int(_ceil(width / usable_width))
+    lengths = [min(usable_length, length - usable_length * index) for index in range(length_count)]
+    widths = [min(usable_width, width - usable_width * index) for index in range(width_count)]
+    return tuple((segment_length, segment_width) for segment_length in lengths for segment_width in widths)
+
+
 def _validate_candidate(candidate: MaterialSupplyCandidate) -> None:
     if not candidate.candidate_id or not candidate.selection_key or not candidate.material_family:
         raise MaterialEngineError("candidate id, family and selection key are required")
@@ -221,8 +243,19 @@ def _place_sheet_parts(
             continue
         quantity = _whole(_demand_quantity(demand, whole=True), "demand.quantity")
         length, width = _demand_dimensions(demand)
+        split_parts = _split_sheet_part(
+            length=length,
+            width=width,
+            sheet_length=sheet_length,
+            sheet_width=sheet_width,
+            kerf=kerf,
+        )
         for index in range(quantity):
-            parts.append((length, width, demand, index, demand.rotation_allowed))
+            for split_index, (split_length, split_width) in enumerate(split_parts):
+                parts.append((
+                    split_length, split_width, demand,
+                    index * len(split_parts) + split_index, demand.rotation_allowed,
+                ))
     # Largest rectangles first gives a deterministic, conservative nesting
     # heuristic.  The plan records the exact placements, so a later optimiser
     # can replace this strategy without changing the external contract.
@@ -308,6 +341,9 @@ def _place_sheet_parts(
                 purchase_index=len(sheets),
                 object_id=demand.object_id,
                 material_requirement_id=demand.material_requirement_id,
+                # A fallback whole-sheet count has no cut geometry, but its
+                # allocation must remain comparable with known sheet parts.
+                area_mm2=sheet_length * sheet_width,
                 quantity=Decimal("1"),
             ))
 

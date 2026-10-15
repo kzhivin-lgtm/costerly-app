@@ -171,7 +171,7 @@ def material_plan_snapshot(
         "contract_version": "estimate_material_plan_v1",
         "status": plan.status if plan else "needs_review",
         "input_fingerprint": input_fingerprint,
-        "algorithm_version": plan.algorithm_version if plan else "material_engine_v1",
+        "algorithm_version": plan.algorithm_version if plan else "material_engine_v2",
         "demand_count": result.demand_count,
         "candidate_count": result.candidate_count,
         "lines": lines,
@@ -423,6 +423,16 @@ def _direct_count_unit(candidates: Sequence[MaterialSupplyCandidate]) -> str | N
     unit.
     """
     return "piece" if candidates and all(candidate.purchase_kind == "piece" for candidate in candidates) else None
+
+
+def _interim_sheet_count_unit(candidates: Sequence[MaterialSupplyCandidate]) -> str | None:
+    """Keep an extracted positive sheet-material count costable during V3 intake.
+
+    This is intentionally a bounded interim fallback.  It applies only where
+    every Resolver-cleared candidate is a sheet, records its use in the plan,
+    and never invents a dimension, area, or linear quantity.
+    """
+    return "sheet" if candidates and all(candidate.purchase_kind == "sheet" for candidate in candidates) else None
 
 
 def _ex_vat(value: Decimal, offer: Mapping[str, Any], vat_percent: Decimal) -> Decimal:
@@ -938,6 +948,10 @@ def build_material_plan(
             # extracted V3 facts leave this null and obtain a unit only from a
             # discrete resolved candidate.
             direct_unit = str(material.get("unit") or "").strip() or _direct_count_unit(compatible)
+            if direct_unit is None:
+                direct_unit = _interim_sheet_count_unit(compatible)
+                if direct_unit is not None:
+                    reasons.add("interim_sheet_count_without_geometry")
             if direct_unit is None:
                 unresolved.append(f"{object_id}:{requirement_id}")
                 reasons.add("material_geometry_required")
