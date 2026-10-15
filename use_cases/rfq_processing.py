@@ -36,7 +36,7 @@ from agents.ocr_rendering import (
     run_mistral_direct_pdf_evidence_ocr,
     run_mistral_document_evidence_ocr,
 )
-from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL
+from agents.ocr_adapter import DEFAULT_MISTRAL_OCR_MODEL, MistralOcrRequestError
 from config import agent_cost_category, calculate_llm_cost_usd
 from db.repositories import (
     fetch_deferred_naming_status,
@@ -200,10 +200,26 @@ def _run_optional_ocr(
     started = time.perf_counter()
     try:
         if direct_pdf_ocr_enabled():
-            package = run_mistral_direct_pdf_evidence_ocr(
-                file_name=file_name,
-                file_bytes=file_bytes,
-            )
+            try:
+                package = run_mistral_direct_pdf_evidence_ocr(
+                    file_name=file_name,
+                    file_bytes=file_bytes,
+                )
+            except MistralOcrRequestError as exc:
+                if exc.status_code != 400:
+                    raise
+                print(
+                    "[OCR adapter] Direct PDF request was rejected with HTTP 400; "
+                    "retrying as rendered pages."
+                )
+                package = run_mistral_document_evidence_ocr(
+                    file_name=file_name,
+                    file_bytes=file_bytes,
+                )
+                package["direct_pdf_recovery"] = {
+                    "trigger": "http_400",
+                    "error": str(exc),
+                }
         else:
             package = run_mistral_document_evidence_ocr(
                 file_name=file_name,

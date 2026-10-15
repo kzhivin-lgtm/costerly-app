@@ -1,5 +1,12 @@
+import httpx
+import pytest
+
 from agents.anthropic_adapter import build_detection_ocr_context
-from agents.ocr_adapter import normalize_mistral_ocr_response, run_mistral_ocr
+from agents.ocr_adapter import (
+    MistralOcrRequestError,
+    normalize_mistral_ocr_response,
+    run_mistral_ocr,
+)
 
 
 class _FakeResponse:
@@ -23,6 +30,22 @@ class _FakeHTTPClient:
         self.url = url
         self.kwargs = kwargs
         return _FakeResponse(self.response)
+
+
+class _BadRequestResponse:
+    status_code = 400
+
+    def raise_for_status(self):
+        raise httpx.HTTPStatusError(
+            "400 Bad Request",
+            request=httpx.Request("POST", "https://api.mistral.ai/v1/ocr"),
+            response=httpx.Response(400),
+        )
+
+
+class _BadRequestHTTPClient:
+    def post(self, _url, **_kwargs):
+        return _BadRequestResponse()
 
 
 def _response():
@@ -91,6 +114,18 @@ def test_calls_ocr_with_image_url_chunk_for_rendered_page():
     document = client.kwargs["json"]["document"]
     assert document["type"] == "image_url"
     assert document["image_url"].startswith("data:image/png;base64,")
+
+
+def test_ocr_bad_request_exposes_status_for_transport_recovery():
+    with pytest.raises(MistralOcrRequestError) as raised:
+        run_mistral_ocr(
+            file_name="drawing.pdf",
+            file_bytes=b"pdf bytes",
+            http_client=_BadRequestHTTPClient(),
+        )
+
+    assert raised.value.status_code == 400
+    assert "400 Bad Request" in str(raised.value)
 
 
 def test_detection_context_labels_pages_and_untrusted_text():
