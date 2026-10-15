@@ -32,7 +32,7 @@ from use_cases.estimation_v3_material_contract import (
 # The unit and purchasable quantity belong to the selected supply candidate,
 # not to the vision model.  Bump the extraction version so cached facts that
 # contained model-guessed units can never feed the current Material Engine.
-ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_6"
+ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_7"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v3_material_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 8_000
 TIMEOUT_SECONDS = 180.0
@@ -73,6 +73,10 @@ _AREA_PROXY_FAMILIES = frozenset({
 _LINEAR_PROXY_FAMILIES = frozenset({
     "edge_banding", "metal_flat_bar", "metal_profile_angle_channel",
     "metal_round_bar_rod_wire", "metal_tube", "wood_veneer",
+})
+_EXCLUDED_MATERIAL_FAMILIES = frozenset({
+    "packaging_material", "paint_lacquer_stain", "powder_coating", "primer",
+    "filler_hardener_thinner", "hardware_fastener",
 })
 
 
@@ -221,7 +225,7 @@ def _expand(
         if not isinstance(raw, Mapping):
             continue
         family = _family_code(raw.get("f"), families)
-        if family is None:
+        if family is None or family in _EXCLUDED_MATERIAL_FAMILIES:
             continue
         requirement_id = _identifier(raw.get("id"), f"m{index}", material_ids)
         source_name = str(raw.get("n") or family)

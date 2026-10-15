@@ -30,6 +30,10 @@ gap is handled downstream as review, but the material demand must be present.
 For example, a 20×20 metal frame, perforated metal backing, MDF panels, and
 wood boards are separate demands when the handoff states all four.
 
+Do not return packaging, paint/lacquer/stain, primer, powder coating, paint
+consumables, or fasteners. They are outside the material plan and are priced
+by separate rules.
+
 `f` is the exact allowed family code for a purchasable physical form, never an
 alloy, grade, colour or coating. For example use `metal_tube` for a square
 hollow profile and `sheet_metal` for a perforated plate. Put an explicitly

@@ -150,6 +150,24 @@ def test_v3_recovers_explicit_detected_materials_omitted_by_the_model():
     assert facts["materials"][2]["specification"] == {"profile_section": "20x20"}
 
 
+def test_v3_excludes_paint_and_packaging_from_material_requirements():
+    facts = _expand(
+        {"m": [
+            {"id": "board", "n": "MDF", "f": "mdf_hdf", "q": 2, "u": "m²", "s": {"thickness_mm": 20}},
+            {"id": "paint", "n": "Paint lacquer stain", "f": "paint_lacquer_stain", "q": 1, "u": "l", "s": {}},
+            {"id": "box", "n": "Packaging", "f": "packaging_material", "q": 1, "u": "piece", "s": {}},
+        ]},
+        {"input_id": "input-1", "object_input_revision": 1, "input_payload": {
+            "run_id": "run-1", "company_id": "company-1",
+            "object": {"object_id": "object-1", "object_name": "Shelf", "quantity": 1},
+            "evidence": {"primary_preview_ref": "storage://rfq-estimation-evidence/company-1/a.webp"},
+        }},
+        {"mdf_hdf", "paint_lacquer_stain", "packaging_material"},
+    )
+
+    assert [material["family"] for material in facts["materials"]] == ["mdf_hdf"]
+
+
 def test_v3_normalizes_bare_mdf_to_raw_board_identity():
     facts = _expand(
         {

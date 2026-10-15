@@ -701,7 +701,10 @@ def apply_material_plan_allocations(
     plan_snapshot: dict[str, Any],
 ) -> None:
     """Project rounded purchase costs back into the owning Object Detail rows."""
-    if str(plan_snapshot.get("status") or "") != "planned":
+    # A partial plan is still authoritative for the requirements it actually
+    # resolved. Do not hide priced Company/Israel materials merely because a
+    # different requirement remains review-required.
+    if str(plan_snapshot.get("status") or "") not in {"planned", "needs_review"}:
         return
     allocation_costs = {
         (str(row.get("object_id") or ""), str(row.get("material_requirement_id") or "")): _number(
@@ -752,6 +755,7 @@ def apply_material_plan_allocations(
                 "unit": unit,
                 "quantity": quantity_per_item,
                 "cost": round(allocated_cost, 2),
+                "needs_price": False,
                 "notes": "Allocated from the estimate-wide Material Plan",
                 "updated_at": datetime.now(UTC).isoformat(),
                 **({"item_name": resolved_names[(object_id, requirement_id)]}
