@@ -21,10 +21,7 @@ from use_cases.material_identity_status import (
     pricing_key_fact_fields,
     pricing_policy_by_family_code,
 )
-from use_cases.catalog_aliases import (
-    canonicalize_estimation_pricing_key_values,
-    load_estimation_alias_context,
-)
+from use_cases.catalog_aliases import load_estimation_alias_context
 
 
 def _pricing_key_fields_by_resolver_family(
@@ -112,16 +109,15 @@ def run_estimation_v3_material_facts_batch(
             material_families=tuple(((material_context or {}).get("catalogs") or {}).get("material_families") or ()),
             material_pricing_policies=tuple(((material_context or {}).get("catalogs") or {}).get("material_pricing_policies") or ()),
         )
-        family_alias_context = _family_alias_context_by_resolver_family(
-            client=client,
-            families=families,
-            pricing_key_fields_by_family=pricing_key_fields_by_family,
-        )
         result = run_estimation_v3_material_facts_agent(
             inputs=pending, allowed_material_families=families,
             preview_bytes_by_input=preview_bytes_by_input,
             pricing_key_fields_by_family=pricing_key_fields_by_family,
-            family_alias_context=family_alias_context,
+            family_alias_context=_family_alias_context_by_resolver_family(
+                client=client,
+                families=families,
+                pricing_key_fields_by_family=pricing_key_fields_by_family,
+            ),
         )
         usage_id = insert_agent_usage_event_returning_id(client, result["usage_event"])
         failed.update(result["failed"])
@@ -131,9 +127,6 @@ def run_estimation_v3_material_facts_batch(
             if facts is None:
                 failed.setdefault(input_id, "material_fact_result_missing_object")
                 continue
-            facts = canonicalize_estimation_pricing_key_values(
-                facts, family_alias_context=family_alias_context,
-            )
             created.append(insert_estimation_fact_result(
                 client, input_id=input_id,
                 agent_version=ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION,
