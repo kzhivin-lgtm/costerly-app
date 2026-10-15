@@ -232,6 +232,7 @@ def _run_estimation_v3_for_all_objects(
                         line["total_cost"] for line in snapshot["lines"]
                     ),
                     "unresolved_requirement_ids": snapshot["unresolved_requirement_ids"],
+                    "assumption_fallback_count": len(snapshot.get("assumption_fallbacks") or ()),
                     "reason_codes": snapshot["reason_codes"],
                 }
             except Exception as exc:

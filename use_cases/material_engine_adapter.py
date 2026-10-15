@@ -55,6 +55,7 @@ class MaterialEngineResult:
     candidate_authorities: tuple[tuple[str, str], ...] = ()
     candidate_display_names: tuple[tuple[str, str], ...] = ()
     applied_defaults: tuple[Mapping[str, Any], ...] = ()
+    assumption_fallbacks: tuple[Mapping[str, Any], ...] = ()
 
 
 def material_plan_input_fingerprint(
@@ -191,6 +192,7 @@ def material_plan_snapshot(
             )
         ],
         "applied_material_defaults": [dict(value) for value in result.applied_defaults],
+        "assumption_fallbacks": [dict(value) for value in result.assumption_fallbacks],
     }
 
 
@@ -281,6 +283,30 @@ def _active_default_specifications(
         for row in reference_positions
         if str(row.get("family_code") or "") == family_code
     }
+
+    def has_evidenced_non_applicability_key(
+        *, applicability: Mapping[str, Any], policy: Mapping[str, Any] | None,
+    ) -> bool:
+        """A default may complete a recognised Family, never alter a key fact.
+
+        Applicability is the Family/subtype identity that selected a default,
+        such as MDF plus its stated veneer face. Any other populated Pricing
+        Key fact is an exact resolver input and must be matched as-is.
+        """
+        for attribute_code in (policy or {}).get("pricing_key_attribute_codes") or ():
+            fields = {str(attribute_code), *pricing_key_fact_fields(str(attribute_code))}
+            present_fields = {
+                field for field in fields if _present_value(specifications.get(field))
+            }
+            if not present_fields:
+                continue
+            if not any(
+                field in applicability and specifications.get(field) == applicability[field]
+                for field in present_fields
+            ):
+                return True
+        return False
+
     price_scope = "retail_package" if str(family_code or "").startswith("hardware_") else "material_only"
     for variant in sorted(
         material_default_variants,
@@ -302,6 +328,8 @@ def _active_default_specifications(
             continue
         applicability = dict(variant.get("applicability_specifications") or {})
         if any(specifications.get(key) != value for key, value in applicability.items()):
+            continue
+        if has_evidenced_non_applicability_key(applicability=applicability, policy=policy):
             continue
         defaults = dict(variant.get("default_specifications") or {})
         applied = {key: value for key, value in defaults.items() if not _present_value(specifications.get(key))}
@@ -797,6 +825,7 @@ def build_material_plan(
     unresolved: list[str] = []
     reasons: set[str] = set()
     applied_defaults: list[Mapping[str, Any]] = []
+    assumption_fallbacks: list[dict[str, Any]] = []
     candidate_cache: dict[tuple[str, str, tuple[tuple[str, str], ...]], tuple[str | None, tuple[MaterialSupplyCandidate, ...]]] = {}
 
     overrides = material_norm_overrides or {}
@@ -814,6 +843,24 @@ def build_material_plan(
             if isinstance(part, Mapping):
                 parts_by_requirement.setdefault(str(part.get("material_requirement_id") or ""), []).append(part)
         for requirement_id, material in sorted(materials.items()):
+            def add_assumption_fallback(*, reason_code: str, selection_key: str | None = None) -> None:
+                total_quantity = _positive(material.get("quantity"))
+                object_quantity = _positive(facts.get("quantity")) or Decimal("1")
+                assumption_fallbacks.append({
+                    "object_id": str(object_id),
+                    "material_requirement_id": requirement_id,
+                    "source_name": str(material.get("source_name") or material.get("family") or "Material"),
+                    "material_family": str(material.get("family") or ""),
+                    "specification": dict(material.get("specification") or {}),
+                    "selection_key": selection_key,
+                    "quantity_per_item": (
+                        None if total_quantity is None else float(total_quantity / object_quantity)
+                    ),
+                    "unit": material.get("unit"),
+                    "reason_code": reason_code,
+                    "resolution": "assumption_fallback",
+                })
+
             parts = parts_by_requirement.get(requirement_id) or []
             specs, drawer_slide_trace = _apply_drawer_slide_last_resort_default(
                 material_family=str(material.get("family") or ""),
@@ -870,8 +917,8 @@ def build_material_plan(
                 ),
             )
             if selection_key is None:
-                unresolved.append(f"{object_id}:{requirement_id}")
-                reasons.add("material_pricing_key_incomplete")
+                add_assumption_fallback(reason_code="material_pricing_key_incomplete")
+                reasons.add("assumption_fallback")
                 continue
             _reference_key, reference_candidates = israel_reference_supply_candidates(
                 material_family=cache_key[1],
@@ -890,8 +937,10 @@ def build_material_plan(
                 candidates[candidate.candidate_id] = candidate
             candidate_ids = tuple(candidate.candidate_id for candidate in compatible)
             if not candidate_ids:
-                unresolved.append(f"{object_id}:{requirement_id}")
-                reasons.add("assumption_required")
+                add_assumption_fallback(
+                    reason_code="no_company_or_israel_candidate", selection_key=selection_key,
+                )
+                reasons.add("assumption_fallback")
                 continue
             override = overrides.get((str(object_id), requirement_id))
             object_quantity = _positive(facts.get("quantity")) or Decimal("1")
@@ -900,8 +949,10 @@ def build_material_plan(
                 override_unit = str(override.get("unit") or "")
                 override_quantity = _positive(override.get("quantity_per_item"))
                 if override_quantity is None or _canonical_requirement_unit(override_unit) != _canonical_requirement_unit(material.get("unit")):
-                    unresolved.append(f"{object_id}:{requirement_id}")
-                    reasons.add("manual_material_norm_invalid")
+                    add_assumption_fallback(
+                        reason_code="manual_material_norm_invalid", selection_key=selection_key,
+                    )
+                    reasons.add("assumption_fallback")
                     continue
                 material_quantity = override_quantity * object_quantity
                 direct_demand = _demand_from_net_requirement(
@@ -915,12 +966,16 @@ def build_material_plan(
                     candidate_ids=candidate_ids,
                 )
                 if direct_demand is None:
-                    unresolved.append(f"{object_id}:{requirement_id}")
-                    reasons.add("manual_material_norm_unit_unsupported")
+                    add_assumption_fallback(
+                        reason_code="manual_material_norm_unit_unsupported", selection_key=selection_key,
+                    )
+                    reasons.add("assumption_fallback")
                     continue
                 demands.append(direct_demand)
                 reasons.add("manual_material_norm_without_geometry")
                 continue
+            demand_count_before_parts = len(demands)
+            part_geometry_invalid = False
             for part in parts:
                 demand_id = f"{object_id}:{part.get('part_id')}"
                 try:
@@ -946,13 +1001,20 @@ def build_material_plan(
                         rotation_allowed=bool(part.get("rotation_allowed")),
                     ))
                 except MaterialEngineError:
-                    unresolved.append(demand_id)
-                    reasons.add("material_part_geometry_invalid")
+                    part_geometry_invalid = True
+            if part_geometry_invalid:
+                del demands[demand_count_before_parts:]
+                add_assumption_fallback(
+                    reason_code="material_part_geometry_invalid", selection_key=selection_key,
+                )
+                reasons.add("assumption_fallback")
             if parts:
                 continue
             if material_quantity is None:
-                unresolved.append(f"{object_id}:{requirement_id}")
-                reasons.add("material_quantity_missing")
+                add_assumption_fallback(
+                    reason_code="material_quantity_missing", selection_key=selection_key,
+                )
+                reasons.add("assumption_fallback")
                 continue
             # Explicit historical/manual units remain supported. Newly
             # extracted V3 facts leave this null and obtain a unit only from a
@@ -963,8 +1025,10 @@ def build_material_plan(
                 if direct_unit is not None:
                     reasons.add("interim_sheet_count_without_geometry")
             if direct_unit is None:
-                unresolved.append(f"{object_id}:{requirement_id}")
-                reasons.add("material_geometry_required")
+                add_assumption_fallback(
+                    reason_code="material_geometry_required", selection_key=selection_key,
+                )
+                reasons.add("assumption_fallback")
                 continue
             direct_demand = _demand_from_net_requirement(
                 demand_id=f"{object_id}:{requirement_id}:net-demand",
@@ -977,12 +1041,14 @@ def build_material_plan(
                 candidate_ids=candidate_ids,
             )
             if direct_demand is None:
-                unresolved.append(f"{object_id}:{requirement_id}")
-                reasons.add("material_unit_unsupported_for_purchase_plan")
+                add_assumption_fallback(
+                    reason_code="material_unit_unsupported_for_purchase_plan", selection_key=selection_key,
+                )
+                reasons.add("assumption_fallback")
                 continue
             demands.append(direct_demand)
     plan = plan_material_purchases(demands=demands, candidates=tuple(candidates.values())) if demands else None
-    if plan and unresolved:
+    if plan and (unresolved or assumption_fallbacks):
         # A partially priced document is not Final Approval-ready. Keep the
         # resolved purchase lines as traceable diagnostics, but carry every
         # earlier Resolver gap into the plan status rather than allowing one
@@ -1013,6 +1079,10 @@ def build_material_plan(
         )),
         applied_defaults=tuple(sorted(
             applied_defaults,
+            key=lambda row: (str(row["object_id"]), str(row["material_requirement_id"])),
+        )),
+        assumption_fallbacks=tuple(sorted(
+            assumption_fallbacks,
             key=lambda row: (str(row["object_id"]), str(row["material_requirement_id"])),
         )),
     )

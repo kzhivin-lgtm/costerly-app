@@ -49,11 +49,14 @@ def _material_plan_blocking_state(row: Any) -> tuple[str, str]:
     status = _material_plan_status(row)
     if status == "needs_review":
         payload = dict((row or {}).get("plan_payload") or {}) if isinstance(row, dict) else {}
+        assumption_count = len(payload.get("assumption_fallbacks") or [])
         unresolved_count = len(payload.get("unresolved_requirement_ids") or [])
-        count_text = f"{unresolved_count} material requirement{'s' if unresolved_count != 1 else ''}"
+        count = assumption_count or unresolved_count
+        count_text = f"{count} material requirement{'s' if count != 1 else ''}"
         return (
             "MATERIALS NEED REVIEW",
-            f"Materials need review: {count_text} could not be placed in the Company or Israel catalog. "
+            f"Materials need review: {count_text} require Assumption Fallback after neither Company "
+            "Catalog nor Israel Reference could supply them. "
             "Approval remains unavailable.",
         )
     if status == "failed":
@@ -722,7 +725,12 @@ def apply_material_plan_allocations(
         for allocation in line.get("allocations") or []
         if isinstance(allocation, dict) and str(line.get("display_name") or "")
     }
-    if not allocation_costs or not material_norms:
+    assumption_fallbacks = {
+        (str(row.get("object_id") or ""), str(row.get("material_requirement_id") or "")): row
+        for row in plan_snapshot.get("assumption_fallbacks") or []
+        if isinstance(row, dict)
+    }
+    if not allocation_costs and not assumption_fallbacks:
         return
     lines_df = fetch_rfq_estimate_lines(client, estimate_id)
     objects_df = fetch_rfq_object_estimates(client, estimate_id)
@@ -737,6 +745,29 @@ def apply_material_plan_allocations(
             continue
         object_id = str(line.get("object_id") or "")
         requirement_id = _material_requirement_id(line)
+        assumption = assumption_fallbacks.get((object_id, requirement_id))
+        if assumption is not None:
+            update_rfq_estimate_line(
+                client,
+                estimate_id=estimate_id,
+                line_id=str(line.get("line_id") or ""),
+                values={
+                    "item_name": f"Assumption: {assumption['source_name']}",
+                    "unit": assumption.get("unit"),
+                    "quantity": assumption.get("quantity_per_item"),
+                    "unit_cost": None,
+                    "cost": None,
+                    "needs_price": True,
+                    "needs_review": True,
+                    "notes": (
+                        "Assumption Fallback after neither Company Catalog nor Israel Reference "
+                        f"could supply the requirement ({assumption['reason_code']})."
+                    ),
+                    "updated_at": datetime.now(UTC).isoformat(),
+                },
+            )
+            affected_object_ids.add(object_id)
+            continue
         allocated_cost = allocation_costs.get((object_id, requirement_id))
         norm = material_norms.get((object_id, requirement_id))
         if allocated_cost is None or norm is None:

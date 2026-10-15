@@ -61,3 +61,33 @@ def test_partial_material_plan_publishes_resolved_canonical_line(monkeypatch):
     assert updates[0]["values"]["item_name"] == "MDF 20 mm 1220 × 2440 mm, raw"
     assert updates[0]["values"]["cost"] == 244
     assert updates[0]["values"]["needs_price"] is False
+
+
+def test_assumption_fallback_is_published_as_a_visible_material_line(monkeypatch):
+    updates = []
+    monkeypatch.setattr(estimation, "fetch_rfq_estimate_lines", lambda *_args: pd.DataFrame([{
+        "section": "material", "object_id": "cabinet", "line_id": "line-1",
+        "raw_agent_json": {"facts": {"requirement_id": "track"}},
+    }]))
+    monkeypatch.setattr(estimation, "fetch_rfq_object_estimates", lambda *_args: pd.DataFrame([{
+        "object_id": "cabinet", "quantity": 1,
+    }]))
+    monkeypatch.setattr(
+        estimation, "update_rfq_estimate_line",
+        lambda _client, **kwargs: updates.append(kwargs),
+    )
+    monkeypatch.setattr(estimation, "_recalculate_object_estimate_totals", lambda *_args, **_kwargs: None)
+
+    estimation.apply_material_plan_allocations(client=object(), estimate_id="estimate-1", plan_snapshot={
+        "status": "needs_review", "object_material_costs": [], "lines": [],
+        "assumption_fallbacks": [{
+            "object_id": "cabinet", "material_requirement_id": "track",
+            "source_name": "Sliding door track", "unit": "m", "quantity_per_item": 4.13,
+            "reason_code": "no_company_or_israel_candidate",
+        }],
+    })
+
+    assert updates[0]["values"]["item_name"] == "Assumption: Sliding door track"
+    assert updates[0]["values"]["quantity"] == 4.13
+    assert updates[0]["values"]["unit_cost"] is None
+    assert updates[0]["values"]["needs_price"] is True

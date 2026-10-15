@@ -88,3 +88,19 @@ Detail publishes only the resolved allocations with their selected canonical
 names and allocated cost. Unresolved requirements stay visible without a
 price. This is not a fallback price and does not make the partial plan
 approved.
+
+## Resolver outcomes and strict defaults, 2026-10-15
+
+After a material requirement is recognised, the persisted plan has exactly
+three outcomes: Company Catalog allocation, Israel Reference allocation, or
+`Assumption Fallback`. The fallback carries the requirement's source name,
+Family, specification, net quantity, unit and reason. It has no invented
+price, is visible in Object Detail as `Assumption: <source name>`, and keeps
+the estimate review-required.
+
+A Family Default completes only a recognised Family or explicitly declared
+subtype when no additional Pricing Key fact is evidenced. It selects one
+approved concrete position. It must not change a provided thickness, section,
+metal type, species, depth, or other Pricing Key fact. Thus a `metal tube
+20x20` is exact Resolver work: resolve that key or produce Assumption Fallback,
+never a default round tube.

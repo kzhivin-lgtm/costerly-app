@@ -159,7 +159,7 @@ def test_material_engine_plan_runs_after_facts_and_cannot_block_object_publishin
     assert result["material_engine_plan"] == {
         "status": "planned", "demand_count": 1, "candidate_count": 1,
         "planned_line_count": 1, "planned_material_cost_ex_vat": 42.0,
-        "unresolved_requirement_ids": [], "reason_codes": [],
+        "unresolved_requirement_ids": [], "assumption_fallback_count": 0, "reason_codes": [],
     }
 
 

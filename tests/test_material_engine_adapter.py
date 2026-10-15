@@ -354,6 +354,53 @@ def test_plan_completes_a_proven_family_from_an_active_israel_default():
     ]
 
 
+def test_profile_dimension_never_uses_an_unrelated_family_default():
+    facts = {
+        "object_id": "frame-a",
+        "materials": [{
+            "requirement_id": "tube", "source_name": "Metal profile 20x20", "family": "metal_tube",
+            "specification": {"profile_section": "20x20"}, "quantity": 4, "unit": "m",
+        }],
+        "parts": [],
+    }
+    policy = {
+        "family_id": "family-tube", "pricing_key_attribute_codes": ["section_profile", "metal_type"],
+        "purchase_format_policy": "required", "active": True,
+    }
+    family = {"family_id": "family-tube", "family_code": "metal_tube", "active": True}
+    def position(position_id, specs):
+        return {
+            "reference_position_id": position_id, "family_code": "metal_tube",
+            "specifications": specs,
+            "prices": [_reference_price(f"{position_id}-price", unit="m", typical="10")],
+            "supply_formats": [{"supply_format_id": f"{position_id}-6m", "active": True,
+                                "purchasable_dimensions": {"length_mm": 6000}}],
+        }
+
+    result = build_material_plan(
+        facts_by_object={"frame-a": facts},
+        catalogs={
+            "items": [], "offers": [],
+            "reference_positions": [
+                position("reference-round-default", {"section_profile": "round_tube_d20", "metal_type": "steel"}),
+                position("reference-square-20", {"section_profile": "square_tube_20x20", "metal_type": "steel"}),
+            ],
+            "material_pricing_policies": [policy], "material_families": [family],
+            "material_default_variants": [{
+                "default_variant_id": "tube-default", "family_id": "family-tube",
+                "reference_position_id": "reference-round-default",
+                "default_specifications": {"metal_type": "steel", "section_profile": "round_tube_d20"},
+                "applicability_specifications": {}, "priority": 10, "active": True,
+            }],
+        },
+    )
+
+    assert result.plan is None
+    assert result.applied_defaults == ()
+    assert result.assumption_fallbacks[0]["reason_code"] == "material_pricing_key_incomplete"
+    assert result.assumption_fallbacks[0]["selection_key"] is None
+
+
 def test_melamine_one_sided_missing_thickness_uses_generic_laminated_default_position():
     facts = {
         "object_id": "cabinet-a",
@@ -539,15 +586,27 @@ def test_manual_norm_scales_by_the_object_target_quantity():
     }]
 
 
-def test_plan_marks_assumption_required_only_after_company_and_israel_have_no_candidate():
+def test_plan_records_assumption_fallback_only_after_company_and_israel_have_no_candidate():
     result = build_material_plan(
         facts_by_object={"cabinet-a": _facts("cabinet-a", "side-a")},
         catalogs=_catalogs(),
     )
 
     assert result.plan is None
-    assert result.unresolved_requirement_ids == ("cabinet-a:plywood",)
-    assert result.reason_codes == ("assumption_required",)
+    assert result.unresolved_requirement_ids == ()
+    assert result.reason_codes == ("assumption_fallback",)
+    assert result.assumption_fallbacks == ({
+        "object_id": "cabinet-a",
+        "material_requirement_id": "plywood",
+        "source_name": "Plywood",
+        "material_family": "plywood",
+        "specification": {"thickness_mm": 18},
+        "selection_key": "plywood|thickness=18",
+        "quantity_per_item": 1.0,
+        "unit": "m2",
+        "reason_code": "no_company_or_israel_candidate",
+        "resolution": "assumption_fallback",
+    },)
 
 
 def test_plan_uses_evidenced_count_only_for_discrete_resolved_materials():
@@ -744,8 +803,9 @@ def test_plan_does_not_treat_a_profile_count_as_a_linear_demand():
     result = build_material_plan(facts_by_object={"shelf-a": facts}, catalogs=catalogs)
 
     assert result.plan is None
-    assert result.unresolved_requirement_ids == ("shelf-a:tube",)
-    assert result.reason_codes == ("material_geometry_required",)
+    assert result.unresolved_requirement_ids == ()
+    assert result.reason_codes == ("assumption_fallback",)
+    assert result.assumption_fallbacks[0]["reason_code"] == "material_geometry_required"
 
 
 def test_plan_uses_a_positive_count_as_interim_sheets_only_for_sheet_candidates():
@@ -796,5 +856,6 @@ def test_partial_purchase_plan_stays_review_required_when_another_fact_is_unreso
     assert result.plan is not None
     assert result.plan.status == "needs_review"
     assert len(result.plan.lines) == 1
-    assert result.unresolved_requirement_ids == ("cabinet-a:unknown",)
-    assert "material_pricing_key_incomplete" in result.reason_codes
+    assert result.unresolved_requirement_ids == ()
+    assert result.reason_codes == ("assumption_fallback",)
+    assert result.assumption_fallbacks[0]["reason_code"] == "material_pricing_key_incomplete"
