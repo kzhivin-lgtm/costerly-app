@@ -334,6 +334,21 @@ def test_detection_identity_fields_are_normalized_before_validation():
     assert normalized["detected_objects"][0]["object_name"] == "Keep this object"
 
 
+def test_detection_identity_fields_latinize_russian_project_identifier():
+    result = {
+        "rfq_run": {"run_id": "run-1", "project_name": "Комсомольская 7"},
+        "detected_objects": [],
+    }
+
+    normalized = normalize_detection_identity_fields(
+        result,
+        company_id="001",
+        file_name="drawing.pdf",
+    )
+
+    assert normalized["rfq_run"]["project_name"] == "Komsomolskaya 7"
+
+
 def test_detection_normalizes_advisory_file_quality_before_schema_validation():
     result = {
         "rfq_run": {

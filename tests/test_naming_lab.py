@@ -9,12 +9,13 @@ from agents.naming_lab import (
     extract_object_index,
     load_naming_prompt,
     relevant_ocr_snippets,
+    source_index_candidates,
     validate_locked_name_mapping,
 )
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v8_literal_evidence"
+    assert NAMING_LAB_VERSION == "naming_lab_v9_source_identifier_recovery"
 
 
 def test_naming_prompt_keeps_integrated_kitchens_out_of_shelving():
@@ -70,8 +71,28 @@ def test_builds_minimal_locked_input_without_mutable_object_fields():
                 "regions": [],
             }],
             "ocr_snippets": ["ЛП-1 Площадка"],
+            "source_index_candidates": ["ЛП-1"],
         }
     ]
+
+
+def test_recovers_literal_identifier_candidate_from_object_evidence():
+    assert source_index_candidates("", ["OM15-1\nStair railing"]) == ["OM15-1"]
+
+
+def test_name_mapping_recovers_missing_source_identifier_without_changing_category():
+    objects = [{"object_id": "a", "object_name": "Object 1"}]
+    locked = [{
+        "object_id": "a", "object_index": "", "current_name": "Object 1",
+        "source_index_candidates": ["OM15-1"],
+    }]
+    result = {"names": [{
+        "object_id": "a", "source_index": "OM15-1", "name_en": "Stair railing", "name_original": "",
+    }]}
+
+    apply_name_mapping(objects, locked, result)
+
+    assert objects[0]["object_name"] == "OM15-1 — Stair railing"
 
 
 def test_naming_input_excludes_detection_notes():

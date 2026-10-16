@@ -17,7 +17,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v8_literal_evidence"
+NAMING_LAB_VERSION = "naming_lab_v9_source_identifier_recovery"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -30,9 +30,10 @@ NAMING_RESULT_SCHEMA: dict[str, Any] = {
             "items": {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["object_id", "name_en", "name_original"],
+                "required": ["object_id", "source_index", "name_en", "name_original"],
                 "properties": {
                     "object_id": {"type": "string"},
+                    "source_index": {"type": "string"},
                     "name_en": {"type": "string"},
                     "name_original": {"type": "string"},
                 },
@@ -54,6 +55,38 @@ def extract_object_index(object_name: Any) -> str:
             return candidate
     match = re.match(r"^([^\s—:]+\d[^\s—:]*)\s*(?:[—:])?", name)
     return match.group(1).strip() if match else ""
+
+
+_SOURCE_IDENTIFIER_RE = re.compile(
+    r"(?<![^\W_])(?:[A-Za-zА-Яа-яЁё]{1,4}[ -]?\d+(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}|\d{1,3}[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3})(?![^\W_])"
+)
+_NON_OBJECT_IDENTIFIER_PREFIXES = {"гост", "iso", "din", "en"}
+
+
+def source_index_candidates(
+    object_index: Any,
+    ocr_snippets: list[str],
+) -> list[str]:
+    """Return literal, object-page identifier candidates without correcting OCR.
+
+    Detection can miss a printed source code while still correctly locking an
+    object's boundary. Naming receives the object-specific source pages and
+    may recover such a code, but only from literal candidates carried forward
+    from the same object evidence.
+    """
+    candidates: list[str] = []
+    seen: set[str] = set()
+    for text in [str(object_index or ""), *ocr_snippets]:
+        for match in _SOURCE_IDENTIFIER_RE.finditer(text):
+            candidate = match.group(0).strip(" \t,;:()[]{}")
+            compact = candidate.casefold().replace(" ", "")
+            if not candidate or compact in _NON_OBJECT_IDENTIFIER_PREFIXES:
+                continue
+            key = candidate.casefold()
+            if key not in seen:
+                seen.add(key)
+                candidates.append(candidate)
+    return candidates
 
 
 def _page_numbers(value: Any) -> set[int]:
@@ -132,16 +165,19 @@ def build_locked_naming_input(
                 "page_number": int(ref["page_number"]),
                 "regions": [dict(region) for region in ref.get("regions") or [] if isinstance(region, dict)],
             })
+        object_index = extract_object_index(item.get("object_name"))
+        snippets = relevant_ocr_snippets(item, ocr_result)
         locked.append({
             "object_id": str(item.get("object_id") or ""),
-            "object_index": extract_object_index(item.get("object_name")),
+            "object_index": object_index,
             "current_name": str(item.get("object_name") or ""),
             "evidence_pages": [ref["page_number"] for ref in evidence_regions],
             # These are retrieval pointers for the supplied full pages.  They
             # make the multimodal naming pass object-specific without passing
             # the UI-only presentation crop.
             "evidence_regions": evidence_regions,
-            "ocr_snippets": relevant_ocr_snippets(item, ocr_result),
+            "ocr_snippets": snippets,
+            "source_index_candidates": source_index_candidates(object_index, snippets),
         })
     return locked
 
@@ -176,7 +212,31 @@ def validate_locked_name_mapping(
         )
 
     violations: list[dict[str, Any]] = []
+    locked_by_id = {str(item.get("object_id") or ""): item for item in locked_objects}
     for item in names:
+        locked = locked_by_id[str(item["object_id"])]
+        locked_index = str(locked.get("object_index") or "").strip()
+        # The provider schema requires source_index. The fallback protects old
+        # local callers while retaining an already locked literal identifier.
+        source_index = str(item.get("source_index", locked_index) or "").strip()
+        candidate_values = [
+            str(value).strip()
+            for value in locked.get("source_index_candidates") or []
+        ]
+        if locked_index and locked_index not in candidate_values:
+            candidate_values.insert(0, locked_index)
+        if source_index and source_index not in candidate_values:
+            violations.append({
+                "object_id": item["object_id"],
+                "field": "source_index",
+                "reason": "not_literal_candidate",
+            })
+        elif locked_index and source_index != locked_index:
+            violations.append({
+                "object_id": item["object_id"],
+                "field": "source_index",
+                "reason": "changed_locked_identifier",
+            })
         name_en_words = _word_count(item.get("name_en"))
         original_words = _word_count(item.get("name_original"))
         if name_en_words < 1 or name_en_words > 3:
@@ -214,7 +274,9 @@ def compose_name_preview(
     previews: list[dict[str, str]] = []
     for item in result["names"]:
         object_id = str(item["object_id"])
-        object_index = str(locked_by_id[object_id].get("object_index") or "").strip()
+        object_index = str(
+            item.get("source_index", locked_by_id[object_id].get("object_index")) or ""
+        ).strip()
         name_en = str(item.get("name_en") or "").strip()
         base = " — ".join(part for part in (object_index, name_en) if part)
         previews.append({"object_id": object_id, "display_name": base})

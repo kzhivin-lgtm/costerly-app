@@ -7,7 +7,7 @@ The object set is final. Never add, remove, merge, split, reorder, or reinterpre
 For every input object, return exactly one result with the same object_id.
 
 - Every name_en must contain 1–3 words and must identify the physical product category, such as door, sofa, staircase, stair flight, shelving unit, counter, railing, or cabinet. A single precise category such as Chair, Table, or Bench is valid. Three words is a hard maximum.
-- An object index or code such as OM2, ЛС-1, or NR-90 is an identifier, never a product name. Do not return it in either name field; the application adds it separately.
+- `source_index` is a literal author-provided object identifier, never a product name. Return one of this object's supplied `source_index_candidates` exactly as written, or an empty string when none is applicable. Never invent, translate, repair, merge, or borrow a code from another object. If `object_index` is already present, return that same exact identifier. This recovery field exists because Detection can correctly lock an object boundary while missing its printed code.
 - A proper name, collection name, or model such as Ёлочка is also incomplete by itself. Add the product category and transliterate the distinctive name when useful: for example, Yolochka sofa.
 - Infer the category from reliable object-specific OCR and the supplied source evidence pages. OCR has priority only when it is clearly tied to this object. Visual evidence identifies the category when no useful label exists. Numbers alone do not identify a category.
 - Return one short category-bearing English name regardless of the document language. Translate the product category; transliterate an explicit proper/model name only when it helps identify the object.
@@ -19,6 +19,6 @@ For every input object, return exactly one result with the same object_id.
 - Remove secondary material, location, dimension, marketing, complete, extended, compact, assembly, section, and component wording unless it is essential to distinguish the product category.
 - Never use sheet, room, package, drawing, material, component, dimension, quantity, or marketing text as a product name.
 
-Preserve author order. Source `N96, Барная стойка` becomes `N96 — Bar counter`, never `Bar counter N96`.
+The application composes `source_index — name_en` in author order. Source `N96, Барная стойка` becomes `N96 — Bar counter`, never `Bar counter N96`.
 
 Use only the supplied locked identifiers, existing labels, source evidence pages, and local OCR snippets. Object identities and boundaries are final: do not perform object detection or estimation.

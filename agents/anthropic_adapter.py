@@ -38,11 +38,11 @@ from agents.schemas.detection_schema import (
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_AGENT_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
-DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v5"
+DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v6"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
-DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v3"
+DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v4"
 
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
     DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -816,6 +816,32 @@ def _canonical_json(value: Any) -> str:
     )
 
 
+_CYRILLIC_TO_LATIN = str.maketrans({
+    "А": "A", "а": "a", "Б": "B", "б": "b", "В": "V", "в": "v",
+    "Г": "G", "г": "g", "Д": "D", "д": "d", "Е": "E", "е": "e",
+    "Ё": "Yo", "ё": "yo", "Ж": "Zh", "ж": "zh", "З": "Z", "з": "z",
+    "И": "I", "и": "i", "Й": "Y", "й": "y", "К": "K", "к": "k",
+    "Л": "L", "л": "l", "М": "M", "м": "m", "Н": "N", "н": "n",
+    "О": "O", "о": "o", "П": "P", "п": "p", "Р": "R", "р": "r",
+    "С": "S", "с": "s", "Т": "T", "т": "t", "У": "U", "у": "u",
+    "Ф": "F", "ф": "f", "Х": "Kh", "х": "kh", "Ц": "Ts", "ц": "ts",
+    "Ч": "Ch", "ч": "ch", "Ш": "Sh", "ш": "sh", "Щ": "Shch", "щ": "shch",
+    "Ъ": "", "ъ": "", "Ы": "Y", "ы": "y", "Ь": "", "ь": "",
+    "Э": "E", "э": "e", "Ю": "Yu", "ю": "yu", "Я": "Ya", "я": "ya",
+})
+
+
+def _latinize_project_name(value: Any) -> str:
+    """Enforce Latin spelling for a source-language project identifier.
+
+    The model remains responsible for translating a descriptive project title.
+    This deterministic final step protects the address and proper-name case
+    when a Russian identifier is returned unchanged.
+    """
+    name = str(value or "").strip()
+    return name.translate(_CYRILLIC_TO_LATIN) if name else name
+
+
 def normalize_detection_identity_fields(
     result: dict[str, Any],
     *,
@@ -834,6 +860,7 @@ def normalize_detection_identity_fields(
 
     rfq_run["company_id"] = company_id
     rfq_run["file_name"] = file_name
+    rfq_run["project_name"] = _latinize_project_name(rfq_run.get("project_name"))
 
     # File quality is advisory technical metadata. Claude's structured-output
     # transport receives the integer shape but not JSON Schema min/max, so an
