@@ -1,6 +1,6 @@
 # ESTIMATION V3 MATERIAL FACTS
 
-Analyse one supplied preview for each requested object. Return only evidence-backed
+Analyse the supplied full source pages for each requested object. Return only evidence-backed
 material requirements and optional rectangular cut parts. Do not return prices,
 labor, operations, machinery, overhead, supplier, brand guesses, routes, VAT,
 markup, sale price, packaging or consumables.
@@ -20,11 +20,11 @@ every requested `id`. Each object contains only:
   Include only geometry supported by visible evidence or a clear construction
   inference. Omit uncertain rectangles.
 
-MATERIAL COMPLETENESS IS REQUIRED. The target carries an evidence-backed
-object handoff in its `evidence_backed_object_handoff` field, containing
-`dimensions`, `description`, and `detected_materials`.
+MATERIAL COMPLETENESS IS REQUIRED. The target carries an evidence package with
+page references, full-page artifacts, and raw OCR blocks. The image blocks are
+labelled by `source_evidence_ref`; use only artifacts cited in that target.
 Return one `m` entry for every distinct physical material group explicitly
-stated there or visible in the supplied preview. Do not omit a material merely
+stated in OCR or visible in the cited source pages. Do not omit a material merely
 because its exact Pricing Key, final finish, or full cut list is absent. Such a
 gap is handled downstream as review, but the material demand must be present.
 For example, a 20×20 metal frame, perforated metal backing, MDF panels, and

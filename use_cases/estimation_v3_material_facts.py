@@ -100,13 +100,16 @@ def run_estimation_v3_material_facts_batch(
     if not pending:
         return {"created_result_ids": created, "reused_input_ids": reused, "failed": failed}
     try:
-        preview_bytes_by_input = {
-            str(row["input_id"]): download_evidence_artifact(
-                client=client,
-                storage_ref=str(((row.get("input_payload") or {}).get("evidence") or {}).get("primary_preview_ref") or ""),
-            )
-            for row in pending
-        }
+        evidence_page_bytes_by_ref: dict[str, bytes] = {}
+        for row in pending:
+            for artifact in ((row.get("input_payload") or {}).get("evidence") or {}).get("artifacts") or []:
+                if not isinstance(artifact, Mapping) or artifact.get("artifact_kind") != "page":
+                    continue
+                storage_ref = str(artifact.get("storage_ref") or "")
+                if storage_ref and storage_ref not in evidence_page_bytes_by_ref:
+                    evidence_page_bytes_by_ref[storage_ref] = download_evidence_artifact(
+                        client=client, storage_ref=storage_ref,
+                    )
         pricing_key_fields_by_family = _pricing_key_fields_by_resolver_family(
             families=families,
             material_families=tuple(((material_context or {}).get("catalogs") or {}).get("material_families") or ()),
@@ -119,7 +122,7 @@ def run_estimation_v3_material_facts_batch(
         )
         result = run_estimation_v3_material_facts_agent(
             inputs=pending, allowed_material_families=families,
-            preview_bytes_by_input=preview_bytes_by_input,
+            evidence_page_bytes_by_ref=evidence_page_bytes_by_ref,
             pricing_key_fields_by_family=pricing_key_fields_by_family,
             family_alias_context=family_alias_context,
         )

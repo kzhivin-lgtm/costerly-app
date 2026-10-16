@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import base64
 import re
 import time
 from pathlib import Path
@@ -16,7 +17,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v5_2_partial_safe_english_mvp"
+NAMING_LAB_VERSION = "naming_lab_v6_multimodal_evidence"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -126,8 +127,11 @@ def build_locked_naming_input(
             "object_id": str(item.get("object_id") or ""),
             "object_index": extract_object_index(item.get("object_name")),
             "current_name": str(item.get("object_name") or ""),
-            "evidence_pages": str(item.get("evidence_pages") or ""),
-            "context_hint": " ".join(str(item.get("notes") or "").split())[:300],
+            "evidence_pages": [
+                int(ref["page_number"])
+                for ref in item.get("evidence_page_refs") or []
+                if isinstance(ref, dict) and str(ref.get("page_number") or "").isdigit()
+            ],
             "ocr_snippets": relevant_ocr_snippets(item, ocr_result),
         }
         for item in detected_objects
@@ -195,7 +199,7 @@ def compose_name_preview(
         object_id = str(item["object_id"])
         object_index = str(locked_by_id[object_id].get("object_index") or "").strip()
         name_en = str(item.get("name_en") or "").strip()
-        base = " ".join(part for part in (object_index, name_en) if part)
+        base = " — ".join(part for part in (object_index, name_en) if part)
         previews.append({"object_id": object_id, "display_name": base})
     return previews
 
@@ -228,6 +232,7 @@ def apply_name_mapping(
 
 def run_naming_lab_call(
     locked_objects: list[dict[str, Any]],
+    visual_pages_by_number: dict[int, bytes] | None = None,
 ) -> dict[str, Any]:
     model = str(
         get_secret("CLAUDE_NAMING_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -241,11 +246,17 @@ def run_naming_lab_call(
             "text": (
                 "Name only these already locked objects. Treat an object index or a model/name "
                 "as incomplete until you identify its product category from the Detection context "
-                "and local OCR. Return only schema JSON:\n"
+                "and local OCR. Source pages are labelled by physical page number. "
+                "Return only schema JSON:\n"
                 + json.dumps(locked_objects, ensure_ascii=False, separators=(",", ":"))
             ),
         }
     ]
+    for page_number, page_bytes in sorted((visual_pages_by_number or {}).items()):
+        content.extend([
+            {"type": "text", "text": json.dumps({"source_evidence_page": page_number})},
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(page_bytes).decode("ascii")}},
+        ])
     response = create_claude_message(
         client,
         model=model,

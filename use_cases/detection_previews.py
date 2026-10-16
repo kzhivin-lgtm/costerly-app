@@ -25,14 +25,14 @@ def _source_pages(file_name: str, file_bytes: bytes, page_images: Sequence[bytes
 
 def _preview_target(item: Mapping[str, Any]) -> tuple[int, dict[str, Any]] | None:
     for ref in item.get("evidence_page_refs") or []:
-        if not isinstance(ref, Mapping) or not isinstance(ref.get("preview_bbox"), Mapping):
+        if not isinstance(ref, Mapping) or not isinstance(ref.get("presentation_preview_bbox"), Mapping):
             continue
         try:
             page_number = int(ref.get("page_number"))
         except (TypeError, ValueError):
             continue
         if page_number > 0:
-            return page_number, dict(ref["preview_bbox"])
+            return page_number, dict(ref["presentation_preview_bbox"])
     return None
 
 
@@ -109,8 +109,8 @@ def create_detection_previews(
             )
             refs = [dict(ref) for ref in object_row.get("evidence_page_refs") or []]
             for ref in refs:
-                if int(ref.get("page_number") or 0) == page_number and ref.get("preview_bbox"):
-                    ref["preview_bbox"] = bbox
+                if int(ref.get("page_number") or 0) == page_number and ref.get("presentation_preview_bbox"):
+                    ref["presentation_preview_bbox"] = bbox
                     ref["preview_ref"] = artifact.storage_ref
                     break
             update_rfq_detected_object(

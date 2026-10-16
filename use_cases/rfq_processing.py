@@ -78,9 +78,8 @@ def _object_lock_log(objects: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "object_id": str(item.get("object_id") or ""),
             "creator_label": str(item.get("object_name") or ""),
             "quantity": item.get("quantity"),
-            "external_dimensions": dict(item.get("dimensions_json") or {}),
             "evidence_pages": list(item.get("evidence_page_refs") or []),
-            "lock_note": str(item.get("notes") or ""),
+            "review_required": bool(item.get("review_required")),
         }
         for item in objects
         if isinstance(item, dict)
@@ -233,13 +232,36 @@ def _run_deferred_naming(
     company_id: str,
     run_id: str,
     file_name: str,
+    file_bytes: bytes = b"",
+    page_images: list[bytes] | None = None,
 ) -> dict[str, Any]:
     """Name locked objects after File Review is allowed to open."""
     started_at = datetime.now(UTC).isoformat()
     started = time.perf_counter()
     print(f"[Naming Agent] Started deferred naming for run {run_id}")
     try:
-        naming_result = run_naming_lab_call(locked_objects)
+        wanted_pages = {
+            int(page)
+            for item in locked_objects
+            for page in item.get("evidence_pages") or []
+            if isinstance(page, int) and page > 0
+        }
+        source_pages = page_images
+        if source_pages is None and file_bytes and file_name.lower().endswith(".pdf"):
+            source_pages, _ = render_detection_pdf_pages(file_bytes)
+        elif source_pages is None and file_bytes:
+            source_pages = [file_bytes]
+        elif source_pages is None:
+            source_pages = []
+        visual_pages = {
+            number: source_pages[number - 1]
+            for number in wanted_pages
+            if number <= len(source_pages)
+        }
+        naming_result = (
+            run_naming_lab_call(locked_objects, visual_pages_by_number=visual_pages)
+            if visual_pages else run_naming_lab_call(locked_objects)
+        )
         apply_name_mapping(detected_objects, locked_objects, naming_result)
         names: dict[str, str] = {}
         for provisional, named in zip(locked_objects, detected_objects, strict=True):
@@ -452,6 +474,8 @@ def process_uploaded_rfq(
             company_id=company_id,
             run_id=run_id,
             file_name=file_name,
+            file_bytes=file_bytes,
+            page_images=deepcopy(page_images) if page_images else None,
         )
 
     ocr_seconds = float(ocr_package.get("processing_seconds") or 0)
@@ -840,32 +864,22 @@ def _normalize_run(run: dict[str, Any]) -> dict[str, Any]:
         "file_quality_confidence": _percent(run.get("file_quality_confidence")),
         "run_id": run.get("run_id"),
         "status": run.get("status"),
-        "missing_information": _split_notes(run.get("missing_information")),
     }
 
 
 def _normalize_object(item: dict[str, Any]) -> dict[str, Any]:
     """Convert one Supabase detected object row to the File Review card contract."""
-    dimensions = item.get("dimensions_json")
-    if isinstance(dimensions, str):
-        dimensions = {}
-    if not isinstance(dimensions, dict):
-        dimensions = {}
-
     normalized = {
         "object_id": item.get("object_id"),
         "name": item.get("object_name"),
         "quantity": _clean_number(item.get("quantity")),
-        "confidence": _percent(item.get("confidence")),
-        "dimensions": _format_dimensions(dimensions),
-        "materials": item.get("detected_materials"),
-        "notes": _split_notes(item.get("notes")),
+        "review_required": bool(item.get("review_required")),
     }
     preview_ref = _preview_ref(item)
     if preview_ref:
         normalized["preview_ref"] = preview_ref
     elif any(
-        isinstance(ref, dict) and isinstance(ref.get("preview_bbox"), dict)
+        isinstance(ref, dict) and isinstance(ref.get("presentation_preview_bbox"), dict)
         for ref in item.get("evidence_page_refs") or []
     ):
         normalized["preview_pending"] = True

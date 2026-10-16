@@ -10,45 +10,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
-from use_cases.material_identity_resolution import normalize_material_phrase
-
-
-ESTIMATION_INPUT_CONTRACT_VERSION = "estimation_input_v3"
+ESTIMATION_INPUT_CONTRACT_VERSION = "estimation_input_v4"
 @dataclass(frozen=True)
 class EvidenceArtifact:
     storage_ref: str
     page_number: int
     artifact_kind: str
-
-
-def resolve_anchor_bbox(
-    *,
-    anchor: Mapping[str, Any],
-    ocr_package: Mapping[str, Any],
-) -> dict[str, Any] | None:
-    """Return one exact OCR bbox, never a nearest-text approximation."""
-    try:
-        page_number = int(anchor.get("page_number"))
-    except (TypeError, ValueError):
-        return None
-    text = normalize_material_phrase(anchor.get("text"))
-    if page_number < 1 or not text:
-        return None
-    matches = [
-        block
-        for block in (ocr_package.get("evidence") or {}).get("text_blocks") or []
-        if isinstance(block, Mapping)
-        and block.get("page_number") == page_number
-        and normalize_material_phrase(block.get("text")) == text
-        and isinstance(block.get("bbox"), Mapping)
-    ]
-    if len(matches) != 1:
-        return None
-    bbox = dict(matches[0]["bbox"])
-    required = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
-    if any(bbox.get(key) is None for key in required):
-        return None
-    return {"page_number": page_number, "text": str(matches[0]["text"]), "bbox": bbox}
 
 
 def _legacy_pages(value: Any) -> tuple[dict[str, Any], ...]:
@@ -87,10 +54,6 @@ def _page_refs(detected_object: Mapping[str, Any]) -> tuple[dict[str, Any], ...]
             "page_number": page_number,
             "source_label": str(item.get("source_label") or page_number),
         }
-        if item.get("roles"):
-            row["roles"] = [str(role) for role in item["roles"]]
-        if isinstance(item.get("preview_bbox"), Mapping):
-            row["preview_bbox"] = dict(item["preview_bbox"])
         result.append(row)
     return tuple(sorted(result, key=lambda item: (item["page_number"], item["source_label"])))
 
@@ -102,7 +65,7 @@ def _artifact_payload(artifacts: Sequence[EvidenceArtifact], page_numbers: tuple
             continue
         if not artifact.storage_ref.startswith("storage://rfq-estimation-evidence/"):
             raise ValueError("evidence artifact must be in the private evidence bucket")
-        if artifact.artifact_kind not in {"preview", "page", "region"}:
+        if artifact.artifact_kind != "page":
             raise ValueError("unsupported evidence artifact kind")
         result.append(
             {
@@ -147,9 +110,8 @@ def build_estimation_input(
             "block_ref": f"ocr:{ocr_event_id}:p{page_number}:b{block_index:04d}",
         })
     artifacts = _artifact_payload(evidence_artifacts, pages)
-    previews = [artifact for artifact in artifacts if artifact["artifact_kind"] == "preview"]
-    if len(previews) != 1:
-        raise ValueError("exactly one source-derived preview artifact is required")
+    if not artifacts:
+        raise ValueError("at least one full source-page artifact is required")
     return {
         "contract_version": ESTIMATION_INPUT_CONTRACT_VERSION,
         "run_id": run_id,
@@ -164,15 +126,12 @@ def build_estimation_input(
             "object_name": str(detected_object.get("object_name") or ""),
             "quantity": detected_object.get("quantity"),
             "quantity_explicit": bool(detected_object.get("quantity_explicit")),
-            "dimensions": dict(detected_object.get("dimensions_json") or {}),
-            "detected_materials": str(detected_object.get("detected_materials") or ""),
-            "notes": str(detected_object.get("notes") or ""),
+            "review_required": bool(detected_object.get("review_required")),
             "evidence_pages": list(page_refs),
         },
         "evidence": {
             "ocr_blocks": blocks,
             "artifacts": list(artifacts),
-            "primary_preview_ref": previews[0]["storage_ref"],
         },
         "versions": {key: str(value) for key, value in versions.items()},
     }

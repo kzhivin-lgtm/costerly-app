@@ -78,13 +78,11 @@ def _merge_registry_evidence(result: dict, registry: dict) -> dict:
                 refs_by_page[page_number] = {
                     "page_number": page_number,
                     "source_label": str(page_number),
-                    "roles": ["construction"],
+                    "regions": [],
                 }
                 continue
-            roles = list(ref.get("roles") or [])
-            if "construction" not in roles:
-                roles.append("construction")
-            ref["roles"] = roles
+            ref.pop("roles", None)
+            ref.setdefault("regions", [])
             refs_by_page[page_number] = ref
         refs = [refs_by_page[page_number] for page_number in sorted(refs_by_page)]
         detected["evidence_page_refs"] = refs

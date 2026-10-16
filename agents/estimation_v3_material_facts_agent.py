@@ -259,7 +259,13 @@ def _expand(
 ) -> dict[str, Any]:
     payload = row["input_payload"]
     object_payload = payload["object"]
-    preview = str((payload.get("evidence") or {}).get("primary_preview_ref") or "")
+    evidence_refs = [
+        str(item.get("storage_ref") or "")
+        for item in (payload.get("evidence") or {}).get("artifacts") or []
+        if isinstance(item, Mapping) and item.get("artifact_kind") == "page" and item.get("storage_ref")
+    ]
+    if not evidence_refs:
+        raise ValueError("V4 input has no full-page evidence artifacts")
     materials, reviews, material_ids = [], [], set()
     for index, raw in enumerate(compact.get("m") or [], start=1):
         if not isinstance(raw, Mapping):
@@ -280,23 +286,7 @@ def _expand(
             # pack, bar or sheet. Resolver supplies the purchasable form.
             "quantity": _number(raw.get("q"), positive=True),
             "unit": _net_unit(raw.get("u")),
-            "evidence_refs": [preview],
-        })
-    for family, source_name, specification in _explicit_material_supplements(
-        object_payload=object_payload,
-        families=families,
-        existing_families={str(material["family"]) for material in materials},
-    ):
-        materials.append({
-            "requirement_id": _identifier(None, f"m{len(materials) + 1}", material_ids),
-            "source_name": source_name,
-            "family": family,
-            "specification": _normalise_material_specification(
-                family=family, source_name=source_name, value=specification,
-            ),
-            "quantity": None,
-            "unit": None,
-            "evidence_refs": [preview],
+            "evidence_refs": evidence_refs,
         })
     parts, part_ids = [], set()
     for index, raw in enumerate(compact.get("p") or [], start=1):
@@ -314,33 +304,13 @@ def _expand(
             "length_mm": length,
             "width_mm": width,
             "rotation_allowed": str(raw.get("r") or "yes").casefold() != "no",
-            "evidence_refs": [preview],
-        })
-    object_dimensions = dict(object_payload.get("dimensions") or {})
-    object_quantity = _number(object_payload.get("quantity"), positive=True) or 1.0
-    material_ids_with_parts = {str(part["material_requirement_id"]) for part in parts}
-    for material in materials:
-        if material["quantity"] is not None or material["requirement_id"] in material_ids_with_parts:
-            continue
-        proxy = _deterministic_net_proxy(
-            family=str(material["family"]), dimensions=object_dimensions,
-            object_quantity=object_quantity,
-        )
-        if proxy is None:
-            continue
-        material["quantity"], material["unit"] = proxy
-        reviews.append({
-            "code": "material_net_demand_assumption",
-            "severity": "warning",
-            "path": f"materials.{material['requirement_id']}",
-            "message": "Net demand is an object-envelope assumption pending detailed geometry",
-            "evidence_refs": [preview],
+            "evidence_refs": evidence_refs,
         })
     if not materials:
         reviews.append({
             "code": "material_requirement_missing", "severity": "blocking",
             "path": "materials", "message": "No valid material demand was extracted",
-            "evidence_refs": [preview],
+            "evidence_refs": evidence_refs,
         })
     dimensions = list(compact.get("d") or []) + [0, 0, 0]
     facts = {
@@ -358,14 +328,14 @@ def _expand(
         "materials": materials,
         "parts": parts,
         "review_items": reviews,
-        "primary_preview_ref": preview,
+        "primary_preview_ref": evidence_refs[0],
     }
     return validate_material_facts_v3(facts, allowed_material_families=families)
 
 
 def run_estimation_v3_material_facts_agent(
     *, inputs: Sequence[Mapping[str, Any]], allowed_material_families: AbstractSet[str],
-    preview_bytes_by_input: Mapping[str, bytes],
+    evidence_page_bytes_by_ref: Mapping[str, bytes],
     pricing_key_fields_by_family: Mapping[str, Sequence[str]] | None = None,
     family_alias_context: Mapping[str, Mapping[str, Any]] | None = None,
     model: str | None = None,
@@ -377,10 +347,10 @@ def run_estimation_v3_material_facts_agent(
         "id": row["input_payload"]["object"]["object_id"],
         "name": row["input_payload"]["object"]["object_name"],
         "quantity": row["input_payload"]["object"].get("quantity") or 1,
-        "evidence_backed_object_handoff": {
-            "dimensions": row["input_payload"]["object"].get("dimensions"),
-            "description": row["input_payload"]["object"].get("notes"),
-            "detected_materials": row["input_payload"]["object"].get("detected_materials"),
+        "evidence": {
+            "pages": row["input_payload"].get("object", {}).get("evidence_pages", []),
+            "ocr_blocks": row["input_payload"].get("evidence", {}).get("ocr_blocks", []),
+            "artifacts": row["input_payload"].get("evidence", {}).get("artifacts", []),
         },
     } for row in inputs]
     request = {
@@ -396,14 +366,12 @@ def run_estimation_v3_material_facts_agent(
         },
     }
     content: list[dict[str, Any]] = []
-    for row in inputs:
-        input_id = str(row["input_id"])
-        preview = preview_bytes_by_input.get(input_id)
-        if not preview:
-            raise ValueError(f"source preview is missing for input {input_id}")
+    for storage_ref, page in sorted(evidence_page_bytes_by_ref.items()):
+        if not page:
+            raise ValueError(f"full source evidence is missing for {storage_ref}")
         content.extend([
-            {"type": "text", "text": json.dumps({"source_preview_for_object_id": row["input_payload"]["object"]["object_id"]})},
-            {"type": "image", "source": {"type": "base64", "media_type": "image/webp", "data": base64.b64encode(preview).decode("ascii")}},
+            {"type": "text", "text": json.dumps({"source_evidence_ref": storage_ref})},
+            {"type": "image", "source": {"type": "base64", "media_type": "image/webp", "data": base64.b64encode(page).decode("ascii")}},
         ])
     content.append({"type": "text", "text": json.dumps(request, ensure_ascii=False, separators=(",", ":"))})
     started_at = datetime.now(UTC).isoformat()

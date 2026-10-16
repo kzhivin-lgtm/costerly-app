@@ -249,19 +249,11 @@ def _build_review_card_details_html(
     timings: dict[str, object] | None = None,
 ) -> str:
     """Build the non-editable remainder of the File Review summary card."""
-    missing_html = _list_html(
-        run.get("missing_information", []),
-        class_name="file-review-missing-list",
-    )
-
     return (
         '<div class="file-review-summary-grid">'
         '<div class="file-review-label">File quality:</div>'
         f'<div class="file-review-value">{_escape(run.get("file_quality"))}</div>'
         '</div>'
-        '<div class="file-review-divider"></div>'
-        '<div class="file-review-section-title">Missing information:</div>'
-        f'{missing_html}'
         f'{_timing_html(timings)}'
         '<div class="file-review-divider"></div>'
         '<details class="file-review-meta-details">'
@@ -373,33 +365,25 @@ def _render_object_card(item: dict[str, object]) -> None:
             ),
             label_visibility="collapsed",
         )
-        label_qty, label_conf, label_ignore = name_slot.columns(
-            [1.3, 1.3, 1.7], gap="small", vertical_alignment="top",
+        label_qty, label_ignore = name_slot.columns(
+            [1.3, 1.7], gap="small", vertical_alignment="top",
         )
         label_qty.markdown(
             '<div class="file-review-top-label file-review-top-label-center">QTY</div>',
-            unsafe_allow_html=True,
-        )
-        label_conf.markdown(
-            '<div class="file-review-top-label file-review-top-label-center">CONF</div>',
             unsafe_allow_html=True,
         )
         label_ignore.markdown(
             '<div class="file-review-top-label file-review-top-label-empty" aria-hidden="true">&nbsp;</div>',
             unsafe_allow_html=True,
         )
-        col_qty, col_conf, col_ignore = name_slot.columns(
-            [1.3, 1.3, 1.7], gap="small", vertical_alignment="top",
+        col_qty, col_ignore = name_slot.columns(
+            [1.3, 1.7], gap="small", vertical_alignment="top",
         )
         edit["quantity"] = col_qty.text_input(
             "QTY",
             value=str(edit.get("quantity") or "1"),
             key=f"{edit_key}.quantity",
             label_visibility="collapsed",
-        )
-        col_conf.markdown(
-            f'<div class="file-review-native-conf-value">{_escape(item.get("confidence"))}</div>',
-            unsafe_allow_html=True,
         )
         ignore_clicked = col_ignore.button(
             "IGNORE",
@@ -416,21 +400,8 @@ def _render_object_card(item: dict[str, object]) -> None:
                 unsafe_allow_html=True,
             )
 
-        st.markdown('<div class="file-review-divider"></div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div class="file-review-object-detail-grid">'
-            '<div class="file-review-label">Dimensions:</div>'
-            f'<div class="file-review-value">{_escape(item.get("dimensions"))}</div>'
-            '</div>'
-            '<div class="file-review-divider"></div>'
-            '<div class="file-review-section-title">Notes:</div>',
-            unsafe_allow_html=True,
-        )
-        notes_html = _list_html(
-            item.get("notes", []),
-            class_name="file-review-object-notes-list",
-        )
-        st.markdown(notes_html, unsafe_allow_html=True)
+        if item.get("review_required"):
+            st.markdown('<div class="file-review-native-ignored">REVIEW REQUIRED: QUANTITY MAY BE AMBIGUOUS</div>', unsafe_allow_html=True)
 
 
 def _sync_object_edit_state(run_id: str, objects: list[dict[str, object]]) -> None:

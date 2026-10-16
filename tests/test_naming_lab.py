@@ -13,7 +13,7 @@ from agents.naming_lab import (
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v5_2_partial_safe_english_mvp"
+    assert NAMING_LAB_VERSION == "naming_lab_v6_multimodal_evidence"
 
 
 def test_extracts_authoritative_leading_index_only():
@@ -42,7 +42,7 @@ def test_builds_minimal_locked_input_without_mutable_object_fields():
         {
             "object_id": "lp-1",
             "object_name": "ЛП-1 — Metal platform",
-            "evidence_pages": "1",
+            "evidence_page_refs": [{"page_number": 1, "source_label": "A-01", "regions": []}],
             "quantity": 7,
             "dimensions_json": {"width": 1000},
         }
@@ -56,27 +56,26 @@ def test_builds_minimal_locked_input_without_mutable_object_fields():
             "object_id": "lp-1",
             "object_index": "ЛП-1",
             "current_name": "ЛП-1 — Metal platform",
-            "evidence_pages": "1",
-            "context_hint": "",
+                "evidence_pages": [1],
             "ocr_snippets": ["ЛП-1 Площадка"],
         }
     ]
 
 
-def test_context_hint_is_whitespace_normalized_and_capped():
+def test_naming_input_excludes_detection_notes():
     objects = [
         {
             "object_id": "a",
             "object_name": "Object 1",
-            "evidence_pages": "1",
+        "evidence_page_refs": [{"page_number": 1, "source_label": "A-01", "regions": []}],
             "notes": "  Custom\n shelving   unit " + ("with shelves " * 40),
         }
     ]
 
     locked = build_locked_naming_input(objects, {"evidence": {}})
 
-    assert locked[0]["context_hint"].startswith("Custom shelving unit with shelves")
-    assert len(locked[0]["context_hint"]) == 300
+    assert "context_hint" not in locked[0]
+    assert locked[0]["evidence_pages"] == [1]
 
 
 def test_ocr_snippets_are_capped_for_compact_naming_input():
@@ -125,7 +124,7 @@ def test_preview_is_composed_without_mutating_locked_objects():
     }
 
     assert compose_name_preview(locked, result) == [
-        {"object_id": "a", "display_name": "ОМ-2 Railing panel"}
+        {"object_id": "a", "display_name": "ОМ-2 — Railing panel"}
     ]
     assert locked[0]["current_name"] == "Old"
 
@@ -194,7 +193,7 @@ def test_invalid_row_keeps_placeholder_without_discarding_valid_names():
     apply_name_mapping(objects, locked, result)
 
     assert objects[0]["object_name"] == "CM-1"
-    assert objects[1]["object_name"] == "CM-2 Display cabinet"
+    assert objects[1]["object_name"] == "CM-2 — Display cabinet"
 
 
 def test_disambiguates_duplicate_transport_ids_without_changing_order_or_names():

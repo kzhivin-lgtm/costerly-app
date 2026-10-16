@@ -4,334 +4,109 @@ from typing import Any
 
 
 STATUS_VALUES = {"intake_parsed", "intake_failed", "unreadable"}
-
 REQUIRED_RUN_FIELDS = {
-    "run_id",
-    "company_id",
-    "project_name",
-    "file_name",
-    "source_type",
-    "design_partner",
-    "client",
-    "author",
-    "document_date",
-    "pages_detected",
-    "language",
-    "file_quality_level",
-    "file_quality_label",
-    "file_quality_confidence",
-    "file_quality_notes",
-    "status",
-    "created_at",
+    "run_id", "company_id", "project_name", "file_name", "source_type",
+    "design_partner", "client", "author", "document_date", "pages_detected",
+    "language", "file_quality_level", "file_quality_label", "file_quality_confidence",
+    "file_quality_notes", "status", "created_at",
 }
-
 REQUIRED_OBJECT_FIELDS = {
-    "run_id",
-    "company_id",
-    "object_id",
-    "object_name",
-    "quantity",
-    "quantity_explicit",
-    "quantity_confidence",
-    "confidence",
-    "evidence_pages",
-    "dimensions_json",
-    "notes",
-    "approved",
-    "created_at",
+    "run_id", "company_id", "object_id", "object_name", "quantity",
+    "quantity_explicit", "review_required", "evidence_pages", "evidence_page_refs",
+    "approved", "created_at",
 }
-
-OPTIONAL_RUN_FIELDS = {"missing_information"}
-OPTIONAL_OBJECT_FIELDS = {"detected_materials", "evidence_page_refs", "evidence_anchors"}
-
-REQUIRED_DIMENSION_FIELDS = {
-    "unit",
-    "width",
-    "depth",
-    "height",
-    "thickness",
-    "diameter",
-    "profile_size",
-    "raw_text",
-}
-
+_BBOX_KEYS = {"top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y"}
 
 DETECTION_RESULT_JSON_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
+    "type": "object", "additionalProperties": False,
     "required": ["rfq_run", "detected_objects"],
     "properties": {
         "rfq_run": {
-            "type": "object",
-            "additionalProperties": False,
+            "type": "object", "additionalProperties": False,
             "required": sorted(REQUIRED_RUN_FIELDS),
             "properties": {
-                "run_id": {"type": "string"},
-                "company_id": {"type": "string"},
-                "project_name": {"type": "string"},
-                "file_name": {"type": "string"},
-                "source_type": {"type": "string"},
-                "design_partner": {"type": "string"},
-                "client": {"type": "string"},
-                "author": {"type": "string"},
-                "document_date": {"type": "string"},
-                "pages_detected": {"type": "integer", "minimum": 0},
-                "language": {"type": "string"},
-                "file_quality_level": {"type": "integer", "minimum": 0, "maximum": 4},
-                "file_quality_label": {"type": "string"},
-                "file_quality_confidence": {"type": "number", "minimum": 0, "maximum": 100},
-                "file_quality_notes": {"type": "string"},
-                "status": {"type": "string", "enum": sorted(STATUS_VALUES)},
+                "run_id": {"type": "string"}, "company_id": {"type": "string"},
+                "project_name": {"type": "string"}, "file_name": {"type": "string"},
+                "source_type": {"type": "string"}, "design_partner": {"type": "string"},
+                "client": {"type": "string"}, "author": {"type": "string"},
+                "document_date": {"type": "string"}, "pages_detected": {"type": "integer", "minimum": 0},
+                "language": {"type": "string"}, "file_quality_level": {"type": "integer", "minimum": 0, "maximum": 4},
+                "file_quality_label": {"type": "string"}, "file_quality_confidence": {"type": "number", "minimum": 0, "maximum": 100},
+                "file_quality_notes": {"type": "string"}, "status": {"type": "string", "enum": sorted(STATUS_VALUES)},
                 "created_at": {"type": "string"},
             },
         },
         "detected_objects": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
+            "type": "array", "items": {
+                "type": "object", "additionalProperties": False,
                 "required": sorted(REQUIRED_OBJECT_FIELDS),
                 "properties": {
-                    "run_id": {"type": "string"},
-                    "company_id": {"type": "string"},
-                    "object_id": {"type": "string"},
-                    "object_name": {"type": "string"},
-                    "quantity": {"type": "number", "minimum": 0},
-                    "quantity_explicit": {"type": "boolean"},
-                    "quantity_confidence": {"type": "number", "minimum": 0, "maximum": 100},
-                    "confidence": {"type": "number", "minimum": 0, "maximum": 100},
-                    "evidence_pages": {"type": "string"},
-                    # Compatibility only. Detection vNext does not extract a
-                    # material summary; legacy persisted rows may still have it.
-                    "detected_materials": {"type": "string"},
-                    "dimensions_json": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": sorted(REQUIRED_DIMENSION_FIELDS),
+                    "run_id": {"type": "string"}, "company_id": {"type": "string"},
+                    "object_id": {"type": "string"}, "object_name": {"type": "string"},
+                    "quantity": {"type": "number", "minimum": 1}, "quantity_explicit": {"type": "boolean"},
+                    "review_required": {"type": "boolean"}, "evidence_pages": {"type": "string"},
+                    "evidence_page_refs": {"type": "array", "minItems": 1, "items": {
+                        "type": "object", "additionalProperties": False,
+                        "required": ["page_number", "source_label", "regions"],
                         "properties": {
-                            "unit": {"type": "string"},
-                            "width": {"type": "number"},
-                            "depth": {"type": "number"},
-                            "height": {"type": "number"},
-                            "thickness": {"type": "number"},
-                            "diameter": {"type": "number"},
-                            "profile_size": {"type": "string"},
-                            "raw_text": {"type": "string"},
+                            "page_number": {"type": "integer", "minimum": 1},
+                            "source_label": {"type": "string"},
+                            "regions": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": sorted(_BBOX_KEYS), "properties": {key: {"type": "number", "minimum": 0} for key in _BBOX_KEYS}}},
+                            "presentation_preview_bbox": {"type": "object", "additionalProperties": False, "required": sorted(_BBOX_KEYS), "properties": {key: {"type": "number", "minimum": 0} for key in _BBOX_KEYS}},
                         },
-                    },
-                    "notes": {"type": "string"},
-                    "evidence_page_refs": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "required": ["page_number", "source_label"],
-                            "properties": {
-                                "page_number": {"type": "integer", "minimum": 1},
-                                "source_label": {"type": "string"},
-                                "roles": {
-                                    "type": "array",
-                                    "items": {"type": "string", "enum": ["identity", "overall_dimensions", "construction"]},
-                                },
-                                "preview_bbox": {
-                                    "type": "object",
-                                    "additionalProperties": False,
-                                    "required": ["top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y"],
-                                    "properties": {
-                                        "top_left_x": {"type": "number", "minimum": 0},
-                                        "top_left_y": {"type": "number", "minimum": 0},
-                                        "bottom_right_x": {"type": "number", "minimum": 0},
-                                        "bottom_right_y": {"type": "number", "minimum": 0},
-                                    },
-                                },
-                            },
-                        },
-                    },
-                    "evidence_anchors": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "required": ["page_number", "text"],
-                            "properties": {
-                                "page_number": {"type": "integer", "minimum": 1},
-                                "text": {"type": "string"},
-                            },
-                        },
-                    },
-                    "approved": {"type": "boolean"},
-                    "created_at": {"type": "string"},
+                    }},
+                    "approved": {"type": "boolean"}, "created_at": {"type": "string"},
                 },
             },
         },
     },
 }
 
-
 class DetectionSchemaError(ValueError):
     pass
 
-
-def _require_dict(value: Any, name: str) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise DetectionSchemaError(f"{name} must be dict")
+def _dict(value: Any, name: str) -> dict[str, Any]:
+    if not isinstance(value, dict): raise DetectionSchemaError(f"{name} must be dict")
     return value
 
-
-def _require_list(value: Any, name: str) -> list[Any]:
-    if not isinstance(value, list):
-        raise DetectionSchemaError(f"{name} must be list")
+def _list(value: Any, name: str) -> list[Any]:
+    if not isinstance(value, list): raise DetectionSchemaError(f"{name} must be list")
     return value
 
+def _keys(value: dict[str, Any], required: set[str], name: str) -> None:
+    missing, extra = required - set(value), set(value) - required
+    if missing: raise DetectionSchemaError(f"{name} missing keys: {sorted(missing)}")
+    if extra: raise DetectionSchemaError(f"{name} has extra keys: {sorted(extra)}")
 
-def _check_required_keys(payload: dict[str, Any], required: set[str], name: str) -> None:
-    missing = required - set(payload.keys())
-    if missing:
-        raise DetectionSchemaError(f"{name} missing keys: {sorted(missing)}")
-
-
-def _check_no_extra_keys(payload: dict[str, Any], allowed: set[str], name: str) -> None:
-    extra = set(payload.keys()) - allowed
-    if extra:
-        raise DetectionSchemaError(f"{name} has extra keys: {sorted(extra)}")
-
-
-def _check_number_range(value: Any, name: str, min_value: float, max_value: float) -> None:
-    if not isinstance(value, (int, float)):
-        raise DetectionSchemaError(f"{name} must be number")
-    if value < min_value or value > max_value:
-        raise DetectionSchemaError(f"{name} must be between {min_value} and {max_value}")
-
+def _bbox(value: Any, name: str) -> None:
+    bbox = _dict(value, name); _keys(bbox, _BBOX_KEYS, name)
+    if any(not isinstance(bbox[key], (int, float)) or bbox[key] < 0 for key in _BBOX_KEYS):
+        raise DetectionSchemaError(f"{name} must contain non-negative numeric coordinates")
+    if bbox["bottom_right_x"] <= bbox["top_left_x"] or bbox["bottom_right_y"] <= bbox["top_left_y"]:
+        raise DetectionSchemaError(f"{name} must have positive area")
 
 def validate_detection_result(result: dict[str, Any]) -> dict[str, Any]:
-    """
-    Validates Detection Agent output before Supabase write.
-
-    This intentionally uses plain Python instead of Pydantic so the app does not
-    need a new dependency yet.
-    """
-    result = _require_dict(result, "detection_result")
-    _check_required_keys(result, {"rfq_run", "detected_objects"}, "detection_result")
-    _check_no_extra_keys(result, {"rfq_run", "detected_objects"}, "detection_result")
-
-    rfq_run = _require_dict(result["rfq_run"], "rfq_run")
-    detected_objects = _require_list(result["detected_objects"], "detected_objects")
-
-    _check_required_keys(rfq_run, REQUIRED_RUN_FIELDS, "rfq_run")
-    _check_no_extra_keys(rfq_run, REQUIRED_RUN_FIELDS | OPTIONAL_RUN_FIELDS, "rfq_run")
-
-    if rfq_run["status"] not in STATUS_VALUES:
-        raise DetectionSchemaError(
-            f"rfq_run.status must be one of {sorted(STATUS_VALUES)}"
-        )
-
-    if not isinstance(rfq_run["pages_detected"], int):
-        raise DetectionSchemaError("rfq_run.pages_detected must be integer")
-
-    if not isinstance(rfq_run["file_quality_level"], int):
-        raise DetectionSchemaError("rfq_run.file_quality_level must be integer")
-
-    if rfq_run["file_quality_level"] < 0 or rfq_run["file_quality_level"] > 4:
-        raise DetectionSchemaError("rfq_run.file_quality_level must be between 0 and 4")
-
-    _check_number_range(
-        rfq_run["file_quality_confidence"],
-        "rfq_run.file_quality_confidence",
-        0,
-        100,
-    )
-
-    if rfq_run["status"] in {"unreadable", "intake_failed"} and detected_objects:
-        raise DetectionSchemaError(
-            "detected_objects must be [] when status is unreadable or intake_failed"
-        )
-
-    for index, obj in enumerate(detected_objects):
-        obj_name = f"detected_objects[{index}]"
-        obj = _require_dict(obj, obj_name)
-
-        _check_required_keys(obj, REQUIRED_OBJECT_FIELDS, obj_name)
-        _check_no_extra_keys(obj, REQUIRED_OBJECT_FIELDS | OPTIONAL_OBJECT_FIELDS, obj_name)
-
-        if obj["run_id"] != rfq_run["run_id"]:
-            raise DetectionSchemaError(f"{obj_name}.run_id must match rfq_run.run_id")
-
-        if obj["company_id"] != rfq_run["company_id"]:
-            raise DetectionSchemaError(
-                f"{obj_name}.company_id must match rfq_run.company_id"
-            )
-
-        _check_number_range(obj["quantity"], f"{obj_name}.quantity", 0, 999999)
-        _check_number_range(
-            obj["quantity_confidence"],
-            f"{obj_name}.quantity_confidence",
-            0,
-            100,
-        )
-        _check_number_range(obj["confidence"], f"{obj_name}.confidence", 0, 100)
-
-        if not isinstance(obj["quantity_explicit"], bool):
-            raise DetectionSchemaError(f"{obj_name}.quantity_explicit must be boolean")
-
-        if not isinstance(obj["approved"], bool):
-            raise DetectionSchemaError(f"{obj_name}.approved must be boolean")
-
-        if "evidence_page_refs" in obj:
-            page_refs = _require_list(obj["evidence_page_refs"], f"{obj_name}.evidence_page_refs")
-            for ref_index, page_ref in enumerate(page_refs):
-                ref_name = f"{obj_name}.evidence_page_refs[{ref_index}]"
-                page_ref = _require_dict(page_ref, ref_name)
-                _check_required_keys(page_ref, {"page_number", "source_label"}, ref_name)
-                _check_no_extra_keys(page_ref, {"page_number", "source_label", "roles", "preview_bbox"}, ref_name)
-                if not isinstance(page_ref["page_number"], int) or page_ref["page_number"] < 1:
-                    raise DetectionSchemaError(f"{ref_name}.page_number must be positive integer")
-                if not isinstance(page_ref["source_label"], str):
-                    raise DetectionSchemaError(f"{ref_name}.source_label must be string")
-                if "roles" in page_ref:
-                    roles = _require_list(page_ref["roles"], f"{ref_name}.roles")
-                    if any(role not in {"identity", "overall_dimensions", "construction"} for role in roles):
-                        raise DetectionSchemaError(f"{ref_name}.roles has unsupported role")
-                if "preview_bbox" in page_ref:
-                    bbox = _require_dict(page_ref["preview_bbox"], f"{ref_name}.preview_bbox")
-                    required_bbox = {"top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y"}
-                    _check_required_keys(bbox, required_bbox, f"{ref_name}.preview_bbox")
-                    _check_no_extra_keys(bbox, required_bbox, f"{ref_name}.preview_bbox")
-                    for key in required_bbox:
-                        if not isinstance(bbox[key], (int, float)) or bbox[key] < 0:
-                            raise DetectionSchemaError(f"{ref_name}.preview_bbox.{key} must be non-negative number")
-                    if bbox["bottom_right_x"] <= bbox["top_left_x"] or bbox["bottom_right_y"] <= bbox["top_left_y"]:
-                        raise DetectionSchemaError(f"{ref_name}.preview_bbox must have positive area")
-
-        if "evidence_anchors" in obj:
-            anchors = _require_list(obj["evidence_anchors"], f"{obj_name}.evidence_anchors")
-            for anchor_index, anchor in enumerate(anchors):
-                anchor_name = f"{obj_name}.evidence_anchors[{anchor_index}]"
-                anchor = _require_dict(anchor, anchor_name)
-                _check_required_keys(anchor, {"page_number", "text"}, anchor_name)
-                _check_no_extra_keys(anchor, {"page_number", "text"}, anchor_name)
-                if not isinstance(anchor["page_number"], int) or anchor["page_number"] < 1:
-                    raise DetectionSchemaError(f"{anchor_name}.page_number must be positive integer")
-                if not isinstance(anchor["text"], str) or not anchor["text"].strip():
-                    raise DetectionSchemaError(f"{anchor_name}.text must be non-empty string")
-
-        dimensions = _require_dict(obj["dimensions_json"], f"{obj_name}.dimensions_json")
-        _check_required_keys(
-            dimensions,
-            REQUIRED_DIMENSION_FIELDS,
-            f"{obj_name}.dimensions_json",
-        )
-        _check_no_extra_keys(
-            dimensions,
-            REQUIRED_DIMENSION_FIELDS,
-            f"{obj_name}.dimensions_json",
-        )
-
-        for key in ["width", "depth", "height", "thickness", "diameter"]:
-            _check_number_range(
-                dimensions[key],
-                f"{obj_name}.dimensions_json.{key}",
-                0,
-                999999,
-            )
-
+    result = _dict(result, "detection_result"); _keys(result, {"rfq_run", "detected_objects"}, "detection_result")
+    run, objects = _dict(result["rfq_run"], "rfq_run"), _list(result["detected_objects"], "detected_objects")
+    _keys(run, REQUIRED_RUN_FIELDS, "rfq_run")
+    if run["status"] not in STATUS_VALUES: raise DetectionSchemaError("rfq_run.status is invalid")
+    if not isinstance(run["pages_detected"], int): raise DetectionSchemaError("rfq_run.pages_detected must be integer")
+    if not isinstance(run["file_quality_level"], int) or not 0 <= run["file_quality_level"] <= 4: raise DetectionSchemaError("rfq_run.file_quality_level is invalid")
+    if not isinstance(run["file_quality_confidence"], (int, float)) or not 0 <= run["file_quality_confidence"] <= 100: raise DetectionSchemaError("rfq_run.file_quality_confidence is invalid")
+    if run["status"] in {"unreadable", "intake_failed"} and objects: raise DetectionSchemaError("failed run must not contain objects")
+    for index, raw in enumerate(objects):
+        name, obj = f"detected_objects[{index}]", _dict(raw, f"detected_objects[{index}]")
+        _keys(obj, REQUIRED_OBJECT_FIELDS, name)
+        if obj["run_id"] != run["run_id"] or obj["company_id"] != run["company_id"]: raise DetectionSchemaError(f"{name} must belong to rfq_run")
+        if not isinstance(obj["quantity"], (int, float)) or not 1 <= obj["quantity"] <= 999999: raise DetectionSchemaError(f"{name}.quantity must be positive")
+        if not isinstance(obj["quantity_explicit"], bool) or not isinstance(obj["review_required"], bool) or not isinstance(obj["approved"], bool): raise DetectionSchemaError(f"{name} boolean field is invalid")
+        refs = _list(obj["evidence_page_refs"], f"{name}.evidence_page_refs")
+        if not refs: raise DetectionSchemaError(f"{name}.evidence_page_refs must not be empty")
+        for ref_index, raw_ref in enumerate(refs):
+            ref_name, ref = f"{name}.evidence_page_refs[{ref_index}]", _dict(raw_ref, f"{name}.evidence_page_refs[{ref_index}]")
+            allowed = {"page_number", "source_label", "regions", "presentation_preview_bbox"}
+            if {"page_number", "source_label", "regions"} - set(ref) or set(ref) - allowed: raise DetectionSchemaError(f"{ref_name} has invalid keys")
+            if not isinstance(ref["page_number"], int) or ref["page_number"] < 1 or not isinstance(ref["source_label"], str): raise DetectionSchemaError(f"{ref_name} is invalid")
+            for region_index, region in enumerate(_list(ref["regions"], f"{ref_name}.regions")): _bbox(region, f"{ref_name}.regions[{region_index}]")
+            if "presentation_preview_bbox" in ref: _bbox(ref["presentation_preview_bbox"], f"{ref_name}.presentation_preview_bbox")
     return result
