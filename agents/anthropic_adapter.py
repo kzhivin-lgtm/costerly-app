@@ -19,6 +19,7 @@ from config import agent_cost_category, calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
+    load_detection_boundary_review_v4_1_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
@@ -38,11 +39,12 @@ from agents.schemas.detection_schema import (
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_AGENT_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
-DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v6"
+DETECTION_PROMPT_VERSION = "detection_v4_1_object_evidence_handoff"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
-DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v4"
+DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_1_visual_registry_integrated"
+DETECTION_BOUNDARY_REVIEW_V4_1_PROMPT_VERSION = "detection_v4_1_boundary_review"
 
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
     DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -74,6 +76,16 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
                 },
             },
         },
+    },
+}
+
+DETECTION_BOUNDARY_REVIEW_V4_1_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["objects", "page_coverage"],
+    "properties": {
+        "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
+        "page_coverage": DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["page_coverage"],
     },
 }
 
@@ -728,6 +740,94 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     })
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
+
+
+def run_anthropic_detection_boundary_review_v4_1_agent(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    regions: list[dict[str, Any]],
+    visual_map: dict[str, Any],
+    layout_signal: dict[str, Any],
+    ocr_package: dict[str, Any] | None,
+    model: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Independently re-check a geometry-triggered V4 object boundary."""
+    selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
+    prompt = load_detection_boundary_review_v4_1_prompt()
+    user_text = build_detection_user_text(
+        file_name=file_name,
+        company_id=company_id,
+        ocr_package=ocr_package,
+    )
+    user_text += (
+        "\n\nVISUAL REPRESENTATION MAP (navigation only, not object decisions):\n"
+        + json.dumps(visual_map, ensure_ascii=False)
+        + "\n\nDETERMINISTIC LAYOUT SIGNAL (trigger evidence only, not object boundaries):\n"
+        + json.dumps(layout_signal, ensure_ascii=False)
+    )
+    schema = strip_schema_for_claude(DETECTION_BOUNDARY_REVIEW_V4_1_JSON_SCHEMA)
+    content = build_detection_registry_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        user_text=user_text,
+        page_images=page_images,
+        regions=regions,
+    )
+    response, diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=8192,
+        system=build_detection_system_content(prompt=prompt),
+        messages=[{"role": "user", "content": content}],
+        output_config={"format": {"type": "json_schema", "schema": schema}},
+    )
+    try:
+        payload = json.loads(extract_text_from_claude_response(response))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Detection V4.1 boundary-review response failed validation: {exc}") from exc
+    try:
+        if not isinstance(payload, dict) or set(payload) != {"objects", "page_coverage"}:
+            raise ValueError("boundary review must contain only objects and page_coverage")
+        registry_objects = _apply_page_coverage_to_registry(
+            payload["objects"],
+            payload["page_coverage"],
+            page_count=len(page_images),
+        )
+        registry = validate_detection_registry(
+            {"objects": registry_objects},
+            visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
+        )
+    except (KeyError, ValueError) as exc:
+        raise RuntimeError(f"Detection V4.1 boundary-review response failed validation: {exc}") from exc
+    diagnostics.update({
+        "visual_group_count": len(visual_map["visual_groups"]),
+        "registry_object_count": len(registry["objects"]),
+        "page_coverage_count": len(payload["page_coverage"]),
+        "region_count": len(regions),
+        "page_count": len(page_images),
+        "attempt_label": "conditional_boundary_review",
+        "boundary_review_trigger": layout_signal,
+        "boundary_review_registry": registry,
+    })
+    usage = build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection_boundary_review",
+        company_id=company_id,
+        run_id=None,
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=selected_model,
+        prompt_version=DETECTION_BOUNDARY_REVIEW_V4_1_PROMPT_VERSION,
+        response=response,
+        started_at=diagnostics["request_started_at"],
+        finished_at=diagnostics["request_finished_at"],
+        request_diagnostics=diagnostics,
+    )
+    return registry, usage
 
 
 def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], visual_map: dict[str, Any], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:

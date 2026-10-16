@@ -52,6 +52,25 @@ Production acceptance requires one real upload with review of every object ID, q
 `Adda.pdf`, run `run_590733e409c44ed990b5636f685cd69f`, used the integrated
 Visual Registry V4 but incorrectly merged two visually separate, unlabelled
 complete assemblies into one commercial object. This is neither a Naming nor
-an Evidence defect. The next experiment makes physical-assembly candidates and
-positive merge evidence auditable inside the existing registry call. It does
-not rely on OCR labels and does not add a model call.
+an Evidence defect. A same-call self-declared-assembly experiment was rejected:
+it added latency but gave the model no independent way to falsify its own
+incorrect merge.
+
+## V4.1 conditional boundary-review candidate
+
+V4.1 keeps the accepted V4 registry as the default path. It adds one
+independent Boundary Review only when a deterministic OCR-layout contradiction
+is present: the primary registry has one object, while substantial,
+substantially distinct graphic blocks recur on at least 75% of graphic pages. OCR
+blocks are a trigger, not object boundaries.
+
+The reviewer receives full pages, OCR and a navigation-only visual map, but
+not the primary commercial-object decision. It returns the same V4 registry
+and full page-coverage contract, so Estimation's input payload does not change.
+The reviewer result, trigger geometry and page coverage remain private
+telemetry. If the optional review fails, Detection retains the primary object
+with `review_required: true` rather than returning no object.
+
+V4.1 is a deployment candidate. Acceptance requires Adda to return two
+independent objects with all four pages in each relevant Evidence package, and
+the Kitchen, page-23 and Metal benchmarks to remain on the single-call path.

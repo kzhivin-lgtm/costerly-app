@@ -4,6 +4,7 @@ from unittest.mock import patch
 from agents.detection_agent import (
     _enforce_shared_track_door_system_quantity,
     _merge_registry_evidence,
+    build_v4_1_boundary_review_signal,
     run_detection_agent,
 )
 
@@ -69,6 +70,138 @@ def test_registry_resolves_shared_track_leaves_to_one_commercial_door_system():
 
     assert resolved["objects"][0]["quantity"] == 1
     assert resolved["objects"][0]["quantity_explicit"] is False
+
+
+def test_v4_1_boundary_review_triggers_for_repeated_separate_graphic_blocks():
+    registry = {"objects": [{"object_id": "object-001"}]}
+    separate_blocks = [
+        {"type": "image", "top_left_x": 200, "top_left_y": 200, "bottom_right_x": 900, "bottom_right_y": 1000},
+        {"type": "image", "top_left_x": 1100, "top_left_y": 250, "bottom_right_x": 2000, "bottom_right_y": 1050},
+    ]
+    ocr = {"pages": [
+        {"page_number": page_number, "blocks": separate_blocks}
+        for page_number in range(1, 5)
+    ]}
+
+    signal = build_v4_1_boundary_review_signal(registry, ocr)
+
+    assert signal["triggered"] is True
+    assert signal["multi_block_pages"] == [
+        {"page_number": page_number, "blocks": [
+            {"top_left_x": 200, "top_left_y": 200, "bottom_right_x": 900, "bottom_right_y": 1000},
+            {"top_left_x": 1100, "top_left_y": 250, "bottom_right_x": 2000, "bottom_right_y": 1050},
+        ]}
+        for page_number in range(1, 5)
+    ]
+
+
+def test_v4_1_boundary_review_does_not_trigger_for_two_isolated_kitchen_pages():
+    registry = {"objects": [{"object_id": "object-001"}]}
+    one_block = [
+        {"type": "image", "top_left_x": 200, "top_left_y": 200, "bottom_right_x": 2000, "bottom_right_y": 1100},
+    ]
+    two_blocks = one_block + [
+        {"type": "image", "top_left_x": 2200, "top_left_y": 250, "bottom_right_x": 3000, "bottom_right_y": 1200},
+    ]
+    ocr = {"pages": [
+        {"page_number": page_number, "blocks": two_blocks if page_number in {4, 5} else one_block}
+        for page_number in range(1, 40)
+    ]}
+
+    signal = build_v4_1_boundary_review_signal(registry, ocr)
+
+    assert signal["triggered"] is False
+    assert signal["graphic_page_count"] == 39
+    assert [page["page_number"] for page in signal["multi_block_pages"]] == [4, 5]
+
+
+def test_v4_1_replaces_the_primary_lock_only_when_geometry_triggered():
+    primary_registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1, 2],
+        "estimation_evidence_pages": [1, 2], "visual_group_ids": ["view-001"],
+        "visual_identity": "combined display", "boundary_basis": "one system",
+    }]}
+    reviewed_registry = {"objects": [
+        {
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1, 2],
+            "estimation_evidence_pages": [1, 2], "visual_group_ids": ["view-001"],
+            "visual_identity": "mirror stand", "boundary_basis": "separate freestanding envelope",
+        },
+        {
+            "object_id": "object-002", "transport_label": "Object 2",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1, 2],
+            "estimation_evidence_pages": [1, 2], "visual_group_ids": ["view-002"],
+            "visual_identity": "display cabinet", "boundary_basis": "separate cabinet carcass",
+        },
+    ]}
+    ocr = {"pages": [
+        {
+            "page_number": page_number,
+            "blocks": [
+                {"type": "image", "top_left_x": 100, "top_left_y": 100, "bottom_right_x": 900, "bottom_right_y": 900},
+                {"type": "image", "top_left_x": 1100, "top_left_y": 100, "bottom_right_x": 2000, "bottom_right_y": 900},
+            ],
+        }
+        for page_number in (1, 2)
+    ], "evidence": {"text_blocks": [], "literal_items": []}}
+    final_result = {
+        "rfq_run": {
+            "run_id": "run_test", "company_id": "001", "project_name": "unknown",
+            "file_name": "adda.pdf", "source_type": "pdf", "design_partner": "unknown",
+            "client": "unknown", "author": "unknown", "document_date": "unknown",
+            "pages_detected": 2, "language": "ru", "file_quality_level": 3,
+            "file_quality_label": "detailed_drawings", "file_quality_confidence": 90,
+            "file_quality_notes": "", "status": "intake_parsed", "created_at": "2026-10-16T00:00:00Z",
+        },
+        "detected_objects": [
+            {
+                "run_id": "run_test", "company_id": "001", "object_id": object_id,
+                "object_name": object_id, "quantity": 1, "quantity_explicit": False,
+                "review_required": False, "evidence_pages": "1,2",
+                "evidence_page_refs": [
+                    {"page_number": 1, "source_label": "P1", "regions": []},
+                    {"page_number": 2, "source_label": "P2", "regions": []},
+                ],
+                "approved": False, "created_at": "2026-10-16T00:00:00Z",
+            }
+            for object_id in ("object-001", "object-002")
+        ],
+        "_agent_usage": {"event": "final"},
+    }
+    captured: dict = {}
+
+    def capture_final(**kwargs):
+        captured.update(kwargs)
+        return final_result
+
+    with (
+        patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
+            return_value=({"visual_groups": [
+                {"group_id": "view-001", "page_number": 1},
+                {"group_id": "view-002", "page_number": 1},
+            ]}, primary_registry, {"event": "primary"}),
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_boundary_review_v4_1_agent",
+            return_value=(reviewed_registry, {"event": "boundary"}),
+        ) as review,
+        patch("agents.detection_agent.run_anthropic_detection_agent_with_fallback", side_effect=capture_final),
+    ):
+        result = run_detection_agent(
+            file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
+            ocr_package=ocr, page_images=[b"one", b"two"],
+        )
+
+    assert review.call_count == 1
+    assert [item["object_id"] for item in captured["locked_registry"]["objects"]] == ["object-001", "object-002"]
+    assert [item["object_id"] for item in result["detected_objects"]] == ["object-001", "object-002"]
+    assert result["_agent_usage_events"] == [
+        {"event": "primary"}, {"event": "boundary"}, {"event": "final"},
+    ]
 
 
 def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier_cap():
