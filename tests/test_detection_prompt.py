@@ -43,9 +43,10 @@ def test_no_naming_ab_prompt_delegates_user_facing_name_once():
 def test_detection_registry_requires_coverage_of_separate_product_groups():
     prompt = load_detection_registry_prompt()
 
-    assert "separate coverage candidate" in prompt
-    assert "Map each candidate to exactly one returned object" in prompt
-    assert "never merge evidence" in prompt
+    assert "separate candidate" in prompt
+    assert "Each candidate must map either to one returned object" in prompt
     assert "vertical shelving unit, a track-supported door system, and a long storage console" in prompt
-    assert "First decide whether a drawing group is a complete commercial object or a component" in prompt
-    assert "Only after this containment check" in prompt
+    assert "independently drawn complete item has a presumption" in prompt
+    assert "First consolidate alternate views" in prompt
+    assert "Then apply containment" in prompt
+    assert "never merge or containment evidence" in prompt
