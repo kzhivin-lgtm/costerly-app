@@ -73,4 +73,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "There is no arbitrary page-count cap" in prompt
     assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
+    assert "shared schedule or a sheet showing separately coded products" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt

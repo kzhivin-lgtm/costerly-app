@@ -99,7 +99,7 @@ def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
     assert normalized["visual_groups"][0]["related_group_ids"] == ["view-002"]
 
 
-def test_registry_rejects_visual_group_assigned_to_multiple_objects():
+def test_registry_allows_a_shared_visual_group_when_it_supports_multiple_objects():
     registry = {
         "objects": [
             {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "first", "boundary_basis": "first"},
@@ -107,12 +107,9 @@ def test_registry_rejects_visual_group_assigned_to_multiple_objects():
         ],
     }
 
-    try:
-        validate_detection_registry(registry, visual_group_ids={"view-001"})
-    except DetectionRegistrySchemaError as exc:
-        assert "multiple commercial objects" in str(exc)
-    else:
-        raise AssertionError("duplicate visual-group assignment was accepted")
+    assert validate_detection_registry(
+        registry, visual_group_ids={"view-001"}
+    ) == registry
 
 
 def test_registry_allows_unassigned_navigation_only_visual_groups():
