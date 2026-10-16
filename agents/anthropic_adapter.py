@@ -4,6 +4,7 @@ import base64
 import copy
 import hashlib
 import json
+import math
 import os
 import sys
 from threading import Lock
@@ -30,7 +31,7 @@ from agents.schemas.detection_schema import (
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_AGENT_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
-DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v3"
+DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v4"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_registry_coverage_v3"
 
@@ -581,6 +582,42 @@ def normalize_detection_identity_fields(
 
     rfq_run["company_id"] = company_id
     rfq_run["file_name"] = file_name
+
+    # File quality is advisory technical metadata. Claude's structured-output
+    # transport receives the integer shape but not JSON Schema min/max, so an
+    # out-of-range provider value must not discard an otherwise valid object
+    # registry and evidence package.
+    quality_by_label = {
+        "unreadable": 0,
+        "very_low_information": 1,
+        "partial_information": 2,
+        "detailed_drawings": 3,
+        "production_ready": 4,
+    }
+    label_by_quality = {value: key for key, value in quality_by_label.items()}
+    label = str(rfq_run.get("file_quality_label") or "").strip().casefold()
+    raw_quality = rfq_run.get("file_quality_level")
+    quality: int | None = None
+    if isinstance(raw_quality, int) and not isinstance(raw_quality, bool):
+        quality = raw_quality
+    elif isinstance(raw_quality, float) and raw_quality.is_integer():
+        quality = int(raw_quality)
+    if quality is None or not 0 <= quality <= 4:
+        quality = quality_by_label.get(label)
+    if quality is None:
+        quality = 0 if rfq_run.get("status") == "unreadable" else 2
+    rfq_run["file_quality_level"] = quality
+    if label not in quality_by_label:
+        rfq_run["file_quality_label"] = label_by_quality[quality]
+
+    raw_confidence = rfq_run.get("file_quality_confidence")
+    try:
+        confidence = float(raw_confidence)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    rfq_run["file_quality_confidence"] = (
+        min(100.0, max(0.0, confidence)) if math.isfinite(confidence) else 0.0
+    )
     for detected_object in detected_objects:
         if not isinstance(detected_object, dict):
             continue

@@ -330,6 +330,29 @@ def test_detection_identity_fields_are_normalized_before_validation():
     assert normalized["detected_objects"][0]["object_name"] == "Keep this object"
 
 
+def test_detection_normalizes_advisory_file_quality_before_schema_validation():
+    result = {
+        "rfq_run": {
+            "run_id": "run-1",
+            "file_quality_level": 5,
+            "file_quality_label": "production_ready",
+            "file_quality_confidence": 125,
+            "status": "intake_parsed",
+        },
+        "detected_objects": [],
+    }
+
+    normalized = normalize_detection_identity_fields(
+        result,
+        company_id="001",
+        file_name="drawing.pdf",
+    )
+
+    assert normalized["rfq_run"]["file_quality_level"] == 4
+    assert normalized["rfq_run"]["file_quality_label"] == "production_ready"
+    assert normalized["rfq_run"]["file_quality_confidence"] == 100.0
+
+
 def test_file_review_run_keeps_partner_and_client_roles_separate():
     normalized = _normalize_run(
         {

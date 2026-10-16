@@ -46,6 +46,16 @@ When the only reliable identifier is an address, retain only the street and prim
 
 `author` is hidden technical metadata. Use only the explicitly credited drawing author, otherwise `unknown`.
 
+## E. File quality, hidden technical metadata
+
+Set `file_quality_level` to exactly one integer and use its matching
+`file_quality_label`: `0` / `unreadable`, `1` / `very_low_information`, `2` /
+`partial_information`, `3` / `detailed_drawings`, or `4` /
+`production_ready`. `file_quality_confidence` is a number from 0 to 100.
+Use `0` only when the document cannot be inspected and return no objects in
+that case. A readable document with limited fabrication evidence is `2`, not
+an invented higher score.
+
 ## Output boundary and checks
 
 Return schema JSON only. Use no nulls. Preserve `company_id` and `run_id`. Each object starts `approved: false`. For unreadable files or no in-scope objects, return the relevant status and an empty object list.
