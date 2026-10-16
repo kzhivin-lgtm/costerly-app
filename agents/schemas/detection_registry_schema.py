@@ -34,6 +34,6 @@ def validate_detection_registry(
         assigned_visual_groups.extend(item["visual_group_ids"])
     if len(assigned_visual_groups) != len(set(assigned_visual_groups)):
         raise DetectionRegistrySchemaError("visual groups cannot belong to multiple commercial objects")
-    if visual_group_ids is not None and set(assigned_visual_groups) != visual_group_ids:
-        raise DetectionRegistrySchemaError("registry must account for every visual group exactly once")
+    if visual_group_ids is not None and not set(assigned_visual_groups).issubset(visual_group_ids):
+        raise DetectionRegistrySchemaError("registry references an unknown visual group")
     return result

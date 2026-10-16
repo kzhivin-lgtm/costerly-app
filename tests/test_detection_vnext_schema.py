@@ -113,3 +113,20 @@ def test_registry_rejects_visual_group_assigned_to_multiple_objects():
         assert "multiple commercial objects" in str(exc)
     else:
         raise AssertionError("duplicate visual-group assignment was accepted")
+
+
+def test_registry_allows_unassigned_navigation_only_visual_groups():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "dossier_pages": [1], "estimation_evidence_pages": [1],
+            "visual_group_ids": ["view-001"], "visual_identity": "cabinet",
+            "boundary_basis": "one complete product",
+        }],
+    }
+
+    assert validate_detection_registry(
+        registry,
+        visual_group_ids={"view-001", "view-002"},
+    ) == registry

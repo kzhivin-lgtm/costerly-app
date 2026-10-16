@@ -49,7 +49,8 @@ def test_detection_registry_groups_visual_map_without_treating_it_as_object_set(
     assert "visual map was prepared from full pages and enlarged regions" in prompt
     assert "not an object set" in prompt
     assert "Decide commercial objects only from the full pages" in prompt
-    assert "attach every `visual_group_id`" in prompt
+    assert "attach relevant `visual_group_ids`" in prompt
+    assert "not a reason to add, split or fail an object" in prompt
     assert "vertical shelving unit, a track-supported door system, and a long storage console" in prompt
     assert "Different complete envelopes, functions, silhouettes, or construction systems" in prompt
 

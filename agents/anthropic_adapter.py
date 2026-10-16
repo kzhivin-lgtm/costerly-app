@@ -600,7 +600,19 @@ def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, f
         )
     except ValueError as exc:
         raise RuntimeError(f"Detection registry response failed validation: {exc}") from exc
-    diagnostics.update({"registry_object_count":len(registry["objects"]),"visual_group_count":len(visual_map["visual_groups"]),"page_count":len(page_images),"attempt_label":"registry_from_visual_map"})
+    assigned_visual_group_ids = {
+        group_id
+        for item in registry["objects"]
+        for group_id in item["visual_group_ids"]
+    }
+    visual_group_ids = {group["group_id"] for group in visual_map["visual_groups"]}
+    diagnostics.update({
+        "registry_object_count": len(registry["objects"]),
+        "visual_group_count": len(visual_map["visual_groups"]),
+        "unassigned_visual_group_count": len(visual_group_ids - assigned_visual_group_ids),
+        "page_count": len(page_images),
+        "attempt_label": "registry_from_visual_map",
+    })
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return registry, usage
 
