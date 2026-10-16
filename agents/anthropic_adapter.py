@@ -42,7 +42,7 @@ DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v6"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
-DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_island_reconciliation_v1"
+DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v4"
 
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
     DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -53,50 +53,12 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].extend(
-    ["visual_island_ids", "island_merge_basis"]
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].update(
-    {
-        "visual_island_ids": {"type": "array", "items": {"type": "string"}},
-        "island_merge_basis": {"type": "string"},
-    }
-)
-
-DETECTION_VISUAL_ISLAND_ASSESSMENTS_SCHEMA: dict[str, Any] = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "island_id", "classification", "literal_visual_identity",
-            "related_island_ids",
-        ],
-        "properties": {
-            "island_id": {"type": "string"},
-            "classification": {
-                "type": "string",
-                "enum": [
-                    "complete_assembly_candidate",
-                    "same_assembly_view",
-                    "component_or_detail",
-                    "not_an_in_scope_item",
-                ],
-            },
-            "literal_visual_identity": {"type": "string"},
-            "related_island_ids": {"type": "array", "items": {"type": "string"}},
-        },
-    },
-}
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": [
-        "visual_island_assessments", "visual_groups", "objects", "page_coverage",
-    ],
+    "required": ["visual_groups", "objects", "page_coverage"],
     "properties": {
-        "visual_island_assessments": DETECTION_VISUAL_ISLAND_ASSESSMENTS_SCHEMA,
         "visual_groups": DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"],
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
@@ -700,111 +662,11 @@ def _apply_page_coverage_to_registry(
     return enriched
 
 
-def _visual_island_manifest(regions: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Return the deterministic attention targets passed as enlarged crops."""
-    manifest: list[dict[str, Any]] = []
-    seen_ids: set[str] = set()
-    for region in regions:
-        island_id = str(region.get("island_id") or "").strip()
-        if not island_id:
-            continue
-        page_number = region.get("page_number")
-        bbox = region.get("bbox")
-        if (
-            island_id in seen_ids
-            or not isinstance(page_number, int)
-            or page_number < 1
-            or not isinstance(bbox, dict)
-            or set(bbox) != {"left", "top", "right", "bottom"}
-        ):
-            raise ValueError("visual island attention manifest is invalid")
-        seen_ids.add(island_id)
-        manifest.append({
-            "island_id": island_id,
-            "page_number": page_number,
-            "bbox": bbox,
-        })
-    return manifest
-
-
-def _validate_visual_island_accountability(
-    *,
-    assessments: object,
-    objects: object,
-    manifest: list[dict[str, Any]],
-) -> None:
-    """Require an explicit model disposition for every external attention crop."""
-    if not isinstance(assessments, list) or not isinstance(objects, list):
-        raise ValueError("visual island accountability is invalid")
-    expected_ids = {item["island_id"] for item in manifest}
-    valid_classifications = {
-        "complete_assembly_candidate",
-        "same_assembly_view",
-        "component_or_detail",
-        "not_an_in_scope_item",
-    }
-    classifications: dict[str, str] = {}
-    for assessment in assessments:
-        required = {
-            "island_id", "classification", "literal_visual_identity", "related_island_ids",
-        }
-        if not isinstance(assessment, dict) or set(assessment) != required:
-            raise ValueError("visual island assessment fields do not match contract")
-        island_id = str(assessment["island_id"] or "").strip()
-        related_ids = assessment["related_island_ids"]
-        if (
-            not island_id
-            or island_id in classifications
-            or assessment["classification"] not in valid_classifications
-            or not isinstance(assessment["literal_visual_identity"], str)
-            or not assessment["literal_visual_identity"].strip()
-            or not isinstance(related_ids, list)
-            or len(related_ids) != len(set(related_ids))
-            or island_id in related_ids
-            or not all(isinstance(related_id, str) and related_id in expected_ids for related_id in related_ids)
-        ):
-            raise ValueError("visual island assessment is invalid")
-        classifications[island_id] = assessment["classification"]
-    if set(classifications) != expected_ids:
-        raise ValueError("visual island assessments must account for every attention island exactly once")
-
-    assigned_ids: list[str] = []
-    for item in objects:
-        island_ids = item.get("visual_island_ids") if isinstance(item, dict) else None
-        merge_basis = item.get("island_merge_basis") if isinstance(item, dict) else None
-        if (
-            not isinstance(island_ids, list)
-            or len(island_ids) != len(set(island_ids))
-            or not all(isinstance(island_id, str) and island_id in expected_ids for island_id in island_ids)
-            or not isinstance(merge_basis, str)
-            or not merge_basis.strip()
-        ):
-            raise ValueError("object visual island mapping is invalid")
-        assigned_ids.extend(island_ids)
-    if len(assigned_ids) != len(set(assigned_ids)):
-        raise ValueError("visual island cannot belong to multiple commercial objects")
-    expected_assigned_ids = {
-        island_id
-        for island_id, classification in classifications.items()
-        if classification != "not_an_in_scope_item"
-    }
-    if set(assigned_ids) != expected_assigned_ids:
-        raise ValueError("registry must assign every in-scope visual island exactly once")
-
-
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_visual_registry_prompt()
     user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
-    island_manifest = _visual_island_manifest(regions)
-    user_text += "\n\nVISUAL ISLAND ATTENTION MANIFEST:\n"
-    user_text += json.dumps(island_manifest, ensure_ascii=False)
-    user_text += (
-        "\nThese are deterministic image-geometry attention targets, not object decisions. "
-        "Each target has an enlarged crop in the package and must be assessed in "
-        "visual_island_assessments before you lock the registry."
-    )
     schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
         file_name=file_name, file_bytes=file_bytes, user_text=user_text,
@@ -821,15 +683,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
     try:
-        if not isinstance(payload, dict) or set(payload) != {
-            "visual_island_assessments", "visual_groups", "objects", "page_coverage",
-        }:
-            raise ValueError("visual registry fields do not match contract")
-        _validate_visual_island_accountability(
-            assessments=payload["visual_island_assessments"],
-            objects=payload["objects"],
-            manifest=island_manifest,
-        )
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "page_coverage"}:
+            raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -840,15 +695,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
         registry_objects = _apply_page_coverage_to_registry(
-            [
-                {
-                    key: value for key, value in item.items()
-                    if key not in {"visual_island_ids", "island_merge_basis"}
-                }
-                for item in payload["objects"]
-            ],
-            payload["page_coverage"],
-            page_count=len(page_images),
+            payload["objects"], payload["page_coverage"], page_count=len(page_images),
         )
         registry_payload = {"objects": registry_objects}
         for item in registry_payload["objects"]:
@@ -870,7 +717,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
-        "visual_island_count": len(island_manifest),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
         "page_coverage_count": len(payload["page_coverage"]),
         "unassigned_page_count": sum(

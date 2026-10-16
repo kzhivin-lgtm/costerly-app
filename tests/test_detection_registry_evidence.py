@@ -1,33 +1,11 @@
-from io import BytesIO
-
 import pytest
 from unittest.mock import patch
-from PIL import Image, ImageDraw
 
 from agents.detection_agent import (
     _enforce_shared_track_door_system_quantity,
     _merge_registry_evidence,
     run_detection_agent,
 )
-from agents.detection_page_images import build_detection_registry_regions
-
-
-def test_registry_attention_crops_preserve_large_competing_visual_islands():
-    image = Image.new("RGB", (800, 600), "white")
-    drawing = ImageDraw.Draw(image)
-    drawing.rectangle((80, 80, 300, 420), fill="black")
-    drawing.rectangle((500, 80, 720, 420), fill="black")
-    encoded = BytesIO()
-    image.save(encoded, format="JPEG")
-
-    regions = build_detection_registry_regions([encoded.getvalue()], max_images=8)
-    islands = [region for region in regions if region.get("island_id")]
-
-    assert [island["island_id"] for island in islands] == [
-        "island-001-01", "island-001-02",
-    ]
-    assert all(island["region"].startswith("visual_island:") for island in islands)
-    assert all(set(island["bbox"]) == {"left", "top", "right", "bottom"} for island in islands)
 
 
 def test_registry_evidence_keeps_full_estimation_set_not_only_visual_dossier():

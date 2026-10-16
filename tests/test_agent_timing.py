@@ -416,7 +416,6 @@ def test_registry_retries_truncated_structured_json_with_larger_budget():
 
 def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call():
     payload = {
-        "visual_island_assessments": [],
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
@@ -427,7 +426,6 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
-            "visual_island_ids": [], "island_merge_basis": "No attention islands supplied",
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
@@ -463,7 +461,6 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
 
 def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_page():
     payload = {
-        "visual_island_assessments": [],
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
@@ -474,7 +471,6 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_group_ids": ["view_a"], "visual_identity": "one cabinet",
             "boundary_basis": "one complete product",
-            "visual_island_ids": [], "island_merge_basis": "No attention islands supplied",
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
@@ -498,66 +494,6 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
         run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
-        )
-
-
-def test_integrated_visual_registry_requires_every_attention_island_to_be_accounted_for():
-    payload = {
-        "visual_island_assessments": [
-            {
-                "island_id": "island-001-01",
-                "classification": "complete_assembly_candidate",
-                "literal_visual_identity": "long low console",
-                "related_island_ids": [],
-            },
-        ],
-        "visual_groups": [{
-            "group_id": "view_a", "page_number": 1, "location_hint": "left",
-            "visual_description": "one cabinet", "representation_kind": "perspective",
-            "related_group_ids": [],
-        }],
-        "objects": [{
-            "object_id": "object-001", "transport_label": "Object 1",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "visual_group_ids": ["view_a"], "visual_identity": "one cabinet",
-            "boundary_basis": "one complete product",
-            "visual_island_ids": ["island-001-01"],
-            "island_merge_basis": "One independent console silhouette",
-        }],
-        "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001"],
-            "evidence_reason": "cabinet view",
-        }],
-    }
-    regions = [
-        {
-            "page_number": 1, "region": "visual_island:island-001-01", "bytes": b"one",
-            "island_id": "island-001-01",
-            "bbox": {"left": 0.1, "top": 0.1, "right": 0.4, "bottom": 0.6},
-        },
-        {
-            "page_number": 1, "region": "visual_island:island-001-02", "bytes": b"two",
-            "island_id": "island-001-02",
-            "bbox": {"left": 0.6, "top": 0.1, "right": 0.9, "bottom": 0.6},
-        },
-    ]
-
-    with (
-        patch("agents.anthropic_adapter.get_secret", return_value="model"),
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch(
-            "agents.anthropic_adapter.create_claude_message_streamed",
-            return_value=(_Response(), {
-                "request_started_at": "2026-10-16T00:00:00+00:00",
-                "request_finished_at": "2026-10-16T00:00:01+00:00",
-            }),
-        ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
-        pytest.raises(RuntimeError, match="visual island assessments must account"),
-    ):
-        run_anthropic_detection_visual_registry_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=regions, ocr_package=None, model="model",
         )
 
 
