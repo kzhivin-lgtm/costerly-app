@@ -796,6 +796,48 @@ def _validate_complete_assembly_islands(
     return normalized
 
 
+def _normalize_complete_assembly_island_ids(
+    islands: Any,
+    registry_objects: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Canonicalize provider island labels while preserving their references.
+
+    Island IDs are transport identifiers, not semantic evidence.  The model can
+    correctly describe and link the islands while emitting `island-003` before
+    `island-001`.  Canonicalize that incidental ordering exactly as visual
+    group IDs are normalized, while retaining hard failures for missing or
+    duplicate references.
+    """
+    if not isinstance(islands, list):
+        raise ValueError("complete assembly islands are invalid")
+    normalized = copy.deepcopy(islands)
+    raw_ids: list[str] = []
+    for island in normalized:
+        if not isinstance(island, dict):
+            raise ValueError("complete assembly island fields are invalid")
+        raw_id = str(island.get("island_id") or "").strip()
+        if not raw_id or raw_id in raw_ids:
+            raise ValueError("complete assembly island IDs are invalid")
+        raw_ids.append(raw_id)
+    id_mapping = {
+        raw_id: f"island-{index:03d}"
+        for index, raw_id in enumerate(raw_ids, start=1)
+    }
+    for island, raw_id in zip(normalized, raw_ids, strict=True):
+        island["island_id"] = id_mapping[raw_id]
+    for item in registry_objects:
+        if not isinstance(item, dict):
+            raise ValueError("registry objects are invalid")
+        raw_object_island_ids = item.get("complete_assembly_island_ids")
+        if not isinstance(raw_object_island_ids, list):
+            continue
+        item["complete_assembly_island_ids"] = [
+            id_mapping.get(str(raw_id), str(raw_id))
+            for raw_id in raw_object_island_ids
+        ]
+    return normalized
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -842,6 +884,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 group_id_mapping.get(str(group_id), str(group_id))
                 for group_id in item["visual_group_ids"]
             ]
+        complete_assembly_islands = _normalize_complete_assembly_island_ids(
+            complete_assembly_islands,
+            registry_objects,
+        )
         complete_assembly_islands = _validate_complete_assembly_islands(
             complete_assembly_islands,
             registry_objects,

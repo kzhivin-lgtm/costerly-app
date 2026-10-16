@@ -521,14 +521,14 @@ def test_integrated_visual_registry_preserves_an_unassigned_complete_assembly_is
             {"group_id": "view_b", "page_number": 1, "location_hint": "right", "visual_description": "mirror stand", "representation_kind": "elevation", "related_group_ids": []},
         ],
         "complete_assembly_islands": [
-            {"island_id": "island-001", "visual_group_id": "view_a", "completion_basis": "bounded cabinet envelope"},
-            {"island_id": "island-002", "visual_group_id": "view_b", "completion_basis": "bounded mirror stand envelope"},
+            {"island_id": "island-004", "visual_group_id": "view_b", "completion_basis": "bounded mirror stand envelope"},
+            {"island_id": "island-007", "visual_group_id": "view_a", "completion_basis": "bounded cabinet envelope"},
         ],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1", "quantity": 1,
             "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["view_a"],
             "visual_identity": "cabinet", "boundary_basis": "one cabinet",
-            "complete_assembly_island_ids": ["island-001"],
+            "complete_assembly_island_ids": ["island-007"],
             "island_merge_basis": "one complete assembly island",
         }],
         "page_coverage": [{"page_number": 1, "object_ids": ["object-001"], "evidence_reason": "cabinet view"}],
@@ -546,8 +546,21 @@ def test_integrated_visual_registry_preserves_an_unassigned_complete_assembly_is
         )
 
     assert registry["objects"][0]["object_id"] == "object-001"
-    assert usage["raw_usage"]["unassigned_complete_assembly_island_ids"] == ["island-002"]
-    assert usage["raw_usage"]["complete_assembly_island_audit"][1]["object_id"] is None
+    assert usage["raw_usage"]["unassigned_complete_assembly_island_ids"] == ["island-001"]
+    assert usage["raw_usage"]["complete_assembly_island_audit"] == [
+        {
+            "island_id": "island-001",
+            "visual_group_id": "view-002",
+            "completion_basis": "bounded mirror stand envelope",
+            "object_id": None,
+        },
+        {
+            "island_id": "island-002",
+            "visual_group_id": "view-001",
+            "completion_basis": "bounded cabinet envelope",
+            "object_id": "object-001",
+        },
+    ]
 
 
 def test_complete_assembly_island_signal_requires_one_object_and_same_page_islands():
