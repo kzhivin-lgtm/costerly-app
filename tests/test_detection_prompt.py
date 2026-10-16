@@ -17,12 +17,12 @@ def test_detection_v4_prompt_delegates_naming_and_normalizes_project_identity():
     assert "presentation_preview_bbox" in prompt
     assert "Return it in English" in prompt
     assert "meaningful uploaded file name" in prompt
-    assert "Never return `Object 1`, `1 item`, `25 items`" in prompt
+    assert "Any number in an example is illustrative only" in prompt
     assert "Beregovoy Proezd 5" in prompt
     assert "Partner and client may be identical only when the source supports self-designed direct commissioning" in prompt
     assert "detected_materials" not in prompt
     assert "No external dimensions, dimension candidates, nodes, materials, notes, missing information" in prompt
-    assert DETECTION_PROMPT_VERSION == "detection_v4_object_evidence_handoff_v2"
+    assert DETECTION_PROMPT_VERSION == "detection_v4_object_evidence_handoff_v3"
 
 
 def test_detection_prompt_vnext_stays_compact():
