@@ -71,17 +71,15 @@ titles or title block.
 
 One Sonnet request classifies each supplied figure and returns an exhaustive
 pairwise graph of `same_assembly`, `separate_assemblies` or `insufficient`.
-Detection, not the model, derives only direct constraints: conflict-free
-connected positive `same_assembly` components become locked candidates, while each direct
-`separate_assemblies` pair becomes a non-merge constraint. `insufficient` is
-not a relation and cannot erase a confirmed positive or negative fact. Registry
-still sees the whole document, but must place every supplied graph
-representation exactly once, keep each candidate intact and never put a
-directly separated pair in one commercial object. It assigns all remaining
-uncertain views from the full document. The graph route has no partial coverage:
-it runs only when the full representation set has at most 12 figures, which
-bounds the quadratic pair output to 66 relations. Larger sets bypass this
-experiment.
+Detection, not the model, derives only conflict-free connected positive
+`same_assembly` components as locked candidates. `separate_assemblies` and
+`insufficient` remain graph audit observations, not commercial-object claims:
+a crop-only relation cannot establish quote scope or assign every source view.
+Registry still sees the whole document and must place every candidate exactly
+once while never merging candidates. It assigns all remaining views from the
+full document. The graph route has no partial coverage: it runs only when the
+full representation set has at most 12 figures, which bounds the quadratic pair
+output to 66 relations. Larger sets bypass this experiment.
 
 When two or more crops exist and all of them fit in one request, the Registry
 must map each resulting assembly candidate to exactly one commercial object.
@@ -91,8 +89,8 @@ truncating a physical partition. This experiment adds one conditional Sonnet
 call and does not alter the V4 Estimation handoff.
 
 The correspondence usage event persists both `assembly_graph_audit` and the
-derived `assembly_partition_audit`, including abstention status. It is
-observability only and cannot alter a Detection result.
+derived positive-candidate audit, including abstention status. The raw graph is
+observability only. Only the derived positive candidates constrain Registry.
 
 The result remains unverified until live benchmarks show all of the following:
 

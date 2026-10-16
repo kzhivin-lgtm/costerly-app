@@ -232,15 +232,6 @@ def derive_detection_assembly_correspondence(
     result = {
         "assembly_candidates": candidates,
         "non_assembly_representation_ids": non_assembly_representation_ids,
-        "must_separate_representation_pairs": [
-            {
-                "first_representation_id": relation["first_representation_id"],
-                "second_representation_id": relation["second_representation_id"],
-                "basis": relation["basis"],
-            }
-            for relation in relations
-            if relation["relation"] == "separate_assemblies"
-        ],
     }
     if conflicting_component_roots:
         return result, "graph_partial_conflicting_positive_component"

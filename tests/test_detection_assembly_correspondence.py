@@ -180,17 +180,6 @@ def test_pairwise_graph_preserves_direct_locks_when_another_relation_is_insuffic
         ["representation-001", "representation-003"],
         ["representation-002", "representation-004"],
     ]
-    assert {
-        frozenset({
-            pair["first_representation_id"],
-            pair["second_representation_id"],
-        })
-        for pair in correspondence["must_separate_representation_pairs"]
-    } == {
-        frozenset({"representation-001", "representation-002"}),
-        frozenset({"representation-002", "representation-003"}),
-        frozenset({"representation-003", "representation-004"}),
-    }
 
 
 def test_correspondence_input_uses_one_masked_page_map_and_omits_file_and_ocr_context():
@@ -253,7 +242,7 @@ def test_correspondence_agent_records_the_isolated_stage_without_registry_contex
     assert "Company ID" not in request_text
 
 
-def test_graph_agent_records_graph_and_derives_direct_constraints():
+def test_graph_agent_records_graph_and_derives_positive_candidates():
     captured = {}
 
     def fake_create(*_args, **kwargs):
@@ -299,7 +288,7 @@ def test_graph_agent_records_graph_and_derives_direct_constraints():
     assert "Company ID" not in request_text
 
 
-def test_graph_agent_keeps_partial_constraints_and_routes_them_to_registry():
+def test_graph_agent_keeps_positive_candidates_despite_an_insufficient_pair():
     graph = _graph_payload()
     graph["pair_relations"][2]["relation"] = "insufficient"
 
@@ -328,18 +317,15 @@ def test_graph_agent_keeps_partial_constraints_and_routes_them_to_registry():
         )
 
     assert correspondence is not None
+    assert set(correspondence) == {
+        "assembly_candidates",
+        "non_assembly_representation_ids",
+    }
     assert len(correspondence["assembly_candidates"]) == 2
-    assert len(correspondence["must_separate_representation_pairs"]) == 3
-    assert [item["representation_id"] for item in correspondence["representation_manifest"]] == [
-        "representation-001",
-        "representation-002",
-        "representation-003",
-        "representation-004",
-    ]
     assert usage["raw_usage"]["assembly_graph_status"] == "graph_partial_constraints"
 
 
-def test_registry_must_keep_each_locked_assembly_candidate_in_a_separate_object():
+def test_registry_uses_partial_graph_positive_candidates_without_graph_membership_fields():
     payload = {
         "visual_groups": [
             {
@@ -391,17 +377,32 @@ def test_registry_must_keep_each_locked_assembly_candidate_in_a_separate_object(
             },
         ],
     }
-    correspondence = _assembly_payload()
+    graph = _graph_payload()
+    graph["pair_relations"][2]["relation"] = "insufficient"
+    correspondence, status = derive_detection_assembly_correspondence(
+        graph,
+        representation_ids=[
+            "representation-001",
+            "representation-002",
+            "representation-003",
+            "representation-004",
+        ],
+    )
+    captured = {}
+
+    def fake_create(*_args, **kwargs):
+        captured.update(kwargs)
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
 
     with (
         patch("agents.anthropic_adapter.get_secret", return_value="haiku"),
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
         patch(
             "agents.anthropic_adapter.create_claude_message_streamed",
-            return_value=(_Response(), {
-                "request_started_at": "2026-10-16T00:00:00+00:00",
-                "request_finished_at": "2026-10-16T00:00:01+00:00",
-            }),
+            side_effect=fake_create,
         ),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
     ):
@@ -417,170 +418,16 @@ def test_registry_must_keep_each_locked_assembly_candidate_in_a_separate_object(
         )
 
     assert len(registry["objects"]) == 2
+    assert status == "graph_partial_constraints"
     assert usage["raw_usage"]["locked_assembly_candidate_count"] == 2
     assert usage["raw_usage"]["attempt_label"] == "visual_registry_with_locked_assemblies"
-
-
-def _graph_constraint_correspondence() -> dict:
-    correspondence, _status = derive_detection_assembly_correspondence(
-        _graph_payload(),
-        representation_ids=[
-            "representation-001",
-            "representation-002",
-            "representation-003",
-            "representation-004",
-        ],
+    request_text = "\n".join(
+        block["text"]
+        for block in captured["messages"][0]["content"]
+        if block["type"] == "text"
     )
-    correspondence["representation_manifest"] = [
-        {
-            "representation_id": representation_id,
-            "page_number": 1 if representation_id in {"representation-001", "representation-002"} else 2,
-            "bbox": {"left": 0.1, "top": 0.1, "right": 0.4, "bottom": 0.6},
-        }
-        for representation_id in [
-            "representation-001",
-            "representation-002",
-            "representation-003",
-            "representation-004",
-        ]
-    ]
-    return correspondence
-
-
-def _graph_constrained_registry_payload() -> dict:
-    return {
-        "visual_groups": [
-            {
-                "group_id": "left",
-                "page_number": 1,
-                "location_hint": "left",
-                "visual_description": "long low console",
-                "representation_kind": "elevation",
-                "related_group_ids": [],
-            },
-            {
-                "group_id": "right",
-                "page_number": 1,
-                "location_hint": "right",
-                "visual_description": "tall cabinet",
-                "representation_kind": "elevation",
-                "related_group_ids": [],
-            },
-        ],
-        "objects": [
-            {
-                "object_id": "object-001",
-                "transport_label": "Object 1",
-                "quantity": 1,
-                "quantity_explicit": False,
-                "identity_pages": [1, 2],
-                "visual_group_ids": ["left"],
-                "visual_identity": "long low console",
-                "boundary_basis": "one finished low envelope",
-                "assembly_candidate_ids": ["assembly-001"],
-                "graph_representation_ids": ["representation-001", "representation-003"],
-            },
-            {
-                "object_id": "object-002",
-                "transport_label": "Object 2",
-                "quantity": 1,
-                "quantity_explicit": False,
-                "identity_pages": [1, 2],
-                "visual_group_ids": ["right"],
-                "visual_identity": "tall cabinet",
-                "boundary_basis": "one independent tall envelope",
-                "assembly_candidate_ids": ["assembly-002"],
-                "graph_representation_ids": ["representation-002", "representation-004"],
-            },
-        ],
-        "page_coverage": [
-            {
-                "page_number": 1,
-                "object_ids": ["object-001", "object-002"],
-                "evidence_reason": "both assemblies are shown",
-            },
-            {
-                "page_number": 2,
-                "object_ids": ["object-001", "object-002"],
-                "evidence_reason": "both assemblies are shown",
-            },
-        ],
-    }
-
-
-def test_registry_enforces_partial_graph_constraints_and_strips_them_from_handoff():
-    payload = _graph_constrained_registry_payload()
-    correspondence = _graph_constraint_correspondence()
-
-    with (
-        patch("agents.anthropic_adapter.get_secret", return_value="haiku"),
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch(
-            "agents.anthropic_adapter.create_claude_message_streamed",
-            return_value=(_Response(), {
-                "request_started_at": "2026-10-16T00:00:00+00:00",
-                "request_finished_at": "2026-10-16T00:00:01+00:00",
-            }),
-        ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
-    ):
-        _visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
-            file_name="drawing.pdf",
-            company_id="001",
-            file_bytes=b"pdf",
-            page_images=[b"page-1", b"page-2"],
-            regions=[],
-            ocr_package=None,
-            model="haiku",
-            assembly_correspondence=correspondence,
-        )
-
-    assert len(registry["objects"]) == 2
-    assert all(
-        "assembly_candidate_ids" not in item and "graph_representation_ids" not in item
-        for item in registry["objects"]
-    )
-    assert usage["raw_usage"]["attempt_label"] == "visual_registry_with_assembly_graph_constraints"
-    assert usage["raw_usage"]["graph_representation_count"] == 4
-    assert usage["raw_usage"]["graph_separation_constraint_count"] == 4
-
-
-def test_registry_rejects_a_direct_graph_separation_inside_one_object():
-    payload = _graph_constrained_registry_payload()
-    payload["objects"][0]["graph_representation_ids"] = [
-        "representation-001",
-        "representation-002",
-        "representation-003",
-    ]
-    payload["objects"][1]["graph_representation_ids"] = ["representation-004"]
-    correspondence = _graph_constraint_correspondence()
-
-    with (
-        patch("agents.anthropic_adapter.get_secret", return_value="haiku"),
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch(
-            "agents.anthropic_adapter.create_claude_message_streamed",
-            return_value=(_Response(), {
-                "request_started_at": "2026-10-16T00:00:00+00:00",
-                "request_finished_at": "2026-10-16T00:00:01+00:00",
-            }),
-        ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
-    ):
-        with pytest.raises(
-            RuntimeError,
-            match="registry merged graph-separated representations",
-        ):
-            run_anthropic_detection_visual_registry_agent(
-                file_name="drawing.pdf",
-                company_id="001",
-                file_bytes=b"pdf",
-                page_images=[b"page-1", b"page-2"],
-                regions=[],
-                ocr_package=None,
-                model="haiku",
-                assembly_correspondence=correspondence,
-            )
+    assert "assembly-001" in request_text
+    assert "graph_representation_ids" not in request_text
 
 
 def test_geometry_yields_separate_crop_targets_for_two_disconnected_drawings():

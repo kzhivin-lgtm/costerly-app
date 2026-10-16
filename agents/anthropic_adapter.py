@@ -25,7 +25,6 @@ from agents.prompt_loader import (
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
     load_detection_visual_registry_with_assembly_candidates_prompt,
-    load_detection_visual_registry_with_assembly_graph_constraints_prompt,
 )
 from agents.schemas.detection_assembly_correspondence_schema import (
     DETECTION_ASSEMBLY_CORRESPONDENCE_JSON_SCHEMA,
@@ -61,7 +60,6 @@ DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integra
 DETECTION_ASSEMBLY_CORRESPONDENCE_PROMPT_VERSION = "detection_v4_assembly_correspondence_v1"
 DETECTION_ASSEMBLY_CORRESPONDENCE_GRAPH_PROMPT_VERSION = "detection_v4_assembly_correspondence_graph_v2"
 DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_PROMPT_VERSION = "detection_v4_visual_registry_locked_assemblies_v1"
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_PROMPT_VERSION = "detection_v4_visual_registry_graph_constraints_v2"
 
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
     DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -81,16 +79,6 @@ DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_OBJECTS_SCHEMA["items"]["requ
 DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_OBJECTS_SCHEMA["items"]["properties"]["assembly_candidate_ids"] = {
     "type": "array", "items": {"type": "string"},
 }
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_OBJECTS_SCHEMA = copy.deepcopy(
-    DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_OBJECTS_SCHEMA
-)
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_OBJECTS_SCHEMA["items"]["required"].append(
-    "graph_representation_ids"
-)
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_OBJECTS_SCHEMA["items"]["properties"]["graph_representation_ids"] = {
-    "type": "array", "items": {"type": "string"},
-}
-
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -119,13 +107,6 @@ DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_JSON_SCHEMA = copy.deepcopy(
 DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_JSON_SCHEMA["properties"]["objects"] = (
     DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_OBJECTS_SCHEMA
 )
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_JSON_SCHEMA = copy.deepcopy(
-    DETECTION_VISUAL_REGISTRY_JSON_SCHEMA
-)
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_JSON_SCHEMA["properties"]["objects"] = (
-    DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_OBJECTS_SCHEMA
-)
-
 _STREAMLIT_SECRET_CACHE: dict[str, str] = {}
 _STREAMLIT_SECRET_CACHE_LOCK = Lock()
 
@@ -837,14 +818,9 @@ def run_anthropic_detection_assembly_correspondence_graph_agent(
         graph,
         representation_ids=representation_ids,
     )
-    if (
-        correspondence["assembly_candidates"]
-        or correspondence["must_separate_representation_pairs"]
-    ):
-        correspondence["representation_manifest"] = manifest
-    else:
+    if not correspondence["assembly_candidates"]:
         correspondence = None
-        graph_status = "graph_abstained_no_direct_constraints"
+        graph_status = "graph_abstained_no_positive_candidates"
     diagnostics.update({
         "representation_count": len(manifest),
         "pair_relation_count": len(graph["pair_relations"]),
@@ -987,74 +963,6 @@ def _locked_assembly_candidates(
     return candidates
 
 
-def _assembly_graph_constraints(
-    assembly_correspondence: dict[str, Any] | None,
-) -> dict[str, Any] | None:
-    """Return validated direct graph facts, or no constraints for legacy input."""
-    if assembly_correspondence is None:
-        return None
-    manifest = assembly_correspondence.get("representation_manifest")
-    pairs = assembly_correspondence.get("must_separate_representation_pairs")
-    if manifest is None and pairs is None:
-        return None
-    if not isinstance(manifest, list) or not isinstance(pairs, list):
-        raise ValueError("assembly graph constraints are invalid")
-
-    representation_ids: list[str] = []
-    for item in manifest:
-        bbox = item.get("bbox") if isinstance(item, dict) else None
-        representation_id = item.get("representation_id") if isinstance(item, dict) else None
-        if (
-            not isinstance(item, dict)
-            or set(item) != {"representation_id", "page_number", "bbox"}
-            or not isinstance(representation_id, str)
-            or not representation_id
-            or representation_id in representation_ids
-            or not isinstance(item.get("page_number"), int)
-            or item["page_number"] < 1
-            or not isinstance(bbox, dict)
-            or set(bbox) != {"left", "top", "right", "bottom"}
-            or not all(isinstance(value, (int, float)) for value in bbox.values())
-            or not 0 <= bbox["left"] < bbox["right"] <= 1
-            or not 0 <= bbox["top"] < bbox["bottom"] <= 1
-        ):
-            raise ValueError("assembly graph representation manifest is invalid")
-        representation_ids.append(representation_id)
-
-    valid_ids = set(representation_ids)
-    seen_pairs: set[frozenset[str]] = set()
-    normalized_pairs: list[dict[str, str]] = []
-    for pair in pairs:
-        if not isinstance(pair, dict) or set(pair) != {
-            "first_representation_id", "second_representation_id", "basis",
-        }:
-            raise ValueError("assembly graph separation pair is invalid")
-        first = pair["first_representation_id"]
-        second = pair["second_representation_id"]
-        pair_key = frozenset({first, second})
-        if (
-            not isinstance(first, str)
-            or not isinstance(second, str)
-            or first == second
-            or first not in valid_ids
-            or second not in valid_ids
-            or pair_key in seen_pairs
-            or not isinstance(pair["basis"], str)
-            or not pair["basis"].strip()
-        ):
-            raise ValueError("assembly graph separation pair is invalid")
-        seen_pairs.add(pair_key)
-        normalized_pairs.append({
-            "first_representation_id": first,
-            "second_representation_id": second,
-            "basis": pair["basis"].strip(),
-        })
-    return {
-        "representation_manifest": manifest,
-        "must_separate_representation_pairs": normalized_pairs,
-    }
-
-
 def _validate_registry_assembly_candidate_mapping(
     objects: object,
     *,
@@ -1104,122 +1012,22 @@ def _validate_registry_assembly_candidate_mapping(
     return stripped_objects
 
 
-def _validate_registry_assembly_graph_mapping(
-    objects: object,
-    *,
-    locked_assembly_candidates: list[dict[str, Any]],
-    graph_constraints: dict[str, Any],
-) -> list[dict[str, Any]]:
-    """Enforce positive candidate locks and direct non-merge graph edges."""
-    if not isinstance(objects, list):
-        raise ValueError("registry objects are invalid")
-    candidate_members = {
-        str(candidate["candidate_id"]): set(candidate["representation_ids"])
-        for candidate in locked_assembly_candidates
-    }
-    candidate_ids = set(candidate_members)
-    representation_ids = {
-        item["representation_id"]
-        for item in graph_constraints["representation_manifest"]
-    }
-    forbidden_pairs = {
-        frozenset({
-            pair["first_representation_id"],
-            pair["second_representation_id"],
-        })
-        for pair in graph_constraints["must_separate_representation_pairs"]
-    }
-    expected_fields = {
-        "object_id",
-        "transport_label",
-        "quantity",
-        "quantity_explicit",
-        "identity_pages",
-        "visual_group_ids",
-        "visual_identity",
-        "boundary_basis",
-        "assembly_candidate_ids",
-        "graph_representation_ids",
-    }
-    assigned_candidate_ids: list[str] = []
-    assigned_representation_ids: list[str] = []
-    stripped_objects: list[dict[str, Any]] = []
-    for item in objects:
-        if not isinstance(item, dict) or set(item) != expected_fields:
-            raise ValueError("registry assembly-graph fields do not match contract")
-        object_candidate_ids = item["assembly_candidate_ids"]
-        object_representation_ids = item["graph_representation_ids"]
-        if (
-            not isinstance(object_candidate_ids, list)
-            or len(object_candidate_ids) > 1
-            or len(object_candidate_ids) != len(set(object_candidate_ids))
-            or not all(
-                isinstance(candidate_id, str) and candidate_id in candidate_ids
-                for candidate_id in object_candidate_ids
-            )
-            or not isinstance(object_representation_ids, list)
-            or len(object_representation_ids) != len(set(object_representation_ids))
-            or not all(
-                isinstance(representation_id, str)
-                and representation_id in representation_ids
-                for representation_id in object_representation_ids
-            )
-        ):
-            raise ValueError("registry assembly-graph mapping is invalid")
-        object_representation_set = set(object_representation_ids)
-        if any(
-            candidate_members[candidate_id] - object_representation_set
-            for candidate_id in object_candidate_ids
-        ):
-            raise ValueError("registry split a locked assembly candidate")
-        if any(forbidden_pair <= object_representation_set for forbidden_pair in forbidden_pairs):
-            raise ValueError("registry merged graph-separated representations")
-        assigned_candidate_ids.extend(object_candidate_ids)
-        assigned_representation_ids.extend(object_representation_ids)
-        stripped_objects.append({
-            key: value
-            for key, value in item.items()
-            if key not in {"assembly_candidate_ids", "graph_representation_ids"}
-        })
-    if len(assigned_candidate_ids) != len(set(assigned_candidate_ids)):
-        raise ValueError("assembly candidate cannot belong to multiple commercial objects")
-    if set(assigned_candidate_ids) != candidate_ids:
-        raise ValueError("registry must account for every assembly candidate exactly once")
-    if len(assigned_representation_ids) != len(set(assigned_representation_ids)):
-        raise ValueError("representation cannot belong to multiple commercial objects")
-    if set(assigned_representation_ids) != representation_ids:
-        raise ValueError("registry must account for every graph representation exactly once")
-    return stripped_objects
-
-
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, assembly_correspondence: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     locked_assembly_candidates = _locked_assembly_candidates(assembly_correspondence)
-    graph_constraints = _assembly_graph_constraints(assembly_correspondence)
-    has_assembly_graph_constraints = graph_constraints is not None
     has_locked_assembly_candidates = bool(locked_assembly_candidates)
     prompt = (
-        load_detection_visual_registry_with_assembly_graph_constraints_prompt()
-        if has_assembly_graph_constraints
-        else load_detection_visual_registry_with_assembly_candidates_prompt()
+        load_detection_visual_registry_with_assembly_candidates_prompt()
         if has_locked_assembly_candidates
         else load_detection_visual_registry_prompt()
     )
     user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
-    if has_assembly_graph_constraints:
-        user_text += "\n\nLOCKED ASSEMBLY GRAPH CONSTRAINTS:\n"
-        user_text += json.dumps({
-            "assembly_candidates": locked_assembly_candidates,
-            **graph_constraints,
-        }, ensure_ascii=False)
-    elif has_locked_assembly_candidates:
+    if has_locked_assembly_candidates:
         user_text += "\n\nLOCKED PHYSICAL ASSEMBLY CANDIDATES:\n"
         user_text += json.dumps(locked_assembly_candidates, ensure_ascii=False)
     schema = strip_schema_for_claude(
-        DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_JSON_SCHEMA
-        if has_assembly_graph_constraints
-        else DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_JSON_SCHEMA
+        DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_JSON_SCHEMA
         if has_locked_assembly_candidates
         else DETECTION_VISUAL_REGISTRY_JSON_SCHEMA
     )
@@ -1250,13 +1058,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
         raw_registry_objects = (
-            _validate_registry_assembly_graph_mapping(
-                payload["objects"],
-                locked_assembly_candidates=locked_assembly_candidates,
-                graph_constraints=graph_constraints,
-            )
-            if has_assembly_graph_constraints
-            else _validate_registry_assembly_candidate_mapping(
+            _validate_registry_assembly_candidate_mapping(
                 payload["objects"],
                 assembly_candidate_ids={
                     str(candidate["candidate_id"])
@@ -1290,14 +1092,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
         "locked_assembly_candidate_count": len(locked_assembly_candidates),
-        "graph_representation_count": (
-            len(graph_constraints["representation_manifest"])
-            if graph_constraints else 0
-        ),
-        "graph_separation_constraint_count": (
-            len(graph_constraints["must_separate_representation_pairs"])
-            if graph_constraints else 0
-        ),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
         "page_coverage_count": len(payload["page_coverage"]),
         "unassigned_page_count": sum(
@@ -1306,14 +1100,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "region_count": len(regions),
         "page_count": len(page_images),
         "attempt_label": (
-            "visual_registry_with_assembly_graph_constraints"
-            if has_assembly_graph_constraints
-            else "visual_registry_with_locked_assemblies"
+            "visual_registry_with_locked_assemblies"
             if has_locked_assembly_candidates
             else "visual_registry_integrated"
         ),
     })
-    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=(DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_PROMPT_VERSION if has_assembly_graph_constraints else DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_PROMPT_VERSION if has_locked_assembly_candidates else DETECTION_VISUAL_REGISTRY_PROMPT_VERSION),response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=(DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_PROMPT_VERSION if has_locked_assembly_candidates else DETECTION_VISUAL_REGISTRY_PROMPT_VERSION),response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
 
 
