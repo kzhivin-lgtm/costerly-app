@@ -42,7 +42,7 @@ DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v6"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
-DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v5"
+DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v4"
 
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
     DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -53,40 +53,13 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
-    "physical_assembly_ids"
-)
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"][
-    "physical_assembly_ids"
-] = {"type": "array", "items": {"type": "string"}}
-
-DETECTION_PHYSICAL_ASSEMBLIES_SCHEMA: dict[str, Any] = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "assembly_id",
-            "visual_group_ids",
-            "physical_identity",
-            "separation_basis",
-        ],
-        "properties": {
-            "assembly_id": {"type": "string"},
-            "visual_group_ids": {"type": "array", "items": {"type": "string"}},
-            "physical_identity": {"type": "string"},
-            "separation_basis": {"type": "string"},
-        },
-    },
-}
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "physical_assemblies", "objects", "page_coverage"],
+    "required": ["visual_groups", "objects", "page_coverage"],
     "properties": {
         "visual_groups": DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"],
-        "physical_assemblies": DETECTION_PHYSICAL_ASSEMBLIES_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
             "type": "array",
@@ -689,74 +662,6 @@ def _apply_page_coverage_to_registry(
     return enriched
 
 
-def _normalize_physical_assemblies(
-    raw_assemblies: object,
-    *,
-    group_id_mapping: dict[str, str],
-) -> tuple[list[dict[str, Any]], dict[str, str]]:
-    """Validate the visual assembly layer before it can be commercially merged."""
-    if not isinstance(raw_assemblies, list):
-        raise ValueError("physical assemblies must be a list")
-    raw_ids = [str(item.get("assembly_id") or "") for item in raw_assemblies if isinstance(item, dict)]
-    if len(raw_ids) != len(raw_assemblies) or not all(raw_ids) or len(raw_ids) != len(set(raw_ids)):
-        raise ValueError("physical assembly IDs are invalid")
-    assembly_id_mapping = {
-        raw_id: f"assembly-{index:03d}"
-        for index, raw_id in enumerate(raw_ids, start=1)
-    }
-    assemblies: list[dict[str, Any]] = []
-    for item, raw_id in zip(raw_assemblies, raw_ids, strict=True):
-        required = {
-            "assembly_id", "visual_group_ids", "physical_identity", "separation_basis",
-        }
-        if not isinstance(item, dict) or set(item) != required:
-            raise ValueError("physical assembly fields do not match contract")
-        raw_group_ids = item["visual_group_ids"]
-        if (
-            not isinstance(raw_group_ids, list)
-            or not raw_group_ids
-            or len(raw_group_ids) != len(set(raw_group_ids))
-            or not all(str(group_id) in group_id_mapping for group_id in raw_group_ids)
-            or not str(item["physical_identity"]).strip()
-            or not str(item["separation_basis"]).strip()
-        ):
-            raise ValueError("physical assembly is invalid")
-        assemblies.append({
-            "assembly_id": assembly_id_mapping[raw_id],
-            "visual_group_ids": [group_id_mapping[str(group_id)] for group_id in raw_group_ids],
-            "physical_identity": str(item["physical_identity"]).strip(),
-            "separation_basis": str(item["separation_basis"]).strip(),
-        })
-    return assemblies, assembly_id_mapping
-
-
-def _apply_physical_assembly_mapping(
-    objects: list[dict[str, Any]],
-    *,
-    assembly_id_mapping: dict[str, str],
-) -> list[dict[str, Any]]:
-    """Require each visual physical assembly to have one commercial owner."""
-    assigned_ids: list[str] = []
-    cleaned: list[dict[str, Any]] = []
-    for item in objects:
-        raw_ids = item.get("physical_assembly_ids")
-        if (
-            not isinstance(raw_ids, list)
-            or not raw_ids
-            or len(raw_ids) != len(set(raw_ids))
-            or not all(str(assembly_id) in assembly_id_mapping for assembly_id in raw_ids)
-        ):
-            raise ValueError("registry physical assembly references are invalid")
-        assigned_ids.extend(assembly_id_mapping[str(assembly_id)] for assembly_id in raw_ids)
-        clean = dict(item)
-        clean.pop("physical_assembly_ids", None)
-        cleaned.append(clean)
-    expected_ids = set(assembly_id_mapping.values())
-    if set(assigned_ids) != expected_ids or len(assigned_ids) != len(expected_ids):
-        raise ValueError("registry must account for every physical assembly exactly once")
-    return cleaned
-
-
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -778,12 +683,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
     try:
-        if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "physical_assemblies", "objects", "page_coverage",
-        }:
-            raise ValueError(
-                "visual registry must contain visual_groups, physical_assemblies, objects and page_coverage"
-            )
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "page_coverage"}:
+            raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -793,16 +694,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
-        assemblies, assembly_id_mapping = _normalize_physical_assemblies(
-            payload["physical_assemblies"],
-            group_id_mapping=group_id_mapping,
-        )
         registry_objects = _apply_page_coverage_to_registry(
             payload["objects"], payload["page_coverage"], page_count=len(page_images),
-        )
-        registry_objects = _apply_physical_assembly_mapping(
-            registry_objects,
-            assembly_id_mapping=assembly_id_mapping,
         )
         registry_payload = {"objects": registry_objects}
         for item in registry_payload["objects"]:
@@ -823,7 +716,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     }
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
-        "physical_assembly_count": len(assemblies),
         "registry_object_count": len(registry["objects"]),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
         "page_coverage_count": len(payload["page_coverage"]),

@@ -8,7 +8,6 @@ import httpx
 import pytest
 
 from agents.anthropic_adapter import (
-    _apply_physical_assembly_mapping,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
     build_detection_ocr_context,
@@ -422,15 +421,10 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             "visual_description": "one cabinet", "representation_kind": "perspective",
             "related_group_ids": [],
         }],
-        "physical_assemblies": [{
-            "assembly_id": "assembly_a", "visual_group_ids": ["view_a"],
-            "physical_identity": "one cabinet", "separation_basis": "one connected carcass",
-        }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_group_ids": ["view_a"],
-            "physical_assembly_ids": ["assembly_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
         }],
         "page_coverage": [{
@@ -472,15 +466,10 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
             "visual_description": "one cabinet", "representation_kind": "perspective",
             "related_group_ids": [],
         }],
-        "physical_assemblies": [{
-            "assembly_id": "assembly_a", "visual_group_ids": ["view_a"],
-            "physical_identity": "one cabinet", "separation_basis": "one connected carcass",
-        }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_group_ids": ["view_a"], "visual_identity": "one cabinet",
-            "physical_assembly_ids": ["assembly_a"],
             "boundary_basis": "one complete product",
         }],
         "page_coverage": [{
@@ -505,14 +494,6 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
         run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
-        )
-
-
-def test_physical_assembly_mapping_rejects_an_unaccounted_assembly():
-    with pytest.raises(ValueError, match="account for every physical assembly exactly once"):
-        _apply_physical_assembly_mapping(
-            [{"object_id": "object-001", "physical_assembly_ids": ["a"]}],
-            assembly_id_mapping={"a": "assembly_a", "b": "assembly_b"},
         )
 
 
