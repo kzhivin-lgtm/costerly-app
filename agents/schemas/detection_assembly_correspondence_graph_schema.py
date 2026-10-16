@@ -168,11 +168,9 @@ def derive_detection_assembly_correspondence(
     graph: dict[str, Any],
     *,
     representation_ids: list[str],
-) -> tuple[dict[str, Any] | None, str]:
-    """Build a lockable partition only from a decisive, conflict-free graph."""
+) -> tuple[dict[str, Any], str]:
+    """Keep direct graph facts without promoting uncertainty to a false lock."""
     relations = graph["pair_relations"]
-    if any(relation["relation"] == "insufficient" for relation in relations):
-        return None, "graph_abstained_incomplete_pairwise_evidence"
 
     parents = {representation_id: representation_id for representation_id in representation_ids}
 
@@ -191,12 +189,6 @@ def derive_detection_assembly_correspondence(
     for relation in relations:
         if relation["relation"] == "same_assembly":
             union(relation["first_representation_id"], relation["second_representation_id"])
-    if any(
-        relation["relation"] == "separate_assemblies"
-        and find(relation["first_representation_id"]) == find(relation["second_representation_id"])
-        for relation in relations
-    ):
-        return None, "graph_abstained_conflicting_pairwise_evidence"
 
     roles_by_id = {
         role["representation_id"]: role
@@ -206,36 +198,52 @@ def derive_detection_assembly_correspondence(
     for representation_id in representation_ids:
         components.setdefault(find(representation_id), []).append(representation_id)
 
+    conflicting_component_roots = {
+        find(relation["first_representation_id"])
+        for relation in relations
+        if relation["relation"] == "separate_assemblies"
+        and find(relation["first_representation_id"]) == find(relation["second_representation_id"])
+    }
+
     candidates: list[dict[str, Any]] = []
     non_assembly_representation_ids: list[str] = []
-    for members in components.values():
-        complete_members = [
-            representation_id
-            for representation_id in members
-            if roles_by_id[representation_id]["role"] == "complete_assembly"
-        ]
-        if not complete_members:
-            non_assembly_representation_ids.extend(members)
-            continue
-        representative = complete_members[0]
-        same_bases = [
+    for root, members in components.items():
+        positive_same_bases = [
             relation["basis"].strip()
             for relation in relations
             if relation["relation"] == "same_assembly"
             and relation["first_representation_id"] in members
             and relation["second_representation_id"] in members
         ]
+        if root in conflicting_component_roots or not positive_same_bases:
+            non_assembly_representation_ids.extend(members)
+            continue
+        representative = members[0]
         candidates.append({
             "candidate_id": f"assembly-{len(candidates) + 1:03d}",
             "representation_ids": members,
             "visual_identity": roles_by_id[representative]["visible_identity"].strip(),
             "correspondence_basis": (
-                "decisive pairwise correspondence graph"
-                + (f": {'; '.join(same_bases)}" if same_bases else "")
+                "direct same-assembly correspondence graph"
+                + f": {'; '.join(positive_same_bases)}"
             ),
         })
 
-    return {
+    result = {
         "assembly_candidates": candidates,
         "non_assembly_representation_ids": non_assembly_representation_ids,
-    }, "graph_decisive"
+        "must_separate_representation_pairs": [
+            {
+                "first_representation_id": relation["first_representation_id"],
+                "second_representation_id": relation["second_representation_id"],
+                "basis": relation["basis"],
+            }
+            for relation in relations
+            if relation["relation"] == "separate_assemblies"
+        ],
+    }
+    if conflicting_component_roots:
+        return result, "graph_partial_conflicting_positive_component"
+    if any(relation["relation"] == "insufficient" for relation in relations):
+        return result, "graph_partial_constraints"
+    return result, "graph_decisive"

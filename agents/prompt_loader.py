@@ -13,6 +13,7 @@ DETECTION_VISUAL_REGISTRY_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_visual_re
 DETECTION_ASSEMBLY_CORRESPONDENCE_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_assembly_correspondence_vnext_prompt.md"
 DETECTION_ASSEMBLY_CORRESPONDENCE_GRAPH_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_assembly_correspondence_graph_vnext_prompt.md"
 DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_visual_registry_with_assembly_candidates_vnext_prompt.md"
+DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_CONSTRAINTS_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_visual_registry_with_assembly_graph_constraints_vnext_prompt.md"
 PRICE_SOURCE_PROMPT_PATH = PROMPTS_DIR / "price_source_agent_prompt.md"
 
 
@@ -69,6 +70,13 @@ def load_detection_visual_registry_with_assembly_candidates_prompt() -> str:
     addition = DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_VNEXT_PROMPT_PATH.read_text(encoding="utf-8").strip()
     if not addition:
         raise ValueError("Detection assembly-candidate registry prompt is empty")
+    return f"{load_detection_visual_registry_prompt()}\n\n{addition}"
+
+
+def load_detection_visual_registry_with_assembly_graph_constraints_prompt() -> str:
+    addition = DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_GRAPH_CONSTRAINTS_VNEXT_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    if not addition:
+        raise ValueError("Detection assembly-graph registry prompt is empty")
     return f"{load_detection_visual_registry_prompt()}\n\n{addition}"
 
 

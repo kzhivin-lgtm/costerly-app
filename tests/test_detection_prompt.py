@@ -10,6 +10,7 @@ from agents.prompt_loader import (
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
+    load_detection_visual_registry_with_assembly_graph_constraints_prompt,
 )
 
 
@@ -95,3 +96,15 @@ def test_assembly_correspondence_graph_requires_direct_pairwise_proof():
     assert "every pair independently" in prompt
     assert "high bar" in prompt
     assert "white background in a masked figure is not part of that figure" in prompt
+
+
+def test_graph_constrained_registry_preserves_direct_facts_but_not_uncertainty():
+    prompt = load_detection_visual_registry_with_assembly_graph_constraints_prompt()
+    normalized_prompt = " ".join(prompt.split())
+
+    assert "direct positive visual matches" in prompt
+    assert "must never occur" in prompt
+    assert "same registry object" in normalized_prompt
+    assert "`insufficient` relationship is intentionally absent" in prompt
+    assert "must occur exactly once" in normalized_prompt
+    assert "`graph_representation_ids`" in prompt
