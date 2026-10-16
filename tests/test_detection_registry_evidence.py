@@ -17,12 +17,8 @@ def test_registry_evidence_keeps_full_estimation_set_not_only_visual_dossier():
     }
     registry = {"objects": [{
         "object_id": "object-001", "quantity": 1, "quantity_explicit": False,
-    }], "page_coverage": [
-        {"page_number": 1, "object_ids": ["object-001"], "exclusion_code": "none"},
-        {"page_number": 9, "object_ids": ["object-001"], "exclusion_code": "none"},
-        {"page_number": 10, "object_ids": ["object-001"], "exclusion_code": "none"},
-        {"page_number": 13, "object_ids": ["object-001"], "exclusion_code": "none"},
-    ]}
+        "estimation_evidence_pages": [1, 9, 10, 13],
+    }]}
 
     merged = _merge_registry_evidence(result, registry)
 
@@ -44,9 +40,8 @@ def test_registry_locks_complete_system_quantity_against_component_count():
     }
     registry = {"objects": [{
         "object_id": "object-001", "quantity": 1, "quantity_explicit": False,
-    }], "page_coverage": [
-        {"page_number": 1, "object_ids": ["object-001"], "exclusion_code": "none"},
-    ]}
+        "estimation_evidence_pages": [1],
+    }]}
 
     merged = _merge_registry_evidence(result, registry)
 
@@ -64,6 +59,7 @@ def test_registry_resolves_shared_track_leaves_to_one_commercial_door_system():
         "boundary_basis": "One continuous track forms one commercial door system",
         "identity_pages": [1],
         "dossier_pages": [1],
+        "estimation_evidence_pages": [1],
     }]}
 
     resolved = _enforce_shared_track_door_system_quantity(registry)

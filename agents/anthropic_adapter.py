@@ -40,7 +40,7 @@ DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
 DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v4"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
-DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_page_coverage_v3"
+DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 
 _STREAMLIT_SECRET_CACHE: dict[str, str] = {}
 _STREAMLIT_SECRET_CACHE_LOCK = Lock()
@@ -622,7 +622,6 @@ def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, f
         registry = validate_detection_registry(
             payload,
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-            page_numbers=set(range(1, len(page_images) + 1)),
         )
     except ValueError as exc:
         raise RuntimeError(f"Detection registry response failed validation: {exc}") from exc
@@ -636,7 +635,6 @@ def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, f
         "registry_object_count": len(registry["objects"]),
         "visual_group_count": len(visual_map["visual_groups"]),
         "unassigned_visual_group_count": len(visual_group_ids - assigned_visual_group_ids),
-        "page_coverage": registry["page_coverage"],
         "page_count": len(page_images),
         "attempt_label": "registry_from_visual_map",
     })
