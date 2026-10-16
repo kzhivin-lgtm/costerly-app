@@ -17,7 +17,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v7_multimodal_evidence"
+NAMING_LAB_VERSION = "naming_lab_v8_literal_evidence"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -130,7 +130,6 @@ def build_locked_naming_input(
                 continue
             evidence_regions.append({
                 "page_number": int(ref["page_number"]),
-                "source_label": str(ref.get("source_label") or ref["page_number"]),
                 "regions": [dict(region) for region in ref.get("regions") or [] if isinstance(region, dict)],
             })
         locked.append({

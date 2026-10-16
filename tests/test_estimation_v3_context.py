@@ -57,10 +57,11 @@ def test_estimation_model_request_excludes_decorative_object_name(monkeypatch):
         "id": "object-1",
         "quantity": 1,
         "evidence": {
-            "pages": [{"page_number": 1, "source_label": "1", "regions": []}],
+            "pages": [{"page_number": 1, "regions": []}],
             "ocr_blocks": [],
             "ocr_literal_items": [],
             "artifacts": [{"storage_ref": evidence_ref, "page_number": 1, "artifact_kind": "page"}],
         },
     }]
     assert "Misleading storage console" not in captured["messages"][0]["content"][-1]["text"]
+    assert "source_label" not in captured["messages"][0]["content"][-1]["text"]

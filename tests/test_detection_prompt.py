@@ -47,3 +47,5 @@ def test_detection_registry_requires_coverage_of_separate_product_groups():
     assert "Map each candidate to exactly one returned object" in prompt
     assert "never merge evidence" in prompt
     assert "vertical shelving unit, a track-supported door system, and a long storage console" in prompt
+    assert "First decide whether a drawing group is a complete commercial object or a component" in prompt
+    assert "Only after this containment check" in prompt

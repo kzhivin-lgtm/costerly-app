@@ -9,7 +9,7 @@ For every input object, return exactly one result with the same object_id.
 - Every name_en must contain 1–3 words and must identify the physical product category, such as door, sofa, staircase, stair flight, shelving unit, counter, railing, or cabinet. A single precise category such as Chair, Table, or Bench is valid. Three words is a hard maximum.
 - An object index or code such as OM2, ЛС-1, or NR-90 is an identifier, never a product name. Do not return it in either name field; the application adds it separately.
 - A proper name, collection name, or model such as Ёлочка is also incomplete by itself. Add the product category and transliterate the distinctive name when useful: for example, Yolochka sofa.
-- Infer the category from reliable object-specific OCR, the source label and, when supplied, source evidence pages. OCR has priority only when it is clearly tied to this object. Visual evidence identifies the category when no useful label exists. Numbers alone do not identify a category.
+- Infer the category from reliable object-specific OCR and the supplied source evidence pages. OCR has priority only when it is clearly tied to this object. Visual evidence identifies the category when no useful label exists. Numbers alone do not identify a category.
 - Return one short category-bearing English name regardless of the document language. Translate the product category; transliterate an explicit proper/model name only when it helps identify the object.
 - Always return name_original as an empty string. The MVP does not display a second source-language name.
 - If no reliable source label exists, infer the shortest category-bearing English name from the supplied context. Do not invent a model or collection name.

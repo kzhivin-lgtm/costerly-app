@@ -33,7 +33,7 @@ from use_cases.estimation_v3_material_contract import (
 # The unit and purchasable quantity belong to the selected supply candidate,
 # not to the vision model.  Bump the extraction version so cached facts that
 # contained model-guessed units can never feed the current Material Engine.
-ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_8"
+ESTIMATION_V3_MATERIAL_FACTS_AGENT_VERSION = "estimation_material_facts_v3_9"
 PROMPT_PATH = Path(__file__).parent / "prompts" / "estimation_v3_material_facts_prompt.md"
 MAX_OUTPUT_TOKENS = 8_000
 # The SDK timeout cannot guarantee a return if its transport stalls before it
@@ -347,7 +347,13 @@ def run_estimation_v3_material_facts_agent(
         "id": row["input_payload"]["object"]["object_id"],
         "quantity": row["input_payload"]["object"].get("quantity") or 1,
         "evidence": {
-            "pages": row["input_payload"].get("object", {}).get("evidence_pages", []),
+            # Page labels are a Detection retrieval aid. The model receives
+            # physical pages, regions and literal OCR, but never a generated
+            # object description presented as source evidence.
+            "pages": [{
+                "page_number": page.get("page_number"),
+                "regions": page.get("regions") or [],
+            } for page in row["input_payload"].get("object", {}).get("evidence_pages", []) if isinstance(page, Mapping)],
             "ocr_blocks": row["input_payload"].get("evidence", {}).get("ocr_blocks", []),
             "ocr_literal_items": row["input_payload"].get("evidence", {}).get("ocr_literal_items", []),
             "artifacts": row["input_payload"].get("evidence", {}).get("artifacts", []),

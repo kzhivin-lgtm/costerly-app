@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from agents.anthropic_adapter import run_anthropic_detection_agent_with_fallback, run_anthropic_detection_registry_agent
 from agents.detection_page_images import build_detection_registry_regions, render_detection_pdf_pages
 from agents.prompt_loader import load_detection_agent_prompt, load_detection_registry_prompt
@@ -92,6 +94,58 @@ def _merge_registry_evidence(result: dict, registry: dict) -> dict:
     return result
 
 
+def _literal_page_texts(ocr_package: dict | None) -> dict[int, str]:
+    """Index OCR text by physical page without adding model interpretation."""
+    evidence = (ocr_package or {}).get("evidence")
+    if not isinstance(evidence, dict):
+        return {}
+    texts: dict[int, list[str]] = {}
+    for kind in ("text_blocks", "literal_items"):
+        for item in evidence.get(kind) or []:
+            if not isinstance(item, dict):
+                continue
+            try:
+                page_number = int(item.get("page_number"))
+            except (TypeError, ValueError):
+                continue
+            text = str(item.get("text") or "").strip()
+            if page_number > 0 and text:
+                texts.setdefault(page_number, []).append(text)
+    return {page_number: "\n".join(values) for page_number, values in texts.items()}
+
+
+def _normalized_text(value: object) -> str:
+    return " ".join(re.findall(r"[^\W_]+", str(value or "").casefold(), re.UNICODE))
+
+
+def _normalize_evidence_source_labels(result: dict, ocr_package: dict | None) -> dict:
+    """Keep source labels only when literal OCR on that page supports them.
+
+    A Detection-generated visual description is useful while selecting a
+    region, but it is not source evidence. Passing it to Naming or Estimation
+    would silently reintroduce Detection's semantic conclusion into later
+    stages. Unsupported labels become an unambiguous physical-page reference.
+    """
+    page_texts = {
+        page_number: _normalized_text(text)
+        for page_number, text in _literal_page_texts(ocr_package).items()
+    }
+    for detected_object in result.get("detected_objects") or []:
+        if not isinstance(detected_object, dict):
+            continue
+        for page_ref in detected_object.get("evidence_page_refs") or []:
+            if not isinstance(page_ref, dict):
+                continue
+            try:
+                page_number = int(page_ref.get("page_number"))
+            except (TypeError, ValueError):
+                continue
+            label = _normalized_text(page_ref.get("source_label"))
+            if not label or label not in page_texts.get(page_number, ""):
+                page_ref["source_label"] = f"P{page_number}"
+    return result
+
+
 def get_secret(name: str, default: str | None = None) -> str | None:
     try:
         import streamlit as st
@@ -158,6 +212,8 @@ def run_detection_agent(
     )
 
     usage_event = result.pop("_agent_usage", None)
-    validated = validate_detection_result(_merge_registry_evidence(result, registry))
+    result = _merge_registry_evidence(result, registry)
+    result = _normalize_evidence_source_labels(result, ocr_package)
+    validated = validate_detection_result(result)
     validated["_agent_usage_events"] = [event for event in (registry_usage, usage_event) if event]
     return validated

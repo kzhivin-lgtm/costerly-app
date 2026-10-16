@@ -14,7 +14,7 @@ from agents.naming_lab import (
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v7_multimodal_evidence"
+    assert NAMING_LAB_VERSION == "naming_lab_v8_literal_evidence"
 
 
 def test_naming_prompt_keeps_integrated_kitchens_out_of_shelving():
@@ -67,7 +67,6 @@ def test_builds_minimal_locked_input_without_mutable_object_fields():
             "evidence_pages": [1],
             "evidence_regions": [{
                 "page_number": 1,
-                "source_label": "A-01",
                 "regions": [],
             }],
             "ocr_snippets": ["ЛП-1 Площадка"],
@@ -91,7 +90,6 @@ def test_naming_input_excludes_detection_notes():
     assert locked[0]["evidence_pages"] == [1]
     assert locked[0]["evidence_regions"] == [{
         "page_number": 1,
-        "source_label": "A-01",
         "regions": [],
     }]
 
