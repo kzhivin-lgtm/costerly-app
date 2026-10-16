@@ -3,6 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 from agents.ocr_adapter import warm_mistral_http_client_async
+from state.session import reset_new_estimate_session
 from styles.upload import apply_upload_css
 from ui.js_guards import install_upload_interaction_guards
 from ui.processing_stage import processing_stage_html
@@ -28,30 +29,7 @@ def _render_upload_hero() -> None:
 
 def _reset_post_upload_flow_state() -> None:
     """Clear RFQ/estimate state when a new upload starts."""
-    st.session_state.return_file_review_run_id = None
-    st.session_state.current_run_id = None
-    st.session_state.current_estimate_id = None
-    st.session_state.current_estimate_run_id = None
-    st.session_state.current_object_id = None
-    st.session_state.current_ocr_package = None
-    st.session_state.current_agent_timings = None
-    st.session_state.current_naming_future = None
-    st.session_state.current_preview_future = None
-    st.session_state.file_review_deferred_work = None
-    st.session_state.current_naming_result = None
-    st.session_state.processed_file_name = None
-    st.session_state.processing_error = None
-    st.session_state.estimation_batch_future = None
-    st.session_state.last_estimation_result = None
-    st.session_state.last_estimation_error = None
-    st.session_state.objects_estimation_seed_rows = []
-    st.session_state.file_review_object_edits = {}
-    st.session_state.file_review_object_edits_run_id = None
-    st.session_state.file_review_ignored_object_ids = set()
-    st.session_state.file_review_saved_ignored_object_ids = set()
-    st.session_state.file_review_data_cache = {}
-    st.session_state.objects_estimation_data_cache = {}
-    st.session_state.objects_estimation_cache_dirty = set()
+    reset_new_estimate_session(clear_upload_widget=False)
 
 
 def render_upload_screen(company_id: str) -> None:
@@ -67,6 +45,7 @@ def render_upload_screen(company_id: str) -> None:
     uploaded_file = st.file_uploader(
         "📎 Drop or upload",
         type=["pdf", "png", "jpg", "jpeg"],
+        key="rfq_upload_input",
         label_visibility="collapsed",
     )
     install_upload_interaction_guards(processing_stage_html(elapsed_seconds=0))

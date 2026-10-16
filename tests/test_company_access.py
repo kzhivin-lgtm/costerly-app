@@ -3297,6 +3297,7 @@ def test_header_new_estimate_navigation_runs_before_render():
     header_source = Path("ui/app_header.py").read_text()
 
     assert 'set_screen("upload")' in source
+    assert "reset_new_estimate_session(clear_upload_widget=True)" in source
     assert '("New Estimate", "header_new_estimate", on_new_estimate, False, None)' in header_source
     assert "st.rerun" not in source.split("def _open_new_estimate", 1)[1].split("def _open_last_estimate", 1)[0]
 

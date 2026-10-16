@@ -1694,9 +1694,10 @@ def _open_platform_admin() -> None:
 
 
 def _open_new_estimate() -> None:
-    """Open Upload without mutating any existing estimate."""
-    from state.session import set_screen
+    """Start a clean upload cycle, including when the next file is identical."""
+    from state.session import reset_new_estimate_session, set_screen
 
+    reset_new_estimate_session(clear_upload_widget=True)
     set_screen("upload")
 
 

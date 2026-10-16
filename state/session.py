@@ -101,6 +101,75 @@ def init_state() -> None:
         st.session_state.objects_estimation_cache_dirty = set()
 
 
+def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
+    """Remove every estimate-scoped session value before a new upload cycle.
+
+    A new estimate is a new run even when its bytes and filename match a
+    previous upload. Background work for the old run may finish independently,
+    but it must no longer have a session-visible destination.
+    """
+    none_fields = (
+        "return_file_review_run_id",
+        "current_run_id",
+        "current_estimate_id",
+        "current_estimate_run_id",
+        "current_object_id",
+        "current_ocr_package",
+        "current_agent_timings",
+        "current_naming_future",
+        "current_naming_result",
+        "current_preview_future",
+        "file_review_deferred_work",
+        "processed_file_name",
+        "processing_error",
+        "estimation_batch_future",
+        "last_estimation_result",
+        "last_estimation_error",
+        "file_review_object_edits_run_id",
+        "file_review_run_metadata_run_id",
+        "file_review_name_save_error",
+        "file_review_metadata_save_error",
+        "objects_live_poll_estimate_id",
+        "final_approval_error",
+        "object_detail_approval_error",
+        "object_detail_pending_edit",
+        "object_detail_pending_snapshot",
+        "object_detail_approve_after_edit",
+    )
+    for key in none_fields:
+        st.session_state[key] = None
+
+    for key in (
+        "objects_estimation_seed_rows",
+        "file_review_object_edits",
+        "file_review_initial_object_names",
+        "file_review_ignored_object_ids",
+        "file_review_saved_ignored_object_ids",
+        "file_review_run_metadata",
+        "approved_object_keys",
+        "workflow_route_tokens",
+        "proposal_pdf_urls_by_estimate",
+    ):
+        st.session_state.pop(key, None)
+
+    st.session_state.uploaded_file_name = None
+    st.session_state.uploaded_file_bytes = None
+    st.session_state.file_review_data_cache = {}
+    st.session_state.objects_estimation_data_cache = {}
+    st.session_state.objects_estimation_cache_dirty = set()
+
+    for key in list(st.session_state):
+        if str(key).startswith((
+            "file_review_naming_published.",
+            "file_review_naming_cache_synced.",
+            "file_review_preview_published.",
+            "file_review_preview_terminal.",
+        )):
+            st.session_state.pop(key, None)
+    if clear_upload_widget:
+        st.session_state.pop("rfq_upload_input", None)
+
+
 def set_screen(screen: str) -> None:
     """Change the active screen from a widget callback before the next render."""
     st.session_state.screen = screen

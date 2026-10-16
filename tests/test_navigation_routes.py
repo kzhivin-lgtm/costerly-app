@@ -8,6 +8,7 @@ import streamlit as st
 
 import app
 from screens import file_review, objects
+from state import session
 from use_cases import rfq_processing
 
 
@@ -16,6 +17,37 @@ def test_profile_route_stays_at_profile_level():
     st.session_state.company_profile_tab = "Contacts"
 
     assert app._browser_route("account") == {"screen": "account"}
+
+
+def test_new_estimate_reset_clears_all_estimate_scoped_session_state():
+    st.session_state.clear()
+    st.session_state.update({
+        "current_run_id": "run-old",
+        "current_estimate_id": "estimate-old",
+        "uploaded_file_name": "same.pdf",
+        "uploaded_file_bytes": b"same-bytes",
+        "processed_file_name": "same.pdf",
+        "file_review_data_cache": {"run-old": {"objects": [{"name": "Object 3"}]}},
+        "objects_estimation_data_cache": {"estimate-old": {"rows": []}},
+        "objects_estimation_cache_dirty": {"estimate-old"},
+        "file_review_naming_published.run-old": True,
+        "file_review_naming_cache_synced.run-old": True,
+        "rfq_upload_input": "previous-file-widget-value",
+    })
+
+    session.reset_new_estimate_session(clear_upload_widget=True)
+
+    assert st.session_state.current_run_id is None
+    assert st.session_state.current_estimate_id is None
+    assert st.session_state.uploaded_file_name is None
+    assert st.session_state.uploaded_file_bytes is None
+    assert st.session_state.file_review_data_cache == {}
+    assert st.session_state.objects_estimation_data_cache == {}
+    assert st.session_state.objects_estimation_cache_dirty == set()
+    assert st.session_state.processed_file_name is None
+    assert "file_review_naming_published.run-old" not in st.session_state
+    assert "file_review_naming_cache_synced.run-old" not in st.session_state
+    assert "rfq_upload_input" not in st.session_state
 
 
 def test_account_bootstrap_drops_legacy_profile_tab_parameter():
