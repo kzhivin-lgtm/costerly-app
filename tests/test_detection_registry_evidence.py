@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch
 
 from agents.detection_agent import (
+    DEFAULT_CLAUDE_DETECTION_V4_MODEL,
     _enforce_shared_track_door_system_quantity,
     _merge_registry_evidence,
     run_detection_agent,
@@ -104,3 +105,43 @@ def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier
 
     assert captured["page_image_numbers"] == [1, 2, 3, 4, 5]
     assert captured["page_images"] == [b"one", b"two", b"three", b"four", b"five"]
+
+
+def test_v4_routes_registry_and_evidence_packer_to_the_same_sonnet_model():
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+        "visual_identity": "one object", "boundary_basis": "one envelope",
+    }]}
+    registry_call: dict = {}
+    evidence_call: dict = {}
+
+    def capture_registry(**kwargs):
+        registry_call.update(kwargs)
+        return {"visual_groups": []}, registry, {"event": "visual_registry"}
+
+    def stop_after_capture(**kwargs):
+        evidence_call.update(kwargs)
+        raise RuntimeError("captured evidence packer model")
+
+    with (
+        patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
+        patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
+            side_effect=capture_registry,
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
+            side_effect=stop_after_capture,
+        ),
+        pytest.raises(RuntimeError, match="captured evidence packer model"),
+    ):
+        run_detection_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"],
+        )
+
+    assert registry_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
+    assert evidence_call["primary_model_override"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL

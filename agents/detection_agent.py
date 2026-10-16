@@ -14,6 +14,12 @@ from agents.prompt_loader import (
 from agents.schemas.detection_schema import validate_detection_result
 
 
+# V4 has one full-document Registry decision and one Evidence packer decision.
+# They share a model so the packer enriches, rather than reinterprets, the
+# Registry's commercial-object boundary. Naming has its own model setting.
+DEFAULT_CLAUDE_DETECTION_V4_MODEL = "claude-sonnet-4-6"
+
+
 def _enforce_shared_track_door_system_quantity(registry: dict) -> dict:
     """Resolve an internal registry contradiction for a shared-track door set.
 
@@ -200,6 +206,11 @@ def run_detection_agent(
     if file_bytes is None:
         raise ValueError("Detection Agent requires uploaded file bytes.")
 
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_V4_MODEL",
+        DEFAULT_CLAUDE_DETECTION_V4_MODEL,
+    )
+
     registry_images = page_images
     if registry_images is None and file_name.lower().endswith(".pdf"):
         registry_images, _ = render_detection_pdf_pages(file_bytes)
@@ -211,7 +222,7 @@ def run_detection_agent(
     _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
         file_name=file_name, company_id=company_id, file_bytes=file_bytes,
         page_images=registry_images, regions=regions,
-        ocr_package=ocr_package, model=model,
+        ocr_package=ocr_package, model=selected_model,
     )
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
@@ -225,7 +236,7 @@ def run_detection_agent(
         ocr_package=ocr_package,
         page_images=evidence_images,
         page_image_diagnostics=page_image_diagnostics,
-        primary_model_override=model,
+        primary_model_override=selected_model,
         locked_registry=registry,
         allow_sonnet_fallback=False,
         focus_regions=evidence_regions,

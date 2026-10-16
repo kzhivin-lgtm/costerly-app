@@ -52,6 +52,17 @@ Production acceptance requires one real upload with review of every object ID, q
 `Adda.pdf`, run `run_590733e409c44ed990b5636f685cd69f`, used the integrated
 Visual Registry V4 but incorrectly merged two visually separate, unlabelled
 complete assemblies into one commercial object. This is neither a Naming nor
-an Evidence defect. The next experiment makes physical-assembly candidates and
-positive merge evidence auditable inside the existing registry call. It does
-not rely on OCR labels and does not add a model call.
+an Evidence defect.
+
+## Sonnet V4 routing candidate
+
+The failed crop-correspondence experiment was removed. In an offline run of
+the unchanged two-call V4 route, `claude-sonnet-4-6` returned two quantity-one
+Adda objects, each with all four physical pages as Estimation Evidence. The
+Registry took 30.365 seconds, the Evidence packer 19.797 seconds, and total
+Detection time was 51.415 seconds.
+
+V4 routes both existing Detection calls through one configurable
+`CLAUDE_DETECTION_V4_MODEL`, defaulting to Sonnet. Naming keeps its independent
+model setting. This is a candidate until authenticated production Adda and the
+protected page-23, Kitchen and Metal checks confirm it.
