@@ -107,7 +107,7 @@ def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier
     assert captured["page_images"] == [b"one", b"two", b"three", b"four", b"five"]
 
 
-def test_v4_routes_registry_and_evidence_packer_to_the_same_sonnet_model():
+def test_v42_routes_default_registry_and_evidence_packer_to_haiku():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
@@ -144,4 +144,52 @@ def test_v4_routes_registry_and_evidence_packer_to_the_same_sonnet_model():
         )
 
     assert registry_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
+    assert evidence_call["primary_model_override"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
+
+
+def test_v42_routes_only_adda_style_registry_to_sonnet():
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+        "visual_identity": "one object", "boundary_basis": "one envelope",
+    }]}
+    registry_call: dict = {}
+    evidence_call: dict = {}
+
+    def capture_registry(**kwargs):
+        registry_call.update(kwargs)
+        return {"visual_groups": []}, registry, {"event": "visual_registry"}
+
+    def stop_after_capture(**kwargs):
+        evidence_call.update(kwargs)
+        raise RuntimeError("captured evidence packer model")
+
+    two_islands_page = {
+        "dimensions": {"width": 1000, "height": 1000},
+        "images": [
+            {"top_left_x": 0, "top_left_y": 0, "bottom_right_x": 400, "bottom_right_y": 400},
+            {"top_left_x": 500, "top_left_y": 0, "bottom_right_x": 900, "bottom_right_y": 400},
+        ],
+    }
+    with (
+        patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
+        patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
+            side_effect=capture_registry,
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
+            side_effect=stop_after_capture,
+        ),
+        pytest.raises(RuntimeError, match="captured evidence packer model"),
+    ):
+        run_detection_agent(
+            file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"one", b"two"],
+            ocr_package={"pages": [two_islands_page, two_islands_page]},
+        )
+
+    assert registry_call["model"] == "claude-sonnet-4-6"
     assert evidence_call["primary_model_override"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL

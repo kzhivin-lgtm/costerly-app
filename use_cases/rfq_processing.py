@@ -452,8 +452,8 @@ def process_uploaded_rfq(
         ocr_package=detection_ocr_package,
         page_images=page_images,
         page_image_diagnostics=page_image_diagnostics,
-        # Object boundaries must use the same Haiku path for every upload size.
-        # A rendered-page route changes transport, not the detection model.
+        # V4.2 normally uses Haiku. Its deterministic OCR-layout router may
+        # select Sonnet only for a high-risk commercial-boundary Registry.
         model=None,
     )
     detection_seconds = round(time.perf_counter() - detection_started, 3)
