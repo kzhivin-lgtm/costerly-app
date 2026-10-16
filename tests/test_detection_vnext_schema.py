@@ -68,11 +68,12 @@ def test_visual_map_and_registry_keep_representation_identity_separate():
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "dossier_pages": [1], "estimation_evidence_pages": [1],
+            "dossier_pages": [1],
             "visual_group_ids": ["view-001", "view-002"],
             "visual_identity": "one long storage console shown twice",
             "boundary_basis": "matching full-page structure and panel sequence",
         }],
+        "page_coverage": [{"page_number": 1, "object_ids": ["object-001"], "exclusion_code": "none"}],
     }
 
     assert validate_detection_registry(
@@ -102,9 +103,10 @@ def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
 def test_registry_rejects_visual_group_assigned_to_multiple_objects():
     registry = {
         "objects": [
-            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "dossier_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "first", "boundary_basis": "first"},
-            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "dossier_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "second", "boundary_basis": "second"},
+            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "dossier_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "first", "boundary_basis": "first"},
+            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "dossier_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "second", "boundary_basis": "second"},
         ],
+        "page_coverage": [{"page_number": 1, "object_ids": ["object-001", "object-002"], "exclusion_code": "none"}],
     }
 
     try:
@@ -120,13 +122,33 @@ def test_registry_allows_unassigned_navigation_only_visual_groups():
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "dossier_pages": [1], "estimation_evidence_pages": [1],
+                "dossier_pages": [1],
             "visual_group_ids": ["view-001"], "visual_identity": "cabinet",
             "boundary_basis": "one complete product",
-        }],
+            }],
+            "page_coverage": [{"page_number": 1, "object_ids": ["object-001"], "exclusion_code": "none"}],
     }
 
     assert validate_detection_registry(
         registry,
         visual_group_ids={"view-001", "view-002"},
     ) == registry
+
+
+def test_registry_rejects_missing_physical_page_coverage():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "dossier_pages": [1], "visual_group_ids": ["view-001"],
+            "visual_identity": "cabinet", "boundary_basis": "one complete product",
+        }],
+        "page_coverage": [{"page_number": 1, "object_ids": ["object-001"], "exclusion_code": "none"}],
+    }
+
+    try:
+        validate_detection_registry(registry, visual_group_ids={"view-001"}, page_numbers={1, 2})
+    except DetectionRegistrySchemaError as exc:
+        assert "every physical page" in str(exc)
+    else:
+        raise AssertionError("missing physical page coverage was accepted")

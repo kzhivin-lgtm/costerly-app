@@ -59,6 +59,10 @@ def _merge_registry_evidence(result: dict, registry: dict) -> dict:
         str(item["object_id"]): item
         for item in registry["objects"]
     }
+    pages_by_object: dict[str, set[int]] = {}
+    for page in registry["page_coverage"]:
+        for object_id in page["object_ids"]:
+            pages_by_object.setdefault(object_id, set()).add(page["page_number"])
     for detected in result.get("detected_objects") or []:
         if not isinstance(detected, dict):
             continue
@@ -71,7 +75,7 @@ def _merge_registry_evidence(result: dict, registry: dict) -> dict:
         # locked quantity in the final commercial object.
         detected["quantity"] = locked_object["quantity"]
         detected["quantity_explicit"] = locked_object["quantity_explicit"]
-        required_pages = set(locked_object["estimation_evidence_pages"])
+        required_pages = pages_by_object.get(str(detected.get("object_id")), set())
         refs_by_page: dict[int, dict] = {}
         for raw_ref in detected.get("evidence_page_refs") or []:
             if not isinstance(raw_ref, dict):
@@ -80,7 +84,7 @@ def _merge_registry_evidence(result: dict, registry: dict) -> dict:
                 page_number = int(raw_ref.get("page_number"))
             except (TypeError, ValueError):
                 continue
-            if page_number > 0:
+            if page_number in required_pages:
                 refs_by_page[page_number] = dict(raw_ref)
         for page_number in sorted(required_pages):
             ref = refs_by_page.get(page_number)

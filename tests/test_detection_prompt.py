@@ -53,6 +53,8 @@ def test_detection_registry_groups_visual_map_without_treating_it_as_object_set(
     assert "not a reason to add, split or fail an object" in prompt
     assert "vertical shelving unit, a track-supported door system, and a long storage console" in prompt
     assert "Different complete envelopes, functions, silhouettes, or construction systems" in prompt
+    assert "`page_coverage` is a compact complete ledger" in prompt
+    assert "not a free page list" in prompt
 
 
 def test_detection_visual_map_never_decides_objects_or_quantity():

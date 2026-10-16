@@ -367,10 +367,11 @@ def test_registry_retries_truncated_structured_json_with_larger_budget():
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "dossier_pages": [1], "estimation_evidence_pages": [1],
+            "dossier_pages": [1],
             "visual_group_ids": ["view-001"], "visual_identity": "one cabinet",
             "boundary_basis": "one complete product",
         }],
+        "page_coverage": [{"page_number": 1, "object_ids": ["object-001"], "exclusion_code": "none"}],
     }
     requested_budgets = []
 
