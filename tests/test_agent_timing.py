@@ -421,11 +421,17 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             "visual_description": "one cabinet", "representation_kind": "perspective",
             "related_group_ids": [],
         }],
+        "complete_assembly_islands": [{
+            "island_id": "island-001", "visual_group_id": "view_a",
+            "completion_basis": "one bounded complete cabinet depiction",
+        }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
+            "complete_assembly_island_ids": ["island-001"],
+            "island_merge_basis": "one complete assembly island",
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
@@ -456,6 +462,8 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
+    assert usage["raw_usage"]["complete_assembly_island_count"] == 1
+    assert usage["raw_usage"]["complete_assembly_island_audit"][0]["object_id"] == "object-001"
     assert usage["operation"] == "rfq_detection_visual_registry"
 
 
@@ -466,11 +474,17 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
             "visual_description": "one cabinet", "representation_kind": "perspective",
             "related_group_ids": [],
         }],
+        "complete_assembly_islands": [{
+            "island_id": "island-001", "visual_group_id": "view_a",
+            "completion_basis": "one bounded complete cabinet depiction",
+        }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_group_ids": ["view_a"], "visual_identity": "one cabinet",
             "boundary_basis": "one complete product",
+            "complete_assembly_island_ids": ["island-001"],
+            "island_merge_basis": "one complete assembly island",
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
@@ -494,6 +508,39 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
         run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
+        )
+
+
+def test_integrated_visual_registry_rejects_an_unassigned_complete_assembly_island():
+    payload = {
+        "visual_groups": [
+            {"group_id": "view_a", "page_number": 1, "location_hint": "left", "visual_description": "cabinet", "representation_kind": "elevation", "related_group_ids": []},
+            {"group_id": "view_b", "page_number": 1, "location_hint": "right", "visual_description": "mirror stand", "representation_kind": "elevation", "related_group_ids": []},
+        ],
+        "complete_assembly_islands": [
+            {"island_id": "island-001", "visual_group_id": "view_a", "completion_basis": "bounded cabinet envelope"},
+            {"island_id": "island-002", "visual_group_id": "view_b", "completion_basis": "bounded mirror stand envelope"},
+        ],
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1", "quantity": 1,
+            "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["view_a"],
+            "visual_identity": "cabinet", "boundary_basis": "one cabinet",
+            "complete_assembly_island_ids": ["island-001"],
+            "island_merge_basis": "one complete assembly island",
+        }],
+        "page_coverage": [{"page_number": 1, "object_ids": ["object-001"], "evidence_reason": "cabinet view"}],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {"request_started_at": "2026-10-16T00:00:00+00:00", "request_finished_at": "2026-10-16T00:00:01+00:00"})),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        pytest.raises(RuntimeError, match="account for every complete assembly island exactly once"),
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
 

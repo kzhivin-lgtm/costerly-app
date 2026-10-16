@@ -42,7 +42,7 @@ DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
-DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_spatial_islands"
+DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_complete_assembly_islands"
 
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
     DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -53,13 +53,41 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].extend(
+    ["complete_assembly_island_ids", "island_merge_basis"]
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].update(
+    {
+        "complete_assembly_island_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string"},
+        },
+        "island_merge_basis": {"type": "string"},
+    }
+)
+
+DETECTION_COMPLETE_ASSEMBLY_ISLANDS_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["island_id", "visual_group_id", "completion_basis"],
+        "properties": {
+            "island_id": {"type": "string"},
+            "visual_group_id": {"type": "string"},
+            "completion_basis": {"type": "string"},
+        },
+    },
+}
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "objects", "page_coverage"],
+    "required": ["visual_groups", "complete_assembly_islands", "objects", "page_coverage"],
     "properties": {
         "visual_groups": DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"],
+        "complete_assembly_islands": DETECTION_COMPLETE_ASSEMBLY_ISLANDS_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
             "type": "array",
@@ -662,6 +690,74 @@ def _apply_page_coverage_to_registry(
     return enriched
 
 
+def _validate_complete_assembly_islands(
+    islands: Any,
+    registry_objects: list[dict[str, Any]],
+    *,
+    visual_group_ids: set[str],
+) -> list[dict[str, str]]:
+    """Require every separately represented complete assembly to survive registry grouping."""
+    if not isinstance(islands, list):
+        raise ValueError("complete assembly islands are invalid")
+
+    normalized: list[dict[str, str]] = []
+    island_ids: set[str] = set()
+    island_group_ids: set[str] = set()
+    required = {"island_id", "visual_group_id", "completion_basis"}
+    for index, island in enumerate(islands, start=1):
+        if not isinstance(island, dict) or set(island) != required:
+            raise ValueError("complete assembly island fields are invalid")
+        island_id = str(island["island_id"])
+        visual_group_id = str(island["visual_group_id"])
+        completion_basis = str(island["completion_basis"]).strip()
+        if island_id != f"island-{index:03d}":
+            raise ValueError("complete assembly island IDs must be ordered")
+        if visual_group_id not in visual_group_ids:
+            raise ValueError("complete assembly island references an unknown visual group")
+        if visual_group_id in island_group_ids:
+            raise ValueError("a visual group may support only one complete assembly island")
+        if not completion_basis:
+            raise ValueError("complete assembly island basis is required")
+        island_ids.add(island_id)
+        island_group_ids.add(visual_group_id)
+        normalized.append({
+            "island_id": island_id,
+            "visual_group_id": visual_group_id,
+            "completion_basis": completion_basis,
+        })
+
+    assigned_island_ids: list[str] = []
+    for item in registry_objects:
+        object_island_ids = item.get("complete_assembly_island_ids")
+        merge_basis = str(item.get("island_merge_basis") or "").strip()
+        if (
+            not isinstance(object_island_ids, list)
+            or not object_island_ids
+            or not all(isinstance(island_id, str) and island_id for island_id in object_island_ids)
+        ):
+            raise ValueError("registry object complete assembly islands are invalid")
+        if not set(object_island_ids).issubset(island_ids):
+            raise ValueError("registry object references an unknown complete assembly island")
+        if not merge_basis:
+            raise ValueError("registry object island merge basis is required")
+        assigned_island_ids.extend(object_island_ids)
+
+    if len(assigned_island_ids) != len(set(assigned_island_ids)):
+        raise ValueError("a complete assembly island cannot belong to multiple commercial objects")
+    if set(assigned_island_ids) != island_ids:
+        raise ValueError("registry must account for every complete assembly island exactly once")
+
+    island_by_id = {island["island_id"]: island for island in normalized}
+    for item in registry_objects:
+        required_group_ids = {
+            island_by_id[island_id]["visual_group_id"]
+            for island_id in item["complete_assembly_island_ids"]
+        }
+        if not required_group_ids.issubset(set(item.get("visual_group_ids") or [])):
+            raise ValueError("registry object must retain every complete assembly island visual group")
+    return normalized
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -683,8 +779,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
     try:
-        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "page_coverage"}:
-            raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "complete_assembly_islands", "objects", "page_coverage"}:
+            raise ValueError("visual registry must contain visual_groups, complete_assembly_islands, objects and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -694,15 +790,29 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
+        complete_assembly_islands = copy.deepcopy(payload["complete_assembly_islands"])
+        for island in complete_assembly_islands:
+            island["visual_group_id"] = group_id_mapping.get(
+                str(island.get("visual_group_id") or ""),
+                str(island.get("visual_group_id") or ""),
+            )
         registry_objects = _apply_page_coverage_to_registry(
             payload["objects"], payload["page_coverage"], page_count=len(page_images),
         )
-        registry_payload = {"objects": registry_objects}
-        for item in registry_payload["objects"]:
+        for item in registry_objects:
             item["visual_group_ids"] = [
                 group_id_mapping.get(str(group_id), str(group_id))
                 for group_id in item["visual_group_ids"]
             ]
+        complete_assembly_islands = _validate_complete_assembly_islands(
+            complete_assembly_islands,
+            registry_objects,
+            visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
+        )
+        registry_payload = {"objects": copy.deepcopy(registry_objects)}
+        for item in registry_payload["objects"]:
+            item.pop("complete_assembly_island_ids", None)
+            item.pop("island_merge_basis", None)
         registry = validate_detection_registry(
             registry_payload,
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
@@ -714,8 +824,26 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         for item in registry["objects"]
         for group_id in item["visual_group_ids"]
     }
+    object_id_by_island = {
+        island_id: item["object_id"]
+        for item in registry_objects
+        for island_id in item["complete_assembly_island_ids"]
+    }
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
+        "complete_assembly_island_count": len(complete_assembly_islands),
+        "complete_assembly_islands_per_object": {
+            item["object_id"]: len(item["complete_assembly_island_ids"])
+            for item in registry_objects
+        },
+        "complete_assembly_island_audit": [
+            island | {"object_id": object_id_by_island[island["island_id"]]}
+            for island in complete_assembly_islands
+        ],
+        "complete_assembly_island_merge_basis": {
+            item["object_id"]: item["island_merge_basis"]
+            for item in registry_objects
+        },
         "registry_object_count": len(registry["objects"]),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
         "page_coverage_count": len(payload["page_coverage"]),
