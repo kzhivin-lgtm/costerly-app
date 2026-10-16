@@ -74,3 +74,13 @@ keeps its independent model setting.
 
 This is a candidate until authenticated production Adda and the protected
 page-23, Kitchen and Metal checks confirm it.
+
+### Router verification before deployment
+
+The deterministic router was evaluated against saved original OCR, without
+making a new model request. It selects Sonnet Registry for Adda (four pages,
+seven large drawing regions, three pages with multiple such regions, zero
+author-issued object codes). It keeps the protected benchmarks on Haiku:
+page-23 has one large drawing region, Kitchen has three source codes, and
+Metal has 53 source codes. This verifies routing only. It does not substitute
+for an authenticated production Detection result.
