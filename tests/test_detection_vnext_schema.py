@@ -1,5 +1,10 @@
 from agents.anthropic_adapter import discard_degenerate_evidence_regions
+from agents.schemas.detection_registry_schema import (
+    DetectionRegistrySchemaError,
+    validate_detection_registry,
+)
 from agents.schemas.detection_schema import validate_detection_result
+from agents.schemas.detection_visual_map_schema import validate_detection_visual_map
 
 
 def test_v4_schema_accepts_evidence_regions_and_ui_only_preview_bbox():
@@ -47,3 +52,43 @@ def test_degenerate_evidence_regions_are_dropped_but_the_page_is_preserved():
     assert ref["page_number"] == 3
     assert ref["regions"] == []
     assert "presentation_preview_bbox" not in ref
+
+
+def test_visual_map_and_registry_keep_representation_identity_separate():
+    visual_map = validate_detection_visual_map({
+        "visual_groups": [
+            {"group_id": "view-001", "page_number": 1, "location_hint": "lower left", "visual_description": "long storage console perspective", "representation_kind": "perspective", "related_group_ids": ["view-002"]},
+            {"group_id": "view-002", "page_number": 1, "location_hint": "lower right", "visual_description": "long storage console alternate perspective", "representation_kind": "perspective", "related_group_ids": ["view-001"]},
+        ],
+    })
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "dossier_pages": [1], "estimation_evidence_pages": [1],
+            "visual_group_ids": ["view-001", "view-002"],
+            "visual_identity": "one long storage console shown twice",
+            "boundary_basis": "matching full-page structure and panel sequence",
+        }],
+    }
+
+    assert validate_detection_registry(
+        registry,
+        visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
+    ) == registry
+
+
+def test_registry_rejects_visual_group_assigned_to_multiple_objects():
+    registry = {
+        "objects": [
+            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "dossier_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "first", "boundary_basis": "first"},
+            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "dossier_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "second", "boundary_basis": "second"},
+        ],
+    }
+
+    try:
+        validate_detection_registry(registry, visual_group_ids={"view-001"})
+    except DetectionRegistrySchemaError as exc:
+        assert "multiple commercial objects" in str(exc)
+    else:
+        raise AssertionError("duplicate visual-group assignment was accepted")

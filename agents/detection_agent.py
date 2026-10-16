@@ -2,9 +2,17 @@ from __future__ import annotations
 
 import re
 
-from agents.anthropic_adapter import run_anthropic_detection_agent_with_fallback, run_anthropic_detection_registry_agent
+from agents.anthropic_adapter import (
+    run_anthropic_detection_agent_with_fallback,
+    run_anthropic_detection_registry_agent,
+    run_anthropic_detection_visual_map_agent,
+)
 from agents.detection_page_images import build_detection_registry_regions, render_detection_pdf_pages
-from agents.prompt_loader import load_detection_agent_prompt, load_detection_registry_prompt
+from agents.prompt_loader import (
+    load_detection_agent_prompt,
+    load_detection_registry_prompt,
+    load_detection_visual_map_prompt,
+)
 from agents.schemas.detection_schema import validate_detection_result
 
 
@@ -176,6 +184,7 @@ def run_detection_agent(
     # Fail loudly if the prompt file is missing or empty.
     _prompt = load_detection_agent_prompt()
     _registry_prompt = load_detection_registry_prompt()
+    _visual_map_prompt = load_detection_visual_map_prompt()
 
     if file_bytes is None:
         raise ValueError("Detection Agent requires uploaded file bytes.")
@@ -188,9 +197,14 @@ def run_detection_agent(
     if not registry_images:
         raise ValueError("Detection registry requires rendered PDF pages.")
     regions = build_detection_registry_regions(registry_images)
-    registry, registry_usage = run_anthropic_detection_registry_agent(
+    visual_map, visual_map_usage = run_anthropic_detection_visual_map_agent(
         file_name=file_name, company_id=company_id, file_bytes=file_bytes,
         page_images=registry_images, regions=regions,
+        ocr_package=ocr_package, model=model,
+    )
+    registry, registry_usage = run_anthropic_detection_registry_agent(
+        file_name=file_name, company_id=company_id, file_bytes=file_bytes,
+        page_images=registry_images, visual_map=visual_map,
         ocr_package=ocr_package, model=model,
     )
     registry = _enforce_shared_track_door_system_quantity(registry)
@@ -215,5 +229,5 @@ def run_detection_agent(
     result = _merge_registry_evidence(result, registry)
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)
-    validated["_agent_usage_events"] = [event for event in (registry_usage, usage_event) if event]
+    validated["_agent_usage_events"] = [event for event in (visual_map_usage, registry_usage, usage_event) if event]
     return validated

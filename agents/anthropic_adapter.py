@@ -20,8 +20,13 @@ from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
     load_detection_registry_prompt,
+    load_detection_visual_map_prompt,
 )
 from agents.schemas.detection_registry_schema import DETECTION_REGISTRY_JSON_SCHEMA, validate_detection_registry
+from agents.schemas.detection_visual_map_schema import (
+    DETECTION_VISUAL_MAP_JSON_SCHEMA,
+    validate_detection_visual_map,
+)
 from agents.schemas.detection_schema import (
     DETECTION_RESULT_JSON_SCHEMA,
     validate_detection_result,
@@ -33,7 +38,8 @@ DEFAULT_CLAUDE_AGENT_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
 DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v4"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
-DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_registry_coverage_v1_restored"
+DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
+DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 
 _STREAMLIT_SECRET_CACHE: dict[str, str] = {}
 _STREAMLIT_SECRET_CACHE_LOCK = Lock()
@@ -527,17 +533,37 @@ def append_detection_focus_regions(blocks: list[dict[str, Any]], regions: list[d
     blocks.append({"type":"text", "text":user_text})
     return blocks
 
-def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
+def run_anthropic_detection_visual_map_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
+    selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
+    prompt = load_detection_visual_map_prompt()
+    user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
+    schema = strip_schema_for_claude(DETECTION_VISUAL_MAP_JSON_SCHEMA)
+    response, diagnostics = create_claude_message_streamed(get_anthropic_client(), model=selected_model, max_tokens=5000, system=build_detection_system_content(prompt=prompt), messages=[{"role":"user","content":build_detection_registry_content_blocks(file_name=file_name,file_bytes=file_bytes,user_text=user_text,page_images=page_images,regions=regions)}], output_config={"format":{"type":"json_schema","schema":schema}})
+    try:
+        visual_map = validate_detection_visual_map(json.loads(extract_text_from_claude_response(response)))
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Detection visual-map response failed validation: {exc}") from exc
+    diagnostics.update({"visual_group_count": len(visual_map["visual_groups"]), "region_count": len(regions), "page_count": len(page_images), "attempt_label": "visual_map_regions"})
+    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_map",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_VISUAL_MAP_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    return visual_map, usage
+
+
+def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], visual_map: dict[str, Any], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_registry_prompt()
     user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
+    user_text += "\n\nVISUAL REPRESENTATION MAP (navigation only, not object decisions):\n"
+    user_text += json.dumps(visual_map, ensure_ascii=False)
     schema = strip_schema_for_claude(DETECTION_REGISTRY_JSON_SCHEMA)
-    response, diagnostics = create_claude_message_streamed(get_anthropic_client(), model=selected_model, max_tokens=2500, system=build_detection_system_content(prompt=prompt), messages=[{"role":"user","content":build_detection_registry_content_blocks(file_name=file_name,file_bytes=file_bytes,user_text=user_text,page_images=page_images,regions=regions)}], output_config={"format":{"type":"json_schema","schema":schema}})
+    response, diagnostics = create_claude_message_streamed(get_anthropic_client(), model=selected_model, max_tokens=2500, system=build_detection_system_content(prompt=prompt), messages=[{"role":"user","content":build_detection_registry_content_blocks(file_name=file_name,file_bytes=file_bytes,user_text=user_text,page_images=page_images,regions=[])}], output_config={"format":{"type":"json_schema","schema":schema}})
     try:
-        registry = validate_detection_registry(json.loads(extract_text_from_claude_response(response)))
+        registry = validate_detection_registry(
+            json.loads(extract_text_from_claude_response(response)),
+            visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
+        )
     except (ValueError, json.JSONDecodeError) as exc:
         raise RuntimeError(f"Detection registry response failed validation: {exc}") from exc
-    diagnostics.update({"registry_object_count":len(registry["objects"]),"region_count":len(regions),"page_count":len(page_images),"attempt_label":"registry_regions"})
+    diagnostics.update({"registry_object_count":len(registry["objects"]),"visual_group_count":len(visual_map["visual_groups"]),"page_count":len(page_images),"attempt_label":"registry_from_visual_map"})
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return registry, usage
 

@@ -6,6 +6,7 @@ from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
     load_detection_registry_prompt,
+    load_detection_visual_map_prompt,
 )
 
 
@@ -42,13 +43,21 @@ def test_no_naming_ab_prompt_delegates_user_facing_name_once():
     assert "`object_name` only as source-label transport" in prompt
 
 
-def test_detection_registry_requires_coverage_of_separate_product_groups():
+def test_detection_registry_groups_visual_map_without_treating_it_as_object_set():
     prompt = load_detection_registry_prompt()
 
-    assert "Start each spatially separate complete product drawing group" in prompt
-    assert "Before any merge" in prompt
-    assert "Map each candidate to exactly one returned object" in prompt
+    assert "visual map was prepared from full pages and enlarged regions" in prompt
+    assert "not an object set" in prompt
+    assert "Decide commercial objects only from the full pages" in prompt
+    assert "attach every `visual_group_id`" in prompt
     assert "vertical shelving unit, a track-supported door system, and a long storage console" in prompt
     assert "Different complete envelopes, functions, silhouettes, or construction systems" in prompt
-    assert "maximal complete product drawing group" not in prompt
-    assert "Then apply containment" not in prompt
+
+
+def test_detection_visual_map_never_decides_objects_or_quantity():
+    prompt = load_detection_visual_map_prompt()
+
+    assert "not a commercial-object registry" in prompt
+    assert "Do not decide whether any depiction is an independent product" in prompt
+    assert "Do not infer quantity" in prompt
+    assert "cannot create, split, merge, name, count" in prompt
