@@ -539,14 +539,39 @@ def run_anthropic_detection_visual_map_agent(*, file_name: str, company_id: str,
     prompt = load_detection_visual_map_prompt()
     user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
     schema = strip_schema_for_claude(DETECTION_VISUAL_MAP_JSON_SCHEMA)
-    response, diagnostics = create_claude_message_streamed(get_anthropic_client(), model=selected_model, max_tokens=5000, system=build_detection_system_content(prompt=prompt), messages=[{"role":"user","content":build_detection_registry_content_blocks(file_name=file_name,file_bytes=file_bytes,user_text=user_text,page_images=page_images,regions=regions)}], output_config={"format":{"type":"json_schema","schema":schema}})
+    content = build_detection_registry_content_blocks(
+        file_name=file_name, file_bytes=file_bytes, user_text=user_text,
+        page_images=page_images, regions=regions,
+    )
+
+    def request_visual_map(max_tokens: int) -> tuple[Any, dict[str, Any]]:
+        return create_claude_message_streamed(
+            get_anthropic_client(), model=selected_model, max_tokens=max_tokens,
+            system=build_detection_system_content(prompt=prompt),
+            messages=[{"role": "user", "content": content}],
+            output_config={"format": {"type": "json_schema", "schema": schema}},
+        )
+
+    response, diagnostics = request_visual_map(5000)
+    try:
+        payload = json.loads(extract_text_from_claude_response(response))
+    except json.JSONDecodeError:
+        # A truncated structured response is transport failure, not a visual
+        # interpretation. Retry once with the provider's full response budget.
+        response, diagnostics = request_visual_map(8192)
+        diagnostics["retry_after_truncated_json"] = True
+        try:
+            payload = json.loads(extract_text_from_claude_response(response))
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                "Detection visual-map response remained invalid JSON after retry: "
+                f"{exc}"
+            ) from exc
     try:
         visual_map = validate_detection_visual_map(
-            normalize_detection_visual_map_group_ids(
-                json.loads(extract_text_from_claude_response(response))
-            )
+            normalize_detection_visual_map_group_ids(payload)
         )
-    except (ValueError, json.JSONDecodeError) as exc:
+    except ValueError as exc:
         raise RuntimeError(f"Detection visual-map response failed validation: {exc}") from exc
     diagnostics.update({"visual_group_count": len(visual_map["visual_groups"]), "region_count": len(regions), "page_count": len(page_images), "attempt_label": "visual_map_regions"})
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_map",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_VISUAL_MAP_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
