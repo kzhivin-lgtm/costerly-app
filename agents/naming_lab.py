@@ -122,20 +122,29 @@ def build_locked_naming_input(
     detected_objects: list[dict[str, Any]],
     ocr_result: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    return [
-        {
+    locked: list[dict[str, Any]] = []
+    for item in detected_objects:
+        evidence_regions = []
+        for ref in item.get("evidence_page_refs") or []:
+            if not isinstance(ref, dict) or not str(ref.get("page_number") or "").isdigit():
+                continue
+            evidence_regions.append({
+                "page_number": int(ref["page_number"]),
+                "source_label": str(ref.get("source_label") or ref["page_number"]),
+                "regions": [dict(region) for region in ref.get("regions") or [] if isinstance(region, dict)],
+            })
+        locked.append({
             "object_id": str(item.get("object_id") or ""),
             "object_index": extract_object_index(item.get("object_name")),
             "current_name": str(item.get("object_name") or ""),
-            "evidence_pages": [
-                int(ref["page_number"])
-                for ref in item.get("evidence_page_refs") or []
-                if isinstance(ref, dict) and str(ref.get("page_number") or "").isdigit()
-            ],
+            "evidence_pages": [ref["page_number"] for ref in evidence_regions],
+            # These are retrieval pointers for the supplied full pages.  They
+            # make the multimodal naming pass object-specific without passing
+            # the UI-only presentation crop.
+            "evidence_regions": evidence_regions,
             "ocr_snippets": relevant_ocr_snippets(item, ocr_result),
-        }
-        for item in detected_objects
-    ]
+        })
+    return locked
 
 
 def ensure_unique_object_ids(detected_objects: list[dict[str, Any]]) -> None:

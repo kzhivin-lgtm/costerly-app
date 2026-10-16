@@ -56,7 +56,12 @@ def test_builds_minimal_locked_input_without_mutable_object_fields():
             "object_id": "lp-1",
             "object_index": "ЛП-1",
             "current_name": "ЛП-1 — Metal platform",
-                "evidence_pages": [1],
+            "evidence_pages": [1],
+            "evidence_regions": [{
+                "page_number": 1,
+                "source_label": "A-01",
+                "regions": [],
+            }],
             "ocr_snippets": ["ЛП-1 Площадка"],
         }
     ]
@@ -76,6 +81,11 @@ def test_naming_input_excludes_detection_notes():
 
     assert "context_hint" not in locked[0]
     assert locked[0]["evidence_pages"] == [1]
+    assert locked[0]["evidence_regions"] == [{
+        "page_number": 1,
+        "source_label": "A-01",
+        "regions": [],
+    }]
 
 
 def test_ocr_snippets_are_capped_for_compact_naming_input():
