@@ -17,7 +17,6 @@ from agents.anthropic_adapter import (
     create_claude_message,
     create_claude_message_streamed,
     normalize_detection_identity_fields,
-    run_anthropic_detection_boundary_review_v4_1_agent,
     run_anthropic_detection_registry_agent,
     run_anthropic_detection_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
@@ -496,65 +495,6 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
         )
-
-
-def test_v4_1_boundary_review_replaces_one_object_lock_with_validated_registry():
-    visual_map = {"visual_groups": [
-        {
-            "group_id": "view-001", "page_number": 1, "location_hint": "left",
-            "visual_description": "mirror stand", "representation_kind": "perspective",
-            "related_group_ids": [],
-        },
-        {
-            "group_id": "view-002", "page_number": 1, "location_hint": "right",
-            "visual_description": "display cabinet", "representation_kind": "perspective",
-            "related_group_ids": [],
-        },
-    ]}
-    payload = {
-        "objects": [
-            {
-                "object_id": "object-001", "transport_label": "Object 1",
-                "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-                "visual_group_ids": ["view-001"], "visual_identity": "mirror stand",
-                "boundary_basis": "separate freestanding envelope",
-            },
-            {
-                "object_id": "object-002", "transport_label": "Object 2",
-                "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-                "visual_group_ids": ["view-002"], "visual_identity": "display cabinet",
-                "boundary_basis": "separate cabinet carcass",
-            },
-        ],
-        "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001", "object-002"],
-            "evidence_reason": "overview shows both independent products",
-        }],
-    }
-
-    with (
-        patch("agents.anthropic_adapter.get_secret", return_value="model"),
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch(
-            "agents.anthropic_adapter.create_claude_message_streamed",
-            return_value=(_Response(), {
-                "request_started_at": "2026-10-16T00:00:00+00:00",
-                "request_finished_at": "2026-10-16T00:00:01+00:00",
-            }),
-        ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
-    ):
-        registry, usage = run_anthropic_detection_boundary_review_v4_1_agent(
-            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], visual_map=visual_map,
-            layout_signal={"graphic_page_count": 1, "multi_block_pages": []},
-            ocr_package=None, model="model",
-        )
-
-    assert [item["object_id"] for item in registry["objects"]] == ["object-001", "object-002"]
-    assert all(item["estimation_evidence_pages"] == [1] for item in registry["objects"])
-    assert usage["operation"] == "rfq_detection_boundary_review"
-    assert usage["raw_usage"]["boundary_review_registry"] == registry
 
 
 def test_visual_map_retries_truncated_structured_json_with_larger_budget():

@@ -1,14 +1,9 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
-import math
 import re
-import time
 
 from agents.anthropic_adapter import (
-    DETECTION_BOUNDARY_REVIEW_V4_1_PROMPT_VERSION,
     run_anthropic_detection_agent_with_fallback,
-    run_anthropic_detection_boundary_review_v4_1_agent,
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.detection_page_images import build_detection_registry_regions, render_detection_pdf_pages
@@ -171,148 +166,6 @@ def _normalize_evidence_source_labels(result: dict, ocr_package: dict | None) ->
     return result
 
 
-def _valid_image_block_bbox(value: object) -> dict[str, int] | None:
-    if not isinstance(value, dict):
-        return None
-    keys = ("top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y")
-    try:
-        bbox = {key: int(value[key]) for key in keys}
-    except (KeyError, TypeError, ValueError):
-        return None
-    if bbox["bottom_right_x"] <= bbox["top_left_x"] or bbox["bottom_right_y"] <= bbox["top_left_y"]:
-        return None
-    return bbox
-
-
-def _bbox_area(bbox: dict[str, int]) -> int:
-    return (
-        (bbox["bottom_right_x"] - bbox["top_left_x"])
-        * (bbox["bottom_right_y"] - bbox["top_left_y"])
-    )
-
-
-def _bbox_iou(first: dict[str, int], second: dict[str, int]) -> float:
-    left = max(first["top_left_x"], second["top_left_x"])
-    top = max(first["top_left_y"], second["top_left_y"])
-    right = min(first["bottom_right_x"], second["bottom_right_x"])
-    bottom = min(first["bottom_right_y"], second["bottom_right_y"])
-    overlap = max(0, right - left) * max(0, bottom - top)
-    union = _bbox_area(first) + _bbox_area(second) - overlap
-    return overlap / union if union else 1.0
-
-
-def build_v4_1_boundary_review_signal(registry: dict, ocr_package: dict | None) -> dict:
-    """Find a repeatable multi-block layout that contradicts a one-object lock.
-
-    OCR image blocks are not object boundaries. They are a deterministic layout
-    signal only. A conditional review is warranted when independent, substantial
-    graphic blocks recur throughout an otherwise one-object drawing package.
-    """
-    objects = registry.get("objects") if isinstance(registry, dict) else None
-    object_count = len(objects) if isinstance(objects, list) else 0
-    graphic_pages: list[dict[str, object]] = []
-    multi_block_pages: list[dict[str, object]] = []
-    for page in (ocr_package or {}).get("pages") or []:
-        if not isinstance(page, dict):
-            continue
-        bboxes = [
-            bbox
-            for block in page.get("blocks") or []
-            if isinstance(block, dict) and block.get("type") == "image"
-            for bbox in (_valid_image_block_bbox(block),)
-            if bbox is not None
-        ]
-        if not bboxes:
-            continue
-        graphic_pages.append({"page_number": page.get("page_number"), "blocks": bboxes})
-        largest_area = max(_bbox_area(bbox) for bbox in bboxes)
-        substantial = [bbox for bbox in bboxes if _bbox_area(bbox) >= largest_area * 0.25]
-        independent: list[dict[str, int]] = []
-        for index, first in enumerate(substantial):
-            for second in substantial[index + 1:]:
-                if _bbox_iou(first, second) <= 0.20:
-                    for candidate in (first, second):
-                        if candidate not in independent:
-                            independent.append(candidate)
-        if len(independent) >= 2:
-            multi_block_pages.append({
-                "page_number": page.get("page_number"),
-                "blocks": independent,
-            })
-    graphic_page_count = len(graphic_pages)
-    minimum_repeated_pages = max(2, math.ceil(graphic_page_count * 0.75)) if graphic_page_count else 0
-    triggered = (
-        object_count == 1
-        and graphic_page_count >= 2
-        and len(multi_block_pages) >= minimum_repeated_pages
-    )
-    return {
-        "triggered": triggered,
-        "reason": (
-            "one_object_registry_with_repeated_independent_graphic_blocks"
-            if triggered
-            else "no_repeated_multi_block_boundary_contradiction"
-        ),
-        "primary_registry_object_count": object_count,
-        "graphic_page_count": graphic_page_count,
-        "minimum_repeated_pages": minimum_repeated_pages,
-        "multi_block_pages": multi_block_pages,
-    }
-
-
-def _boundary_review_signal_for_model(signal: dict) -> dict:
-    """Do not anchor the independent reviewer on the primary object count."""
-    return {
-        "graphic_page_count": signal["graphic_page_count"],
-        "multi_block_pages": signal["multi_block_pages"],
-    }
-
-
-def _apply_boundary_review_required(result: dict, object_ids: set[str]) -> dict:
-    """Keep a primary answer usable while exposing a failed conditional review."""
-    for item in result.get("detected_objects") or []:
-        if isinstance(item, dict) and str(item.get("object_id") or "") in object_ids:
-            item["review_required"] = True
-    return result
-
-
-def _boundary_review_failure_usage(
-    *,
-    company_id: str,
-    file_name: str,
-    model: str | None,
-    started_at: str,
-    duration_seconds: float,
-    signal: dict,
-    error: Exception,
-) -> dict:
-    return {
-        "company_id": company_id,
-        "run_id": None,
-        "file_name": file_name,
-        "object_id": None,
-        "object_name": None,
-        "agent_name": "detection",
-        "operation": "rfq_detection_boundary_review",
-        "model": str(model or "unknown"),
-        "prompt_version": DETECTION_BOUNDARY_REVIEW_V4_1_PROMPT_VERSION,
-        "input_tokens": 0,
-        "output_tokens": 0,
-        "input_cost_usd": 0.0,
-        "output_cost_usd": 0.0,
-        "total_cost_usd": 0.0,
-        "status": "failed",
-        "duration_seconds": round(duration_seconds, 3),
-        "started_at": started_at,
-        "finished_at": datetime.now(UTC).isoformat(),
-        "raw_usage": {
-            "boundary_review_trigger": signal,
-            "error": str(error),
-            "primary_registry_retained": True,
-        },
-    }
-
-
 def get_secret(name: str, default: str | None = None) -> str | None:
     try:
         import streamlit as st
@@ -355,45 +208,11 @@ def run_detection_agent(
     if not registry_images:
         raise ValueError("Detection registry requires rendered PDF pages.")
     regions = build_detection_registry_regions(registry_images)
-    visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
+    _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
         file_name=file_name, company_id=company_id, file_bytes=file_bytes,
         page_images=registry_images, regions=regions,
         ocr_package=ocr_package, model=model,
     )
-    registry_usage_events = [visual_registry_usage]
-    forced_review_object_ids: set[str] = set()
-    boundary_signal = build_v4_1_boundary_review_signal(registry, ocr_package)
-    if boundary_signal["triggered"]:
-        review_started_at = datetime.now(UTC).isoformat()
-        review_started = time.perf_counter()
-        try:
-            registry, review_usage = run_anthropic_detection_boundary_review_v4_1_agent(
-                file_name=file_name,
-                company_id=company_id,
-                file_bytes=file_bytes,
-                page_images=registry_images,
-                regions=regions,
-                visual_map=visual_map,
-                layout_signal=_boundary_review_signal_for_model(boundary_signal),
-                ocr_package=ocr_package,
-                model=model,
-            )
-            registry_usage_events.append(review_usage)
-        except RuntimeError as exc:
-            forced_review_object_ids = {
-                str(item.get("object_id") or "")
-                for item in registry.get("objects") or []
-                if isinstance(item, dict) and str(item.get("object_id") or "")
-            }
-            registry_usage_events.append(_boundary_review_failure_usage(
-                company_id=company_id,
-                file_name=file_name,
-                model=model,
-                started_at=review_started_at,
-                duration_seconds=time.perf_counter() - review_started,
-                signal=boundary_signal,
-                error=exc,
-            ))
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
     evidence_page_numbers = sorted({page for item in registry["objects"] for page in item["estimation_evidence_pages"]})
@@ -416,9 +235,6 @@ def run_detection_agent(
     usage_event = result.pop("_agent_usage", None)
     result = _merge_registry_evidence(result, registry)
     result = _normalize_evidence_source_labels(result, ocr_package)
-    result = _apply_boundary_review_required(result, forced_review_object_ids)
     validated = validate_detection_result(result)
-    validated["_agent_usage_events"] = [
-        event for event in (*registry_usage_events, usage_event) if event
-    ]
+    validated["_agent_usage_events"] = [event for event in (visual_registry_usage, usage_event) if event]
     return validated
