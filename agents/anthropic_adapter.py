@@ -662,6 +662,43 @@ def _apply_page_coverage_to_registry(
     return enriched
 
 
+def _one_object_boundary_audit(
+    *,
+    visual_map: dict[str, Any],
+    registry: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Persist the declared basis of a suspicious one-object decision.
+
+    This is observability only.  It neither accepts nor rejects the Registry's
+    conclusion, and is recorded only when several visual representations were
+    reduced to one commercial object.
+    """
+    objects = registry.get("objects") or []
+    visual_groups = visual_map.get("visual_groups") or []
+    if len(objects) != 1 or len(visual_groups) < 2:
+        return None
+    object_item = objects[0]
+    return {
+        "object": {
+            "object_id": object_item["object_id"],
+            "visual_group_ids": object_item["visual_group_ids"],
+            "visual_identity": object_item["visual_identity"],
+            "boundary_basis": object_item["boundary_basis"],
+        },
+        "visual_groups": [
+            {
+                "group_id": group["group_id"],
+                "page_number": group["page_number"],
+                "location_hint": group["location_hint"],
+                "visual_description": group["visual_description"],
+                "representation_kind": group["representation_kind"],
+                "related_group_ids": group["related_group_ids"],
+            }
+            for group in visual_groups
+        ],
+    }
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -714,6 +751,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         for item in registry["objects"]
         for group_id in item["visual_group_ids"]
     }
+    boundary_audit = _one_object_boundary_audit(
+        visual_map=visual_map,
+        registry=registry,
+    )
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
@@ -726,6 +767,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",
     })
+    if boundary_audit is not None:
+        diagnostics["boundary_decision_audit"] = boundary_audit
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
 
