@@ -4,7 +4,6 @@ from agents.anthropic_adapter import (
 )
 from agents.prompt_loader import (
     load_detection_agent_prompt,
-    load_detection_assembly_island_review_prompt,
     load_detection_agent_without_naming_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
@@ -27,7 +26,7 @@ def test_detection_v4_prompt_delegates_naming_and_normalizes_project_identity():
     assert "`0` / `unreadable`" in prompt
     assert "detected_materials" not in prompt
     assert "No external dimensions, dimension candidates, nodes, materials, notes, missing information" in prompt
-    assert DETECTION_PROMPT_VERSION == "detection_v4_object_evidence_handoff"
+    assert DETECTION_PROMPT_VERSION == "detection_v4_object_evidence_handoff_v6"
 
 
 def test_detection_prompt_vnext_stays_compact():
@@ -69,24 +68,10 @@ def test_detection_visual_map_never_decides_objects_or_quantity():
 def test_integrated_visual_registry_keeps_visual_representations_and_commercial_objects_distinct():
     prompt = load_detection_visual_registry_prompt()
 
-    assert "visual representation map, complete-assembly island ledger, and locked commercial-object registry in one response" in prompt
-    assert "Keep these three levels separate" in prompt
+    assert "visual representation map and the locked commercial-object registry in one response" in prompt
+    assert "Keep these two levels separate" in prompt
     assert "There is no arbitrary page-count cap" in prompt
     assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
     assert "shared schedule or a sheet showing separately coded products" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
-    assert "complete_assembly_islands" in prompt
-    assert "A page with two separated complete-assembly islands must therefore produce two island rows" in prompt
-    assert "Treat every island as an independent-product candidate, even when it appears only once" in prompt
-    assert "Never invent an integrated system, continuous structure, shared mounting" in prompt
-
-
-def test_conditional_assembly_island_review_is_independent_and_boundary_only():
-    prompt = load_detection_assembly_island_review_prompt()
-
-    assert "independent boundary reviewer" in prompt
-    assert "candidate-island list is a navigation aid" in prompt
-    assert "independent page-geometry candidates" in prompt
-    assert "Do not name products, extract dimensions or materials, estimate" in prompt
-    assert "Never invent any such relation" in prompt

@@ -52,17 +52,6 @@ Production acceptance requires one real upload with review of every object ID, q
 `Adda.pdf`, run `run_590733e409c44ed990b5636f685cd69f`, used the integrated
 Visual Registry V4 but incorrectly merged two visually separate, unlabelled
 complete assemblies into one commercial object. This is neither a Naming nor
-an Evidence defect.
-
-Two later experiments are rejected and are not part of the current Detection
-V4 behavior. A self-declared physical-assembly layer added about 10 seconds
-and still returned one assembly. A conditional second boundary review correctly
-triggered from repeated OCR graphic blocks, but run
-`run_a0d45a4cab32402fb3bf62d9996d5997` returned one object and fabricated
-positive merge evidence, including a continuous carcass and shared mounting
-system that the source does not show. It added 8.076 seconds. Neither approach
-is an independent boundary check. The current code remains at the accepted V4
-Evidence checkpoint while a different diagnostic is chosen.
-
-Telemetry names identify this agent as Detection V4. Internal prompt-revision
-suffixes must not be presented as a new Detection-agent version.
+an Evidence defect. The next experiment makes physical-assembly candidates and
+positive merge evidence auditable inside the existing registry call. It does
+not rely on OCR labels and does not add a model call.

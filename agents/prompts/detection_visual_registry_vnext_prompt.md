@@ -1,6 +1,6 @@
 # DETECTION V4 - VISUAL REGISTRY
 
-Build the visual representation map, complete-assembly island ledger, and locked commercial-object registry in one response. First inspect the full pages and enlarged regions, then map visible representations, then record complete-assembly islands, then decide the commercial objects. Keep these three levels separate in the output.
+Build the visual representation map and the locked commercial-object registry in one response. First inspect the full pages and enlarged regions, then map visible representations, then decide the commercial objects. Keep these two levels separate in the output.
 
 ## Visual representations
 
@@ -8,23 +8,13 @@ Each `visual_group` is one visibly distinct depiction that could help a later st
 
 Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, and only clearly visible `related_group_ids`. Keep descriptions terse. Empty `related_group_ids` when a relation is not visually clear.
 
-## Complete-assembly islands
-
-After the visual map, return `complete_assembly_islands`. An island is one visibly bounded, non-touching depiction of a complete fabricated assembly on one page. Each island references exactly one `visual_group_id`. Repeated views on another page remain separate islands here, even if they later prove to be views of one commercial object.
-
-Create an island for every separately depicted complete assembly, including an unlabelled one. A page with two separated complete-assembly islands must therefore produce two island rows. Do not omit an island because it is adjacent to another product, has a similar finish, lacks a code, or may later be merged. Do not create islands for a clearly partial component, detail, schedule, or hardware-only depiction. `completion_basis` must state only the visible complete-envelope or assembly fact that makes it a candidate.
-
 ## Commercial registry
 
 Decide complete fabricated products a contractor would quote, fabricate, supply, install, replace or price independently. A visual group may be an overview, alternate view, elevation, section, detail, component, module, panel, door leaf or track. It must not become an object merely because it appears separately.
 
 Merge representations only with positive evidence that they show the same physical assembly: a shared distinctive silhouette and structure, an explicit view relation, a common object code, or a matching unique envelope and panel sequence. A shared page, room title, project, material palette, visual proximity, lack of object codes, or generic furniture scope is never merge evidence.
 
-Before creating the registry, account for every `complete_assembly_island`. Treat every island as an independent-product candidate, even when it appears only once. Repetition of the same separated islands on other pages corroborates that candidate; it is not required to account for it.
-
-Every island must appear in exactly one object's `complete_assembly_island_ids`. When one object contains several islands, `island_merge_basis` and `boundary_basis` must identify the exact observable evidence that makes them views or fragments of one physical assembly. Only the latter permits a merge. The evidence may be a matching distinctive silhouette and panel sequence, an explicit view relation, a common code, or visible continuous carcass, worktop, frame, track or mounting structure. Never invent an integrated system, continuous structure, shared mounting, or coordinated assembly merely to justify a merge.
-
-Adjacent furniture with separate finished envelopes and different functions remains separate even when it appears on every sheet, shares finishes, or is presented together. Lack of a label is not merge evidence. Do not treat a separate island as a component only because it is adjacent to another product or the source is ambiguous.
+Before creating the registry, account for every separately depicted complete assembly on overview, plan, elevation or render pages. Map it to one commercial object, or merge it only after identifying the specific physical integration that makes it one assembly, such as a continuous carcass, worktop, frame, track, common mounting structure, or an explicit same-object relation. Adjacent furniture with separate finished envelopes and different functions remains separate even when it appears on every sheet, shares finishes, or is presented together. A one-object `boundary_basis` that covers several complete assemblies must state that positive integration, never merely call them an integrated system.
 
 Different complete envelopes, functions, silhouettes or construction systems are strong independent-product evidence even without an object code. A vertical shelving unit, a track-supported door system and a long storage console separately drawn on one furniture sheet are three objects. Repeated projections remain one object each. Never absorb them into a generic room-furniture assembly.
 

@@ -35,66 +35,6 @@ def test_registry_evidence_keeps_full_estimation_set_not_only_visual_dossier():
     ]
 
 
-def test_detection_runs_sonnet_review_only_for_same_page_complete_assembly_conflict():
-    primary_registry = {"objects": [{
-        "object_id": "object-001", "transport_label": "Object 1", "quantity": 1,
-        "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1],
-        "visual_group_ids": ["view-001", "view-002"], "visual_identity": "combined system",
-        "boundary_basis": "combined system",
-    }]}
-    review_registry = {"objects": [
-        {
-            "object_id": "object-001", "transport_label": "Object 1", "quantity": 1,
-            "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1],
-            "visual_group_ids": ["view-001"], "visual_identity": "cabinet",
-            "boundary_basis": "separate cabinet envelope",
-        },
-        {
-            "object_id": "object-002", "transport_label": "Object 2", "quantity": 1,
-            "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1],
-            "visual_group_ids": ["view-002"], "visual_identity": "mirror stand",
-            "boundary_basis": "separate mirror-stand envelope",
-        },
-    ]}
-    visual_map = {"visual_groups": [
-        {"group_id": "view-001", "page_number": 1},
-        {"group_id": "view-002", "page_number": 1},
-    ]}
-    primary_usage = {"raw_usage": {"complete_assembly_island_audit": [
-        {"island_id": "island-001", "visual_group_id": "view-001"},
-        {"island_id": "island-002", "visual_group_id": "view-002"},
-    ]}}
-    captured = {}
-
-    def stop_after_capture(**kwargs):
-        captured["registry"] = kwargs["locked_registry"]
-        raise RuntimeError("captured reviewed registry")
-
-    with (
-        patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
-        patch("agents.detection_agent.build_detection_spatial_candidates", return_value=[]),
-        patch(
-            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
-            return_value=(visual_map, primary_registry, primary_usage),
-        ),
-        patch(
-            "agents.detection_agent.run_anthropic_detection_assembly_island_review_agent",
-            return_value=(review_registry, {"event": "assembly_review"}),
-        ) as review,
-        patch(
-            "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
-            side_effect=stop_after_capture,
-        ),
-        pytest.raises(RuntimeError, match="captured reviewed registry"),
-    ):
-        run_detection_agent(
-            file_name="adda.pdf", company_id="001", file_bytes=b"pdf", page_images=[b"page"],
-        )
-
-    review.assert_called_once()
-    assert len(captured["registry"]["objects"]) == 2
-
-
 def test_registry_locks_complete_system_quantity_against_component_count():
     result = {
         "detected_objects": [{
@@ -147,7 +87,6 @@ def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier
 
     with (
         patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
-        patch("agents.detection_agent.build_detection_spatial_candidates", return_value=[]),
         patch(
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
             return_value=({"visual_groups": []}, registry, {"event": "visual_registry"}),
