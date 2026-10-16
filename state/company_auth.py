@@ -1698,6 +1698,10 @@ def _open_new_estimate() -> None:
     from state.session import reset_new_estimate_session, set_screen
 
     reset_new_estimate_session(clear_upload_widget=True)
+    # app.py restores File Review, Objects, and Object Detail from route
+    # parameters during the following rerun. Clear that old workflow route
+    # before changing the screen, otherwise it wins over this new upload.
+    st.query_params.clear()
     set_screen("upload")
 
 
