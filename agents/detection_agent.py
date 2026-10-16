@@ -10,7 +10,11 @@ from agents.anthropic_adapter import (
     run_anthropic_detection_assembly_island_review_agent,
     run_anthropic_detection_visual_registry_agent,
 )
-from agents.detection_page_images import build_detection_registry_regions, render_detection_pdf_pages
+from agents.detection_page_images import (
+    build_detection_registry_regions,
+    build_detection_spatial_candidates,
+    render_detection_pdf_pages,
+)
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_visual_registry_prompt,
@@ -53,8 +57,9 @@ def build_complete_assembly_island_review_signal(
     visual_map: dict,
     registry: dict,
     visual_registry_usage: dict,
+    independent_spatial_candidates: list[dict] | None = None,
 ) -> dict:
-    """Find an incomplete island assignment or same-page merge worth review."""
+    """Find a primary-registry conflict worth independent boundary review."""
     objects = registry.get("objects") if isinstance(registry, dict) else None
     audit = (visual_registry_usage.get("raw_usage") or {}).get("complete_assembly_island_audit")
     groups_by_id = {
@@ -85,20 +90,75 @@ def build_complete_assembly_island_review_signal(
     one_object_same_page_conflict = bool(
         isinstance(objects, list) and len(objects) == 1 and multi_island_pages
     )
-    triggered = bool(unassigned_island_ids or one_object_same_page_conflict)
+    candidates_by_page: dict[int, list[dict]] = {}
+    for candidate in independent_spatial_candidates or []:
+        if not isinstance(candidate, dict):
+            continue
+        page_number = candidate.get("page_number")
+        bbox = candidate.get("bbox")
+        if isinstance(page_number, int) and page_number > 0 and isinstance(bbox, dict):
+            candidates_by_page.setdefault(page_number, []).append(candidate)
+
+    def overlap_fraction(first: dict, second: dict) -> float:
+        first_bbox = first["bbox"]
+        second_bbox = second["bbox"]
+        try:
+            first_area = (float(first_bbox["right"]) - float(first_bbox["left"])) * (
+                float(first_bbox["bottom"]) - float(first_bbox["top"])
+            )
+            second_area = (float(second_bbox["right"]) - float(second_bbox["left"])) * (
+                float(second_bbox["bottom"]) - float(second_bbox["top"])
+            )
+            intersection_width = max(0.0, min(float(first_bbox["right"]), float(second_bbox["right"])) - max(float(first_bbox["left"]), float(second_bbox["left"])))
+            intersection_height = max(0.0, min(float(first_bbox["bottom"]), float(second_bbox["bottom"])) - max(float(first_bbox["top"]), float(second_bbox["top"])))
+        except (KeyError, TypeError, ValueError):
+            return 1.0
+        if first_area <= 0 or second_area <= 0:
+            return 1.0
+        return intersection_width * intersection_height / min(first_area, second_area)
+
+    spatial_candidate_pages = []
+    for page_number, candidates in sorted(candidates_by_page.items()):
+        pairs = [
+            [
+                str(first.get("candidate_id") or ""),
+                str(second.get("candidate_id") or ""),
+            ]
+            for index, first in enumerate(candidates)
+            for second in candidates[index + 1:]
+            if overlap_fraction(first, second) <= 0.30
+        ]
+        if pairs:
+            spatial_candidate_pages.append({
+                "page_number": page_number,
+                "candidate_pairs": pairs,
+            })
+    one_object_spatial_conflict = bool(
+        isinstance(objects, list) and len(objects) == 1 and spatial_candidate_pages
+    )
+    triggered = bool(
+        unassigned_island_ids
+        or one_object_same_page_conflict
+        or one_object_spatial_conflict
+    )
     return {
         "triggered": triggered,
         "reason": (
             "unassigned_complete_assembly_islands"
             if unassigned_island_ids
             else (
-                "one_object_registry_with_multiple_complete_assembly_islands_on_one_page"
-                if one_object_same_page_conflict
-                else "no_complete_assembly_conflict"
+                "one_object_registry_with_independent_spatial_candidates"
+                if one_object_spatial_conflict
+                else (
+                    "one_object_registry_with_multiple_complete_assembly_islands_on_one_page"
+                    if one_object_same_page_conflict
+                    else "no_complete_assembly_conflict"
+                )
             )
         ),
         "multi_island_pages": multi_island_pages,
         "unassigned_island_ids": unassigned_island_ids,
+        "independent_spatial_candidate_pages": spatial_candidate_pages,
     }
 
 
@@ -308,15 +368,27 @@ def run_detection_agent(
     if not registry_images:
         raise ValueError("Detection registry requires rendered PDF pages.")
     regions = build_detection_registry_regions(registry_images)
+    independent_spatial_candidates = build_detection_spatial_candidates(registry_images)
     visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
         file_name=file_name, company_id=company_id, file_bytes=file_bytes,
         page_images=registry_images, regions=regions,
         ocr_package=ocr_package, model=model,
     )
+    visual_registry_usage.setdefault("raw_usage", {}).update({
+        "independent_spatial_candidate_count": len(independent_spatial_candidates),
+        "independent_spatial_candidate_pages": sorted({
+            candidate["page_number"]
+            for candidate in independent_spatial_candidates
+            if isinstance(candidate, dict) and isinstance(candidate.get("page_number"), int)
+        }),
+    })
     registry_usage_events = [visual_registry_usage]
     forced_review_object_ids: set[str] = set()
     review_signal = build_complete_assembly_island_review_signal(
-        visual_map, registry, visual_registry_usage,
+        visual_map,
+        registry,
+        visual_registry_usage,
+        independent_spatial_candidates,
     )
     if review_signal["triggered"]:
         review_started_at = datetime.now(UTC).isoformat()
@@ -333,6 +405,8 @@ def run_detection_agent(
                     (visual_registry_usage.get("raw_usage") or {}).get("complete_assembly_island_audit")
                     or []
                 ),
+                independent_spatial_candidates=independent_spatial_candidates,
+                review_signal=review_signal,
                 ocr_package=ocr_package,
             )
             registry_usage_events.append(review_usage)

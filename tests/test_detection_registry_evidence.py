@@ -72,6 +72,7 @@ def test_detection_runs_sonnet_review_only_for_same_page_complete_assembly_confl
 
     with (
         patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
+        patch("agents.detection_agent.build_detection_spatial_candidates", return_value=[]),
         patch(
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
             return_value=(visual_map, primary_registry, primary_usage),
@@ -146,6 +147,7 @@ def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier
 
     with (
         patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
+        patch("agents.detection_agent.build_detection_spatial_candidates", return_value=[]),
         patch(
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
             return_value=({"visual_groups": []}, registry, {"event": "visual_registry"}),

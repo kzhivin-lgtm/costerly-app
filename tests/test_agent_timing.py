@@ -24,6 +24,7 @@ from agents.anthropic_adapter import (
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from agents.detection_agent import build_complete_assembly_island_review_signal
+from agents.detection_page_images import build_detection_spatial_candidates
 from ui.processing_stage import processing_stage_html
 from ui.js_guards import (
     install_company_logo_picker_guard,
@@ -588,6 +589,34 @@ def test_complete_assembly_island_signal_reviews_an_unassigned_island_even_with_
     assert signal["triggered"] is True
     assert signal["reason"] == "unassigned_complete_assembly_islands"
     assert signal["unassigned_island_ids"] == ["island-002"]
+
+
+def test_independent_spatial_candidates_trigger_review_when_primary_registry_has_one_object():
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+
+    image = Image.new("L", (900, 700), color=255)
+    drawing = ImageDraw.Draw(image)
+    drawing.rectangle((100, 150, 350, 480), outline=0, width=8)
+    drawing.rectangle((500, 100, 820, 350), outline=0, width=8)
+    output = BytesIO()
+    image.save(output, format="JPEG")
+
+    candidates = build_detection_spatial_candidates([output.getvalue()])
+    signal = build_complete_assembly_island_review_signal(
+        {"visual_groups": []},
+        {"objects": [{"object_id": "object-001"}]},
+        {"raw_usage": {"complete_assembly_island_audit": []}},
+        candidates,
+    )
+
+    assert len(candidates) == 2
+    assert signal["triggered"] is True
+    assert signal["reason"] == "one_object_registry_with_independent_spatial_candidates"
+    assert signal["independent_spatial_candidate_pages"] == [{
+        "page_number": 1,
+        "candidate_pairs": [["spatial-001-01", "spatial-001-02"]],
+    }]
 
 
 def test_assembly_island_review_uses_sonnet_without_primary_registry():

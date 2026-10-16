@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,14 @@ ANTHROPIC_MAX_IMAGES_PER_REQUEST = 100
 ANTHROPIC_MULTI_IMAGE_MAX_DIMENSION = 2_000
 REGISTRY_MAX_IMAGES = 100
 REGISTRY_REGIONS_PER_PAGE = 3
+SPATIAL_CANDIDATE_GRID_SIZE = (280, 198)
+SPATIAL_CANDIDATE_INK_THRESHOLD = 220
+SPATIAL_CANDIDATE_MIN_GRID_VALUE = 4
+SPATIAL_CANDIDATE_MIN_CELLS = 120
+SPATIAL_CANDIDATE_MIN_WIDTH = 0.20
+SPATIAL_CANDIDATE_MIN_HEIGHT = 0.16
+SPATIAL_CANDIDATE_MIN_AREA = 0.04
+SPATIAL_CANDIDATE_PAGE_BOUNDS = (0.05, 0.08, 0.95, 0.80)
 
 
 def estimated_inline_pdf_bytes(file_bytes: bytes) -> int:
@@ -151,7 +160,6 @@ def build_detection_registry_regions(
     if not page_images:
         return []
     from PIL import Image
-    from io import BytesIO
 
     regions: list[dict[str, Any]] = []
     available_regions = max(0, max_images - len(page_images))
@@ -173,3 +181,88 @@ def build_detection_registry_regions(
                     "bytes": output.getvalue(),
                 })
     return regions
+
+
+def build_detection_spatial_candidates(page_images: list[bytes]) -> list[dict[str, Any]]:
+    """Find large disconnected drawing clusters without assigning product meaning.
+
+    This is deliberately a pixel-geometry check, not OCR or model output.  It
+    cannot decide that a cluster is an object.  Its only role is to expose a
+    possible missed visual candidate to the conditional boundary reviewer.
+    """
+    if not page_images:
+        return []
+    from PIL import Image, ImageFilter
+
+    grid_width, grid_height = SPATIAL_CANDIDATE_GRID_SIZE
+    page_left, page_top, page_right, page_bottom = SPATIAL_CANDIDATE_PAGE_BOUNDS
+    candidates: list[dict[str, Any]] = []
+
+    for page_number, page_bytes in enumerate(page_images, start=1):
+        with Image.open(BytesIO(page_bytes)) as image:
+            grayscale = image.convert("L")
+            source_width, source_height = grayscale.size
+            crop_left = int(source_width * page_left)
+            crop_top = int(source_height * page_top)
+            crop_right = int(source_width * page_right)
+            crop_bottom = int(source_height * page_bottom)
+            cropped = grayscale.crop((crop_left, crop_top, crop_right, crop_bottom))
+            ink = cropped.point(
+                lambda value: 255 if value < SPATIAL_CANDIDATE_INK_THRESHOLD else 0
+            )
+            coarse = (
+                ink.resize((grid_width, grid_height), Image.Resampling.BOX)
+                .point(lambda value: 255 if value >= SPATIAL_CANDIDATE_MIN_GRID_VALUE else 0)
+                .filter(ImageFilter.MaxFilter(3))
+            )
+
+        pixels = coarse.tobytes()
+        visited = bytearray(len(pixels))
+        component_index = 0
+        for start_index, value in enumerate(pixels):
+            if not value or visited[start_index]:
+                continue
+            queue = [start_index]
+            visited[start_index] = 1
+            x_values: list[int] = []
+            y_values: list[int] = []
+            for current_index in queue:
+                x = current_index % grid_width
+                y = current_index // grid_width
+                x_values.append(x)
+                y_values.append(y)
+                for next_x, next_y in (
+                    (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1),
+                ):
+                    if not (0 <= next_x < grid_width and 0 <= next_y < grid_height):
+                        continue
+                    next_index = next_y * grid_width + next_x
+                    if pixels[next_index] and not visited[next_index]:
+                        visited[next_index] = 1
+                        queue.append(next_index)
+
+            cell_count = len(queue)
+            min_x, max_x = min(x_values), max(x_values)
+            min_y, max_y = min(y_values), max(y_values)
+            width = (max_x - min_x + 1) / grid_width
+            height = (max_y - min_y + 1) / grid_height
+            if (
+                cell_count < SPATIAL_CANDIDATE_MIN_CELLS
+                or width < SPATIAL_CANDIDATE_MIN_WIDTH
+                or height < SPATIAL_CANDIDATE_MIN_HEIGHT
+                or width * height < SPATIAL_CANDIDATE_MIN_AREA
+            ):
+                continue
+            component_index += 1
+            candidates.append({
+                "candidate_id": f"spatial-{page_number:03d}-{component_index:02d}",
+                "page_number": page_number,
+                "bbox": {
+                    "left": round((crop_left + min_x / grid_width * (crop_right - crop_left)) / source_width, 4),
+                    "top": round((crop_top + min_y / grid_height * (crop_bottom - crop_top)) / source_height, 4),
+                    "right": round((crop_left + (max_x + 1) / grid_width * (crop_right - crop_left)) / source_width, 4),
+                    "bottom": round((crop_top + (max_y + 1) / grid_height * (crop_bottom - crop_top)) / source_height, 4),
+                },
+                "ink_cell_count": cell_count,
+            })
+    return candidates

@@ -87,5 +87,6 @@ def test_conditional_assembly_island_review_is_independent_and_boundary_only():
 
     assert "independent boundary reviewer" in prompt
     assert "candidate-island list is a navigation aid" in prompt
+    assert "independent page-geometry candidates" in prompt
     assert "Do not name products, extract dimensions or materials, estimate" in prompt
     assert "Never invent any such relation" in prompt

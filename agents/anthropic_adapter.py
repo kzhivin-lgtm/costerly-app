@@ -911,6 +911,8 @@ def run_anthropic_detection_assembly_island_review_agent(
     regions: list[dict[str, Any]],
     visual_map: dict[str, Any],
     complete_assembly_island_audit: list[dict[str, Any]],
+    independent_spatial_candidates: list[dict[str, Any]] | None = None,
+    review_signal: dict[str, Any] | None = None,
     ocr_package: dict[str, Any] | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Ask Sonnet to independently decide a strong same-page island conflict."""
@@ -932,6 +934,15 @@ def run_anthropic_detection_assembly_island_review_agent(
             "visual_description": group.get("visual_description"),
             "completion_basis": island.get("completion_basis"),
         })
+    spatial_candidates = [
+        {
+            "candidate_id": candidate.get("candidate_id"),
+            "page_number": candidate.get("page_number"),
+            "bbox": candidate.get("bbox"),
+        }
+        for candidate in independent_spatial_candidates or []
+        if isinstance(candidate, dict)
+    ]
     user_text = build_detection_user_text(
         file_name=file_name,
         company_id=company_id,
@@ -942,6 +953,8 @@ def run_anthropic_detection_assembly_island_review_agent(
         + json.dumps(visual_map, ensure_ascii=False)
         + "\n\nCOMPLETE-ASSEMBLY ISLANDS (candidate navigation only, inspect the full pages yourself):\n"
         + json.dumps(review_islands, ensure_ascii=False)
+        + "\n\nINDEPENDENT PAGE-GEOMETRY CANDIDATES (pixel clusters only, not object decisions or merge evidence):\n"
+        + json.dumps(spatial_candidates, ensure_ascii=False)
     )
     content = build_detection_registry_content_blocks(
         file_name=file_name,
@@ -977,6 +990,8 @@ def run_anthropic_detection_assembly_island_review_agent(
     diagnostics.update({
         "attempt_label": "conditional_assembly_island_review",
         "candidate_island_count": len(review_islands),
+        "independent_spatial_candidate_count": len(spatial_candidates),
+        "assembly_island_review_trigger": review_signal or {},
         "review_registry_object_count": len(registry["objects"]),
         "page_count": len(page_images),
         "region_count": len(regions),
