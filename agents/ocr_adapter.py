@@ -19,7 +19,7 @@ from agents.ocr_contract import (
 
 DEFAULT_MISTRAL_OCR_MODEL = "mistral-ocr-4-1"
 RETIRED_MISTRAL_OCR_MODELS = {"mistral-ocr-4-0"}
-OCR_CONTRACT_VERSION = "ocr_v2"
+OCR_CONTRACT_VERSION = "ocr_v3"
 _HTTP_CLIENT: Any | None = None
 _HTTP_CLIENT_LOCK = threading.Lock()
 _WARMUP_LOCK = threading.Lock()
@@ -139,8 +139,15 @@ def _annotation_dict(value: Any) -> dict[str, Any] | None:
 
 
 def _compact_literal_text(value: Any) -> str:
-    """Make derived OCR evidence readable without changing provider evidence."""
-    return re.sub(r"\s+", " ", str(value or "")).strip()
+    """Remove only pathological OCR vertical gaps from derived evidence.
+
+    Ordinary line breaks and a single blank paragraph may distinguish labels,
+    dimensions, and drawing groups. Image annotations can also contain dozens
+    of empty lines between tokens, which adds no readable structure. Keep the
+    former intact and collapse only four or more blank lines to one blank
+    paragraph. The original provider payload remains unmodified.
+    """
+    return re.sub(r"(?:\r?\n[ \t]*){5,}", "\n\n", str(value or "")).strip()
 
 
 def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
@@ -194,10 +201,11 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
             for raw_item in raw_items:
                 if not isinstance(raw_item, dict):
                     continue
-                # Image annotations frequently contain hundreds of blank lines
-                # between adjacent OCR tokens.  Keep their text and image bbox,
-                # but compact whitespace in the derived evidence index. The
-                # unmodified provider payload remains in ``raw_response``.
+                # Image annotations can contain hundreds of blank lines
+                # between adjacent OCR tokens. Keep meaningful line structure
+                # and the image bbox, reducing only pathological empty gaps in
+                # the derived evidence index. The provider payload remains
+                # unmodified in ``raw_response``.
                 text = _compact_literal_text(raw_item.get("text"))
                 if not text:
                     continue
