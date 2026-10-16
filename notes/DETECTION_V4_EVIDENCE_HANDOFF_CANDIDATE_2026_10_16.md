@@ -70,6 +70,10 @@ image ceiling, Detection keeps the accepted V4 path rather than silently
 truncating a physical partition. This experiment adds one conditional Sonnet
 call and does not alter the V4 Estimation handoff.
 
+The correspondence usage event persists an `assembly_partition_audit` with
+candidate membership, visual identity and correspondence basis. It is
+observability only and cannot alter a Detection result.
+
 The result remains unverified until live benchmarks show all of the following:
 
 - Adda produces the two separate assemblies, each with all four relevant

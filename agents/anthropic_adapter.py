@@ -705,6 +705,7 @@ def run_anthropic_detection_assembly_correspondence_agent(
         "non_assembly_representation_count": len(
             correspondence["non_assembly_representation_ids"]
         ),
+        "assembly_partition_audit": copy.deepcopy(correspondence),
         "attempt_label": "isolated_physical_assembly_correspondence",
     })
     usage = build_agent_usage_event(

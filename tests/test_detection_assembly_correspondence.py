@@ -155,6 +155,7 @@ def test_correspondence_agent_records_the_isolated_stage_without_registry_contex
     )
     assert correspondence == _assembly_payload()
     assert usage["operation"] == "rfq_detection_assembly_correspondence"
+    assert usage["raw_usage"]["assembly_partition_audit"] == _assembly_payload()
     assert "Adda.pdf" not in request_text
     assert "Company ID" not in request_text
 
