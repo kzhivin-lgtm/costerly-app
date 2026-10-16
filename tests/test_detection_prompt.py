@@ -17,6 +17,7 @@ def test_detection_v4_prompt_delegates_naming_and_normalizes_project_identity():
     assert "presentation_preview_bbox" in prompt
     assert "Return it in English" in prompt
     assert "meaningful uploaded file name" in prompt
+    assert "Never return `Object 1`, `1 item`, `25 items`" in prompt
     assert "Beregovoy Proezd 5" in prompt
     assert "Partner and client may be identical only when the source supports self-designed direct commissioning" in prompt
     assert "detected_materials" not in prompt

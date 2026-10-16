@@ -49,6 +49,7 @@ from db.repositories import (
     update_rfq_detected_object,
     update_rfq_detected_object_name_if_unchanged,
     update_rfq_run,
+    update_rfq_run_project_name_if_unchanged,
     upsert_rfq_detection_result,
 )
 from db.supabase_client import get_supabase_client
@@ -234,6 +235,7 @@ def _run_deferred_naming(
     file_name: str,
     file_bytes: bytes = b"",
     page_images: list[bytes] | None = None,
+    provisional_project_name: str | None = None,
 ) -> dict[str, Any]:
     """Name locked objects after File Review is allowed to open."""
     started_at = datetime.now(UTC).isoformat()
@@ -268,14 +270,40 @@ def _run_deferred_naming(
             object_id = str(named.get("object_id") or "")
             old_name = str(provisional.get("current_name") or "")
             new_name = str(named.get("object_name") or old_name)
-            update_rfq_detected_object_name_if_unchanged(
+            persisted = update_rfq_detected_object_name_if_unchanged(
                 client,
                 run_id=run_id,
                 object_id=object_id,
                 expected_name=old_name,
                 object_name=new_name,
             )
+            if not persisted:
+                raise RuntimeError(
+                    "Naming result was not persisted because the provisional object name changed."
+                )
             names[object_id] = new_name
+
+        generic_project_name = str(provisional_project_name or "").strip().casefold()
+        is_generic_one_object_project = (
+            provisional_project_name is not None
+            and len(detected_objects) == 1
+            and (
+                generic_project_name in {"", "unknown"}
+                or bool(re.fullmatch(r"(?:object|item)\s*\d*", generic_project_name))
+                or bool(re.fullmatch(r"\d+\s+items?", generic_project_name))
+            )
+        )
+        if is_generic_one_object_project:
+            object_name = names.get(str(detected_objects[0].get("object_id") or ""), "")
+            if object_name and not update_rfq_run_project_name_if_unchanged(
+                client,
+                run_id=run_id,
+                expected_project_name=str(provisional_project_name),
+                project_name=object_name,
+            ):
+                raise RuntimeError(
+                    "Naming result was not persisted because the provisional project name changed."
+                )
 
         naming_seconds = float(naming_result["duration_seconds"])
         insert_agent_usage_event(
@@ -294,6 +322,7 @@ def _run_deferred_naming(
                 raw_usage={
                     "input_tokens": naming_result["input_tokens"],
                     "output_tokens": naming_result["output_tokens"],
+                    "names": names,
                     "validation": naming_result["validation"],
                     "deferred": True,
                 },
@@ -476,6 +505,7 @@ def process_uploaded_rfq(
             file_name=file_name,
             file_bytes=file_bytes,
             page_images=deepcopy(page_images) if page_images else None,
+            provisional_project_name=str(detection_result["rfq_run"].get("project_name") or ""),
         )
 
     ocr_seconds = float(ocr_package.get("processing_seconds") or 0)

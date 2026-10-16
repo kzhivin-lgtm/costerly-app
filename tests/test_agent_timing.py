@@ -471,6 +471,7 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
     monkeypatch,
 ):
     updates = []
+    project_updates = []
     events = []
     detected_objects = [
         {"object_id": "object-001", "object_name": "Object 1", "quantity": 1}
@@ -502,7 +503,11 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
     )
     monkeypatch.setattr(
         "use_cases.rfq_processing.update_rfq_detected_object_name_if_unchanged",
-        lambda _client, **kwargs: updates.append(kwargs),
+        lambda _client, **kwargs: updates.append(kwargs) or True,
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.update_rfq_run_project_name_if_unchanged",
+        lambda _client, **kwargs: project_updates.append(kwargs) or True,
     )
     monkeypatch.setattr(
         "use_cases.rfq_processing.insert_agent_usage_event",
@@ -516,6 +521,7 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
         company_id="001",
         run_id="run-001",
         file_name="drawing.pdf",
+        provisional_project_name="25 items",
     )
 
     assert result == {
@@ -525,7 +531,13 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
     }
     assert updates[0]["expected_name"] == "Object 1"
     assert updates[0]["object_name"] == "Display cabinet"
+    assert project_updates == [{
+        "run_id": "run-001",
+        "expected_project_name": "25 items",
+        "project_name": "Display cabinet",
+    }]
     assert events[0]["operation"] == "locked_object_naming_deferred"
+    assert events[0]["raw_usage"]["names"] == {"object-001": "Display cabinet"}
 
 
 def test_deferred_naming_records_failure(monkeypatch):

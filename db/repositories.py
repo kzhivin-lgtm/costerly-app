@@ -471,15 +471,46 @@ def update_rfq_detected_object_name_if_unchanged(
     object_id: str,
     expected_name: str,
     object_name: str,
-) -> None:
+) -> bool:
     """Apply deferred Naming only while the provisional name is unchanged."""
-    (
+    response = (
         client.table("rfq_detected_objects")
         .update({"object_name": object_name})
         .eq("run_id", run_id)
         .eq("object_id", object_id)
         .eq("object_name", expected_name)
+        .select("object_id,object_name")
         .execute()
+    )
+    rows = response.data or []
+    return (
+        len(rows) == 1
+        and str(rows[0].get("object_id") or "") == object_id
+        and str(rows[0].get("object_name") or "") == object_name
+    )
+
+
+def update_rfq_run_project_name_if_unchanged(
+    client: Client,
+    *,
+    run_id: str,
+    expected_project_name: str,
+    project_name: str,
+) -> bool:
+    """Publish a one-object naming fallback without replacing a user edit."""
+    response = (
+        client.table("rfq_runs")
+        .update({"project_name": project_name})
+        .eq("run_id", run_id)
+        .eq("project_name", expected_project_name)
+        .select("run_id,project_name")
+        .execute()
+    )
+    rows = response.data or []
+    return (
+        len(rows) == 1
+        and str(rows[0].get("run_id") or "") == run_id
+        and str(rows[0].get("project_name") or "") == project_name
     )
 
 
