@@ -1,6 +1,8 @@
 # Detection V4 evidence handoff candidate, 2026-10-16
 
-Status: deployment candidate. It is not an owner-accepted production checkpoint until the production run and persisted input payload are reviewed.
+Status: accepted benchmark checkpoint for the V4 Evidence handoff and
+source-identifier transport. It is not a completed boundary-quality checkpoint
+for unlabelled multi-object drawings. Adda remains the active boundary defect.
 
 ## Decision
 
@@ -30,4 +32,28 @@ The registry still locks commercial objects before Naming. Repeated views and ki
 
 `db/sql/2026_10_16_detection_v4_object_evidence.sql` adds `review_required` and permits `estimation_input_v4`. Focused V4 checks pass: 48 tests covering schema validation, handoff assembly, UI normalization, deferred Naming and timing paths. A direct live model smoke call did not return within its 30-second local observation window, so it is inconclusive, not acceptance.
 
-Production acceptance requires one real upload with review of every object ID, quantity, pages, UI preview, OCR, naming result and persisted V4 input payload.
+## Production benchmark record
+
+- `page-23.pdf`: three independent commercial objects remain the accepted
+  labelled-sheet benchmark.
+- `24-215. Кухня. СБ.pdf`: one Kitchen with all 39 relevant physical pages is
+  the accepted Evidence-completeness benchmark.
+- `Металл (1).pdf`, run `run_fc5f26951bdf47b5baf8e7633c78aee9`: returned 15
+  objects with the current V4 registry. The prior 13-object interpretation
+  remains valid, but `ЛС-1` and `ЛС-2` are an unresolved source-document
+  ambiguity, not a product defect: the sheet provides their labels but no
+  decisive commercial-scope or quantity evidence. Do not hard-code either 13
+  or 15 as a global rule from this file.
+- The same Metal run verified the source identifier fix: the spaced label
+  `ОМ 15-1` persisted as `ОМ 15-1 — Stair railing`. The parser now treats a
+  literal identifier with an internal space as an identifier, rather than a
+  name without an index.
+
+## Open boundary defect
+
+`Adda.pdf`, run `run_590733e409c44ed990b5636f685cd69f`, used Visual Registry
+V4 but incorrectly merged two visually separate, unlabelled complete
+assemblies into one commercial object. This is not a Naming or Evidence-page
+failure. The next change must make visual physical-assembly candidates and
+their positive merge evidence auditable within the existing registry call;
+it must not rely on OCR labels or add a second model call.
