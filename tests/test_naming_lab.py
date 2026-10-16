@@ -7,13 +7,21 @@ from agents.naming_lab import (
     compose_name_preview,
     ensure_unique_object_ids,
     extract_object_index,
+    load_naming_prompt,
     relevant_ocr_snippets,
     validate_locked_name_mapping,
 )
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v6_multimodal_evidence"
+    assert NAMING_LAB_VERSION == "naming_lab_v7_multimodal_evidence"
+
+
+def test_naming_prompt_keeps_integrated_kitchens_out_of_shelving():
+    prompt = load_naming_prompt()
+
+    assert "is `Kitchen`" in prompt
+    assert "shelving unit" in prompt
 
 
 def test_extracts_authoritative_leading_index_only():

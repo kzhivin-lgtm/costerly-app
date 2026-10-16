@@ -14,6 +14,7 @@ For every input object, return exactly one result with the same object_id.
 - Always return name_original as an empty string. The MVP does not display a second source-language name.
 - If no reliable source label exists, infer the shortest category-bearing English name from the supplied context. Do not invent a model or collection name.
 - Never return a transport placeholder such as Object 3, Item 3, or Unknown. For an unlabelled long low media or television cabinet/console, return `TV console`.
+- A single integrated system of base, wall, and tall cabinets, typically with a worktop, sink, or appliance cut-outs, is `Kitchen`. Do not call that complete system a shelving unit merely because individual shelves or cabinets are visible.
 - Prefer category plus a distinctive model/name only when that model/name is explicitly supported. Otherwise return the category with one essential functional qualifier.
 - Remove secondary material, location, dimension, marketing, complete, extended, compact, assembly, section, and component wording unless it is essential to distinguish the product category.
 - Never use sheet, room, package, drawing, material, component, dimension, quantity, or marketing text as a product name.
