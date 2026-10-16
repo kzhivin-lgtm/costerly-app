@@ -34,7 +34,11 @@ Every object must have enough evidence for Estimation to inspect it without rece
 
 ## D. Project context, three distinct roles
 
-`project_name` is the project, venue, property, address, company/office name, or other distinctive project identifier. Preserve an explicit project name or useful concise address. If none exists, use the one-object source label when there is one object, otherwise a neutral summary such as `25 items`.
+`project_name` is the project, venue, property, address, company/office name, or other distinctive project identifier. Return it in English. Translate descriptive project terms and transliterate proper names or addresses into normal English address spelling.
+
+Use this evidence order: an explicit project or venue name in the document, then a meaningful uploaded file name, then a concise address, then the one-object source label when there is one object, otherwise a neutral summary such as `25 items`. A file name is meaningful only when it contains a human project, venue, company, or address identifier. Ignore generic file names such as `page-23`, sheet numbers, revisions, dates, drawing types, and export names.
+
+When the only reliable identifier is an address, retain only the street and primary building number, for example `Beregovoy Proezd 5`. Omit city, building block, entrance, floor, apartment, postal details, and other excess address text unless needed to distinguish the project. A room title, sheet title, or product title is not a project name.
 
 `design_partner` is the architect, designer, architecture/design bureau, or other party that created the design or technical brief. Do not substitute a general contractor, quote recipient, supplier, or client merely because it appears in the file.
 

@@ -30,9 +30,9 @@ from agents.schemas.detection_schema import (
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_AGENT_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
-DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff"
+DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v2"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
-DETECTION_REGISTRY_PROMPT_VERSION = "detection_vnext_3_15_8_registry_regions_v2"
+DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_registry_coverage_v1"
 
 _STREAMLIT_SECRET_CACHE: dict[str, str] = {}
 _STREAMLIT_SECRET_CACHE_LOCK = Lock()

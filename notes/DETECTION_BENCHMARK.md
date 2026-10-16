@@ -1,5 +1,25 @@
 # Detection Agent benchmark
 
+## V4 Page 23 release gate, 2026-10-16
+
+Status: candidate repair, not yet accepted. The source is the private
+`page-23.pdf` drawing provided by the owner. Its V4 run
+`run_cc459dc46e91445cb045614b69ca559e` incorrectly merged all products into
+one object, so it cannot be used as an acceptance result.
+
+A fresh V4 production run passes this gate only when it returns these three
+commercial objects, each with quantity `1` and page `1` evidence:
+
+- Shelving unit, the separate tall shelving assembly at left.
+- Sliding door system, both leaves on their single shared track.
+- TV console, the separate L-shaped console at bottom.
+
+Every UI-only presentation preview must isolate its respective object. The
+complete page may be shared as evidence and must never turn the three products
+into one object. For this source, the expected metadata is `project_name`
+`Beregovoy Proezd 5`, `design_partner` `ZE | WORKROOM studio`, and client
+`unknown`. The generic filename `page-23.pdf` is not project evidence.
+
 ## Current no-cache baseline
 
 - Date: 2026-07-22

@@ -116,8 +116,7 @@ def test_first_file_review_reuses_normalized_detection_payload():
                 "object_id": "object-001",
                 "object_name": "Counter",
                 "quantity": 2,
-                "confidence": 90,
-                "dimensions_json": {"raw_text": "1200 x 600 x 900 mm"},
+                "review_required": False,
             }],
         },
         timings={"detection_seconds": 12.5, "total_seconds": 14.0},
@@ -129,10 +128,7 @@ def test_first_file_review_reuses_normalized_detection_payload():
         "object_id": "object-001",
         "name": "Counter",
         "quantity": "2",
-        "confidence": "90%",
-        "dimensions": "1200 x 600 x 900 mm",
-        "materials": None,
-        "notes": [],
+        "review_required": False,
     }]
     assert data["timings"]["detection_seconds"] == 12.5
 
