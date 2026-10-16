@@ -435,7 +435,7 @@ def _load_file_review_screen_data(run_id: str) -> dict[str, object]:
 
 
 def _publish_persisted_naming(
-    run_id: str, result: dict[str, object],
+    run_id: str, result: dict[str, object], *, allow_refresh: bool = False,
 ) -> bool:
     """Apply one durable Naming publication without reloading File Review."""
     status = str(result.get("status") or "pending")
@@ -443,7 +443,7 @@ def _publish_persisted_naming(
         return False
 
     published_key = f"file_review_naming_published.{run_id}"
-    if st.session_state.get(published_key):
+    if st.session_state.get(published_key) and not allow_refresh:
         return False
     st.session_state[published_key] = True
 
@@ -476,6 +476,23 @@ def _publish_persisted_naming(
     if isinstance(timings, dict):
         timings["naming_seconds"] = float(result.get("naming_seconds") or 0)
     return True
+
+
+def _sync_durable_naming_once(run_id: str) -> None:
+    """Refresh a restored review cache from the durable naming result once.
+
+    Processing already publishes Naming asynchronously. This small read covers
+    an existing session cache after a server-side correction or a restored
+    review, without introducing a recurring database poll.
+    """
+    synced_key = f"file_review_naming_cache_synced.{run_id}"
+    if st.session_state.get(synced_key):
+        return
+    result = load_file_review_naming_publication(run_id)
+    if str(result.get("status") or "pending") == "pending":
+        return
+    _publish_persisted_naming(run_id, result, allow_refresh=True)
+    st.session_state[synced_key] = True
 
 
 def _collect_completed_previews() -> dict[str, object] | None:
@@ -745,6 +762,8 @@ def render_file_review_screen(
         return
 
     _sync_run_metadata_state(run_id, data["run"])
+    _sync_object_edit_state(run_id, data["objects"])
+    _sync_durable_naming_once(run_id)
     with st.container():
         st.markdown(
             '<span class="file-review-title-card-shell-marker" aria-hidden="true"></span>',

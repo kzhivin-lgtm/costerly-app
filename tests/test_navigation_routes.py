@@ -366,6 +366,36 @@ def test_file_review_persisted_naming_does_not_overwrite_a_manual_name():
     assert st.session_state[widget_key] == "Custom shelf"
 
 
+def test_file_review_syncs_durable_name_once_into_a_stale_session_cache(monkeypatch):
+    st.session_state.clear()
+    run_id = "run-1"
+    object_id = "object-3"
+    widget_key = f"file_review_object_edits.{object_id}.name"
+    objects = [{"object_id": object_id, "name": "Object 3"}]
+    st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
+    st.session_state.current_agent_timings = {}
+    file_review._sync_object_edit_state(run_id, objects)
+    st.session_state.file_review_object_edits[object_id] = {"name": "Object 3"}
+    st.session_state[widget_key] = "Object 3"
+    st.session_state[f"file_review_naming_published.{run_id}"] = True
+    calls = []
+    monkeypatch.setattr(
+        file_review,
+        "load_file_review_naming_publication",
+        lambda _run_id: calls.append(_run_id) or {
+            "status": "succeeded", "names": {object_id: "TV console"},
+        },
+    )
+
+    file_review._sync_durable_naming_once(run_id)
+    file_review._sync_durable_naming_once(run_id)
+
+    assert calls == [run_id]
+    assert objects[0]["name"] == "TV console"
+    assert st.session_state.file_review_object_edits[object_id]["name"] == "TV console"
+    assert st.session_state[widget_key] == "TV console"
+
+
 def test_deferred_naming_publication_reads_only_the_terminal_name_snapshot(monkeypatch):
     monkeypatch.setattr(rfq_processing, "get_supabase_client", lambda: object())
     monkeypatch.setattr(
