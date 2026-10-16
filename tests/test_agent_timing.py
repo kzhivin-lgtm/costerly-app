@@ -1,4 +1,5 @@
 from inspect import getsource
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -16,6 +17,7 @@ from agents.anthropic_adapter import (
     create_claude_message,
     create_claude_message_streamed,
     normalize_detection_identity_fields,
+    run_anthropic_detection_registry_agent,
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
@@ -351,6 +353,48 @@ def test_detection_normalizes_advisory_file_quality_before_schema_validation():
     assert normalized["rfq_run"]["file_quality_level"] == 4
     assert normalized["rfq_run"]["file_quality_label"] == "production_ready"
     assert normalized["rfq_run"]["file_quality_confidence"] == 100.0
+
+
+def test_registry_retries_truncated_structured_json_with_larger_budget():
+    visual_map = {
+        "visual_groups": [{
+            "group_id": "view-001", "page_number": 1, "location_hint": "left",
+            "visual_description": "one cabinet", "representation_kind": "perspective",
+            "related_group_ids": [],
+        }],
+    }
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "dossier_pages": [1], "estimation_evidence_pages": [1],
+            "visual_group_ids": ["view-001"], "visual_identity": "one cabinet",
+            "boundary_basis": "one complete product",
+        }],
+    }
+    requested_budgets = []
+
+    def fake_create(*_args, max_tokens, **_kwargs):
+        requested_budgets.append(max_tokens)
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", side_effect=["{", json.dumps(registry)]),
+    ):
+        result, usage = run_anthropic_detection_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], visual_map=visual_map, ocr_package=None, model="model",
+        )
+
+    assert result == registry
+    assert requested_budgets == [5000, 8192]
+    assert usage["raw_usage"]["retry_after_truncated_json"] is True
 
 
 def test_file_review_run_keeps_partner_and_client_roles_separate():

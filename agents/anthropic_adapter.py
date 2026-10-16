@@ -560,13 +560,45 @@ def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, f
     user_text += "\n\nVISUAL REPRESENTATION MAP (navigation only, not object decisions):\n"
     user_text += json.dumps(visual_map, ensure_ascii=False)
     schema = strip_schema_for_claude(DETECTION_REGISTRY_JSON_SCHEMA)
-    response, diagnostics = create_claude_message_streamed(get_anthropic_client(), model=selected_model, max_tokens=2500, system=build_detection_system_content(prompt=prompt), messages=[{"role":"user","content":build_detection_registry_content_blocks(file_name=file_name,file_bytes=file_bytes,user_text=user_text,page_images=page_images,regions=[])}], output_config={"format":{"type":"json_schema","schema":schema}})
+    content = build_detection_registry_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        user_text=user_text,
+        page_images=page_images,
+        regions=[],
+    )
+
+    def request_registry(max_tokens: int) -> tuple[Any, dict[str, Any]]:
+        return create_claude_message_streamed(
+            get_anthropic_client(),
+            model=selected_model,
+            max_tokens=max_tokens,
+            system=build_detection_system_content(prompt=prompt),
+            messages=[{"role": "user", "content": content}],
+            output_config={"format": {"type": "json_schema", "schema": schema}},
+        )
+
+    response, diagnostics = request_registry(5000)
+    try:
+        payload = json.loads(extract_text_from_claude_response(response))
+    except json.JSONDecodeError as initial_error:
+        # A truncated structured response is transport failure, not a commercial
+        # object decision. Retry once with the provider's full response budget.
+        response, diagnostics = request_registry(8192)
+        diagnostics["retry_after_truncated_json"] = True
+        try:
+            payload = json.loads(extract_text_from_claude_response(response))
+        except json.JSONDecodeError as retry_error:
+            raise RuntimeError(
+                "Detection registry response remained invalid JSON after retry: "
+                f"{retry_error}"
+            ) from retry_error
     try:
         registry = validate_detection_registry(
-            json.loads(extract_text_from_claude_response(response)),
+            payload,
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
         )
-    except (ValueError, json.JSONDecodeError) as exc:
+    except ValueError as exc:
         raise RuntimeError(f"Detection registry response failed validation: {exc}") from exc
     diagnostics.update({"registry_object_count":len(registry["objects"]),"visual_group_count":len(visual_map["visual_groups"]),"page_count":len(page_images),"attempt_label":"registry_from_visual_map"})
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
