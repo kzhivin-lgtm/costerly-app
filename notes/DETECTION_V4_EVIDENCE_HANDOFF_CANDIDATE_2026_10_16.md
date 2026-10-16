@@ -57,11 +57,26 @@ an Evidence defect.
 ## Active boundary experiment, not a checkpoint
 
 The owner approved a replacement for the rejected in-registry island and
-post-hoc reviewer experiments. Before Registry, a conditional correspondence
-stage receives only isolated large drawing crops and physical page numbers. It
-does not receive the file name, OCR, project metadata, room titles or title
-block. It partitions the cropped representations into candidate physical
-assemblies using positive cross-view visual correspondence.
+post-hoc reviewer experiments. The first crop-only partition experiment failed
+on Adda: its rectangular crop envelopes overlapped, and Sonnet incorrectly
+constructed two separate figures into one L-shaped room composition. That
+partition is rejected, not a checkpoint.
+
+Before Registry, the replacement conditional correspondence stage receives
+masked disconnected drawing figures, a title-strip-free masked page-layout map
+for each relevant page, and physical page numbers. A figure mask contains only
+its own detected ink, even if its rectangular navigation bbox overlaps another
+figure's bbox. It does not receive the file name, OCR, project metadata, room
+titles or title block.
+
+One Sonnet request classifies each supplied figure and returns an exhaustive
+pairwise graph of `same_assembly`, `separate_assemblies` or `insufficient`.
+Detection, not the model, derives candidate assemblies from `same_assembly`
+edges. Any `insufficient` relation or a graph containing both same and separate
+evidence for one component abstains from locking a partition, so Registry keeps
+the accepted V4 path. The graph route has no partial coverage: it runs only
+when the full representation set has at most 12 figures, which bounds the
+quadratic pair output to 66 relations. Larger sets bypass this experiment.
 
 When two or more crops exist and all of them fit in one request, the Registry
 must map each resulting assembly candidate to exactly one commercial object.
@@ -70,8 +85,8 @@ image ceiling, Detection keeps the accepted V4 path rather than silently
 truncating a physical partition. This experiment adds one conditional Sonnet
 call and does not alter the V4 Estimation handoff.
 
-The correspondence usage event persists an `assembly_partition_audit` with
-candidate membership, visual identity and correspondence basis. It is
+The correspondence usage event persists both `assembly_graph_audit` and the
+derived `assembly_partition_audit`, including abstention status. It is
 observability only and cannot alter a Detection result.
 
 The result remains unverified until live benchmarks show all of the following:

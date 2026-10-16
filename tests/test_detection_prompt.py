@@ -6,6 +6,7 @@ from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
     load_detection_assembly_correspondence_prompt,
+    load_detection_assembly_correspondence_graph_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
@@ -85,3 +86,12 @@ def test_assembly_correspondence_is_a_separate_title_agnostic_physical_partition
     assert "positive cross-view correspondence" in prompt
     assert "Two separate finished envelopes" in prompt
     assert "Account for every supplied representation exactly once" in prompt
+
+
+def test_assembly_correspondence_graph_requires_direct_pairwise_proof():
+    prompt = load_detection_assembly_correspondence_graph_prompt()
+
+    assert "file name, OCR,\nproject name, room title and title block" in prompt
+    assert "every pair independently" in prompt
+    assert "high bar" in prompt
+    assert "white background in a masked figure is not part of that figure" in prompt

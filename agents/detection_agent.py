@@ -4,7 +4,7 @@ import re
 
 from agents.anthropic_adapter import (
     run_anthropic_detection_agent_with_fallback,
-    run_anthropic_detection_assembly_correspondence_agent,
+    run_anthropic_detection_assembly_correspondence_graph_agent,
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.detection_page_images import (
@@ -14,7 +14,7 @@ from agents.detection_page_images import (
 )
 from agents.prompt_loader import (
     load_detection_agent_prompt,
-    load_detection_assembly_correspondence_prompt,
+    load_detection_assembly_correspondence_graph_prompt,
     load_detection_visual_registry_prompt,
 )
 from agents.schemas.detection_schema import validate_detection_result
@@ -202,7 +202,7 @@ def run_detection_agent(
     # Fail loudly if the prompt file is missing or empty.
     _prompt = load_detection_agent_prompt()
     _visual_registry_prompt = load_detection_visual_registry_prompt()
-    _assembly_correspondence_prompt = load_detection_assembly_correspondence_prompt()
+    _assembly_correspondence_prompt = load_detection_assembly_correspondence_graph_prompt()
 
     if file_bytes is None:
         raise ValueError("Detection Agent requires uploaded file bytes.")
@@ -219,7 +219,7 @@ def run_detection_agent(
     assembly_correspondence_usage = None
     if correspondence_regions:
         assembly_correspondence, assembly_correspondence_usage = (
-            run_anthropic_detection_assembly_correspondence_agent(
+            run_anthropic_detection_assembly_correspondence_graph_agent(
                 file_name=file_name,
                 company_id=company_id,
                 representations=correspondence_regions,

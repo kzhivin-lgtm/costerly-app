@@ -20,6 +20,7 @@ from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
     load_detection_assembly_correspondence_prompt,
+    load_detection_assembly_correspondence_graph_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
@@ -29,6 +30,12 @@ from agents.schemas.detection_assembly_correspondence_schema import (
     DETECTION_ASSEMBLY_CORRESPONDENCE_JSON_SCHEMA,
     normalize_detection_assembly_candidate_ids,
     validate_detection_assembly_correspondence,
+)
+from agents.schemas.detection_assembly_correspondence_graph_schema import (
+    DETECTION_ASSEMBLY_CORRESPONDENCE_GRAPH_JSON_SCHEMA,
+    derive_detection_assembly_correspondence,
+    normalize_detection_assembly_graph,
+    validate_detection_assembly_correspondence_graph,
 )
 from agents.schemas.detection_registry_schema import DETECTION_REGISTRY_JSON_SCHEMA, validate_detection_registry
 from agents.schemas.detection_visual_map_schema import (
@@ -51,6 +58,7 @@ DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v4"
 DETECTION_ASSEMBLY_CORRESPONDENCE_PROMPT_VERSION = "detection_v4_assembly_correspondence_v1"
+DETECTION_ASSEMBLY_CORRESPONDENCE_GRAPH_PROMPT_VERSION = "detection_v4_assembly_correspondence_graph_v2"
 DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_PROMPT_VERSION = "detection_v4_visual_registry_locked_assemblies_v1"
 
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
@@ -621,15 +629,45 @@ def _assembly_representation_manifest(
 def build_detection_assembly_correspondence_content_blocks(
     representations: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Build the deliberately title-agnostic, crop-only correspondence input."""
+    """Build title-agnostic figure crops plus masked page-layout maps."""
     manifest = _assembly_representation_manifest(representations)
     blocks: list[dict[str, Any]] = []
+    page_maps: list[tuple[int, bytes]] = []
+    seen_page_numbers: set[int] = set()
+    for representation, manifest_item in zip(representations, manifest, strict=True):
+        page_map_bytes = representation.get("page_map_bytes")
+        page_number = manifest_item["page_number"]
+        if (
+            page_number not in seen_page_numbers
+            and isinstance(page_map_bytes, bytes)
+            and page_map_bytes
+        ):
+            page_maps.append((page_number, page_map_bytes))
+            seen_page_numbers.add(page_number)
+    for page_number, page_map_bytes in page_maps:
+        blocks.append({
+            "type": "text",
+            "text": (
+                f"Masked figure-layout map for PDF page {page_number}. "
+                "Only detected figure ink is shown. Red frames locate distinct "
+                "figures and are navigation aids, not physical connections."
+            ),
+        })
+        blocks.append({
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/jpeg",
+                "data": base64.standard_b64encode(page_map_bytes).decode("ascii"),
+            },
+        })
     for representation, manifest_item in zip(representations, manifest, strict=True):
         blocks.append({
             "type": "text",
             "text": (
-                f"Isolated representation {manifest_item['representation_id']}, "
-                f"PDF page {manifest_item['page_number']}."
+                f"Masked isolated representation {manifest_item['representation_id']}, "
+                f"PDF page {manifest_item['page_number']}. White areas are not part "
+                "of this figure."
             ),
         })
         blocks.append({
@@ -718,6 +756,90 @@ def run_anthropic_detection_assembly_correspondence_agent(
         object_name=None,
         model=selected_model,
         prompt_version=DETECTION_ASSEMBLY_CORRESPONDENCE_PROMPT_VERSION,
+        response=response,
+        started_at=diagnostics["request_started_at"],
+        finished_at=diagnostics["request_finished_at"],
+        request_diagnostics=diagnostics,
+    )
+    return correspondence, usage
+
+
+def run_anthropic_detection_assembly_correspondence_graph_agent(
+    *,
+    file_name: str,
+    company_id: str,
+    representations: list[dict[str, Any]],
+    model: str | None,
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Derive lockable assemblies from a decisive pairwise figure graph."""
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_ASSEMBLY_CORRESPONDENCE_MODEL",
+        DEFAULT_CLAUDE_FALLBACK_MODEL,
+    )
+    prompt = load_detection_assembly_correspondence_graph_prompt()
+    content, manifest = build_detection_assembly_correspondence_content_blocks(representations)
+    schema = strip_schema_for_claude(DETECTION_ASSEMBLY_CORRESPONDENCE_GRAPH_JSON_SCHEMA)
+    representation_ids = [item["representation_id"] for item in manifest]
+
+    def request_graph(max_tokens: int) -> tuple[Any, dict[str, Any]]:
+        return create_claude_message_streamed(
+            get_anthropic_client(),
+            model=selected_model,
+            max_tokens=max_tokens,
+            system=build_detection_system_content(prompt=prompt),
+            messages=[{"role": "user", "content": content}],
+            output_config={"format": {"type": "json_schema", "schema": schema}},
+        )
+
+    response, diagnostics = request_graph(4096)
+    try:
+        payload = json.loads(extract_text_from_claude_response(response))
+    except json.JSONDecodeError:
+        response, diagnostics = request_graph(8192)
+        diagnostics["retry_after_truncated_json"] = True
+        try:
+            payload = json.loads(extract_text_from_claude_response(response))
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                "Detection assembly-correspondence graph remained invalid JSON after retry: "
+                f"{exc}"
+            ) from exc
+    try:
+        graph = validate_detection_assembly_correspondence_graph(
+            normalize_detection_assembly_graph(
+                payload,
+                representation_ids=representation_ids,
+            ),
+            representation_ids=representation_ids,
+        )
+    except ValueError as exc:
+        raise RuntimeError(
+            f"Detection assembly-correspondence graph failed validation: {exc}"
+        ) from exc
+    correspondence, graph_status = derive_detection_assembly_correspondence(
+        graph,
+        representation_ids=representation_ids,
+    )
+    diagnostics.update({
+        "representation_count": len(manifest),
+        "pair_relation_count": len(graph["pair_relations"]),
+        "assembly_candidate_count": len(correspondence["assembly_candidates"]) if correspondence else 0,
+        "non_assembly_representation_count": len(correspondence["non_assembly_representation_ids"]) if correspondence else 0,
+        "assembly_graph_status": graph_status,
+        "assembly_graph_audit": copy.deepcopy(graph),
+        "assembly_partition_audit": copy.deepcopy(correspondence),
+        "attempt_label": "masked_figures_pairwise_correspondence_graph",
+    })
+    usage = build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection_assembly_correspondence",
+        company_id=company_id,
+        run_id=None,
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=selected_model,
+        prompt_version=DETECTION_ASSEMBLY_CORRESPONDENCE_GRAPH_PROMPT_VERSION,
         response=response,
         started_at=diagnostics["request_started_at"],
         finished_at=diagnostics["request_finished_at"],

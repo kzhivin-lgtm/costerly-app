@@ -21,6 +21,7 @@ ANTHROPIC_MULTI_IMAGE_MAX_DIMENSION = 2_000
 REGISTRY_MAX_IMAGES = 100
 REGISTRY_REGIONS_PER_PAGE = 3
 ASSEMBLY_CORRESPONDENCE_MAX_IMAGES = 100
+ASSEMBLY_CORRESPONDENCE_MAX_PAIRWISE_REPRESENTATIONS = 12
 ASSEMBLY_CANDIDATE_GRID_SIZE = (280, 198)
 ASSEMBLY_CANDIDATE_INK_THRESHOLD = 220
 ASSEMBLY_CANDIDATE_MIN_GRID_VALUE = 4
@@ -154,15 +155,22 @@ def render_detection_pdf_pages(
     }
 
 
-def build_detection_spatial_candidates(page_images: list[bytes]) -> list[dict[str, Any]]:
-    """Find large disconnected drawing clusters without assigning semantics."""
+def _build_detection_spatial_components(page_images: list[bytes]) -> list[dict[str, Any]]:
+    """Find large disconnected ink components and retain their exact coarse masks.
+
+    A bounding box is only navigation metadata.  It cannot itself isolate a
+    drawing figure because two independent L-shaped figures may have
+    overlapping rectangular envelopes.  The mask remains internal until crop
+    rendering, where it prevents ink from a neighbouring component leaking
+    into that component's representation.
+    """
     if not page_images:
         return []
     from PIL import Image, ImageFilter
 
     grid_width, grid_height = ASSEMBLY_CANDIDATE_GRID_SIZE
     page_left, page_top, page_right, page_bottom = ASSEMBLY_CANDIDATE_PAGE_BOUNDS
-    candidates: list[dict[str, Any]] = []
+    components: list[dict[str, Any]] = []
     for page_number, page_bytes in enumerate(page_images, start=1):
         with Image.open(BytesIO(page_bytes)) as image:
             grayscale = image.convert("L")
@@ -217,7 +225,7 @@ def build_detection_spatial_candidates(page_images: list[bytes]) -> list[dict[st
             ):
                 continue
             component_index += 1
-            candidates.append({
+            components.append({
                 "page_number": page_number,
                 "bbox": {
                     "left": round((crop_left + min_x / grid_width * (crop_right - crop_left)) / source_width, 4),
@@ -226,8 +234,84 @@ def build_detection_spatial_candidates(page_images: list[bytes]) -> list[dict[st
                     "bottom": round((crop_top + (max_y + 1) / grid_height * (crop_bottom - crop_top)) / source_height, 4),
                 },
                 "ink_cell_count": cell_count,
+                "grid_cells": tuple(queue),
+                "source_size": (source_width, source_height),
+                "source_crop": (crop_left, crop_top, crop_right, crop_bottom),
             })
-    return candidates
+    return components
+
+
+def build_detection_spatial_candidates(page_images: list[bytes]) -> list[dict[str, Any]]:
+    """Find large disconnected drawing clusters without assigning semantics."""
+    return [
+        {
+            "page_number": component["page_number"],
+            "bbox": component["bbox"],
+            "ink_cell_count": component["ink_cell_count"],
+        }
+        for component in _build_detection_spatial_components(page_images)
+    ]
+
+
+def _component_source_mask(component: dict[str, Any]):
+    """Return a source-sized mask containing only this coarse ink component."""
+    from PIL import Image
+
+    source_width, source_height = component["source_size"]
+    crop_left, crop_top, crop_right, crop_bottom = component["source_crop"]
+    grid_width, grid_height = ASSEMBLY_CANDIDATE_GRID_SIZE
+    grid_mask = Image.new("L", (grid_width, grid_height), 0)
+    for cell_index in component["grid_cells"]:
+        grid_mask.putpixel((cell_index % grid_width, cell_index // grid_width), 255)
+    crop_mask = grid_mask.resize(
+        (crop_right - crop_left, crop_bottom - crop_top),
+        Image.Resampling.NEAREST,
+    )
+    source_mask = Image.new("L", (source_width, source_height), 0)
+    source_mask.paste(crop_mask, (crop_left, crop_top))
+    return source_mask
+
+
+def _masked_component_page_map(
+    image,
+    components: list[dict[str, Any]],
+) -> bytes:
+    """Render a title-strip-free map containing only detected figure ink.
+
+    It lets the correspondence model see that figures occupy different places
+    on a page, without exposing the full title block or letting nearby source
+    ink become part of another figure crop.
+    """
+    from PIL import Image, ImageDraw
+
+    page_left, page_top, page_right, page_bottom = ASSEMBLY_CANDIDATE_PAGE_BOUNDS
+    width, height = image.size
+    masked_page = Image.new("RGB", image.size, "white")
+    for component in components:
+        masked_page.paste(image, mask=_component_source_mask(component))
+
+    draw = ImageDraw.Draw(masked_page)
+    for index, component in enumerate(components, start=1):
+        bbox = component["bbox"]
+        left = int(width * bbox["left"])
+        top = int(height * bbox["top"])
+        right = int(width * bbox["right"])
+        bottom = int(height * bbox["bottom"])
+        draw.rectangle((left, top, right, bottom), outline=(192, 0, 0), width=2)
+        draw.text(
+            (left + 4, top + 4),
+            str(component.get("representation_id") or f"figure-{index}"),
+            fill=(192, 0, 0),
+        )
+
+    output = BytesIO()
+    masked_page.crop((
+        int(width * page_left),
+        int(height * page_top),
+        int(width * page_right),
+        int(height * page_bottom),
+    )).save(output, format="JPEG", quality=85)
+    return output.getvalue()
 
 
 def build_detection_assembly_correspondence_regions(
@@ -241,15 +325,32 @@ def build_detection_assembly_correspondence_regions(
     than the provider's image ceiling is intentionally left on the accepted
     path rather than truncating an incomplete physical partition.
     """
-    candidates = build_detection_spatial_candidates(page_images)
-    if len(candidates) < 2 or len(candidates) > max_images:
+    components = _build_detection_spatial_components(page_images)
+    if (
+        len(components) < 2
+        or len(components) > max_images
+        or len(components) > ASSEMBLY_CORRESPONDENCE_MAX_PAIRWISE_REPRESENTATIONS
+    ):
         return []
     from PIL import Image
 
+    for index, component in enumerate(components, start=1):
+        component["representation_id"] = f"representation-{index:03d}"
     regions: list[dict[str, Any]] = []
-    for index, candidate in enumerate(candidates, start=1):
-        page_number = candidate["page_number"]
-        bbox = candidate["bbox"]
+    components_by_page: dict[int, list[dict[str, Any]]] = {}
+    for component in components:
+        components_by_page.setdefault(component["page_number"], []).append(component)
+    page_maps: dict[int, bytes] = {}
+    for page_number, page_components in components_by_page.items():
+        with Image.open(BytesIO(page_images[page_number - 1])) as image:
+            page_maps[page_number] = _masked_component_page_map(
+                image.convert("RGB"), page_components,
+            )
+
+    first_region_on_page: set[int] = set()
+    for component in components:
+        page_number = component["page_number"]
+        bbox = component["bbox"]
         with Image.open(BytesIO(page_images[page_number - 1])) as image:
             width, height = image.size
             padding = 0.025
@@ -257,19 +358,25 @@ def build_detection_assembly_correspondence_regions(
             top = max(0.0, float(bbox["top"]) - padding)
             right = min(1.0, float(bbox["right"]) + padding)
             bottom = min(1.0, float(bbox["bottom"]) + padding)
-            crop = image.crop((
+            isolated = Image.new("RGB", image.size, "white")
+            isolated.paste(image.convert("RGB"), mask=_component_source_mask(component))
+            crop = isolated.crop((
                 int(width * left), int(height * top),
                 max(int(width * right), int(width * left) + 1),
                 max(int(height * bottom), int(height * top) + 1),
             ))
             output = BytesIO()
             crop.save(output, format="JPEG", quality=85)
-        regions.append({
-            "representation_id": f"representation-{index:03d}",
+        region = {
+            "representation_id": component["representation_id"],
             "page_number": page_number,
             "bbox": bbox,
             "bytes": output.getvalue(),
-        })
+        }
+        if page_number not in first_region_on_page:
+            region["page_map_bytes"] = page_maps[page_number]
+            first_region_on_page.add(page_number)
+        regions.append(region)
     return regions
 
 

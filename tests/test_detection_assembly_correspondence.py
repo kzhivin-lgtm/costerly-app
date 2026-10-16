@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw
 from agents.anthropic_adapter import (
     build_detection_assembly_correspondence_content_blocks,
     run_anthropic_detection_assembly_correspondence_agent,
+    run_anthropic_detection_assembly_correspondence_graph_agent,
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.detection_page_images import build_detection_assembly_correspondence_regions
@@ -16,6 +17,11 @@ from agents.schemas.detection_assembly_correspondence_schema import (
     DetectionAssemblyCorrespondenceSchemaError,
     normalize_detection_assembly_candidate_ids,
     validate_detection_assembly_correspondence,
+)
+from agents.schemas.detection_assembly_correspondence_graph_schema import (
+    derive_detection_assembly_correspondence,
+    normalize_detection_assembly_graph,
+    validate_detection_assembly_correspondence_graph,
 )
 
 
@@ -54,6 +60,25 @@ def _representation(representation_id: str, page_number: int) -> dict:
         "page_number": page_number,
         "bbox": {"left": 0.1, "top": 0.1, "right": 0.4, "bottom": 0.6},
         "bytes": b"jpeg-bytes",
+    }
+
+
+def _graph_payload() -> dict:
+    return {
+        "representation_roles": [
+            {"representation_id": "representation-001", "role": "complete_assembly", "visible_identity": "long low three-bay console"},
+            {"representation_id": "representation-002", "role": "complete_assembly", "visible_identity": "tall separate cabinet"},
+            {"representation_id": "representation-003", "role": "complete_assembly", "visible_identity": "long low three-bay console"},
+            {"representation_id": "representation-004", "role": "complete_assembly", "visible_identity": "tall separate cabinet"},
+        ],
+        "pair_relations": [
+            {"first_representation_id": "representation-001", "second_representation_id": "representation-002", "relation": "separate_assemblies", "basis": "independent low and tall envelopes"},
+            {"first_representation_id": "representation-001", "second_representation_id": "representation-003", "relation": "same_assembly", "basis": "same three bays and continuous low base"},
+            {"first_representation_id": "representation-001", "second_representation_id": "representation-004", "relation": "separate_assemblies", "basis": "different finished envelopes"},
+            {"first_representation_id": "representation-002", "second_representation_id": "representation-003", "relation": "separate_assemblies", "basis": "different finished envelopes"},
+            {"first_representation_id": "representation-002", "second_representation_id": "representation-004", "relation": "same_assembly", "basis": "same tall frame and independent base"},
+            {"first_representation_id": "representation-003", "second_representation_id": "representation-004", "relation": "separate_assemblies", "basis": "independent low and tall envelopes"},
+        ],
     }
 
 
@@ -103,9 +128,62 @@ def test_correspondence_normalizes_provider_candidate_labels_without_changing_pa
     ]
 
 
-def test_correspondence_input_is_crop_only_and_omits_file_and_ocr_context():
+def test_pairwise_graph_derives_two_locked_candidates_from_explicit_matches():
+    representation_ids = [
+        "representation-001",
+        "representation-002",
+        "representation-003",
+        "representation-004",
+    ]
+    graph = _graph_payload()
+    graph["pair_relations"][0]["first_representation_id"] = "representation-002"
+    graph["pair_relations"][0]["second_representation_id"] = "representation-001"
+
+    validated = validate_detection_assembly_correspondence_graph(
+        normalize_detection_assembly_graph(graph, representation_ids=representation_ids),
+        representation_ids=representation_ids,
+    )
+    correspondence, status = derive_detection_assembly_correspondence(
+        validated,
+        representation_ids=representation_ids,
+    )
+
+    assert status == "graph_decisive"
+    assert correspondence is not None
+    assert [candidate["representation_ids"] for candidate in correspondence["assembly_candidates"]] == [
+        ["representation-001", "representation-003"],
+        ["representation-002", "representation-004"],
+    ]
+
+
+def test_pairwise_graph_abstains_when_any_relation_lacks_direct_evidence():
+    representation_ids = [
+        "representation-001",
+        "representation-002",
+        "representation-003",
+        "representation-004",
+    ]
+    graph = _graph_payload()
+    graph["pair_relations"][2]["relation"] = "insufficient"
+
+    validated = validate_detection_assembly_correspondence_graph(
+        graph,
+        representation_ids=representation_ids,
+    )
+    correspondence, status = derive_detection_assembly_correspondence(
+        validated,
+        representation_ids=representation_ids,
+    )
+
+    assert correspondence is None
+    assert status == "graph_abstained_incomplete_pairwise_evidence"
+
+
+def test_correspondence_input_uses_one_masked_page_map_and_omits_file_and_ocr_context():
+    first = _representation("representation-001", 1)
+    first["page_map_bytes"] = b"masked-page-map"
     blocks, manifest = build_detection_assembly_correspondence_content_blocks([
-        _representation("representation-001", 1),
+        first,
         _representation("representation-002", 1),
     ])
 
@@ -117,7 +195,8 @@ def test_correspondence_input_is_crop_only_and_omits_file_and_ocr_context():
     assert "Adda" not in text
     assert "OCR" not in text
     assert "title block" not in text.casefold()
-    assert [block["type"] for block in blocks] == ["text", "image", "text", "image", "text"]
+    assert "Masked figure-layout map" in text
+    assert [block["type"] for block in blocks] == ["text", "image", "text", "image", "text", "image", "text"]
 
 
 def test_correspondence_agent_records_the_isolated_stage_without_registry_context():
@@ -156,6 +235,52 @@ def test_correspondence_agent_records_the_isolated_stage_without_registry_contex
     assert correspondence == _assembly_payload()
     assert usage["operation"] == "rfq_detection_assembly_correspondence"
     assert usage["raw_usage"]["assembly_partition_audit"] == _assembly_payload()
+    assert "Adda.pdf" not in request_text
+    assert "Company ID" not in request_text
+
+
+def test_graph_agent_records_graph_and_only_locks_a_decisive_partition():
+    captured = {}
+
+    def fake_create(*_args, **kwargs):
+        captured.update(kwargs)
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="sonnet"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_graph_payload())),
+    ):
+        correspondence, usage = run_anthropic_detection_assembly_correspondence_graph_agent(
+            file_name="Adda.pdf",
+            company_id="001",
+            representations=[
+                _representation("representation-001", 1),
+                _representation("representation-002", 1),
+                _representation("representation-003", 2),
+                _representation("representation-004", 2),
+            ],
+            model=None,
+        )
+
+    request_text = "\n".join(
+        block["text"]
+        for block in captured["messages"][0]["content"]
+        if block["type"] == "text"
+    )
+    assert correspondence is not None
+    assert [candidate["representation_ids"] for candidate in correspondence["assembly_candidates"]] == [
+        ["representation-001", "representation-003"],
+        ["representation-002", "representation-004"],
+    ]
+    assert usage["operation"] == "rfq_detection_assembly_correspondence"
+    assert usage["raw_usage"]["assembly_graph_audit"] == _graph_payload()
+    assert usage["raw_usage"]["assembly_partition_audit"] == correspondence
+    assert usage["raw_usage"]["assembly_graph_status"] == "graph_decisive"
     assert "Adda.pdf" not in request_text
     assert "Company ID" not in request_text
 
@@ -259,6 +384,42 @@ def test_geometry_yields_separate_crop_targets_for_two_disconnected_drawings():
     assert {region["page_number"] for region in regions} == {1}
 
 
+def test_masked_figure_crop_excludes_neighbour_ink_inside_an_overlapping_bbox():
+    image = Image.new("RGB", (1200, 800), "white")
+    draw = ImageDraw.Draw(image)
+    # Two disconnected L-shaped figures. Their rectangular envelopes overlap,
+    # but their actual ink does not. This is the Ada failure mode.
+    draw.rectangle((100, 100, 200, 600), fill="black")
+    draw.rectangle((200, 500, 600, 600), fill="black")
+    draw.rectangle((400, 100, 1000, 200), fill="black")
+    draw.rectangle((800, 200, 900, 650), fill="black")
+    output = io.BytesIO()
+    image.save(output, format="JPEG")
+
+    regions = build_detection_assembly_correspondence_regions([output.getvalue()])
+    left_figure = min(regions, key=lambda region: region["bbox"]["left"])
+    crop = Image.open(io.BytesIO(left_figure["bytes"])).convert("L")
+    source_left = max(0.0, left_figure["bbox"]["left"] - 0.025)
+    source_top = max(0.0, left_figure["bbox"]["top"] - 0.025)
+    x = int((500 / 1200 - source_left) / (1 - source_left - max(0.0, 1 - (left_figure["bbox"]["right"] + 0.025))) * crop.width)
+    y = int((150 / 800 - source_top) / (1 - source_top - max(0.0, 1 - (left_figure["bbox"]["bottom"] + 0.025))) * crop.height)
+
+    assert len(regions) == 2
+    assert "page_map_bytes" in left_figure
+    assert crop.getpixel((x, y)) > 240
+
+
+def test_pairwise_graph_bypasses_large_figure_sets_without_truncation():
+    image = Image.new("RGB", (1200, 800), "white")
+    ImageDraw.Draw(image).rectangle((150, 120, 850, 600), fill="black")
+    output = io.BytesIO()
+    image.save(output, format="JPEG")
+
+    regions = build_detection_assembly_correspondence_regions([output.getvalue()] * 13)
+
+    assert regions == []
+
+
 def test_detection_passes_the_locked_partition_to_registry_before_evidence_packing():
     correspondence = _assembly_payload()
     registry = {
@@ -292,7 +453,7 @@ def test_detection_passes_the_locked_partition_to_registry_before_evidence_packi
             return_value=[_representation("representation-001", 1)],
         ),
         patch(
-            "agents.detection_agent.run_anthropic_detection_assembly_correspondence_agent",
+            "agents.detection_agent.run_anthropic_detection_assembly_correspondence_graph_agent",
             return_value=(correspondence, {"event": "correspondence"}),
         ),
         patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
