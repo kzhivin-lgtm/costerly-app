@@ -135,6 +135,22 @@ def test_registry_allows_unassigned_navigation_only_visual_groups():
     ) == registry
 
 
+def test_registry_allows_object_without_a_navigation_group():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "dossier_pages": [1], "visual_group_ids": [],
+            "visual_identity": "cabinet", "boundary_basis": "one complete product",
+        }],
+        "page_coverage": [{"page_number": 1, "object_ids": ["object-001"], "exclusion_code": "none"}],
+    }
+
+    assert validate_detection_registry(
+        registry, visual_group_ids={"view-001"}, page_numbers={1},
+    ) == registry
+
+
 def test_registry_rejects_missing_physical_page_coverage():
     registry = {
         "objects": [{

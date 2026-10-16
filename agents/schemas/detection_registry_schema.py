@@ -77,7 +77,7 @@ def validate_detection_registry(
             raise DetectionRegistrySchemaError("registry identity pages are invalid")
         if not isinstance(item["dossier_pages"], list) or not item["dossier_pages"] or len(item["dossier_pages"]) > 12 or not all(isinstance(page, int) and page > 0 for page in item["dossier_pages"]):
             raise DetectionRegistrySchemaError("registry dossier pages are invalid")
-        if not isinstance(item["visual_group_ids"], list) or not item["visual_group_ids"] or not all(isinstance(group_id, str) and group_id for group_id in item["visual_group_ids"]):
+        if not isinstance(item["visual_group_ids"], list) or not all(isinstance(group_id, str) and group_id for group_id in item["visual_group_ids"]):
             raise DetectionRegistrySchemaError("registry visual groups are invalid")
         assigned_visual_groups.extend(item["visual_group_ids"])
 
