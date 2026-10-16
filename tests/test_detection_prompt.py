@@ -75,3 +75,6 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
     assert "shared schedule or a sheet showing separately coded products" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
+    assert "spatial-island ledger" in prompt
+    assert "Treat every such island as an independent-product candidate, even when it appears only once" in prompt
+    assert "Never invent an integrated system, continuous structure, shared mounting" in prompt
