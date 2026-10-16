@@ -39,6 +39,43 @@ class DetectionVisualMapSchemaError(ValueError):
     pass
 
 
+def normalize_detection_visual_map_group_ids(result: dict[str, Any]) -> dict[str, Any]:
+    """Canonicalize provider group IDs without changing visual content.
+
+    The IDs are internal join keys, not model judgment. Claude may choose a
+    different but unique sequence despite the JSON example, so normalize that
+    presentation variance before enforcing the strict map-to-registry join.
+    """
+    if not isinstance(result, dict) or not isinstance(result.get("visual_groups"), list):
+        return result
+    groups = result["visual_groups"]
+    raw_ids: list[str] = []
+    for group in groups:
+        if not isinstance(group, dict):
+            return result
+        raw_id = str(group.get("group_id") or "").strip()
+        if not raw_id:
+            return result
+        raw_ids.append(raw_id)
+    if len(raw_ids) != len(set(raw_ids)):
+        return result
+
+    canonical_ids = {
+        raw_id: f"view-{index:03d}"
+        for index, raw_id in enumerate(raw_ids, start=1)
+    }
+    for group, raw_id in zip(groups, raw_ids, strict=True):
+        related = group.get("related_group_ids")
+        if isinstance(related, list):
+            group["related_group_ids"] = list(dict.fromkeys(
+                canonical_ids[related_id]
+                for related_id in related
+                if related_id in canonical_ids and related_id != raw_id
+            ))
+        group["group_id"] = canonical_ids[raw_id]
+    return result
+
+
 def validate_detection_visual_map(result: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(result, dict) or set(result) != {"visual_groups"}:
         raise DetectionVisualMapSchemaError("visual map must contain only visual_groups")

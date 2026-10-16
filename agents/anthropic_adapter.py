@@ -25,6 +25,7 @@ from agents.prompt_loader import (
 from agents.schemas.detection_registry_schema import DETECTION_REGISTRY_JSON_SCHEMA, validate_detection_registry
 from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
+    normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
 from agents.schemas.detection_schema import (
@@ -540,7 +541,11 @@ def run_anthropic_detection_visual_map_agent(*, file_name: str, company_id: str,
     schema = strip_schema_for_claude(DETECTION_VISUAL_MAP_JSON_SCHEMA)
     response, diagnostics = create_claude_message_streamed(get_anthropic_client(), model=selected_model, max_tokens=5000, system=build_detection_system_content(prompt=prompt), messages=[{"role":"user","content":build_detection_registry_content_blocks(file_name=file_name,file_bytes=file_bytes,user_text=user_text,page_images=page_images,regions=regions)}], output_config={"format":{"type":"json_schema","schema":schema}})
     try:
-        visual_map = validate_detection_visual_map(json.loads(extract_text_from_claude_response(response)))
+        visual_map = validate_detection_visual_map(
+            normalize_detection_visual_map_group_ids(
+                json.loads(extract_text_from_claude_response(response))
+            )
+        )
     except (ValueError, json.JSONDecodeError) as exc:
         raise RuntimeError(f"Detection visual-map response failed validation: {exc}") from exc
     diagnostics.update({"visual_group_count": len(visual_map["visual_groups"]), "region_count": len(regions), "page_count": len(page_images), "attempt_label": "visual_map_regions"})

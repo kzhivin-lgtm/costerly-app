@@ -4,7 +4,10 @@ from agents.schemas.detection_registry_schema import (
     validate_detection_registry,
 )
 from agents.schemas.detection_schema import validate_detection_result
-from agents.schemas.detection_visual_map_schema import validate_detection_visual_map
+from agents.schemas.detection_visual_map_schema import (
+    normalize_detection_visual_map_group_ids,
+    validate_detection_visual_map,
+)
 
 
 def test_v4_schema_accepts_evidence_regions_and_ui_only_preview_bbox():
@@ -76,6 +79,24 @@ def test_visual_map_and_registry_keep_representation_identity_separate():
         registry,
         visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
     ) == registry
+
+
+def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
+    visual_map = {
+        "visual_groups": [
+            {"group_id": "group_a", "page_number": 1, "location_hint": "left", "visual_description": "console view", "representation_kind": "perspective", "related_group_ids": ["group_b"]},
+            {"group_id": "group_b", "page_number": 1, "location_hint": "right", "visual_description": "console view", "representation_kind": "elevation", "related_group_ids": ["group_a"]},
+        ],
+    }
+
+    normalized = validate_detection_visual_map(
+        normalize_detection_visual_map_group_ids(visual_map)
+    )
+
+    assert [group["group_id"] for group in normalized["visual_groups"]] == [
+        "view-001", "view-002",
+    ]
+    assert normalized["visual_groups"][0]["related_group_ids"] == ["view-002"]
 
 
 def test_registry_rejects_visual_group_assigned_to_multiple_objects():
