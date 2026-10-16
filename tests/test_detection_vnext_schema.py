@@ -1,3 +1,4 @@
+from agents.anthropic_adapter import discard_degenerate_evidence_regions
 from agents.schemas.detection_schema import validate_detection_result
 
 
@@ -24,3 +25,25 @@ def test_v4_schema_accepts_evidence_regions_and_ui_only_preview_bbox():
     })
 
     assert result["detected_objects"][0]["evidence_page_refs"][0]["regions"]
+
+
+def test_degenerate_evidence_regions_are_dropped_but_the_page_is_preserved():
+    result = {
+        "detected_objects": [{
+            "evidence_page_refs": [{
+                "page_number": 3,
+                "source_label": "Detail",
+                "regions": [
+                    {"top_left_x": 20, "top_left_y": 10, "bottom_right_x": 20, "bottom_right_y": 50},
+                ],
+                "presentation_preview_bbox": {"top_left_x": 5, "top_left_y": 5, "bottom_right_x": 5, "bottom_right_y": 30},
+            }],
+        }],
+    }
+
+    normalized = discard_degenerate_evidence_regions(result)
+    ref = normalized["detected_objects"][0]["evidence_page_refs"][0]
+
+    assert ref["page_number"] == 3
+    assert ref["regions"] == []
+    assert "presentation_preview_bbox" not in ref

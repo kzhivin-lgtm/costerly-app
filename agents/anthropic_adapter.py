@@ -590,6 +590,51 @@ def normalize_detection_identity_fields(
     return result
 
 
+def discard_degenerate_evidence_regions(result: dict[str, Any]) -> dict[str, Any]:
+    """Keep full-page evidence when the model returns a zero-area retrieval box.
+
+    Evidence regions are optional retrieval aids. A cited page remains valid and
+    useful to Estimation without one, while a zero-area region can never be
+    inspected. Do not conceal malformed coordinates here: strict validation
+    continues to reject non-numeric, negative, missing, or extra coordinates.
+    """
+    objects = result.get("detected_objects")
+    if not isinstance(objects, list):
+        return result
+
+    bbox_keys = {
+        "top_left_x", "top_left_y", "bottom_right_x", "bottom_right_y",
+    }
+
+    def is_degenerate_bbox(value: Any) -> bool:
+        if not isinstance(value, dict) or set(value) != bbox_keys:
+            return False
+        if any(
+            not isinstance(value[key], (int, float)) or value[key] < 0
+            for key in bbox_keys
+        ):
+            return False
+        return (
+            value["bottom_right_x"] <= value["top_left_x"]
+            or value["bottom_right_y"] <= value["top_left_y"]
+        )
+
+    for detected_object in objects:
+        if not isinstance(detected_object, dict):
+            continue
+        for page_ref in detected_object.get("evidence_page_refs") or []:
+            if not isinstance(page_ref, dict):
+                continue
+            regions = page_ref.get("regions")
+            if isinstance(regions, list):
+                page_ref["regions"] = [
+                    region for region in regions if not is_degenerate_bbox(region)
+                ]
+            if is_degenerate_bbox(page_ref.get("presentation_preview_bbox")):
+                page_ref.pop("presentation_preview_bbox", None)
+    return result
+
+
 def apply_benchmark_run_suffix(result: dict[str, Any]) -> dict[str, Any]:
     """Isolate parallel benchmark persistence without changing the Claude request."""
     suffix = str(os.getenv("BENCHMARK_RUN_SUFFIX", "") or "").strip()
@@ -835,6 +880,7 @@ def run_anthropic_detection_agent(
         company_id=company_id,
         file_name=file_name,
     )
+    result = discard_degenerate_evidence_regions(result)
     result = apply_benchmark_run_suffix(result)
     validated = validate_detection_result(result)
     response_usage = getattr(response, "usage", None)
