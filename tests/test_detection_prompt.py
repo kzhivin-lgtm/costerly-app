@@ -26,7 +26,7 @@ def test_detection_v4_prompt_delegates_naming_and_normalizes_project_identity():
     assert "`0` / `unreadable`" in prompt
     assert "detected_materials" not in prompt
     assert "No external dimensions, dimension candidates, nodes, materials, notes, missing information" in prompt
-    assert DETECTION_PROMPT_VERSION == "detection_v4_object_evidence_handoff_v4"
+    assert DETECTION_PROMPT_VERSION == "detection_v4_object_evidence_handoff_v5"
 
 
 def test_detection_prompt_vnext_stays_compact():
@@ -71,4 +71,6 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "visual representation map and the locked commercial-object registry in one response" in prompt
     assert "Keep these two levels separate" in prompt
     assert "There is no arbitrary page-count cap" in prompt
+    assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
+    assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt

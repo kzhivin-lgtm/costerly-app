@@ -409,8 +409,12 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "estimation_evidence_pages": [1], "visual_group_ids": ["view_a"],
+            "visual_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
+        }],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001"],
+            "evidence_reason": "cabinet view",
         }],
     }
     requested_budgets = []
@@ -436,7 +440,46 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert requested_budgets == [8192]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
+    assert registry["objects"][0]["estimation_evidence_pages"] == [1]
     assert usage["operation"] == "rfq_detection_visual_registry"
+
+
+def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_page():
+    payload = {
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "left",
+            "visual_description": "one cabinet", "representation_kind": "perspective",
+            "related_group_ids": [],
+        }],
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "visual_group_ids": ["view_a"], "visual_identity": "one cabinet",
+            "boundary_basis": "one complete product",
+        }],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001"],
+            "evidence_reason": "cabinet view",
+        }],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        pytest.raises(RuntimeError, match="account for every uploaded page exactly once"),
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
+        )
 
 
 def test_visual_map_retries_truncated_structured_json_with_larger_budget():

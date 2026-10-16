@@ -38,19 +38,42 @@ from agents.schemas.detection_schema import (
 DEFAULT_CLAUDE_DETECTION_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_AGENT_MODEL = "claude-haiku-4-5-20251001"
 DEFAULT_CLAUDE_FALLBACK_MODEL = "claude-sonnet-4-6"
-DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v4"
+DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v5"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
-DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v1"
+DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v2"
+
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
+    DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
+    "estimation_evidence_pages"
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
+    "estimation_evidence_pages"
+)
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "objects"],
+    "required": ["visual_groups", "objects", "page_coverage"],
     "properties": {
         "visual_groups": DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"],
-        "objects": DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"],
+        "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
+        "page_coverage": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["page_number", "object_ids", "evidence_reason"],
+                "properties": {
+                    "page_number": {"type": "integer", "minimum": 1},
+                    "object_ids": {"type": "array", "items": {"type": "string"}},
+                    "evidence_reason": {"type": "string"},
+                },
+            },
+        },
     },
 }
 
@@ -590,6 +613,55 @@ def run_anthropic_detection_visual_map_agent(*, file_name: str, company_id: str,
     return visual_map, usage
 
 
+def _apply_page_coverage_to_registry(
+    objects: list[dict[str, Any]], page_coverage: object, *, page_count: int,
+) -> list[dict[str, Any]]:
+    """Make Evidence completeness an explicit, auditable page-level contract.
+
+    The model accounts for every uploaded physical page once.  Evidence pages
+    are derived from that account rather than being a separate, lossy list
+    optimised for material calculations.
+    """
+    if (
+        not isinstance(objects, list)
+        or not all(isinstance(item, dict) for item in objects)
+        or not isinstance(page_coverage, list)
+    ):
+        raise ValueError("page coverage and objects must be lists")
+    object_ids = {str(item.get("object_id") or "") for item in objects}
+    coverage_by_page: dict[int, list[str]] = {}
+    for entry in page_coverage:
+        if not isinstance(entry, dict) or set(entry) != {
+            "page_number", "object_ids", "evidence_reason",
+        }:
+            raise ValueError("page coverage fields do not match contract")
+        page_number = entry["page_number"]
+        covered_ids = entry["object_ids"]
+        if (
+            not isinstance(page_number, int)
+            or not 1 <= page_number <= page_count
+            or page_number in coverage_by_page
+            or not isinstance(covered_ids, list)
+            or len(covered_ids) != len(set(covered_ids))
+            or not all(isinstance(object_id, str) and object_id in object_ids for object_id in covered_ids)
+            or not isinstance(entry["evidence_reason"], str)
+            or not entry["evidence_reason"].strip()
+        ):
+            raise ValueError("page coverage is invalid")
+        coverage_by_page[page_number] = covered_ids
+    if set(coverage_by_page) != set(range(1, page_count + 1)):
+        raise ValueError("page coverage must account for every uploaded page exactly once")
+    enriched = copy.deepcopy(objects)
+    for item in enriched:
+        object_id = str(item["object_id"])
+        item["estimation_evidence_pages"] = [
+            page_number
+            for page_number in range(1, page_count + 1)
+            if object_id in coverage_by_page[page_number]
+        ]
+    return enriched
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -611,8 +683,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
     try:
-        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects"}:
-            raise ValueError("visual registry must contain only visual_groups and objects")
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "page_coverage"}:
+            raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -622,7 +694,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
-        registry_payload = copy.deepcopy({"objects": payload["objects"]})
+        registry_objects = _apply_page_coverage_to_registry(
+            payload["objects"], payload["page_coverage"], page_count=len(page_images),
+        )
+        registry_payload = {"objects": registry_objects}
         for item in registry_payload["objects"]:
             item["visual_group_ids"] = [
                 group_id_mapping.get(str(group_id), str(group_id))
@@ -643,6 +718,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
+        "page_coverage_count": len(payload["page_coverage"]),
+        "unassigned_page_count": sum(
+            not entry["object_ids"] for entry in payload["page_coverage"]
+        ),
         "region_count": len(regions),
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",

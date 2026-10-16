@@ -26,7 +26,7 @@ Quantity means complete physical commercial units, never pages, views, labels, d
 
 ## C. Evidence package
 
-Every object must have enough evidence for Estimation to inspect it without receiving this prompt or a Detection narrative. Include every relevant upload page, not just the visually best page. A page may correctly belong to several objects.
+Every object must have enough evidence for Estimation to inspect it without receiving this prompt or a Detection narrative. Include every upload page that contains any visual, graphic, textual, layout, title, schedule, detail, plan, section, alternate view, assembly instruction or other source content related to the object. Evidence is the complete object context, not a shortlist of pages that seem sufficient for a material calculation. A page may correctly belong to several objects.
 
 `evidence_regions` are exact visual/OCR regions worth inspecting on cited pages: object view, code/label, schedule row, key section, or detail. They are not claims about page roles or object extent. Prefer no region to an invented one. Use page references even when no safe region can be drawn.
 

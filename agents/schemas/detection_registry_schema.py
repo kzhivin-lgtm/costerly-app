@@ -27,6 +27,8 @@ def validate_detection_registry(
             raise DetectionRegistrySchemaError("registry pages are invalid")
         if not isinstance(item["estimation_evidence_pages"], list) or not item["estimation_evidence_pages"] or not all(isinstance(page,int) and page > 0 for page in item["estimation_evidence_pages"]):
             raise DetectionRegistrySchemaError("registry estimation evidence pages are invalid")
+        if not set(item["identity_pages"]).issubset(item["estimation_evidence_pages"]):
+            raise DetectionRegistrySchemaError("registry identity pages must be estimation evidence")
         if not isinstance(item["visual_group_ids"], list) or not item["visual_group_ids"] or not all(isinstance(group_id, str) and group_id for group_id in item["visual_group_ids"]):
             raise DetectionRegistrySchemaError("registry visual groups are invalid")
         assigned_visual_groups.extend(item["visual_group_ids"])
