@@ -86,6 +86,10 @@ def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier
         raise RuntimeError("captured evidence packer input")
 
     with (
+        patch(
+            "agents.detection_agent.build_detection_assembly_correspondence_regions",
+            return_value=[],
+        ),
         patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
         patch(
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",

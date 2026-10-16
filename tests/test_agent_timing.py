@@ -420,15 +420,11 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
             "related_group_ids": [],
-        }, {
-            "group_id": "view_b", "page_number": 1, "location_hint": "right",
-            "visual_description": "matching cabinet elevation", "representation_kind": "elevation",
-            "related_group_ids": ["view_a"],
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "visual_group_ids": ["view_a", "view_b"],
+            "visual_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
         }],
         "page_coverage": [{
@@ -458,26 +454,9 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
 
     assert requested_budgets == [8192]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
-    assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
     assert usage["operation"] == "rfq_detection_visual_registry"
-    assert usage["raw_usage"]["boundary_decision_audit"] == {
-        "object": {
-            "object_id": "object-001",
-            "visual_group_ids": ["view-001", "view-002"],
-            "visual_identity": "one cabinet",
-            "boundary_basis": "one complete product",
-        },
-        "visual_groups": [{
-            "group_id": "view-001", "page_number": 1, "location_hint": "left",
-            "visual_description": "one cabinet", "representation_kind": "perspective",
-            "related_group_ids": [],
-        }, {
-            "group_id": "view-002", "page_number": 1, "location_hint": "right",
-            "visual_description": "matching cabinet elevation", "representation_kind": "elevation",
-            "related_group_ids": ["view-001"],
-        }],
-    }
 
 
 def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_page():

@@ -52,6 +52,32 @@ Production acceptance requires one real upload with review of every object ID, q
 `Adda.pdf`, run `run_590733e409c44ed990b5636f685cd69f`, used the integrated
 Visual Registry V4 but incorrectly merged two visually separate, unlabelled
 complete assemblies into one commercial object. This is neither a Naming nor
-an Evidence defect. The next experiment makes physical-assembly candidates and
-positive merge evidence auditable inside the existing registry call. It does
-not rely on OCR labels and does not add a model call.
+an Evidence defect.
+
+## Active boundary experiment, not a checkpoint
+
+The owner approved a replacement for the rejected in-registry island and
+post-hoc reviewer experiments. Before Registry, a conditional correspondence
+stage receives only isolated large drawing crops and physical page numbers. It
+does not receive the file name, OCR, project metadata, room titles or title
+block. It partitions the cropped representations into candidate physical
+assemblies using positive cross-view visual correspondence.
+
+When two or more crops exist and all of them fit in one request, the Registry
+must map each resulting assembly candidate to exactly one commercial object.
+It cannot merge two candidates. When the crop set would exceed the request
+image ceiling, Detection keeps the accepted V4 path rather than silently
+truncating a physical partition. This experiment adds one conditional Sonnet
+call and does not alter the V4 Estimation handoff.
+
+The result remains unverified until live benchmarks show all of the following:
+
+- Adda produces the two separate assemblies, each with all four relevant
+  pages.
+- `page-23.pdf` retains three objects, including one TV console across its
+  repeated views.
+- Kitchen remains one object with all 39 related pages.
+- Metal retains accepted object-boundary and source-code behavior.
+
+If the isolated correspondence stage produces a false partition or regresses a
+protected benchmark, revert only this experiment to `e8480a1` behavior.

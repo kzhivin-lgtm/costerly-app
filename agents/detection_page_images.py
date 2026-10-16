@@ -8,6 +8,7 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from io import BytesIO
 from typing import Any
 
 
@@ -19,6 +20,17 @@ ANTHROPIC_MAX_IMAGES_PER_REQUEST = 100
 ANTHROPIC_MULTI_IMAGE_MAX_DIMENSION = 2_000
 REGISTRY_MAX_IMAGES = 100
 REGISTRY_REGIONS_PER_PAGE = 3
+ASSEMBLY_CORRESPONDENCE_MAX_IMAGES = 100
+ASSEMBLY_CANDIDATE_GRID_SIZE = (280, 198)
+ASSEMBLY_CANDIDATE_INK_THRESHOLD = 220
+ASSEMBLY_CANDIDATE_MIN_GRID_VALUE = 4
+ASSEMBLY_CANDIDATE_MIN_CELLS = 120
+ASSEMBLY_CANDIDATE_MIN_WIDTH = 0.20
+ASSEMBLY_CANDIDATE_MIN_HEIGHT = 0.16
+ASSEMBLY_CANDIDATE_MIN_AREA = 0.04
+# Exclude sheet margins and the conventional lower title-block strip. These
+# are attention targets, never Detection object boundaries.
+ASSEMBLY_CANDIDATE_PAGE_BOUNDS = (0.05, 0.08, 0.95, 0.80)
 
 
 def estimated_inline_pdf_bytes(file_bytes: bytes) -> int:
@@ -142,6 +154,125 @@ def render_detection_pdf_pages(
     }
 
 
+def build_detection_spatial_candidates(page_images: list[bytes]) -> list[dict[str, Any]]:
+    """Find large disconnected drawing clusters without assigning semantics."""
+    if not page_images:
+        return []
+    from PIL import Image, ImageFilter
+
+    grid_width, grid_height = ASSEMBLY_CANDIDATE_GRID_SIZE
+    page_left, page_top, page_right, page_bottom = ASSEMBLY_CANDIDATE_PAGE_BOUNDS
+    candidates: list[dict[str, Any]] = []
+    for page_number, page_bytes in enumerate(page_images, start=1):
+        with Image.open(BytesIO(page_bytes)) as image:
+            grayscale = image.convert("L")
+            source_width, source_height = grayscale.size
+            crop_left = int(source_width * page_left)
+            crop_top = int(source_height * page_top)
+            crop_right = int(source_width * page_right)
+            crop_bottom = int(source_height * page_bottom)
+            cropped = grayscale.crop((crop_left, crop_top, crop_right, crop_bottom))
+            ink = cropped.point(
+                lambda value: 255 if value < ASSEMBLY_CANDIDATE_INK_THRESHOLD else 0
+            )
+            coarse = (
+                ink.resize((grid_width, grid_height), Image.Resampling.BOX)
+                .point(lambda value: 255 if value >= ASSEMBLY_CANDIDATE_MIN_GRID_VALUE else 0)
+                .filter(ImageFilter.MaxFilter(3))
+            )
+
+        pixels = coarse.tobytes()
+        visited = bytearray(len(pixels))
+        component_index = 0
+        for start_index, value in enumerate(pixels):
+            if not value or visited[start_index]:
+                continue
+            queue = [start_index]
+            visited[start_index] = 1
+            x_values: list[int] = []
+            y_values: list[int] = []
+            for current_index in queue:
+                x = current_index % grid_width
+                y = current_index // grid_width
+                x_values.append(x)
+                y_values.append(y)
+                for next_x, next_y in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if not (0 <= next_x < grid_width and 0 <= next_y < grid_height):
+                        continue
+                    next_index = next_y * grid_width + next_x
+                    if pixels[next_index] and not visited[next_index]:
+                        visited[next_index] = 1
+                        queue.append(next_index)
+
+            cell_count = len(queue)
+            min_x, max_x = min(x_values), max(x_values)
+            min_y, max_y = min(y_values), max(y_values)
+            width = (max_x - min_x + 1) / grid_width
+            height = (max_y - min_y + 1) / grid_height
+            if (
+                cell_count < ASSEMBLY_CANDIDATE_MIN_CELLS
+                or width < ASSEMBLY_CANDIDATE_MIN_WIDTH
+                or height < ASSEMBLY_CANDIDATE_MIN_HEIGHT
+                or width * height < ASSEMBLY_CANDIDATE_MIN_AREA
+            ):
+                continue
+            component_index += 1
+            candidates.append({
+                "page_number": page_number,
+                "bbox": {
+                    "left": round((crop_left + min_x / grid_width * (crop_right - crop_left)) / source_width, 4),
+                    "top": round((crop_top + min_y / grid_height * (crop_bottom - crop_top)) / source_height, 4),
+                    "right": round((crop_left + (max_x + 1) / grid_width * (crop_right - crop_left)) / source_width, 4),
+                    "bottom": round((crop_top + (max_y + 1) / grid_height * (crop_bottom - crop_top)) / source_height, 4),
+                },
+                "ink_cell_count": cell_count,
+            })
+    return candidates
+
+
+def build_detection_assembly_correspondence_regions(
+    page_images: list[bytes],
+    *,
+    max_images: int = ASSEMBLY_CORRESPONDENCE_MAX_IMAGES,
+) -> list[dict[str, Any]]:
+    """Return all usable isolated representations for one correspondence pass.
+
+    A page with one drawing cluster cannot distinguish a split boundary. More
+    than the provider's image ceiling is intentionally left on the accepted
+    path rather than truncating an incomplete physical partition.
+    """
+    candidates = build_detection_spatial_candidates(page_images)
+    if len(candidates) < 2 or len(candidates) > max_images:
+        return []
+    from PIL import Image
+
+    regions: list[dict[str, Any]] = []
+    for index, candidate in enumerate(candidates, start=1):
+        page_number = candidate["page_number"]
+        bbox = candidate["bbox"]
+        with Image.open(BytesIO(page_images[page_number - 1])) as image:
+            width, height = image.size
+            padding = 0.025
+            left = max(0.0, float(bbox["left"]) - padding)
+            top = max(0.0, float(bbox["top"]) - padding)
+            right = min(1.0, float(bbox["right"]) + padding)
+            bottom = min(1.0, float(bbox["bottom"]) + padding)
+            crop = image.crop((
+                int(width * left), int(height * top),
+                max(int(width * right), int(width * left) + 1),
+                max(int(height * bottom), int(height * top) + 1),
+            ))
+            output = BytesIO()
+            crop.save(output, format="JPEG", quality=85)
+        regions.append({
+            "representation_id": f"representation-{index:03d}",
+            "page_number": page_number,
+            "bbox": bbox,
+            "bytes": output.getvalue(),
+        })
+    return regions
+
+
 def build_detection_registry_regions(
     page_images: list[bytes],
     *,
@@ -151,7 +282,6 @@ def build_detection_registry_regions(
     if not page_images:
         return []
     from PIL import Image
-    from io import BytesIO
 
     regions: list[dict[str, Any]] = []
     available_regions = max(0, max_images - len(page_images))

@@ -4,11 +4,17 @@ import re
 
 from agents.anthropic_adapter import (
     run_anthropic_detection_agent_with_fallback,
+    run_anthropic_detection_assembly_correspondence_agent,
     run_anthropic_detection_visual_registry_agent,
 )
-from agents.detection_page_images import build_detection_registry_regions, render_detection_pdf_pages
+from agents.detection_page_images import (
+    build_detection_assembly_correspondence_regions,
+    build_detection_registry_regions,
+    render_detection_pdf_pages,
+)
 from agents.prompt_loader import (
     load_detection_agent_prompt,
+    load_detection_assembly_correspondence_prompt,
     load_detection_visual_registry_prompt,
 )
 from agents.schemas.detection_schema import validate_detection_result
@@ -196,6 +202,7 @@ def run_detection_agent(
     # Fail loudly if the prompt file is missing or empty.
     _prompt = load_detection_agent_prompt()
     _visual_registry_prompt = load_detection_visual_registry_prompt()
+    _assembly_correspondence_prompt = load_detection_assembly_correspondence_prompt()
 
     if file_bytes is None:
         raise ValueError("Detection Agent requires uploaded file bytes.")
@@ -207,11 +214,24 @@ def run_detection_agent(
         registry_images = [file_bytes]
     if not registry_images:
         raise ValueError("Detection registry requires rendered PDF pages.")
+    correspondence_regions = build_detection_assembly_correspondence_regions(registry_images)
+    assembly_correspondence = None
+    assembly_correspondence_usage = None
+    if correspondence_regions:
+        assembly_correspondence, assembly_correspondence_usage = (
+            run_anthropic_detection_assembly_correspondence_agent(
+                file_name=file_name,
+                company_id=company_id,
+                representations=correspondence_regions,
+                model=None,
+            )
+        )
     regions = build_detection_registry_regions(registry_images)
     _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
         file_name=file_name, company_id=company_id, file_bytes=file_bytes,
         page_images=registry_images, regions=regions,
         ocr_package=ocr_package, model=model,
+        assembly_correspondence=assembly_correspondence,
     )
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
@@ -236,5 +256,13 @@ def run_detection_agent(
     result = _merge_registry_evidence(result, registry)
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)
-    validated["_agent_usage_events"] = [event for event in (visual_registry_usage, usage_event) if event]
+    validated["_agent_usage_events"] = [
+        event
+        for event in (
+            assembly_correspondence_usage,
+            visual_registry_usage,
+            usage_event,
+        )
+        if event
+    ]
     return validated
