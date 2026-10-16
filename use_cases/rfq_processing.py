@@ -770,6 +770,22 @@ def _latest_runtime_timings(usage_df: pd.DataFrame) -> dict[str, float] | None:
     }
 
 
+class FileReviewNameConflict(RuntimeError):
+    """A stale File Review card attempted to replace a newer object name."""
+
+    def __init__(self, current_name: str) -> None:
+        self.current_name = current_name
+        super().__init__("Object name changed while File Review was open.")
+
+
+def _current_object_name(client: Any, *, run_id: str, object_id: str) -> str:
+    """Read the authoritative name after a failed compare-and-set update."""
+    for row in fetch_rfq_detected_object_names(client, run_id):
+        if str(row.get("object_id") or "") == object_id:
+            return str(row.get("object_name") or "")
+    return ""
+
+
 def apply_file_review_edits(
     *,
     run_id: str,
@@ -789,12 +805,27 @@ def apply_file_review_edits(
         if edit.get("ignored"):
             ignored_object_ids.add(str(object_id))
 
-        values: dict[str, Any] = {}
         object_name = str(edit.get("name") or "").strip()
         quantity = _parse_quantity(edit.get("quantity"))
 
-        if object_name:
-            values["object_name"] = object_name
+        # Name commits happen immediately in File Review. Continue is only a
+        # guarded fallback: it may save a still-pending manual edit, but it
+        # must never let a stale placeholder overwrite deferred Naming.
+        if object_name and "expected_name" not in edit:
+            raise RuntimeError("File Review name edit is missing its observed value.")
+        if object_name and object_name != str(edit.get("expected_name") or "").strip():
+            if not update_rfq_detected_object_name_if_unchanged(
+                client,
+                run_id=run_id,
+                object_id=str(object_id),
+                expected_name=str(edit.get("expected_name") or "").strip(),
+                object_name=object_name,
+            ):
+                raise FileReviewNameConflict(
+                    _current_object_name(client, run_id=run_id, object_id=str(object_id)),
+                )
+
+        values: dict[str, Any] = {}
         if quantity is not None:
             values["quantity"] = quantity
 
@@ -856,8 +887,14 @@ def save_file_review_object_name(
     run_id: str,
     object_id: str,
     object_name: str,
+    expected_name: str | None = None,
 ) -> str:
-    """Persist one File Review name immediately after the user commits it."""
+    """Persist one File Review name without replacing a newer result.
+
+    The optional legacy path is retained for non-File-Review callers created
+    before compare-and-set support. Current File Review always supplies its
+    observed value and therefore uses the guarded path below.
+    """
     normalized_name = str(object_name or "").strip()
     if not normalized_name:
         raise ValueError("Object name cannot be empty.")
@@ -866,12 +903,25 @@ def save_file_review_object_name(
     from state.company_auth import company_auth_enabled
     if company_auth_enabled():
         assert_run_owned(client, str(run_id), get_company_id())
-    update_rfq_detected_object(
+    if expected_name is None:
+        update_rfq_detected_object(
+            client,
+            run_id=str(run_id),
+            object_id=str(object_id),
+            values={"object_name": normalized_name},
+        )
+        return normalized_name
+
+    if not update_rfq_detected_object_name_if_unchanged(
         client,
         run_id=str(run_id),
         object_id=str(object_id),
-        values={"object_name": normalized_name},
-    )
+        expected_name=str(expected_name or "").strip(),
+        object_name=normalized_name,
+    ):
+        raise FileReviewNameConflict(
+            _current_object_name(client, run_id=str(run_id), object_id=str(object_id)),
+        )
     return normalized_name
 
 

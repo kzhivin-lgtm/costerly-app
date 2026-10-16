@@ -345,7 +345,6 @@ def run_estimation_v3_material_facts_agent(
     selected_model = model or get_secret("CLAUDE_ESTIMATION_V3_PAGE_MODEL", DEFAULT_CLAUDE_AGENT_MODEL)
     targets = [{
         "id": row["input_payload"]["object"]["object_id"],
-        "name": row["input_payload"]["object"]["object_name"],
         "quantity": row["input_payload"]["object"].get("quantity") or 1,
         "evidence": {
             "pages": row["input_payload"].get("object", {}).get("evidence_pages", []),

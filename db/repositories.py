@@ -472,7 +472,7 @@ def update_rfq_detected_object_name_if_unchanged(
     expected_name: str,
     object_name: str,
 ) -> bool:
-    """Apply deferred Naming only while the provisional name is unchanged."""
+    """Apply a name only while the caller's observed value is still current."""
     response = (
         client.table("rfq_detected_objects")
         .update({"object_name": object_name})

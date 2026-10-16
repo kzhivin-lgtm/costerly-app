@@ -23,6 +23,7 @@ from use_cases.estimation_progress import set_object_progress
 from use_cases.estimation_runtime import submit_estimation_job
 from use_cases.latest_estimate import load_latest_estimate_route_for_run
 from use_cases.rfq_processing import (
+    FileReviewNameConflict,
     load_file_review_data,
     load_file_review_naming_publication,
     load_file_review_preview_publication,
@@ -89,6 +90,7 @@ def _default_object_edit(item: dict[str, object]) -> dict[str, object]:
     """Build the editable state shape for one detected object."""
     return {
         "name": item.get("name") or "",
+        "expected_name": item.get("name") or "",
         "quantity": item.get("quantity") or "1",
         "ignored": False,
     }
@@ -164,6 +166,7 @@ def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
     edits = st.session_state.setdefault("file_review_object_edits", {})
     edit = edits.setdefault(object_id, {})
     previous_name = str(edit.get("name") or "")
+    expected_name = str(edit.get("expected_name") or previous_name)
     submitted_name = str(st.session_state.get(widget_key) or "").strip()
 
     # A Streamlit widget can briefly report an empty value while its previous
@@ -180,12 +183,29 @@ def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
             run_id=run_id,
             object_id=object_id,
             object_name=submitted_name,
+            expected_name=expected_name,
+        )
+    except FileReviewNameConflict as exc:
+        latest_name = str(exc.current_name or previous_name)
+        edit["name"] = latest_name
+        edit["expected_name"] = latest_name
+        st.session_state[widget_key] = latest_name
+        cache = st.session_state.setdefault("file_review_data_cache", {})
+        data = cache.get(run_id)
+        if isinstance(data, dict):
+            for item in data.get("objects") or []:
+                if _object_id(item) == object_id:
+                    item["name"] = latest_name
+                    break
+        st.session_state.file_review_name_save_error = (
+            "Name changed while this card was open. The latest saved name was retained."
         )
     except Exception as exc:
         st.session_state[widget_key] = previous_name
         st.session_state.file_review_name_save_error = str(exc)
     else:
         edit["name"] = saved_name
+        edit["expected_name"] = saved_name
         cache = st.session_state.setdefault("file_review_data_cache", {})
         data = cache.get(run_id)
         if isinstance(data, dict):
@@ -467,6 +487,7 @@ def _publish_persisted_naming(
             edit = edits.get(object_id)
             if isinstance(edit, dict) and str(edit.get("name") or "") == initial_name:
                 edit["name"] = new_name
+                edit["expected_name"] = new_name
                 widget_key = f"file_review_object_edits.{object_id}.name"
                 if st.session_state.get(widget_key) == initial_name:
                     st.session_state[widget_key] = new_name
