@@ -26,7 +26,7 @@ def test_detection_v4_prompt_delegates_naming_and_normalizes_project_identity():
     assert "`0` / `unreadable`" in prompt
     assert "detected_materials" not in prompt
     assert "No external dimensions, dimension candidates, nodes, materials, notes, missing information" in prompt
-    assert DETECTION_PROMPT_VERSION == "detection_v4_object_evidence_handoff_v5"
+    assert DETECTION_PROMPT_VERSION == "detection_v4_object_evidence_handoff_v6"
 
 
 def test_detection_prompt_vnext_stays_compact():
