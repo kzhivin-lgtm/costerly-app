@@ -45,13 +45,10 @@ def test_no_naming_ab_prompt_delegates_user_facing_name_once():
 def test_detection_registry_requires_coverage_of_separate_product_groups():
     prompt = load_detection_registry_prompt()
 
-    assert "separate candidate" in prompt
-    assert "Each independent maximal candidate must map either to one returned object" in prompt
+    assert "Start each spatially separate complete product drawing group" in prompt
+    assert "Before any merge" in prompt
+    assert "Map each candidate to exactly one returned object" in prompt
     assert "vertical shelving unit, a track-supported door system, and a long storage console" in prompt
-    assert "independently drawn complete item has a presumption" in prompt
-    assert "maximal complete product drawing group" in prompt
-    assert "Enlarged regions are inspection aids only" in prompt
-    assert "Resolve nested or overlapping depictions before counting objects" in prompt
-    assert "First consolidate alternate views" in prompt
-    assert "Then apply containment" in prompt
-    assert "never merge or containment evidence" in prompt
+    assert "Different complete envelopes, functions, silhouettes, or construction systems" in prompt
+    assert "maximal complete product drawing group" not in prompt
+    assert "Then apply containment" not in prompt
