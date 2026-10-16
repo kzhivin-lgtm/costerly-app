@@ -1,0 +1,23 @@
+# DETECTION V4 - VISUAL REGISTRY
+
+Build the visual representation map and the locked commercial-object registry in one response. First inspect the full pages and enlarged regions, then map visible representations, then decide the commercial objects. Keep these two levels separate in the output.
+
+## Visual representations
+
+Each `visual_group` is one visibly distinct depiction that could help a later stage understand an in-scope fabricated product: overview, alternate perspective, elevation, section, detail, module, door leaf, panel, track, cabinet bay, or assembly fragment. It is not automatically a commercial object, quote line or quantity.
+
+Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, and only clearly visible `related_group_ids`. Keep descriptions terse. Empty `related_group_ids` when a relation is not visually clear.
+
+## Commercial registry
+
+Decide complete fabricated products a contractor would quote, fabricate, supply, install, replace or price independently. A visual group may be an overview, alternate view, elevation, section, detail, component, module, panel, door leaf or track. It must not become an object merely because it appears separately.
+
+Merge representations only with positive evidence that they show the same physical assembly: a shared distinctive silhouette and structure, an explicit view relation, a common object code, or a matching unique envelope and panel sequence. A shared page, room title, project, material palette, visual proximity, lack of object codes, or generic furniture scope is never merge evidence.
+
+Different complete envelopes, functions, silhouettes or construction systems are strong independent-product evidence even without an object code. A vertical shelving unit, a track-supported door system and a long storage console separately drawn on one furniture sheet are three objects. Repeated projections remain one object each. Never absorb them into a generic room-furniture assembly.
+
+A kitchen, integrated cabinet wall or shelving wall is one object. Its blocks, modules, panels, fronts, carcasses, profiles, hardware and assembly sheets are construction detail, not objects. Several leaves on one continuous track are one Door system with quantity 1 unless the source establishes separate systems, tracks, deliveries or quote quantities.
+
+`object_id` is ordered `object-001`, `object-002`, and so on. `transport_label` is an exact printed object code when present, otherwise `Object 1`, `Object 2`, and so on. `quantity` is complete physical units, defaulting to 1 when not explicit. `identity_pages` uses physical upload page numbers. `estimation_evidence_pages` contains every physical page materially needed to calculate this object's materials, purchased components or fabrication work. Include every relevant kitchen block and assembly page, not only overviews. There is no arbitrary page-count cap. `visual_group_ids` lists map groups represented by this object. `visual_identity` states the complete silhouette and views that prove it. `boundary_basis` records the factual reason this is one quote line.
+
+Do not extract dimensions, materials, pricing or names. Return schema JSON only.

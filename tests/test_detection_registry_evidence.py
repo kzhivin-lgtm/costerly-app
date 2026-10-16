@@ -1,6 +1,10 @@
+import pytest
+from unittest.mock import patch
+
 from agents.detection_agent import (
     _enforce_shared_track_door_system_quantity,
     _merge_registry_evidence,
+    run_detection_agent,
 )
 
 
@@ -58,7 +62,6 @@ def test_registry_resolves_shared_track_leaves_to_one_commercial_door_system():
         "visual_identity": "Two sliding door leaves on an overhead track",
         "boundary_basis": "One continuous track forms one commercial door system",
         "identity_pages": [1],
-        "dossier_pages": [1],
         "estimation_evidence_pages": [1],
     }]}
 
@@ -66,3 +69,38 @@ def test_registry_resolves_shared_track_leaves_to_one_commercial_door_system():
 
     assert resolved["objects"][0]["quantity"] == 1
     assert resolved["objects"][0]["quantity_explicit"] is False
+
+
+def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier_cap():
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1, 2, 3, 4, 5],
+        "visual_group_ids": ["view-001"], "visual_identity": "one kitchen",
+        "boundary_basis": "one integrated kitchen package",
+    }]}
+    captured: dict = {}
+
+    def stop_after_capture(**kwargs):
+        captured.update(kwargs)
+        raise RuntimeError("captured evidence packer input")
+
+    with (
+        patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
+            return_value=({"visual_groups": []}, registry, {"event": "visual_registry"}),
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
+            side_effect=stop_after_capture,
+        ),
+        pytest.raises(RuntimeError, match="captured evidence packer input"),
+    ):
+        run_detection_agent(
+            file_name="kitchen.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"one", b"two", b"three", b"four", b"five"],
+        )
+
+    assert captured["page_image_numbers"] == [1, 2, 3, 4, 5]
+    assert captured["page_images"] == [b"one", b"two", b"three", b"four", b"five"]

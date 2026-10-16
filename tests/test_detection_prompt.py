@@ -7,6 +7,7 @@ from agents.prompt_loader import (
     load_detection_agent_without_naming_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
+    load_detection_visual_registry_prompt,
 )
 
 
@@ -62,3 +63,12 @@ def test_detection_visual_map_never_decides_objects_or_quantity():
     assert "Do not decide whether any depiction is an independent product" in prompt
     assert "Do not infer quantity" in prompt
     assert "cannot create, split, merge, name, count" in prompt
+
+
+def test_integrated_visual_registry_keeps_visual_representations_and_commercial_objects_distinct():
+    prompt = load_detection_visual_registry_prompt()
+
+    assert "visual representation map and the locked commercial-object registry in one response" in prompt
+    assert "Keep these two levels separate" in prompt
+    assert "There is no arbitrary page-count cap" in prompt
+    assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt

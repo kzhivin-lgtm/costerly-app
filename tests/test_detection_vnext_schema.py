@@ -68,7 +68,7 @@ def test_visual_map_and_registry_keep_representation_identity_separate():
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "dossier_pages": [1], "estimation_evidence_pages": [1],
+            "estimation_evidence_pages": [1],
             "visual_group_ids": ["view-001", "view-002"],
             "visual_identity": "one long storage console shown twice",
             "boundary_basis": "matching full-page structure and panel sequence",
@@ -102,8 +102,8 @@ def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
 def test_registry_rejects_visual_group_assigned_to_multiple_objects():
     registry = {
         "objects": [
-            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "dossier_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "first", "boundary_basis": "first"},
-            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "dossier_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "second", "boundary_basis": "second"},
+            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "first", "boundary_basis": "first"},
+            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "second", "boundary_basis": "second"},
         ],
     }
 
@@ -120,7 +120,7 @@ def test_registry_allows_unassigned_navigation_only_visual_groups():
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "dossier_pages": [1], "estimation_evidence_pages": [1],
+            "estimation_evidence_pages": [1],
             "visual_group_ids": ["view-001"], "visual_identity": "cabinet",
             "boundary_basis": "one complete product",
         }],

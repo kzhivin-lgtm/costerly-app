@@ -21,6 +21,7 @@ from agents.prompt_loader import (
     load_detection_agent_without_naming_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
+    load_detection_visual_registry_prompt,
 )
 from agents.schemas.detection_registry_schema import DETECTION_REGISTRY_JSON_SCHEMA, validate_detection_registry
 from agents.schemas.detection_visual_map_schema import (
@@ -41,6 +42,17 @@ DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v4"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
+DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v1"
+
+DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["visual_groups", "objects"],
+    "properties": {
+        "visual_groups": DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"],
+        "objects": DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"],
+    },
+}
 
 _STREAMLIT_SECRET_CACHE: dict[str, str] = {}
 _STREAMLIT_SECRET_CACHE_LOCK = Lock()
@@ -576,6 +588,67 @@ def run_anthropic_detection_visual_map_agent(*, file_name: str, company_id: str,
     diagnostics.update({"visual_group_count": len(visual_map["visual_groups"]), "region_count": len(regions), "page_count": len(page_images), "attempt_label": "visual_map_regions"})
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_map",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_VISUAL_MAP_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, usage
+
+
+def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Lock commercial objects while preserving the visual map in one full-document call."""
+    selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
+    prompt = load_detection_visual_registry_prompt()
+    user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
+    schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
+    content = build_detection_registry_content_blocks(
+        file_name=file_name, file_bytes=file_bytes, user_text=user_text,
+        page_images=page_images, regions=regions,
+    )
+    response, diagnostics = create_claude_message_streamed(
+        get_anthropic_client(), model=selected_model, max_tokens=8192,
+        system=build_detection_system_content(prompt=prompt),
+        messages=[{"role": "user", "content": content}],
+        output_config={"format": {"type": "json_schema", "schema": schema}},
+    )
+    try:
+        payload = json.loads(extract_text_from_claude_response(response))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
+    try:
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects"}:
+            raise ValueError("visual registry must contain only visual_groups and objects")
+        raw_groups = payload["visual_groups"]
+        raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
+        visual_map = validate_detection_visual_map(
+            normalize_detection_visual_map_group_ids({"visual_groups": raw_groups})
+        )
+        group_id_mapping = {
+            raw_group_id: normalized["group_id"]
+            for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
+        }
+        registry_payload = copy.deepcopy({"objects": payload["objects"]})
+        for item in registry_payload["objects"]:
+            item["visual_group_ids"] = [
+                group_id_mapping.get(str(group_id), str(group_id))
+                for group_id in item["visual_group_ids"]
+            ]
+        registry = validate_detection_registry(
+            registry_payload,
+            visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
+        )
+    except (KeyError, ValueError) as exc:
+        raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
+    assigned_visual_group_ids = {
+        group_id
+        for item in registry["objects"]
+        for group_id in item["visual_group_ids"]
+    }
+    diagnostics.update({
+        "visual_group_count": len(visual_map["visual_groups"]),
+        "registry_object_count": len(registry["objects"]),
+        "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
+        "region_count": len(regions),
+        "page_count": len(page_images),
+        "attempt_label": "visual_registry_integrated",
+    })
+    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    return visual_map, registry, usage
 
 
 def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], visual_map: dict[str, Any], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
