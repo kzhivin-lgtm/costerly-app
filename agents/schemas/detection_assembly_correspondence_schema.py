@@ -42,6 +42,31 @@ class DetectionAssemblyCorrespondenceSchemaError(ValueError):
     pass
 
 
+def normalize_detection_assembly_candidate_ids(result: dict[str, Any]) -> dict[str, Any]:
+    """Canonicalize provider candidate IDs before validating their partition.
+
+    Candidate IDs are internal join keys. The physical partition is expressed
+    by the member representation IDs, so a provider's harmless label variance
+    must not reject an otherwise complete correspondence result.
+    """
+    if not isinstance(result, dict) or not isinstance(result.get("assembly_candidates"), list):
+        return result
+    candidates = result["assembly_candidates"]
+    raw_ids: list[str] = []
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            return result
+        candidate_id = str(candidate.get("candidate_id") or "").strip()
+        if not candidate_id:
+            return result
+        raw_ids.append(candidate_id)
+    if len(raw_ids) != len(set(raw_ids)):
+        return result
+    for index, candidate in enumerate(candidates, start=1):
+        candidate["candidate_id"] = f"assembly-{index:03d}"
+    return result
+
+
 def validate_detection_assembly_correspondence(
     result: dict[str, Any],
     *,

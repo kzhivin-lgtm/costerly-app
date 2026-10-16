@@ -14,6 +14,7 @@ from agents.detection_page_images import build_detection_assembly_correspondence
 from agents.detection_agent import run_detection_agent
 from agents.schemas.detection_assembly_correspondence_schema import (
     DetectionAssemblyCorrespondenceSchemaError,
+    normalize_detection_assembly_candidate_ids,
     validate_detection_assembly_correspondence,
 )
 
@@ -83,6 +84,23 @@ def test_correspondence_schema_requires_an_exhaustive_non_overlapping_partition(
                 "representation-004",
             },
         )
+
+
+def test_correspondence_normalizes_provider_candidate_labels_without_changing_partition():
+    payload = _assembly_payload()
+    payload["assembly_candidates"][0]["candidate_id"] = "left_assembly"
+    payload["assembly_candidates"][1]["candidate_id"] = "tall_unit"
+
+    normalized = normalize_detection_assembly_candidate_ids(payload)
+
+    assert [item["candidate_id"] for item in normalized["assembly_candidates"]] == [
+        "assembly-001",
+        "assembly-002",
+    ]
+    assert normalized["assembly_candidates"][0]["representation_ids"] == [
+        "representation-001",
+        "representation-003",
+    ]
 
 
 def test_correspondence_input_is_crop_only_and_omits_file_and_ocr_context():

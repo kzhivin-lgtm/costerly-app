@@ -27,6 +27,7 @@ from agents.prompt_loader import (
 )
 from agents.schemas.detection_assembly_correspondence_schema import (
     DETECTION_ASSEMBLY_CORRESPONDENCE_JSON_SCHEMA,
+    normalize_detection_assembly_candidate_ids,
     validate_detection_assembly_correspondence,
 )
 from agents.schemas.detection_registry_schema import DETECTION_REGISTRY_JSON_SCHEMA, validate_detection_registry
@@ -691,7 +692,7 @@ def run_anthropic_detection_assembly_correspondence_agent(
             ) from exc
     try:
         correspondence = validate_detection_assembly_correspondence(
-            payload,
+            normalize_detection_assembly_candidate_ids(payload),
             representation_ids={item["representation_id"] for item in manifest},
         )
     except ValueError as exc:
