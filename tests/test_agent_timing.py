@@ -17,11 +17,13 @@ from agents.anthropic_adapter import (
     create_claude_message,
     create_claude_message_streamed,
     normalize_detection_identity_fields,
+    run_anthropic_detection_assembly_island_review_agent,
     run_anthropic_detection_registry_agent,
     run_anthropic_detection_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response
+from agents.detection_agent import build_complete_assembly_island_review_signal
 from ui.processing_stage import processing_stage_html
 from ui.js_guards import (
     install_company_logo_picker_guard,
@@ -542,6 +544,72 @@ def test_integrated_visual_registry_rejects_an_unassigned_complete_assembly_isla
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
+
+
+def test_complete_assembly_island_signal_requires_one_object_and_same_page_islands():
+    visual_map = {"visual_groups": [
+        {"group_id": "view-001", "page_number": 1},
+        {"group_id": "view-002", "page_number": 1},
+    ]}
+    usage = {"raw_usage": {"complete_assembly_island_audit": [
+        {"island_id": "island-001", "visual_group_id": "view-001"},
+        {"island_id": "island-002", "visual_group_id": "view-002"},
+    ]}}
+
+    assert build_complete_assembly_island_review_signal(
+        visual_map, {"objects": [{"object_id": "object-001"}]}, usage,
+    )["triggered"] is True
+    assert build_complete_assembly_island_review_signal(
+        visual_map,
+        {"objects": [{"object_id": "object-001"}, {"object_id": "object-002"}]},
+        usage,
+    )["triggered"] is False
+
+
+def test_assembly_island_review_uses_sonnet_without_primary_registry():
+    visual_map = {"visual_groups": [{
+        "group_id": "view-001", "page_number": 1, "location_hint": "left",
+        "visual_description": "one cabinet", "representation_kind": "perspective",
+        "related_group_ids": [],
+    }]}
+    island_audit = [{
+        "island_id": "island-001", "visual_group_id": "view-001",
+        "completion_basis": "one bounded complete cabinet depiction",
+    }]
+    payload = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "visual_group_ids": ["view-001"], "visual_identity": "cabinet",
+            "boundary_basis": "one complete cabinet",
+        }],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001"], "evidence_reason": "cabinet view",
+        }],
+    }
+    requested_models = []
+
+    def fake_create(*_args, model, **_kwargs):
+        requested_models.append(model)
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        registry, usage = run_anthropic_detection_assembly_island_review_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], visual_map=visual_map,
+            complete_assembly_island_audit=island_audit, ocr_package=None,
+        )
+
+    assert requested_models == ["claude-sonnet-4-6"]
+    assert registry["objects"][0]["estimation_evidence_pages"] == [1]
+    assert usage["operation"] == "rfq_detection_assembly_island_review"
 
 
 def test_visual_map_retries_truncated_structured_json_with_larger_budget():

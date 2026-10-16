@@ -4,6 +4,7 @@ from agents.anthropic_adapter import (
 )
 from agents.prompt_loader import (
     load_detection_agent_prompt,
+    load_detection_assembly_island_review_prompt,
     load_detection_agent_without_naming_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
@@ -79,3 +80,12 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "A page with two separated complete-assembly islands must therefore produce two island rows" in prompt
     assert "Treat every island as an independent-product candidate, even when it appears only once" in prompt
     assert "Never invent an integrated system, continuous structure, shared mounting" in prompt
+
+
+def test_conditional_assembly_island_review_is_independent_and_boundary_only():
+    prompt = load_detection_assembly_island_review_prompt()
+
+    assert "independent boundary reviewer" in prompt
+    assert "candidate-island list is a navigation aid" in prompt
+    assert "Do not name products, extract dimensions or materials, estimate" in prompt
+    assert "Never invent any such relation" in prompt

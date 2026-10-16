@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import re
+import time
 
 from agents.anthropic_adapter import (
+    DETECTION_ASSEMBLY_ISLAND_REVIEW_PROMPT_VERSION,
     run_anthropic_detection_agent_with_fallback,
+    run_anthropic_detection_assembly_island_review_agent,
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.detection_page_images import build_detection_registry_regions, render_detection_pdf_pages
@@ -43,6 +47,88 @@ def _enforce_shared_track_door_system_quantity(registry: dict) -> dict:
             item["quantity"] = 1
             item["quantity_explicit"] = False
     return registry
+
+
+def build_complete_assembly_island_review_signal(
+    visual_map: dict,
+    registry: dict,
+    visual_registry_usage: dict,
+) -> dict:
+    """Find a same-page complete-assembly conflict worth independent review."""
+    objects = registry.get("objects") if isinstance(registry, dict) else None
+    audit = (visual_registry_usage.get("raw_usage") or {}).get("complete_assembly_island_audit")
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in (visual_map.get("visual_groups") or [])
+        if isinstance(group, dict)
+    }
+    islands_by_page: dict[int, list[str]] = {}
+    for island in audit if isinstance(audit, list) else []:
+        if not isinstance(island, dict):
+            continue
+        group = groups_by_id.get(str(island.get("visual_group_id") or ""))
+        page_number = group.get("page_number") if isinstance(group, dict) else None
+        island_id = str(island.get("island_id") or "")
+        if isinstance(page_number, int) and page_number > 0 and island_id:
+            islands_by_page.setdefault(page_number, []).append(island_id)
+    multi_island_pages = [
+        {"page_number": page_number, "island_ids": island_ids}
+        for page_number, island_ids in sorted(islands_by_page.items())
+        if len(island_ids) >= 2
+    ]
+    triggered = bool(isinstance(objects, list) and len(objects) == 1 and multi_island_pages)
+    return {
+        "triggered": triggered,
+        "reason": (
+            "one_object_registry_with_multiple_complete_assembly_islands_on_one_page"
+            if triggered
+            else "no_same_page_complete_assembly_conflict"
+        ),
+        "multi_island_pages": multi_island_pages,
+    }
+
+
+def _mark_review_required(result: dict, object_ids: set[str]) -> dict:
+    for item in result.get("detected_objects") or []:
+        if isinstance(item, dict) and str(item.get("object_id") or "") in object_ids:
+            item["review_required"] = True
+    return result
+
+
+def _assembly_island_review_failure_usage(
+    *,
+    company_id: str,
+    file_name: str,
+    started_at: str,
+    duration_seconds: float,
+    signal: dict,
+    error: Exception,
+) -> dict:
+    return {
+        "company_id": company_id,
+        "run_id": None,
+        "file_name": file_name,
+        "object_id": None,
+        "object_name": None,
+        "agent_name": "detection",
+        "operation": "rfq_detection_assembly_island_review",
+        "model": "claude-sonnet-4-6",
+        "prompt_version": DETECTION_ASSEMBLY_ISLAND_REVIEW_PROMPT_VERSION,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "input_cost_usd": 0.0,
+        "output_cost_usd": 0.0,
+        "total_cost_usd": 0.0,
+        "status": "failed",
+        "duration_seconds": round(duration_seconds, 3),
+        "started_at": started_at,
+        "finished_at": datetime.now(UTC).isoformat(),
+        "raw_usage": {
+            "assembly_island_review_trigger": signal,
+            "error": str(error),
+            "primary_registry_retained": True,
+        },
+    }
 
 
 def _merge_registry_evidence(result: dict, registry: dict) -> dict:
@@ -208,11 +294,48 @@ def run_detection_agent(
     if not registry_images:
         raise ValueError("Detection registry requires rendered PDF pages.")
     regions = build_detection_registry_regions(registry_images)
-    _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
+    visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
         file_name=file_name, company_id=company_id, file_bytes=file_bytes,
         page_images=registry_images, regions=regions,
         ocr_package=ocr_package, model=model,
     )
+    registry_usage_events = [visual_registry_usage]
+    forced_review_object_ids: set[str] = set()
+    review_signal = build_complete_assembly_island_review_signal(
+        visual_map, registry, visual_registry_usage,
+    )
+    if review_signal["triggered"]:
+        review_started_at = datetime.now(UTC).isoformat()
+        review_started = time.perf_counter()
+        try:
+            registry, review_usage = run_anthropic_detection_assembly_island_review_agent(
+                file_name=file_name,
+                company_id=company_id,
+                file_bytes=file_bytes,
+                page_images=registry_images,
+                regions=regions,
+                visual_map=visual_map,
+                complete_assembly_island_audit=(
+                    (visual_registry_usage.get("raw_usage") or {}).get("complete_assembly_island_audit")
+                    or []
+                ),
+                ocr_package=ocr_package,
+            )
+            registry_usage_events.append(review_usage)
+        except RuntimeError as exc:
+            forced_review_object_ids = {
+                str(item.get("object_id") or "")
+                for item in registry.get("objects") or []
+                if isinstance(item, dict) and str(item.get("object_id") or "")
+            }
+            registry_usage_events.append(_assembly_island_review_failure_usage(
+                company_id=company_id,
+                file_name=file_name,
+                started_at=review_started_at,
+                duration_seconds=time.perf_counter() - review_started,
+                signal=review_signal,
+                error=exc,
+            ))
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
     evidence_page_numbers = sorted({page for item in registry["objects"] for page in item["estimation_evidence_pages"]})
@@ -235,6 +358,7 @@ def run_detection_agent(
     usage_event = result.pop("_agent_usage", None)
     result = _merge_registry_evidence(result, registry)
     result = _normalize_evidence_source_labels(result, ocr_package)
+    result = _mark_review_required(result, forced_review_object_ids)
     validated = validate_detection_result(result)
-    validated["_agent_usage_events"] = [event for event in (visual_registry_usage, usage_event) if event]
+    validated["_agent_usage_events"] = [event for event in (*registry_usage_events, usage_event) if event]
     return validated

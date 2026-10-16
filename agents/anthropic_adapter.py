@@ -17,6 +17,7 @@ import anthropic
 
 from config import agent_cost_category, calculate_llm_cost_usd
 from agents.prompt_loader import (
+    load_detection_assembly_island_review_prompt,
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
     load_detection_registry_prompt,
@@ -43,6 +44,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_complete_assembly_islands"
+DETECTION_ASSEMBLY_ISLAND_REVIEW_PROMPT_VERSION = "detection_v4_conditional_assembly_island_review_sonnet"
 
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
     DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -77,6 +79,37 @@ DETECTION_COMPLETE_ASSEMBLY_ISLANDS_SCHEMA: dict[str, Any] = {
             "island_id": {"type": "string"},
             "visual_group_id": {"type": "string"},
             "completion_basis": {"type": "string"},
+        },
+    },
+}
+
+DETECTION_ASSEMBLY_ISLAND_REVIEW_OBJECTS_SCHEMA = copy.deepcopy(
+    DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
+)
+DETECTION_ASSEMBLY_ISLAND_REVIEW_OBJECTS_SCHEMA["items"]["required"].remove(
+    "estimation_evidence_pages"
+)
+DETECTION_ASSEMBLY_ISLAND_REVIEW_OBJECTS_SCHEMA["items"]["properties"].pop(
+    "estimation_evidence_pages"
+)
+DETECTION_ASSEMBLY_ISLAND_REVIEW_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["objects", "page_coverage"],
+    "properties": {
+        "objects": DETECTION_ASSEMBLY_ISLAND_REVIEW_OBJECTS_SCHEMA,
+        "page_coverage": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["page_number", "object_ids", "evidence_reason"],
+                "properties": {
+                    "page_number": {"type": "integer", "minimum": 1},
+                    "object_ids": {"type": "array", "items": {"type": "string"}},
+                    "evidence_reason": {"type": "string"},
+                },
+            },
         },
     },
 }
@@ -856,6 +889,103 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     })
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
+
+
+def run_anthropic_detection_assembly_island_review_agent(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    regions: list[dict[str, Any]],
+    visual_map: dict[str, Any],
+    complete_assembly_island_audit: list[dict[str, Any]],
+    ocr_package: dict[str, Any] | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Ask Sonnet to independently decide a strong same-page island conflict."""
+    prompt = load_detection_assembly_island_review_prompt()
+    groups_by_id = {
+        str(group.get("group_id") or ""): group
+        for group in visual_map.get("visual_groups") or []
+        if isinstance(group, dict)
+    }
+    review_islands = []
+    for island in complete_assembly_island_audit:
+        if not isinstance(island, dict):
+            continue
+        group = groups_by_id.get(str(island.get("visual_group_id") or ""), {})
+        review_islands.append({
+            "island_id": island.get("island_id"),
+            "page_number": group.get("page_number"),
+            "location_hint": group.get("location_hint"),
+            "visual_description": group.get("visual_description"),
+            "completion_basis": island.get("completion_basis"),
+        })
+    user_text = build_detection_user_text(
+        file_name=file_name,
+        company_id=company_id,
+        ocr_package=ocr_package,
+    )
+    user_text += (
+        "\n\nVISUAL REPRESENTATION MAP (navigation only, not object decisions):\n"
+        + json.dumps(visual_map, ensure_ascii=False)
+        + "\n\nCOMPLETE-ASSEMBLY ISLANDS (candidate navigation only, inspect the full pages yourself):\n"
+        + json.dumps(review_islands, ensure_ascii=False)
+    )
+    content = build_detection_registry_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        user_text=user_text,
+        page_images=page_images,
+        regions=regions,
+    )
+    response, diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=DEFAULT_CLAUDE_FALLBACK_MODEL,
+        max_tokens=8192,
+        system=build_detection_system_content(prompt=prompt),
+        messages=[{"role": "user", "content": content}],
+        output_config={"format": {"type": "json_schema", "schema": strip_schema_for_claude(DETECTION_ASSEMBLY_ISLAND_REVIEW_JSON_SCHEMA)}},
+    )
+    try:
+        payload = json.loads(extract_text_from_claude_response(response))
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Detection assembly-island review response failed validation: {exc}") from exc
+    try:
+        if not isinstance(payload, dict) or set(payload) != {"objects", "page_coverage"}:
+            raise ValueError("assembly-island review must contain only objects and page_coverage")
+        registry_objects = _apply_page_coverage_to_registry(
+            payload["objects"], payload["page_coverage"], page_count=len(page_images),
+        )
+        registry = validate_detection_registry(
+            {"objects": registry_objects},
+            visual_group_ids={group_id for group_id in groups_by_id if group_id},
+        )
+    except (KeyError, ValueError) as exc:
+        raise RuntimeError(f"Detection assembly-island review response failed validation: {exc}") from exc
+    diagnostics.update({
+        "attempt_label": "conditional_assembly_island_review",
+        "candidate_island_count": len(review_islands),
+        "review_registry_object_count": len(registry["objects"]),
+        "page_count": len(page_images),
+        "region_count": len(regions),
+    })
+    usage = build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection_assembly_island_review",
+        company_id=company_id,
+        run_id=None,
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=DEFAULT_CLAUDE_FALLBACK_MODEL,
+        prompt_version=DETECTION_ASSEMBLY_ISLAND_REVIEW_PROMPT_VERSION,
+        response=response,
+        started_at=diagnostics["request_started_at"],
+        finished_at=diagnostics["request_finished_at"],
+        request_diagnostics=diagnostics,
+    )
+    return registry, usage
 
 
 def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], visual_map: dict[str, Any], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
