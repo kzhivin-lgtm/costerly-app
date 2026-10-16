@@ -52,54 +52,6 @@ Production acceptance requires one real upload with review of every object ID, q
 `Adda.pdf`, run `run_590733e409c44ed990b5636f685cd69f`, used the integrated
 Visual Registry V4 but incorrectly merged two visually separate, unlabelled
 complete assemblies into one commercial object. This is neither a Naming nor
-an Evidence defect.
-
-## Active boundary experiment, not a checkpoint
-
-The owner approved a replacement for the rejected in-registry island and
-post-hoc reviewer experiments. The first crop-only partition experiment failed
-on Adda: its rectangular crop envelopes overlapped, and Sonnet incorrectly
-constructed two separate figures into one L-shaped room composition. That
-partition is rejected, not a checkpoint.
-
-Before Registry, the replacement conditional correspondence stage receives
-masked disconnected drawing figures, a title-strip-free masked page-layout map
-for each relevant page, and physical page numbers. A figure mask contains only
-its own detected ink, even if its rectangular navigation bbox overlaps another
-figure's bbox. It does not receive the file name, OCR, project metadata, room
-titles or title block.
-
-One Sonnet request classifies each supplied figure and returns an exhaustive
-pairwise graph of `same_assembly`, `separate_assemblies` or `insufficient`.
-Detection, not the model, derives only conflict-free connected positive
-`same_assembly` components as locked candidates. `separate_assemblies` and
-`insufficient` remain graph audit observations, not commercial-object claims:
-a crop-only relation cannot establish quote scope or assign every source view.
-Registry still sees the whole document and must place every candidate exactly
-once while never merging candidates. It assigns all remaining views from the
-full document. The graph route has no partial coverage: it runs only when the
-full representation set has at most 12 figures, which bounds the quadratic pair
-output to 66 relations. Larger sets bypass this experiment.
-
-When two or more crops exist and all of them fit in one request, the Registry
-must map each resulting assembly candidate to exactly one commercial object.
-It cannot merge two candidates. When the crop set would exceed the request
-image ceiling, Detection keeps the accepted V4 path rather than silently
-truncating a physical partition. This experiment adds one conditional Sonnet
-call and does not alter the V4 Estimation handoff.
-
-The correspondence usage event persists both `assembly_graph_audit` and the
-derived positive-candidate audit, including abstention status. The raw graph is
-observability only. Only the derived positive candidates constrain Registry.
-
-The result remains unverified until live benchmarks show all of the following:
-
-- Adda produces the two separate assemblies, each with all four relevant
-  pages.
-- `page-23.pdf` retains three objects, including one TV console across its
-  repeated views.
-- Kitchen remains one object with all 39 related pages.
-- Metal retains accepted object-boundary and source-code behavior.
-
-If the isolated correspondence stage produces a false partition or regresses a
-protected benchmark, revert only this experiment to `e8480a1` behavior.
+an Evidence defect. The next experiment makes physical-assembly candidates and
+positive merge evidence auditable inside the existing registry call. It does
+not rely on OCR labels and does not add a model call.

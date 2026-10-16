@@ -5,8 +5,6 @@ from agents.anthropic_adapter import (
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
-    load_detection_assembly_correspondence_prompt,
-    load_detection_assembly_correspondence_graph_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
@@ -77,21 +75,3 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
     assert "shared schedule or a sheet showing separately coded products" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
-
-
-def test_assembly_correspondence_is_a_separate_title_agnostic_physical_partition():
-    prompt = load_detection_assembly_correspondence_prompt()
-
-    assert "excludes the file name, OCR, project name, room title and title block" in prompt
-    assert "positive cross-view correspondence" in prompt
-    assert "Two separate finished envelopes" in prompt
-    assert "Account for every supplied representation exactly once" in prompt
-
-
-def test_assembly_correspondence_graph_requires_direct_pairwise_proof():
-    prompt = load_detection_assembly_correspondence_graph_prompt()
-
-    assert "file name, OCR,\nproject name, room title and title block" in prompt
-    assert "every pair independently" in prompt
-    assert "high bar" in prompt
-    assert "white background in a masked figure is not part of that figure" in prompt

@@ -19,23 +19,9 @@ from config import agent_cost_category, calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
-    load_detection_assembly_correspondence_prompt,
-    load_detection_assembly_correspondence_graph_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
-    load_detection_visual_registry_with_assembly_candidates_prompt,
-)
-from agents.schemas.detection_assembly_correspondence_schema import (
-    DETECTION_ASSEMBLY_CORRESPONDENCE_JSON_SCHEMA,
-    normalize_detection_assembly_candidate_ids,
-    validate_detection_assembly_correspondence,
-)
-from agents.schemas.detection_assembly_correspondence_graph_schema import (
-    DETECTION_ASSEMBLY_CORRESPONDENCE_GRAPH_JSON_SCHEMA,
-    derive_detection_assembly_correspondence,
-    normalize_detection_assembly_graph,
-    validate_detection_assembly_correspondence_graph,
 )
 from agents.schemas.detection_registry_schema import DETECTION_REGISTRY_JSON_SCHEMA, validate_detection_registry
 from agents.schemas.detection_visual_map_schema import (
@@ -57,9 +43,6 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v4"
-DETECTION_ASSEMBLY_CORRESPONDENCE_PROMPT_VERSION = "detection_v4_assembly_correspondence_v1"
-DETECTION_ASSEMBLY_CORRESPONDENCE_GRAPH_PROMPT_VERSION = "detection_v4_assembly_correspondence_graph_v2"
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_PROMPT_VERSION = "detection_v4_visual_registry_locked_assemblies_v1"
 
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
     DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -70,15 +53,7 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_OBJECTS_SCHEMA = copy.deepcopy(
-    DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA
-)
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_OBJECTS_SCHEMA["items"]["required"].append(
-    "assembly_candidate_ids"
-)
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_OBJECTS_SCHEMA["items"]["properties"]["assembly_candidate_ids"] = {
-    "type": "array", "items": {"type": "string"},
-}
+
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -101,12 +76,7 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
         },
     },
 }
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_JSON_SCHEMA = copy.deepcopy(
-    DETECTION_VISUAL_REGISTRY_JSON_SCHEMA
-)
-DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_JSON_SCHEMA["properties"]["objects"] = (
-    DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_OBJECTS_SCHEMA
-)
+
 _STREAMLIT_SECRET_CACHE: dict[str, str] = {}
 _STREAMLIT_SECRET_CACHE_LOCK = Lock()
 
@@ -589,265 +559,6 @@ def build_detection_registry_content_blocks(*, file_name: str, file_bytes: bytes
     blocks.append({"type":"text", "text":user_text})
     return blocks
 
-
-def _assembly_representation_manifest(
-    representations: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Strip image bytes and validate the navigation manifest for one pass."""
-    manifest: list[dict[str, Any]] = []
-    seen_ids: set[str] = set()
-    for representation in representations:
-        representation_id = str(representation.get("representation_id") or "").strip()
-        page_number = representation.get("page_number")
-        bbox = representation.get("bbox")
-        image_bytes = representation.get("bytes")
-        if (
-            not representation_id
-            or representation_id in seen_ids
-            or not isinstance(page_number, int)
-            or page_number < 1
-            or not isinstance(bbox, dict)
-            or set(bbox) != {"left", "top", "right", "bottom"}
-            or not all(isinstance(value, (int, float)) for value in bbox.values())
-            or not 0 <= bbox["left"] < bbox["right"] <= 1
-            or not 0 <= bbox["top"] < bbox["bottom"] <= 1
-            or not isinstance(image_bytes, bytes)
-            or not image_bytes
-        ):
-            raise ValueError("assembly correspondence representation is invalid")
-        seen_ids.add(representation_id)
-        manifest.append({
-            "representation_id": representation_id,
-            "page_number": page_number,
-            "bbox": bbox,
-        })
-    return manifest
-
-
-def build_detection_assembly_correspondence_content_blocks(
-    representations: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Build title-agnostic figure crops plus masked page-layout maps."""
-    manifest = _assembly_representation_manifest(representations)
-    blocks: list[dict[str, Any]] = []
-    page_maps: list[tuple[int, bytes]] = []
-    seen_page_numbers: set[int] = set()
-    for representation, manifest_item in zip(representations, manifest, strict=True):
-        page_map_bytes = representation.get("page_map_bytes")
-        page_number = manifest_item["page_number"]
-        if (
-            page_number not in seen_page_numbers
-            and isinstance(page_map_bytes, bytes)
-            and page_map_bytes
-        ):
-            page_maps.append((page_number, page_map_bytes))
-            seen_page_numbers.add(page_number)
-    for page_number, page_map_bytes in page_maps:
-        blocks.append({
-            "type": "text",
-            "text": (
-                f"Masked figure-layout map for PDF page {page_number}. "
-                "Only detected figure ink is shown. Red frames locate distinct "
-                "figures and are navigation aids, not physical connections."
-            ),
-        })
-        blocks.append({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": "image/jpeg",
-                "data": base64.standard_b64encode(page_map_bytes).decode("ascii"),
-            },
-        })
-    for representation, manifest_item in zip(representations, manifest, strict=True):
-        blocks.append({
-            "type": "text",
-            "text": (
-                f"Masked isolated representation {manifest_item['representation_id']}, "
-                f"PDF page {manifest_item['page_number']}. White areas are not part "
-                "of this figure."
-            ),
-        })
-        blocks.append({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": "image/jpeg",
-                "data": base64.standard_b64encode(representation["bytes"]).decode("ascii"),
-            },
-        })
-    blocks.append({
-        "type": "text",
-        "text": (
-            "REPRESENTATION MANIFEST, navigation only:\n"
-            + json.dumps(manifest, ensure_ascii=False)
-            + "\nReturn only the required schema JSON."
-        ),
-    })
-    return blocks, manifest
-
-
-def run_anthropic_detection_assembly_correspondence_agent(
-    *,
-    file_name: str,
-    company_id: str,
-    representations: list[dict[str, Any]],
-    model: str | None,
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Resolve isolated cross-page views before commercial registry semantics."""
-    selected_model = model or get_secret(
-        "CLAUDE_DETECTION_ASSEMBLY_CORRESPONDENCE_MODEL",
-        DEFAULT_CLAUDE_FALLBACK_MODEL,
-    )
-    prompt = load_detection_assembly_correspondence_prompt()
-    content, manifest = build_detection_assembly_correspondence_content_blocks(representations)
-    schema = strip_schema_for_claude(DETECTION_ASSEMBLY_CORRESPONDENCE_JSON_SCHEMA)
-
-    def request_correspondence(max_tokens: int) -> tuple[Any, dict[str, Any]]:
-        return create_claude_message_streamed(
-            get_anthropic_client(),
-            model=selected_model,
-            max_tokens=max_tokens,
-            system=build_detection_system_content(prompt=prompt),
-            messages=[{"role": "user", "content": content}],
-            output_config={"format": {"type": "json_schema", "schema": schema}},
-        )
-
-    response, diagnostics = request_correspondence(4096)
-    try:
-        payload = json.loads(extract_text_from_claude_response(response))
-    except json.JSONDecodeError:
-        response, diagnostics = request_correspondence(8192)
-        diagnostics["retry_after_truncated_json"] = True
-        try:
-            payload = json.loads(extract_text_from_claude_response(response))
-        except json.JSONDecodeError as exc:
-            raise RuntimeError(
-                "Detection assembly-correspondence response remained invalid JSON after retry: "
-                f"{exc}"
-            ) from exc
-    try:
-        correspondence = validate_detection_assembly_correspondence(
-            normalize_detection_assembly_candidate_ids(payload),
-            representation_ids={item["representation_id"] for item in manifest},
-        )
-    except ValueError as exc:
-        raise RuntimeError(
-            f"Detection assembly-correspondence response failed validation: {exc}"
-        ) from exc
-    diagnostics.update({
-        "representation_count": len(manifest),
-        "assembly_candidate_count": len(correspondence["assembly_candidates"]),
-        "non_assembly_representation_count": len(
-            correspondence["non_assembly_representation_ids"]
-        ),
-        "assembly_partition_audit": copy.deepcopy(correspondence),
-        "attempt_label": "isolated_physical_assembly_correspondence",
-    })
-    usage = build_agent_usage_event(
-        agent_name="detection",
-        operation="rfq_detection_assembly_correspondence",
-        company_id=company_id,
-        run_id=None,
-        file_name=file_name,
-        object_id=None,
-        object_name=None,
-        model=selected_model,
-        prompt_version=DETECTION_ASSEMBLY_CORRESPONDENCE_PROMPT_VERSION,
-        response=response,
-        started_at=diagnostics["request_started_at"],
-        finished_at=diagnostics["request_finished_at"],
-        request_diagnostics=diagnostics,
-    )
-    return correspondence, usage
-
-
-def run_anthropic_detection_assembly_correspondence_graph_agent(
-    *,
-    file_name: str,
-    company_id: str,
-    representations: list[dict[str, Any]],
-    model: str | None,
-) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    """Derive lockable assemblies from a decisive pairwise figure graph."""
-    selected_model = model or get_secret(
-        "CLAUDE_DETECTION_ASSEMBLY_CORRESPONDENCE_MODEL",
-        DEFAULT_CLAUDE_FALLBACK_MODEL,
-    )
-    prompt = load_detection_assembly_correspondence_graph_prompt()
-    content, manifest = build_detection_assembly_correspondence_content_blocks(representations)
-    schema = strip_schema_for_claude(DETECTION_ASSEMBLY_CORRESPONDENCE_GRAPH_JSON_SCHEMA)
-    representation_ids = [item["representation_id"] for item in manifest]
-
-    def request_graph(max_tokens: int) -> tuple[Any, dict[str, Any]]:
-        return create_claude_message_streamed(
-            get_anthropic_client(),
-            model=selected_model,
-            max_tokens=max_tokens,
-            system=build_detection_system_content(prompt=prompt),
-            messages=[{"role": "user", "content": content}],
-            output_config={"format": {"type": "json_schema", "schema": schema}},
-        )
-
-    response, diagnostics = request_graph(4096)
-    try:
-        payload = json.loads(extract_text_from_claude_response(response))
-    except json.JSONDecodeError:
-        response, diagnostics = request_graph(8192)
-        diagnostics["retry_after_truncated_json"] = True
-        try:
-            payload = json.loads(extract_text_from_claude_response(response))
-        except json.JSONDecodeError as exc:
-            raise RuntimeError(
-                "Detection assembly-correspondence graph remained invalid JSON after retry: "
-                f"{exc}"
-            ) from exc
-    try:
-        graph = validate_detection_assembly_correspondence_graph(
-            normalize_detection_assembly_graph(
-                payload,
-                representation_ids=representation_ids,
-            ),
-            representation_ids=representation_ids,
-        )
-    except ValueError as exc:
-        raise RuntimeError(
-            f"Detection assembly-correspondence graph failed validation: {exc}"
-        ) from exc
-    correspondence, graph_status = derive_detection_assembly_correspondence(
-        graph,
-        representation_ids=representation_ids,
-    )
-    if not correspondence["assembly_candidates"]:
-        correspondence = None
-        graph_status = "graph_abstained_no_positive_candidates"
-    diagnostics.update({
-        "representation_count": len(manifest),
-        "pair_relation_count": len(graph["pair_relations"]),
-        "assembly_candidate_count": len(correspondence["assembly_candidates"]) if correspondence else 0,
-        "non_assembly_representation_count": len(correspondence["non_assembly_representation_ids"]) if correspondence else 0,
-        "assembly_graph_status": graph_status,
-        "assembly_graph_audit": copy.deepcopy(graph),
-        "assembly_partition_audit": copy.deepcopy(correspondence),
-        "attempt_label": "masked_figures_pairwise_correspondence_graph",
-    })
-    usage = build_agent_usage_event(
-        agent_name="detection",
-        operation="rfq_detection_assembly_correspondence",
-        company_id=company_id,
-        run_id=None,
-        file_name=file_name,
-        object_id=None,
-        object_name=None,
-        model=selected_model,
-        prompt_version=DETECTION_ASSEMBLY_CORRESPONDENCE_GRAPH_PROMPT_VERSION,
-        response=response,
-        started_at=diagnostics["request_started_at"],
-        finished_at=diagnostics["request_finished_at"],
-        request_diagnostics=diagnostics,
-    )
-    return correspondence, usage
-
 def append_detection_focus_regions(blocks: list[dict[str, Any]], regions: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     if not regions:
         return blocks
@@ -951,86 +662,12 @@ def _apply_page_coverage_to_registry(
     return enriched
 
 
-def _locked_assembly_candidates(
-    assembly_correspondence: dict[str, Any] | None,
-) -> list[dict[str, Any]]:
-    """Return only validated physical candidates that bind the registry."""
-    if assembly_correspondence is None:
-        return []
-    candidates = assembly_correspondence.get("assembly_candidates")
-    if not isinstance(candidates, list):
-        raise ValueError("assembly correspondence candidates are invalid")
-    return candidates
-
-
-def _validate_registry_assembly_candidate_mapping(
-    objects: object,
-    *,
-    assembly_candidate_ids: set[str],
-) -> list[dict[str, Any]]:
-    """Prevent Registry from collapsing a locked physical partition."""
-    if not isinstance(objects, list):
-        raise ValueError("registry objects are invalid")
-    expected_fields = {
-        "object_id",
-        "transport_label",
-        "quantity",
-        "quantity_explicit",
-        "identity_pages",
-        "visual_group_ids",
-        "visual_identity",
-        "boundary_basis",
-        "assembly_candidate_ids",
-    }
-    assigned_candidate_ids: list[str] = []
-    stripped_objects: list[dict[str, Any]] = []
-    for item in objects:
-        if not isinstance(item, dict) or set(item) != expected_fields:
-            raise ValueError("registry assembly-candidate fields do not match contract")
-        object_candidate_ids = item["assembly_candidate_ids"]
-        if (
-            not isinstance(object_candidate_ids, list)
-            or len(object_candidate_ids) > 1
-            or len(object_candidate_ids) != len(set(object_candidate_ids))
-            or not all(
-                isinstance(candidate_id, str)
-                and candidate_id in assembly_candidate_ids
-                for candidate_id in object_candidate_ids
-            )
-        ):
-            raise ValueError("registry assembly-candidate mapping is invalid")
-        assigned_candidate_ids.extend(object_candidate_ids)
-        stripped_objects.append({
-            key: value
-            for key, value in item.items()
-            if key != "assembly_candidate_ids"
-        })
-    if len(assigned_candidate_ids) != len(set(assigned_candidate_ids)):
-        raise ValueError("assembly candidate cannot belong to multiple commercial objects")
-    if set(assigned_candidate_ids) != assembly_candidate_ids:
-        raise ValueError("registry must account for every assembly candidate exactly once")
-    return stripped_objects
-
-
-def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, assembly_correspondence: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
-    locked_assembly_candidates = _locked_assembly_candidates(assembly_correspondence)
-    has_locked_assembly_candidates = bool(locked_assembly_candidates)
-    prompt = (
-        load_detection_visual_registry_with_assembly_candidates_prompt()
-        if has_locked_assembly_candidates
-        else load_detection_visual_registry_prompt()
-    )
+    prompt = load_detection_visual_registry_prompt()
     user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
-    if has_locked_assembly_candidates:
-        user_text += "\n\nLOCKED PHYSICAL ASSEMBLY CANDIDATES:\n"
-        user_text += json.dumps(locked_assembly_candidates, ensure_ascii=False)
-    schema = strip_schema_for_claude(
-        DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_JSON_SCHEMA
-        if has_locked_assembly_candidates
-        else DETECTION_VISUAL_REGISTRY_JSON_SCHEMA
-    )
+    schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
         file_name=file_name, file_bytes=file_bytes, user_text=user_text,
         page_images=page_images, regions=regions,
@@ -1057,19 +694,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
-        raw_registry_objects = (
-            _validate_registry_assembly_candidate_mapping(
-                payload["objects"],
-                assembly_candidate_ids={
-                    str(candidate["candidate_id"])
-                    for candidate in locked_assembly_candidates
-                },
-            )
-            if has_locked_assembly_candidates
-            else payload["objects"]
-        )
         registry_objects = _apply_page_coverage_to_registry(
-            raw_registry_objects, payload["page_coverage"], page_count=len(page_images),
+            payload["objects"], payload["page_coverage"], page_count=len(page_images),
         )
         registry_payload = {"objects": registry_objects}
         for item in registry_payload["objects"]:
@@ -1091,7 +717,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
-        "locked_assembly_candidate_count": len(locked_assembly_candidates),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
         "page_coverage_count": len(payload["page_coverage"]),
         "unassigned_page_count": sum(
@@ -1099,13 +724,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ),
         "region_count": len(regions),
         "page_count": len(page_images),
-        "attempt_label": (
-            "visual_registry_with_locked_assemblies"
-            if has_locked_assembly_candidates
-            else "visual_registry_integrated"
-        ),
+        "attempt_label": "visual_registry_integrated",
     })
-    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=(DETECTION_VISUAL_REGISTRY_WITH_ASSEMBLY_CANDIDATES_PROMPT_VERSION if has_locked_assembly_candidates else DETECTION_VISUAL_REGISTRY_PROMPT_VERSION),response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
 
 
