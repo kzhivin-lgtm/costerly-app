@@ -243,6 +243,26 @@ def test_normalized_evidence_accepts_ocr41_bbox_text():
     )
 
     item = package["evidence"]["literal_items"][0]
-    assert item["text"] == "4130 mm\nMDF panel 20 mm"
+    assert item["text"] == "4130 mm MDF panel 20 mm"
     assert item["source_image_id"] == "img-0.jpeg"
     assert item["source_image_bbox"]["top_left_x"] == 1
+    assert r"4130 mm\nMDF panel 20 mm" in package["raw_response"]["pages"][0]["images"][0]["image_annotation"]
+
+
+def test_normalized_evidence_collapses_excessive_literal_whitespace():
+    response = _response()
+    response["pages"][0]["images"] = [{
+        "id": "img-0.jpeg",
+        "image_annotation": '{"text":"416\\n\\n\\n300\\n\\n65"}',
+    }]
+
+    package = normalize_mistral_ocr_response(
+        response,
+        file_name="drawing.pdf",
+        file_bytes=b"pdf bytes",
+        model="mistral-ocr-4-1",
+        elapsed_seconds=1,
+    )
+
+    assert package["evidence"]["literal_items"][0]["text"] == "416 300 65"
+    assert "416\\n\\n\\n300\\n\\n65" in package["raw_response"]["pages"][0]["images"][0]["image_annotation"]

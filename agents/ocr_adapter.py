@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import threading
 import time
 from datetime import UTC, datetime
@@ -137,6 +138,11 @@ def _annotation_dict(value: Any) -> dict[str, Any] | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def _compact_literal_text(value: Any) -> str:
+    """Make derived OCR evidence readable without changing provider evidence."""
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
 def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
     """Create a deterministic evidence index without semantic interpretation."""
     text_blocks: list[dict[str, Any]] = []
@@ -188,7 +194,11 @@ def build_ocr_evidence(pages: list[dict[str, Any]]) -> dict[str, Any]:
             for raw_item in raw_items:
                 if not isinstance(raw_item, dict):
                     continue
-                text = str(raw_item.get("text") or "").strip()
+                # Image annotations frequently contain hundreds of blank lines
+                # between adjacent OCR tokens.  Keep their text and image bbox,
+                # but compact whitespace in the derived evidence index. The
+                # unmodified provider payload remains in ``raw_response``.
+                text = _compact_literal_text(raw_item.get("text"))
                 if not text:
                     continue
                 category = str(raw_item.get("category") or "other")
