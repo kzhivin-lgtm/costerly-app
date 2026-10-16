@@ -674,6 +674,44 @@ def _apply_page_coverage_to_registry(
     return enriched
 
 
+def _normalize_boundary_review_object_ids(payload: object) -> object:
+    """Canonicalize reviewer object IDs before validating page-coverage joins.
+
+    Object IDs are runtime join keys, not semantic evidence. A reviewer may
+    emit distinct presentation IDs despite the ordered schema instruction. Keep
+    the review's object order and boundary decision, while normalizing its join
+    keys and the corresponding coverage references together.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    objects = payload.get("objects")
+    coverage = payload.get("page_coverage")
+    if not isinstance(objects, list) or not isinstance(coverage, list):
+        return payload
+    raw_ids = [
+        str(item.get("object_id") or "").strip()
+        for item in objects
+        if isinstance(item, dict)
+    ]
+    if len(raw_ids) != len(objects) or not all(raw_ids) or len(raw_ids) != len(set(raw_ids)):
+        return payload
+    object_id_mapping = {
+        raw_id: f"object-{index:03d}"
+        for index, raw_id in enumerate(raw_ids, start=1)
+    }
+    normalized = copy.deepcopy(payload)
+    for item, raw_id in zip(normalized["objects"], raw_ids, strict=True):
+        item["object_id"] = object_id_mapping[raw_id]
+    for entry in normalized["page_coverage"]:
+        if not isinstance(entry, dict) or not isinstance(entry.get("object_ids"), list):
+            continue
+        entry["object_ids"] = [
+            object_id_mapping.get(str(raw_id), str(raw_id))
+            for raw_id in entry["object_ids"]
+        ]
+    return normalized
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -789,6 +827,7 @@ def run_anthropic_detection_boundary_review_v4_1_agent(
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Detection V4.1 boundary-review response failed validation: {exc}") from exc
     try:
+        payload = _normalize_boundary_review_object_ids(payload)
         if not isinstance(payload, dict) or set(payload) != {"objects", "page_coverage"}:
             raise ValueError("boundary review must contain only objects and page_coverage")
         registry_objects = _apply_page_coverage_to_registry(

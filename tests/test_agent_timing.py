@@ -514,20 +514,20 @@ def test_v4_1_boundary_review_replaces_one_object_lock_with_validated_registry()
     payload = {
         "objects": [
             {
-                "object_id": "object-001", "transport_label": "Object 1",
+                "object_id": "mirror", "transport_label": "Object 1",
                 "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
                 "visual_group_ids": ["view-001"], "visual_identity": "mirror stand",
                 "boundary_basis": "separate freestanding envelope",
             },
             {
-                "object_id": "object-002", "transport_label": "Object 2",
+                "object_id": "cabinet", "transport_label": "Object 2",
                 "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
                 "visual_group_ids": ["view-002"], "visual_identity": "display cabinet",
                 "boundary_basis": "separate cabinet carcass",
             },
         ],
         "page_coverage": [{
-            "page_number": 1, "object_ids": ["object-001", "object-002"],
+            "page_number": 1, "object_ids": ["mirror", "cabinet"],
             "evidence_reason": "overview shows both independent products",
         }],
     }
