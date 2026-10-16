@@ -350,6 +350,7 @@ def run_estimation_v3_material_facts_agent(
         "evidence": {
             "pages": row["input_payload"].get("object", {}).get("evidence_pages", []),
             "ocr_blocks": row["input_payload"].get("evidence", {}).get("ocr_blocks", []),
+            "ocr_literal_items": row["input_payload"].get("evidence", {}).get("ocr_literal_items", []),
             "artifacts": row["input_payload"].get("evidence", {}).get("artifacts", []),
         },
     } for row in inputs]

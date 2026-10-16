@@ -58,7 +58,12 @@ OCR = {
             {"page_number": 1, "text": "Reception desk", "bbox": {}},
             {"page_number": 2, "text": "Unrelated", "bbox": {}},
             {"page_number": 3, "text": "MDF 18 mm", "bbox": {}},
-        ]
+        ],
+        "literal_items": [
+            {"page_number": 1, "text": "Front elevation and plan", "bbox": {}},
+            {"page_number": 2, "text": "Unrelated literal OCR", "bbox": {}},
+            {"page_number": 3, "text": "Material: MDF 18 mm", "bbox": {}},
+        ],
     },
 }
 ARTIFACTS = (
@@ -94,6 +99,12 @@ def test_e03_builder_freezes_only_cited_ocr_blocks_and_private_evidence_refs():
     assert [row["block_ref"] for row in result["evidence"]["ocr_blocks"]] == [
         "ocr:ocr-event-1:p1:b0001",
         "ocr:ocr-event-1:p3:b0003",
+    ]
+    assert [row["text"] for row in result["evidence"]["ocr_literal_items"]] == [
+        "Front elevation and plan", "Material: MDF 18 mm",
+    ]
+    assert [row["block_ref"] for row in result["evidence"]["ocr_literal_items"]] == [
+        "ocr:ocr-event-1:p1:l0001", "ocr:ocr-event-1:p3:l0003",
     ]
     assert "primary_preview_ref" not in result["evidence"]
     assert result["document"]["ocr_event_id"] == "ocr-event-1"
@@ -181,7 +192,7 @@ def test_builder_rejects_non_private_storage_reference():
         )
 
 
-def test_builder_keeps_page_labels_but_excludes_detection_regions_and_ui_preview():
+def test_builder_keeps_regions_and_excludes_ui_preview():
     result = build_estimation_input(
         run=RUN,
         detected_object={
@@ -208,5 +219,13 @@ def test_builder_keeps_page_labels_but_excludes_detection_regions_and_ui_preview
     )
 
     assert result["object"]["evidence_pages"] == [
-        {"page_number": 2, "source_label": "A-01"}
+        {
+            "page_number": 2,
+            "source_label": "A-01",
+            "regions": [{
+                "top_left_x": 1, "top_left_y": 2,
+                "bottom_right_x": 30, "bottom_right_y": 40,
+            }],
+        }
     ]
+    assert "presentation_preview_bbox" not in result["object"]["evidence_pages"][0]

@@ -148,6 +148,11 @@ def _word_count(value: Any) -> int:
     return len(re.findall(r"[^\W_]+(?:[-’'][^\W_]+)*", str(value or ""), re.UNICODE))
 
 
+def _is_transport_placeholder(value: Any) -> bool:
+    normalized = " ".join(str(value or "").casefold().split())
+    return bool(re.fullmatch(r"(?:object|item|unknown)(?: \d+)?", normalized))
+
+
 def validate_locked_name_mapping(
     locked_objects: list[dict[str, Any]],
     result: dict[str, Any],
@@ -169,6 +174,10 @@ def validate_locked_name_mapping(
         if name_en_words < 1 or name_en_words > 3:
             violations.append(
                 {"object_id": item["object_id"], "field": "name_en", "words": name_en_words}
+            )
+        elif _is_transport_placeholder(item.get("name_en")):
+            violations.append(
+                {"object_id": item["object_id"], "field": "name_en", "reason": "transport_placeholder"}
             )
         if original_words > 4:
             violations.append(

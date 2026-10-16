@@ -160,6 +160,20 @@ def test_accepts_one_word_semantic_category():
     assert validation == {"accepted": True, "violations": []}
 
 
+def test_rejects_transport_placeholder_as_a_final_name():
+    locked = [{"object_id": "a", "object_index": "", "current_name": "Object 3"}]
+
+    validation = validate_locked_name_mapping(
+        locked,
+        {"names": [{"object_id": "a", "name_en": "Object 3", "name_original": ""}]},
+    )
+
+    assert validation == {
+        "accepted": False,
+        "violations": [{"object_id": "a", "field": "name_en", "reason": "transport_placeholder"}],
+    }
+
+
 def test_applies_validated_names_without_changing_object_identity():
     objects = [{"object_id": "a", "object_name": "Object 1", "quantity": 2}]
     locked = [{"object_id": "a", "object_index": "", "current_name": "Object 1"}]

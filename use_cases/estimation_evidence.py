@@ -53,6 +53,9 @@ def _page_refs(detected_object: Mapping[str, Any]) -> tuple[dict[str, Any], ...]
         row = {
             "page_number": page_number,
             "source_label": str(item.get("source_label") or page_number),
+            # Regions are retrieval pointers selected by Detection.  They are
+            # deliberately retained, while the UI-only preview box is not.
+            "regions": [dict(region) for region in item.get("regions") or [] if isinstance(region, Mapping)],
         }
         result.append(row)
     return tuple(sorted(result, key=lambda item: (item["page_number"], item["source_label"])))
@@ -100,15 +103,20 @@ def build_estimation_input(
         raise ValueError("object evidence must contain at least one physical page reference")
     pages = tuple(ref["page_number"] for ref in page_refs)
     evidence = dict(ocr_package.get("evidence") or {})
-    blocks = []
-    for block_index, block in enumerate(evidence.get("text_blocks") or [], start=1):
-        if not isinstance(block, Mapping) or block.get("page_number") not in pages:
-            continue
-        page_number = int(block["page_number"])
-        blocks.append({
-            **dict(block),
-            "block_ref": f"ocr:{ocr_event_id}:p{page_number}:b{block_index:04d}",
-        })
+    def cited_ocr_items(kind: str, ref_prefix: str) -> list[dict[str, Any]]:
+        items = []
+        for item_index, item in enumerate(evidence.get(kind) or [], start=1):
+            if not isinstance(item, Mapping) or item.get("page_number") not in pages:
+                continue
+            page_number = int(item["page_number"])
+            items.append({
+                **dict(item),
+                "block_ref": f"ocr:{ocr_event_id}:p{page_number}:{ref_prefix}{item_index:04d}",
+            })
+        return items
+
+    blocks = cited_ocr_items("text_blocks", "b")
+    literal_items = cited_ocr_items("literal_items", "l")
     artifacts = _artifact_payload(evidence_artifacts, pages)
     if not artifacts:
         raise ValueError("at least one full source-page artifact is required")
@@ -131,6 +139,7 @@ def build_estimation_input(
         },
         "evidence": {
             "ocr_blocks": blocks,
+            "ocr_literal_items": literal_items,
             "artifacts": list(artifacts),
         },
         "versions": {key: str(value) for key, value in versions.items()},
