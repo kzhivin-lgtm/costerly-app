@@ -729,7 +729,14 @@ def _validate_complete_assembly_islands(
     *,
     visual_group_ids: set[str],
 ) -> list[dict[str, str]]:
-    """Require every separately represented complete assembly to survive registry grouping."""
+    """Validate island references, preserving an unassigned island for review.
+
+    A duplicate or unknown reference makes the primary registry internally
+    inconsistent and remains a hard failure.  An otherwise valid island with
+    no assigned commercial object is a boundary conflict, so the caller can
+    route it to the conditional independent review rather than aborting RFQ
+    processing before that review has a chance to decide it.
+    """
     if not isinstance(islands, list):
         raise ValueError("complete assembly islands are invalid")
 
@@ -777,8 +784,6 @@ def _validate_complete_assembly_islands(
 
     if len(assigned_island_ids) != len(set(assigned_island_ids)):
         raise ValueError("a complete assembly island cannot belong to multiple commercial objects")
-    if set(assigned_island_ids) != island_ids:
-        raise ValueError("registry must account for every complete assembly island exactly once")
 
     island_by_id = {island["island_id"]: island for island in normalized}
     for item in registry_objects:
@@ -870,9 +875,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for item in registry_objects
         },
         "complete_assembly_island_audit": [
-            island | {"object_id": object_id_by_island[island["island_id"]]}
+            island | {"object_id": object_id_by_island.get(island["island_id"])}
             for island in complete_assembly_islands
         ],
+        "unassigned_complete_assembly_island_ids": sorted(
+            {
+                island["island_id"]
+                for island in complete_assembly_islands
+            } - set(object_id_by_island)
+        ),
         "complete_assembly_island_merge_basis": {
             item["object_id"]: item["island_merge_basis"]
             for item in registry_objects

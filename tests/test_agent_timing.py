@@ -513,7 +513,7 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
         )
 
 
-def test_integrated_visual_registry_rejects_an_unassigned_complete_assembly_island():
+def test_integrated_visual_registry_preserves_an_unassigned_complete_assembly_island_for_review():
     payload = {
         "visual_groups": [
             {"group_id": "view_a", "page_number": 1, "location_hint": "left", "visual_description": "cabinet", "representation_kind": "elevation", "related_group_ids": []},
@@ -538,12 +538,15 @@ def test_integrated_visual_registry_rejects_an_unassigned_complete_assembly_isla
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
         patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {"request_started_at": "2026-10-16T00:00:00+00:00", "request_finished_at": "2026-10-16T00:00:01+00:00"})),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
-        pytest.raises(RuntimeError, match="account for every complete assembly island exactly once"),
     ):
-        run_anthropic_detection_visual_registry_agent(
+        _visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
+
+    assert registry["objects"][0]["object_id"] == "object-001"
+    assert usage["raw_usage"]["unassigned_complete_assembly_island_ids"] == ["island-002"]
+    assert usage["raw_usage"]["complete_assembly_island_audit"][1]["object_id"] is None
 
 
 def test_complete_assembly_island_signal_requires_one_object_and_same_page_islands():
@@ -552,8 +555,8 @@ def test_complete_assembly_island_signal_requires_one_object_and_same_page_islan
         {"group_id": "view-002", "page_number": 1},
     ]}
     usage = {"raw_usage": {"complete_assembly_island_audit": [
-        {"island_id": "island-001", "visual_group_id": "view-001"},
-        {"island_id": "island-002", "visual_group_id": "view-002"},
+        {"island_id": "island-001", "visual_group_id": "view-001", "object_id": "object-001"},
+        {"island_id": "island-002", "visual_group_id": "view-002", "object_id": "object-001"},
     ]}}
 
     assert build_complete_assembly_island_review_signal(
@@ -564,6 +567,27 @@ def test_complete_assembly_island_signal_requires_one_object_and_same_page_islan
         {"objects": [{"object_id": "object-001"}, {"object_id": "object-002"}]},
         usage,
     )["triggered"] is False
+
+
+def test_complete_assembly_island_signal_reviews_an_unassigned_island_even_with_multiple_objects():
+    visual_map = {"visual_groups": [
+        {"group_id": "view-001", "page_number": 1},
+        {"group_id": "view-002", "page_number": 2},
+    ]}
+    usage = {"raw_usage": {"complete_assembly_island_audit": [
+        {"island_id": "island-001", "visual_group_id": "view-001", "object_id": "object-001"},
+        {"island_id": "island-002", "visual_group_id": "view-002", "object_id": None},
+    ]}}
+
+    signal = build_complete_assembly_island_review_signal(
+        visual_map,
+        {"objects": [{"object_id": "object-001"}, {"object_id": "object-002"}]},
+        usage,
+    )
+
+    assert signal["triggered"] is True
+    assert signal["reason"] == "unassigned_complete_assembly_islands"
+    assert signal["unassigned_island_ids"] == ["island-002"]
 
 
 def test_assembly_island_review_uses_sonnet_without_primary_registry():

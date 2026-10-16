@@ -54,7 +54,7 @@ def build_complete_assembly_island_review_signal(
     registry: dict,
     visual_registry_usage: dict,
 ) -> dict:
-    """Find a same-page complete-assembly conflict worth independent review."""
+    """Find an incomplete island assignment or same-page merge worth review."""
     objects = registry.get("objects") if isinstance(registry, dict) else None
     audit = (visual_registry_usage.get("raw_usage") or {}).get("complete_assembly_island_audit")
     groups_by_id = {
@@ -76,15 +76,29 @@ def build_complete_assembly_island_review_signal(
         for page_number, island_ids in sorted(islands_by_page.items())
         if len(island_ids) >= 2
     ]
-    triggered = bool(isinstance(objects, list) and len(objects) == 1 and multi_island_pages)
+    unassigned_island_ids = sorted(
+        str(island.get("island_id") or "")
+        for island in (audit if isinstance(audit, list) else [])
+        if isinstance(island, dict)
+        if str(island.get("island_id") or "") and not str(island.get("object_id") or "").strip()
+    )
+    one_object_same_page_conflict = bool(
+        isinstance(objects, list) and len(objects) == 1 and multi_island_pages
+    )
+    triggered = bool(unassigned_island_ids or one_object_same_page_conflict)
     return {
         "triggered": triggered,
         "reason": (
-            "one_object_registry_with_multiple_complete_assembly_islands_on_one_page"
-            if triggered
-            else "no_same_page_complete_assembly_conflict"
+            "unassigned_complete_assembly_islands"
+            if unassigned_island_ids
+            else (
+                "one_object_registry_with_multiple_complete_assembly_islands_on_one_page"
+                if one_object_same_page_conflict
+                else "no_complete_assembly_conflict"
+            )
         ),
         "multi_island_pages": multi_island_pages,
+        "unassigned_island_ids": unassigned_island_ids,
     }
 
 
