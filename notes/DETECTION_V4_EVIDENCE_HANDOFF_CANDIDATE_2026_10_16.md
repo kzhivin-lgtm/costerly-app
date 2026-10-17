@@ -4,6 +4,27 @@ Status: accepted benchmark checkpoint for the V4 Evidence handoff and
 source-identifier transport. It is not a completed boundary-quality checkpoint
 for unlabelled multi-object drawings. Adda remains the active boundary defect.
 
+## Successor protected checkpoint, 2026-10-17
+
+The protected V4.2 code checkpoint is `1049e85`. It restores the accepted
+`8ea647c` Registry path, preserves the V4.2 model router and File Review
+Naming/TC display, and records the Registry's structured boundary decision in
+`agent_usage_events.raw_usage.registry_decision_audit`. This is auditable
+structured output, not hidden chain-of-thought.
+
+The router is deliberately narrow. An unlabelled file goes to Sonnet for the
+Registry only when OCR finds either multiple large drawing regions on one page
+or repeated multi-region pages. The Evidence packer remains on Haiku and can
+never alter the Registry's object set. Page 23 does not meet this rule because
+its OCR reports one large image region, so it remains on Haiku.
+
+This protects the architecture and makes failures diagnosable. It does not
+establish stable object-boundary quality: post-checkpoint Page 23 returned
+three objects twice and four once; Adda routed to Sonnet on all three attempts
+and returned one, two, and two objects. See
+`notes/DETECTION_V4_2_ROUTER_AUDIT_CHECKPOINT_2026_10_17.md` for the exact
+run evidence and rollback boundary.
+
 ## Decision
 
 Detection V4's outcome is a correct, sufficient, auditable immutable `rfq_estimation_object_inputs.input_payload`, not an asserted external object envelope. Detection owns commercial object identity, source-label transport, physical quantity, full relevant physical pages and non-semantic visual regions.

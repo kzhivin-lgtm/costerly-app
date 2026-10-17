@@ -1,5 +1,15 @@
 # Done Log
 
+Detection V4.2 protected diagnostic checkpoint `1049e85`: restored the
+accepted `8ea647c` Registry path, retained the narrow Ada-risk Sonnet router,
+restored File Review Naming timing and total provider token cost (`TC`), and
+persisted every Visual Registry's structured decision audit. Page 23 returned
+3/4/3 objects and Adda, routed to Sonnet on all three runs, returned 1/2/2.
+The checkpoint is accepted as a rollback, observability and architecture
+checkpoint, not as boundary-quality acceptance. Focused verification passed
+89 tests; production results and limits are recorded in
+`notes/DETECTION_V4_2_ROUTER_AUDIT_CHECKPOINT_2026_10_17.md`, завершена 17.10
+
 3.17.4.1 integration checkpoint `111805f`: V3 now carries resolved canonical
 Company Catalog or Israel Reference allocations from a partial Material Plan to
 Object Detail. Priced lines render while the plan remains `needs_review` and

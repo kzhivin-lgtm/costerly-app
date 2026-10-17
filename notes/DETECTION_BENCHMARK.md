@@ -20,6 +20,19 @@ into one object. For this source, the expected metadata is `project_name`
 `Beregovoy Proezd 5`, `design_partner` `ZE | WORKROOM studio`, and client
 `unknown`. The generic filename `page-23.pdf` is not project evidence.
 
+### V4.2 diagnostic checkpoint, 2026-10-17
+
+Code checkpoint: `1049e85`. The accepted V4 Registry path is retained, with a
+narrow Haiku-to-Sonnet boundary router and persisted structured Registry audit.
+This is not a release-gate pass for boundary stability.
+
+Fresh runs after the checkpoint returned Page 23 counts `3`, `4`, `3`.
+The router selected Haiku in both routed runs because OCR saw one large drawing
+region on the single page. The four-object failure split the two views of the
+TV console without positive evidence that they were different products. The
+next boundary repair must use this persisted decision audit to address that
+cause, not add a Page-23 count override.
+
 ## Current no-cache baseline
 
 - Date: 2026-07-22

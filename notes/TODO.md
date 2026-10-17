@@ -1,5 +1,15 @@
 # TODO
 
+ACTIVE, P0, Detection V4 commercial-boundary stability: protected checkpoint
+`1049e85` restores the accepted Registry path, adds V4.2 model routing and
+persists the structured Registry decision audit. It is not a quality-complete
+checkpoint: Page 23 produced 3/4/3 and Adda 1/2/2 on fresh runs. Preserve
+object-ID locking, full object evidence, UI-only previews, deferred Naming and
+File Review TC. Do not add file-specific count overrides or a universal extra
+model call. The next approved experiment must use the stored audit to test one
+systemic boundary-decision repair. Contract and evidence:
+`notes/DETECTION_V4_2_ROUTER_AUDIT_CHECKPOINT_2026_10_17.md`.
+
 DEFERRED, P1, USER DECISION, Detection external envelope dimensions: do not
 make W/D/H extraction a Detection critical-path objective or an Estimation
 precondition. Show only directly evidenced values as optional File Review
