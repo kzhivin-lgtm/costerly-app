@@ -136,3 +136,48 @@ def test_registry_allows_unassigned_navigation_only_visual_groups():
         registry,
         visual_group_ids={"view-001", "view-002"},
     ) == registry
+
+
+def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
+    visual_map = {
+        "visual_groups": [
+            {
+                "group_id": "view-001", "page_number": 1,
+                "location_hint": "left", "visual_description": "cabinet",
+                "representation_kind": "elevation", "commercial_role": "assembly_view",
+            },
+            {
+                "group_id": "view-002", "page_number": 1,
+                "location_hint": "title block", "visual_description": "sheet metadata",
+                "representation_kind": "title_block", "commercial_role": "document_context",
+            },
+        ],
+    }
+
+    assert validate_detection_visual_map(
+        visual_map,
+        require_commercial_roles=True,
+    ) == visual_map
+
+
+def test_registry_rejects_component_detail_as_commercial_boundary_support():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+            "visual_identity": "cabinet", "boundary_basis": "one cabinet",
+        }],
+    }
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="must be complete assembly views",
+    ) as raised:
+        validate_detection_registry(
+            registry,
+            visual_group_ids={"view-001"},
+            visual_group_roles={"view-001": "component_detail"},
+        )
+
+    assert raised.value.details == {"non_assembly_visual_group_ids": ["view-001"]}

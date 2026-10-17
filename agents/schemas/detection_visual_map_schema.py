@@ -2,6 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
+COMMERCIAL_VISUAL_GROUP_ROLES = {
+    "assembly_view",
+    "component_detail",
+    "document_context",
+}
+
 
 DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -26,6 +32,10 @@ DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
                     "location_hint": {"type": "string"},
                     "visual_description": {"type": "string"},
                     "representation_kind": {"type": "string"},
+                    "commercial_role": {
+                        "type": "string",
+                        "enum": sorted(COMMERCIAL_VISUAL_GROUP_ROLES),
+                    },
                 },
             },
         },
@@ -67,7 +77,11 @@ def normalize_detection_visual_map_group_ids(result: dict[str, Any]) -> dict[str
     return result
 
 
-def validate_detection_visual_map(result: dict[str, Any]) -> dict[str, Any]:
+def validate_detection_visual_map(
+    result: dict[str, Any],
+    *,
+    require_commercial_roles: bool = False,
+) -> dict[str, Any]:
     if not isinstance(result, dict) or set(result) != {"visual_groups"}:
         raise DetectionVisualMapSchemaError("visual map must contain only visual_groups")
     groups = result["visual_groups"]
@@ -80,6 +94,8 @@ def validate_detection_visual_map(result: dict[str, Any]) -> dict[str, Any]:
             "group_id", "page_number", "location_hint", "visual_description",
             "representation_kind",
         }
+        if require_commercial_roles:
+            required.add("commercial_role")
         if not isinstance(group, dict) or set(group) != required:
             raise DetectionVisualMapSchemaError("visual group fields do not match contract")
         expected_id = f"view-{index:03d}"
@@ -91,6 +107,10 @@ def validate_detection_visual_map(result: dict[str, Any]) -> dict[str, Any]:
             or not all(str(group[key]).strip() for key in (
                 "location_hint", "visual_description", "representation_kind",
             ))
+            or (
+                require_commercial_roles
+                and group["commercial_role"] not in COMMERCIAL_VISUAL_GROUP_ROLES
+            )
         ):
             raise DetectionVisualMapSchemaError("visual group is invalid")
         group_ids.add(expected_id)

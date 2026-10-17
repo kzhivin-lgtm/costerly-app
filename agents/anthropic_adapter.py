@@ -47,7 +47,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_atomic_groups_experiment_v1"
+    "detection_v4_visual_registry_group_roles_experiment_v1"
 )
 
 
@@ -68,13 +68,19 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
+    DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
+)
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
+    "commercial_role"
+)
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": ["visual_groups", "objects", "page_coverage"],
     "properties": {
-        "visual_groups": DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"],
+        "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
             "type": "array",
@@ -719,7 +725,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
-            normalize_detection_visual_map_group_ids({"visual_groups": raw_groups})
+            normalize_detection_visual_map_group_ids({"visual_groups": raw_groups}),
+            require_commercial_roles=True,
         )
         group_id_mapping = {
             raw_group_id: normalized["group_id"]
@@ -737,6 +744,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry = validate_detection_registry(
             registry_payload,
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
+            visual_group_roles={
+                group["group_id"]: group["commercial_role"]
+                for group in visual_map["visual_groups"]
+            },
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
@@ -778,6 +789,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
+        "visual_group_role_counts": {
+            role: sum(
+                group["commercial_role"] == role
+                for group in visual_map["visual_groups"]
+            )
+            for role in ("assembly_view", "component_detail", "document_context")
+        },
         "page_coverage_count": len(payload["page_coverage"]),
         "unassigned_page_count": sum(
             not entry["object_ids"] for entry in payload["page_coverage"]

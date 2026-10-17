@@ -75,8 +75,11 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
     assert "shared schedule, title block, layout or multi-object context" in prompt
-    assert "exclusive groups that prove this object's commercial boundary" in prompt
+    assert "groups that prove this object's commercial boundary" in prompt
+    assert "exactly one `commercial_role`" in prompt
+    assert "A `component_detail` never becomes a commercial object" in prompt
+    assert "A `document_context` never becomes an object" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_atomic_groups_experiment_v1"
+        "detection_v4_visual_registry_group_roles_experiment_v1"
     )

@@ -19,6 +19,7 @@ def validate_detection_registry(
     result: dict[str, Any],
     *,
     visual_group_ids: set[str] | None = None,
+    visual_group_roles: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(result, dict) or set(result) != {"objects"} or not isinstance(result["objects"], list):
         raise DetectionRegistrySchemaError("registry must contain only objects")
@@ -54,6 +55,17 @@ def validate_detection_registry(
     assigned_visual_groups = set(visual_group_owners)
     if visual_group_ids is not None and not assigned_visual_groups.issubset(visual_group_ids):
         raise DetectionRegistrySchemaError("registry references an unknown visual group")
+    if visual_group_roles is not None:
+        non_assembly_group_ids = sorted(
+            group_id
+            for group_id in assigned_visual_groups
+            if visual_group_roles.get(group_id) != "assembly_view"
+        )
+        if non_assembly_group_ids:
+            raise DetectionRegistrySchemaError(
+                "registry visual groups must be complete assembly views",
+                details={"non_assembly_visual_group_ids": non_assembly_group_ids},
+            )
     duplicate_ownership = {
         group_id: owners
         for group_id, owners in visual_group_owners.items()

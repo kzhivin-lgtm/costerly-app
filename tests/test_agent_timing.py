@@ -434,6 +434,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
+            "commercial_role": "assembly_view",
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -479,6 +480,7 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
+            "commercial_role": "assembly_view",
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -531,6 +533,7 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
+            "commercial_role": "assembly_view",
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -569,10 +572,12 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
             {
                 "group_id": "view_a", "page_number": 1, "location_hint": "left",
                 "visual_description": "cabinet", "representation_kind": "perspective",
+                "commercial_role": "assembly_view",
             },
             {
                 "group_id": "view_b", "page_number": 1, "location_hint": "right",
                 "visual_description": "counter", "representation_kind": "perspective",
+                "commercial_role": "assembly_view",
             },
         ],
         "objects": [
@@ -620,6 +625,7 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "cabinet", "representation_kind": "perspective",
+            "commercial_role": "assembly_view",
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -662,6 +668,7 @@ def test_integrated_visual_registry_persists_duplicate_group_ownership_details()
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "center",
             "visual_description": "two adjacent cabinets", "representation_kind": "elevation",
+            "commercial_role": "assembly_view",
         }],
         "objects": [
             {
