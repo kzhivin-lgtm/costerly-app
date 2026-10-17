@@ -9,6 +9,9 @@ import pandas as pd
 import pytest
 
 from agents.anthropic_adapter import (
+    DEFAULT_CLAUDE_DETECTION_MODEL,
+    DETECTION_VISUAL_REGISTRY_HAIKU_CORRESPONDENCE_EXPERIMENT_PROMPT_VERSION,
+    DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
     build_detection_ocr_context,
@@ -459,6 +462,60 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
     assert usage["operation"] == "rfq_detection_visual_registry"
+    assert usage["raw_usage"]["registry_decision_audit"] == payload
+
+
+def test_haiku_registry_gets_correspondence_experiment_without_changing_sonnet_prompt():
+    payload = {
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "left",
+            "visual_description": "one cabinet", "representation_kind": "perspective",
+            "related_group_ids": [],
+        }],
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "visual_group_ids": ["view_a"], "visual_identity": "one cabinet",
+            "boundary_basis": "one complete product",
+        }],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001"],
+            "evidence_reason": "cabinet view",
+        }],
+    }
+    prompts: list[str] = []
+
+    def fake_system_content(*, prompt):
+        prompts.append(prompt)
+        return prompt
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        patch("agents.anthropic_adapter.build_detection_system_content", side_effect=fake_system_content),
+    ):
+        _, _, haiku_usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None,
+            model=DEFAULT_CLAUDE_DETECTION_MODEL,
+        )
+        _, _, sonnet_usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None,
+            model="claude-sonnet-4-6",
+        )
+
+    assert haiku_usage["prompt_version"] == DETECTION_VISUAL_REGISTRY_HAIKU_CORRESPONDENCE_EXPERIMENT_PROMPT_VERSION
+    assert sonnet_usage["prompt_version"] == DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
+    assert "Cross-view correspondence audit for Haiku" in prompts[0]
+    assert "Cross-view correspondence audit for Haiku" not in prompts[1]
 
 
 def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_page():

@@ -8,6 +8,7 @@ from agents.prompt_loader import (
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
+    load_detection_visual_registry_haiku_correspondence_experiment_prompt,
 )
 
 
@@ -75,3 +76,11 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
     assert "shared schedule or a sheet showing separately coded products" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
+
+
+def test_haiku_registry_correspondence_experiment_requires_cross_view_audit():
+    prompt = load_detection_visual_registry_haiku_correspondence_experiment_prompt()
+
+    assert "Cross-view correspondence audit" in prompt
+    assert "Empty `related_group_ids` is an explicit finding" in prompt
+    assert "specific incompatible envelope" in prompt

@@ -74,6 +74,26 @@ but model selection alone does not make Registry output deterministic. No
 Page-23 or Adda count override has been added. Any successor repair must be
 evaluated against these audits and preserve the protected behaviour above.
 
+## Active experiment H1, Page 23 Haiku correspondence
+
+Scope: only Haiku's Visual Registry prompt. Sonnet, the router, schema,
+request count and Evidence packer are unchanged.
+
+The failing four-object audit gave the two TV-console views empty
+`related_group_ids`, then treated each as a separate product without positive
+evidence of incompatible envelope, function or structure. H1 makes
+`related_group_ids` an explicit cross-view correspondence audit. Before
+leaving that array empty, Haiku compares distinctive physical patterns. A
+linked pair must be one object unless `boundary_basis` names specific
+incompatibility. Shared page, room, project, finish or proximity remain
+invalid correspondence evidence.
+
+H1 usage events use prompt version
+`detection_v4_2_visual_registry_haiku_correspondence_experiment_v1`.
+Pass criterion: five fresh Page 23 runs each return three objects, and the
+TV-console object contains both corresponding visual groups. Any four-object
+run fails H1. This experiment does not evaluate Adda.
+
 ## Verification
 
 - Focused tests: 89 passed.

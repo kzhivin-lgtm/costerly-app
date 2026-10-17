@@ -22,6 +22,7 @@ from agents.prompt_loader import (
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
+    load_detection_visual_registry_haiku_correspondence_experiment_prompt,
 )
 from agents.schemas.detection_registry_schema import DETECTION_REGISTRY_JSON_SCHEMA, validate_detection_registry
 from agents.schemas.detection_visual_map_schema import (
@@ -43,6 +44,9 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v4"
+DETECTION_VISUAL_REGISTRY_HAIKU_CORRESPONDENCE_EXPERIMENT_PROMPT_VERSION = (
+    "detection_v4_2_visual_registry_haiku_correspondence_experiment_v1"
+)
 
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
     DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -666,6 +670,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_visual_registry_prompt()
+    prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
+    if selected_model == DEFAULT_CLAUDE_DETECTION_MODEL:
+        prompt += "\n\n" + load_detection_visual_registry_haiku_correspondence_experiment_prompt()
+        prompt_version = DETECTION_VISUAL_REGISTRY_HAIKU_CORRESPONDENCE_EXPERIMENT_PROMPT_VERSION
     user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
     schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
@@ -731,7 +739,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",
     })
-    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
 
 
