@@ -104,6 +104,21 @@ post-checkpoint reliability repairs are deliberately separate: normalize the
 single-page coverage invariant and persist failed-validation audits. This
 experiment does not evaluate Adda.
 
+## Post-H1 reliability repair
+
+For a one-page upload, every Registry object necessarily has page `1` as
+evidence. If the model omits an already-declared object ID from that only
+coverage entry, runtime normalization now restores page `1` and records
+`single_page_coverage_reconciled_object_ids` in the successful usage event.
+This does not add, remove, merge or split a commercial object.
+
+If a structured Visual Registry response still fails validation, Detection now
+persists a failed usage event before returning the original failure. Its raw
+usage retains the unmodified `registry_decision_audit`, validation error,
+validation stage and V4.2 model route. `run_id` is intentionally null because
+no validated RFQ run exists. Multi-page coverage remains strict: this repair
+does not infer missing evidence pages outside the one-page invariant.
+
 ## Verification
 
 - Focused tests: 89 passed.

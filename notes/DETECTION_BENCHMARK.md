@@ -43,6 +43,12 @@ a transport failure, not a fifth boundary result. The H1 five-run stability
 gate remains open until single-page coverage normalization and failed-response
 audit persistence are added and tested.
 
+The H1 reliability repair is now implemented and focused checks cover both
+paths. It normalizes only a missing object ID on a document's sole physical
+page, and saves a failed Registry audit without creating a synthetic RFQ run.
+The Page 23 five-run boundary gate remains open and needs fresh production
+runs after deployment.
+
 ## Current no-cache baseline
 
 - Date: 2026-07-22

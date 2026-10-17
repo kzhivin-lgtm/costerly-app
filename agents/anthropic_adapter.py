@@ -48,6 +48,15 @@ DETECTION_VISUAL_REGISTRY_HAIKU_CORRESPONDENCE_EXPERIMENT_PROMPT_VERSION = (
     "detection_v4_2_visual_registry_haiku_correspondence_experiment_v1"
 )
 
+
+class DetectionVisualRegistryValidationError(RuntimeError):
+    """Expose a DB-ready audit event when Registry output fails validation."""
+
+    def __init__(self, message: str, *, usage_event: dict[str, Any]):
+        super().__init__(message)
+        self.usage_event = usage_event
+
+
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA = copy.deepcopy(
     DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
 )
@@ -619,7 +628,7 @@ def run_anthropic_detection_visual_map_agent(*, file_name: str, company_id: str,
 
 def _apply_page_coverage_to_registry(
     objects: list[dict[str, Any]], page_coverage: object, *, page_count: int,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[str]]:
     """Make Evidence completeness an explicit, auditable page-level contract.
 
     The model accounts for every uploaded physical page once.  Evidence pages
@@ -655,6 +664,17 @@ def _apply_page_coverage_to_registry(
         coverage_by_page[page_number] = covered_ids
     if set(coverage_by_page) != set(range(1, page_count + 1)):
         raise ValueError("page coverage must account for every uploaded page exactly once")
+    reconciled_object_ids: list[str] = []
+    if page_count == 1:
+        # Every Registry object in a one-page upload has necessarily been
+        # evidenced on that only physical page. This repairs a lossy coverage
+        # enumeration, not the model's commercial-object decision.
+        covered_ids = coverage_by_page[1]
+        for item in objects:
+            object_id = str(item.get("object_id") or "")
+            if object_id and object_id not in covered_ids:
+                covered_ids.append(object_id)
+                reconciled_object_ids.append(object_id)
     enriched = copy.deepcopy(objects)
     for item in enriched:
         object_id = str(item["object_id"])
@@ -663,7 +683,7 @@ def _apply_page_coverage_to_registry(
             for page_number in range(1, page_count + 1)
             if object_id in coverage_by_page[page_number]
         ]
-    return enriched
+    return enriched, reconciled_object_ids
 
 
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -706,7 +726,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
-        registry_objects = _apply_page_coverage_to_registry(
+        registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
             payload["objects"], payload["page_coverage"], page_count=len(page_images),
         )
         registry_payload = {"objects": registry_objects}
@@ -720,7 +740,34 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
         )
     except (KeyError, ValueError) as exc:
-        raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
+        failure_diagnostics = dict(diagnostics)
+        failure_diagnostics.update({
+            "registry_decision_audit": registry_decision_audit,
+            "validation_error": str(exc),
+            "validation_stage": "visual_registry",
+            "attempt_label": "visual_registry_validation_failed",
+        })
+        failure_usage = build_agent_usage_event(
+            agent_name="detection",
+            operation="rfq_detection_visual_registry",
+            company_id=company_id,
+            run_id=None,
+            file_name=file_name,
+            object_id=None,
+            object_name=None,
+            model=selected_model,
+            prompt_version=prompt_version,
+            response=response,
+            started_at=diagnostics["request_started_at"],
+            finished_at=diagnostics["request_finished_at"],
+            request_diagnostics=failure_diagnostics,
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Detection visual-registry response failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
     assigned_visual_group_ids = {
         group_id
         for item in registry["objects"]
@@ -739,6 +786,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",
     })
+    if reconciled_object_ids:
+        diagnostics["single_page_coverage_reconciled_object_ids"] = reconciled_object_ids
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
 

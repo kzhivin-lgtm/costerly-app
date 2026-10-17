@@ -10,6 +10,13 @@ model call. The next approved experiment must use the stored audit to test one
 systemic boundary-decision repair. Contract and evidence:
 `notes/DETECTION_V4_2_ROUTER_AUDIT_CHECKPOINT_2026_10_17.md`.
 
+H1 checkpoint `1a62549`: four persisted Page 23 runs returned three objects;
+the next run exposed a single-page coverage transport failure. The reliability
+repair now normalizes that narrow invariant and persists the structured audit
+when validation rejects a Registry response. Neither repair changes the
+commercial-boundary decision. Next: five fresh production Page 23 runs to
+close or reject the H1 stability gate.
+
 DEFERRED, P1, USER DECISION, Detection external envelope dimensions: do not
 make W/D/H extraction a Detection critical-path objective or an Estimation
 precondition. Show only directly evidenced values as optional File Review

@@ -1,5 +1,14 @@
 # Done Log
 
+Detection V4.2 H1 reliability repair: one-page Registry coverage now restores
+page `1` only for an already-declared object absent from the sole coverage
+entry, preserving complete Estimation evidence without modifying object
+boundaries. A structured Registry validation failure now writes its exact
+decision audit, validation error and V4.2 route to the usage ledger before
+the same failure is returned. Focused verification passed 44 tests. Page 23
+still needs a fresh five-run boundary-stability check after deployment,
+завершена 17.10
+
 Detection V4.2 Haiku correspondence protected checkpoint `1a62549`: added a
 Haiku-only cross-view audit before Registry locking. Four fresh persisted Page
 23 runs returned the expected three objects. The subsequent run failed because

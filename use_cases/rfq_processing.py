@@ -15,6 +15,7 @@ import time
 import pandas as pd
 
 from agents.anthropic_adapter import (
+    DetectionVisualRegistryValidationError,
     build_detection_ocr_context,
     detection_naming_split_enabled,
     get_secret,
@@ -460,17 +461,27 @@ def process_uploaded_rfq(
             page_count = len(pages) if isinstance(pages, list) and pages else None
         progress_callback("Detection Agent", page_count)
     detection_started = time.perf_counter()
-    detection_result = run_detection_agent(
-        file_name=file_name,
-        company_id=company_id,
-        file_bytes=file_bytes,
-        ocr_package=detection_ocr_package,
-        page_images=page_images,
-        page_image_diagnostics=page_image_diagnostics,
-        # V4.2 normally uses Haiku. Its deterministic OCR-layout router may
-        # select Sonnet only for a high-risk commercial-boundary Registry.
-        model=None,
-    )
+    try:
+        detection_result = run_detection_agent(
+            file_name=file_name,
+            company_id=company_id,
+            file_bytes=file_bytes,
+            ocr_package=detection_ocr_package,
+            page_images=page_images,
+            page_image_diagnostics=page_image_diagnostics,
+            # V4.2 normally uses Haiku. Its deterministic OCR-layout router may
+            # select Sonnet only for a high-risk commercial-boundary Registry.
+            model=None,
+        )
+    except DetectionVisualRegistryValidationError as exc:
+        try:
+            insert_agent_usage_event(client, exc.usage_event)
+        except Exception as telemetry_exc:
+            print(
+                "[Detection] Could not persist visual-registry validation audit: "
+                f"{telemetry_exc}"
+            )
+        raise
     detection_seconds = round(time.perf_counter() - detection_started, 3)
     usage_events = detection_result.pop("_agent_usage_events", [])
     legacy_usage_event = detection_result.pop("_agent_usage", None)

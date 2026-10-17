@@ -10,6 +10,7 @@ import pytest
 
 from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_DETECTION_MODEL,
+    DetectionVisualRegistryValidationError,
     DETECTION_VISUAL_REGISTRY_HAIKU_CORRESPONDENCE_EXPERIMENT_PROMPT_VERSION,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
@@ -554,6 +555,103 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
         )
+
+
+def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
+    payload = {
+        "visual_groups": [
+            {
+                "group_id": "view_a", "page_number": 1, "location_hint": "left",
+                "visual_description": "cabinet", "representation_kind": "perspective",
+                "related_group_ids": [],
+            },
+            {
+                "group_id": "view_b", "page_number": 1, "location_hint": "right",
+                "visual_description": "counter", "representation_kind": "perspective",
+                "related_group_ids": [],
+            },
+        ],
+        "objects": [
+            {
+                "object_id": "object-001", "transport_label": "Object 1",
+                "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+                "visual_group_ids": ["view_a"], "visual_identity": "cabinet",
+                "boundary_basis": "separate cabinet",
+            },
+            {
+                "object_id": "object-002", "transport_label": "Object 2",
+                "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+                "visual_group_ids": ["view_b"], "visual_identity": "counter",
+                "boundary_basis": "separate counter",
+            },
+        ],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001"],
+            "evidence_reason": "cabinet drawing",
+        }],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+    assert [item["estimation_evidence_pages"] for item in registry["objects"]] == [[1], [1]]
+    assert usage["raw_usage"]["single_page_coverage_reconciled_object_ids"] == ["object-002"]
+
+
+def test_integrated_visual_registry_validation_failure_carries_structured_audit():
+    payload = {
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "left",
+            "visual_description": "cabinet", "representation_kind": "perspective",
+            "related_group_ids": [],
+        }],
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "visual_group_ids": ["view_a"], "visual_identity": "cabinet",
+            "boundary_basis": "one cabinet",
+        }],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001"],
+            "evidence_reason": "cabinet drawing",
+        }],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        pytest.raises(DetectionVisualRegistryValidationError) as raised,
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
+        )
+
+    event = raised.value.usage_event
+    assert event["status"] == "failed"
+    assert event["run_id"] is None
+    assert event["error_message"] == "page coverage must account for every uploaded page exactly once"
+    assert event["raw_usage"]["registry_decision_audit"] == payload
 
 
 def test_visual_map_retries_truncated_structured_json_with_larger_budget():

@@ -7,6 +7,8 @@ from agents.detection_agent import (
     _merge_registry_evidence,
     run_detection_agent,
 )
+from agents.anthropic_adapter import DetectionVisualRegistryValidationError
+from use_cases.rfq_processing import process_uploaded_rfq
 
 
 def test_registry_evidence_keeps_full_estimation_set_not_only_visual_dossier():
@@ -193,3 +195,41 @@ def test_v42_routes_only_adda_style_registry_to_sonnet():
 
     assert registry_call["model"] == "claude-sonnet-4-6"
     assert evidence_call["primary_model_override"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
+
+
+def test_processing_persists_visual_registry_validation_audit_before_reraising(monkeypatch):
+    failure_event = {
+        "company_id": "001", "run_id": None, "file_name": "drawing.pdf",
+        "agent_name": "detection", "operation": "rfq_detection_visual_registry",
+        "model": "test-model", "prompt_version": "test-prompt", "input_tokens": 1,
+        "output_tokens": 1, "status": "failed", "raw_usage": {"audit": "payload"},
+    }
+    persisted: list[dict] = []
+    ocr_package = {
+        "model": "none", "contract_version": "ocr_v2", "status": "skipped",
+        "pages": [], "evidence": {"text_blocks": [], "literal_items": []}, "usage": {},
+        "processing_seconds": 0.0,
+    }
+
+    monkeypatch.setattr("use_cases.rfq_processing.get_supabase_client", lambda: object())
+    monkeypatch.setattr("use_cases.rfq_processing.record_rfq_upload", lambda **_kwargs: None)
+    monkeypatch.setattr("use_cases.rfq_processing.persist_estimation_original", lambda **_kwargs: None)
+    monkeypatch.setattr("use_cases.rfq_processing.should_use_detection_page_images", lambda **_kwargs: False)
+    monkeypatch.setattr("use_cases.rfq_processing._run_optional_ocr", lambda **_kwargs: (ocr_package, None))
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.run_detection_agent",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            DetectionVisualRegistryValidationError("registry invalid", usage_event=failure_event)
+        ),
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.insert_agent_usage_event",
+        lambda _client, event: persisted.append(event),
+    )
+
+    with pytest.raises(DetectionVisualRegistryValidationError, match="registry invalid"):
+        process_uploaded_rfq(
+            file_name="drawing.pdf", file_bytes=b"pdf", company_id="001",
+        )
+
+    assert persisted == [failure_event]

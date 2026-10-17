@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from agents.anthropic_adapter import (
+    DetectionVisualRegistryValidationError,
     run_anthropic_detection_agent_with_fallback,
     run_anthropic_detection_visual_registry_agent,
 )
@@ -238,11 +239,15 @@ def run_detection_agent(
     if not registry_images:
         raise ValueError("Detection registry requires rendered PDF pages.")
     regions = build_detection_registry_regions(registry_images)
-    _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
-        file_name=file_name, company_id=company_id, file_bytes=file_bytes,
-        page_images=registry_images, regions=regions,
-        ocr_package=ocr_package, model=route["registry_model"],
-    )
+    try:
+        _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
+            file_name=file_name, company_id=company_id, file_bytes=file_bytes,
+            page_images=registry_images, regions=regions,
+            ocr_package=ocr_package, model=route["registry_model"],
+        )
+    except DetectionVisualRegistryValidationError as exc:
+        _attach_detection_model_route(exc.usage_event, route)
+        raise
     visual_registry_usage = _attach_detection_model_route(visual_registry_usage, route)
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
