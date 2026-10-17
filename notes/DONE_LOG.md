@@ -1,5 +1,17 @@
 # Done Log
 
+Detection V4.2 exclusive visual-group ownership contract checkpoint
+`8c2c37c`: each object-specific visual group now has one commercial-object
+owner, while shared physical-page evidence remains unrestricted through
+`page_coverage`. Duplicate ownership rejects before any RFQ or Estimation
+handoff and persists the raw Registry decision plus deterministic conflict
+details. Five post-deploy Page 23 runs each returned three objects, with no
+Registry or full-cycle timing regression. One run semantically mis-owned an
+alternate console view, so this is an accepted data-integrity checkpoint, not
+Page 23 boundary-quality acceptance. Evidence and remaining gate:
+`notes/DETECTION_V4_2_OWNERSHIP_CONTRACT_CHECKPOINT_2026_10_17.md`, завершена
+17.10
+
 Detection V4.2 Page 23 protected ownership checkpoint `e56f347`: H1 merged
 the two TV-console views in all nine observed runs, but 8/9 count accuracy is
 not an acceptance result. The remaining four-object response reused one
