@@ -2,6 +2,7 @@ import pytest
 
 from agents.anthropic_adapter import discard_degenerate_evidence_regions
 from agents.schemas.detection_registry_schema import (
+    DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     validate_detection_registry,
 )
@@ -81,6 +82,15 @@ def test_visual_map_and_registry_keep_representation_identity_separate():
         registry,
         visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
     ) == registry
+
+
+def test_registry_schema_requires_at_least_one_visual_group_per_object():
+    visual_group_ids = (
+        DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
+        ["items"]["properties"]["visual_group_ids"]
+    )
+
+    assert visual_group_ids["minItems"] == 1
 
 
 def test_visual_map_normalizes_provider_group_ids_before_strict_validation():

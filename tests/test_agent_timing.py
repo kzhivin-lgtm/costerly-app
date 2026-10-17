@@ -475,6 +475,80 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert usage["raw_usage"]["registry_decision_audit"] == payload
 
 
+def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():
+    payload = {
+        "visual_groups": [
+            {"group_id": "view_a", "page_number": 1, "location_hint": "upper left", "visual_description": "shelving", "representation_kind": "elevation", "commercial_role": "assembly_view"},
+            {"group_id": "view_b", "page_number": 1, "location_hint": "upper right", "visual_description": "door system", "representation_kind": "elevation", "commercial_role": "assembly_view"},
+            {"group_id": "view_c", "page_number": 1, "location_hint": "lower", "visual_description": "TV console", "representation_kind": "perspective", "commercial_role": "assembly_view"},
+            {"group_id": "detail_d", "page_number": 1, "location_hint": "shelving detail", "visual_description": "component detail", "representation_kind": "detail", "commercial_role": "component_detail"},
+        ],
+        "objects": [
+            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["view_a"], "visual_identity": "shelving", "boundary_basis": "one complete product"},
+            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["view_b"], "visual_identity": "door system", "boundary_basis": "one complete product"},
+            {"object_id": "object-003", "transport_label": "Object 3", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["view_c"], "visual_identity": "TV console", "boundary_basis": "one complete product"},
+            {"object_id": "object-004", "transport_label": "Object 4", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": [], "visual_identity": "component detail", "boundary_basis": "not a commercial object"},
+        ],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001", "object-002", "object-003"],
+            "evidence_reason": "the page contains all three complete products",
+        }],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        })),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+    assert [item["object_id"] for item in registry["objects"]] == [
+        "object-001", "object-002", "object-003",
+    ]
+    assert usage["raw_usage"]["discarded_orphan_registry_object_ids"] == ["object-004"]
+    assert usage["raw_usage"]["registry_decision_audit"] == payload
+
+
+def test_integrated_visual_registry_keeps_empty_group_object_with_evidence_as_error():
+    payload = {
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "left",
+            "visual_description": "cabinet", "representation_kind": "elevation",
+            "commercial_role": "assembly_view",
+        }],
+        "objects": [
+            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["view_a"], "visual_identity": "cabinet", "boundary_basis": "one complete product"},
+            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": [], "visual_identity": "unresolved", "boundary_basis": "unresolved"},
+        ],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001", "object-002"],
+            "evidence_reason": "both are claimed on this page",
+        }],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        })),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        pytest.raises(DetectionVisualRegistryValidationError, match="registry visual groups are invalid"),
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+
 def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
     payload = {
         "visual_groups": [{

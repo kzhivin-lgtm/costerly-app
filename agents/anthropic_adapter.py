@@ -694,6 +694,74 @@ def _apply_page_coverage_to_registry(
     return enriched, reconciled_object_ids
 
 
+def _discard_trailing_orphan_registry_objects(
+    objects: object,
+    page_coverage: object,
+    *,
+    page_count: int,
+) -> tuple[object, list[str]]:
+    """Remove only a terminal Registry row with no structural object evidence.
+
+    A commercial object must have both an assembly-view owner and a page-level
+    Evidence reference.  Occasionally the model's written audit reaches that
+    conclusion but serializes a final, component-detail row anyway.  We may
+    remove it only when the complete page-coverage contract is otherwise
+    valid, the row has exactly an empty group list, is absent from all page
+    coverage, and it is terminal.  Any conflicting or partial object remains
+    a validation error rather than being silently repaired.
+    """
+    if not isinstance(objects, list) or not all(isinstance(item, dict) for item in objects):
+        return objects, []
+    if not isinstance(page_coverage, list):
+        return objects, []
+
+    object_ids = [item.get("object_id") for item in objects]
+    if any(not isinstance(object_id, str) or object_id != f"object-{index:03d}"
+           for index, object_id in enumerate(object_ids, start=1)):
+        return objects, []
+
+    coverage_by_page: dict[int, list[str]] = {}
+    for entry in page_coverage:
+        if not isinstance(entry, dict) or set(entry) != {
+            "page_number", "object_ids", "evidence_reason",
+        }:
+            return objects, []
+        page_number = entry["page_number"]
+        covered_ids = entry["object_ids"]
+        if (
+            not isinstance(page_number, int)
+            or not 1 <= page_number <= page_count
+            or page_number in coverage_by_page
+            or not isinstance(covered_ids, list)
+            or len(covered_ids) != len(set(covered_ids))
+            or not all(isinstance(object_id, str) and object_id in object_ids for object_id in covered_ids)
+            or not isinstance(entry["evidence_reason"], str)
+            or not entry["evidence_reason"].strip()
+        ):
+            return objects, []
+        coverage_by_page[page_number] = covered_ids
+    if set(coverage_by_page) != set(range(1, page_count + 1)):
+        return objects, []
+
+    covered_object_ids = {
+        object_id
+        for covered_ids in coverage_by_page.values()
+        for object_id in covered_ids
+    }
+    first_orphan_index = len(objects)
+    while first_orphan_index:
+        item = objects[first_orphan_index - 1]
+        object_id = item["object_id"]
+        if item.get("visual_group_ids") != [] or object_id in covered_object_ids:
+            break
+        first_orphan_index -= 1
+    if first_orphan_index == len(objects):
+        return objects, []
+
+    discarded_ids = [item["object_id"] for item in objects[first_orphan_index:]]
+    return objects[:first_orphan_index], discarded_ids
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -732,8 +800,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
+        registry_objects_input, discarded_orphan_registry_object_ids = (
+            _discard_trailing_orphan_registry_objects(
+                payload["objects"], payload["page_coverage"], page_count=len(page_images),
+            )
+        )
         registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
-            payload["objects"], payload["page_coverage"], page_count=len(page_images),
+            registry_objects_input, payload["page_coverage"], page_count=len(page_images),
         )
         registry_payload = {"objects": registry_objects}
         for item in registry_payload["objects"]:
@@ -807,6 +880,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     })
     if reconciled_object_ids:
         diagnostics["single_page_coverage_reconciled_object_ids"] = reconciled_object_ids
+    if discarded_orphan_registry_object_ids:
+        diagnostics["discarded_orphan_registry_object_ids"] = discarded_orphan_registry_object_ids
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
 
