@@ -30,17 +30,18 @@ processing averaged 24.880 seconds after deployment versus 25.566 seconds in
 the preceding sample, so the contract does not show a timing regression.
 
 The successful runs consistently separated the shelving unit, the shared-track
-door system, and the horizontal TV-console assembly. Four of five assigned both
-alternate console views to the console. In one run, the model assigned an
-alternate console view to shelving instead. This is semantic mis-ownership, not
-duplicate ownership: the new invariant correctly permits neither sharing nor
-silent persistence of one group under two objects, but it cannot by itself
-prove the selected owner is semantically correct.
+door system, and the horizontal TV-console assembly. A review initially treated
+`group-004` in one run as a console alternate view. The retained audit shows it
+is instead a shelving technical detail and was correctly assigned to shelving.
+Visual group IDs are generated independently for each model response and must
+never be compared as stable identities across runs. No semantic mis-ownership
+is established by this sample.
 
 ## Acceptance boundary
 
-The contract is accepted as a rollback and data-integrity checkpoint. The
-remaining Page 23 issue is a boundary-quality gate because it can degrade
-object-specific evidence on multi-page files even when object count is correct.
+The contract is accepted as a rollback and data-integrity checkpoint. It does
+not establish a general guarantee that a model can never semantically assign a
+representation to the wrong object. That hypothetical error would require
+visual evidence, not regenerated group IDs, before it became a repair target.
 It is not a reason to undo exclusive ownership or to reduce shared page
 evidence.

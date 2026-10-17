@@ -6,9 +6,11 @@ owner, while shared physical-page evidence remains unrestricted through
 `page_coverage`. Duplicate ownership rejects before any RFQ or Estimation
 handoff and persists the raw Registry decision plus deterministic conflict
 details. Five post-deploy Page 23 runs each returned three objects, with no
-Registry or full-cycle timing regression. One run semantically mis-owned an
-alternate console view, so this is an accepted data-integrity checkpoint, not
-Page 23 boundary-quality acceptance. Evidence and remaining gate:
+Registry or full-cycle timing regression. A subsequent audit correction found
+that the initially suspected console-view mis-ownership was actually a shelving
+technical detail: visual group IDs are response-local and cannot be compared
+between runs. This remains an accepted data-integrity checkpoint, not a general
+boundary-quality guarantee. Evidence and remaining gate:
 `notes/DETECTION_V4_2_OWNERSHIP_CONTRACT_CHECKPOINT_2026_10_17.md`, завершена
 17.10
 
