@@ -279,6 +279,13 @@ def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     assert "costerly:rfq-upload-selected" in source
 
 
+def test_upload_screen_uses_a_fresh_widget_identity_for_each_estimate_cycle():
+    source = Path("screens/upload.py").read_text()
+
+    assert '"rfq_upload_widget_generation"' in source
+    assert 'key=f"rfq_upload_input_{upload_widget_generation}"' in source
+
+
 def test_rfq_upload_and_processing_emit_distinct_runtime_boundaries():
     upload_source = Path("screens/upload.py").read_text()
     processing_source = Path("screens/processing.py").read_text()

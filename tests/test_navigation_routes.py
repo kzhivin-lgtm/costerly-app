@@ -48,6 +48,7 @@ def test_new_estimate_reset_clears_all_estimate_scoped_session_state():
     assert "file_review_naming_published.run-old" not in st.session_state
     assert "file_review_naming_cache_synced.run-old" not in st.session_state
     assert "rfq_upload_input" not in st.session_state
+    assert st.session_state.rfq_upload_widget_generation == 1
 
 
 def test_account_bootstrap_drops_legacy_profile_tab_parameter():

@@ -759,12 +759,12 @@ def _render_file_review_header_only(render_header_controls: Callable[[], None] |
 
 def _back_to_upload_button(*, clear_processing_error: bool = False) -> None:
     """Render the shared Back to Upload action for non-review states."""
-    from state.session import set_screen
+    from state.session import reset_new_estimate_session, set_screen
 
     def return_to_upload() -> None:
-        set_screen("upload")
         if clear_processing_error:
-            st.session_state.processing_error = None
+            reset_new_estimate_session(clear_upload_widget=True)
+        set_screen("upload")
 
     st.button("BACK TO UPLOAD", type="secondary", on_click=return_to_upload)
 

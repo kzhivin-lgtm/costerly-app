@@ -41,11 +41,14 @@ def render_upload_screen(company_id: str, *, trace=None) -> None:
     apply_upload_css()
     warm_mistral_http_client_async()
     _render_upload_hero()
+    upload_widget_generation = int(
+        st.session_state.get("rfq_upload_widget_generation", 0)
+    )
 
     uploaded_file = st.file_uploader(
         "📎 Drop or upload",
         type=["pdf", "png", "jpg", "jpeg"],
-        key="rfq_upload_input",
+        key=f"rfq_upload_input_{upload_widget_generation}",
         label_visibility="collapsed",
     )
     install_upload_interaction_guards(processing_stage_html(elapsed_seconds=0))

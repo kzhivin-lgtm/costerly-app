@@ -64,6 +64,9 @@ def init_state() -> None:
     if "uploaded_file_bytes" not in st.session_state:
         st.session_state.uploaded_file_bytes = None
 
+    if "rfq_upload_widget_generation" not in st.session_state:
+        st.session_state.rfq_upload_widget_generation = 0
+
     if "processed_file_name" not in st.session_state:
         st.session_state.processed_file_name = None
 
@@ -167,6 +170,13 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
         )):
             st.session_state.pop(key, None)
     if clear_upload_widget:
+        # A native file input does not reliably emit a new Streamlit value when
+        # the same PDF is selected again. A new widget identity makes every
+        # New Estimate or retry an actual upload cycle rather than a client-only
+        # Processing shell.
+        st.session_state.rfq_upload_widget_generation = (
+            int(st.session_state.get("rfq_upload_widget_generation", 0)) + 1
+        )
         st.session_state.pop("rfq_upload_input", None)
 
 
