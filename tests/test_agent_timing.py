@@ -12,6 +12,7 @@ import pytest
 from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_DETECTION_MODEL,
     DetectionVisualRegistryValidationError,
+    DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -22,6 +23,7 @@ from agents.anthropic_adapter import (
     create_claude_message,
     create_claude_message_streamed,
     normalize_detection_identity_fields,
+    run_anthropic_detection_agent,
     run_anthropic_detection_registry_agent,
     run_anthropic_detection_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
@@ -393,6 +395,53 @@ def test_detection_normalizes_advisory_file_quality_before_schema_validation():
     assert normalized["rfq_run"]["file_quality_level"] == 4
     assert normalized["rfq_run"]["file_quality_label"] == "production_ready"
     assert normalized["rfq_run"]["file_quality_confidence"] == 100.0
+
+
+def test_locked_evidence_handoff_uses_temperature_zero_and_records_it():
+    payload = {
+        "rfq_run": {
+            "run_id": "run-1", "company_id": "company-1", "project_name": "Project",
+            "file_name": "drawing.pdf", "source_type": "pdf", "design_partner": "unknown",
+            "client": "unknown", "author": "unknown", "document_date": "unknown",
+            "pages_detected": 1, "language": "en", "file_quality_level": 3,
+            "file_quality_label": "detailed_drawings", "file_quality_confidence": 90,
+            "file_quality_notes": "", "status": "intake_parsed", "created_at": "unknown",
+        },
+        "detected_objects": [{
+            "run_id": "run-1", "company_id": "company-1", "object_id": "object-001",
+            "object_name": "Object 1", "quantity": 1, "quantity_explicit": False,
+            "review_required": False, "evidence_pages": "1", "approved": False,
+            "created_at": "unknown",
+            "evidence_page_refs": [{
+                "page_number": 1, "source_label": "P1",
+                "regions": [{"top_left_x": 1, "top_left_y": 2, "bottom_right_x": 30, "bottom_right_y": 40}],
+            }],
+        }],
+    }
+    requested_temperatures = []
+
+    def fake_create(*_args, temperature, **_kwargs):
+        requested_temperatures.append(temperature)
+        return _Response(), {
+            "request_started_at": "2026-10-18T00:00:00+00:00",
+            "request_finished_at": "2026-10-18T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="model"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        result = run_anthropic_detection_agent(
+            file_name="drawing.pdf", company_id="company-1", file_bytes=b"pdf",
+            page_images=[b"page"], model="model", locked_registry={"objects": []},
+        )
+
+    assert requested_temperatures == [DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE]
+    raw_usage = result["_agent_usage"]["raw_usage"]
+    assert raw_usage["temperature"] == 0.0
+    assert raw_usage["request_fingerprint"]
 
 
 def test_registry_retries_truncated_structured_json_with_larger_budget():

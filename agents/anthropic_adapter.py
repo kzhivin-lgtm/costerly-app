@@ -50,6 +50,10 @@ DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
     "detection_v4_visual_registry_group_roles_experiment_v2_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
+# Registry has already locked object identity, quantity and ordering before this
+# call. Keep the evidence-packaging pass deterministic under that immutable
+# contract as well.
+DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE = 0.0
 
 
 class DetectionVisualRegistryValidationError(RuntimeError):
@@ -1306,6 +1310,7 @@ def run_anthropic_detection_agent(
             {
                 "model": selected_model,
                 "max_tokens": 8192,
+                "temperature": DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
                 "prompt_sha256": prompt_sha256,
                 "schema_sha256": schema_sha256,
                 "system_content_sha256": system_content_sha256,
@@ -1322,6 +1327,7 @@ def run_anthropic_detection_agent(
         client,
         model=selected_model,
         max_tokens=8192,
+        temperature=DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
         system=system_content,
         messages=[
             {
@@ -1343,6 +1349,7 @@ def run_anthropic_detection_agent(
             }
         },
     )
+    stream_diagnostics["temperature"] = DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE
     raw_text = extract_text_from_claude_response(response)
 
     try:
