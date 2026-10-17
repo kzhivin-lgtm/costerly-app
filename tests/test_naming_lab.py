@@ -33,6 +33,8 @@ def test_naming_prompt_keeps_integrated_kitchens_out_of_shelving():
 def test_extracts_authoritative_leading_index_only():
     assert extract_object_index("ОМ-2 — Railing panel") == "ОМ-2"
     assert extract_object_index("ОМ 15-1") == "ОМ 15-1"
+    assert extract_object_index("Kitchen N56") == "N56"
+    assert extract_object_index("Kitchen N56 N57") == ""
     assert extract_object_index("Sliding door system") == ""
 
 

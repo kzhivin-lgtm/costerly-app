@@ -75,6 +75,12 @@ def _merge_registry_evidence(result: dict, registry: dict) -> dict:
         # locked quantity in the final commercial object.
         detected["quantity"] = locked_object["quantity"]
         detected["quantity_explicit"] = locked_object["quantity_explicit"]
+        # The Evidence pass may describe the object visually, but it has no
+        # authority to replace the Registry's source-label transport. Naming
+        # uses this field to retain an architect's exact identifier.
+        transport_label = str(locked_object.get("transport_label") or "").strip()
+        if transport_label:
+            detected["object_name"] = transport_label
         required_pages = set(locked_object["estimation_evidence_pages"])
         refs_by_page: dict[int, dict] = {}
         for raw_ref in detected.get("evidence_page_refs") or []:

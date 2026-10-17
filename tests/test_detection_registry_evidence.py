@@ -56,6 +56,23 @@ def test_registry_locks_complete_system_quantity_against_component_count():
     assert merged["detected_objects"][0]["quantity_explicit"] is False
 
 
+def test_registry_source_transport_label_overrides_evidence_pass_name():
+    result = {"detected_objects": [{
+        "object_id": "object-001", "object_name": "Kitchen",
+        "quantity": 1, "quantity_explicit": False,
+        "evidence_page_refs": [{"page_number": 1, "source_label": "1", "regions": []}],
+    }]}
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Kitchen N56",
+        "quantity": 1, "quantity_explicit": False,
+        "estimation_evidence_pages": [1],
+    }]}
+
+    merged = _merge_registry_evidence(result, registry)
+
+    assert merged["detected_objects"][0]["object_name"] == "Kitchen N56"
+
+
 def test_registry_resolves_shared_track_leaves_to_one_commercial_door_system():
     registry = {"objects": [{
         "object_id": "object-002",

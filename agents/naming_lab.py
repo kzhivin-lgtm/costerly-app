@@ -52,7 +52,14 @@ def extract_object_index(object_name: Any) -> str:
         candidate = name.split(" — ", 1)[0].strip()
         if _is_source_identifier(candidate):
             return candidate
-    return name if _is_source_identifier(name) else ""
+    if _is_source_identifier(name):
+        return name
+    # Registry transport is source-derived, but a model can occasionally add
+    # a descriptive word around one literal code, for example "Kitchen N56".
+    # Retain that one unambiguous code rather than dropping it in Naming. Do
+    # not guess when a label contains multiple possible identifiers.
+    candidates = {match.group(0).strip() for match in _SOURCE_IDENTIFIER_RE.finditer(name)}
+    return next(iter(candidates)) if len(candidates) == 1 else ""
 
 
 _SOURCE_IDENTIFIER_RE = re.compile(
