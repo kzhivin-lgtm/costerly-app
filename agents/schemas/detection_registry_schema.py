@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any
 
-DETECTION_REGISTRY_JSON_SCHEMA: dict[str, Any] = {"type":"object","additionalProperties":False,"required":["objects"],"properties":{"objects":{"type":"array","items":{"type":"object","additionalProperties":False,"required":["object_id","transport_label","quantity","quantity_explicit","identity_pages","estimation_evidence_pages","visual_group_ids","visual_identity","boundary_basis"],"properties":{"object_id":{"type":"string"},"transport_label":{"type":"string"},"quantity":{"type":"number","minimum":0},"quantity_explicit":{"type":"boolean"},"identity_pages":{"type":"array","items":{"type":"integer","minimum":1}},"estimation_evidence_pages":{"type":"array","items":{"type":"integer","minimum":1}},"visual_group_ids":{"type":"array","items":{"type":"string"}},"visual_identity":{"type":"string"},"boundary_basis":{"type":"string"}}}}}}
+DETECTION_REGISTRY_JSON_SCHEMA: dict[str, Any] = {"type":"object","additionalProperties":False,"required":["objects"],"properties":{"objects":{"type":"array","items":{"type":"object","additionalProperties":False,"required":["object_id","transport_label","quantity","quantity_explicit","identity_pages","estimation_evidence_pages","primary_visual_group_id","visual_group_ids","visual_identity","boundary_basis"],"properties":{"object_id":{"type":"string"},"transport_label":{"type":"string"},"quantity":{"type":"number","minimum":0},"quantity_explicit":{"type":"boolean"},"identity_pages":{"type":"array","items":{"type":"integer","minimum":1}},"estimation_evidence_pages":{"type":"array","items":{"type":"integer","minimum":1}},"primary_visual_group_id":{"type":"string"},"visual_group_ids":{"type":"array","items":{"type":"string"}},"visual_identity":{"type":"string"},"boundary_basis":{"type":"string"}}}}}}
 
 class DetectionRegistrySchemaError(ValueError):
     """Registry contract failure with safe deterministic diagnostics."""
@@ -19,10 +19,11 @@ def validate_detection_registry(
     result: dict[str, Any],
     *,
     visual_group_ids: set[str] | None = None,
+    visual_group_adjacency: dict[str, set[str]] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(result, dict) or set(result) != {"objects"} or not isinstance(result["objects"], list):
         raise DetectionRegistrySchemaError("registry must contain only objects")
-    required = {"object_id","transport_label","quantity","quantity_explicit","identity_pages","estimation_evidence_pages","visual_group_ids","visual_identity","boundary_basis"}
+    required = {"object_id","transport_label","quantity","quantity_explicit","identity_pages","estimation_evidence_pages","primary_visual_group_id","visual_group_ids","visual_identity","boundary_basis"}
     visual_group_owners: dict[str, list[str]] = {}
     for index, item in enumerate(result["objects"], start=1):
         if not isinstance(item, dict) or set(item) != required:
@@ -49,6 +50,26 @@ def validate_detection_registry(
             or len(item["visual_group_ids"]) != len(set(item["visual_group_ids"]))
         ):
             raise DetectionRegistrySchemaError("registry visual groups are invalid")
+        primary_group_id = str(item["primary_visual_group_id"] or "").strip()
+        if not primary_group_id or primary_group_id not in item["visual_group_ids"]:
+            raise DetectionRegistrySchemaError("registry primary visual group is invalid")
+        if visual_group_adjacency is not None:
+            object_group_ids = set(item["visual_group_ids"])
+            reachable = _reachable_visual_groups(
+                primary_group_id,
+                visual_group_adjacency,
+                allowed_group_ids=object_group_ids,
+            )
+            disconnected = sorted(object_group_ids - reachable)
+            if disconnected:
+                raise DetectionRegistrySchemaError(
+                    "registry visual groups lack positive correspondence to the primary group",
+                    details={
+                        "object_id": item["object_id"],
+                        "primary_visual_group_id": primary_group_id,
+                        "disconnected_visual_group_ids": disconnected,
+                    },
+                )
         for group_id in item["visual_group_ids"]:
             visual_group_owners.setdefault(group_id, []).append(item["object_id"])
     assigned_visual_groups = set(visual_group_owners)
@@ -65,3 +86,22 @@ def validate_detection_registry(
             details={"duplicate_visual_group_owners": duplicate_ownership},
         )
     return result
+
+
+def _reachable_visual_groups(
+    primary_group_id: str,
+    adjacency: dict[str, set[str]],
+    *,
+    allowed_group_ids: set[str],
+) -> set[str]:
+    if primary_group_id not in adjacency or primary_group_id not in allowed_group_ids:
+        return set()
+    reachable = {primary_group_id}
+    pending = [primary_group_id]
+    while pending:
+        current = pending.pop()
+        for related_id in adjacency.get(current, set()):
+            if related_id in allowed_group_ids and related_id not in reachable:
+                reachable.add(related_id)
+                pending.append(related_id)
+    return reachable

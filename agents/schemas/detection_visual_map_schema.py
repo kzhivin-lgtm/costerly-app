@@ -19,7 +19,7 @@ DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
                     "location_hint",
                     "visual_description",
                     "representation_kind",
-                    "related_group_ids",
+                    "related_groups",
                 ],
                 "properties": {
                     "group_id": {"type": "string"},
@@ -27,7 +27,22 @@ DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
                     "location_hint": {"type": "string"},
                     "visual_description": {"type": "string"},
                     "representation_kind": {"type": "string"},
-                    "related_group_ids": {"type": "array", "items": {"type": "string"}},
+                    "related_groups": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["group_id", "relation_type", "match_basis"],
+                            "properties": {
+                                "group_id": {"type": "string"},
+                                "relation_type": {
+                                    "type": "string",
+                                    "enum": ["same_assembly_view", "object_detail"],
+                                },
+                                "match_basis": {"type": "string"},
+                            },
+                        },
+                    },
                 },
             },
         },
@@ -65,13 +80,25 @@ def normalize_detection_visual_map_group_ids(result: dict[str, Any]) -> dict[str
         for index, raw_id in enumerate(raw_ids, start=1)
     }
     for group, raw_id in zip(groups, raw_ids, strict=True):
-        related = group.get("related_group_ids")
+        related = group.get("related_groups")
         if isinstance(related, list):
-            group["related_group_ids"] = list(dict.fromkeys(
-                canonical_ids[related_id]
-                for related_id in related
-                if related_id in canonical_ids and related_id != raw_id
-            ))
+            normalized_related: list[dict[str, Any]] = []
+            seen_related: set[str] = set()
+            for relation in related:
+                if not isinstance(relation, dict):
+                    continue
+                related_id = str(relation.get("group_id") or "")
+                if (
+                    related_id not in canonical_ids
+                    or related_id == raw_id
+                    or related_id in seen_related
+                ):
+                    continue
+                normalized_relation = dict(relation)
+                normalized_relation["group_id"] = canonical_ids[related_id]
+                normalized_related.append(normalized_relation)
+                seen_related.add(related_id)
+            group["related_groups"] = normalized_related
         group["group_id"] = canonical_ids[raw_id]
     return result
 
@@ -87,7 +114,7 @@ def validate_detection_visual_map(result: dict[str, Any]) -> dict[str, Any]:
     for index, group in enumerate(groups, start=1):
         required = {
             "group_id", "page_number", "location_hint", "visual_description",
-            "representation_kind", "related_group_ids",
+            "representation_kind", "related_groups",
         }
         if not isinstance(group, dict) or set(group) != required:
             raise DetectionVisualMapSchemaError("visual group fields do not match contract")
@@ -100,18 +127,39 @@ def validate_detection_visual_map(result: dict[str, Any]) -> dict[str, Any]:
             or not all(str(group[key]).strip() for key in (
                 "location_hint", "visual_description", "representation_kind",
             ))
-            or not isinstance(group["related_group_ids"], list)
+            or not isinstance(group["related_groups"], list)
         ):
             raise DetectionVisualMapSchemaError("visual group is invalid")
         group_ids.add(expected_id)
 
     for group in groups:
         group_id = group["group_id"]
-        related = group["related_group_ids"]
+        related = group["related_groups"]
+        related_ids = [str(relation.get("group_id") or "") for relation in related if isinstance(relation, dict)]
         if (
-            len(set(related)) != len(related)
-            or group_id in related
-            or not all(related_id in group_ids for related_id in related)
+            len(related_ids) != len(related)
+            or len(set(related_ids)) != len(related_ids)
+            or group_id in related_ids
+            or not all(related_id in group_ids for related_id in related_ids)
+            or not all(
+                isinstance(relation, dict)
+                and set(relation) == {"group_id", "relation_type", "match_basis"}
+                and relation["relation_type"] in {"same_assembly_view", "object_detail"}
+                and str(relation["match_basis"] or "").strip()
+                for relation in related
+            )
         ):
             raise DetectionVisualMapSchemaError("visual group relations are invalid")
     return result
+
+
+def visual_group_adjacency(groups: list[dict[str, Any]]) -> dict[str, set[str]]:
+    """Return the explicit, positive correspondence graph for Registry checks."""
+    adjacency = {str(group["group_id"]): set() for group in groups}
+    for group in groups:
+        group_id = str(group["group_id"])
+        for relation in group["related_groups"]:
+            related_id = str(relation["group_id"])
+            adjacency[group_id].add(related_id)
+            adjacency[related_id].add(group_id)
+    return adjacency

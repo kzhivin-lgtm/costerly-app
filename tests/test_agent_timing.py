@@ -383,7 +383,7 @@ def test_registry_retries_truncated_structured_json_with_larger_budget():
         "visual_groups": [{
             "group_id": "view-001", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "related_group_ids": [],
+            "related_groups": [],
         }],
     }
     registry = {
@@ -391,6 +391,7 @@ def test_registry_retries_truncated_structured_json_with_larger_budget():
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "estimation_evidence_pages": [1],
+            "primary_visual_group_id": "view-001",
             "visual_group_ids": ["view-001"], "visual_identity": "one cabinet",
             "boundary_basis": "one complete product",
         }],
@@ -425,11 +426,12 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "related_group_ids": [],
+            "related_groups": [],
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "primary_visual_group_id": "view_a",
             "visual_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
         }],
@@ -471,11 +473,12 @@ def test_haiku_registry_gets_correspondence_experiment_without_changing_sonnet_p
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "related_group_ids": [],
+            "related_groups": [],
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "primary_visual_group_id": "view_a",
             "visual_group_ids": ["view_a"], "visual_identity": "one cabinet",
             "boundary_basis": "one complete product",
         }],
@@ -524,11 +527,12 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "related_group_ids": [],
+            "related_groups": [],
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "primary_visual_group_id": "view_a",
             "visual_group_ids": ["view_a"], "visual_identity": "one cabinet",
             "boundary_basis": "one complete product",
         }],
@@ -563,24 +567,26 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
             {
                 "group_id": "view_a", "page_number": 1, "location_hint": "left",
                 "visual_description": "cabinet", "representation_kind": "perspective",
-                "related_group_ids": [],
+                "related_groups": [],
             },
             {
                 "group_id": "view_b", "page_number": 1, "location_hint": "right",
                 "visual_description": "counter", "representation_kind": "perspective",
-                "related_group_ids": [],
+                "related_groups": [],
             },
         ],
         "objects": [
             {
                 "object_id": "object-001", "transport_label": "Object 1",
                 "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+                "primary_visual_group_id": "view_a",
                 "visual_group_ids": ["view_a"], "visual_identity": "cabinet",
                 "boundary_basis": "separate cabinet",
             },
             {
                 "object_id": "object-002", "transport_label": "Object 2",
                 "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+                "primary_visual_group_id": "view_b",
                 "visual_group_ids": ["view_b"], "visual_identity": "counter",
                 "boundary_basis": "separate counter",
             },
@@ -616,11 +622,12 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "left",
             "visual_description": "cabinet", "representation_kind": "perspective",
-            "related_group_ids": [],
+            "related_groups": [],
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "primary_visual_group_id": "view_a",
             "visual_group_ids": ["view_a"], "visual_identity": "cabinet",
             "boundary_basis": "one cabinet",
         }],
@@ -659,18 +666,20 @@ def test_integrated_visual_registry_persists_duplicate_group_ownership_details()
         "visual_groups": [{
             "group_id": "view_a", "page_number": 1, "location_hint": "center",
             "visual_description": "two adjacent cabinets", "representation_kind": "elevation",
-            "related_group_ids": [],
+            "related_groups": [],
         }],
         "objects": [
             {
                 "object_id": "object-001", "transport_label": "Object 1",
                 "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+                "primary_visual_group_id": "view_a",
                 "visual_group_ids": ["view_a"], "visual_identity": "first cabinet",
                 "boundary_basis": "first complete envelope",
             },
             {
                 "object_id": "object-002", "transport_label": "Object 2",
                 "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+                "primary_visual_group_id": "view_a",
                 "visual_group_ids": ["view_a"], "visual_identity": "second cabinet",
                 "boundary_basis": "second complete envelope",
             },
@@ -712,7 +721,7 @@ def test_visual_map_retries_truncated_structured_json_with_larger_budget():
         "visual_groups": [{
             "group_id": "view-001", "page_number": 1, "location_hint": "left",
             "visual_description": "one cabinet", "representation_kind": "perspective",
-            "related_group_ids": [],
+            "related_groups": [],
         }],
     }
     requested_budgets = []

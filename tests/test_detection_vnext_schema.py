@@ -9,6 +9,7 @@ from agents.schemas.detection_schema import validate_detection_result
 from agents.schemas.detection_visual_map_schema import (
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
+    visual_group_adjacency,
 )
 
 
@@ -62,8 +63,8 @@ def test_degenerate_evidence_regions_are_dropped_but_the_page_is_preserved():
 def test_visual_map_and_registry_keep_representation_identity_separate():
     visual_map = validate_detection_visual_map({
         "visual_groups": [
-            {"group_id": "view-001", "page_number": 1, "location_hint": "lower left", "visual_description": "long storage console perspective", "representation_kind": "perspective", "related_group_ids": ["view-002"]},
-            {"group_id": "view-002", "page_number": 1, "location_hint": "lower right", "visual_description": "long storage console alternate perspective", "representation_kind": "perspective", "related_group_ids": ["view-001"]},
+            {"group_id": "view-001", "page_number": 1, "location_hint": "lower left", "visual_description": "long storage console perspective", "representation_kind": "perspective", "related_groups": [{"group_id": "view-002", "relation_type": "same_assembly_view", "match_basis": "same white teal and wood panel sequence"}]},
+            {"group_id": "view-002", "page_number": 1, "location_hint": "lower right", "visual_description": "long storage console alternate perspective", "representation_kind": "perspective", "related_groups": [{"group_id": "view-001", "relation_type": "same_assembly_view", "match_basis": "same white teal and wood panel sequence"}]},
         ],
     })
     registry = {
@@ -71,6 +72,7 @@ def test_visual_map_and_registry_keep_representation_identity_separate():
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "estimation_evidence_pages": [1],
+            "primary_visual_group_id": "view-001",
             "visual_group_ids": ["view-001", "view-002"],
             "visual_identity": "one long storage console shown twice",
             "boundary_basis": "matching full-page structure and panel sequence",
@@ -80,14 +82,15 @@ def test_visual_map_and_registry_keep_representation_identity_separate():
     assert validate_detection_registry(
         registry,
         visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
+        visual_group_adjacency=visual_group_adjacency(visual_map["visual_groups"]),
     ) == registry
 
 
 def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
     visual_map = {
         "visual_groups": [
-            {"group_id": "group_a", "page_number": 1, "location_hint": "left", "visual_description": "console view", "representation_kind": "perspective", "related_group_ids": ["group_b"]},
-            {"group_id": "group_b", "page_number": 1, "location_hint": "right", "visual_description": "console view", "representation_kind": "elevation", "related_group_ids": ["group_a"]},
+            {"group_id": "group_a", "page_number": 1, "location_hint": "left", "visual_description": "console view", "representation_kind": "perspective", "related_groups": [{"group_id": "group_b", "relation_type": "same_assembly_view", "match_basis": "same console envelope"}]},
+            {"group_id": "group_b", "page_number": 1, "location_hint": "right", "visual_description": "console view", "representation_kind": "elevation", "related_groups": [{"group_id": "group_a", "relation_type": "same_assembly_view", "match_basis": "same console envelope"}]},
         ],
     }
 
@@ -98,14 +101,14 @@ def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
     assert [group["group_id"] for group in normalized["visual_groups"]] == [
         "view-001", "view-002",
     ]
-    assert normalized["visual_groups"][0]["related_group_ids"] == ["view-002"]
+    assert normalized["visual_groups"][0]["related_groups"][0]["group_id"] == "view-002"
 
 
 def test_registry_rejects_shared_visual_group_ownership_but_keeps_owners_for_audit():
     registry = {
         "objects": [
-            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "first", "boundary_basis": "first"},
-            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "second", "boundary_basis": "second"},
+            {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1], "primary_visual_group_id": "view-001", "visual_group_ids": ["view-001"], "visual_identity": "first", "boundary_basis": "first"},
+            {"object_id": "object-002", "transport_label": "Object 2", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1], "primary_visual_group_id": "view-001", "visual_group_ids": ["view-001"], "visual_identity": "second", "boundary_basis": "second"},
         ],
     }
 
@@ -122,12 +125,41 @@ def test_registry_rejects_shared_visual_group_ownership_but_keeps_owners_for_aud
     }
 
 
+def test_registry_rejects_an_extra_group_without_positive_correspondence():
+    visual_map = validate_detection_visual_map({
+        "visual_groups": [
+            {"group_id": "view-001", "page_number": 1, "location_hint": "left", "visual_description": "shelving unit", "representation_kind": "isometric", "related_groups": []},
+            {"group_id": "view-002", "page_number": 1, "location_hint": "right", "visual_description": "door system", "representation_kind": "elevation", "related_groups": []},
+        ],
+    })
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "primary_visual_group_id": "view-001",
+        "visual_group_ids": ["view-001", "view-002"],
+        "visual_identity": "shelving unit", "boundary_basis": "one shelving unit",
+    }]}
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="lack positive correspondence",
+    ) as raised:
+        validate_detection_registry(
+            registry,
+            visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
+            visual_group_adjacency=visual_group_adjacency(visual_map["visual_groups"]),
+        )
+
+    assert raised.value.details["disconnected_visual_group_ids"] == ["view-002"]
+
+
 def test_registry_allows_unassigned_navigation_only_visual_groups():
     registry = {
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "estimation_evidence_pages": [1],
+            "primary_visual_group_id": "view-001",
             "visual_group_ids": ["view-001"], "visual_identity": "cabinet",
             "boundary_basis": "one complete product",
         }],
