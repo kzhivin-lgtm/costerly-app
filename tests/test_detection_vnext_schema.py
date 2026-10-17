@@ -62,8 +62,8 @@ def test_degenerate_evidence_regions_are_dropped_but_the_page_is_preserved():
 def test_visual_map_and_registry_keep_representation_identity_separate():
     visual_map = validate_detection_visual_map({
         "visual_groups": [
-            {"group_id": "view-001", "page_number": 1, "location_hint": "lower left", "visual_description": "long storage console perspective", "representation_kind": "perspective", "related_group_ids": ["view-002"]},
-            {"group_id": "view-002", "page_number": 1, "location_hint": "lower right", "visual_description": "long storage console alternate perspective", "representation_kind": "perspective", "related_group_ids": ["view-001"]},
+            {"group_id": "view-001", "page_number": 1, "location_hint": "lower left", "visual_description": "long storage console perspective", "representation_kind": "perspective"},
+            {"group_id": "view-002", "page_number": 1, "location_hint": "lower right", "visual_description": "long storage console alternate perspective", "representation_kind": "perspective"},
         ],
     })
     registry = {
@@ -86,8 +86,8 @@ def test_visual_map_and_registry_keep_representation_identity_separate():
 def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
     visual_map = {
         "visual_groups": [
-            {"group_id": "group_a", "page_number": 1, "location_hint": "left", "visual_description": "console view", "representation_kind": "perspective", "related_group_ids": ["group_b"]},
-            {"group_id": "group_b", "page_number": 1, "location_hint": "right", "visual_description": "console view", "representation_kind": "elevation", "related_group_ids": ["group_a"]},
+            {"group_id": "group_a", "page_number": 1, "location_hint": "left", "visual_description": "console view", "representation_kind": "perspective"},
+            {"group_id": "group_b", "page_number": 1, "location_hint": "right", "visual_description": "console view", "representation_kind": "elevation"},
         ],
     }
 
@@ -98,7 +98,6 @@ def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
     assert [group["group_id"] for group in normalized["visual_groups"]] == [
         "view-001", "view-002",
     ]
-    assert normalized["visual_groups"][0]["related_group_ids"] == ["view-002"]
 
 
 def test_registry_rejects_shared_visual_group_ownership_but_keeps_owners_for_audit():

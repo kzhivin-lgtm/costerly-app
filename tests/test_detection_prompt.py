@@ -1,6 +1,7 @@
 from agents.anthropic_adapter import (
     DETECTION_NO_NAMING_PROMPT_VERSION,
     DETECTION_PROMPT_VERSION,
+    DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
 )
 from agents.prompt_loader import (
     load_detection_agent_prompt,
@@ -8,7 +9,6 @@ from agents.prompt_loader import (
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
-    load_detection_visual_registry_haiku_correspondence_experiment_prompt,
 )
 
 
@@ -77,11 +77,6 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "shared schedule, title block, layout or multi-object context" in prompt
     assert "exclusive groups that prove this object's commercial boundary" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
-
-
-def test_haiku_registry_correspondence_experiment_requires_cross_view_audit():
-    prompt = load_detection_visual_registry_haiku_correspondence_experiment_prompt()
-
-    assert "Cross-view correspondence audit" in prompt
-    assert "Empty `related_group_ids` is an explicit finding" in prompt
-    assert "specific incompatible envelope" in prompt
+    assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
+        "detection_v4_visual_registry_atomic_groups_experiment_v1"
+    )

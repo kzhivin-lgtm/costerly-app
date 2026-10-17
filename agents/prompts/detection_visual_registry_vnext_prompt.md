@@ -6,7 +6,7 @@ Build the visual representation map and the locked commercial-object registry in
 
 Each `visual_group` is one visibly distinct depiction that could help a later stage understand an in-scope fabricated product: overview, alternate perspective, elevation, section, detail, module, door leaf, panel, track, cabinet bay, schedule, or assembly fragment. It is not automatically a commercial object, quote line or quantity. A shared schedule, title block, layout or multi-object context may remain an unassigned navigation group; it belongs in `page_coverage`, not in several object boundary lists.
 
-Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, and only clearly visible `related_group_ids`. Keep descriptions terse. Empty `related_group_ids` when a relation is not visually clear.
+Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, and neutral `representation_kind`. Keep descriptions terse. A group records only that one visible depiction. Do not create a graph between groups: decide alternate views and product boundaries directly from the full visual evidence in the commercial registry.
 
 ## Commercial registry
 

@@ -19,7 +19,6 @@ DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
                     "location_hint",
                     "visual_description",
                     "representation_kind",
-                    "related_group_ids",
                 ],
                 "properties": {
                     "group_id": {"type": "string"},
@@ -27,7 +26,6 @@ DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
                     "location_hint": {"type": "string"},
                     "visual_description": {"type": "string"},
                     "representation_kind": {"type": "string"},
-                    "related_group_ids": {"type": "array", "items": {"type": "string"}},
                 },
             },
         },
@@ -65,13 +63,6 @@ def normalize_detection_visual_map_group_ids(result: dict[str, Any]) -> dict[str
         for index, raw_id in enumerate(raw_ids, start=1)
     }
     for group, raw_id in zip(groups, raw_ids, strict=True):
-        related = group.get("related_group_ids")
-        if isinstance(related, list):
-            group["related_group_ids"] = list(dict.fromkeys(
-                canonical_ids[related_id]
-                for related_id in related
-                if related_id in canonical_ids and related_id != raw_id
-            ))
         group["group_id"] = canonical_ids[raw_id]
     return result
 
@@ -87,7 +78,7 @@ def validate_detection_visual_map(result: dict[str, Any]) -> dict[str, Any]:
     for index, group in enumerate(groups, start=1):
         required = {
             "group_id", "page_number", "location_hint", "visual_description",
-            "representation_kind", "related_group_ids",
+            "representation_kind",
         }
         if not isinstance(group, dict) or set(group) != required:
             raise DetectionVisualMapSchemaError("visual group fields do not match contract")
@@ -100,18 +91,7 @@ def validate_detection_visual_map(result: dict[str, Any]) -> dict[str, Any]:
             or not all(str(group[key]).strip() for key in (
                 "location_hint", "visual_description", "representation_kind",
             ))
-            or not isinstance(group["related_group_ids"], list)
         ):
             raise DetectionVisualMapSchemaError("visual group is invalid")
         group_ids.add(expected_id)
-
-    for group in groups:
-        group_id = group["group_id"]
-        related = group["related_group_ids"]
-        if (
-            len(set(related)) != len(related)
-            or group_id in related
-            or not all(related_id in group_ids for related_id in related)
-        ):
-            raise DetectionVisualMapSchemaError("visual group relations are invalid")
     return result

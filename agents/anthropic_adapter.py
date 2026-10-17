@@ -22,7 +22,6 @@ from agents.prompt_loader import (
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
-    load_detection_visual_registry_haiku_correspondence_experiment_prompt,
 )
 from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
@@ -47,9 +46,8 @@ DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v6"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
-DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v5"
-DETECTION_VISUAL_REGISTRY_HAIKU_CORRESPONDENCE_EXPERIMENT_PROMPT_VERSION = (
-    "detection_v4_2_visual_registry_haiku_correspondence_ownership_v2"
+DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
+    "detection_v4_visual_registry_atomic_groups_experiment_v1"
 )
 
 
@@ -695,9 +693,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_visual_registry_prompt()
     prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
-    if selected_model == DEFAULT_CLAUDE_DETECTION_MODEL:
-        prompt += "\n\n" + load_detection_visual_registry_haiku_correspondence_experiment_prompt()
-        prompt_version = DETECTION_VISUAL_REGISTRY_HAIKU_CORRESPONDENCE_EXPERIMENT_PROMPT_VERSION
     user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
     schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
