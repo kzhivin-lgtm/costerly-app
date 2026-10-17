@@ -3699,6 +3699,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     installStyle();
 
                     let shell = document.getElementById(SHELL_ID);
+                    const shellAlreadyVisible = Boolean(shell);
                     if (!shell) {
                         shell = document.createElement('div');
                         shell.id = SHELL_ID;
@@ -3707,6 +3708,12 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     }
 
                     shell.dataset.source = source || 'unknown';
+                    if (!shellAlreadyVisible) {
+                        window.top.postMessage({
+                            type: 'costerly:rfq-upload-selected',
+                            source: shell.dataset.source,
+                        }, '*');
+                    }
                     document.documentElement.classList.add(SHELL_ACTIVE_CLASS);
                     document.body.classList.add(SHELL_ACTIVE_CLASS);
                     startTransition(

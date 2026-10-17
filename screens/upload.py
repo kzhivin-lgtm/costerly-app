@@ -32,7 +32,7 @@ def _reset_post_upload_flow_state() -> None:
     reset_new_estimate_session(clear_upload_widget=False)
 
 
-def render_upload_screen(company_id: str) -> None:
+def render_upload_screen(company_id: str, *, trace=None) -> None:
     """Render the first screen and move to processing after a file is accepted.
 
     This screen owns only UI state and the Streamlit upload action. Processing
@@ -52,12 +52,20 @@ def render_upload_screen(company_id: str) -> None:
 
     if uploaded_file is not None:
         file_bytes = uploaded_file.getvalue()
-        if (
-            st.session_state.get("uploaded_file_name") != uploaded_file.name
-            or st.session_state.get("uploaded_file_bytes") != file_bytes
-        ):
+        same_upload_as_session = (
+            st.session_state.get("uploaded_file_name") == uploaded_file.name
+            and st.session_state.get("uploaded_file_bytes") == file_bytes
+        )
+        if not same_upload_as_session:
             _reset_post_upload_flow_state()
+        if trace is not None:
+            trace.event(
+                "server.rfq_upload_accepted",
+                metadata={"same_upload_as_session": same_upload_as_session},
+            )
         st.session_state.uploaded_file_name = uploaded_file.name
         st.session_state.uploaded_file_bytes = file_bytes
         st.session_state.screen = "processing"
+        if trace is not None:
+            trace.event("server.rfq_processing_queued")
         st.rerun()

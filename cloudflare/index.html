@@ -385,6 +385,17 @@
           if (
             event.origin === appOrigin &&
             event.data &&
+            event.data.type === "costerly:rfq-upload-selected"
+          ) {
+            mark("browser.rfq_upload_selected", {
+              metadata: {source: safeRouteValue(event.data.source)},
+            });
+            if (ready) persistTimeline();
+            return;
+          }
+          if (
+            event.origin === appOrigin &&
+            event.data &&
             event.data.type === "costerly:recovery-fragment-consumed"
           ) {
             window.history.replaceState(

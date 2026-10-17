@@ -241,11 +241,11 @@ def _render_screen(
     if screen == "upload":
         from screens.upload import render_upload_screen
 
-        render_upload_screen(company_id)
+        render_upload_screen(company_id, trace=trace)
     elif screen == "processing":
         from screens.processing import render_processing_screen
 
-        render_processing_screen(company_id)
+        render_processing_screen(company_id, trace=trace)
     elif screen == "file_review":
         from screens.file_review import render_file_review_screen
 

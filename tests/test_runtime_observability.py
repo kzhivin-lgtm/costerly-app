@@ -36,6 +36,13 @@ def test_wrapper_recovers_only_a_dropped_safe_header_target_after_deploy():
     assert "frame.src = recoveryUrl.toString();" in wrapper
 
 
+def test_wrapper_records_each_rfq_upload_selection_before_server_processing():
+    wrapper = (ROOT / "cloudflare/index.html").read_text()
+
+    assert 'event.data.type === "costerly:rfq-upload-selected"' in wrapper
+    assert 'mark("browser.rfq_upload_selected"' in wrapper
+
+
 def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monkeypatch):
     captured = []
     monkeypatch.setattr(runtime, "_enqueue", captured.append)

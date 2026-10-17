@@ -1,5 +1,6 @@
 from inspect import getsource
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -275,6 +276,16 @@ def test_upload_processing_shell_is_scoped_to_the_estimate_upload_screen():
     assert "document.querySelector('.upload-screen-active')" in source
     assert "if (!uploadScreenIsActive()) return;" in source
     assert "if (uploadScreenIsActive() && dropzone && dropHasFiles(event))" in source
+    assert "costerly:rfq-upload-selected" in source
+
+
+def test_rfq_upload_and_processing_emit_distinct_runtime_boundaries():
+    upload_source = Path("screens/upload.py").read_text()
+    processing_source = Path("screens/processing.py").read_text()
+
+    assert "server.rfq_upload_accepted" in upload_source
+    assert "server.rfq_processing_queued" in upload_source
+    assert "server.rfq_processing_worker_started" in processing_source
 
 
 def test_company_logo_change_action_opens_picker_until_replacement_is_pending():

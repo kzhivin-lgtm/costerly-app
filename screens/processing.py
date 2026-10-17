@@ -25,7 +25,7 @@ def expected_detection_seconds(page_count: int | None) -> float:
     return 60.0
 
 
-def render_processing_screen(company_id: str) -> None:
+def render_processing_screen(company_id: str, *, trace=None) -> None:
     """Render the processing screen while the uploaded RFQ is analyzed.
 
     The screen stays visual-only: it delegates the actual agent/Supabase work to
@@ -73,6 +73,9 @@ def render_processing_screen(company_id: str) -> None:
 
     try:
         phase_state: dict[str, object] = {"value": "ocr", "page_count": None}
+
+        if trace is not None:
+            trace.event("server.rfq_processing_worker_started")
 
         def update_phase(label: str, page_count: int | None = None) -> None:
             phase_state["value"] = {
