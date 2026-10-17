@@ -14,7 +14,7 @@ from agents.naming_lab import (
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v8_literal_evidence"
+    assert NAMING_LAB_VERSION == "naming_lab_v9_kitchen_cues"
 
 
 def test_naming_prompt_keeps_integrated_kitchens_out_of_shelving():
@@ -22,6 +22,11 @@ def test_naming_prompt_keeps_integrated_kitchens_out_of_shelving():
 
     assert "is `Kitchen`" in prompt
     assert "shelving unit" in prompt
+    assert "a sink" in prompt
+    assert "explicitly identified refrigerator" in prompt
+    assert "an oven" in prompt
+    assert "a dishwasher" in prompt
+    assert "never use them to merge separate cabinet systems" in prompt
 
 
 def test_extracts_authoritative_leading_index_only():
