@@ -88,11 +88,21 @@ linked pair must be one object unless `boundary_basis` names specific
 incompatibility. Shared page, room, project, finish or proximity remain
 invalid correspondence evidence.
 
-H1 usage events use prompt version
+H1 code checkpoint: `1a62549`. Usage events use prompt version
 `detection_v4_2_visual_registry_haiku_correspondence_experiment_v1`.
 Pass criterion: five fresh Page 23 runs each return three objects, and the
 TV-console object contains both corresponding visual groups. Any four-object
-run fails H1. This experiment does not evaluate Adda.
+run fails H1.
+
+Four persisted fresh Page 23 runs each returned three objects. The next run
+failed before a result was persisted because its one `page_coverage` entry
+omitted a Registry object, producing empty derived evidence pages. This is a
+coverage-transport failure, not evidence that H1 split or merged an object.
+H1 is therefore protected as a promising correspondence checkpoint, but its
+five-run boundary-stability criterion is not yet complete. The next two
+post-checkpoint reliability repairs are deliberately separate: normalize the
+single-page coverage invariant and persist failed-validation audits. This
+experiment does not evaluate Adda.
 
 ## Verification
 

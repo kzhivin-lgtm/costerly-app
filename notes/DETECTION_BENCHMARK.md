@@ -33,6 +33,16 @@ TV console without positive evidence that they were different products. The
 next boundary repair must use this persisted decision audit to address that
 cause, not add a Page-23 count override.
 
+### H1 Haiku correspondence checkpoint, 2026-10-17
+
+Checkpoint `1a62549` adds a Haiku-only correspondence audit before Registry
+locking. Four fresh persisted Page 23 runs returned three objects. The next
+run failed validation because Haiku omitted a Registry object from the only
+page's coverage, leaving it with no derived evidence page. This is recorded as
+a transport failure, not a fifth boundary result. The H1 five-run stability
+gate remains open until single-page coverage normalization and failed-response
+audit persistence are added and tested.
+
 ## Current no-cache baseline
 
 - Date: 2026-07-22

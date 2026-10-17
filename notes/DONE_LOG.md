@@ -1,5 +1,15 @@
 # Done Log
 
+Detection V4.2 Haiku correspondence protected checkpoint `1a62549`: added a
+Haiku-only cross-view audit before Registry locking. Four fresh persisted Page
+23 runs returned the expected three objects. The subsequent run failed because
+the model omitted an object from the single page's coverage, so validation
+correctly rejected empty derived evidence. This checkpoint preserves the
+correspondence experiment before the separate single-page reconciliation and
+failed-validation audit repairs. Evidence and the still-open five-run gate are
+recorded in `notes/DETECTION_V4_2_ROUTER_AUDIT_CHECKPOINT_2026_10_17.md`,
+завершена 17.10
+
 Detection V4.2 protected diagnostic checkpoint `1049e85`: restored the
 accepted `8ea647c` Registry path, retained the narrow Ada-risk Sonnet router,
 restored File Review Naming timing and total provider token cost (`TC`), and
