@@ -1,13 +1,22 @@
 # TODO
 
 ACTIVE, P0, Detection V4 commercial-boundary stability: protected checkpoint
-`1049e85` restores the accepted Registry path, adds V4.2 model routing and
-persists the structured Registry decision audit. It is not a quality-complete
-checkpoint: Page 23 produced 3/4/3 and Adda 1/2/2 on fresh runs. Preserve
-object-ID locking, full object evidence, UI-only previews, deferred Naming and
-File Review TC. Do not add file-specific count overrides or a universal extra
-model call. The next approved experiment must use the stored audit to test one
-systemic boundary-decision repair. Contract and evidence:
+`5a1871a` preserves H1 cross-view correspondence, shared physical-page
+evidence, one-page coverage reconciliation and full Registry decision audits.
+H1 merged Page 23 TV-console views in 9/9 observed runs, but Page 23 is not
+accepted: 8/9 runs gave three objects and two audits reused a visual group
+across commercial objects. The active candidate makes `visual_group_ids`
+exclusive boundary ownership while `page_coverage` remains freely shareable.
+Duplicate ownership rejects the Registry before persistence and stores the
+complete model decision plus deterministic conflict details. It adds no model
+call or file-specific override. Preserve object-ID locking, full object
+evidence, UI-only previews, deferred Naming and File Review TC. Candidate
+prompt versions are Haiku
+`detection_v4_2_visual_registry_haiku_correspondence_ownership_v2` and Sonnet
+`detection_v4_visual_registry_integrated_v5`. Next: production gate of ten
+Page 23 runs, Adda two-object route, Metall separation/code preservation and
+shared-page evidence verification. Contracts and evidence:
+`notes/DETECTION_V4_2_PAGE23_OWNERSHIP_CHECKPOINT_2026_10_17.md` and
 `notes/DETECTION_V4_2_ROUTER_AUDIT_CHECKPOINT_2026_10_17.md`.
 
 H1 checkpoint `1a62549`: four persisted Page 23 runs returned three objects;

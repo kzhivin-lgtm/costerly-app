@@ -654,6 +654,59 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
     assert event["raw_usage"]["registry_decision_audit"] == payload
 
 
+def test_integrated_visual_registry_persists_duplicate_group_ownership_details():
+    payload = {
+        "visual_groups": [{
+            "group_id": "view_a", "page_number": 1, "location_hint": "center",
+            "visual_description": "two adjacent cabinets", "representation_kind": "elevation",
+            "related_group_ids": [],
+        }],
+        "objects": [
+            {
+                "object_id": "object-001", "transport_label": "Object 1",
+                "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+                "visual_group_ids": ["view_a"], "visual_identity": "first cabinet",
+                "boundary_basis": "first complete envelope",
+            },
+            {
+                "object_id": "object-002", "transport_label": "Object 2",
+                "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+                "visual_group_ids": ["view_a"], "visual_identity": "second cabinet",
+                "boundary_basis": "second complete envelope",
+            },
+        ],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001", "object-002"],
+            "evidence_reason": "shared elevation contains both cabinets",
+        }],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        pytest.raises(DetectionVisualRegistryValidationError) as raised,
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+    event = raised.value.usage_event
+    assert event["raw_usage"]["registry_decision_audit"] == payload
+    assert event["raw_usage"]["validation_details"] == {
+        "duplicate_visual_group_owners": {
+            "view-001": ["object-001", "object-002"],
+        },
+    }
+
+
 def test_visual_map_retries_truncated_structured_json_with_larger_budget():
     visual_map = {
         "visual_groups": [{

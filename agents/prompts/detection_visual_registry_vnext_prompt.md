@@ -4,7 +4,7 @@ Build the visual representation map and the locked commercial-object registry in
 
 ## Visual representations
 
-Each `visual_group` is one visibly distinct depiction that could help a later stage understand an in-scope fabricated product: overview, alternate perspective, elevation, section, detail, module, door leaf, panel, track, cabinet bay, schedule, or assembly fragment. It is not automatically a commercial object, quote line or quantity. One depiction may genuinely support several commercial objects, for example a shared schedule or a sheet showing separately coded products.
+Each `visual_group` is one visibly distinct depiction that could help a later stage understand an in-scope fabricated product: overview, alternate perspective, elevation, section, detail, module, door leaf, panel, track, cabinet bay, schedule, or assembly fragment. It is not automatically a commercial object, quote line or quantity. A shared schedule, title block, layout or multi-object context may remain an unassigned navigation group; it belongs in `page_coverage`, not in several object boundary lists.
 
 Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, and only clearly visible `related_group_ids`. Keep descriptions terse. Empty `related_group_ids` when a relation is not visually clear.
 
@@ -20,7 +20,7 @@ Different complete envelopes, functions, silhouettes or construction systems are
 
 A kitchen, integrated cabinet wall or shelving wall is one object. Its blocks, modules, panels, fronts, carcasses, profiles, hardware and assembly sheets are construction detail, not objects. Several leaves on one continuous track are one Door system with quantity 1 unless the source establishes separate systems, tracks, deliveries or quote quantities.
 
-`object_id` is ordered `object-001`, `object-002`, and so on. `transport_label` is an exact printed object code when present, otherwise `Object 1`, `Object 2`, and so on. `quantity` is complete physical units, defaulting to 1 when not explicit. `identity_pages` uses physical upload page numbers. `visual_group_ids` lists map groups that support this object. The same group may appear for several objects only when its visible content genuinely covers each of them. A shared page, generic title or visual proximity alone is not sufficient. `visual_identity` states the complete silhouette and views that prove it. `boundary_basis` records the factual reason this is one quote line.
+`object_id` is ordered `object-001`, `object-002`, and so on. `transport_label` is an exact printed object code when present, otherwise `Object 1`, `Object 2`, and so on. `quantity` is complete physical units, defaulting to 1 when not explicit. `identity_pages` uses physical upload page numbers. `visual_group_ids` lists the exclusive groups that prove this object's commercial boundary. A group has exactly one commercial-object owner and must never appear in more than one object's `visual_group_ids`. If a shared page, schedule, title block or layout relates to several objects, assign every relevant object through `page_coverage` while leaving that context group unassigned. When one sheet visibly contains several complete assemblies, map them as separate groups before assigning ownership. `visual_identity` states the complete silhouette and views that prove it. `boundary_basis` records the factual reason this is one quote line.
 
 ## Evidence coverage
 

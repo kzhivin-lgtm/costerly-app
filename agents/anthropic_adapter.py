@@ -24,7 +24,11 @@ from agents.prompt_loader import (
     load_detection_visual_registry_prompt,
     load_detection_visual_registry_haiku_correspondence_experiment_prompt,
 )
-from agents.schemas.detection_registry_schema import DETECTION_REGISTRY_JSON_SCHEMA, validate_detection_registry
+from agents.schemas.detection_registry_schema import (
+    DETECTION_REGISTRY_JSON_SCHEMA,
+    DetectionRegistrySchemaError,
+    validate_detection_registry,
+)
 from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
     normalize_detection_visual_map_group_ids,
@@ -43,9 +47,9 @@ DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v6"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
-DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v4"
+DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v5"
 DETECTION_VISUAL_REGISTRY_HAIKU_CORRESPONDENCE_EXPERIMENT_PROMPT_VERSION = (
-    "detection_v4_2_visual_registry_haiku_correspondence_experiment_v1"
+    "detection_v4_2_visual_registry_haiku_correspondence_ownership_v2"
 )
 
 
@@ -747,6 +751,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "validation_stage": "visual_registry",
             "attempt_label": "visual_registry_validation_failed",
         })
+        if isinstance(exc, DetectionRegistrySchemaError) and exc.details:
+            failure_diagnostics["validation_details"] = exc.details
         failure_usage = build_agent_usage_event(
             agent_name="detection",
             operation="rfq_detection_visual_registry",

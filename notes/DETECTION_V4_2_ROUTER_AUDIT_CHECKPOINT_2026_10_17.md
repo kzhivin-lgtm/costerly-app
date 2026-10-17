@@ -125,3 +125,29 @@ does not infer missing evidence pages outside the one-page invariant.
 - `py_compile` completed code compilation but could not write an existing
   `.pyc` cache due local filesystem permissions. This did not affect tests.
 - Production ledger was reviewed for all seven runs listed above.
+
+## Active ownership-contract candidate
+
+Checkpoint `5a1871a` preserves the latest H1 and reliability state before this
+candidate. The approved next repair makes `visual_group_ids` exclusive
+commercial-boundary support, while preserving shared physical-page evidence in
+`page_coverage`.
+
+- A shared schedule, title block, layout or multi-object context is an
+  unassigned navigation group. It remains evidence for every relevant object
+  through `page_coverage`.
+- A visual group assigned in `visual_group_ids` has exactly one
+  commercial-object owner. A duplicate assignment rejects the Registry before
+  any RFQ or Estimation handoff is persisted.
+- The existing `registry_decision_audit` remains stored for both successful and
+  rejected Registry calls. Duplicate ownership additionally records the
+  deterministic object-ID conflict in `validation_details`; it does not request
+  private model chain-of-thought.
+- No additional Anthropic call, router condition or Evidence-packer behaviour
+  is introduced.
+
+Candidate prompt versions are
+`detection_v4_2_visual_registry_haiku_correspondence_ownership_v2` for Haiku
+and `detection_v4_visual_registry_integrated_v5` for Sonnet. Focused contract,
+prompt and audit tests pass 58/58. Production acceptance remains the four-part
+gate recorded in `DETECTION_V4_2_PAGE23_OWNERSHIP_CHECKPOINT_2026_10_17.md`.

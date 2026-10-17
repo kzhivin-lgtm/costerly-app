@@ -1,3 +1,5 @@
+import pytest
+
 from agents.anthropic_adapter import discard_degenerate_evidence_regions
 from agents.schemas.detection_registry_schema import (
     DetectionRegistrySchemaError,
@@ -99,7 +101,7 @@ def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
     assert normalized["visual_groups"][0]["related_group_ids"] == ["view-002"]
 
 
-def test_registry_allows_a_shared_visual_group_when_it_supports_multiple_objects():
+def test_registry_rejects_shared_visual_group_ownership_but_keeps_owners_for_audit():
     registry = {
         "objects": [
             {"object_id": "object-001", "transport_label": "Object 1", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"], "visual_identity": "first", "boundary_basis": "first"},
@@ -107,9 +109,17 @@ def test_registry_allows_a_shared_visual_group_when_it_supports_multiple_objects
         ],
     }
 
-    assert validate_detection_registry(
-        registry, visual_group_ids={"view-001"}
-    ) == registry
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="must have one commercial-object owner",
+    ) as raised:
+        validate_detection_registry(registry, visual_group_ids={"view-001"})
+
+    assert raised.value.details == {
+        "duplicate_visual_group_owners": {
+            "view-001": ["object-001", "object-002"],
+        },
+    }
 
 
 def test_registry_allows_unassigned_navigation_only_visual_groups():
