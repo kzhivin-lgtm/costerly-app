@@ -2,8 +2,8 @@
 
 ## V4 Page 23 release gate, 2026-10-16
 
-Status: candidate repair, not yet accepted. The source is the private
-`page-23.pdf` drawing provided by the owner. Its V4 run
+Status: accepted for the Page 23 temperature-zero gate on 2026-10-18. The
+source is the private `page-23.pdf` drawing provided by the owner. Its V4 run
 `run_cc459dc46e91445cb045614b69ca559e` incorrectly merged all products into
 one object, so it cannot be used as an acceptance result.
 
@@ -19,6 +19,20 @@ complete page may be shared as evidence and must never turn the three products
 into one object. For this source, the expected metadata is `project_name`
 `Beregovoy Proezd 5`, `design_partner` `ZE | WORKROOM studio`, and client
 `unknown`. The generic filename `page-23.pdf` is not project evidence.
+
+### Temperature-zero checkpoint, 2026-10-18
+
+Commit `2593c23` explicitly sends `temperature=0.0` to the one integrated
+Haiku Visual Registry request and records that setting in every usage event.
+Ten fresh Page 23 runs all returned the expected three objects, quantities
+`1, 1, 1`, and one TV-console object containing both complete console views.
+All ten subsequent locked Detection records also contained exactly three
+objects. There were no Registry validation failures. Registry duration averaged
+12.639 seconds and RFQ processing-cycle duration averaged 23.705 seconds.
+
+This accepts Page 23 only. It does not replace the Adda, Kitchen or Metal
+boundary gates. Full run evidence and protected contract:
+`notes/DETECTION_V4_PAGE23_TEMPERATURE_ZERO_CHECKPOINT_2026_10_18.md`.
 
 ### V4.2 diagnostic checkpoint, 2026-10-17
 

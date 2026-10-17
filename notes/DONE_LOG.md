@@ -1,5 +1,17 @@
 # Done Log
 
+Detection V4 Page 23 temperature-zero checkpoint `2593c23`: the single
+integrated Haiku Visual Registry now explicitly uses `temperature=0.0`, with
+the parameter persisted for both accepted and failed Registry usage events.
+Ten fresh Page 23 runs all produced three locked objects, quantities `1, 1, 1`,
+and one object owning both complete TV-console views, with no Registry
+validation failure. The Registry averaged 12.639 seconds and the RFQ cycle
+averaged 23.705 seconds. The owner accepted this as the Page 23 gate, not as a
+cross-document boundary claim. Protected behaviour, exact run evidence and
+remaining Adda, Kitchen and Metal scope:
+`notes/DETECTION_V4_PAGE23_TEMPERATURE_ZERO_CHECKPOINT_2026_10_18.md`,
+завершена 18.10
+
 Detection V4.2 exclusive visual-group ownership contract checkpoint
 `8c2c37c`: each object-specific visual group now has one commercial-object
 owner, while shared physical-page evidence remains unrestricted through
