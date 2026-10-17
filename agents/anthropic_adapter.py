@@ -47,8 +47,9 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_group_roles_experiment_v2"
+    "detection_v4_visual_registry_group_roles_experiment_v2_temperature_0"
 )
+DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 
 
 class DetectionVisualRegistryValidationError(RuntimeError):
@@ -775,10 +776,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     )
     response, diagnostics = create_claude_message_streamed(
         get_anthropic_client(), model=selected_model, max_tokens=8192,
+        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
         system=build_detection_system_content(prompt=prompt),
         messages=[{"role": "user", "content": content}],
         output_config={"format": {"type": "json_schema", "schema": schema}},
     )
+    # Keep the inference parameter on both accepted and rejected Registry
+    # events. The experiment must be comparable even when validation fails.
+    diagnostics["temperature"] = DETECTION_VISUAL_REGISTRY_TEMPERATURE
     try:
         payload = json.loads(extract_text_from_claude_response(response))
     except json.JSONDecodeError as exc:

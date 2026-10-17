@@ -455,9 +455,11 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         }],
     }
     requested_budgets = []
+    requested_temperatures = []
 
-    def fake_create(*_args, max_tokens, **_kwargs):
+    def fake_create(*_args, max_tokens, temperature, **_kwargs):
         requested_budgets.append(max_tokens)
+        requested_temperatures.append(temperature)
         return _Response(), {
             "request_started_at": "2026-10-16T00:00:00+00:00",
             "request_finished_at": "2026-10-16T00:00:01+00:00",
@@ -475,10 +477,12 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         )
 
     assert requested_budgets == [8192]
+    assert requested_temperatures == [0.0]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
     assert usage["operation"] == "rfq_detection_visual_registry"
+    assert usage["raw_usage"]["temperature"] == 0.0
     assert usage["raw_usage"]["registry_decision_audit"] == payload
 
 
