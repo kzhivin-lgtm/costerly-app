@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import anthropic
 import httpx
+import pandas as pd
 import pytest
 
 from agents.anthropic_adapter import (
@@ -29,6 +30,7 @@ from ui.js_guards import (
 )
 from screens.processing import expected_detection_seconds
 from use_cases.rfq_processing import (
+    _latest_runtime_timings,
     _normalize_run,
     _ocr_storage_usage,
     _run_deferred_naming,
@@ -728,6 +730,7 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
         "status": "succeeded",
         "names": {"object-001": "Display cabinet"},
         "naming_seconds": 2.25,
+        "token_cost": 0.000045,
     }
     assert updates[0]["expected_name"] == "Object 1"
     assert updates[0]["object_name"] == "Display cabinet"
@@ -764,6 +767,40 @@ def test_deferred_naming_records_failure(monkeypatch):
     assert result["error"] == "provider failed"
     assert events[0]["status"] == "failed"
     assert events[0]["raw_usage"]["error"] == "provider failed"
+
+
+def test_file_review_timings_restore_deferred_naming_duration_and_cycle_tc():
+    usage = pd.DataFrame([
+        {
+            "operation": "rfq_processing_cycle", "status": "succeeded",
+            "duration_seconds": None,
+            "raw_usage": json.dumps({
+                "duration_seconds": 12.3, "ocr_seconds": 1.2,
+                "detection_seconds": 9.1, "naming_seconds": 0.0,
+            }),
+            "total_cost_usd": None,
+        },
+        {
+            "operation": "rfq_detection", "status": "succeeded",
+            "duration_seconds": None,
+            "raw_usage": {"duration_seconds": 9.1},
+            "total_cost_usd": "0.010311",
+        },
+        {
+            "operation": "locked_object_naming_deferred", "status": "succeeded",
+            "duration_seconds": None,
+            "raw_usage": json.dumps({"duration_seconds": 1.557}),
+            "total_cost_usd": "0.003294",
+        },
+    ])
+
+    assert _latest_runtime_timings(usage) == {
+        "ocr_seconds": 1.2,
+        "detection_seconds": 9.1,
+        "naming_seconds": 1.557,
+        "token_cost": 0.013605,
+        "total_seconds": 12.3,
+    }
 
 
 def test_file_review_name_is_trimmed_and_saved_immediately(monkeypatch):
