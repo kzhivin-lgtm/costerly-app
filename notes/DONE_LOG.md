@@ -1,5 +1,13 @@
 # Done Log
 
+Detection V4.2 Page 23 protected ownership checkpoint `e56f347`: H1 merged
+the two TV-console views in all nine observed runs, but 8/9 count accuracy is
+not an acceptance result. The remaining four-object response reused one
+door-leaf visual group both inside a complete shared-track system and as a
+separate quote line. This checkpoint preserves H1, complete shared page
+evidence and failed-Registry audit persistence before exclusive visual-group
+ownership is enforced, завершена 17.10
+
 Detection V4.2 H1 reliability repair: one-page Registry coverage now restores
 page `1` only for an already-declared object absent from the sole coverage
 entry, preserving complete Estimation evidence without modifying object
