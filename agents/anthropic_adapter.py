@@ -682,6 +682,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         payload = json.loads(extract_text_from_claude_response(response))
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
+    # Preserve the model's structured boundary decision before the runtime
+    # normalizes group IDs or derives evidence-page references. This is an
+    # inspectable decision record, not private chain-of-thought.
+    registry_decision_audit = copy.deepcopy(payload)
     try:
         if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "page_coverage"}:
             raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
@@ -722,6 +726,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "unassigned_page_count": sum(
             not entry["object_ids"] for entry in payload["page_coverage"]
         ),
+        "registry_decision_audit": registry_decision_audit,
         "region_count": len(regions),
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",

@@ -52,35 +52,6 @@ Production acceptance requires one real upload with review of every object ID, q
 `Adda.pdf`, run `run_590733e409c44ed990b5636f685cd69f`, used the integrated
 Visual Registry V4 but incorrectly merged two visually separate, unlabelled
 complete assemblies into one commercial object. This is neither a Naming nor
-an Evidence defect.
-
-## V4.2 risk-based Sonnet routing candidate
-
-The failed crop-correspondence experiment was removed. In an offline run of
-the unchanged two-call V4 route, `claude-sonnet-4-6` returned two quantity-one
-Adda objects, each with all four physical pages as Estimation Evidence. The
-Registry took 30.365 seconds, the Evidence packer 19.797 seconds, and total
-Detection time was 51.415 seconds.
-
-V4.2 restores Haiku as `CLAUDE_DETECTION_V4_MODEL`, then deterministically
-routes only the boundary Registry to
-`CLAUDE_DETECTION_V4_BOUNDARY_MODEL` (Sonnet) when raw OCR has no strong
-author-issued object code and shows multiple large drawing regions on repeated
-pages, or on one single page. The Evidence packer remains on Haiku because the
-Registry has already locked object identity and quantity. The router neither
-creates nor changes an object boundary. It records its literal input signals
-and decision in both agent-usage events for later benchmark analysis. Naming
-keeps its independent model setting.
-
-This is a candidate until authenticated production Adda and the protected
-page-23, Kitchen and Metal checks confirm it.
-
-### Router verification before deployment
-
-The deterministic router was evaluated against saved original OCR, without
-making a new model request. It selects Sonnet Registry for Adda (four pages,
-seven large drawing regions, three pages with multiple such regions, zero
-author-issued object codes). It keeps the protected benchmarks on Haiku:
-page-23 has one large drawing region, Kitchen has three source codes, and
-Metal has 53 source codes. This verifies routing only. It does not substitute
-for an authenticated production Detection result.
+an Evidence defect. The next experiment makes physical-assembly candidates and
+positive merge evidence auditable inside the existing registry call. It does
+not rely on OCR labels and does not add a model call.

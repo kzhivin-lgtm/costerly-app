@@ -6,11 +6,6 @@ from agents.anthropic_adapter import (
     run_anthropic_detection_agent_with_fallback,
     run_anthropic_detection_visual_registry_agent,
 )
-from agents.detection_model_router import (
-    DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL,
-    DEFAULT_CLAUDE_DETECTION_V4_MODEL,
-    detection_v42_model_route,
-)
 from agents.detection_page_images import build_detection_registry_regions, render_detection_pdf_pages
 from agents.prompt_loader import (
     load_detection_agent_prompt,
@@ -183,16 +178,6 @@ def get_secret(name: str, default: str | None = None) -> str | None:
     return default
 
 
-def _attach_detection_model_route(event: object, route: dict) -> object:
-    """Persist the deterministic routing basis beside the provider usage."""
-    if not isinstance(event, dict):
-        return event
-    raw_usage = dict(event.get("raw_usage") or {})
-    raw_usage["detection_v4_2_model_route"] = route
-    event["raw_usage"] = raw_usage
-    return event
-
-
 def run_detection_agent(
     file_name: str,
     company_id: str = "001",
@@ -215,21 +200,6 @@ def run_detection_agent(
     if file_bytes is None:
         raise ValueError("Detection Agent requires uploaded file bytes.")
 
-    base_model = get_secret(
-        "CLAUDE_DETECTION_V4_MODEL",
-        DEFAULT_CLAUDE_DETECTION_V4_MODEL,
-    )
-    boundary_model = get_secret(
-        "CLAUDE_DETECTION_V4_BOUNDARY_MODEL",
-        DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL,
-    )
-    route = detection_v42_model_route(
-        ocr_package=ocr_package,
-        base_model=str(base_model),
-        boundary_model=str(boundary_model),
-        explicit_model=model,
-    )
-
     registry_images = page_images
     if registry_images is None and file_name.lower().endswith(".pdf"):
         registry_images, _ = render_detection_pdf_pages(file_bytes)
@@ -241,9 +211,8 @@ def run_detection_agent(
     _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
         file_name=file_name, company_id=company_id, file_bytes=file_bytes,
         page_images=registry_images, regions=regions,
-        ocr_package=ocr_package, model=route["registry_model"],
+        ocr_package=ocr_package, model=model,
     )
-    visual_registry_usage = _attach_detection_model_route(visual_registry_usage, route)
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
     evidence_page_numbers = sorted({page for item in registry["objects"] for page in item["estimation_evidence_pages"]})
@@ -256,14 +225,14 @@ def run_detection_agent(
         ocr_package=ocr_package,
         page_images=evidence_images,
         page_image_diagnostics=page_image_diagnostics,
-        primary_model_override=route["evidence_model"],
+        primary_model_override=model,
         locked_registry=registry,
         allow_sonnet_fallback=False,
         focus_regions=evidence_regions,
         page_image_numbers=evidence_page_numbers,
     )
 
-    usage_event = _attach_detection_model_route(result.pop("_agent_usage", None), route)
+    usage_event = result.pop("_agent_usage", None)
     result = _merge_registry_evidence(result, registry)
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)

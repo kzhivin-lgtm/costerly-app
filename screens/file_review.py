@@ -228,13 +228,6 @@ def _timing_html(timings: dict[str, object] | None) -> str:
         except (TypeError, ValueError):
             return "—"
 
-    def token_cost() -> str:
-        try:
-            value = float(timings.get("token_cost"))
-        except (TypeError, ValueError):
-            return "TC unavailable"
-        return f"TC {value:.3f}"
-
     naming_html = ""
     try:
         if float(timings.get("naming_seconds") or 0) > 0:
@@ -249,7 +242,6 @@ def _timing_html(timings: dict[str, object] | None) -> str:
         f'<span>Detection <strong>{seconds("detection_seconds")}</strong></span>'
         f'{naming_html}'
         f'<span>Total lap <strong data-costerly-total-lap>{seconds("total_seconds")}</strong></span>'
-        f'<span><strong>{token_cost()}</strong></span>'
         '</div>'
     )
 
@@ -269,28 +261,20 @@ def _merged_timings(
         result["naming_seconds"] = max(persisted_naming, session_naming)
     except (AttributeError, TypeError, ValueError):
         pass
-    try:
-        persisted_cost = float((persisted or {}).get("token_cost") or 0)
-        session_cost = float((in_session or {}).get("token_cost") or 0)
-        result["token_cost"] = max(persisted_cost, session_cost) or None
-    except (AttributeError, TypeError, ValueError):
-        pass
     return result
 
 
-def _review_card_quality_html(run: dict[str, object]) -> str:
-    """Build the static quality row above the live timing placeholder."""
+def _build_review_card_details_html(
+    run: dict[str, object],
+    timings: dict[str, object] | None = None,
+) -> str:
+    """Build the non-editable remainder of the File Review summary card."""
     return (
         '<div class="file-review-summary-grid">'
         '<div class="file-review-label">File quality:</div>'
         f'<div class="file-review-value">{_escape(run.get("file_quality"))}</div>'
         '</div>'
-    )
-
-
-def _review_card_metadata_html(run: dict[str, object]) -> str:
-    """Build the static metadata portion below the live timing placeholder."""
-    return (
+        f'{_timing_html(timings)}'
         '<div class="file-review-divider"></div>'
         '<details class="file-review-meta-details">'
         '<summary class="file-review-meta-summary">'
@@ -338,30 +322,10 @@ def _render_review_card(
                 label_visibility="collapsed",
             )
 
-        st.markdown(_review_card_quality_html(run), unsafe_allow_html=True)
-        timing_slot = st.empty()
-        timing_slot.markdown(_timing_html(timings), unsafe_allow_html=True)
-        st.session_state[f"file_review_timing_slot.{run_id}"] = timing_slot
-        st.markdown(_review_card_metadata_html(run), unsafe_allow_html=True)
-
-
-def _refresh_live_timing_row(run_id: str) -> None:
-    """Replace one timing placeholder from the existing deferred-work fragment.
-
-    The placeholder is created in the summary card outside the fragment. An
-    ``st.empty`` slot replaces its single child on every fragment refresh, so
-    the row stays in the card without accumulating elements or rerunning the
-    whole page.
-    """
-    timing_slot = st.session_state.get(f"file_review_timing_slot.{run_id}")
-    if timing_slot is None:
-        return
-    data = st.session_state.setdefault("file_review_data_cache", {}).get(run_id)
-    persisted = data.get("timings") if isinstance(data, dict) else None
-    timing_slot.markdown(
-        _timing_html(_merged_timings(st.session_state.get("current_agent_timings"), persisted)),
-        unsafe_allow_html=True,
-    )
+        st.markdown(
+            _build_review_card_details_html(run, timings),
+            unsafe_allow_html=True,
+        )
 
 
 def _render_object_card(item: dict[str, object]) -> None:
@@ -532,14 +496,6 @@ def _publish_persisted_naming(
     timings = st.session_state.get("current_agent_timings")
     if isinstance(timings, dict):
         timings["naming_seconds"] = float(result.get("naming_seconds") or 0)
-        naming_cost = result.get("token_cost")
-        if naming_cost is not None:
-            try:
-                timings["token_cost"] = round(
-                    float(timings.get("token_cost") or 0) + float(naming_cost), 6
-                )
-            except (TypeError, ValueError):
-                pass
     return True
 
 
@@ -637,7 +593,6 @@ def _render_file_review_dynamic_content(run_id: str) -> None:
     # the cards only after either terminal artifact is published.
     if _has_deferred_work(run_id):
         _publish_deferred_file_review_work(run_id)
-    _refresh_live_timing_row(run_id)
 
     try:
         data = _load_file_review_screen_data(run_id)

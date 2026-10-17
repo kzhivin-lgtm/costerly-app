@@ -8,7 +8,6 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any
 import json
-import math
 import re
 import time
 
@@ -71,21 +70,6 @@ _NAMING_EXECUTOR = ThreadPoolExecutor(
     thread_name_prefix="rfq-naming",
 )
 _PREVIEW_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="rfq-preview")
-
-
-def _usage_cost_total(events: Iterable[dict[str, Any]]) -> float | None:
-    """Sum provider-recorded token cost without inventing a price for OCR or IO."""
-    costs: list[float] = []
-    for event in events:
-        if not isinstance(event, dict) or str(event.get("status") or "") != "succeeded":
-            continue
-        try:
-            cost = float(event.get("total_cost_usd"))
-        except (TypeError, ValueError):
-            continue
-        if math.isfinite(cost) and cost >= 0:
-            costs.append(cost)
-    return round(sum(costs), 6) if costs else None
 
 
 def _object_lock_log(objects: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -322,31 +306,32 @@ def _run_deferred_naming(
                 )
 
         naming_seconds = float(naming_result["duration_seconds"])
-        naming_event = _runtime_event(
-            agent_name="naming",
-            operation="locked_object_naming_deferred",
-            company_id=company_id,
-            run_id=run_id,
-            file_name=file_name,
-            model=str(naming_result["model"]),
-            prompt_version=NAMING_LAB_VERSION,
-            started_at=started_at,
-            finished_at=datetime.now(UTC).isoformat(),
-            duration_seconds=naming_seconds,
-            raw_usage={
-                "input_tokens": naming_result["input_tokens"],
-                "output_tokens": naming_result["output_tokens"],
-                "names": names,
-                "validation": naming_result["validation"],
-                "deferred": True,
-            },
+        insert_agent_usage_event(
+            client,
+            _runtime_event(
+                agent_name="naming",
+                operation="locked_object_naming_deferred",
+                company_id=company_id,
+                run_id=run_id,
+                file_name=file_name,
+                model=str(naming_result["model"]),
+                prompt_version=NAMING_LAB_VERSION,
+                started_at=started_at,
+                finished_at=datetime.now(UTC).isoformat(),
+                duration_seconds=naming_seconds,
+                raw_usage={
+                    "input_tokens": naming_result["input_tokens"],
+                    "output_tokens": naming_result["output_tokens"],
+                    "names": names,
+                    "validation": naming_result["validation"],
+                    "deferred": True,
+                },
+            ),
         )
-        insert_agent_usage_event(client, naming_event)
         return {
             "status": "succeeded",
             "names": names,
             "naming_seconds": naming_seconds,
-            "token_cost": _usage_cost_total([naming_event]),
         }
     except Exception as exc:
         finished_at = datetime.now(UTC).isoformat()
@@ -467,8 +452,8 @@ def process_uploaded_rfq(
         ocr_package=detection_ocr_package,
         page_images=page_images,
         page_image_diagnostics=page_image_diagnostics,
-        # V4.2 normally uses Haiku. Its deterministic OCR-layout router may
-        # select Sonnet only for a high-risk commercial-boundary Registry.
+        # Object boundaries must use the same Haiku path for every upload size.
+        # A rendered-page route changes transport, not the detection model.
         model=None,
     )
     detection_seconds = round(time.perf_counter() - detection_started, 3)
@@ -486,7 +471,6 @@ def process_uploaded_rfq(
     # server run ID. Keep every later stage on the same correlation key.
     for usage_event in usage_events:
         usage_event["run_id"] = detection_result["rfq_run"]["run_id"]
-    detection_token_cost = _usage_cost_total(usage_events)
     naming_seconds = 0.0
     naming_future = None
     locked_objects = None
@@ -613,7 +597,6 @@ def process_uploaded_rfq(
             ),
             "detection_seconds": detection_seconds,
             "naming_seconds": naming_seconds,
-            "token_cost": detection_token_cost,
             "total_seconds": total_seconds,
         },
     }
@@ -680,15 +663,10 @@ def load_file_review_naming_publication(run_id: str) -> dict[str, Any]:
         for row in fetch_rfq_detected_object_names(client, run_id)
         if str(row.get("object_id") or "")
     }
-    token_cost = _usage_cost_total([{
-        "status": status,
-        "total_cost_usd": event.get("total_cost_usd"),
-    }])
     return {
         "status": "succeeded",
         "names": names,
         "naming_seconds": duration_seconds,
-        "token_cost": token_cost,
     }
 
 
@@ -781,25 +759,13 @@ def _latest_runtime_timings(usage_df: pd.DataFrame) -> dict[str, float] | None:
         naming_row = naming_rows.iloc[-1]
         if str(naming_row.get("status") or "") == "succeeded":
             candidate = naming_row.get("duration_seconds")
-            if candidate is None or pd.isna(candidate):
-                naming_usage = naming_row.get("raw_usage") or {}
-                if isinstance(naming_usage, str):
-                    try:
-                        naming_usage = json.loads(naming_usage)
-                    except (TypeError, ValueError):
-                        naming_usage = {}
-                if isinstance(naming_usage, dict):
-                    candidate = naming_usage.get("duration_seconds")
             if candidate is not None and not pd.isna(candidate):
                 naming_seconds = float(candidate)
-
-    usage_events = [row.to_dict() for _, row in usage_df.iterrows()]
 
     return {
         "ocr_seconds": float(raw_usage.get("ocr_seconds") or 0),
         "detection_seconds": float(raw_usage.get("detection_seconds") or 0),
         "naming_seconds": naming_seconds,
-        "token_cost": _usage_cost_total(usage_events),
         "total_seconds": float(total_seconds or 0),
     }
 

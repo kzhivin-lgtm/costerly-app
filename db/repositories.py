@@ -385,7 +385,7 @@ def fetch_deferred_naming_status(client: Client, run_id: str) -> dict | None:
         client.table("agent_usage_events")
         # duration_seconds is an optional later migration.  Production stores
         # the same value in raw_usage on older schemas.
-        .select("status,total_cost_usd,raw_usage,created_at")
+        .select("status,raw_usage,created_at")
         .eq("run_id", run_id)
         .eq("agent_name", "naming")
         .eq("operation", "locked_object_naming_deferred")
