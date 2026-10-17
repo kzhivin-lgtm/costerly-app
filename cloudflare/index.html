@@ -388,7 +388,10 @@
             event.data.type === "costerly:rfq-upload-selected"
           ) {
             mark("browser.rfq_upload_selected", {
-              metadata: {source: safeRouteValue(event.data.source)},
+              metadata: {
+                source: safeRouteValue(event.data.source),
+                cycle_id: safeRouteValue(event.data.cycleId),
+              },
             });
             if (ready) persistTimeline();
             return;
@@ -432,6 +435,7 @@
               name: event.data.transition,
               sourceScreen: safeRouteValue(event.data.sourceScreen),
               targetScreen: safeRouteValue(event.data.targetScreen),
+              cycleId: safeRouteValue(event.data.cycleId),
               startedAt: performance.now(),
               visible: false,
               pythonRuns: 0,
@@ -445,6 +449,7 @@
                 transition_id: pendingTransition.id,
                 source_screen: pendingTransition.sourceScreen,
                 target_screen: pendingTransition.targetScreen,
+                cycle_id: pendingTransition.cycleId,
               },
             });
             pendingTransition.timeoutId = window.setTimeout(() => {
@@ -459,6 +464,7 @@
                   transition_id: pendingTransition.id,
                   source_screen: pendingTransition.sourceScreen,
                   target_screen: pendingTransition.targetScreen,
+                  cycle_id: pendingTransition.cycleId,
                   python_runs: pendingTransition.pythonRuns,
                 },
               });
@@ -484,6 +490,7 @@
               metadata: {
                 transition: pendingTransition.name,
                 transition_id: pendingTransition.id,
+                cycle_id: pendingTransition.cycleId,
               },
             });
             if (maskedInternalTransitions.has(pendingTransition.name)) {
@@ -513,6 +520,7 @@
                 transition_id: pendingTransition.id,
                 source_screen: pendingTransition.sourceScreen,
                 target_screen: pendingTransition.targetScreen,
+                cycle_id: pendingTransition.cycleId,
                 readiness: "stage_marker",
                 python_runs: pendingTransition.pythonRuns,
               },

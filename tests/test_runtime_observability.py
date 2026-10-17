@@ -41,6 +41,7 @@ def test_wrapper_records_each_rfq_upload_selection_before_server_processing():
 
     assert 'event.data.type === "costerly:rfq-upload-selected"' in wrapper
     assert 'mark("browser.rfq_upload_selected"' in wrapper
+    assert 'cycle_id: safeRouteValue(event.data.cycleId)' in wrapper
 
 
 def test_runtime_event_has_trace_boundaries_and_redacts_sensitive_metadata(monkeypatch):
@@ -422,6 +423,12 @@ def test_auth_component_reports_safe_iframe_startup_phases():
     assert "'upload_to_processing'" in ready_signal
     assert "'processing_to_file_review'" in ready_signal
     assert "type: 'costerly:transition-stage'" in ready_signal
+    assert "const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleId';" in ready_signal
+    assert "function beginUploadCycle()" in ready_signal
+    assert "window[PROCESSING_TRANSITION_ID_KEY] = null;" in ready_signal
+    assert "window[PROCESSING_COMPLETE_TRANSITION_ID_KEY] = null;" in ready_signal
+    assert "window[RFQ_UPLOAD_CYCLE_ID_KEY] = crypto.randomUUID();" in ready_signal
+    assert "cycleId," in ready_signal
     assert 'type: "costerly:transition-visible"' in ready_signal
     assert 'type: "costerly:transition-styled"' in ready_signal
     assert "new MutationObserver(reportIfVisible)" in ready_signal

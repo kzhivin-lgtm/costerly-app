@@ -3383,6 +3383,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                 const PROCESSING_TRANSITION_ID_KEY = '__costerlyUploadToProcessingTransitionId';
                 const PROCESSING_COMPLETE_TRANSITION_ID_KEY = '__costerlyProcessingToReviewTransitionId';
                 const PROCESSING_COMPLETE_STYLED_OBSERVER_KEY = '__costerlyProcessingToReviewStyledObserver';
+                const RFQ_UPLOAD_CYCLE_ID_KEY = '__costerlyRfqUploadCycleId';
                 let clearDragTimer = null;
                 let watcher = null;
                 let slowTimer = null;
@@ -3603,7 +3604,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     }
                 }
 
-                function startTransition(name, sourceScreen, targetScreen, key) {
+                function startTransition(name, sourceScreen, targetScreen, key, cycleId = '') {
                     if (window[key]) return window[key];
                     const transitionId = crypto.randomUUID();
                     window[key] = transitionId;
@@ -3613,6 +3614,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         transitionId,
                         sourceScreen,
                         targetScreen,
+                        cycleId,
                     }, '*');
                     return transitionId;
                 }
@@ -3625,7 +3627,25 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         transition: 'upload_to_processing',
                         transitionId,
                         screen: 'processing',
+                        cycleId: window[RFQ_UPLOAD_CYCLE_ID_KEY] || '',
                     }, '*');
+                }
+
+                function beginUploadCycle() {
+                    const completeObserver = window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY];
+                    if (completeObserver && completeObserver.stop) completeObserver.stop();
+
+                    window.clearInterval(window[ELAPSED_TIMER_KEY]);
+                    window[ELAPSED_TIMER_KEY] = null;
+                    window[ELAPSED_STARTED_AT_KEY] = Date.now();
+                    window[LAST_ELAPSED_SECONDS_KEY] = null;
+                    window[PROGRESS_PHASE_KEY] = null;
+                    window[PROGRESS_PHASE_STARTED_AT_KEY] = null;
+                    window[PROCESSING_TRANSITION_ID_KEY] = null;
+                    window[PROCESSING_COMPLETE_TRANSITION_ID_KEY] = null;
+                    window[PROCESSING_COMPLETE_STYLED_OBSERVER_KEY] = null;
+                    window[RFQ_UPLOAD_CYCLE_ID_KEY] = crypto.randomUUID();
+                    return window[RFQ_UPLOAD_CYCLE_ID_KEY];
                 }
 
                 function reportFileReviewStyled(transitionId) {
@@ -3708,10 +3728,14 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                     }
 
                     shell.dataset.source = source || 'unknown';
+                    const cycleId = shellAlreadyVisible
+                        ? (window[RFQ_UPLOAD_CYCLE_ID_KEY] || '')
+                        : beginUploadCycle();
                     if (!shellAlreadyVisible) {
                         window.top.postMessage({
                             type: 'costerly:rfq-upload-selected',
                             source: shell.dataset.source,
+                            cycleId,
                         }, '*');
                     }
                     document.documentElement.classList.add(SHELL_ACTIVE_CLASS);
@@ -3721,6 +3745,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                         'upload',
                         'processing',
                         PROCESSING_TRANSITION_ID_KEY,
+                        cycleId,
                     );
                     startElapsed();
 
@@ -3806,6 +3831,7 @@ def install_upload_interaction_guards(shell_html: str) -> None:
                                 'processing',
                                 'file_review',
                                 PROCESSING_COMPLETE_TRANSITION_ID_KEY,
+                                window[RFQ_UPLOAD_CYCLE_ID_KEY] || '',
                             );
                             reportFileReviewStyled(transitionId);
                         }
