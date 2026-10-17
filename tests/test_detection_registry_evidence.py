@@ -96,7 +96,6 @@ def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
         "estimation_evidence_pages": [1, 2, 3, 4, 5],
-        "primary_visual_group_id": "view-001",
         "visual_group_ids": ["view-001"], "visual_identity": "one kitchen",
         "boundary_basis": "one integrated kitchen package",
     }]}
@@ -131,8 +130,7 @@ def test_v42_routes_default_registry_and_evidence_packer_to_haiku():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-        "estimation_evidence_pages": [1], "primary_visual_group_id": "view-001",
-        "visual_group_ids": ["view-001"],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
         "visual_identity": "one object", "boundary_basis": "one envelope",
     }]}
     registry_call: dict = {}
@@ -172,8 +170,7 @@ def test_v42_routes_only_adda_style_registry_to_sonnet():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-        "estimation_evidence_pages": [1], "primary_visual_group_id": "view-001",
-        "visual_group_ids": ["view-001"],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
         "visual_identity": "one object", "boundary_basis": "one envelope",
     }]}
     registry_call: dict = {}

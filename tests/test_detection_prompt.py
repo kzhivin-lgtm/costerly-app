@@ -51,7 +51,7 @@ def test_detection_registry_groups_visual_map_without_treating_it_as_object_set(
     assert "visual map was prepared from full pages and enlarged regions" in prompt
     assert "not an object set" in prompt
     assert "Decide commercial objects only from the full pages" in prompt
-    assert "select one `primary_visual_group_id`" in prompt
+    assert "attach relevant `visual_group_ids`" in prompt
     assert "not a reason to add, split or fail an object" in prompt
     assert "vertical shelving unit, a track-supported door system, and a long storage console" in prompt
     assert "Different complete envelopes, functions, silhouettes, or construction systems" in prompt
@@ -75,7 +75,7 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
     assert "shared schedule, title block, layout or multi-object context" in prompt
-    assert "`primary_visual_group_id` is one group that directly depicts" in prompt
+    assert "exclusive groups that prove this object's commercial boundary" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
 
 
@@ -83,6 +83,5 @@ def test_haiku_registry_correspondence_experiment_requires_cross_view_audit():
     prompt = load_detection_visual_registry_haiku_correspondence_experiment_prompt()
 
     assert "Cross-view correspondence audit" in prompt
-    assert "Empty `related_groups` is an explicit finding" in prompt
-    assert "concrete `match_basis`" in prompt
+    assert "Empty `related_group_ids` is an explicit finding" in prompt
     assert "specific incompatible envelope" in prompt

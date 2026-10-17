@@ -33,7 +33,6 @@ from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
-    visual_group_adjacency,
 )
 from agents.schemas.detection_schema import (
     DETECTION_RESULT_JSON_SCHEMA,
@@ -48,9 +47,9 @@ DETECTION_PROMPT_VERSION = "detection_v4_object_evidence_handoff_v6"
 DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
-DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v6"
+DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = "detection_v4_visual_registry_integrated_v5"
 DETECTION_VISUAL_REGISTRY_HAIKU_CORRESPONDENCE_EXPERIMENT_PROMPT_VERSION = (
-    "detection_v4_2_visual_registry_haiku_correspondence_ownership_v3"
+    "detection_v4_2_visual_registry_haiku_correspondence_ownership_v2"
 )
 
 
@@ -736,10 +735,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         )
         registry_payload = {"objects": registry_objects}
         for item in registry_payload["objects"]:
-            item["primary_visual_group_id"] = group_id_mapping.get(
-                str(item["primary_visual_group_id"]),
-                str(item["primary_visual_group_id"]),
-            )
             item["visual_group_ids"] = [
                 group_id_mapping.get(str(group_id), str(group_id))
                 for group_id in item["visual_group_ids"]
@@ -747,7 +742,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry = validate_detection_registry(
             registry_payload,
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-            visual_group_adjacency=visual_group_adjacency(visual_map["visual_groups"]),
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
@@ -848,7 +842,6 @@ def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, f
         registry = validate_detection_registry(
             payload,
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-            visual_group_adjacency=visual_group_adjacency(visual_map["visual_groups"]),
         )
     except ValueError as exc:
         raise RuntimeError(f"Detection registry response failed validation: {exc}") from exc
