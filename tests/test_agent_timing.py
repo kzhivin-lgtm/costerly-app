@@ -13,7 +13,6 @@ from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_DETECTION_MODEL,
     DetectionVisualRegistryValidationError,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
-    DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -23,8 +22,6 @@ from agents.anthropic_adapter import (
     build_uploaded_file_content_block,
     create_claude_message,
     create_claude_message_streamed,
-    _materialize_object_anchor_views,
-    _validate_orphan_detail_resolutions,
     normalize_detection_identity_fields,
     run_anthropic_detection_agent,
     run_anthropic_detection_registry_agent,
@@ -498,9 +495,10 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "anchor_view_group_id": "view_a", "linked_assembly_views": [],
+            "visual_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
         }],
+        "merge_proofs": [],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
             "evidence_reason": "cabinet view",
@@ -555,17 +553,17 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
         "objects": [{
             "object_id": "object-001", "transport_label": "D01",
             "quantity": 1, "quantity_explicit": True, "identity_pages": [1],
-            "anchor_view_group_id": "elevation",
+            "visual_group_ids": ["elevation", "plan"],
             "visual_identity": "one door system in elevation and plan",
             "boundary_basis": "matching track and three-leaf sequence",
-            "linked_assembly_views": [{
-                "group_id": "plan", "linked_to_group_id": "elevation",
-                "primary_evidence_type": "matching_topology",
-                "secondary_evidence_type": "dimension_transform",
-                "evidence_pages": [1],
-                "observed_fact": "The plan track length matches the elevation after the axis change.",
-                "commercial_inseparability": "Both views show one common track and frame.",
-            }],
+        }],
+        "merge_proofs": [{
+            "object_id": "object-001", "from_group_id": "elevation",
+            "to_group_id": "plan",
+            "evidence_types": ["matching_topology", "dimension_transform"],
+            "evidence_pages": [1],
+            "observed_fact": "The plan track length matches the elevation after the axis change.",
+            "commercial_inseparability": "Both views show one common track and frame.",
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
@@ -597,31 +595,90 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
     assert usage["raw_usage"]["pairwise_merge_proofs"][0]["to_group_id"] == "view-002"
 
 
-def test_anchor_views_canonicalize_undirected_links_and_preserve_detail_candidates():
-    objects = [
-        {
-            "object_id": "object-001", "anchor_view_group_id": "view-a",
-            "linked_assembly_views": [{
-                # The model listed a valid undirected edge backwards.
-                "group_id": "view-a", "linked_to_group_id": "view-b",
-                "primary_evidence_type": "explicit_document_relation",
-                "secondary_evidence_type": "not_required", "evidence_pages": [1],
-                "observed_fact": "Both views carry N57.",
-                "commercial_inseparability": "They depict one cabinet.",
-            }],
-        },
-        {
-            "object_id": "object-002", "anchor_view_group_id": "",
-            "linked_assembly_views": [],
-        },
+def test_integrated_visual_registry_promotes_a_coded_detail_package_only_after_explicit_resolution():
+    payload = {
+        "visual_groups": [
+            {
+                "group_id": "plan", "page_number": 11, "location_hint": "upper",
+                "visual_description": "cabinet plan", "representation_kind": "plan",
+                "commercial_role": "component_detail",
+            },
+            {
+                "group_id": "elevation", "page_number": 11, "location_hint": "middle",
+                "visual_description": "cabinet front elevation", "representation_kind": "elevation",
+                "commercial_role": "component_detail",
+            },
+            {
+                "group_id": "grid", "page_number": 11, "location_hint": "lower",
+                "visual_description": "cabinet panel grid", "representation_kind": "detail",
+                "commercial_role": "component_detail",
+            },
+        ],
+        "objects": [{
+            "object_id": "object-001", "transport_label": "N76B",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [11],
+            "visual_group_ids": ["plan", "elevation", "grid"],
+            "visual_identity": "one N76B cabinet represented by three coordinated views",
+            "boundary_basis": "N76B is a separately coded, dimensioned cabinet package",
+        }],
+        "merge_proofs": [
+            {
+                "object_id": "object-001", "from_group_id": "plan",
+                "to_group_id": "elevation",
+                "evidence_types": ["explicit_document_relation"],
+                "evidence_pages": [11],
+                "observed_fact": "Both views carry the literal N76B code.",
+                "commercial_inseparability": "They are orthographic views of the same coded cabinet.",
+            },
+            {
+                "object_id": "object-001", "from_group_id": "elevation",
+                "to_group_id": "grid",
+                "evidence_types": ["explicit_document_relation"],
+                "evidence_pages": [11],
+                "observed_fact": "The panel grid is labelled N76B with the same overall width.",
+                "commercial_inseparability": "It describes the same cabinet face shown in elevation.",
+            },
+        ],
+        "coded_drawing_candidate_resolutions": [{
+            "candidate_id": "code-p11-n76b",
+            "decision": "promote_to_new_object",
+            "target_object_id": "object-001",
+            "promoted_group_ids": ["plan", "elevation", "grid"],
+            "observed_basis": "N76B is a distinct coded package with coordinated plan, elevation and panel grid.",
+        }],
+        "page_coverage": [{
+            "page_number": page_number,
+            "object_ids": ["object-001"] if page_number == 11 else [],
+            "evidence_reason": "N76B drawings" if page_number == 11 else "unrelated sheet",
+        } for page_number in range(1, 12)],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-16T00:00:00+00:00",
+                "request_finished_at": "2026-10-16T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"] * 11, regions=[], model="model",
+            ocr_package={"evidence": {"literal_items": [{
+                "page_number": 11, "text": "N76B",
+            }]}},
+        )
+
+    assert registry["objects"][0]["transport_label"] == "N76B"
+    assert [group["commercial_role"] for group in visual_map["visual_groups"]] == [
+        "component_detail", "component_detail", "component_detail",
     ]
-
-    registry_objects, proofs = _materialize_object_anchor_views(objects)
-
-    assert registry_objects[0]["visual_group_ids"] == ["view-a", "view-b"]
-    assert proofs[0]["from_group_id"] == "view-a"
-    assert proofs[0]["to_group_id"] == "view-b"
-    assert registry_objects[1]["visual_group_ids"] == []
+    assert usage["raw_usage"]["promoted_component_detail_group_ids"] == [
+        "view-001", "view-002", "view-003",
+    ]
 
 
 def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():
@@ -664,221 +721,6 @@ def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan(
     ]
     assert usage["raw_usage"]["discarded_orphan_registry_object_ids"] == ["object-004"]
     assert usage["raw_usage"]["registry_decision_audit"] == payload
-
-
-def test_integrated_visual_registry_resolves_only_an_unowned_component_detail_candidate():
-    primary_payload = {
-        "visual_groups": [
-            {"group_id": "cabinet", "page_number": 1, "location_hint": "left", "visual_description": "cabinet N76", "representation_kind": "elevation", "commercial_role": "assembly_view"},
-            {"group_id": "n76b-plan", "page_number": 2, "location_hint": "top", "visual_description": "N76B plan", "representation_kind": "plan", "commercial_role": "component_detail"},
-            {"group_id": "n76b-profile", "page_number": 2, "location_hint": "middle", "visual_description": "N76B profile 345 x 5", "representation_kind": "profile", "commercial_role": "document_context"},
-            {"group_id": "n76b-elevation", "page_number": 2, "location_hint": "bottom", "visual_description": "N76B panel elevation 345 x 260", "representation_kind": "elevation", "commercial_role": "document_context"},
-        ],
-        "objects": [
-            {"object_id": "object-001", "transport_label": "N76", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["cabinet"], "visual_identity": "cabinet N76", "boundary_basis": "complete cabinet envelope"},
-            {"object_id": "object-002", "transport_label": "N76B", "quantity": 1, "quantity_explicit": False, "identity_pages": [2], "visual_group_ids": [], "visual_identity": "N76B panel", "boundary_basis": "unresolved detail cluster"},
-        ],
-        "merge_proofs": [],
-        "page_coverage": [
-            {"page_number": 1, "object_ids": ["object-001"], "evidence_reason": "N76 cabinet"},
-            {"page_number": 2, "object_ids": ["object-002"], "evidence_reason": "N76B drawing"},
-        ],
-    }
-    resolver_payload = {
-        "resolutions": [{
-            "candidate_group_ids": ["view-002"],
-            "decision": "promote_to_new_object", "target_object_id": "",
-            "transport_label": "N76B", "quantity": 1, "quantity_explicit": False,
-            "identity_pages": [2], "visual_identity": "N76B decorative panel assembly",
-            "boundary_basis": "The three N76B depictions show one coded panel assembly.",
-            "assembly_group_ids": ["view-002", "view-003", "view-004"],
-            "merge_proofs": [
-                {"from_group_id": "view-002", "to_group_id": "view-003", "primary_evidence_type": "explicit_document_relation", "secondary_evidence_type": "not_required", "evidence_pages": [2], "observed_fact": "Both depictions carry N76B and width 345.", "commercial_inseparability": "They are plan and profile views of one panel assembly."},
-                {"from_group_id": "view-003", "to_group_id": "view-004", "primary_evidence_type": "explicit_document_relation", "secondary_evidence_type": "not_required", "evidence_pages": [2], "observed_fact": "The profile and elevation carry the same N76B code.", "commercial_inseparability": "They are complementary views of one panel assembly."},
-            ],
-            "attachment_evidence": [],
-            "resolution_basis": "N76B has its own code and coherent dimensions, with no positive link to N76.",
-        }],
-    }
-    requests: list[dict] = []
-
-    def fake_create(*_args, **kwargs):
-        requests.append(kwargs)
-        return _Response(), {
-            "request_started_at": "2026-10-18T00:00:00+00:00",
-            "request_finished_at": "2026-10-18T00:00:01+00:00",
-        }
-
-    with (
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
-        patch(
-            "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(primary_payload), json.dumps(resolver_payload)],
-        ),
-    ):
-        visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
-            file_name="n76b.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"one", b"two"], regions=[], ocr_package={
-                "pages": [{"page_number": 2, "markdown": "N76B"}],
-            }, model="model",
-        )
-
-    assert len(requests) == 2
-    assert [item["transport_label"] for item in registry["objects"]] == ["N76", "N76B"]
-    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
-    assert registry["objects"][1]["visual_group_ids"] == ["view-002", "view-003", "view-004"]
-    assert registry["objects"][1]["estimation_evidence_pages"] == [2]
-    assert all(
-        group["commercial_role"] == "assembly_view"
-        for group in visual_map["visual_groups"][1:]
-    )
-    assert usage["raw_usage"]["orphan_detail_resolver"]["candidate_group_ids"] == [
-        "view-002",
-    ]
-    assert usage["raw_usage"]["orphan_detail_resolver"]["eligible_assembly_group_ids"] == [
-        "view-002", "view-003", "view-004",
-    ]
-    assert usage["_additional_usage_events"][0]["raw_usage"]["resolver_page_numbers"] == [2]
-    assert usage["_additional_usage_events"][0]["prompt_version"] == (
-        DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION
-    )
-    resolver_request = next(
-        block["text"]
-        for block in requests[1]["messages"][0]["content"]
-        if (
-            isinstance(block, dict)
-            and block.get("type") == "text"
-            and "Conditional orphan-detail resolution input" in block.get("text", "")
-        )
-    )
-    assert '"provisional_candidates"' in resolver_request
-    assert '"provisional_objects"' not in resolver_request
-    assert '"known_objects_for_comparison"' in resolver_request
-    assert '"attachable_existing_objects":[]' in resolver_request
-    assert '"object_id":"object-001"' not in resolver_request
-    assert '"object_id":"object-002"' not in resolver_request
-
-
-def test_orphan_detail_resolver_cannot_promote_a_view_already_owned_by_registry():
-    context = {
-        "candidate_group_ids": ["view-002"],
-        "page_scope_group_ids": ["view-001", "view-002", "view-003"],
-        "eligible_assembly_group_ids": ["view-002", "view-003"],
-        "page_scope_groups": [
-            {"group_id": "view-001", "page_number": 2},
-            {"group_id": "view-002", "page_number": 2},
-            {"group_id": "view-003", "page_number": 2},
-        ],
-        "existing_objects": [{"object_id": "object-001"}],
-    }
-    payload = {"resolutions": [{
-        "candidate_group_ids": ["view-002"],
-        "decision": "promote_to_new_object", "target_object_id": "",
-        "transport_label": "N76B", "quantity": 1, "quantity_explicit": False,
-        "identity_pages": [2], "visual_identity": "N76B panel",
-        "boundary_basis": "Independent dimensioned product.",
-        "assembly_group_ids": ["view-001", "view-002", "view-003"],
-        "merge_proofs": [], "attachment_evidence": [],
-        "resolution_basis": "Own code and dimensions.",
-    }]}
-
-    with pytest.raises(ValueError, match="assembly groups are invalid"):
-        _validate_orphan_detail_resolutions(payload, context=context, page_count=2)
-
-
-def test_orphan_detail_resolver_rejects_attachment_without_direct_relation_evidence():
-    context = {
-        "candidate_group_ids": ["view-002"],
-        "page_scope_group_ids": ["view-002"],
-        "eligible_assembly_group_ids": ["view-002"],
-        "page_scope_groups": [{"group_id": "view-002", "page_number": 2}],
-        "existing_objects": [{"object_id": "object-001"}],
-    }
-    payload = {"resolutions": [{
-        "candidate_group_ids": ["view-002"],
-        "decision": "attach_to_existing_object", "target_object_id": "object-001",
-        "transport_label": "", "quantity": 0, "quantity_explicit": False,
-        "identity_pages": [], "visual_identity": "", "boundary_basis": "",
-        "assembly_group_ids": [], "merge_proofs": [], "attachment_evidence": [],
-        "resolution_basis": "The codes look related and the dimensions are similar.",
-    }]}
-
-    with pytest.raises(ValueError, match="requires direct relation evidence"):
-        _validate_orphan_detail_resolutions(payload, context=context, page_count=2)
-
-
-def test_orphan_detail_resolver_rejects_code_similarity_without_literal_target_code():
-    context = {
-        "candidate_group_ids": ["view-002"],
-        "page_scope_group_ids": ["view-002"],
-        "eligible_assembly_group_ids": ["view-002"],
-        "page_scope_groups": [{"group_id": "view-002", "page_number": 2}],
-        "existing_objects": [{"object_id": "object-001", "transport_label": "N76"}],
-        "provisional_objects": [{"object_id": "object-002", "transport_label": "N76B", "identity_pages": [2]}],
-        "candidate_page_ocr_text": {2: "Drawing N76B, scale 1:25"},
-    }
-    payload = {"resolutions": [{
-        "candidate_group_ids": ["view-002"],
-        "decision": "attach_to_existing_object", "target_object_id": "object-001",
-        "transport_label": "", "quantity": 0, "quantity_explicit": False,
-        "identity_pages": [], "visual_identity": "", "boundary_basis": "",
-        "assembly_group_ids": [], "merge_proofs": [],
-        "attachment_evidence": [{
-            "relation_type": "explicit_callout", "evidence_pages": [2],
-            "observed_fact": "N76B is described as a variant of N76.",
-        }],
-        "resolution_basis": "The codes look related.",
-    }]}
-
-    with pytest.raises(ValueError, match="no literal target-code evidence"):
-        _validate_orphan_detail_resolutions(payload, context=context, page_count=2)
-
-
-def test_integrated_visual_registry_attaches_an_unowned_detail_without_changing_owner_boundary():
-    primary_payload = {
-        "visual_groups": [
-            {"group_id": "cabinet", "page_number": 1, "location_hint": "left", "visual_description": "cabinet", "representation_kind": "elevation", "commercial_role": "assembly_view"},
-            {"group_id": "detail", "page_number": 2, "location_hint": "right", "visual_description": "cabinet hinge detail", "representation_kind": "detail", "commercial_role": "component_detail"},
-        ],
-        "objects": [{"object_id": "object-001", "transport_label": "N76", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["cabinet"], "visual_identity": "cabinet", "boundary_basis": "complete cabinet envelope"}],
-        "merge_proofs": [],
-        "page_coverage": [
-            {"page_number": 1, "object_ids": ["object-001"], "evidence_reason": "cabinet"},
-            {"page_number": 2, "object_ids": [], "evidence_reason": "unassigned hinge detail"},
-        ],
-    }
-    resolver_payload = {"resolutions": [{
-        "candidate_group_ids": ["view-002"], "decision": "attach_to_existing_object",
-        "target_object_id": "object-001", "transport_label": "", "quantity": 0,
-        "quantity_explicit": False, "identity_pages": [], "visual_identity": "",
-        "boundary_basis": "", "assembly_group_ids": [], "merge_proofs": [],
-        "attachment_evidence": [{
-            "relation_type": "explicit_callout", "evidence_pages": [2],
-            "observed_fact": "The hinge callout explicitly names N76.",
-        }],
-        "resolution_basis": "The hinge detail is explicitly for the N76 cabinet.",
-    }]}
-
-    with (
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {
-            "request_started_at": "2026-10-18T00:00:00+00:00",
-            "request_finished_at": "2026-10-18T00:00:01+00:00",
-        })),
-        patch(
-            "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(primary_payload), json.dumps(resolver_payload)],
-        ),
-    ):
-        visual_map, registry, _ = run_anthropic_detection_visual_registry_agent(
-            file_name="detail.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
-        )
-
-    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
-    assert registry["objects"][0]["estimation_evidence_pages"] == [1, 2]
-    assert visual_map["visual_groups"][1]["commercial_role"] == "component_detail"
 
 
 def test_integrated_visual_registry_keeps_empty_group_object_with_evidence_as_error():

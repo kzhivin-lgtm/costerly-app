@@ -100,8 +100,7 @@ def test_pairwise_merge_proofs_require_two_independent_signals_and_a_minimal_tre
         {
             "object_id": "object-001", "from_group_id": "view-001",
             "to_group_id": "view-002",
-            "primary_evidence_type": "matching_topology",
-            "secondary_evidence_type": "unique_geometry",
+            "evidence_types": ["matching_topology", "unique_geometry"],
             "evidence_pages": [1],
             "observed_fact": "The same three leaves and offset handle sequence recur.",
             "commercial_inseparability": "Both views show the same single track assembly.",
@@ -109,24 +108,19 @@ def test_pairwise_merge_proofs_require_two_independent_signals_and_a_minimal_tre
         {
             "object_id": "object-001", "from_group_id": "view-002",
             "to_group_id": "view-003",
-            "primary_evidence_type": "dimension_transform",
-            "secondary_evidence_type": "matching_topology",
+            "evidence_types": ["dimension_transform", "matching_topology"],
             "evidence_pages": [1, 2],
             "observed_fact": "The elevation width matches the plan after the view-axis change.",
             "commercial_inseparability": "The leaves use one common track and frame.",
         },
     ]
 
-    normalized = validate_detection_pairwise_merge_proofs(
+    assert validate_detection_pairwise_merge_proofs(
         proofs, registry=registry, page_count=2
-    )
-    assert [proof["evidence_types"] for proof in normalized] == [
-        ["matching_topology", "unique_geometry"],
-        ["dimension_transform", "matching_topology"],
-    ]
+    ) == proofs
 
 
-def test_pairwise_merge_proof_rejects_a_missing_secondary_evidence_type():
+def test_pairwise_merge_proof_rejects_a_lone_direct_structure_claim():
     registry = {
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -138,8 +132,7 @@ def test_pairwise_merge_proof_rejects_a_missing_secondary_evidence_type():
     }
     proofs = [{
         "object_id": "object-001", "from_group_id": "view-001",
-        "to_group_id": "view-002", "primary_evidence_type": "matching_topology",
-        "secondary_evidence_type": "not_required",
+        "to_group_id": "view-002", "evidence_types": ["direct_shared_structure"],
         "evidence_pages": [1], "observed_fact": "An L-shaped junction is drawn.",
         "commercial_inseparability": "The furniture appears connected.",
     }]
@@ -258,3 +251,26 @@ def test_registry_rejects_component_detail_as_commercial_boundary_support():
         )
 
     assert raised.value.details == {"non_assembly_visual_group_ids": ["view-001"]}
+
+
+def test_registry_allows_only_explicitly_promoted_component_detail_boundary_support():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "N76B",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [11],
+            "estimation_evidence_pages": [11],
+            "visual_group_ids": ["view-001", "view-002"],
+            "visual_identity": "one coded cabinet in plan and elevation",
+            "boundary_basis": "N76B has coordinated plan and elevation views",
+        }],
+    }
+
+    assert validate_detection_registry(
+        registry,
+        visual_group_ids={"view-001", "view-002"},
+        visual_group_roles={
+            "view-001": "component_detail",
+            "view-002": "assembly_view",
+        },
+        promoted_component_detail_group_ids={"view-001"},
+    ) == registry
