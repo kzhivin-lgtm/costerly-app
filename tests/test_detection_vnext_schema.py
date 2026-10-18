@@ -100,7 +100,8 @@ def test_pairwise_merge_proofs_require_two_independent_signals_and_a_minimal_tre
         {
             "object_id": "object-001", "from_group_id": "view-001",
             "to_group_id": "view-002",
-            "evidence_types": ["matching_topology", "unique_geometry"],
+            "primary_evidence_type": "matching_topology",
+            "secondary_evidence_type": "unique_geometry",
             "evidence_pages": [1],
             "observed_fact": "The same three leaves and offset handle sequence recur.",
             "commercial_inseparability": "Both views show the same single track assembly.",
@@ -108,19 +109,24 @@ def test_pairwise_merge_proofs_require_two_independent_signals_and_a_minimal_tre
         {
             "object_id": "object-001", "from_group_id": "view-002",
             "to_group_id": "view-003",
-            "evidence_types": ["dimension_transform", "matching_topology"],
+            "primary_evidence_type": "dimension_transform",
+            "secondary_evidence_type": "matching_topology",
             "evidence_pages": [1, 2],
             "observed_fact": "The elevation width matches the plan after the view-axis change.",
             "commercial_inseparability": "The leaves use one common track and frame.",
         },
     ]
 
-    assert validate_detection_pairwise_merge_proofs(
+    normalized = validate_detection_pairwise_merge_proofs(
         proofs, registry=registry, page_count=2
-    ) == proofs
+    )
+    assert [proof["evidence_types"] for proof in normalized] == [
+        ["matching_topology", "unique_geometry"],
+        ["dimension_transform", "matching_topology"],
+    ]
 
 
-def test_pairwise_merge_proof_rejects_a_lone_direct_structure_claim():
+def test_pairwise_merge_proof_rejects_a_missing_secondary_evidence_type():
     registry = {
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -132,7 +138,8 @@ def test_pairwise_merge_proof_rejects_a_lone_direct_structure_claim():
     }
     proofs = [{
         "object_id": "object-001", "from_group_id": "view-001",
-        "to_group_id": "view-002", "evidence_types": ["direct_shared_structure"],
+        "to_group_id": "view-002", "primary_evidence_type": "matching_topology",
+        "secondary_evidence_type": "not_required",
         "evidence_pages": [1], "observed_fact": "An L-shaped junction is drawn.",
         "commercial_inseparability": "The furniture appears connected.",
     }]

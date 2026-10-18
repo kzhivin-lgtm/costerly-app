@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import sys
 from threading import Lock
 import time
@@ -28,6 +29,8 @@ from agents.schemas.detection_registry_schema import (
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
+    PAIRWISE_MERGE_PRIMARY_EVIDENCE_TYPES,
+    PAIRWISE_MERGE_SECONDARY_EVIDENCE_TYPES,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
 )
@@ -50,11 +53,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_pairwise_merge_proofs_v1_temperature_0"
+    "detection_v4_visual_registry_pairwise_merge_proofs_v2_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION = (
-    "detection_v4_orphan_detail_resolver_v2_temperature_0"
+    "detection_v4_orphan_detail_resolver_v3_temperature_0"
 )
 DETECTION_ORPHAN_DETAIL_RESOLVER_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -118,23 +121,20 @@ DETECTION_ORPHAN_DETAIL_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "from_group_id", "to_group_id", "evidence_types", "evidence_pages",
+        "from_group_id", "to_group_id", "primary_evidence_type",
+        "secondary_evidence_type", "evidence_pages",
         "observed_fact", "commercial_inseparability",
     ],
     "properties": {
         "from_group_id": {"type": "string"},
         "to_group_id": {"type": "string"},
-        "evidence_types": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-                "type": "string",
-                "enum": sorted({
-                    "explicit_document_relation", "matching_topology",
-                    "dimension_transform", "unique_geometry",
-                    "direct_shared_structure",
-                }),
-            },
+        "primary_evidence_type": {
+            "type": "string",
+            "enum": sorted(PAIRWISE_MERGE_PRIMARY_EVIDENCE_TYPES),
+        },
+        "secondary_evidence_type": {
+            "type": "string",
+            "enum": sorted(PAIRWISE_MERGE_SECONDARY_EVIDENCE_TYPES),
         },
         "evidence_pages": {
             "type": "array",
@@ -143,6 +143,28 @@ DETECTION_ORPHAN_DETAIL_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
         },
         "observed_fact": {"type": "string"},
         "commercial_inseparability": {"type": "string"},
+    },
+}
+
+DETECTION_ORPHAN_DETAIL_ATTACHMENT_EVIDENCE_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["relation_type", "evidence_pages", "observed_fact"],
+    "properties": {
+        "relation_type": {
+            "type": "string",
+            "enum": [
+                "explicit_cross_reference",
+                "explicit_callout",
+                "explicit_view_link",
+            ],
+        },
+        "evidence_pages": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "integer", "minimum": 1},
+        },
+        "observed_fact": {"type": "string"},
     },
 }
 
@@ -160,7 +182,8 @@ DETECTION_ORPHAN_DETAIL_RESOLVER_JSON_SCHEMA: dict[str, Any] = {
                     "candidate_group_ids", "decision", "target_object_id",
                     "transport_label", "quantity", "quantity_explicit",
                     "identity_pages", "visual_identity", "boundary_basis",
-                    "assembly_group_ids", "merge_proofs", "resolution_basis",
+                    "assembly_group_ids", "merge_proofs", "attachment_evidence",
+                    "resolution_basis",
                 ],
                 "properties": {
                     "candidate_group_ids": {
@@ -192,6 +215,10 @@ DETECTION_ORPHAN_DETAIL_RESOLVER_JSON_SCHEMA: dict[str, Any] = {
                     "merge_proofs": {
                         "type": "array",
                         "items": DETECTION_ORPHAN_DETAIL_MERGE_PROOF_JSON_SCHEMA,
+                    },
+                    "attachment_evidence": {
+                        "type": "array",
+                        "items": DETECTION_ORPHAN_DETAIL_ATTACHMENT_EVIDENCE_JSON_SCHEMA,
                     },
                     "resolution_basis": {"type": "string"},
                 },
@@ -889,12 +916,56 @@ class DetectionOrphanDetailResolverError(ValueError):
         self.usage_event = usage_event
 
 
+def _orphan_detail_ocr_text_by_page(
+    ocr_package: dict[str, Any] | None,
+) -> dict[int, str]:
+    """Return literal OCR by physical page for a narrowly scoped relation check."""
+    if not ocr_package:
+        return {}
+    text_by_page: dict[int, list[str]] = {}
+
+    def add(page_number: object, text: object) -> None:
+        if not isinstance(page_number, int):
+            return
+        value = str(text or "").strip()
+        if value:
+            text_by_page.setdefault(page_number, []).append(value)
+
+    evidence = ocr_package.get("evidence")
+    if isinstance(evidence, dict):
+        for item in [*(evidence.get("text_blocks") or []), *(evidence.get("literal_items") or [])]:
+            if isinstance(item, dict):
+                add(item.get("page_number"), item.get("text"))
+    for page in ocr_package.get("pages") or []:
+        if not isinstance(page, dict):
+            continue
+        page_number = page.get("page_number")
+        for key in ("header", "markdown", "footer"):
+            add(page_number, page.get(key))
+        for block in page.get("blocks") or []:
+            if isinstance(block, dict):
+                add(page_number, block.get("content"))
+    return {
+        page_number: "\n".join(parts)
+        for page_number, parts in text_by_page.items()
+    }
+
+
+def _is_source_code(value: object) -> bool:
+    return bool(re.fullmatch(r"[A-Za-z]{1,6}[ -]?\d+[A-Za-z0-9-]*", str(value or "").strip()))
+
+
+def _ocr_contains_exact_code(text: str, code: str) -> bool:
+    return bool(re.search(rf"(?<![A-Za-z0-9]){re.escape(code)}(?![A-Za-z0-9])", text))
+
+
 def _build_orphan_detail_context(
     *,
     objects: object,
     page_coverage: object,
     visual_map: dict[str, Any],
     page_count: int,
+    ocr_package: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     """Find the narrow class that requires a second boundary decision.
 
@@ -979,6 +1050,11 @@ def _build_orphan_detail_context(
         "page_scope_groups": page_scope_groups,
         "page_scope_group_ids": [str(group["group_id"]) for group in page_scope_groups],
         "eligible_assembly_group_ids": eligible_assembly_group_ids,
+        "candidate_page_ocr_text": {
+            page_number: text
+            for page_number, text in _orphan_detail_ocr_text_by_page(ocr_package).items()
+            if page_number in candidate_page_numbers
+        },
         "provisional_objects": [
             copy.deepcopy(item)
             for item in objects
@@ -1069,6 +1145,7 @@ def _run_anthropic_detection_orphan_detail_resolver(
         "candidate_page_numbers": context["candidate_page_numbers"],
         "page_scope_group_ids": context["page_scope_group_ids"],
         "eligible_assembly_group_ids": context["eligible_assembly_group_ids"],
+        "candidate_page_ocr_available": sorted(context["candidate_page_ocr_text"]),
         "resolver_page_numbers": page_numbers,
         "attempt_label": "orphan_detail_resolver",
     })
@@ -1137,6 +1214,10 @@ def _validate_orphan_detail_resolutions(
         str(item.get("object_id") or "")
         for item in context["existing_objects"]
     }
+    existing_objects_by_id = {
+        str(item.get("object_id") or ""): item
+        for item in context["existing_objects"]
+    }
     pages_by_group = {
         str(group["group_id"]): int(group["page_number"])
         for group in context["page_scope_groups"]
@@ -1148,7 +1229,8 @@ def _validate_orphan_detail_resolutions(
     required = {
         "candidate_group_ids", "decision", "target_object_id", "transport_label",
         "quantity", "quantity_explicit", "identity_pages", "visual_identity",
-        "boundary_basis", "assembly_group_ids", "merge_proofs", "resolution_basis",
+        "boundary_basis", "assembly_group_ids", "merge_proofs", "attachment_evidence",
+        "resolution_basis",
     }
     assigned_group_ids: list[str] = []
     validated: list[dict[str, Any]] = []
@@ -1157,6 +1239,7 @@ def _validate_orphan_detail_resolutions(
             raise ValueError("orphan-detail resolver fields do not match contract")
         group_ids = resolution["candidate_group_ids"]
         assembly_group_ids = resolution["assembly_group_ids"]
+        attachment_evidence = resolution["attachment_evidence"]
         decision = resolution["decision"]
         if (
             not isinstance(group_ids, list)
@@ -1180,6 +1263,7 @@ def _validate_orphan_detail_resolutions(
         ):
             raise ValueError("orphan-detail resolver assembly groups are invalid")
         assigned_group_ids.extend(group_ids)
+        group_pages = {pages_by_group[group_id] for group_id in group_ids}
         target_object_id = resolution["target_object_id"]
         if decision == "attach_to_existing_object":
             if target_object_id not in existing_object_ids:
@@ -1188,6 +1272,54 @@ def _validate_orphan_detail_resolutions(
                 raise ValueError("orphan-detail attachment cannot create assembly views")
             if resolution["merge_proofs"] != []:
                 raise ValueError("orphan-detail attachment proof belongs in resolution_basis, not merge_proofs")
+            if (
+                not isinstance(attachment_evidence, list)
+                or not attachment_evidence
+                or not all(
+                    isinstance(item, dict)
+                    and set(item) == {"relation_type", "evidence_pages", "observed_fact"}
+                    and item["relation_type"] in {
+                        "explicit_cross_reference", "explicit_callout", "explicit_view_link",
+                    }
+                    and isinstance(item["evidence_pages"], list)
+                    and item["evidence_pages"]
+                    and set(item["evidence_pages"]).intersection(group_pages)
+                    and all(
+                        isinstance(page, int) and 1 <= page <= page_count
+                        for page in item["evidence_pages"]
+                    )
+                    and isinstance(item["observed_fact"], str)
+                    and item["observed_fact"].strip()
+                    for item in attachment_evidence
+                )
+            ):
+                raise ValueError("orphan-detail attachment requires direct relation evidence")
+            target_label = str(
+                existing_objects_by_id[target_object_id].get("transport_label") or ""
+            ).strip()
+            provisional_labels = {
+                str(item.get("transport_label") or "").strip()
+                for item in context["provisional_objects"]
+                if group_pages.intersection(item.get("identity_pages") or [])
+            }
+            candidate_page_ocr_text = context.get("candidate_page_ocr_text") or {}
+            if (
+                _is_source_code(target_label)
+                and any(
+                    _is_source_code(label) and label != target_label
+                    for label in provisional_labels
+                )
+                and any(page_number in candidate_page_ocr_text for page_number in group_pages)
+                and not any(
+                    _ocr_contains_exact_code(
+                        str(candidate_page_ocr_text.get(page_number) or ""), target_label,
+                    )
+                    for page_number in group_pages
+                )
+            ):
+                raise ValueError(
+                    "orphan-detail attachment has no literal target-code evidence on candidate page"
+                )
         elif decision == "promote_to_new_object":
             identity_pages = resolution["identity_pages"]
             if (
@@ -1209,10 +1341,16 @@ def _validate_orphan_detail_resolutions(
                 or not isinstance(resolution["boundary_basis"], str)
                 or not resolution["boundary_basis"].strip()
                 or not isinstance(resolution["merge_proofs"], list)
+                or attachment_evidence != []
             ):
                 raise ValueError("orphan-detail promotion is invalid")
         else:
-            if target_object_id or assembly_group_ids or resolution["merge_proofs"] != []:
+            if (
+                target_object_id
+                or assembly_group_ids
+                or resolution["merge_proofs"] != []
+                or attachment_evidence != []
+            ):
                 raise ValueError("orphan-detail non-commercial decision is invalid")
         validated.append(copy.deepcopy(resolution))
 
@@ -1343,6 +1481,7 @@ def _apply_orphan_detail_resolutions(
             "assembly_group_ids": list(resolution["assembly_group_ids"]),
             "decision": decision,
             "target_object_id": owner_id,
+            "attachment_evidence": copy.deepcopy(resolution["attachment_evidence"]),
             "resolution_basis": resolution["resolution_basis"].strip(),
         })
 
@@ -1429,6 +1568,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             page_coverage=working_page_coverage,
             visual_map=visual_map,
             page_count=len(page_images),
+            ocr_package=ocr_package,
         )
         discarded_orphan_registry_object_ids: list[str] = []
         if orphan_detail_context:

@@ -16,6 +16,15 @@ _NON_EXPLICIT_MERGE_SUPPORT_TYPES = frozenset({
     "dimension_transform",
     "unique_geometry",
 })
+PAIRWISE_MERGE_PRIMARY_EVIDENCE_TYPES = frozenset({
+    "explicit_document_relation",
+    *_NON_EXPLICIT_MERGE_SUPPORT_TYPES,
+})
+PAIRWISE_MERGE_SECONDARY_EVIDENCE_TYPES = frozenset({
+    "not_required",
+    *_NON_EXPLICIT_MERGE_SUPPORT_TYPES,
+    "direct_shared_structure",
+})
 
 DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
@@ -26,7 +35,8 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
             "object_id",
             "from_group_id",
             "to_group_id",
-            "evidence_types",
+            "primary_evidence_type",
+            "secondary_evidence_type",
             "evidence_pages",
             "observed_fact",
             "commercial_inseparability",
@@ -35,13 +45,13 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
             "object_id": {"type": "string"},
             "from_group_id": {"type": "string"},
             "to_group_id": {"type": "string"},
-            "evidence_types": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                    "type": "string",
-                    "enum": sorted(PAIRWISE_MERGE_EVIDENCE_TYPES),
-                },
+            "primary_evidence_type": {
+                "type": "string",
+                "enum": sorted(PAIRWISE_MERGE_PRIMARY_EVIDENCE_TYPES),
+            },
+            "secondary_evidence_type": {
+                "type": "string",
+                "enum": sorted(PAIRWISE_MERGE_SECONDARY_EVIDENCE_TYPES),
             },
             "evidence_pages": {
                 "type": "array",
@@ -153,9 +163,11 @@ def validate_detection_pairwise_merge_proofs(
         if isinstance(item, dict)
     }
     proofs_by_object: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    normalized_proofs: list[dict[str, Any]] = []
     seen_edges: set[tuple[str, tuple[str, str]]] = set()
     required = {
-        "object_id", "from_group_id", "to_group_id", "evidence_types",
+        "object_id", "from_group_id", "to_group_id", "primary_evidence_type",
+        "secondary_evidence_type",
         "evidence_pages", "observed_fact", "commercial_inseparability",
     }
     for proof in proofs:
@@ -172,18 +184,16 @@ def validate_detection_pairwise_merge_proofs(
             or to_group_id not in group_ids
         ):
             raise DetectionRegistrySchemaError("pairwise merge proof groups are invalid")
-        evidence_types = proof["evidence_types"]
+        primary_evidence_type = proof["primary_evidence_type"]
+        secondary_evidence_type = proof["secondary_evidence_type"]
         if (
-            not isinstance(evidence_types, list)
-            or not evidence_types
-            or not all(isinstance(evidence_type, str) for evidence_type in evidence_types)
-            or len(evidence_types) != len(set(evidence_types))
-            or not set(evidence_types).issubset(PAIRWISE_MERGE_EVIDENCE_TYPES)
+            primary_evidence_type not in PAIRWISE_MERGE_PRIMARY_EVIDENCE_TYPES
+            or secondary_evidence_type not in PAIRWISE_MERGE_SECONDARY_EVIDENCE_TYPES
         ):
             raise DetectionRegistrySchemaError("pairwise merge proof evidence types are invalid")
-        if "explicit_document_relation" not in evidence_types and (
-            len(evidence_types) < 2
-            or not set(evidence_types).intersection(_NON_EXPLICIT_MERGE_SUPPORT_TYPES)
+        if primary_evidence_type != "explicit_document_relation" and (
+            secondary_evidence_type == "not_required"
+            or secondary_evidence_type == primary_evidence_type
         ):
             raise DetectionRegistrySchemaError(
                 "pairwise merge without an explicit document relation needs two independent evidence types"
@@ -202,7 +212,13 @@ def validate_detection_pairwise_merge_proofs(
         if edge_key in seen_edges:
             raise DetectionRegistrySchemaError("pairwise merge proofs repeat a relation")
         seen_edges.add(edge_key)
-        proofs_by_object[object_id].append(proof)
+        normalized_proof = dict(proof)
+        normalized_proof["evidence_types"] = [
+            primary_evidence_type,
+            *([] if secondary_evidence_type == "not_required" else [secondary_evidence_type]),
+        ]
+        proofs_by_object[object_id].append(normalized_proof)
+        normalized_proofs.append(normalized_proof)
 
     for object_id, group_ids in groups_by_object.items():
         object_proofs = proofs_by_object.get(object_id, [])
@@ -235,4 +251,4 @@ def validate_detection_pairwise_merge_proofs(
                 "pairwise merge proofs must connect every merged assembly view",
                 details={"object_id": object_id, "unconnected_group_ids": sorted(group_ids - visited)},
             )
-    return proofs
+    return normalized_proofs

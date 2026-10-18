@@ -562,7 +562,8 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
         "merge_proofs": [{
             "object_id": "object-001", "from_group_id": "elevation",
             "to_group_id": "plan",
-            "evidence_types": ["matching_topology", "dimension_transform"],
+            "primary_evidence_type": "matching_topology",
+            "secondary_evidence_type": "dimension_transform",
             "evidence_pages": [1],
             "observed_fact": "The plan track length matches the elevation after the axis change.",
             "commercial_inseparability": "Both views show one common track and frame.",
@@ -666,9 +667,10 @@ def test_integrated_visual_registry_resolves_only_an_unowned_component_detail_ca
             "boundary_basis": "The three N76B depictions show one coded panel assembly.",
             "assembly_group_ids": ["view-002", "view-003", "view-004"],
             "merge_proofs": [
-                {"from_group_id": "view-002", "to_group_id": "view-003", "evidence_types": ["explicit_document_relation"], "evidence_pages": [2], "observed_fact": "Both depictions carry N76B and width 345.", "commercial_inseparability": "They are plan and profile views of one panel assembly."},
-                {"from_group_id": "view-003", "to_group_id": "view-004", "evidence_types": ["explicit_document_relation"], "evidence_pages": [2], "observed_fact": "The profile and elevation carry the same N76B code.", "commercial_inseparability": "They are complementary views of one panel assembly."},
+                {"from_group_id": "view-002", "to_group_id": "view-003", "primary_evidence_type": "explicit_document_relation", "secondary_evidence_type": "not_required", "evidence_pages": [2], "observed_fact": "Both depictions carry N76B and width 345.", "commercial_inseparability": "They are plan and profile views of one panel assembly."},
+                {"from_group_id": "view-003", "to_group_id": "view-004", "primary_evidence_type": "explicit_document_relation", "secondary_evidence_type": "not_required", "evidence_pages": [2], "observed_fact": "The profile and elevation carry the same N76B code.", "commercial_inseparability": "They are complementary views of one panel assembly."},
             ],
+            "attachment_evidence": [],
             "resolution_basis": "N76B has its own code and coherent dimensions, with no positive link to N76.",
         }],
     }
@@ -733,10 +735,59 @@ def test_orphan_detail_resolver_cannot_promote_a_view_already_owned_by_registry(
         "identity_pages": [2], "visual_identity": "N76B panel",
         "boundary_basis": "Independent dimensioned product.",
         "assembly_group_ids": ["view-001", "view-002", "view-003"],
-        "merge_proofs": [], "resolution_basis": "Own code and dimensions.",
+        "merge_proofs": [], "attachment_evidence": [],
+        "resolution_basis": "Own code and dimensions.",
     }]}
 
     with pytest.raises(ValueError, match="assembly groups are invalid"):
+        _validate_orphan_detail_resolutions(payload, context=context, page_count=2)
+
+
+def test_orphan_detail_resolver_rejects_attachment_without_direct_relation_evidence():
+    context = {
+        "candidate_group_ids": ["view-002"],
+        "page_scope_group_ids": ["view-002"],
+        "eligible_assembly_group_ids": ["view-002"],
+        "page_scope_groups": [{"group_id": "view-002", "page_number": 2}],
+        "existing_objects": [{"object_id": "object-001"}],
+    }
+    payload = {"resolutions": [{
+        "candidate_group_ids": ["view-002"],
+        "decision": "attach_to_existing_object", "target_object_id": "object-001",
+        "transport_label": "", "quantity": 0, "quantity_explicit": False,
+        "identity_pages": [], "visual_identity": "", "boundary_basis": "",
+        "assembly_group_ids": [], "merge_proofs": [], "attachment_evidence": [],
+        "resolution_basis": "The codes look related and the dimensions are similar.",
+    }]}
+
+    with pytest.raises(ValueError, match="requires direct relation evidence"):
+        _validate_orphan_detail_resolutions(payload, context=context, page_count=2)
+
+
+def test_orphan_detail_resolver_rejects_code_similarity_without_literal_target_code():
+    context = {
+        "candidate_group_ids": ["view-002"],
+        "page_scope_group_ids": ["view-002"],
+        "eligible_assembly_group_ids": ["view-002"],
+        "page_scope_groups": [{"group_id": "view-002", "page_number": 2}],
+        "existing_objects": [{"object_id": "object-001", "transport_label": "N76"}],
+        "provisional_objects": [{"object_id": "object-002", "transport_label": "N76B", "identity_pages": [2]}],
+        "candidate_page_ocr_text": {2: "Drawing N76B, scale 1:25"},
+    }
+    payload = {"resolutions": [{
+        "candidate_group_ids": ["view-002"],
+        "decision": "attach_to_existing_object", "target_object_id": "object-001",
+        "transport_label": "", "quantity": 0, "quantity_explicit": False,
+        "identity_pages": [], "visual_identity": "", "boundary_basis": "",
+        "assembly_group_ids": [], "merge_proofs": [],
+        "attachment_evidence": [{
+            "relation_type": "explicit_callout", "evidence_pages": [2],
+            "observed_fact": "N76B is described as a variant of N76.",
+        }],
+        "resolution_basis": "The codes look related.",
+    }]}
+
+    with pytest.raises(ValueError, match="no literal target-code evidence"):
         _validate_orphan_detail_resolutions(payload, context=context, page_count=2)
 
 
@@ -758,6 +809,10 @@ def test_integrated_visual_registry_attaches_an_unowned_detail_without_changing_
         "target_object_id": "object-001", "transport_label": "", "quantity": 0,
         "quantity_explicit": False, "identity_pages": [], "visual_identity": "",
         "boundary_basis": "", "assembly_group_ids": [], "merge_proofs": [],
+        "attachment_evidence": [{
+            "relation_type": "explicit_callout", "evidence_pages": [2],
+            "observed_fact": "The hinge callout explicitly names N76.",
+        }],
         "resolution_basis": "The hinge detail is explicitly for the N76 cabinet.",
     }]}
 
