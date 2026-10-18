@@ -498,8 +498,8 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
+            "merge_proofs": [],
         }],
-        "merge_proofs": [],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
             "evidence_reason": "cabinet view",
@@ -586,14 +586,13 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
             "visual_group_ids": ["elevation", "plan"],
             "visual_identity": "one door system in elevation and plan",
             "boundary_basis": "matching track and three-leaf sequence",
-        }],
-        "merge_proofs": [{
-            "object_id": "object-001", "from_group_id": "elevation",
-            "to_group_id": "plan",
-            "evidence_types": ["matching_topology", "dimension_transform"],
-            "evidence_pages": [1],
-            "observed_fact": "The plan track length matches the elevation after the axis change.",
-            "commercial_inseparability": "Both views show one common track and frame.",
+            "merge_proofs": [{
+                "from_group_id": "elevation", "to_group_id": "plan",
+                "evidence_types": ["matching_topology", "dimension_transform"],
+                "evidence_pages": [1],
+                "observed_fact": "The plan track length matches the elevation after the axis change.",
+                "commercial_inseparability": "Both views show one common track and frame.",
+            }],
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
@@ -623,6 +622,8 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
     assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
     assert usage["raw_usage"]["pairwise_merge_proofs"][0]["from_group_id"] == "view-001"
     assert usage["raw_usage"]["pairwise_merge_proofs"][0]["to_group_id"] == "view-002"
+    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["object_id"] == "object-001"
+    assert usage["raw_usage"]["merge_proof_layout"] == "object_nested"
 
 
 def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():

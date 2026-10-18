@@ -49,7 +49,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_package_then_anchor_v1_temperature_0"
+    "detection_v4_visual_registry_package_then_anchor_v2_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -76,6 +76,21 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
+DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOFS_SCHEMA = copy.deepcopy(
+    DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA
+)
+DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOFS_SCHEMA["items"]["required"].remove(
+    "object_id"
+)
+DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOFS_SCHEMA["items"]["properties"].pop(
+    "object_id"
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
+    "merge_proofs"
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"]["merge_proofs"] = (
+    DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOFS_SCHEMA
+)
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
@@ -86,11 +101,10 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "objects", "merge_proofs", "page_coverage"],
+    "required": ["visual_groups", "objects", "page_coverage"],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
-        "merge_proofs": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "page_coverage": {
             "type": "array",
             "items": {
@@ -794,6 +808,43 @@ def _normalize_pairwise_merge_proof_group_ids(
     return normalized
 
 
+def _extract_object_merge_proofs(
+    objects: object,
+) -> tuple[object, object]:
+    """Flatten object-local proof ledgers for the existing strict validator.
+
+    A flat, document-level proof array was easy for the model to omit after it
+    had already resolved every object. Keeping the proof list inside the same
+    object package makes the required `N - 1` relationship local. Runtime
+    still validates the established flat proof contract after this lossless
+    normalization. The legacy shape is accepted only for earlier test and
+    stored-response compatibility; provider Structured Output receives the
+    object-local schema above.
+    """
+    if not isinstance(objects, list):
+        return objects, objects
+    registry_objects: list[object] = []
+    flattened_proofs: list[object] = []
+    for item in objects:
+        if not isinstance(item, dict):
+            registry_objects.append(item)
+            continue
+        registry_item = copy.deepcopy(item)
+        object_proofs = registry_item.pop("merge_proofs", None)
+        registry_objects.append(registry_item)
+        if not isinstance(object_proofs, list):
+            flattened_proofs.append(object_proofs)
+            continue
+        for proof in object_proofs:
+            if not isinstance(proof, dict):
+                flattened_proofs.append(proof)
+                continue
+            flattened = copy.deepcopy(proof)
+            flattened["object_id"] = registry_item.get("object_id")
+            flattened_proofs.append(flattened)
+    return registry_objects, flattened_proofs
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -857,8 +908,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # inspectable decision record, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
     try:
-        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "merge_proofs", "page_coverage"}:
-            raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
+        if not isinstance(payload, dict) or set(payload) not in (
+            {"visual_groups", "objects", "page_coverage"},
+            {"visual_groups", "objects", "merge_proofs", "page_coverage"},
+        ):
+            raise ValueError("visual registry must contain visual_groups, objects and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -869,12 +923,19 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
+        registry_object_packages, object_merge_proofs = _extract_object_merge_proofs(
+            payload["objects"]
+        )
+        legacy_flat_merge_proofs = payload.get("merge_proofs")
         merge_proofs = _normalize_pairwise_merge_proof_group_ids(
-            payload["merge_proofs"], group_id_mapping
+            legacy_flat_merge_proofs
+            if legacy_flat_merge_proofs is not None
+            else object_merge_proofs,
+            group_id_mapping,
         )
         registry_objects_input, discarded_orphan_registry_object_ids = (
             _discard_trailing_orphan_registry_objects(
-                payload["objects"], payload["page_coverage"], page_count=len(page_images),
+                registry_object_packages, payload["page_coverage"], page_count=len(page_images),
             )
         )
         registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
@@ -953,6 +1014,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_decision_audit": registry_decision_audit,
         "pairwise_merge_proofs": pairwise_merge_proofs,
         "pairwise_merge_proof_count": len(pairwise_merge_proofs),
+        "merge_proof_layout": (
+            "legacy_flat" if "merge_proofs" in payload else "object_nested"
+        ),
         "region_count": len(regions),
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",

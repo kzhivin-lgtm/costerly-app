@@ -89,8 +89,9 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "whole-silhouette similarity is not required" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
     assert "Pairwise merge-proof procedure" in prompt
+    assert "Each object owns its own `merge_proofs` list" in prompt
     assert "Test commercial separability, not merely visual adjacency" in prompt
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_package_then_anchor_v1_temperature_0"
+        "detection_v4_visual_registry_package_then_anchor_v2_temperature_0"
     )

@@ -1,6 +1,9 @@
 import pytest
 
-from agents.anthropic_adapter import discard_degenerate_evidence_regions
+from agents.anthropic_adapter import (
+    DETECTION_VISUAL_REGISTRY_JSON_SCHEMA,
+    discard_degenerate_evidence_regions,
+)
 from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
@@ -151,6 +154,16 @@ def test_registry_schema_requires_at_least_one_visual_group_per_object():
     )
 
     assert visual_group_ids["minItems"] == 1
+
+
+def test_integrated_registry_keeps_merge_proofs_inside_their_object_package():
+    schema = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA
+    object_schema = schema["properties"]["objects"]["items"]
+    proof_schema = object_schema["properties"]["merge_proofs"]["items"]
+
+    assert set(schema["required"]) == {"visual_groups", "objects", "page_coverage"}
+    assert "merge_proofs" in object_schema["required"]
+    assert "object_id" not in proof_schema["required"]
 
 
 def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
