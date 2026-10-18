@@ -497,7 +497,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False,
             "primary_assembly_group_id": "view_a",
-            "represented_assembly_group_ids": ["view_a"],
+            "assembly_view_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
         }],
         "page_coverage": [{
@@ -585,7 +585,7 @@ def test_integrated_visual_registry_normalizes_one_primary_assembly_anchor():
             "object_id": "object-001", "transport_label": "D01",
             "quantity": 1, "quantity_explicit": True,
             "primary_assembly_group_id": "elevation",
-            "represented_assembly_group_ids": ["elevation", "plan"],
+            "assembly_view_group_ids": ["elevation", "plan"],
             "visual_identity": "one door system in elevation and plan",
             "boundary_basis": "matching track and three-leaf sequence",
         }],
@@ -616,7 +616,7 @@ def test_integrated_visual_registry_normalizes_one_primary_assembly_anchor():
     ]
     assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
     assert usage["raw_usage"]["primary_assembly_anchor_count"] == 1
-    assert usage["raw_usage"]["represented_assembly_group_count"] == 2
+    assert usage["raw_usage"]["owned_assembly_view_count"] == 2
     assert usage["raw_usage"]["non_primary_visual_group_count"] == 1
 
 
@@ -631,12 +631,60 @@ def test_integrated_visual_registry_rejects_component_detail_as_primary_anchor()
             "object_id": "object-001", "transport_label": "C01",
             "quantity": 1, "quantity_explicit": False,
             "primary_assembly_group_id": "detail",
-            "represented_assembly_group_ids": ["detail"],
+            "assembly_view_group_ids": ["detail"],
             "visual_identity": "cabinet", "boundary_basis": "one cabinet",
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
             "evidence_reason": "cabinet detail",
+        }],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-18T00:00:00+00:00",
+                "request_finished_at": "2026-10-18T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        pytest.raises(
+            DetectionVisualRegistryValidationError,
+            match="registry visual groups must be complete assembly views",
+        ),
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+
+def test_integrated_visual_registry_rejects_component_detail_in_assembly_view_list():
+    payload = {
+        "visual_groups": [
+            {
+                "group_id": "elevation", "page_number": 1, "location_hint": "left",
+                "visual_description": "cabinet elevation",
+                "representation_kind": "elevation", "commercial_role": "assembly_view",
+            },
+            {
+                "group_id": "section", "page_number": 1, "location_hint": "right",
+                "visual_description": "cabinet section",
+                "representation_kind": "section", "commercial_role": "component_detail",
+            },
+        ],
+        "objects": [{
+            "object_id": "object-001", "transport_label": "C01",
+            "quantity": 1, "quantity_explicit": False,
+            "primary_assembly_group_id": "elevation",
+            "assembly_view_group_ids": ["elevation", "section"],
+            "visual_identity": "cabinet", "boundary_basis": "one cabinet",
+        }],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001"],
+            "evidence_reason": "cabinet elevation and section",
         }],
     }
 

@@ -165,8 +165,8 @@ def test_integrated_registry_requires_a_primary_and_complete_assembly_representa
     assert object_schema["properties"]["primary_assembly_group_id"] == {
         "type": "string", "minLength": 1,
     }
-    assert "represented_assembly_group_ids" in object_schema["required"]
-    assert object_schema["properties"]["represented_assembly_group_ids"] == {
+    assert "assembly_view_group_ids" in object_schema["required"]
+    assert object_schema["properties"]["assembly_view_group_ids"] == {
         "type": "array", "minItems": 1,
         "items": {"type": "string", "minLength": 1},
     }

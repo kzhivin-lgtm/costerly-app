@@ -47,7 +47,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_primary_anchor_v4_temperature_0"
+    "detection_v4_visual_registry_primary_anchor_v4_1_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -93,10 +93,10 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"][
     "primary_assembly_group_id"
 ] = {"type": "string", "minLength": 1}
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
-    "represented_assembly_group_ids"
+    "assembly_view_group_ids"
 )
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"][
-    "represented_assembly_group_ids"
+    "assembly_view_group_ids"
 ] = {
     "type": "array",
     "minItems": 1,
@@ -843,30 +843,30 @@ def _normalize_primary_assembly_anchors(
                 raise DetectionRegistrySchemaError(
                     "registry primary assembly anchor is invalid"
                 )
-            represented_group_ids = registry_item.pop(
-                "represented_assembly_group_ids", None
+            assembly_view_group_ids = registry_item.pop(
+                "assembly_view_group_ids", None
             )
             if (
-                not isinstance(represented_group_ids, list)
-                or not represented_group_ids
-                or not all(isinstance(group_id, str) and group_id.strip() for group_id in represented_group_ids)
+                not isinstance(assembly_view_group_ids, list)
+                or not assembly_view_group_ids
+                or not all(isinstance(group_id, str) and group_id.strip() for group_id in assembly_view_group_ids)
             ):
                 raise DetectionRegistrySchemaError(
-                    "registry represented assembly groups are invalid"
+                    "registry assembly view groups are invalid"
                 )
-            normalized_represented_group_ids = [
+            normalized_assembly_view_group_ids = [
                 group_id_mapping.get(group_id.strip(), group_id.strip())
-                for group_id in represented_group_ids
+                for group_id in assembly_view_group_ids
             ]
-            if normalized_primary_group_id not in normalized_represented_group_ids:
+            if normalized_primary_group_id not in normalized_assembly_view_group_ids:
                 raise DetectionRegistrySchemaError(
-                    "registry primary assembly anchor must be represented"
+                    "registry primary assembly anchor must be in assembly view groups"
                 )
             # The primary anchor is first for deterministic internal storage.
             # Preserve the provider's remaining order because it is its stated
             # representation order and never affects object identity.
             normalized_owner_group_ids = [normalized_primary_group_id]
-            for group_id in normalized_represented_group_ids:
+            for group_id in normalized_assembly_view_group_ids:
                 if group_id not in normalized_owner_group_ids:
                     normalized_owner_group_ids.append(group_id)
             registry_item["visual_group_ids"] = normalized_owner_group_ids
@@ -1044,7 +1044,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         ),
         "registry_decision_audit": registry_decision_audit,
         "primary_assembly_anchor_count": len(registry["objects"]),
-        "represented_assembly_group_count": len(assigned_visual_group_ids),
+        "owned_assembly_view_count": len(assigned_visual_group_ids),
         "non_primary_visual_group_count": (
             len(visual_map["visual_groups"]) - len(registry["objects"])
         ),
