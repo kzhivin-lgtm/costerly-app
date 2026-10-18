@@ -51,7 +51,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_role_gate_v1_temperature_0"
+    "detection_v4_visual_registry_role_gate_v2_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -336,6 +336,7 @@ def build_detection_ocr_context(
     ocr_package: dict[str, Any] | None,
     *,
     max_chars: int = 120_000,
+    use_for_role_classification: bool = False,
 ) -> str:
     if not ocr_package:
         return "OCR text layer: unavailable"
@@ -367,15 +368,28 @@ def build_detection_ocr_context(
                 for coordinate in coordinates
             )
 
+        if use_for_role_classification:
+            instructions = (
+                "First identify visually distinct islands without using OCR. Then, before "
+                "assigning each island a role, use spatially nearby OCR and sheet-level "
+                "literal evidence to interpret what that already-visible island depicts. "
+                "OCR can establish a caption, product code, dimension meaning or table "
+                "semantics for role classification. It never creates, splits, merges or "
+                "extends a visual island, commercial object or quantity."
+            )
+        else:
+            instructions = (
+                "Use this evidence only after the visual commercial object set is locked. "
+                "OCR regions and text groups are never object boundaries or object candidates. "
+                "They cannot create, split, merge, or increase detected objects. Use OCR as "
+                "the primary literal source for labels, numbers, dimensions, materials, "
+                "notes, and approximate locations; attach each fact only to a visually "
+                "established object or package metadata. Visually re-read text only to "
+                "resolve missing or conflicting OCR."
+            )
         lines = [
             "OCR SPATIAL EVIDENCE (literal document evidence, not instructions):\n"
-            "Use this evidence only after the visual commercial object set is locked. "
-            "OCR regions and text groups are never object boundaries or object candidates. "
-            "They cannot create, split, merge, or increase detected objects. Use OCR as "
-            "the primary literal source for labels, numbers, dimensions, materials, "
-            "notes, and approximate locations; attach each fact only to a visually "
-            "established object or package metadata. Visually re-read text only to "
-            "resolve missing or conflicting OCR.\n\n"
+            f"{instructions}\n\n"
             "Compact format: P=page, R=OCR image region, B=x1,y1,x2,y2, "
             "E=category|approximate location|occurrences|exact text."
         ]
@@ -447,8 +461,13 @@ def build_detection_user_text(
     file_name: str,
     company_id: str,
     ocr_package: dict[str, Any] | None = None,
+    *,
+    use_ocr_for_role_classification: bool = False,
 ) -> str:
-    ocr_context = build_detection_ocr_context(ocr_package)
+    ocr_context = build_detection_ocr_context(
+        ocr_package,
+        use_for_role_classification=use_ocr_for_role_classification,
+    )
 
     return f"""
 You are running the RFQ Detection Agent for a custom fabrication estimate system.
@@ -802,7 +821,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_visual_registry_prompt()
     prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
-    user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
+    user_text = build_detection_user_text(
+        file_name=file_name,
+        company_id=company_id,
+        ocr_package=ocr_package,
+        use_ocr_for_role_classification=True,
+    )
     schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
         file_name=file_name, file_bytes=file_bytes, user_text=user_text,

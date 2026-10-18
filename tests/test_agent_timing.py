@@ -344,6 +344,27 @@ def test_detection_input_cache_is_disabled_by_default_and_can_be_enabled():
     assert cached_document["cache_control"] == {"type": "ephemeral"}
 
 
+def test_visual_registry_can_request_ocr_for_role_classification_without_a_second_call():
+    user_text = build_detection_user_text(
+        "drawing.pdf",
+        "001",
+        {
+            "pages": [{"page_number": 1}],
+            "evidence": {
+                "literal_items": [{
+                    "page_number": 1,
+                    "source_image_id": "img-1.jpeg",
+                    "text": "VENEER SCREEN",
+                }],
+            },
+        },
+        use_ocr_for_role_classification=True,
+    )
+
+    assert "First identify visually distinct islands without using OCR" in user_text
+    assert "before assigning each island a role" in user_text
+
+
 def test_detection_identity_fields_are_normalized_before_validation():
     result = {
         "rfq_run": {
@@ -523,6 +544,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     }
     requested_budgets = []
     requested_temperatures = []
+    captured_user_text = []
 
     def fake_create(*_args, max_tokens, temperature, **_kwargs):
         requested_budgets.append(max_tokens)
@@ -532,15 +554,27 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             "request_finished_at": "2026-10-16T00:00:01+00:00",
         }
 
+    def fake_content_blocks(*, user_text, **_kwargs):
+        captured_user_text.append(user_text)
+        return [{"type": "text", "text": user_text}]
+
     with (
         patch("agents.anthropic_adapter.get_secret", return_value="model"),
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.build_detection_registry_content_blocks", side_effect=fake_content_blocks),
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
         patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_prepare_integrated_registry_payload(payload))),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+            page_images=[b"page"], regions=[], ocr_package={
+                "pages": [{"page_number": 1}],
+                "evidence": {"literal_items": [{
+                    "page_number": 1, "source_image_id": "img-1.jpeg",
+                    "text": "VENEER LATTICE SCREEN", "category": "label",
+                    "region": "center", "occurrences": 1,
+                }]},
+            }, model="model",
         )
 
     assert requested_budgets == [DETECTION_VISUAL_REGISTRY_MAX_TOKENS]
@@ -553,6 +587,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert usage["raw_usage"]["output_token_ceiling"] == DETECTION_VISUAL_REGISTRY_MAX_TOKENS
     assert usage["raw_usage"]["registry_decision_audit"] == payload
     assert usage["raw_usage"]["document_measurement_context"]["unit"] == "unknown"
+    assert "before assigning each island a role" in captured_user_text[0]
 
 
 def test_integrated_visual_registry_persists_truncated_json_diagnostics():

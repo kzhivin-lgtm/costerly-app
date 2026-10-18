@@ -190,6 +190,35 @@ def test_detection_context_groups_evidence_by_visual_region_without_semantics():
     assert "never object boundaries or object candidates" in context
 
 
+def test_role_classification_context_uses_ocr_after_visual_islands_are_locked():
+    package = {
+        "pages": [{"page_number": 1}],
+        "evidence": {
+            "text_blocks": [{"page_number": 1, "text": "VENEER LATTICE SCREEN N76B"}],
+            "literal_items": [{
+                "page_number": 1,
+                "source_image_id": "img-3.jpeg",
+                "source_image_bbox": {"top_left_x": 10, "top_left_y": 20},
+                "text": "345 x 260",
+                "category": "dimension",
+                "region": "center",
+                "occurrences": 1,
+            }],
+        },
+    }
+
+    context = build_detection_ocr_context(
+        package,
+        use_for_role_classification=True,
+    )
+
+    assert "First identify visually distinct islands without using OCR" in context
+    assert "before assigning each island a role" in context
+    assert "caption, product code, dimension meaning or table semantics" in context
+    assert "never creates, splits, merges or extends a visual island" in context
+    assert "only after the visual commercial object set is locked" not in context
+
+
 def test_normalized_evidence_parses_and_compacts_literal_items():
     response = _response()
     response["pages"][0]["images"] = [
