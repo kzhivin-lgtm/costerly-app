@@ -78,6 +78,9 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "shared schedule, title block, layout or multi-object context" in prompt
     assert "assembly_view` groups of this object's representation package" in prompt
     assert "exactly one `commercial_role`" in prompt
+    assert "concise factual `role_basis`" in prompt
+    assert "not hidden reasoning" in prompt
+    assert "millimetres, centimetres or metres" in prompt
     assert "Do not assign this role merely because a view is flat" in prompt
     assert "inventory every distinct drawing area on every sheet" in prompt
     assert "Do not collapse a multi-view sheet into one generic detail and one schedule" in prompt
@@ -92,5 +95,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Test commercial separability, not merely visual adjacency" in prompt
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_representation_packages_v3_temperature_0"
+        "detection_v4_visual_registry_representation_packages_v4_temperature_0"
     )

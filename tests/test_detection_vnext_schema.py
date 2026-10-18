@@ -11,6 +11,7 @@ from agents.schemas.detection_registry_schema import (
 )
 from agents.schemas.detection_schema import validate_detection_result
 from agents.schemas.detection_visual_map_schema import (
+    DetectionVisualMapSchemaError,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
@@ -338,11 +339,13 @@ def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
                 "group_id": "view-001", "page_number": 1,
                 "location_hint": "left", "visual_description": "cabinet",
                 "representation_kind": "elevation", "commercial_role": "assembly_view",
+                "role_basis": "Complete cabinet envelope with overall dimensions.",
             },
             {
                 "group_id": "view-002", "page_number": 1,
                 "location_hint": "title block", "visual_description": "sheet metadata",
                 "representation_kind": "title_block", "commercial_role": "document_context",
+                "role_basis": "Title metadata has no physical product outline.",
             },
         ],
     }
@@ -351,6 +354,19 @@ def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
         visual_map,
         require_commercial_roles=True,
     ) == visual_map
+
+
+def test_integrated_visual_map_requires_a_factual_role_basis_for_each_group():
+    visual_map = {
+        "visual_groups": [{
+            "group_id": "view-001", "page_number": 1,
+            "location_hint": "left", "visual_description": "cabinet",
+            "representation_kind": "elevation", "commercial_role": "assembly_view",
+        }],
+    }
+
+    with pytest.raises(DetectionVisualMapSchemaError, match="fields do not match contract"):
+        validate_detection_visual_map(visual_map, require_commercial_roles=True)
 
 
 def test_registry_rejects_component_detail_as_commercial_boundary_support():

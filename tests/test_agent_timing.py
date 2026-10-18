@@ -109,6 +109,9 @@ class _TimeoutClient:
 def _with_representation_packages(payload: dict) -> dict:
     """Add the normal package bridge to compact legacy Registry fixtures."""
     enriched = payload
+    for group in enriched.get("visual_groups") or []:
+        if isinstance(group, dict) and "commercial_role" in group:
+            group.setdefault("role_basis", "Fixture-visible evidence supports this role.")
     if "representation_packages" in enriched:
         return enriched
     groups_by_id = {
@@ -636,16 +639,19 @@ def test_integrated_visual_registry_packages_a_complete_front_elevation_with_det
                 "group_id": "front", "page_number": 11, "location_hint": "centre",
                 "visual_description": "complete N76B shelving frontal elevation",
                 "representation_kind": "elevation", "commercial_role": "assembly_view",
+                "role_basis": "N76B code and full dimensioned frontal envelope.",
             },
             {
                 "group_id": "profile", "page_number": 11, "location_hint": "upper",
                 "visual_description": "N76B profile and plan detail",
                 "representation_kind": "plan_detail", "commercial_role": "component_detail",
+                "role_basis": "Partial profile lacks a full product envelope.",
             },
             {
                 "group_id": "orphan_detail", "page_number": 11, "location_hint": "lower",
                 "visual_description": "unattached construction detail",
                 "representation_kind": "detail", "commercial_role": "component_detail",
+                "role_basis": "Isolated construction fragment lacks a full envelope.",
             },
         ],
         "representation_packages": [{
