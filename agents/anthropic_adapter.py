@@ -7,7 +7,6 @@ import json
 import math
 import os
 import sys
-from collections import Counter
 from threading import Lock
 import time
 from datetime import UTC, datetime
@@ -584,14 +583,7 @@ def build_detection_registry_content_blocks(*, file_name: str, file_bytes: bytes
     blocks = build_detection_content_blocks(file_name=file_name, file_bytes=file_bytes, user_text="", page_images=page_images)
     blocks.pop()
     for region in regions:
-        label = str(region["region"])
-        if label == "sheet_context":
-            text = f"PDF page {region['page_number']} sheet identity context, including its title block and author-assigned drawing code"
-        elif label.startswith("drawing_"):
-            text = f"PDF page {region['page_number']} focused drawing representation. Keep its identity tied to the sheet context for that same page"
-        else:
-            text = f"PDF page {region['page_number']} enlarged region: {label}"
-        blocks.append({"type":"text", "text":text})
+        blocks.append({"type":"text", "text":f"PDF page {region['page_number']} enlarged region: {region['region']}"})
         blocks.append({"type":"image", "source":{"type":"base64","media_type":"image/jpeg","data":base64.standard_b64encode(region["bytes"]).decode("ascii")}})
     blocks.append({"type":"text", "text":user_text})
     return blocks
@@ -922,8 +914,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "pairwise_merge_proofs": pairwise_merge_proofs,
         "pairwise_merge_proof_count": len(pairwise_merge_proofs),
         "region_count": len(regions),
-        "region_kind_counts": dict(sorted(Counter(str(region.get("region") or "unknown") for region in regions).items())),
-        "content_aware_region_pages": sorted({int(region["page_number"]) for region in regions if str(region.get("region") or "").startswith("drawing_")}),
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",
     })
