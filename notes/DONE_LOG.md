@@ -1,5 +1,17 @@
 # Done Log
 
+Detection V4 Naming and File Review checkpoint `52c314d`: retains the
+owner-accepted Detection V4 pairwise-merge-proof baseline `2718498` and the
+accepted Naming, File Review, and diagnostic commits `bf1fc6a`, `48acde4`,
+`0f0aaa8`, and `ca60ac1`. It reverts only rejected Hassola experiment
+`b86d71c`. The Page 23 stale-name root cause is protected: Naming writes and
+immediately reads `TV console`, File Review provenance identifies later
+writes, and one stale browser echo cannot restore `Object 3`. Hassola,
+including N76B as a ninth object with three complete views, remains an active
+separate Detection experiment. Full scope and verification:
+`notes/DETECTION_V4_NAMING_FILE_REVIEW_CHECKPOINT_2026_10_18.md`,
+завершена 18.10
+
 Detection V4 pairwise-merge-proof checkpoint `2718498`: the existing single
 Visual Registry request now must prove each cross-view commercial-object merge
 with a connected, validated `N - 1` pairwise proof graph. This adds no model
