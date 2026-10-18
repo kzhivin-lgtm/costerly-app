@@ -4,11 +4,13 @@ from agents.anthropic_adapter import discard_degenerate_evidence_regions
 from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
+    validate_detection_document_measurement_context,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
 )
 from agents.schemas.detection_schema import validate_detection_result
 from agents.schemas.detection_visual_map_schema import (
+    DetectionVisualMapSchemaError,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
@@ -215,11 +217,13 @@ def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
                 "group_id": "view-001", "page_number": 1,
                 "location_hint": "left", "visual_description": "cabinet",
                 "representation_kind": "elevation", "commercial_role": "assembly_view",
+                "role_basis": "Complete cabinet envelope with external axes.",
             },
             {
                 "group_id": "view-002", "page_number": 1,
                 "location_hint": "title block", "visual_description": "sheet metadata",
                 "representation_kind": "title_block", "commercial_role": "document_context",
+                "role_basis": "Title block metadata, not a product depiction.",
             },
         ],
     }
@@ -228,6 +232,39 @@ def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
         visual_map,
         require_commercial_roles=True,
     ) == visual_map
+
+
+def test_integrated_visual_map_requires_a_role_basis_for_each_group():
+    visual_map = {
+        "visual_groups": [{
+            "group_id": "view-001", "page_number": 1,
+            "location_hint": "left", "visual_description": "cabinet",
+            "representation_kind": "elevation", "commercial_role": "assembly_view",
+        }],
+    }
+
+    with pytest.raises(DetectionVisualMapSchemaError, match="fields do not match contract"):
+        validate_detection_visual_map(visual_map, require_commercial_roles=True)
+
+
+def test_document_measurement_context_is_a_document_audit_not_object_dimensions():
+    context = {
+        "unit": "cm",
+        "evidence_pages": [2, 5],
+        "basis": "Repeated 245 and 345 dimensions on pages 2 and 5 use centimetres.",
+    }
+
+    assert validate_detection_document_measurement_context(
+        context, page_count=5,
+    ) == context
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="known document measurement context requires evidence pages",
+    ):
+        validate_detection_document_measurement_context({
+            "unit": "cm", "evidence_pages": [], "basis": "cm convention",
+        }, page_count=5)
 
 
 def test_registry_rejects_component_detail_as_commercial_boundary_support():

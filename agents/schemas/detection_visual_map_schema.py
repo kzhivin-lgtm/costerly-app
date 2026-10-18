@@ -36,6 +36,7 @@ DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
                         "type": "string",
                         "enum": sorted(COMMERCIAL_VISUAL_GROUP_ROLES),
                     },
+                    "role_basis": {"type": "string"},
                 },
             },
         },
@@ -95,7 +96,7 @@ def validate_detection_visual_map(
             "representation_kind",
         }
         if require_commercial_roles:
-            required.add("commercial_role")
+            required.update({"commercial_role", "role_basis"})
         if not isinstance(group, dict) or set(group) != required:
             raise DetectionVisualMapSchemaError("visual group fields do not match contract")
         expected_id = f"view-{index:03d}"
@@ -109,7 +110,10 @@ def validate_detection_visual_map(
             ))
             or (
                 require_commercial_roles
-                and group["commercial_role"] not in COMMERCIAL_VISUAL_GROUP_ROLES
+                and (
+                    group["commercial_role"] not in COMMERCIAL_VISUAL_GROUP_ROLES
+                    or not str(group["role_basis"]).strip()
+                )
             )
         ):
             raise DetectionVisualMapSchemaError("visual group is invalid")
