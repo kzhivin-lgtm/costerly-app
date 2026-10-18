@@ -1,5 +1,17 @@
 # Done Log
 
+Detection V4.5 conditional orphan-detail resolver checkpoint `1f53231`:
+the resolver remains a post-Registry exception, independent of the Ada Sonnet
+router. It now compares every locked object through ID-free identity cards,
+renders only the unresolved page, and exposes an attachment ID only where the
+candidate page contains that target's literal code. A distinct coded,
+dimensioned multi-view candidate with no direct relation must be promoted to a
+new object. Owner production verification on HSL returned nine objects,
+including N76B. This does not close Page 23/Adda normal-path regressions or
+the separate N76B Naming and File Review refresh defects. Full checkpoint:
+`notes/DETECTION_V4_5_ORPHAN_DETAIL_RESOLVER_CHECKPOINT_2026_10_18.md`,
+завершена 18.10
+
 Detection V4 Naming and File Review checkpoint `52c314d`: retains the
 owner-accepted Detection V4 pairwise-merge-proof baseline `2718498` and the
 accepted Naming, File Review, and diagnostic commits `bf1fc6a`, `48acde4`,
