@@ -57,7 +57,7 @@ DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION = (
-    "detection_v4_orphan_detail_resolver_v3_temperature_0"
+    "detection_v4_orphan_detail_resolver_v4_temperature_0"
 )
 DETECTION_ORPHAN_DETAIL_RESOLVER_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -1100,7 +1100,24 @@ def _run_anthropic_detection_orphan_detail_resolver(
         "candidate_groups": context["candidate_groups"],
         "page_scope_groups": context["page_scope_groups"],
         "eligible_assembly_group_ids": context["eligible_assembly_group_ids"],
-        "provisional_objects": context["provisional_objects"],
+        # A provisional registry object is only a reconciliation marker.  It
+        # cannot survive as an attachment target: applying the resolver will
+        # discard it and either attach evidence to a locked object or create a
+        # new one.  Do not expose its transient object_id to the model, or it
+        # may mistakenly attach the candidate to itself.
+        "provisional_candidates": [
+            {
+                field: copy.deepcopy(item[field])
+                for field in (
+                    "transport_label",
+                    "identity_pages",
+                    "visual_identity",
+                    "boundary_basis",
+                )
+                if field in item
+            }
+            for item in context["provisional_objects"]
+        ],
         "existing_objects": context["existing_objects"],
     }
     user_text = "\n\n".join((

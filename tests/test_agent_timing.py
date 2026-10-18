@@ -714,6 +714,18 @@ def test_integrated_visual_registry_resolves_only_an_unowned_component_detail_ca
     assert usage["_additional_usage_events"][0]["prompt_version"] == (
         DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION
     )
+    resolver_request = next(
+        block["text"]
+        for block in requests[1]["messages"][0]["content"]
+        if (
+            isinstance(block, dict)
+            and block.get("type") == "text"
+            and "Conditional orphan-detail resolution input" in block.get("text", "")
+        )
+    )
+    assert '"provisional_candidates"' in resolver_request
+    assert '"provisional_objects"' not in resolver_request
+    assert '"object_id":"object-002"' not in resolver_request
 
 
 def test_orphan_detail_resolver_cannot_promote_a_view_already_owned_by_registry():
