@@ -89,5 +89,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Test commercial separability, not merely visual adjacency" in prompt
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_representation_packages_v1_temperature_0"
+        "detection_v4_visual_registry_representation_packages_v2_temperature_0"
     )
