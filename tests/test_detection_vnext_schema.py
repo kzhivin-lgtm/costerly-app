@@ -156,7 +156,7 @@ def test_registry_schema_requires_at_least_one_visual_group_per_object():
     assert visual_group_ids["minItems"] == 1
 
 
-def test_integrated_registry_requires_one_primary_assembly_anchor_per_object():
+def test_integrated_registry_requires_a_primary_and_complete_assembly_representation_set():
     schema = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA
     object_schema = schema["properties"]["objects"]["items"]
 
@@ -164,6 +164,11 @@ def test_integrated_registry_requires_one_primary_assembly_anchor_per_object():
     assert "primary_assembly_group_id" in object_schema["required"]
     assert object_schema["properties"]["primary_assembly_group_id"] == {
         "type": "string", "minLength": 1,
+    }
+    assert "represented_assembly_group_ids" in object_schema["required"]
+    assert object_schema["properties"]["represented_assembly_group_ids"] == {
+        "type": "array", "minItems": 1,
+        "items": {"type": "string", "minLength": 1},
     }
     assert "identity_pages" not in object_schema["properties"]
     assert "visual_group_ids" not in object_schema["properties"]
@@ -223,6 +228,35 @@ def test_registry_allows_unassigned_navigation_only_visual_groups():
         registry,
         visual_group_ids={"view-001", "view-002"},
     ) == registry
+
+
+def test_registry_requires_every_complete_assembly_view_to_have_one_owner():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "N57A",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [4],
+            "estimation_evidence_pages": [4], "visual_group_ids": ["view-001"],
+            "visual_identity": "kitchen", "boundary_basis": "one complete kitchen",
+        }],
+    }
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="must account for every complete assembly view",
+    ) as raised:
+        validate_detection_registry(
+            registry,
+            visual_group_ids={"view-001", "view-002"},
+            visual_group_roles={
+                "view-001": "assembly_view",
+                "view-002": "assembly_view",
+            },
+            required_assembly_group_ids={"view-001", "view-002"},
+        )
+
+    assert raised.value.details == {
+        "unrepresented_assembly_group_ids": ["view-002"],
+    }
 
 
 def test_integrated_visual_map_requires_a_commercial_role_for_each_group():

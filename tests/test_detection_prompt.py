@@ -81,6 +81,7 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "A dimensioned front elevation with repeated bays, slats, shelves or panels" in prompt
     assert "resolve complete commercial packages from all relevant representations" in prompt
     assert "exactly one `primary_assembly_group_id`" in prompt
+    assert "`represented_assembly_group_ids`" in prompt
     assert "A plan fragment, narrow dimension strip, section, close-up, isolated panel, or schedule" in prompt
     assert "Dimensions that agree after a change of axes" in prompt
     assert "Secondary signals only" in prompt
@@ -91,7 +92,8 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Test commercial separability, not visual adjacency" in prompt
     assert "Different explicit object codes are affirmative separate-object evidence" in prompt
     assert "A title block may carry an object code" in prompt
-    assert "The runtime derives its identity page directly from this anchor" in prompt
+    assert "A shared sheet-level code never proves a merge" in prompt
+    assert "The runtime derives its identity page directly from the primary anchor" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_primary_anchor_v3_temperature_0"
+        "detection_v4_visual_registry_primary_anchor_v4_temperature_0"
     )

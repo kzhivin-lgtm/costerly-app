@@ -47,7 +47,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_primary_anchor_v3_temperature_0"
+    "detection_v4_visual_registry_primary_anchor_v4_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -92,6 +92,16 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"][
     "primary_assembly_group_id"
 ] = {"type": "string", "minLength": 1}
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
+    "represented_assembly_group_ids"
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"][
+    "represented_assembly_group_ids"
+] = {
+    "type": "array",
+    "minItems": 1,
+    "items": {"type": "string", "minLength": 1},
+}
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
@@ -799,11 +809,11 @@ def _normalize_primary_assembly_anchors(
 ) -> object:
     """Adapt one provider-selected anchor to the locked registry contract.
 
-    Registry output now owns exactly one complete assembly depiction per
-    commercial object. All alternate views and construction details remain in
-    page coverage, which is what later Estimation consumes. This removes the
-    variable multi-view proof tree from the provider response without relaxing
-    the established role and single-owner validation below.
+    Registry output now identifies one primary depiction and explicitly
+    accounts for every complete assembly depiction it represents. Construction
+    details remain in page coverage, which is what later Estimation consumes.
+    This removes the variable proof tree without allowing alternate assembly
+    views to vanish from the commercial-boundary decision.
 
     The legacy shape is accepted only for stored-response and test
     compatibility. Structured Output requires ``primary_assembly_group_id``.
@@ -833,7 +843,33 @@ def _normalize_primary_assembly_anchors(
                 raise DetectionRegistrySchemaError(
                     "registry primary assembly anchor is invalid"
                 )
-            registry_item["visual_group_ids"] = [normalized_primary_group_id]
+            represented_group_ids = registry_item.pop(
+                "represented_assembly_group_ids", None
+            )
+            if (
+                not isinstance(represented_group_ids, list)
+                or not represented_group_ids
+                or not all(isinstance(group_id, str) and group_id.strip() for group_id in represented_group_ids)
+            ):
+                raise DetectionRegistrySchemaError(
+                    "registry represented assembly groups are invalid"
+                )
+            normalized_represented_group_ids = [
+                group_id_mapping.get(group_id.strip(), group_id.strip())
+                for group_id in represented_group_ids
+            ]
+            if normalized_primary_group_id not in normalized_represented_group_ids:
+                raise DetectionRegistrySchemaError(
+                    "registry primary assembly anchor must be represented"
+                )
+            # The primary anchor is first for deterministic internal storage.
+            # Preserve the provider's remaining order because it is its stated
+            # representation order and never affects object identity.
+            normalized_owner_group_ids = [normalized_primary_group_id]
+            for group_id in normalized_represented_group_ids:
+                if group_id not in normalized_owner_group_ids:
+                    normalized_owner_group_ids.append(group_id)
+            registry_item["visual_group_ids"] = normalized_owner_group_ids
             # The selected anchor is the sole identity anchor. Do not ask the
             # model to repeat its physical page in a second, independently
             # serialized field, which can drift from page coverage.
@@ -949,6 +985,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 group["group_id"]: group["commercial_role"]
                 for group in visual_map["visual_groups"]
             },
+            required_assembly_group_ids={
+                group["group_id"]
+                for group in visual_map["visual_groups"]
+                if group["commercial_role"] == "assembly_view"
+            },
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
@@ -1002,9 +1043,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             not entry["object_ids"] for entry in payload["page_coverage"]
         ),
         "registry_decision_audit": registry_decision_audit,
-        "primary_assembly_anchor_count": len(assigned_visual_group_ids),
-        "secondary_visual_group_count": (
-            len(visual_map["visual_groups"]) - len(assigned_visual_group_ids)
+        "primary_assembly_anchor_count": len(registry["objects"]),
+        "represented_assembly_group_count": len(assigned_visual_group_ids),
+        "non_primary_visual_group_count": (
+            len(visual_map["visual_groups"]) - len(registry["objects"])
         ),
         "region_count": len(regions),
         "page_count": len(page_images),

@@ -497,6 +497,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False,
             "primary_assembly_group_id": "view_a",
+            "represented_assembly_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
         }],
         "page_coverage": [{
@@ -584,6 +585,7 @@ def test_integrated_visual_registry_normalizes_one_primary_assembly_anchor():
             "object_id": "object-001", "transport_label": "D01",
             "quantity": 1, "quantity_explicit": True,
             "primary_assembly_group_id": "elevation",
+            "represented_assembly_group_ids": ["elevation", "plan"],
             "visual_identity": "one door system in elevation and plan",
             "boundary_basis": "matching track and three-leaf sequence",
         }],
@@ -612,9 +614,10 @@ def test_integrated_visual_registry_normalizes_one_primary_assembly_anchor():
     assert [group["group_id"] for group in visual_map["visual_groups"]] == [
         "view-001", "view-002",
     ]
-    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
     assert usage["raw_usage"]["primary_assembly_anchor_count"] == 1
-    assert usage["raw_usage"]["secondary_visual_group_count"] == 1
+    assert usage["raw_usage"]["represented_assembly_group_count"] == 2
+    assert usage["raw_usage"]["non_primary_visual_group_count"] == 1
 
 
 def test_integrated_visual_registry_rejects_component_detail_as_primary_anchor():
@@ -628,6 +631,7 @@ def test_integrated_visual_registry_rejects_component_detail_as_primary_anchor()
             "object_id": "object-001", "transport_label": "C01",
             "quantity": 1, "quantity_explicit": False,
             "primary_assembly_group_id": "detail",
+            "represented_assembly_group_ids": ["detail"],
             "visual_identity": "cabinet", "boundary_basis": "one cabinet",
         }],
         "page_coverage": [{
