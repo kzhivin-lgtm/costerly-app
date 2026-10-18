@@ -14,8 +14,6 @@ Give each group a stable ordered `group_id`, physical `page_number`, short `loca
 
 Decide complete fabricated products a contractor would quote, fabricate, supply, install, replace or price independently. Start only from `assembly_view` groups. A `component_detail` never becomes a commercial object merely because it appears separately. It remains supporting evidence on its page for the parent assembly. A `document_context` never becomes an object.
 
-Hard output invariant: return an `objects` row only when it owns one or more `assembly_view` groups. A code, index or item-like label visible only in a specification, schedule, detail, legend, title block or page coverage is context or evidence, never a standalone object. If it cannot be connected to an `assembly_view`, omit it from `objects`, even when it looks like an object code.
-
 Before creating any object, resolve identity across all `assembly_view` groups. For every assembly view, decide whether it is a new product or another projection of a product already represented. Do not create one object per `assembly_view` by default. A change of projection may make the same item look unlike itself, so whole-silhouette similarity is not required. Resolve the relation using the following evidence, in priority order:
 
 1. Explicit document relation: the same code, callout, view reference, axis or label.

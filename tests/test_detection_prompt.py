@@ -79,8 +79,6 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "exactly one `commercial_role`" in prompt
     assert "A `component_detail` never becomes a commercial object" in prompt
     assert "A `document_context` never becomes an object" in prompt
-    assert "Hard output invariant" in prompt
-    assert "even when it looks like an object code" in prompt
     assert "resolve identity across all `assembly_view` groups" in prompt
     assert "Dimensions that agree after a change of axes" in prompt
     assert "Secondary supporting signals only" in prompt
@@ -90,5 +88,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Test commercial separability, not merely visual adjacency" in prompt
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_pairwise_merge_proofs_v2_temperature_0"
+        "detection_v4_visual_registry_pairwise_merge_proofs_v1_temperature_0"
     )
