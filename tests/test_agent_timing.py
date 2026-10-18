@@ -23,6 +23,7 @@ from agents.anthropic_adapter import (
     build_uploaded_file_content_block,
     create_claude_message,
     create_claude_message_streamed,
+    _materialize_object_anchor_views,
     _validate_orphan_detail_resolutions,
     normalize_detection_identity_fields,
     run_anthropic_detection_agent,
@@ -594,6 +595,33 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
     assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
     assert usage["raw_usage"]["pairwise_merge_proofs"][0]["from_group_id"] == "view-001"
     assert usage["raw_usage"]["pairwise_merge_proofs"][0]["to_group_id"] == "view-002"
+
+
+def test_anchor_views_canonicalize_undirected_links_and_preserve_detail_candidates():
+    objects = [
+        {
+            "object_id": "object-001", "anchor_view_group_id": "view-a",
+            "linked_assembly_views": [{
+                # The model listed a valid undirected edge backwards.
+                "group_id": "view-a", "linked_to_group_id": "view-b",
+                "primary_evidence_type": "explicit_document_relation",
+                "secondary_evidence_type": "not_required", "evidence_pages": [1],
+                "observed_fact": "Both views carry N57.",
+                "commercial_inseparability": "They depict one cabinet.",
+            }],
+        },
+        {
+            "object_id": "object-002", "anchor_view_group_id": "",
+            "linked_assembly_views": [],
+        },
+    ]
+
+    registry_objects, proofs = _materialize_object_anchor_views(objects)
+
+    assert registry_objects[0]["visual_group_ids"] == ["view-a", "view-b"]
+    assert proofs[0]["from_group_id"] == "view-a"
+    assert proofs[0]["to_group_id"] == "view-b"
+    assert registry_objects[1]["visual_group_ids"] == []
 
 
 def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():

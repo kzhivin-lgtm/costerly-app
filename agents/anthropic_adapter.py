@@ -949,7 +949,7 @@ def _normalize_pairwise_merge_proof_group_ids(
 
 
 def _materialize_object_anchor_views(objects: object) -> tuple[object, object]:
-    """Derive object groups and a proof tree from one ordered anchor structure."""
+    """Derive groups and a proof tree from anchor links or a resolver candidate."""
     if not isinstance(objects, list):
         return objects, []
     registry_objects: list[object] = []
@@ -959,7 +959,7 @@ def _materialize_object_anchor_views(objects: object) -> tuple[object, object]:
             return objects, []
         anchor_group_id = item.get("anchor_view_group_id")
         linked_views = item.get("linked_assembly_views")
-        if not isinstance(anchor_group_id, str) or not anchor_group_id:
+        if not isinstance(anchor_group_id, str):
             raise ValueError("registry object anchor view is required")
         if not isinstance(linked_views, list):
             raise ValueError("registry object linked assembly views must be a list")
@@ -967,6 +967,17 @@ def _materialize_object_anchor_views(objects: object) -> tuple[object, object]:
         registry_item.pop("anchor_view_group_id")
         registry_item.pop("linked_assembly_views")
         object_id = registry_item.get("object_id")
+        # A coded detail cluster can be a provisional object even though no
+        # complete assembly view exists yet. Preserve the established resolver
+        # path instead of forcing a component detail to masquerade as anchor.
+        if not anchor_group_id:
+            if linked_views:
+                raise ValueError(
+                    "registry unresolved detail cluster cannot have linked assembly views"
+                )
+            registry_item["visual_group_ids"] = []
+            registry_objects.append(registry_item)
+            continue
         group_ids = [anchor_group_id]
         known_group_ids = {anchor_group_id}
         for linked_view in linked_views:
@@ -975,8 +986,18 @@ def _materialize_object_anchor_views(objects: object) -> tuple[object, object]:
                 continue
             group_id = linked_view.get("group_id")
             linked_to_group_id = linked_view.get("linked_to_group_id")
-            if not isinstance(group_id, str) or not group_id:
+            if not isinstance(group_id, str) or not group_id or not isinstance(linked_to_group_id, str) or not linked_to_group_id:
                 raise ValueError("registry linked assembly view group is required")
+            # An identity link is an undirected fact. Models commonly return
+            # its two endpoints in the opposite order, so orient it here from
+            # an already-owned view to the new view. This is a lossless
+            # normalization, not an inferred merge.
+            if group_id in known_group_ids and linked_to_group_id not in known_group_ids:
+                group_id, linked_to_group_id = linked_to_group_id, group_id
+            elif group_id in known_group_ids and linked_to_group_id in known_group_ids:
+                raise ValueError(
+                    "registry linked assembly view must introduce one new view"
+                )
             if linked_to_group_id not in known_group_ids:
                 raise ValueError(
                     "registry linked assembly view must link to an earlier view"
