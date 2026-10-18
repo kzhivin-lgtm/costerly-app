@@ -304,7 +304,10 @@ def run_detection_agent(
         registry_images = [file_bytes]
     if not registry_images:
         raise ValueError("Detection registry requires rendered PDF pages.")
-    regions = build_detection_registry_regions(registry_images)
+    regions = build_detection_registry_regions(
+        registry_images,
+        ocr_package=ocr_package,
+    )
     if stage_callback:
         stage_callback("Detection Registry started")
     try:
