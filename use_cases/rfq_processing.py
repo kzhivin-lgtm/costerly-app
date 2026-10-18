@@ -205,6 +205,14 @@ def _persist_rfq_diagnostics(
         print(f"[Usage Ledger] Could not save RFQ diagnostics: {exc}")
 
 
+def _persist_runtime_event(event: dict[str, Any]) -> None:
+    """Persist a lightweight runtime marker outside the UI render path."""
+    try:
+        insert_agent_usage_event(get_supabase_client(), event)
+    except Exception as exc:
+        print(f"[Usage Ledger] Could not save runtime marker: {exc}")
+
+
 def _run_optional_ocr(
     *,
     file_name: str,
@@ -257,6 +265,7 @@ def _run_deferred_naming(
     """Name locked objects after File Review is allowed to open."""
     started_at = datetime.now(UTC).isoformat()
     started = time.perf_counter()
+    persistence_audit: dict[str, Any] = {"write_attempts": []}
     print(f"[Naming Agent] Started deferred naming for run {run_id}")
     try:
         wanted_pages = {
@@ -294,11 +303,42 @@ def _run_deferred_naming(
                 expected_name=old_name,
                 object_name=new_name,
             )
+            persistence_audit["write_attempts"].append(
+                {
+                    "object_id": object_id,
+                    "expected_name": old_name,
+                    "requested_name": new_name,
+                    "accepted": persisted,
+                }
+            )
             if not persisted:
                 raise RuntimeError(
                     "Naming result was not persisted because the provisional object name changed."
                 )
             names[object_id] = new_name
+
+        readback_names = {
+            str(row.get("object_id") or ""): str(row.get("object_name") or "")
+            for row in fetch_rfq_detected_object_names(client, run_id)
+            if str(row.get("object_id") or "")
+        }
+        readback_mismatches = [
+            {
+                "object_id": object_id,
+                "requested_name": requested_name,
+                "readback_name": readback_names.get(object_id, ""),
+            }
+            for object_id, requested_name in names.items()
+            if readback_names.get(object_id) != requested_name
+        ]
+        persistence_audit["immediate_readback_names"] = readback_names
+        persistence_audit["readback_mismatches"] = readback_mismatches
+        if readback_mismatches:
+            failed_ids = ", ".join(item["object_id"] for item in readback_mismatches)
+            raise RuntimeError(
+                "Naming persistence read-back mismatch for object IDs: "
+                f"{failed_ids}."
+            )
 
         generic_project_name = str(provisional_project_name or "").strip().casefold()
         is_generic_one_object_project = (
@@ -340,6 +380,7 @@ def _run_deferred_naming(
                 "names": names,
                 "validation": naming_result["validation"],
                 "naming_decision_audit": naming_result.get("naming_decision_audit", []),
+                "persistence_audit": persistence_audit,
                 "deferred": True,
             },
         )
@@ -366,7 +407,11 @@ def _run_deferred_naming(
             started_at=started_at,
             finished_at=finished_at,
             duration_seconds=naming_seconds,
-            raw_usage={"deferred": True, "error": error},
+            raw_usage={
+                "deferred": True,
+                "error": error,
+                "persistence_audit": persistence_audit,
+            },
             status="failed",
         )
         try:
@@ -594,10 +639,15 @@ def process_uploaded_rfq(
     except Exception as exc:
         print(f"[Estimation] Could not persist OCR handoff event: {exc}")
     original = None
+    original_wait_started = time.perf_counter()
     try:
         original = original_future.result()
     except Exception as exc:
         print(f"[Estimation Original] Could not store source: {exc}")
+    cycle_event["raw_usage"]["post_cycle_estimation_original_wait_seconds"] = round(
+        time.perf_counter() - original_wait_started,
+        3,
+    )
     _DIAGNOSTICS_EXECUTOR.submit(
         _persist_rfq_diagnostics,
         client=client,
@@ -658,6 +708,35 @@ def load_file_review_data(run_id: str) -> dict[str, Any]:
     }
 
 
+def record_file_review_first_render(
+    *,
+    company_id: str,
+    run_id: str,
+    file_name: str,
+    processing_to_render_seconds: float,
+) -> None:
+    """Record the first server-side File Review render without delaying it."""
+    event = _runtime_event(
+        agent_name="orchestration",
+        operation="file_review_first_render",
+        company_id=company_id,
+        run_id=run_id,
+        file_name=file_name,
+        model="deterministic",
+        prompt_version="file_review_handoff_timing_v1",
+        started_at=datetime.now(UTC).isoformat(),
+        finished_at=datetime.now(UTC).isoformat(),
+        duration_seconds=round(processing_to_render_seconds, 3),
+        raw_usage={
+            "processing_to_file_review_first_render_seconds": round(
+                processing_to_render_seconds,
+                3,
+            ),
+        },
+    )
+    _DIAGNOSTICS_EXECUTOR.submit(_persist_runtime_event, event)
+
+
 def load_file_review_naming_publication(run_id: str) -> dict[str, Any]:
     """Read the durable deferred-Naming result without reloading File Review.
 
@@ -690,7 +769,11 @@ def load_file_review_naming_publication(run_id: str) -> dict[str, Any]:
     except (TypeError, ValueError):
         duration_seconds = 0.0
     if status != "succeeded":
-        return {"status": "failed", "naming_seconds": duration_seconds}
+        return {
+            "status": "failed",
+            "naming_seconds": duration_seconds,
+            "error": str(raw_usage.get("error") or "Naming did not complete."),
+        }
 
     names = {
         str(row.get("object_id") or ""): str(row.get("object_name") or "")

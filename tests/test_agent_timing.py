@@ -1132,6 +1132,12 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
         "use_cases.rfq_processing.insert_agent_usage_event",
         lambda _client, event: events.append(event),
     )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.fetch_rfq_detected_object_names",
+        lambda _client, _run_id: [
+            {"object_id": "object-001", "object_name": "Display cabinet"},
+        ],
+    )
 
     result = _run_deferred_naming(
         client=object(),
@@ -1158,6 +1164,56 @@ def test_deferred_naming_updates_locked_names_and_returns_without_detection_chan
     }]
     assert events[0]["operation"] == "locked_object_naming_deferred"
     assert events[0]["raw_usage"]["names"] == {"object-001": "Display cabinet"}
+    assert events[0]["raw_usage"]["persistence_audit"]["readback_mismatches"] == []
+
+
+def test_deferred_naming_records_readback_mismatch_as_failure(monkeypatch):
+    events = []
+    detected_objects = [{"object_id": "object-003", "object_name": "Object 3"}]
+    locked_objects = [{"object_id": "object-003", "current_name": "Object 3"}]
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.run_naming_lab_call",
+        lambda _locked: {
+            "names": [{"object_id": "object-003", "name_en": "TV console", "name_original": ""}],
+            "duration_seconds": 1.0,
+            "model": "test-model",
+            "input_tokens": 1,
+            "output_tokens": 1,
+            "validation": {"accepted": True, "violations": []},
+        },
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.update_rfq_detected_object_name_if_unchanged",
+        lambda _client, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.fetch_rfq_detected_object_names",
+        lambda _client, _run_id: [
+            {"object_id": "object-003", "object_name": "Object 3"},
+        ],
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing.insert_agent_usage_event",
+        lambda _client, event: events.append(event),
+    )
+
+    result = _run_deferred_naming(
+        client=object(),
+        detected_objects=detected_objects,
+        locked_objects=locked_objects,
+        company_id="001",
+        run_id="run-003",
+        file_name="drawing.pdf",
+    )
+
+    assert result["status"] == "failed"
+    assert "object-003" in result["error"]
+    audit = events[0]["raw_usage"]["persistence_audit"]
+    assert audit["readback_mismatches"] == [{
+        "object_id": "object-003",
+        "requested_name": "TV console",
+        "readback_name": "Object 3",
+    }]
 
 
 def test_deferred_naming_records_failure(monkeypatch):

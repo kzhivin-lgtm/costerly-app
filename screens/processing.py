@@ -127,6 +127,11 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
         st.session_state.screen = "file_review"
         st.rerun()
 
+    # This marker intentionally starts before cache seeding and the existing
+    # transition handshake. It lets File Review record the complete server-side
+    # handoff without making either deferred worker part of this path.
+    file_review_handoff_started_at = time.perf_counter()
+
     # Seed the first File Review from the exact validated payload that Processing
     # has just persisted. Refresh and restored sessions still reload Supabase.
     run_id = result["run_id"]
@@ -156,6 +161,10 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
     }
     st.session_state.current_naming_result = None
     st.session_state.processed_file_name = file_name
+    st.session_state.file_review_handoff_timing = {
+        "run_id": run_id,
+        "started_at": file_review_handoff_started_at,
+    }
     st.session_state.processing_error = None
     st.session_state.screen = "file_review"
     st.rerun()

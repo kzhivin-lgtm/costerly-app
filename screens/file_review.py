@@ -27,6 +27,7 @@ from use_cases.rfq_processing import (
     load_file_review_data,
     load_file_review_naming_publication,
     load_file_review_preview_publication,
+    record_file_review_first_render,
     save_file_review_object_name,
     save_file_review_run_metadata,
 )
@@ -504,6 +505,9 @@ def _publish_persisted_naming(
     st.session_state[published_key] = True
 
     if status != "succeeded":
+        st.session_state[f"file_review_naming_terminal.{run_id}"] = str(
+            result.get("error") or "Naming did not complete."
+        )
         return True
 
     names = result.get("names") or {}
@@ -656,6 +660,9 @@ def _render_file_review_dynamic_content(run_id: str) -> None:
     name_save_error = st.session_state.get("file_review_name_save_error")
     if name_save_error:
         st.error(f"Could not save object name: {name_save_error}")
+    naming_terminal_error = st.session_state.get(f"file_review_naming_terminal.{run_id}")
+    if naming_terminal_error:
+        st.error(f"Naming did not complete: {naming_terminal_error}")
     metadata_save_error = st.session_state.get("file_review_metadata_save_error")
     if metadata_save_error:
         st.error(f"Could not save project details: {metadata_save_error}")
@@ -803,6 +810,31 @@ def _render_missing_run_state(render_header_controls: Callable[[], None] | None 
     _back_to_upload_button()
 
 
+def _record_first_file_review_render(run_id: str, company_id: str) -> None:
+    """Queue one handoff marker, never waiting for diagnostics on the UI path."""
+    timing = st.session_state.get("file_review_handoff_timing")
+    if not isinstance(timing, dict) or timing.get("run_id") != run_id:
+        return
+    recorded_key = f"file_review_first_render_recorded.{run_id}"
+    if st.session_state.get(recorded_key):
+        return
+    try:
+        started_at = float(timing.get("started_at"))
+    except (TypeError, ValueError):
+        return
+    elapsed = max(0.0, time.perf_counter() - started_at)
+    st.session_state[recorded_key] = True
+    timings = st.session_state.get("current_agent_timings")
+    if isinstance(timings, dict):
+        timings["processing_to_file_review_first_render_seconds"] = round(elapsed, 3)
+    record_file_review_first_render(
+        company_id=company_id,
+        run_id=run_id,
+        file_name=str(st.session_state.get("processed_file_name") or ""),
+        processing_to_render_seconds=elapsed,
+    )
+
+
 def render_file_review_screen(
     company_id: str,
     *,
@@ -820,6 +852,8 @@ def render_file_review_screen(
     if not run_id:
         _render_missing_run_state(render_header_controls)
         return
+
+    _record_first_file_review_render(str(run_id), company_id)
 
     try:
         data = _load_file_review_screen_data(run_id)
