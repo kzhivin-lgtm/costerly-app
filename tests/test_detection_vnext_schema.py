@@ -4,6 +4,7 @@ from agents.anthropic_adapter import discard_degenerate_evidence_regions
 from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
+    validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
 )
 from agents.schemas.detection_schema import validate_detection_result
@@ -82,6 +83,65 @@ def test_visual_map_and_registry_keep_representation_identity_separate():
         registry,
         visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
     ) == registry
+
+
+def test_pairwise_merge_proofs_require_two_independent_signals_and_a_minimal_tree():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1, 2],
+            "estimation_evidence_pages": [1, 2],
+            "visual_group_ids": ["view-001", "view-002", "view-003"],
+            "visual_identity": "one sliding-door system in three views",
+            "boundary_basis": "matching track, bay topology and door sequence",
+        }],
+    }
+    proofs = [
+        {
+            "object_id": "object-001", "from_group_id": "view-001",
+            "to_group_id": "view-002",
+            "evidence_types": ["matching_topology", "unique_geometry"],
+            "evidence_pages": [1],
+            "observed_fact": "The same three leaves and offset handle sequence recur.",
+            "commercial_inseparability": "Both views show the same single track assembly.",
+        },
+        {
+            "object_id": "object-001", "from_group_id": "view-002",
+            "to_group_id": "view-003",
+            "evidence_types": ["dimension_transform", "matching_topology"],
+            "evidence_pages": [1, 2],
+            "observed_fact": "The elevation width matches the plan after the view-axis change.",
+            "commercial_inseparability": "The leaves use one common track and frame.",
+        },
+    ]
+
+    assert validate_detection_pairwise_merge_proofs(
+        proofs, registry=registry, page_count=2
+    ) == proofs
+
+
+def test_pairwise_merge_proof_rejects_a_lone_direct_structure_claim():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "estimation_evidence_pages": [1],
+            "visual_group_ids": ["view-001", "view-002"],
+            "visual_identity": "claimed integrated furniture", "boundary_basis": "one system",
+        }],
+    }
+    proofs = [{
+        "object_id": "object-001", "from_group_id": "view-001",
+        "to_group_id": "view-002", "evidence_types": ["direct_shared_structure"],
+        "evidence_pages": [1], "observed_fact": "An L-shaped junction is drawn.",
+        "commercial_inseparability": "The furniture appears connected.",
+    }]
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="needs two independent evidence types",
+    ):
+        validate_detection_pairwise_merge_proofs(proofs, registry=registry, page_count=1)
 
 
 def test_registry_schema_requires_at_least_one_visual_group_per_object():

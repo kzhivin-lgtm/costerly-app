@@ -24,8 +24,10 @@ from agents.prompt_loader import (
     load_detection_visual_registry_prompt,
 )
 from agents.schemas.detection_registry_schema import (
+    DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
+    validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
 )
 from agents.schemas.detection_visual_map_schema import (
@@ -47,7 +49,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_group_roles_experiment_v2_temperature_0"
+    "detection_v4_visual_registry_pairwise_merge_proofs_v1_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -83,10 +85,11 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "objects", "page_coverage"],
+    "required": ["visual_groups", "objects", "merge_proofs", "page_coverage"],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
+        "merge_proofs": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "page_coverage": {
             "type": "array",
             "items": {
@@ -767,6 +770,23 @@ def _discard_trailing_orphan_registry_objects(
     return objects[:first_orphan_index], discarded_ids
 
 
+def _normalize_pairwise_merge_proof_group_ids(
+    proofs: object,
+    group_id_mapping: dict[str, str],
+) -> object:
+    """Keep provider-facing proof joins aligned with canonical view IDs."""
+    if not isinstance(proofs, list):
+        return proofs
+    normalized = copy.deepcopy(proofs)
+    for proof in normalized:
+        if not isinstance(proof, dict):
+            continue
+        for field in ("from_group_id", "to_group_id"):
+            raw_group_id = str(proof.get(field) or "")
+            proof[field] = group_id_mapping.get(raw_group_id, raw_group_id)
+    return normalized
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -797,8 +817,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # inspectable decision record, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
     try:
-        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "page_coverage"}:
-            raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "merge_proofs", "page_coverage"}:
+            raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -809,6 +829,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
+        merge_proofs = _normalize_pairwise_merge_proof_group_ids(
+            payload["merge_proofs"], group_id_mapping
+        )
         registry_objects_input, discarded_orphan_registry_object_ids = (
             _discard_trailing_orphan_registry_objects(
                 payload["objects"], payload["page_coverage"], page_count=len(page_images),
@@ -830,6 +853,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 group["group_id"]: group["commercial_role"]
                 for group in visual_map["visual_groups"]
             },
+        )
+        pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
+            merge_proofs,
+            registry=registry,
+            page_count=len(page_images),
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
@@ -883,6 +911,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             not entry["object_ids"] for entry in payload["page_coverage"]
         ),
         "registry_decision_audit": registry_decision_audit,
+        "pairwise_merge_proofs": pairwise_merge_proofs,
+        "pairwise_merge_proof_count": len(pairwise_merge_proofs),
         "region_count": len(regions),
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",
