@@ -9,6 +9,7 @@ from agents.schemas.detection_registry_schema import (
 )
 from agents.schemas.detection_schema import validate_detection_result
 from agents.schemas.detection_visual_map_schema import (
+    derive_detection_visual_group_roles,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
@@ -64,8 +65,8 @@ def test_degenerate_evidence_regions_are_dropped_but_the_page_is_preserved():
 def test_visual_map_and_registry_keep_representation_identity_separate():
     visual_map = validate_detection_visual_map({
         "visual_groups": [
-            {"group_id": "view-001", "page_number": 1, "location_hint": "lower left", "visual_description": "long storage console perspective", "representation_kind": "perspective"},
-            {"group_id": "view-002", "page_number": 1, "location_hint": "lower right", "visual_description": "long storage console alternate perspective", "representation_kind": "perspective"},
+            {"group_id": "view-001", "page_number": 1, "location_hint": "lower left", "visual_description": "long storage console perspective", "representation_kind": "perspective", "representation_scope": "product_representation"},
+            {"group_id": "view-002", "page_number": 1, "location_hint": "lower right", "visual_description": "long storage console alternate perspective", "representation_kind": "perspective", "representation_scope": "product_representation"},
         ],
     })
     registry = {
@@ -156,8 +157,8 @@ def test_registry_schema_requires_at_least_one_visual_group_per_object():
 def test_visual_map_normalizes_provider_group_ids_before_strict_validation():
     visual_map = {
         "visual_groups": [
-            {"group_id": "group_a", "page_number": 1, "location_hint": "left", "visual_description": "console view", "representation_kind": "perspective"},
-            {"group_id": "group_b", "page_number": 1, "location_hint": "right", "visual_description": "console view", "representation_kind": "elevation"},
+            {"group_id": "group_a", "page_number": 1, "location_hint": "left", "visual_description": "console view", "representation_kind": "perspective", "representation_scope": "product_representation"},
+            {"group_id": "group_b", "page_number": 1, "location_hint": "right", "visual_description": "console view", "representation_kind": "elevation", "representation_scope": "product_representation"},
         ],
     }
 
@@ -208,29 +209,26 @@ def test_registry_allows_unassigned_navigation_only_visual_groups():
     ) == registry
 
 
-def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
+def test_visual_map_requires_a_neutral_representation_scope_for_each_group():
     visual_map = {
         "visual_groups": [
             {
                 "group_id": "view-001", "page_number": 1,
                 "location_hint": "left", "visual_description": "cabinet",
-                "representation_kind": "elevation", "commercial_role": "assembly_view",
+                "representation_kind": "elevation", "representation_scope": "product_representation",
             },
             {
                 "group_id": "view-002", "page_number": 1,
                 "location_hint": "title block", "visual_description": "sheet metadata",
-                "representation_kind": "title_block", "commercial_role": "document_context",
+                "representation_kind": "title_block", "representation_scope": "document_context",
             },
         ],
     }
 
-    assert validate_detection_visual_map(
-        visual_map,
-        require_commercial_roles=True,
-    ) == visual_map
+    assert validate_detection_visual_map(visual_map) == visual_map
 
 
-def test_registry_rejects_component_detail_as_commercial_boundary_support():
+def test_registry_rejects_document_context_as_commercial_boundary_support():
     registry = {
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
@@ -242,12 +240,51 @@ def test_registry_rejects_component_detail_as_commercial_boundary_support():
 
     with pytest.raises(
         DetectionRegistrySchemaError,
-        match="must be complete assembly views",
+        match="cannot reference document context",
     ) as raised:
         validate_detection_registry(
             registry,
             visual_group_ids={"view-001"},
-            visual_group_roles={"view-001": "component_detail"},
+            visual_group_scopes={"view-001": "document_context"},
         )
 
-    assert raised.value.details == {"non_assembly_visual_group_ids": ["view-001"]}
+    assert raised.value.details == {"document_context_visual_group_ids": ["view-001"]}
+
+
+def test_multi_projection_product_is_derived_as_assembly_only_after_proof_backed_ownership():
+    visual_map = validate_detection_visual_map({
+        "visual_groups": [
+            {"group_id": "view-001", "page_number": 11, "location_hint": "upper", "visual_description": "N76B plan context", "representation_kind": "plan", "representation_scope": "product_representation"},
+            {"group_id": "view-002", "page_number": 11, "location_hint": "middle", "visual_description": "N76B narrow profile", "representation_kind": "profile", "representation_scope": "product_representation"},
+            {"group_id": "view-003", "page_number": 11, "location_hint": "lower", "visual_description": "N76B panel grid", "representation_kind": "elevation", "representation_scope": "product_representation"},
+            {"group_id": "view-004", "page_number": 11, "location_hint": "lower right", "visual_description": "sheet metadata", "representation_kind": "title_block", "representation_scope": "document_context"},
+        ],
+    })
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "N76B",
+            "quantity": 1, "quantity_explicit": True, "identity_pages": [11],
+            "estimation_evidence_pages": [11],
+            "visual_group_ids": ["view-001", "view-002", "view-003"],
+            "visual_identity": "one N76B product shown in plan, profile and elevation",
+            "boundary_basis": "matching N76B label, 345 dimension and panel division pattern",
+        }],
+    }
+    proofs = [
+        {"object_id": "object-001", "from_group_id": "view-001", "to_group_id": "view-002", "evidence_types": ["explicit_document_relation"], "evidence_pages": [11], "observed_fact": "Both drawings carry N76B and the 345 extent.", "commercial_inseparability": "They are coordinated views of the labelled item."},
+        {"object_id": "object-001", "from_group_id": "view-002", "to_group_id": "view-003", "evidence_types": ["matching_topology", "dimension_transform"], "evidence_pages": [11], "observed_fact": "The 345 profile corresponds to the panel grid width and division sequence.", "commercial_inseparability": "The profile and grid specify one fabricated panel assembly."},
+    ]
+
+    assert validate_detection_registry(
+        registry,
+        visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
+        visual_group_scopes={group["group_id"]: group["representation_scope"] for group in visual_map["visual_groups"]},
+    ) == registry
+    assert validate_detection_pairwise_merge_proofs(proofs, registry=registry, page_count=11) == proofs
+    assert derive_detection_visual_group_roles(
+        visual_map,
+        assigned_visual_group_ids={"view-001", "view-002", "view-003"},
+    ) == {
+        "view-001": "assembly_view", "view-002": "assembly_view",
+        "view-003": "assembly_view", "view-004": "document_context",
+    }

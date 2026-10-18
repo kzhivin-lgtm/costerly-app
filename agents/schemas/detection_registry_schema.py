@@ -70,7 +70,7 @@ def validate_detection_registry(
     result: dict[str, Any],
     *,
     visual_group_ids: set[str] | None = None,
-    visual_group_roles: dict[str, str] | None = None,
+    visual_group_scopes: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(result, dict) or set(result) != {"objects"} or not isinstance(result["objects"], list):
         raise DetectionRegistrySchemaError("registry must contain only objects")
@@ -106,16 +106,16 @@ def validate_detection_registry(
     assigned_visual_groups = set(visual_group_owners)
     if visual_group_ids is not None and not assigned_visual_groups.issubset(visual_group_ids):
         raise DetectionRegistrySchemaError("registry references an unknown visual group")
-    if visual_group_roles is not None:
-        non_assembly_group_ids = sorted(
+    if visual_group_scopes is not None:
+        document_context_group_ids = sorted(
             group_id
             for group_id in assigned_visual_groups
-            if visual_group_roles.get(group_id) != "assembly_view"
+            if visual_group_scopes.get(group_id) != "product_representation"
         )
-        if non_assembly_group_ids:
+        if document_context_group_ids:
             raise DetectionRegistrySchemaError(
-                "registry visual groups must be complete assembly views",
-                details={"non_assembly_visual_group_ids": non_assembly_group_ids},
+                "registry visual groups cannot reference document context",
+                details={"document_context_visual_group_ids": document_context_group_ids},
             )
     duplicate_ownership = {
         group_id: owners
@@ -138,9 +138,10 @@ def validate_detection_pairwise_merge_proofs(
 ) -> list[dict[str, Any]]:
     """Require a minimal, evidence-backed tree for every visual merge.
 
-    A proof is needed only when the Registry joins distinct complete assembly
-    views. Standalone objects stay evidence-free here, so this is linear in
-    the number of merged views rather than a quadratic all-pairs graph.
+    A proof is needed whenever the Registry joins distinct product
+    representations. Standalone objects stay evidence-free here, so this is
+    linear in the number of merged views rather than a quadratic all-pairs
+    graph.
     """
     if not isinstance(proofs, list):
         raise DetectionRegistrySchemaError("pairwise merge proofs must be a list")
@@ -232,7 +233,7 @@ def validate_detection_pairwise_merge_proofs(
             queue.extend(adjacency[current] - visited)
         if visited != group_ids:
             raise DetectionRegistrySchemaError(
-                "pairwise merge proofs must connect every merged assembly view",
+                "pairwise merge proofs must connect every merged representation",
                 details={"object_id": object_id, "unconnected_group_ids": sorted(group_ids - visited)},
             )
     return proofs
