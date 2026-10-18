@@ -3,6 +3,7 @@ import pytest
 from agents.naming_lab import (
     NAMING_LAB_VERSION,
     apply_name_mapping,
+    build_naming_decision_audit,
     build_locked_naming_input,
     compose_name_preview,
     ensure_unique_object_ids,
@@ -14,7 +15,33 @@ from agents.naming_lab import (
 
 
 def test_uses_semantic_category_naming_version():
-    assert NAMING_LAB_VERSION == "naming_lab_v10_strong_kitchen_cues"
+    assert NAMING_LAB_VERSION == "naming_lab_v11_decision_audit"
+
+
+def test_naming_schema_requires_short_decision_basis():
+    from agents.naming_lab import NAMING_RESULT_SCHEMA
+
+    item_schema = NAMING_RESULT_SCHEMA["properties"]["names"]["items"]
+    assert "name_basis" in item_schema["required"]
+
+
+def test_naming_decision_audit_preserves_locked_code_and_evidence_pages():
+    audit = build_naming_decision_audit(
+        [{"object_id": "object-001", "object_index": "OM 15-1", "evidence_pages": [1, 3]}],
+        {"names": [{
+            "object_id": "object-001",
+            "name_en": "Stair railing",
+            "name_basis": "OCR railing label on p. 1; railing geometry.",
+        }]},
+    )
+
+    assert audit == [{
+        "object_id": "object-001",
+        "source_identifier": "OM 15-1",
+        "evidence_pages": [1, 3],
+        "selected_name": "Stair railing",
+        "name_basis": "OCR railing label on p. 1; railing geometry.",
+    }]
 
 
 def test_naming_prompt_keeps_integrated_kitchens_out_of_shelving():

@@ -83,9 +83,17 @@ def render_processing_screen(company_id: str, *, trace=None) -> None:
                 "Preparing document pages": "ocr",
                 "Detection Agent": "detection",
                 "Saving results": "saving",
-            }.get(label, phase_state["value"])
+            }.get(
+                label,
+                "detection" if label.startswith("Detection ") else phase_state["value"],
+            )
             if page_count is not None:
                 phase_state["page_count"] = page_count
+            if trace is not None:
+                trace.event(
+                    "server.rfq_processing_stage",
+                    metadata={"stage": label, "page_count": page_count},
+                )
 
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(

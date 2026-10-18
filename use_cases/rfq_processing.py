@@ -339,6 +339,7 @@ def _run_deferred_naming(
                 "output_tokens": naming_result["output_tokens"],
                 "names": names,
                 "validation": naming_result["validation"],
+                "naming_decision_audit": naming_result.get("naming_decision_audit", []),
                 "deferred": True,
             },
         )
@@ -472,6 +473,11 @@ def process_uploaded_rfq(
             # V4.2 normally uses Haiku. Its deterministic OCR-layout router may
             # select Sonnet only for a high-risk commercial-boundary Registry.
             model=None,
+            stage_callback=(
+                (lambda label: progress_callback(label, page_count))
+                if progress_callback
+                else None
+            ),
         )
     except DetectionVisualRegistryValidationError as exc:
         try:

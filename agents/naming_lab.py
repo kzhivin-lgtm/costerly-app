@@ -17,7 +17,7 @@ from agents.anthropic_adapter import (
 )
 
 
-NAMING_LAB_VERSION = "naming_lab_v10_strong_kitchen_cues"
+NAMING_LAB_VERSION = "naming_lab_v11_decision_audit"
 NAMING_PROMPT_PATH = Path(__file__).parent / "prompts" / "naming_agent_prompt.md"
 
 NAMING_RESULT_SCHEMA: dict[str, Any] = {
@@ -30,11 +30,12 @@ NAMING_RESULT_SCHEMA: dict[str, Any] = {
             "items": {
                 "type": "object",
                 "additionalProperties": False,
-                "required": ["object_id", "name_en", "name_original"],
+                "required": ["object_id", "name_en", "name_original", "name_basis"],
                 "properties": {
                     "object_id": {"type": "string"},
                     "name_en": {"type": "string"},
                     "name_original": {"type": "string"},
+                    "name_basis": {"type": "string"},
                 },
             },
         }
@@ -239,6 +240,37 @@ def compose_name_preview(
     return previews
 
 
+def build_naming_decision_audit(
+    locked_objects: list[dict[str, Any]],
+    result: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Return short, inspectable Naming grounds beside the final names.
+
+    The source code and evidence pages come from the locked Detection input,
+    while the model supplies only a concise category-selection basis.  It is
+    audit data, never input to object-boundary or Estimation decisions.
+    """
+    locked_by_id = {
+        str(item.get("object_id") or ""): item
+        for item in locked_objects
+        if isinstance(item, dict)
+    }
+    decisions: list[dict[str, Any]] = []
+    for item in result.get("names") or []:
+        if not isinstance(item, dict):
+            continue
+        object_id = str(item.get("object_id") or "")
+        locked = locked_by_id.get(object_id, {})
+        decisions.append({
+            "object_id": object_id,
+            "source_identifier": str(locked.get("object_index") or ""),
+            "evidence_pages": list(locked.get("evidence_pages") or []),
+            "selected_name": str(item.get("name_en") or ""),
+            "name_basis": str(item.get("name_basis") or ""),
+        })
+    return decisions
+
+
 def apply_name_mapping(
     detected_objects: list[dict[str, Any]],
     locked_objects: list[dict[str, Any]],
@@ -318,5 +350,6 @@ def run_naming_lab_call(
         "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
         "validation": validation,
         "names": result["names"],
+        "naming_decision_audit": build_naming_decision_audit(locked_objects, result),
         "preview": compose_name_preview(locked_objects, result),
     }

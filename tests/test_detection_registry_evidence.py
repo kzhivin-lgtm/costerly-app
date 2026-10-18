@@ -6,6 +6,7 @@ from agents.detection_agent import (
     _apply_assembly_association_repairs,
     _enforce_shared_track_door_system_quantity,
     _merge_registry_evidence,
+    _record_locked_evidence_handoff_audit,
     run_detection_agent,
 )
 from agents.anthropic_adapter import DetectionVisualRegistryValidationError
@@ -81,6 +82,38 @@ def test_registry_source_transport_label_overrides_evidence_pass_name():
     assert merged["detected_objects"][0]["object_name"] == "Kitchen N56"
 
 
+def test_locked_evidence_handoff_audit_records_final_registry_invariants():
+    event = {"raw_usage": {"attempt_label": "primary"}}
+    registry = {"objects": [{
+        "object_id": "object-001", "quantity": 1,
+        "estimation_evidence_pages": [1, 3],
+    }]}
+    result = {"detected_objects": [{
+        "object_id": "object-001", "quantity": 1,
+        "evidence_page_refs": [
+            {"page_number": 1, "regions": []},
+            {"page_number": 3, "regions": []},
+        ],
+    }]}
+
+    audited = _record_locked_evidence_handoff_audit(
+        event, registry=registry, result=result,
+    )
+
+    assert audited["raw_usage"]["attempt_label"] == "primary"
+    assert audited["raw_usage"]["locked_evidence_handoff_audit"] == {
+        "registry_object_ids": ["object-001"],
+        "result_object_ids": ["object-001"],
+        "object_sequence_preserved": True,
+        "registry_quantities": {"object-001": 1},
+        "result_quantities": {"object-001": 1},
+        "quantity_preserved": True,
+        "registry_evidence_pages": {"object-001": [1, 3]},
+        "result_evidence_pages": {"object-001": [1, 3]},
+        "evidence_page_contract_preserved": True,
+    }
+
+
 def test_registry_resolves_shared_track_leaves_to_one_commercial_door_system():
     registry = {"objects": [{
         "object_id": "object-002",
@@ -108,6 +141,7 @@ def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier
         "boundary_basis": "one integrated kitchen package",
     }]}
     captured: dict = {}
+    stages: list[str] = []
 
     def stop_after_capture(**kwargs):
         captured.update(kwargs)
@@ -128,10 +162,16 @@ def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier
         run_detection_agent(
             file_name="kitchen.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"one", b"two", b"three", b"four", b"five"],
+            stage_callback=stages.append,
         )
 
     assert captured["page_image_numbers"] == [1, 2, 3, 4, 5]
     assert captured["page_images"] == [b"one", b"two", b"three", b"four", b"five"]
+    assert stages == [
+        "Detection Registry started",
+        "Detection Registry completed",
+        "Detection Evidence handoff started",
+    ]
 
 
 def test_v42_routes_default_registry_and_evidence_packer_to_haiku():

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import re
+from collections.abc import Callable
 
 from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
@@ -284,6 +285,64 @@ def _attach_detection_model_route(event: object, route: dict) -> object:
     return event
 
 
+def _record_locked_evidence_handoff_audit(
+    event: object,
+    *,
+    registry: dict,
+    result: dict,
+) -> object:
+    """Persist the final invariant check after Evidence packaging.
+
+    Registry owns commercial-object boundaries.  The post-Registry model may
+    enrich evidence regions, but it must not become a second owner of identity
+    or quantity.  This is a deterministic audit record, not model reasoning.
+    """
+    if not isinstance(event, dict):
+        return event
+    registry_objects = [
+        item for item in registry.get("objects") or [] if isinstance(item, dict)
+    ]
+    detected_objects = [
+        item for item in result.get("detected_objects") or [] if isinstance(item, dict)
+    ]
+    expected_ids = [str(item.get("object_id") or "") for item in registry_objects]
+    actual_ids = [str(item.get("object_id") or "") for item in detected_objects]
+    expected_quantities = {
+        str(item.get("object_id") or ""): item.get("quantity")
+        for item in registry_objects
+    }
+    actual_quantities = {
+        str(item.get("object_id") or ""): item.get("quantity")
+        for item in detected_objects
+    }
+    expected_pages = {
+        str(item.get("object_id") or ""): list(item.get("estimation_evidence_pages") or [])
+        for item in registry_objects
+    }
+    actual_pages = {
+        str(item.get("object_id") or ""): [
+            int(ref["page_number"])
+            for ref in item.get("evidence_page_refs") or []
+            if isinstance(ref, dict) and isinstance(ref.get("page_number"), int)
+        ]
+        for item in detected_objects
+    }
+    raw_usage = dict(event.get("raw_usage") or {})
+    raw_usage["locked_evidence_handoff_audit"] = {
+        "registry_object_ids": expected_ids,
+        "result_object_ids": actual_ids,
+        "object_sequence_preserved": actual_ids == expected_ids,
+        "registry_quantities": expected_quantities,
+        "result_quantities": actual_quantities,
+        "quantity_preserved": actual_quantities == expected_quantities,
+        "registry_evidence_pages": expected_pages,
+        "result_evidence_pages": actual_pages,
+        "evidence_page_contract_preserved": actual_pages == expected_pages,
+    }
+    event["raw_usage"] = raw_usage
+    return event
+
+
 def run_detection_agent(
     file_name: str,
     company_id: str = "001",
@@ -292,6 +351,7 @@ def run_detection_agent(
     page_images: list[bytes] | None = None,
     page_image_diagnostics: dict | None = None,
     model: str | None = None,
+    stage_callback: Callable[[str], None] | None = None,
 ) -> dict:
     """
     Detection Agent entrypoint.
@@ -329,6 +389,8 @@ def run_detection_agent(
     if not registry_images:
         raise ValueError("Detection registry requires rendered PDF pages.")
     regions = build_detection_registry_regions(registry_images)
+    if stage_callback:
+        stage_callback("Detection Registry started")
     try:
         _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
             file_name=file_name, company_id=company_id, file_bytes=file_bytes,
@@ -336,12 +398,18 @@ def run_detection_agent(
             ocr_package=ocr_package, model=route["registry_model"],
         )
     except DetectionVisualRegistryValidationError as exc:
+        if stage_callback:
+            stage_callback("Detection Registry failed")
         _attach_detection_model_route(exc.usage_event, route)
         raise
+    if stage_callback:
+        stage_callback("Detection Registry completed")
     visual_registry_usage = _attach_detection_model_route(visual_registry_usage, route)
     association_usage = None
     orphan_assembly_view_ids = _unassigned_assembly_view_ids(_visual_map, registry)
     if orphan_assembly_view_ids:
+        if stage_callback:
+            stage_callback("Detection Assembly association started")
         try:
             association, association_usage = (
                 run_anthropic_detection_assembly_association_resolver(
@@ -358,12 +426,16 @@ def run_detection_agent(
                 )
             )
         except DetectionVisualRegistryValidationError as exc:
+            if stage_callback:
+                stage_callback("Detection Assembly association failed")
             _attach_detection_model_route(exc.usage_event, route)
             raise
         registry = _apply_assembly_association_repairs(
             registry, _visual_map, association
         )
         association_usage = _attach_detection_model_route(association_usage, route)
+        if stage_callback:
+            stage_callback("Detection Assembly association completed")
     registry = _enforce_shared_track_door_system_quantity(registry)
     validate_detection_registry(
         registry,
@@ -383,6 +455,8 @@ def run_detection_agent(
     evidence_page_numbers = sorted({page for item in registry["objects"] for page in item["estimation_evidence_pages"]})
     evidence_images = [registry_images[page - 1] for page in evidence_page_numbers]
     evidence_regions = [region for region in regions if region["page_number"] in evidence_page_numbers]
+    if stage_callback:
+        stage_callback("Detection Evidence handoff started")
     result = run_anthropic_detection_agent_with_fallback(
         file_name=file_name,
         company_id=company_id,
@@ -401,6 +475,13 @@ def run_detection_agent(
     result = _merge_registry_evidence(result, registry)
     result = _normalize_evidence_source_labels(result, ocr_package)
     validated = validate_detection_result(result)
+    usage_event = _record_locked_evidence_handoff_audit(
+        usage_event,
+        registry=registry,
+        result=validated,
+    )
+    if stage_callback:
+        stage_callback("Detection Evidence handoff completed")
     validated["_agent_usage_events"] = [
         event
         for event in (visual_registry_usage, association_usage, usage_event)

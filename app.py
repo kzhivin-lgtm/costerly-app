@@ -43,7 +43,11 @@ from db.workflow_routes import (
     workflow_route_key,
 )
 from styles.base import apply_base_css
-from ui.js_guards import scroll_parent_to_top, signal_app_ready_to_embed
+from ui.js_guards import (
+    clear_upload_processing_shell,
+    scroll_parent_to_top,
+    signal_app_ready_to_embed,
+)
 from ui.app_header import render_app_header
 from use_cases.latest_estimate import load_latest_estimate_route
 from use_cases.platform_admin import (
@@ -340,15 +344,27 @@ def main() -> None:
                 render_login_or_signup(None)
             _signal_ready(trace, "login")
             return
-        with trace.span("server.auth.browser_session_sync"):
-            browser_session_ready = sync_browser_auth_session(
-                trace_id=trace.trace_id,
-                run_id=trace.run_id,
-                run_sequence=st.session_state._runtime_run_sequence,
-                server_elapsed_before_component_ms=trace.summary()["server_elapsed_ms"],
-                recovery_requested=recovery_requested,
-                confirmation_requested=confirmation_requested,
+        trace.event("server.auth.browser_session_sync_started")
+        try:
+            with trace.span("server.auth.browser_session_sync"):
+                browser_session_ready = sync_browser_auth_session(
+                    trace_id=trace.trace_id,
+                    run_id=trace.run_id,
+                    run_sequence=st.session_state._runtime_run_sequence,
+                    server_elapsed_before_component_ms=trace.summary()["server_elapsed_ms"],
+                    recovery_requested=recovery_requested,
+                    confirmation_requested=confirmation_requested,
+                )
+        except Exception as exc:
+            trace.event(
+                "server.auth.browser_session_sync_failed",
+                status="error",
+                metadata={"error_type": type(exc).__name__},
             )
+            clear_upload_processing_shell()
+            st.error("Your browser session could not be restored. Reload the page and try again.")
+            _signal_ready(trace, "auth_session_error")
+            return
         trace.event(
             "server.auth.browser_session_sync_result",
             metadata={

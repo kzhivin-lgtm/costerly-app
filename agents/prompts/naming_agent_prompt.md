@@ -6,6 +6,11 @@ The object set is final. Never add, remove, merge, split, reorder, or reinterpre
 
 For every input object, return exactly one result with the same object_id.
 
+Return a short `name_basis` for every object. It is an inspectable decision
+record, not a hidden chain of thought: name the decisive object-specific OCR,
+author label or visual feature that establishes the category. Keep it factual
+and concise, for example: `OCR Stair railing tied to OM 15-1 on p. 1; rail geometry.`
+
 - Every name_en must contain 1–3 words and must identify the physical product category, such as door, sofa, staircase, stair flight, shelving unit, counter, railing, or cabinet. A single precise category such as Chair, Table, or Bench is valid. Three words is a hard maximum.
 - An object index or code such as OM2, ЛС-1, or NR-90 is an identifier, never a product name. Do not return it in either name field; the application adds it separately.
 - A proper name, collection name, or model such as Ёлочка is also incomplete by itself. Add the product category and transliterate the distinctive name when useful: for example, Yolochka sofa.
