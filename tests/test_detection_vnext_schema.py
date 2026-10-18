@@ -2,18 +2,13 @@ import pytest
 
 from agents.anthropic_adapter import discard_degenerate_evidence_regions
 from agents.schemas.detection_registry_schema import (
-    DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA,
-    DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     validate_detection_pairwise_merge_proofs,
-    validate_detection_document_measurement_context,
-    validate_detection_representation_packages,
     validate_detection_registry,
 )
 from agents.schemas.detection_schema import validate_detection_result
 from agents.schemas.detection_visual_map_schema import (
-    DetectionVisualMapSchemaError,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
@@ -149,139 +144,6 @@ def test_pairwise_merge_proof_rejects_a_lone_direct_structure_claim():
         validate_detection_pairwise_merge_proofs(proofs, registry=registry, page_count=1)
 
 
-def test_representation_package_connects_one_complete_view_with_its_details():
-    visual_groups = [
-        {
-            "group_id": "view-001", "page_number": 11,
-            "location_hint": "centre", "visual_description": "complete frontal shelving elevation N76B",
-            "representation_kind": "elevation", "commercial_role": "assembly_view",
-        },
-        {
-            "group_id": "view-002", "page_number": 11,
-            "location_hint": "upper", "visual_description": "N76B plan and profile detail",
-            "representation_kind": "plan_detail", "commercial_role": "component_detail",
-        },
-    ]
-    registry = {
-        "objects": [{
-            "object_id": "object-001", "transport_label": "N76B",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [11],
-            "estimation_evidence_pages": [11], "visual_group_ids": ["view-001"],
-            "visual_identity": "N76B shelving unit", "boundary_basis": "complete coded frontal elevation",
-        }],
-    }
-    packages = [{
-        "package_id": "package-001", "object_id": "object-001",
-        "assembly_view_group_ids": ["view-001"],
-        "supporting_component_detail_group_ids": ["view-002"],
-        "package_basis": "The N76B code, full elevation and supporting plan describe one shelving unit.",
-    }]
-
-    assert validate_detection_representation_packages(
-        packages, visual_groups=visual_groups, registry=registry,
-    ) == packages
-
-
-def test_representation_package_keeps_a_complete_grid_elevation_as_an_assembly_view():
-    visual_groups = [
-        {
-            "group_id": "view-001", "page_number": 11,
-            "location_hint": "upper", "visual_description": "N76B plan view",
-            "representation_kind": "plan", "commercial_role": "assembly_view",
-        },
-        {
-            "group_id": "view-002", "page_number": 11,
-            "location_hint": "lower", "visual_description": "N76B complete frontal grid elevation",
-            "representation_kind": "elevation", "commercial_role": "assembly_view",
-        },
-        {
-            "group_id": "view-003", "page_number": 11,
-            "location_hint": "right", "visual_description": "N76B section detail",
-            "representation_kind": "section", "commercial_role": "component_detail",
-        },
-    ]
-    registry = {
-        "objects": [{
-            "object_id": "object-001", "transport_label": "N76B",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [11],
-            "estimation_evidence_pages": [11],
-            "visual_group_ids": ["view-001", "view-002"],
-            "visual_identity": "N76B shelving unit", "boundary_basis": "coded plan and full elevation",
-        }],
-    }
-    packages = [{
-        "package_id": "package-001", "object_id": "object-001",
-        "assembly_view_group_ids": ["view-001", "view-002"],
-        "supporting_component_detail_group_ids": ["view-003"],
-        "package_basis": "The coded plan and complete grid elevation describe the same N76B unit.",
-    }]
-
-    assert validate_detection_representation_packages(
-        packages, visual_groups=visual_groups, registry=registry,
-    ) == packages
-
-
-def test_representation_package_schema_leaves_bookkeeping_ids_to_the_runtime():
-    package_schema = DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA["items"]
-
-    assert package_schema["required"] == [
-        "object_id",
-        "assembly_view_group_ids",
-        "supporting_component_detail_group_ids",
-        "package_basis",
-    ]
-    assert "package_id" not in package_schema["properties"]
-    assert package_schema["properties"]["object_id"]["minLength"] == 1
-
-
-def test_document_measurement_context_is_run_wide_internal_classification_context():
-    context = {
-        "unit": "cm", "evidence_pages": [3, 11],
-        "basis": "Repeated whole-envelope dimensions follow centimetre convention.",
-    }
-
-    assert validate_detection_document_measurement_context(context, page_count=11) == context
-    assert DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA["required"] == [
-        "unit", "evidence_pages", "basis",
-    ]
-
-
-def test_representation_packages_require_every_assembly_view_once():
-    visual_groups = [
-        {
-            "group_id": "view-001", "page_number": 1, "location_hint": "left",
-            "visual_description": "cabinet elevation", "representation_kind": "elevation",
-            "commercial_role": "assembly_view",
-        },
-        {
-            "group_id": "view-002", "page_number": 1, "location_hint": "right",
-            "visual_description": "console elevation", "representation_kind": "elevation",
-            "commercial_role": "assembly_view",
-        },
-    ]
-    registry = {
-        "objects": [{
-            "object_id": "object-001", "transport_label": "Object 1",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
-            "visual_identity": "cabinet", "boundary_basis": "complete cabinet",
-        }],
-    }
-    packages = [{
-        "package_id": "package-001", "object_id": "object-001",
-        "assembly_view_group_ids": ["view-001"],
-        "supporting_component_detail_group_ids": [], "package_basis": "cabinet view",
-    }]
-
-    with pytest.raises(
-        DetectionRegistrySchemaError,
-        match="account for every assembly view exactly once",
-    ):
-        validate_detection_representation_packages(
-            packages, visual_groups=visual_groups, registry=registry,
-        )
-
-
 def test_registry_schema_requires_at_least_one_visual_group_per_object():
     visual_group_ids = (
         DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -353,13 +215,11 @@ def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
                 "group_id": "view-001", "page_number": 1,
                 "location_hint": "left", "visual_description": "cabinet",
                 "representation_kind": "elevation", "commercial_role": "assembly_view",
-                "role_basis": "Complete cabinet envelope with overall dimensions.",
             },
             {
                 "group_id": "view-002", "page_number": 1,
                 "location_hint": "title block", "visual_description": "sheet metadata",
                 "representation_kind": "title_block", "commercial_role": "document_context",
-                "role_basis": "Title metadata has no physical product outline.",
             },
         ],
     }
@@ -368,19 +228,6 @@ def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
         visual_map,
         require_commercial_roles=True,
     ) == visual_map
-
-
-def test_integrated_visual_map_requires_a_factual_role_basis_for_each_group():
-    visual_map = {
-        "visual_groups": [{
-            "group_id": "view-001", "page_number": 1,
-            "location_hint": "left", "visual_description": "cabinet",
-            "representation_kind": "elevation", "commercial_role": "assembly_view",
-        }],
-    }
-
-    with pytest.raises(DetectionVisualMapSchemaError, match="fields do not match contract"):
-        validate_detection_visual_map(visual_map, require_commercial_roles=True)
 
 
 def test_registry_rejects_component_detail_as_commercial_boundary_support():

@@ -24,14 +24,10 @@ from agents.prompt_loader import (
     load_detection_visual_registry_prompt,
 )
 from agents.schemas.detection_registry_schema import (
-    DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA,
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
-    DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     validate_detection_pairwise_merge_proofs,
-    validate_detection_document_measurement_context,
-    validate_detection_representation_packages,
     validate_detection_registry,
 )
 from agents.schemas.detection_visual_map_schema import (
@@ -53,10 +49,9 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_representation_packages_v6_temperature_0"
+    "detection_v4_visual_registry_pairwise_merge_proofs_v1_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
-DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
@@ -86,26 +81,15 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
     "commercial_role"
 )
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "role_basis"
-)
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"]["role_basis"] = {
-    "type": "string"
-}
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": [
-        "document_measurement_context", "visual_groups", "representation_packages",
-        "merge_proofs", "objects", "page_coverage",
-    ],
+    "required": ["visual_groups", "objects", "merge_proofs", "page_coverage"],
     "properties": {
-        "document_measurement_context": DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA,
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
-        "representation_packages": DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA,
-        "merge_proofs": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
+        "merge_proofs": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "page_coverage": {
             "type": "array",
             "items": {
@@ -803,67 +787,6 @@ def _normalize_pairwise_merge_proof_group_ids(
     return normalized
 
 
-def _normalize_representation_package_group_ids(
-    packages: object,
-    group_id_mapping: dict[str, str],
-) -> tuple[object, list[dict[str, Any]]]:
-    """Canonicalize package joins and expose, rather than package, orphan details.
-
-    Package membership is an inference. A package ID is only a local join key,
-    so the runtime assigns it by response order. A model may nevertheless use a
-    component-only placeholder to say that some details found no owner. That is
-    not a package: retain the raw entry for audit, omit it from package
-    validation, then derive its component IDs as unattached evidence below.
-    """
-    if not isinstance(packages, list):
-        return packages, []
-    normalized: list[Any] = []
-    component_only_placeholders: list[dict[str, Any]] = []
-    for package in packages:
-        if not isinstance(package, dict):
-            normalized.append(copy.deepcopy(package))
-            continue
-        raw_assembly_ids = package.get("assembly_view_group_ids")
-        if not str(package.get("object_id") or "").strip() and raw_assembly_ids == []:
-            component_only_placeholders.append(copy.deepcopy(package))
-            continue
-        normalized_package = copy.deepcopy(package)
-        # The provider must not decide a generated bookkeeping ID. Ignore a
-        # stale/provider-supplied value while preserving it in the raw audit.
-        normalized_package.pop("package_id", None)
-        normalized_package["package_id"] = f"package-{len(normalized) + 1:03d}"
-        for field in (
-            "assembly_view_group_ids",
-            "supporting_component_detail_group_ids",
-        ):
-            group_ids = normalized_package.get(field)
-            if isinstance(group_ids, list):
-                normalized_package[field] = [
-                    group_id_mapping.get(str(group_id), str(group_id))
-                    for group_id in group_ids
-                ]
-        normalized.append(normalized_package)
-    return normalized, component_only_placeholders
-
-
-def _unattached_component_detail_group_ids(
-    visual_groups: list[dict[str, Any]],
-    representation_packages: list[dict[str, Any]],
-) -> list[str]:
-    """Derive component details with no evidenced commercial-package owner."""
-    component_detail_ids = {
-        str(group["group_id"])
-        for group in visual_groups
-        if group.get("commercial_role") == "component_detail"
-    }
-    attached_component_detail_ids = {
-        str(group_id)
-        for package in representation_packages
-        for group_id in package.get("supporting_component_detail_group_ids", [])
-    }
-    return sorted(component_detail_ids - attached_component_detail_ids)
-
-
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -876,8 +799,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_images=page_images, regions=regions,
     )
     response, diagnostics = create_claude_message_streamed(
-        get_anthropic_client(), model=selected_model,
-        max_tokens=DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
+        get_anthropic_client(), model=selected_model, max_tokens=8192,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
         system=build_detection_system_content(prompt=prompt),
         messages=[{"role": "user", "content": content}],
@@ -885,60 +807,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     )
     # Keep the inference parameter on both accepted and rejected Registry
     # events. The experiment must be comparable even when validation fails.
-    diagnostics.update({
-        "temperature": DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-        "output_token_ceiling": DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
-    })
-    raw_text = extract_text_from_claude_response(response)
+    diagnostics["temperature"] = DETECTION_VISUAL_REGISTRY_TEMPERATURE
     try:
-        payload = json.loads(raw_text)
+        payload = json.loads(extract_text_from_claude_response(response))
     except json.JSONDecodeError as exc:
-        failure_diagnostics = dict(diagnostics)
-        failure_diagnostics.update({
-            "validation_error": str(exc),
-            "validation_stage": "visual_registry_json_parse",
-            "attempt_label": "visual_registry_json_parse_failed",
-            "response_stop_reason": str(getattr(response, "stop_reason", "") or "unknown"),
-            "response_character_count": len(raw_text),
-        })
-        failure_usage = build_agent_usage_event(
-            agent_name="detection",
-            operation="rfq_detection_visual_registry",
-            company_id=company_id,
-            run_id=None,
-            file_name=file_name,
-            object_id=None,
-            object_name=None,
-            model=selected_model,
-            prompt_version=prompt_version,
-            response=response,
-            started_at=diagnostics["request_started_at"],
-            finished_at=diagnostics["request_finished_at"],
-            request_diagnostics=failure_diagnostics,
-        )
-        failure_usage["status"] = "failed"
-        failure_usage["error_message"] = str(exc)
-        raise DetectionVisualRegistryValidationError(
-            f"Detection visual-registry response failed validation: {exc}",
-            usage_event=failure_usage,
-        ) from exc
+        raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
     # Preserve the model's structured boundary decision before the runtime
     # normalizes group IDs or derives evidence-page references. This is an
     # inspectable decision record, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
     try:
-        required_payload_fields = {
-            "document_measurement_context", "visual_groups", "representation_packages",
-            "merge_proofs", "objects", "page_coverage",
-        }
-        if not isinstance(payload, dict) or set(payload) != required_payload_fields:
-            raise ValueError(
-                "visual registry must contain document_measurement_context, visual_groups, "
-                "representation_packages, merge_proofs, objects and page_coverage"
-            )
-        document_measurement_context = validate_detection_document_measurement_context(
-            payload["document_measurement_context"], page_count=len(page_images),
-        )
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "merge_proofs", "page_coverage"}:
+            raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -951,11 +831,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         }
         merge_proofs = _normalize_pairwise_merge_proof_group_ids(
             payload["merge_proofs"], group_id_mapping
-        )
-        representation_packages, component_only_package_placeholders = (
-            _normalize_representation_package_group_ids(
-                payload["representation_packages"], group_id_mapping
-            )
         )
         registry_objects_input, discarded_orphan_registry_object_ids = (
             _discard_trailing_orphan_registry_objects(
@@ -978,14 +853,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 group["group_id"]: group["commercial_role"]
                 for group in visual_map["visual_groups"]
             },
-        )
-        representation_packages = validate_detection_representation_packages(
-            representation_packages,
-            visual_groups=visual_map["visual_groups"],
-            registry=registry,
-        )
-        unattached_component_detail_group_ids = _unattached_component_detail_group_ids(
-            visual_map["visual_groups"], representation_packages,
         )
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
             merge_proofs,
@@ -1030,11 +897,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     }
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
-        "document_measurement_context": document_measurement_context,
-        "representation_package_count": len(representation_packages),
-        "component_only_package_placeholder_count": len(component_only_package_placeholders),
-        "component_only_package_placeholders": component_only_package_placeholders,
-        "unattached_component_detail_group_ids": unattached_component_detail_group_ids,
         "registry_object_count": len(registry["objects"]),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
         "visual_group_role_counts": {
