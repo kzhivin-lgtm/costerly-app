@@ -251,3 +251,25 @@ def test_registry_rejects_component_detail_as_commercial_boundary_support():
         )
 
     assert raised.value.details == {"non_assembly_visual_group_ids": ["view-001"]}
+
+
+def test_registry_keeps_component_details_in_page_coverage_not_anchor_groups():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "N76B",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [11],
+            "estimation_evidence_pages": [11], "visual_group_ids": ["view-003"],
+            "visual_identity": "decorative slat partition",
+            "boundary_basis": "dimensioned primary elevation establishes one partition",
+        }],
+    }
+
+    assert validate_detection_registry(
+        registry,
+        visual_group_ids={"view-001", "view-002", "view-003"},
+        visual_group_roles={
+            "view-001": "component_detail",
+            "view-002": "component_detail",
+            "view-003": "assembly_view",
+        },
+    ) == registry
