@@ -7,6 +7,7 @@ import json
 import math
 import os
 import sys
+from collections import Counter
 from threading import Lock
 import time
 from datetime import UTC, datetime
@@ -914,6 +915,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "pairwise_merge_proofs": pairwise_merge_proofs,
         "pairwise_merge_proof_count": len(pairwise_merge_proofs),
         "region_count": len(regions),
+        "region_kind_counts": dict(
+            sorted(Counter(str(region.get("region") or "unknown") for region in regions).items())
+        ),
+        "content_aware_region_pages": sorted({
+            int(region["page_number"])
+            for region in regions
+            if str(region.get("region") or "").startswith("drawing_")
+        }),
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",
     })
