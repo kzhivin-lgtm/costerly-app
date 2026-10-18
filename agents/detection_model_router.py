@@ -107,16 +107,12 @@ def detection_v42_model_route(
     boundary_model: str = DEFAULT_CLAUDE_DETECTION_V4_BOUNDARY_MODEL,
     explicit_model: str | None = None,
 ) -> dict[str, Any]:
-    """Select a boundary-processing pipeline without interpreting a drawing.
+    """Select a Registry and Evidence model without interpreting a drawing.
 
     Sonnet is selected only when raw OCR shows an unlabelled document with
     repeated pages containing multiple independently large drawing regions.
     That is the observable Ada-style ambiguity: several visual assemblies but
     no author-issued object code that helps Haiku establish the boundary.
-
-    The router does not decide any boundary. It selects either the ordinary
-    integrated Registry or a boundary-sensitive cycle that first maps visual
-    representations and then resolves their correspondence separately.
     """
     if explicit_model:
         return {
@@ -125,7 +121,6 @@ def detection_v42_model_route(
             "reasons": ["caller_supplied_model"],
             "registry_model": explicit_model,
             "evidence_model": explicit_model,
-            "pipeline": "integrated_registry",
             "signals": {},
         }
 
@@ -183,7 +178,6 @@ def detection_v42_model_route(
             # The second call only prepares Evidence for objects locked by the
             # Registry.  It stays on the efficient base model.
             "evidence_model": base_model,
-            "pipeline": "boundary_sensitive",
             "signals": signals,
         }
 
@@ -193,6 +187,5 @@ def detection_v42_model_route(
         "reasons": ["risk_threshold_not_met"],
         "registry_model": base_model,
         "evidence_model": base_model,
-        "pipeline": "integrated_registry",
         "signals": signals,
     }

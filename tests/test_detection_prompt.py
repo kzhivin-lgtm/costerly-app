@@ -6,8 +6,6 @@ from agents.anthropic_adapter import (
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
-    load_detection_boundary_registry_resolver_prompt,
-    load_detection_boundary_visual_map_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
@@ -66,18 +64,6 @@ def test_detection_visual_map_never_decides_objects_or_quantity():
     assert "Do not decide whether any depiction is an independent product" in prompt
     assert "Do not infer quantity" in prompt
     assert "cannot create, split, merge, name, count" in prompt
-
-
-def test_boundary_sensitive_prompts_separate_visual_map_from_identity_resolution():
-    visual_map_prompt = load_detection_boundary_visual_map_prompt()
-    resolver_prompt = load_detection_boundary_registry_resolver_prompt()
-
-    assert "Do not decide whether assembly views are the same or different" in visual_map_prompt
-    assert "exactly one `commercial_role`" in visual_map_prompt
-    assert "First group alternate projections" in resolver_prompt
-    assert "Every `assembly_view` must belong to exactly one returned object" in resolver_prompt
-    assert "same sheet" in resolver_prompt
-    assert "no arbitrary evidence-page limit" in resolver_prompt
 
 
 def test_integrated_visual_registry_keeps_visual_representations_and_commercial_objects_distinct():

@@ -11,7 +11,6 @@ import pytest
 
 from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_DETECTION_MODEL,
-    DETECTION_BOUNDARY_PIPELINE_TEMPERATURE,
     DetectionVisualRegistryValidationError,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
@@ -25,8 +24,6 @@ from agents.anthropic_adapter import (
     create_claude_message_streamed,
     normalize_detection_identity_fields,
     run_anthropic_detection_agent,
-    run_anthropic_detection_boundary_registry_resolver,
-    run_anthropic_detection_boundary_visual_map_agent,
     run_anthropic_detection_registry_agent,
     run_anthropic_detection_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
@@ -536,83 +533,6 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert usage["operation"] == "rfq_detection_visual_registry"
     assert usage["raw_usage"]["temperature"] == 0.0
     assert usage["raw_usage"]["registry_decision_audit"] == payload
-
-
-def test_boundary_sensitive_cycle_maps_then_resolves_at_temperature_zero():
-    visual_map_payload = {
-        "visual_groups": [
-            {
-                "group_id": "first", "page_number": 1,
-                "location_hint": "left", "visual_description": "low console",
-                "representation_kind": "elevation", "commercial_role": "assembly_view",
-            },
-            {
-                "group_id": "second", "page_number": 1,
-                "location_hint": "right", "visual_description": "wall cabinet",
-                "representation_kind": "elevation", "commercial_role": "assembly_view",
-            },
-        ],
-    }
-    boundary_payload = {
-        "objects": [
-            {
-                "object_id": "object-001", "transport_label": "Object 1",
-                "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-                "visual_group_ids": ["view-001"], "visual_identity": "low console",
-                "boundary_basis": "separate low finished envelope",
-            },
-            {
-                "object_id": "object-002", "transport_label": "Object 2",
-                "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-                "visual_group_ids": ["view-002"], "visual_identity": "wall cabinet",
-                "boundary_basis": "separate upper finished envelope",
-            },
-        ],
-        "page_coverage": [
-            {
-                "page_number": 1, "object_ids": ["object-001", "object-002"],
-                "evidence_reason": "both independent assemblies are visible",
-            },
-        ],
-    }
-    requested: list[tuple[str, float]] = []
-
-    def fake_create(*_args, model, temperature, **_kwargs):
-        requested.append((model, temperature))
-        return _Response(), {
-            "request_started_at": "2026-10-18T00:00:00+00:00",
-            "request_finished_at": "2026-10-18T00:00:01+00:00",
-        }
-
-    with (
-        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
-        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
-        patch(
-            "agents.anthropic_adapter.extract_text_from_claude_response",
-            side_effect=[json.dumps(visual_map_payload), json.dumps(boundary_payload)],
-        ),
-    ):
-        visual_map, visual_map_usage = run_anthropic_detection_boundary_visual_map_agent(
-            file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None,
-            model="haiku-model",
-        )
-        registry, resolver_usage = run_anthropic_detection_boundary_registry_resolver(
-            file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"], regions=[], ocr_package=None,
-            visual_map=visual_map, model="sonnet-model",
-        )
-
-    assert requested == [
-        ("haiku-model", DETECTION_BOUNDARY_PIPELINE_TEMPERATURE),
-        ("sonnet-model", DETECTION_BOUNDARY_PIPELINE_TEMPERATURE),
-    ]
-    assert visual_map_usage["operation"] == "rfq_detection_boundary_visual_map"
-    assert resolver_usage["operation"] == "rfq_detection_boundary_registry_resolver"
-    assert resolver_usage["raw_usage"]["boundary_registry_decision_audit"] == boundary_payload
-    assert [item["visual_group_ids"] for item in registry["objects"]] == [
-        ["view-001"], ["view-002"],
-    ]
 
 
 def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():
