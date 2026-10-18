@@ -25,9 +25,11 @@ from agents.prompt_loader import (
 )
 from agents.schemas.detection_registry_schema import (
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
+    DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     validate_detection_pairwise_merge_proofs,
+    validate_detection_representation_packages,
     validate_detection_registry,
 )
 from agents.schemas.detection_visual_map_schema import (
@@ -49,7 +51,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_pairwise_merge_proofs_v1_temperature_0"
+    "detection_v4_visual_registry_representation_packages_v1_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -85,9 +87,13 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "objects", "merge_proofs", "page_coverage"],
+    "required": [
+        "visual_groups", "representation_packages", "objects", "merge_proofs",
+        "page_coverage",
+    ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
+        "representation_packages": DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "merge_proofs": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "page_coverage": {
@@ -787,6 +793,30 @@ def _normalize_pairwise_merge_proof_group_ids(
     return normalized
 
 
+def _normalize_representation_package_group_ids(
+    packages: object,
+    group_id_mapping: dict[str, str],
+) -> object:
+    """Keep the package layer aligned with canonical visual-group IDs."""
+    if not isinstance(packages, list):
+        return packages
+    normalized = copy.deepcopy(packages)
+    for package in normalized:
+        if not isinstance(package, dict):
+            continue
+        for field in (
+            "assembly_view_group_ids",
+            "supporting_component_detail_group_ids",
+        ):
+            group_ids = package.get(field)
+            if isinstance(group_ids, list):
+                package[field] = [
+                    group_id_mapping.get(str(group_id), str(group_id))
+                    for group_id in group_ids
+                ]
+    return normalized
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -817,8 +847,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # inspectable decision record, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
     try:
-        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "merge_proofs", "page_coverage"}:
-            raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
+        required_payload_fields = {
+            "visual_groups", "representation_packages", "objects", "merge_proofs",
+            "page_coverage",
+        }
+        if not isinstance(payload, dict) or set(payload) != required_payload_fields:
+            raise ValueError(
+                "visual registry must contain visual_groups, representation_packages, "
+                "objects, merge_proofs and page_coverage"
+            )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -831,6 +868,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         }
         merge_proofs = _normalize_pairwise_merge_proof_group_ids(
             payload["merge_proofs"], group_id_mapping
+        )
+        representation_packages = _normalize_representation_package_group_ids(
+            payload["representation_packages"], group_id_mapping
         )
         registry_objects_input, discarded_orphan_registry_object_ids = (
             _discard_trailing_orphan_registry_objects(
@@ -853,6 +893,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 group["group_id"]: group["commercial_role"]
                 for group in visual_map["visual_groups"]
             },
+        )
+        representation_packages = validate_detection_representation_packages(
+            representation_packages,
+            visual_groups=visual_map["visual_groups"],
+            registry=registry,
         )
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
             merge_proofs,
@@ -897,6 +942,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     }
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
+        "representation_package_count": len(representation_packages),
         "registry_object_count": len(registry["objects"]),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
         "visual_group_role_counts": {

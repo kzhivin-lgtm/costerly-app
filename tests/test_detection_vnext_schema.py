@@ -5,6 +5,7 @@ from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     validate_detection_pairwise_merge_proofs,
+    validate_detection_representation_packages,
     validate_detection_registry,
 )
 from agents.schemas.detection_schema import validate_detection_result
@@ -142,6 +143,75 @@ def test_pairwise_merge_proof_rejects_a_lone_direct_structure_claim():
         match="needs two independent evidence types",
     ):
         validate_detection_pairwise_merge_proofs(proofs, registry=registry, page_count=1)
+
+
+def test_representation_package_connects_one_complete_view_with_its_details():
+    visual_groups = [
+        {
+            "group_id": "view-001", "page_number": 11,
+            "location_hint": "centre", "visual_description": "complete frontal shelving elevation N76B",
+            "representation_kind": "elevation", "commercial_role": "assembly_view",
+        },
+        {
+            "group_id": "view-002", "page_number": 11,
+            "location_hint": "upper", "visual_description": "N76B plan and profile detail",
+            "representation_kind": "plan_detail", "commercial_role": "component_detail",
+        },
+    ]
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "N76B",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [11],
+            "estimation_evidence_pages": [11], "visual_group_ids": ["view-001"],
+            "visual_identity": "N76B shelving unit", "boundary_basis": "complete coded frontal elevation",
+        }],
+    }
+    packages = [{
+        "package_id": "package-001", "object_id": "object-001",
+        "assembly_view_group_ids": ["view-001"],
+        "supporting_component_detail_group_ids": ["view-002"],
+        "package_basis": "The N76B code, full elevation and supporting plan describe one shelving unit.",
+    }]
+
+    assert validate_detection_representation_packages(
+        packages, visual_groups=visual_groups, registry=registry,
+    ) == packages
+
+
+def test_representation_packages_require_every_assembly_view_once():
+    visual_groups = [
+        {
+            "group_id": "view-001", "page_number": 1, "location_hint": "left",
+            "visual_description": "cabinet elevation", "representation_kind": "elevation",
+            "commercial_role": "assembly_view",
+        },
+        {
+            "group_id": "view-002", "page_number": 1, "location_hint": "right",
+            "visual_description": "console elevation", "representation_kind": "elevation",
+            "commercial_role": "assembly_view",
+        },
+    ]
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+            "visual_identity": "cabinet", "boundary_basis": "complete cabinet",
+        }],
+    }
+    packages = [{
+        "package_id": "package-001", "object_id": "object-001",
+        "assembly_view_group_ids": ["view-001"],
+        "supporting_component_detail_group_ids": [], "package_basis": "cabinet view",
+    }]
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="account for every assembly view exactly once",
+    ):
+        validate_detection_representation_packages(
+            packages, visual_groups=visual_groups, registry=registry,
+        )
 
 
 def test_registry_schema_requires_at_least_one_visual_group_per_object():
