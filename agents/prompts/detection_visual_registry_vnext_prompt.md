@@ -1,6 +1,6 @@
 # DETECTION V4 - VISUAL REGISTRY
 
-Build the visual representation map and the locked commercial-object registry in one response. First inspect the full pages and enlarged regions, then map visible representations, then decide the commercial objects. Keep these two levels separate in the output. Use the Pairwise merge-proof procedure before joining any two complete assembly views. When the input includes Coded Drawing Candidates, resolve each one explicitly before finalizing the Registry.
+Build the visual representation map and the locked commercial-object registry in one response. First inspect the full pages and enlarged regions, then map visible representations, then decide the commercial objects. Keep these two levels separate in the output. Use the Pairwise merge-proof procedure before joining any two complete assembly views.
 
 ## Visual representations
 
@@ -8,11 +8,11 @@ Each `visual_group` is one visibly distinct depiction that could help a later st
 
 Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, and exactly one `commercial_role`. Keep descriptions terse. A group records only that one visible depiction. Do not create a graph between groups: decide alternate views and product boundaries directly from the full visual evidence in the commercial registry.
 
-`assembly_view` means the depiction shows enough of a whole, finished assembly to take part in object-identity resolution. It is a candidate view, not a declaration that it is a new or independent product. `component_detail` means an isolated component, close-up, section, cutout, leaf, panel, track, module, hardware or construction fragment. It normally remains evidence for a relevant assembly through `page_coverage`. `document_context` means a title block, sheet layout, schedule, legend or other document context. It cannot create an object or appear in `visual_group_ids`. A visually isolated region is not automatically an `assembly_view`: use that role only when it shows a complete finished envelope or has explicit independent quote evidence. Conversely, a complete separately depicted assembly remains an `assembly_view` even without OCR or a code.
+`assembly_view` means the depiction shows enough of a whole, finished assembly to take part in object-identity resolution. It is a candidate view, not a declaration that it is a new or independent product. Only this role may appear in an object's `visual_group_ids`. `component_detail` means an isolated component, close-up, section, cutout, leaf, panel, track, module, hardware or construction fragment. It is evidence for the relevant assembly through `page_coverage`, but can never itself create a commercial object or appear in `visual_group_ids`. `document_context` means a title block, sheet layout, schedule, legend or other document context. It cannot create an object or appear in `visual_group_ids`. A visually isolated region is not automatically an `assembly_view`: use that role only when it shows a complete finished envelope or has explicit independent quote evidence. Conversely, a complete separately depicted assembly remains an `assembly_view` even without OCR or a code.
 
 ## Commercial registry
 
-Decide complete fabricated products a contractor would quote, fabricate, supply, install, replace or price independently. Start from `assembly_view` groups, then complete the Coded Drawing Candidate ledger below. A `component_detail` does not become a commercial object merely because it appears separately. It may support a new object only through an explicit `promote_to_new_object` decision for a Coded Drawing Candidate. A `document_context` never becomes an object.
+Decide complete fabricated products a contractor would quote, fabricate, supply, install, replace or price independently. Start only from `assembly_view` groups. A `component_detail` never becomes a commercial object merely because it appears separately. It remains supporting evidence on its page for the parent assembly. A `document_context` never becomes an object.
 
 Before creating any object, resolve identity across all `assembly_view` groups. For every assembly view, decide whether it is a new product or another projection of a product already represented. Do not create one object per `assembly_view` by default. A change of projection may make the same item look unlike itself, so whole-silhouette similarity is not required. Resolve the relation using the following evidence, in priority order:
 
@@ -23,16 +23,6 @@ Before creating any object, resolve identity across all `assembly_view` groups. 
 5. Secondary supporting signals only: being on one sheet, colour, material, visual proximity and room name. These may reinforce a relation already supported above, but never establish it alone.
 
 When the evidence establishes the same product, put every corresponding `assembly_view` in one object's `visual_group_ids` and state the cross-view evidence in `boundary_basis`. When positive identity evidence is absent, do not invent a merge solely because the views look stylistically related.
-
-## Coded Drawing Candidate ledger
-
-The user message may include Coded Drawing Candidates mechanically extracted from OCR. They are audit obligations, not object evidence by themselves. Each candidate is a literal code on one physical page. For every listed candidate, return exactly one `coded_drawing_candidate_resolutions` item with the same `candidate_id`.
-
-Choose `promote_to_new_object` when the page contains a separately coded package of coordinated product depictions and there is no positive relation to an existing object. This is especially required when two or more views together show the product's overall extents, topology, panel sequence or other distinctive geometry. The views may individually be `component_detail`, for example a plan/context view, a thin profile and a panel grid. Include their IDs in `promoted_group_ids`, create the target object, retain the literal code in its `transport_label`, and provide the required pairwise merge proofs.
-
-Choose `attach_to_existing_object` only when the candidate's literal code is exactly retained by the target object's `transport_label` and the document positively establishes that the views are representations of that same product. Leave `promoted_group_ids` empty.
-
-Choose `noncommercial_support` only when the visible package is positively a schedule, note, material callout, local joinery detail or other non-commercial support. Set `target_object_id` to an empty string and leave `promoted_group_ids` empty. A code alone does not justify a new object, but neither may a separately coded, dimensioned multi-view package disappear merely because its individual views look detail-like.
 
 ## Pairwise merge-proof procedure
 

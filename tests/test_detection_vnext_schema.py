@@ -251,26 +251,3 @@ def test_registry_rejects_component_detail_as_commercial_boundary_support():
         )
 
     assert raised.value.details == {"non_assembly_visual_group_ids": ["view-001"]}
-
-
-def test_registry_allows_only_explicitly_promoted_component_detail_boundary_support():
-    registry = {
-        "objects": [{
-            "object_id": "object-001", "transport_label": "N76B",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [11],
-            "estimation_evidence_pages": [11],
-            "visual_group_ids": ["view-001", "view-002"],
-            "visual_identity": "one coded cabinet in plan and elevation",
-            "boundary_basis": "N76B has coordinated plan and elevation views",
-        }],
-    }
-
-    assert validate_detection_registry(
-        registry,
-        visual_group_ids={"view-001", "view-002"},
-        visual_group_roles={
-            "view-001": "component_detail",
-            "view-002": "assembly_view",
-        },
-        promoted_component_detail_group_ids={"view-001"},
-    ) == registry

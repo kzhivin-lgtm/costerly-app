@@ -1,17 +1,5 @@
 # Detection Agent benchmark
 
-## V4.5 conditional orphan-detail resolver checkpoint, 2026-10-18
-
-Commits `4a0fcef` and `1f53231` protect the conditional post-Registry repair
-for unowned component-detail pages. A fresh owner-run HSL document returned
-nine commercial objects, including the separate N76B object. The resolver
-compares its page with all locked objects but can attach only to an object whose
-literal source code is present on that page. It therefore cannot equate N76B
-with N76 from a common prefix, sheet order or similar construction. This is a
-successful conditional-resolver result, not proof of normal-path regression
-coverage. Full contract, verification and pending Page 23/Adda checks:
-`notes/DETECTION_V4_5_ORPHAN_DETAIL_RESOLVER_CHECKPOINT_2026_10_18.md`.
-
 ## V4 Page 23 release gate, 2026-10-16
 
 Status: accepted for the Page 23 temperature-zero gate on 2026-10-18. The

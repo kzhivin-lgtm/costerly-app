@@ -32,7 +32,6 @@ def test_new_estimate_reset_clears_all_estimate_scoped_session_state():
         "objects_estimation_cache_dirty": {"estimate-old"},
         "file_review_naming_published.run-old": True,
         "file_review_naming_cache_synced.run-old": True,
-        "file_review_terminal_publication.run-old": {"naming": {}},
         "rfq_upload_input": "previous-file-widget-value",
     })
 
@@ -48,7 +47,6 @@ def test_new_estimate_reset_clears_all_estimate_scoped_session_state():
     assert st.session_state.processed_file_name is None
     assert "file_review_naming_published.run-old" not in st.session_state
     assert "file_review_naming_cache_synced.run-old" not in st.session_state
-    assert "file_review_terminal_publication.run-old" not in st.session_state
     assert "rfq_upload_input" not in st.session_state
     assert st.session_state.rfq_upload_widget_generation == 1
 
@@ -556,84 +554,18 @@ def test_file_review_preview_failure_reloads_saved_refs_then_stops_spinner():
     assert st.session_state[f"file_review_preview_terminal.{run_id}"] == "partial"
 
 
-def test_file_review_waits_for_both_deferred_batches_before_one_publication(monkeypatch):
-    st.session_state.clear()
-    run_id = "run-1"
-    object_id = "object-1"
-    objects = [{"object_id": object_id, "name": "Object 1", "preview_pending": True}]
-    st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
-    st.session_state.file_review_deferred_work = {
-        "run_id": run_id,
-        "naming": True,
-        "preview": True,
-    }
-    st.session_state.current_agent_timings = {}
-    file_review._sync_object_edit_state(run_id, objects)
-    file_review._ensure_object_edit(object_id, objects[0])
-    st.session_state[f"file_review_object_edits.{object_id}.name"] = "Object 1"
-    monkeypatch.setattr(
-        file_review,
-        "load_file_review_naming_publication",
-        lambda _run_id: {
-            "status": "succeeded", "names": {object_id: "N76B Shell Unit"},
-            "naming_seconds": 1.1,
-        },
-    )
-    monkeypatch.setattr(
-        file_review,
-        "load_file_review_preview_publication",
-        lambda _run_id: {"status": "pending"},
-    )
-
-    assert file_review._queue_terminal_deferred_file_review_publication(run_id) is False
-    assert f"file_review_terminal_publication.{run_id}" not in st.session_state
-
-    monkeypatch.setattr(
-        file_review,
-        "load_file_review_preview_publication",
-        lambda _run_id: {"status": "succeeded", "preview_seconds": 1.7},
-    )
-    assert file_review._queue_terminal_deferred_file_review_publication(run_id) is True
-    assert file_review._has_deferred_work(run_id) is True
-
-    assert file_review._apply_queued_deferred_file_review_publication(run_id) is True
-    assert file_review._has_deferred_work(run_id) is False
-    assert run_id not in st.session_state.file_review_data_cache
-    assert st.session_state.file_review_object_edits[object_id]["name"] == "N76B Shell Unit"
-    assert st.session_state[f"file_review_object_edits.{object_id}.name"] == "N76B Shell Unit"
-
-
-def test_file_review_defers_durable_naming_until_the_batch_barrier(monkeypatch):
-    st.session_state.clear()
-    run_id = "run-1"
-    st.session_state.file_review_deferred_work = {
-        "run_id": run_id,
-        "naming": True,
-        "preview": True,
-    }
-    monkeypatch.setattr(
-        file_review,
-        "load_file_review_naming_publication",
-        lambda _run_id: (_ for _ in ()).throw(AssertionError("must wait for barrier")),
-    )
-
-    file_review._sync_durable_naming_once(run_id)
-
-    assert f"file_review_naming_cache_synced.{run_id}" not in st.session_state
-
-
-def test_file_review_publishes_deferred_artifacts_in_one_terminal_rerun():
+def test_file_review_refreshes_only_object_cards_for_deferred_artifacts():
     source = (Path(__file__).parents[1] / "screens/file_review.py").read_text()
 
-    content = source.index("def _render_file_review_content")
-    watcher = source.index("def _watch_file_review_deferred_work")
+    dynamic = source.index("def _render_file_review_dynamic_content")
     navigation = source.index('"CONTINUE TO OBJECTS ESTIMATION"')
 
-    assert "@st.fragment(run_every=2.0)" in source[:watcher]
-    assert "st.rerun(scope=\"app\")" in source[watcher:navigation]
-    assert content < watcher < navigation
-    assert "_render_object_card(item)" in source[content:watcher]
-    assert "_render_object_card(item)" not in source[watcher:navigation]
+    assert "@st.fragment(run_every=2.0)" in source[:dynamic]
+    assert "st.rerun(scope=\"app\")" not in source
+    assert dynamic < navigation
+    assert source.index("_publish_deferred_file_review_work(run_id)", dynamic) < source.index(
+        "_render_object_card(item)", dynamic
+    )
 
 
 def test_file_review_back_to_upload_remembers_the_current_review_run():

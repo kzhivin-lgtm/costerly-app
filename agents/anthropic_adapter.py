@@ -6,7 +6,6 @@ import hashlib
 import json
 import math
 import os
-import re
 import sys
 from threading import Lock
 import time
@@ -50,7 +49,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_coded_candidate_ledger_v1_temperature_0"
+    "detection_v4_visual_registry_pairwise_merge_proofs_v1_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -83,38 +82,6 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
     "commercial_role"
 )
 
-DETECTION_CODE_CANDIDATE_RESOLUTIONS_SCHEMA: dict[str, Any] = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "candidate_id",
-            "decision",
-            "target_object_id",
-            "promoted_group_ids",
-            "observed_basis",
-        ],
-        "properties": {
-            "candidate_id": {"type": "string"},
-            "decision": {
-                "type": "string",
-                "enum": [
-                    "promote_to_new_object",
-                    "attach_to_existing_object",
-                    "noncommercial_support",
-                ],
-            },
-            "target_object_id": {"type": "string"},
-            "promoted_group_ids": {
-                "type": "array",
-                "items": {"type": "string"},
-            },
-            "observed_basis": {"type": "string"},
-        },
-    },
-}
-
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
@@ -123,9 +90,6 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "merge_proofs": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
-        "coded_drawing_candidate_resolutions": (
-            DETECTION_CODE_CANDIDATE_RESOLUTIONS_SCHEMA
-        ),
         "page_coverage": {
             "type": "array",
             "items": {
@@ -823,307 +787,12 @@ def _normalize_pairwise_merge_proof_group_ids(
     return normalized
 
 
-_CODED_DRAWING_TOKEN_RE = re.compile(
-    r"(?<![A-Za-z0-9])"
-    r"([A-Za-z]{1,5}[\s-]*\d{1,4}[A-Za-z]{0,3}(?:[-/]\d{1,4}[A-Za-z]{0,3})?)"
-    r"(?![A-Za-z0-9])",
-)
-_NON_OBJECT_CODE_TOKENS = {"A0", "A1", "A2", "A3", "A4", "ISO"}
-_NON_OBJECT_CODE_PREFIXES = {
-    "DATE", "IMG", "IMAGE", "NAME", "OF", "PAGE", "ROOM", "ROOMS",
-    "SCALE", "SHEET", "TABLE", "TBL", "TO",
-}
-_MAX_CODED_DRAWING_CANDIDATES = 48
-
-
-def _canonical_source_code(value: object) -> str:
-    """Canonicalize a literal code only for deterministic equality checks."""
-    return re.sub(r"[\s-]+", "", str(value or "").upper())
-
-
-def _is_non_object_code_token(canonical_code: str) -> bool:
-    prefix = re.match(r"[A-Z]+", canonical_code)
-    return (
-        not canonical_code
-        or canonical_code in _NON_OBJECT_CODE_TOKENS
-        or (
-            prefix is not None
-            and prefix.group(0) in _NON_OBJECT_CODE_PREFIXES
-        )
-    )
-
-
-def _page_markdown_codes(ocr_package: dict[str, Any] | None) -> dict[int, set[str]]:
-    """Prefer codes echoed in page-level OCR over incidental detail tags."""
-    codes_by_page: dict[int, set[str]] = {}
-    for page in (ocr_package or {}).get("pages") or []:
-        if not isinstance(page, dict):
-            continue
-        try:
-            page_number = int(page.get("page_number"))
-        except (TypeError, ValueError):
-            continue
-        if page_number < 1:
-            continue
-        text = "\n".join(
-            str(page.get(key) or "") for key in ("header", "footer", "markdown")
-        )
-        codes = {
-            _canonical_source_code(match.group(1))
-            for match in _CODED_DRAWING_TOKEN_RE.finditer(text)
-        }
-        codes_by_page[page_number] = {
-            code for code in codes if not _is_non_object_code_token(code)
-        }
-    return codes_by_page
-
-
-def _ocr_page_text_fragments(ocr_package: dict[str, Any] | None) -> dict[int, list[str]]:
-    """Collect literal OCR by physical page without assigning commercial scope."""
-    visual_fragments: dict[int, list[str]] = {}
-    fallback_fragments: dict[int, list[str]] = {}
-
-    def add(target: dict[int, list[str]], page_value: object, text_value: object) -> None:
-        try:
-            page_number = int(page_value)
-        except (TypeError, ValueError):
-            return
-        text = str(text_value or "").strip()
-        if page_number > 0 and text:
-            target.setdefault(page_number, []).append(text)
-
-    evidence = (ocr_package or {}).get("evidence")
-    if isinstance(evidence, dict):
-        for item in evidence.get("literal_items") or []:
-            if isinstance(item, dict):
-                add(visual_fragments, item.get("page_number"), item.get("text"))
-        for item in evidence.get("text_blocks") or []:
-            if isinstance(item, dict):
-                add(fallback_fragments, item.get("page_number"), item.get("text"))
-
-    for page in (ocr_package or {}).get("pages") or []:
-        if not isinstance(page, dict):
-            continue
-        page_number = page.get("page_number")
-        for key in ("header", "footer", "markdown"):
-            add(fallback_fragments, page_number, page.get(key))
-        for block in page.get("blocks") or []:
-            if isinstance(block, dict):
-                add(fallback_fragments, page_number, block.get("content"))
-    return {
-        page_number: visual_fragments.get(page_number)
-        or fallback_fragments.get(page_number, [])
-        for page_number in sorted(set(visual_fragments) | set(fallback_fragments))
-    }
-
-
-def _coded_drawing_candidates(
-    ocr_package: dict[str, Any] | None,
-    *,
-    page_count: int,
-) -> list[dict[str, object]]:
-    """Return bounded page-and-code audit candidates, never objects by themselves.
-
-    A literal code can be a sheet number, a component marker, or an item index.
-    It is therefore not commercial evidence. It only prevents a separately
-    coded drawing package from silently disappearing before the Registry makes
-    an explicit visual decision about it.
-    """
-    candidates: list[dict[str, object]] = []
-    seen: set[tuple[int, str]] = set()
-    page_fragments = _ocr_page_text_fragments(ocr_package)
-    markdown_codes_by_page = _page_markdown_codes(ocr_package)
-    for page_number in sorted(page_fragments):
-        if not 1 <= page_number <= page_count:
-            continue
-        for text in page_fragments[page_number]:
-            for match in _CODED_DRAWING_TOKEN_RE.finditer(text):
-                literal_code = match.group(1).strip()
-                canonical_code = _canonical_source_code(literal_code)
-                if (
-                    _is_non_object_code_token(canonical_code)
-                    or (
-                        page_number in markdown_codes_by_page
-                        and canonical_code not in markdown_codes_by_page[page_number]
-                    )
-                    or (page_number, canonical_code) in seen
-                ):
-                    continue
-                seen.add((page_number, canonical_code))
-                candidates.append({
-                    "candidate_id": f"code-p{page_number}-{canonical_code.casefold()}",
-                    "page_number": page_number,
-                    "literal_code": canonical_code,
-                })
-                if len(candidates) >= _MAX_CODED_DRAWING_CANDIDATES:
-                    return candidates
-    return candidates
-
-
-def _coded_drawing_candidate_context(candidates: list[dict[str, object]]) -> str:
-    if not candidates:
-        return ""
-    return (
-        "\n\nCODED DRAWING CANDIDATES (mechanically extracted OCR, not scope facts):\n"
-        "These tokens do not create, split or merge an object on their own. "
-        "They are an exhaustiveness audit. For each candidate below, visually "
-        "decide whether its page/package is a new commercial object, is an "
-        "explicit representation of an existing object with the same literal "
-        "code, or is non-commercial support. Return one "
-        "`coded_drawing_candidate_resolutions` item for every candidate.\n"
-        + json.dumps(candidates, ensure_ascii=False)
-    )
-
-
-def _normalize_coded_candidate_group_ids(
-    resolutions: object,
-    group_id_mapping: dict[str, str],
-) -> object:
-    if not isinstance(resolutions, list):
-        return resolutions
-    normalized = copy.deepcopy(resolutions)
-    for resolution in normalized:
-        if not isinstance(resolution, dict):
-            continue
-        group_ids = resolution.get("promoted_group_ids")
-        if isinstance(group_ids, list):
-            resolution["promoted_group_ids"] = [
-                group_id_mapping.get(str(group_id), str(group_id))
-                for group_id in group_ids
-            ]
-    return normalized
-
-
-def _transport_label_contains_code(label: object, literal_code: object) -> bool:
-    expected = _canonical_source_code(literal_code)
-    if not expected:
-        return False
-    return expected in {
-        _canonical_source_code(match.group(1))
-        for match in _CODED_DRAWING_TOKEN_RE.finditer(str(label or ""))
-    }
-
-
-def _validate_coded_drawing_candidate_resolutions(
-    resolutions: object,
-    *,
-    candidates: list[dict[str, object]],
-    registry: dict[str, Any],
-    visual_group_roles: dict[str, str],
-) -> set[str]:
-    """Require an explicit outcome for every code-backed visual audit candidate."""
-    if not candidates:
-        if resolutions in (None, []):
-            return set()
-        raise DetectionRegistrySchemaError(
-            "registry returned coded candidate resolutions without candidates"
-        )
-    if not isinstance(resolutions, list):
-        raise DetectionRegistrySchemaError(
-            "registry coded candidate resolutions must be a list"
-        )
-
-    expected_by_id = {
-        str(candidate["candidate_id"]): candidate for candidate in candidates
-    }
-    registry_by_id = {
-        str(item.get("object_id") or ""): item
-        for item in registry.get("objects") or []
-        if isinstance(item, dict)
-    }
-    required = {
-        "candidate_id", "decision", "target_object_id", "promoted_group_ids",
-        "observed_basis",
-    }
-    seen_candidate_ids: set[str] = set()
-    promoted_component_detail_group_ids: set[str] = set()
-    for resolution in resolutions:
-        if not isinstance(resolution, dict) or set(resolution) != required:
-            raise DetectionRegistrySchemaError(
-                "registry coded candidate resolution fields are invalid"
-            )
-        candidate_id = str(resolution.get("candidate_id") or "")
-        candidate = expected_by_id.get(candidate_id)
-        if candidate is None or candidate_id in seen_candidate_ids:
-            raise DetectionRegistrySchemaError(
-                "registry coded candidate resolutions are invalid"
-            )
-        seen_candidate_ids.add(candidate_id)
-        decision = str(resolution.get("decision") or "")
-        target_object_id = str(resolution.get("target_object_id") or "")
-        promoted_group_ids = resolution.get("promoted_group_ids")
-        if (
-            decision not in {
-                "promote_to_new_object", "attach_to_existing_object",
-                "noncommercial_support",
-            }
-            or not isinstance(promoted_group_ids, list)
-            or len(promoted_group_ids) != len(set(promoted_group_ids))
-            or not all(isinstance(group_id, str) and group_id for group_id in promoted_group_ids)
-            or not str(resolution.get("observed_basis") or "").strip()
-        ):
-            raise DetectionRegistrySchemaError(
-                "registry coded candidate resolution is invalid"
-            )
-        target = registry_by_id.get(target_object_id)
-        if decision == "noncommercial_support":
-            if target_object_id or promoted_group_ids:
-                raise DetectionRegistrySchemaError(
-                    "non-commercial coded candidate cannot own an object view"
-                )
-            continue
-        if target is None or not _transport_label_contains_code(
-            target.get("transport_label"), candidate["literal_code"]
-        ):
-            raise DetectionRegistrySchemaError(
-                "coded candidate target must retain its exact literal code"
-            )
-        if decision == "attach_to_existing_object":
-            if promoted_group_ids:
-                raise DetectionRegistrySchemaError(
-                    "attached coded candidate cannot promote a detail view"
-                )
-            continue
-        if not promoted_group_ids or not set(promoted_group_ids).issubset(
-            set(target.get("visual_group_ids") or [])
-        ):
-            raise DetectionRegistrySchemaError(
-                "promoted coded candidate views must belong to its new object"
-            )
-        if any(
-            visual_group_roles.get(group_id) == "document_context"
-            for group_id in promoted_group_ids
-        ):
-            raise DetectionRegistrySchemaError(
-                "document context cannot be promoted as a coded object view"
-            )
-        promoted_component_detail_group_ids.update(
-            group_id
-            for group_id in promoted_group_ids
-            if visual_group_roles.get(group_id) == "component_detail"
-        )
-
-    if seen_candidate_ids != set(expected_by_id):
-        raise DetectionRegistrySchemaError(
-            "registry must resolve every coded drawing candidate exactly once",
-            details={
-                "missing_candidate_ids": sorted(set(expected_by_id) - seen_candidate_ids),
-                "unexpected_candidate_ids": sorted(seen_candidate_ids - set(expected_by_id)),
-            },
-        )
-    return promoted_component_detail_group_ids
-
-
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_visual_registry_prompt()
     prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
     user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
-    coded_drawing_candidates = _coded_drawing_candidates(
-        ocr_package, page_count=len(page_images)
-    )
-    user_text += _coded_drawing_candidate_context(coded_drawing_candidates)
     schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
         file_name=file_name, file_bytes=file_bytes, user_text=user_text,
@@ -1148,22 +817,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # inspectable decision record, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
     try:
-        required_payload_fields = {
-            "visual_groups", "objects", "merge_proofs", "page_coverage",
-        }
-        optional_payload_fields = {"coded_drawing_candidate_resolutions"}
-        if (
-            not isinstance(payload, dict)
-            or not required_payload_fields.issubset(payload)
-            or not set(payload).issubset(required_payload_fields | optional_payload_fields)
-            or (
-                coded_drawing_candidates
-                and "coded_drawing_candidate_resolutions" not in payload
-            )
-        ):
-            raise ValueError(
-                "visual registry must contain its required fields and every coded candidate resolution"
-            )
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "merge_proofs", "page_coverage"}:
+            raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -1176,9 +831,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         }
         merge_proofs = _normalize_pairwise_merge_proof_group_ids(
             payload["merge_proofs"], group_id_mapping
-        )
-        coded_candidate_resolutions = _normalize_coded_candidate_group_ids(
-            payload.get("coded_drawing_candidate_resolutions"), group_id_mapping
         )
         registry_objects_input, discarded_orphan_registry_object_ids = (
             _discard_trailing_orphan_registry_objects(
@@ -1197,27 +849,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry = validate_detection_registry(
             registry_payload,
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-        )
-        visual_group_roles = {
-            group["group_id"]: group["commercial_role"]
-            for group in visual_map["visual_groups"]
-        }
-        promoted_component_detail_group_ids = (
-            _validate_coded_drawing_candidate_resolutions(
-                coded_candidate_resolutions,
-                candidates=coded_drawing_candidates,
-                registry=registry,
-                visual_group_roles=visual_group_roles,
-            )
-        )
-        registry = validate_detection_registry(
-            registry_payload,
-            visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
             visual_group_roles={
                 group["group_id"]: group["commercial_role"]
                 for group in visual_map["visual_groups"]
             },
-            promoted_component_detail_group_ids=promoted_component_detail_group_ids,
         )
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
             merge_proofs,
@@ -1278,11 +913,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_decision_audit": registry_decision_audit,
         "pairwise_merge_proofs": pairwise_merge_proofs,
         "pairwise_merge_proof_count": len(pairwise_merge_proofs),
-        "coded_drawing_candidates": coded_drawing_candidates,
-        "coded_drawing_candidate_resolutions": coded_candidate_resolutions or [],
-        "promoted_component_detail_group_ids": sorted(
-            promoted_component_detail_group_ids
-        ),
         "region_count": len(regions),
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",
