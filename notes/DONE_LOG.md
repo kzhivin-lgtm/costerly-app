@@ -1,5 +1,17 @@
 # Done Log
 
+Detection V4 pairwise-merge-proof checkpoint `2718498`: the existing single
+Visual Registry request now must prove each cross-view commercial-object merge
+with a connected, validated `N - 1` pairwise proof graph. This adds no model
+call and preserves locked object boundaries, shared physical-page Evidence,
+quantity policy and the conditional Sonnet router. The owner accepted 7/7
+fresh Adda runs with the required two objects and 3/3 Page 23 runs with three
+objects. Adda retained all four pages per object; Page 23 proved only the
+two-view TV-console merge. The targeted regression suite passed 81 tests. This
+is a boundary-and-Evidence checkpoint, not a Naming checkpoint. Full evidence,
+timing and limits: `notes/DETECTION_V4_PAIRWISE_MERGE_PROOFS_CHECKPOINT_2026_10_18.md`,
+завершена 18.10
+
 Detection V4 Page 23 temperature-zero checkpoint `2593c23`: the single
 integrated Haiku Visual Registry now explicitly uses `temperature=0.0`, with
 the parameter persisted for both accepted and failed Registry usage events.
