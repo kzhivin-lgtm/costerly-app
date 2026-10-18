@@ -19,6 +19,7 @@ from config import agent_cost_category, calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
+    load_detection_orphan_detail_resolver_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
@@ -52,6 +53,10 @@ DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
     "detection_v4_visual_registry_pairwise_merge_proofs_v1_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
+DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION = (
+    "detection_v4_orphan_detail_resolver_v1_temperature_0"
+)
+DETECTION_ORPHAN_DETAIL_RESOLVER_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
@@ -100,6 +105,91 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
                     "page_number": {"type": "integer", "minimum": 1},
                     "object_ids": {"type": "array", "items": {"type": "string"}},
                     "evidence_reason": {"type": "string"},
+                },
+            },
+        },
+    },
+}
+
+# The resolver is deliberately a patch protocol. It never regenerates the
+# normal Registry, so a rare unowned-detail case cannot alter boundaries that
+# the primary Registry already locked correctly.
+DETECTION_ORPHAN_DETAIL_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "from_group_id", "to_group_id", "evidence_types", "evidence_pages",
+        "observed_fact", "commercial_inseparability",
+    ],
+    "properties": {
+        "from_group_id": {"type": "string"},
+        "to_group_id": {"type": "string"},
+        "evidence_types": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "string",
+                "enum": sorted({
+                    "explicit_document_relation", "matching_topology",
+                    "dimension_transform", "unique_geometry",
+                    "direct_shared_structure",
+                }),
+            },
+        },
+        "evidence_pages": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "integer", "minimum": 1},
+        },
+        "observed_fact": {"type": "string"},
+        "commercial_inseparability": {"type": "string"},
+    },
+}
+
+DETECTION_ORPHAN_DETAIL_RESOLVER_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["resolutions"],
+    "properties": {
+        "resolutions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [
+                    "candidate_group_ids", "decision", "target_object_id",
+                    "transport_label", "quantity", "quantity_explicit",
+                    "identity_pages", "visual_identity", "boundary_basis",
+                    "merge_proofs", "resolution_basis",
+                ],
+                "properties": {
+                    "candidate_group_ids": {
+                        "type": "array", "minItems": 1,
+                        "items": {"type": "string"},
+                    },
+                    "decision": {
+                        "type": "string",
+                        "enum": [
+                            "attach_to_existing_object",
+                            "promote_to_new_object",
+                            "non_commercial_support",
+                        ],
+                    },
+                    "target_object_id": {"type": "string"},
+                    "transport_label": {"type": "string"},
+                    "quantity": {"type": "number", "minimum": 0},
+                    "quantity_explicit": {"type": "boolean"},
+                    "identity_pages": {
+                        "type": "array",
+                        "items": {"type": "integer", "minimum": 1},
+                    },
+                    "visual_identity": {"type": "string"},
+                    "boundary_basis": {"type": "string"},
+                    "merge_proofs": {
+                        "type": "array",
+                        "items": DETECTION_ORPHAN_DETAIL_MERGE_PROOF_JSON_SCHEMA,
+                    },
+                    "resolution_basis": {"type": "string"},
                 },
             },
         },
@@ -787,7 +877,449 @@ def _normalize_pairwise_merge_proof_group_ids(
     return normalized
 
 
-def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
+class DetectionOrphanDetailResolverError(ValueError):
+    """Keep a conditional resolver failure inspectable in the usage ledger."""
+
+    def __init__(self, message: str, *, usage_event: dict[str, Any]) -> None:
+        super().__init__(message)
+        self.usage_event = usage_event
+
+
+def _build_orphan_detail_context(
+    *,
+    objects: object,
+    page_coverage: object,
+    visual_map: dict[str, Any],
+    page_count: int,
+) -> dict[str, Any] | None:
+    """Find the narrow class that requires a second boundary decision.
+
+    `component_detail` normally remains outside `visual_group_ids` by design,
+    so that fact alone must never invoke another model call.  It is unresolved
+    only when its physical page has no established commercial owner, or the
+    primary Registry emitted a provisional object row with no boundary view.
+    """
+    if (
+        not isinstance(objects, list)
+        or not all(isinstance(item, dict) for item in objects)
+        or not isinstance(page_coverage, list)
+    ):
+        return None
+
+    coverage_by_page: dict[int, list[str]] = {}
+    for entry in page_coverage:
+        if not isinstance(entry, dict) or set(entry) != {
+            "page_number", "object_ids", "evidence_reason",
+        }:
+            return None
+        page_number = entry["page_number"]
+        object_ids = entry["object_ids"]
+        if (
+            not isinstance(page_number, int)
+            or not 1 <= page_number <= page_count
+            or page_number in coverage_by_page
+            or not isinstance(object_ids, list)
+            or not all(isinstance(object_id, str) for object_id in object_ids)
+        ):
+            return None
+        coverage_by_page[page_number] = list(object_ids)
+    if set(coverage_by_page) != set(range(1, page_count + 1)):
+        return None
+
+    provisional_ids = {
+        str(item.get("object_id"))
+        for item in objects
+        if item.get("visual_group_ids") == [] and str(item.get("object_id") or "")
+    }
+    unresolved_pages = {
+        page_number
+        for page_number, object_ids in coverage_by_page.items()
+        if not object_ids or any(object_id in provisional_ids for object_id in object_ids)
+    }
+    candidate_groups = [
+        copy.deepcopy(group)
+        for group in visual_map.get("visual_groups") or []
+        if (
+            group.get("commercial_role") == "component_detail"
+            and group.get("page_number") in unresolved_pages
+        )
+    ]
+    if not candidate_groups:
+        return None
+
+    candidate_group_ids = [str(group["group_id"]) for group in candidate_groups]
+    if len(candidate_group_ids) != len(set(candidate_group_ids)):
+        return None
+
+    return {
+        "candidate_groups": candidate_groups,
+        "candidate_group_ids": candidate_group_ids,
+        "candidate_page_numbers": sorted({int(group["page_number"]) for group in candidate_groups}),
+        "provisional_objects": [
+            copy.deepcopy(item)
+            for item in objects
+            if str(item.get("object_id") or "") in provisional_ids
+        ],
+        "provisional_object_ids": provisional_ids,
+        "existing_objects": [
+            copy.deepcopy(item)
+            for item in objects
+            if str(item.get("object_id") or "") not in provisional_ids
+        ],
+    }
+
+
+def _orphan_detail_resolver_page_numbers(
+    context: dict[str, Any], *, page_count: int,
+) -> list[int]:
+    """Give the resolver candidate pages plus all locked identity evidence."""
+    page_numbers = set(context["candidate_page_numbers"])
+    for item in [*context["existing_objects"], *context["provisional_objects"]]:
+        for page_number in item.get("identity_pages") or []:
+            if isinstance(page_number, int) and 1 <= page_number <= page_count:
+                page_numbers.add(page_number)
+    return sorted(page_numbers)
+
+
+def _run_anthropic_detection_orphan_detail_resolver(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    regions: list[dict[str, Any]],
+    ocr_package: dict[str, Any] | None,
+    model: str,
+    context: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Resolve only evidence that the primary Registry left without an owner."""
+    page_numbers = _orphan_detail_resolver_page_numbers(
+        context, page_count=len(page_images),
+    )
+    resolver_context = {
+        "candidate_groups": context["candidate_groups"],
+        "provisional_objects": context["provisional_objects"],
+        "existing_objects": context["existing_objects"],
+    }
+    user_text = "\n\n".join((
+        build_detection_user_text(
+            file_name=file_name, company_id=company_id, ocr_package=ocr_package,
+        ),
+        "Conditional orphan-detail resolution input. Existing objects are locked; return only the requested resolution patch:",
+        json.dumps(resolver_context, ensure_ascii=False, separators=(",", ":")),
+    ))
+    content = build_detection_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        user_text=user_text,
+        page_images=[page_images[page_number - 1] for page_number in page_numbers],
+        page_image_numbers=page_numbers,
+    )
+    content = append_detection_focus_regions(
+        content,
+        [region for region in regions if region.get("page_number") in set(page_numbers)],
+    )
+    response, diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=model,
+        max_tokens=8192,
+        temperature=DETECTION_ORPHAN_DETAIL_RESOLVER_TEMPERATURE,
+        system=build_detection_system_content(
+            prompt=load_detection_orphan_detail_resolver_prompt(),
+        ),
+        messages=[{"role": "user", "content": content}],
+        output_config={
+            "format": {
+                "type": "json_schema",
+                "schema": strip_schema_for_claude(
+                    DETECTION_ORPHAN_DETAIL_RESOLVER_JSON_SCHEMA,
+                ),
+            },
+        },
+    )
+    diagnostics.update({
+        "temperature": DETECTION_ORPHAN_DETAIL_RESOLVER_TEMPERATURE,
+        "candidate_group_ids": context["candidate_group_ids"],
+        "candidate_page_numbers": context["candidate_page_numbers"],
+        "resolver_page_numbers": page_numbers,
+        "attempt_label": "orphan_detail_resolver",
+    })
+    try:
+        payload = json.loads(extract_text_from_claude_response(response))
+        if not isinstance(payload, dict) or set(payload) != {"resolutions"}:
+            raise ValueError("orphan-detail resolver must contain only resolutions")
+        if not isinstance(payload["resolutions"], list):
+            raise ValueError("orphan-detail resolver resolutions must be a list")
+    except (ValueError, json.JSONDecodeError) as exc:
+        diagnostics["resolver_decision_audit"] = (
+            payload if "payload" in locals() else None
+        )
+        failure_usage = build_agent_usage_event(
+            agent_name="detection",
+            operation="rfq_detection_orphan_detail_resolver",
+            company_id=company_id,
+            run_id=None,
+            file_name=file_name,
+            object_id=None,
+            object_name=None,
+            model=model,
+            prompt_version=DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION,
+            response=response,
+            started_at=diagnostics["request_started_at"],
+            finished_at=diagnostics["request_finished_at"],
+            request_diagnostics=diagnostics,
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionOrphanDetailResolverError(
+            f"Detection orphan-detail resolver response failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
+
+    diagnostics["resolver_decision_audit"] = copy.deepcopy(payload)
+    usage = build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection_orphan_detail_resolver",
+        company_id=company_id,
+        run_id=None,
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=model,
+        prompt_version=DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION,
+        response=response,
+        started_at=diagnostics["request_started_at"],
+        finished_at=diagnostics["request_finished_at"],
+        request_diagnostics=diagnostics,
+    )
+    return payload, usage
+
+
+def _validate_orphan_detail_resolutions(
+    payload: dict[str, Any],
+    *,
+    context: dict[str, Any],
+    page_count: int,
+) -> list[dict[str, Any]]:
+    """Validate the resolver patch before it can alter the primary Registry."""
+    candidate_group_ids = set(context["candidate_group_ids"])
+    existing_object_ids = {
+        str(item.get("object_id") or "")
+        for item in context["existing_objects"]
+    }
+    candidate_pages_by_group = {
+        str(group["group_id"]): int(group["page_number"])
+        for group in context["candidate_groups"]
+    }
+    resolutions = payload.get("resolutions")
+    if not isinstance(resolutions, list) or not resolutions:
+        raise ValueError("orphan-detail resolver must resolve every candidate group")
+
+    required = {
+        "candidate_group_ids", "decision", "target_object_id", "transport_label",
+        "quantity", "quantity_explicit", "identity_pages", "visual_identity",
+        "boundary_basis", "merge_proofs", "resolution_basis",
+    }
+    assigned_group_ids: list[str] = []
+    validated: list[dict[str, Any]] = []
+    for resolution in resolutions:
+        if not isinstance(resolution, dict) or set(resolution) != required:
+            raise ValueError("orphan-detail resolver fields do not match contract")
+        group_ids = resolution["candidate_group_ids"]
+        decision = resolution["decision"]
+        if (
+            not isinstance(group_ids, list)
+            or not group_ids
+            or not all(isinstance(group_id, str) and group_id in candidate_group_ids for group_id in group_ids)
+            or len(group_ids) != len(set(group_ids))
+            or decision not in {
+                "attach_to_existing_object", "promote_to_new_object", "non_commercial_support",
+            }
+            or not isinstance(resolution["resolution_basis"], str)
+            or not resolution["resolution_basis"].strip()
+        ):
+            raise ValueError("orphan-detail resolver decision is invalid")
+        assigned_group_ids.extend(group_ids)
+        group_pages = {candidate_pages_by_group[group_id] for group_id in group_ids}
+        target_object_id = resolution["target_object_id"]
+        if decision == "attach_to_existing_object":
+            if target_object_id not in existing_object_ids or resolution["merge_proofs"] != []:
+                raise ValueError("orphan-detail attachment target is invalid")
+        elif decision == "promote_to_new_object":
+            identity_pages = resolution["identity_pages"]
+            if (
+                target_object_id
+                or not isinstance(resolution["transport_label"], str)
+                or not resolution["transport_label"].strip()
+                or not isinstance(resolution["quantity"], (int, float))
+                or resolution["quantity"] < 0
+                or not isinstance(resolution["quantity_explicit"], bool)
+                or not isinstance(identity_pages, list)
+                or not group_pages.issubset(identity_pages)
+                or not all(isinstance(page, int) and 1 <= page <= page_count for page in identity_pages)
+                or not isinstance(resolution["visual_identity"], str)
+                or not resolution["visual_identity"].strip()
+                or not isinstance(resolution["boundary_basis"], str)
+                or not resolution["boundary_basis"].strip()
+                or not isinstance(resolution["merge_proofs"], list)
+            ):
+                raise ValueError("orphan-detail promotion is invalid")
+        elif target_object_id or resolution["merge_proofs"] != []:
+            raise ValueError("orphan-detail non-commercial decision is invalid")
+        validated.append(copy.deepcopy(resolution))
+
+    if len(assigned_group_ids) != len(set(assigned_group_ids)) or set(assigned_group_ids) != candidate_group_ids:
+        raise ValueError("orphan-detail resolver must account for every candidate group exactly once")
+    return validated
+
+
+def _apply_orphan_detail_resolutions(
+    *,
+    objects: object,
+    page_coverage: object,
+    merge_proofs: object,
+    visual_map: dict[str, Any],
+    context: dict[str, Any],
+    resolutions: list[dict[str, Any]],
+) -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    dict[str, Any],
+    dict[str, Any],
+]:
+    """Apply a validated patch without reopening primary object boundaries."""
+    if not isinstance(objects, list) or not isinstance(page_coverage, list) or not isinstance(merge_proofs, list):
+        raise ValueError("orphan-detail resolver requires a structured primary registry")
+    provisional_object_ids = set(context["provisional_object_ids"])
+    final_objects = [
+        copy.deepcopy(item)
+        for item in objects
+        if str(item.get("object_id") or "") not in provisional_object_ids
+    ]
+    original_object_ids = [str(item.get("object_id") or "") for item in final_objects]
+    if len(original_object_ids) != len(set(original_object_ids)):
+        raise ValueError("orphan-detail resolver found duplicate primary object IDs")
+
+    candidate_pages_by_group = {
+        str(group["group_id"]): int(group["page_number"])
+        for group in context["candidate_groups"]
+    }
+    promoted_object_by_resolution: dict[int, dict[str, Any]] = {}
+    for index, resolution in enumerate(resolutions):
+        if resolution["decision"] != "promote_to_new_object":
+            continue
+        promoted = {
+            "object_id": f"resolver-new-{index}",
+            "transport_label": resolution["transport_label"].strip(),
+            "quantity": resolution["quantity"],
+            "quantity_explicit": resolution["quantity_explicit"],
+            "identity_pages": sorted(set(resolution["identity_pages"])),
+            "visual_group_ids": list(resolution["candidate_group_ids"]),
+            "visual_identity": resolution["visual_identity"].strip(),
+            "boundary_basis": resolution["boundary_basis"].strip(),
+        }
+        final_objects.append(promoted)
+        promoted_object_by_resolution[index] = promoted
+
+    old_to_final_id: dict[str, str] = {}
+    promoted_final_id: dict[int, str] = {}
+    for index, item in enumerate(final_objects, start=1):
+        old_object_id = str(item["object_id"])
+        final_object_id = f"object-{index:03d}"
+        old_to_final_id[old_object_id] = final_object_id
+        item["object_id"] = final_object_id
+        for resolution_index, promoted in promoted_object_by_resolution.items():
+            if promoted is item:
+                promoted_final_id[resolution_index] = final_object_id
+                break
+
+    updated_visual_map = copy.deepcopy(visual_map)
+    groups_by_id = {
+        str(group["group_id"]): group
+        for group in updated_visual_map.get("visual_groups") or []
+    }
+    for index, resolution in enumerate(resolutions):
+        if resolution["decision"] != "promote_to_new_object":
+            continue
+        for group_id in resolution["candidate_group_ids"]:
+            groups_by_id[group_id]["commercial_role"] = "assembly_view"
+
+    coverage_by_page: dict[int, dict[str, Any]] = {}
+    for raw_entry in page_coverage:
+        entry = copy.deepcopy(raw_entry)
+        page_number = entry.get("page_number")
+        if not isinstance(page_number, int):
+            raise ValueError("orphan-detail resolver page coverage is invalid")
+        mapped_ids = [
+            old_to_final_id[object_id]
+            for object_id in entry.get("object_ids") or []
+            if object_id in old_to_final_id
+        ]
+        entry["object_ids"] = list(dict.fromkeys(mapped_ids))
+        coverage_by_page[page_number] = entry
+
+    resolver_proofs: list[dict[str, Any]] = []
+    resolver_decisions_audit: list[dict[str, Any]] = []
+    for index, resolution in enumerate(resolutions):
+        group_pages = {
+            candidate_pages_by_group[group_id]
+            for group_id in resolution["candidate_group_ids"]
+        }
+        decision = resolution["decision"]
+        owner_id: str | None = None
+        if decision == "attach_to_existing_object":
+            owner_id = old_to_final_id[resolution["target_object_id"]]
+        elif decision == "promote_to_new_object":
+            owner_id = promoted_final_id[index]
+            group_pages.update(resolution["identity_pages"])
+            for proof in resolution["merge_proofs"]:
+                resolver_proofs.append({"object_id": owner_id, **copy.deepcopy(proof)})
+        if owner_id:
+            for page_number in group_pages:
+                entry = coverage_by_page.get(page_number)
+                if entry is None:
+                    raise ValueError("orphan-detail resolver references an uncovered page")
+                if owner_id not in entry["object_ids"]:
+                    entry["object_ids"].append(owner_id)
+                entry["evidence_reason"] = (
+                    f"{entry['evidence_reason']}; orphan-detail resolver: "
+                    f"{resolution['resolution_basis'].strip()}"
+                )
+        resolver_decisions_audit.append({
+            "candidate_group_ids": list(resolution["candidate_group_ids"]),
+            "decision": decision,
+            "target_object_id": owner_id,
+            "resolution_basis": resolution["resolution_basis"].strip(),
+        })
+
+    updated_proofs: list[dict[str, Any]] = []
+    for proof in merge_proofs:
+        if not isinstance(proof, dict):
+            updated_proofs.append(copy.deepcopy(proof))
+            continue
+        normalized_proof = copy.deepcopy(proof)
+        old_object_id = str(normalized_proof.get("object_id") or "")
+        if old_object_id in old_to_final_id:
+            normalized_proof["object_id"] = old_to_final_id[old_object_id]
+        updated_proofs.append(normalized_proof)
+    updated_proofs.extend(resolver_proofs)
+    return (
+        final_objects,
+        [coverage_by_page[page_number] for page_number in sorted(coverage_by_page)],
+        updated_proofs,
+        updated_visual_map,
+        {
+            "triggered": True,
+            "candidate_group_ids": context["candidate_group_ids"],
+            "candidate_page_numbers": context["candidate_page_numbers"],
+            "provisional_object_ids": sorted(provisional_object_ids),
+            "resolutions": resolver_decisions_audit,
+        },
+    )
+
+
+def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None, stage_callback: Callable[[str], None] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_visual_registry_prompt()
@@ -816,6 +1348,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # normalizes group IDs or derives evidence-page references. This is an
     # inspectable decision record, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
+    orphan_detail_resolver_usage: dict[str, Any] | None = None
+    orphan_detail_resolver_audit: dict[str, Any] | None = None
     try:
         if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "merge_proofs", "page_coverage"}:
             raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
@@ -832,13 +1366,69 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         merge_proofs = _normalize_pairwise_merge_proof_group_ids(
             payload["merge_proofs"], group_id_mapping
         )
-        registry_objects_input, discarded_orphan_registry_object_ids = (
-            _discard_trailing_orphan_registry_objects(
-                payload["objects"], payload["page_coverage"], page_count=len(page_images),
-            )
+        working_objects: object = payload["objects"]
+        working_page_coverage: object = payload["page_coverage"]
+        working_merge_proofs: object = merge_proofs
+        orphan_detail_context = _build_orphan_detail_context(
+            objects=working_objects,
+            page_coverage=working_page_coverage,
+            visual_map=visual_map,
+            page_count=len(page_images),
         )
+        discarded_orphan_registry_object_ids: list[str] = []
+        if orphan_detail_context:
+            if stage_callback:
+                stage_callback("Detection orphan-detail resolver started")
+            try:
+                resolver_payload, orphan_detail_resolver_usage = (
+                    _run_anthropic_detection_orphan_detail_resolver(
+                        file_name=file_name,
+                        company_id=company_id,
+                        file_bytes=file_bytes,
+                        page_images=page_images,
+                        regions=regions,
+                        ocr_package=ocr_package,
+                        model=selected_model,
+                        context=orphan_detail_context,
+                    )
+                )
+            except DetectionOrphanDetailResolverError as exc:
+                orphan_detail_resolver_usage = exc.usage_event
+                raise
+            resolutions = _validate_orphan_detail_resolutions(
+                resolver_payload,
+                context=orphan_detail_context,
+                page_count=len(page_images),
+            )
+            (
+                working_objects,
+                working_page_coverage,
+                working_merge_proofs,
+                visual_map,
+                orphan_detail_resolver_audit,
+            ) = _apply_orphan_detail_resolutions(
+                objects=working_objects,
+                page_coverage=working_page_coverage,
+                merge_proofs=working_merge_proofs,
+                visual_map=visual_map,
+                context=orphan_detail_context,
+                resolutions=resolutions,
+            )
+            orphan_detail_resolver_usage["raw_usage"]["application"] = (
+                orphan_detail_resolver_audit
+            )
+            if stage_callback:
+                stage_callback("Detection orphan-detail resolver completed")
+        else:
+            working_objects, discarded_orphan_registry_object_ids = (
+                _discard_trailing_orphan_registry_objects(
+                    working_objects,
+                    working_page_coverage,
+                    page_count=len(page_images),
+                )
+            )
         registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
-            registry_objects_input, payload["page_coverage"], page_count=len(page_images),
+            working_objects, working_page_coverage, page_count=len(page_images),
         )
         registry_payload = {"objects": registry_objects}
         for item in registry_payload["objects"]:
@@ -855,7 +1445,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             },
         )
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
-            merge_proofs,
+            working_merge_proofs,
             registry=registry,
             page_count=len(page_images),
         )
@@ -867,6 +1457,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "validation_stage": "visual_registry",
             "attempt_label": "visual_registry_validation_failed",
         })
+        if orphan_detail_resolver_usage:
+            failure_diagnostics["orphan_detail_resolver"] = {
+                "prompt_version": orphan_detail_resolver_usage.get("prompt_version"),
+                "raw_usage": orphan_detail_resolver_usage.get("raw_usage"),
+                "error_message": orphan_detail_resolver_usage.get("error_message"),
+            }
         if isinstance(exc, DetectionRegistrySchemaError) and exc.details:
             failure_diagnostics["validation_details"] = exc.details
         failure_usage = build_agent_usage_event(
@@ -917,11 +1513,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",
     })
+    if orphan_detail_resolver_usage:
+        diagnostics["orphan_detail_resolver"] = orphan_detail_resolver_audit
     if reconciled_object_ids:
         diagnostics["single_page_coverage_reconciled_object_ids"] = reconciled_object_ids
     if discarded_orphan_registry_object_ids:
         diagnostics["discarded_orphan_registry_object_ids"] = discarded_orphan_registry_object_ids
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    if orphan_detail_resolver_usage:
+        usage["_additional_usage_events"] = [orphan_detail_resolver_usage]
     return visual_map, registry, usage
 
 

@@ -312,6 +312,7 @@ def run_detection_agent(
             file_name=file_name, company_id=company_id, file_bytes=file_bytes,
             page_images=registry_images, regions=regions,
             ocr_package=ocr_package, model=route["registry_model"],
+            stage_callback=stage_callback,
         )
     except DetectionVisualRegistryValidationError as exc:
         if stage_callback:
@@ -320,7 +321,17 @@ def run_detection_agent(
         raise
     if stage_callback:
         stage_callback("Detection Registry completed")
+    additional_visual_registry_usages = []
+    if isinstance(visual_registry_usage, dict):
+        additional_visual_registry_usages = visual_registry_usage.pop(
+            "_additional_usage_events", [],
+        )
     visual_registry_usage = _attach_detection_model_route(visual_registry_usage, route)
+    additional_visual_registry_usages = [
+        _attach_detection_model_route(event, route)
+        for event in additional_visual_registry_usages
+        if isinstance(event, dict)
+    ]
     registry = _enforce_shared_track_door_system_quantity(registry)
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
     evidence_page_numbers = sorted({page for item in registry["objects"] for page in item["estimation_evidence_pages"]})
@@ -354,6 +365,12 @@ def run_detection_agent(
     if stage_callback:
         stage_callback("Detection Evidence handoff completed")
     validated["_agent_usage_events"] = [
-        event for event in (visual_registry_usage, usage_event) if event
+        event
+        for event in (
+            visual_registry_usage,
+            *additional_visual_registry_usages,
+            usage_event,
+        )
+        if event
     ]
     return validated
