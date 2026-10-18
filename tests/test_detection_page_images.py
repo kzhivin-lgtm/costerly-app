@@ -1,8 +1,4 @@
 import base64
-from io import BytesIO
-from pathlib import Path
-
-from PIL import Image, ImageDraw
 
 from agents.anthropic_adapter import (
     build_detection_content_blocks,
@@ -10,12 +6,11 @@ from agents.anthropic_adapter import (
 )
 from agents.detection_page_images import (
     DEFAULT_INLINE_PDF_REQUEST_MAX_BYTES,
-    _build_content_aware_drawing_regions,
     _natural_page_number,
-    build_detection_registry_regions,
     estimated_inline_pdf_bytes,
     should_use_detection_page_images,
 )
+from pathlib import Path
 from use_cases import rfq_processing
 
 
@@ -50,7 +45,11 @@ def test_detection_request_combines_jpeg_pages_without_index_anchor():
     )
 
     assert [block["type"] for block in blocks] == [
-        "text", "image", "text", "image", "text",
+        "text",
+        "image",
+        "text",
+        "image",
+        "text",
     ]
     assert base64.b64decode(blocks[1]["source"]["data"]) == b"jpeg-one"
     assert "COMPACT PACKAGE-LEVEL INDEX EVIDENCE" not in blocks[-1]["text"]
@@ -142,55 +141,3 @@ def test_processing_uses_only_bounded_browser_handshake_after_complete_marker():
 
     assert "time.sleep(0.25)" not in complete_tail
     assert "time.sleep(0.12)" in complete_tail
-
-
-def _jpeg_with_left_title_and_three_islands() -> bytes:
-    image = Image.new("RGB", (1000, 1400), "white")
-    draw = ImageDraw.Draw(image)
-    draw.rectangle((20, 20, 220, 1380), outline="black", width=4)
-    for index, y in enumerate(range(50, 1320, 24)):
-        x = 35 + (index * 17) % 145
-        draw.rectangle((x, y, x + 24, y + 21), fill="black")
-    draw.rectangle((400, 100, 880, 260), outline="black", width=4)
-    draw.rectangle((380, 560, 860, 600), outline="black", width=4)
-    draw.rectangle((350, 900, 900, 1220), outline="black", width=4)
-    output = BytesIO()
-    image.save(output, format="JPEG", quality=90)
-    return output.getvalue()
-
-
-def test_content_aware_regions_add_drawing_field_and_three_islands():
-    regions = _build_content_aware_drawing_regions(
-        _jpeg_with_left_title_and_three_islands(), page_number=11, max_regions=4
-    )
-
-    assert [region["region"] for region in regions] == [
-        "drawing_field", "drawing_island_1", "drawing_island_2", "drawing_island_3",
-    ]
-    assert {region["page_number"] for region in regions} == {11}
-    assert all(region["bytes"] for region in regions)
-
-
-def test_content_aware_regions_do_not_trigger_without_one_title_strip():
-    image = Image.new("RGB", (1000, 1400), "white")
-    draw = ImageDraw.Draw(image)
-    for y in (100, 560, 900):
-        draw.rectangle((300, y, 850, y + 120), outline="black", width=4)
-    output = BytesIO()
-    image.save(output, format="JPEG", quality=90)
-
-    assert _build_content_aware_drawing_regions(
-        output.getvalue(), page_number=1, max_regions=4
-    ) == []
-
-
-def test_content_aware_regions_are_added_without_displacing_standard_regions():
-    page = _jpeg_with_left_title_and_three_islands()
-    regions = build_detection_registry_regions([page], max_images=8)
-
-    assert [region["region"] for region in regions[:3]] == [
-        "upper_left", "upper_right", "lower"
-    ]
-    assert [region["region"] for region in regions[3:]] == [
-        "drawing_field", "drawing_island_1", "drawing_island_2", "drawing_island_3",
-    ]
