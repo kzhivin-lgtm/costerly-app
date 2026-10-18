@@ -10,6 +10,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 
 DEFAULT_PAGE_IMAGE_DPI = 96
 DEFAULT_PAGE_IMAGE_QUALITY = 75
@@ -19,6 +21,7 @@ ANTHROPIC_MAX_IMAGES_PER_REQUEST = 100
 ANTHROPIC_MULTI_IMAGE_MAX_DIMENSION = 2_000
 REGISTRY_MAX_IMAGES = 100
 REGISTRY_REGIONS_PER_PAGE = 3
+REGISTRY_CONTENT_AWARE_MAX_EXTRA_REGIONS = 15
 
 
 def estimated_inline_pdf_bytes(file_bytes: bytes) -> int:
@@ -172,4 +175,121 @@ def build_detection_registry_regions(
                     "region": region,
                     "bytes": output.getvalue(),
                 })
+    extra_capacity = min(
+        max(0, max_images - len(page_images) - len(regions)),
+        REGISTRY_CONTENT_AWARE_MAX_EXTRA_REGIONS,
+    )
+    for page_number, page_bytes in enumerate(page_images, start=1):
+        if extra_capacity < 5:
+            break
+        focused = _build_contextual_drawing_regions(
+            page_bytes, page_number=page_number, max_regions=extra_capacity
+        )
+        regions.extend(focused)
+        extra_capacity -= len(focused)
     return regions
+
+
+def _build_contextual_drawing_regions(
+    page_bytes: bytes,
+    *,
+    page_number: int,
+    max_regions: int,
+) -> list[dict[str, Any]]:
+    """Add a title-block context crop and three drawing islands as one package.
+
+    This is only visual input shaping. It never declares object boundaries. A
+    title block is included with every focused package, so isolated geometry
+    never loses the source sheet's author-assigned code.
+    """
+    if max_regions < 5:
+        return []
+    from io import BytesIO
+    from PIL import Image
+
+    with Image.open(BytesIO(page_bytes)) as source:
+        image = source.convert("RGB")
+    width, height = image.size
+    if width < 400 or height < 400:
+        return []
+    ink = np.asarray(image.convert("L")) < 235
+    ink = ink.copy()
+    ink[:, np.mean(ink, axis=0) > 0.75] = False
+    ink[np.mean(ink, axis=1) > 0.75, :] = False
+    margin_x = max(8, int(width * 0.015))
+    margin_y = max(8, int(height * 0.015))
+    side_width = max(margin_x + 1, int(width * 0.24))
+    rows = slice(margin_y, height - margin_y)
+
+    def side_score(left: bool) -> float:
+        side = (
+            ink[rows, margin_x:side_width]
+            if left else ink[rows, width - side_width:width - margin_x]
+        )
+        return float(np.mean(np.mean(side, axis=1) > 0.025))
+
+    left_score, right_score = side_score(True), side_score(False)
+    if left_score >= 0.45 and left_score >= right_score * 1.10:
+        title_left, field_left, field_right = True, side_width, width - margin_x
+    elif right_score >= 0.45 and right_score >= left_score * 1.10:
+        title_left, field_left, field_right = False, margin_x, width - side_width
+    else:
+        return []
+    if field_right - field_left < width * 0.45:
+        return []
+
+    row_density = ink[margin_y:height - margin_y, field_left:field_right].mean(axis=1)
+    active = np.convolve(row_density, np.ones(11) / 11, mode="same") > 0.006
+    bands: list[tuple[int, int]] = []
+    start: int | None = None
+    for offset, is_active in enumerate(active):
+        if is_active and start is None:
+            start = offset + margin_y
+        elif not is_active and start is not None:
+            end = offset - 1 + margin_y
+            if end - start >= max(18, int(height * 0.012)):
+                bands.append((start, end))
+            start = None
+    if start is not None:
+        bands.append((start, height - margin_y - 1))
+    merged: list[tuple[int, int]] = []
+    for top, bottom in bands:
+        if merged and top - merged[-1][1] <= int(height * 0.035):
+            merged[-1] = (merged[-1][0], bottom)
+        else:
+            merged.append((top, bottom))
+    if len(merged) < 3:
+        return []
+    selected = sorted(merged, key=lambda band: band[1] - band[0], reverse=True)[:3]
+    selected.sort()
+    if selected[-1][1] - selected[0][0] < int(height * 0.40):
+        return []
+
+    padding_x, padding_y = max(12, int(width * 0.025)), max(12, int(height * 0.02))
+    output: list[dict[str, Any]] = []
+
+    def append_crop(label: str, box: tuple[int, int, int, int]) -> None:
+        encoded = BytesIO()
+        image.crop(box).save(encoded, format="JPEG", quality=88)
+        output.append({"page_number": page_number, "region": label, "bytes": encoded.getvalue()})
+
+    title_box = (
+        (margin_x, margin_y, side_width, height - margin_y)
+        if title_left else (width - side_width, margin_y, width - margin_x, height - margin_y)
+    )
+    append_crop("sheet_context", title_box)
+    field_top = max(margin_y, selected[0][0] - padding_y)
+    field_bottom = min(height - margin_y, selected[-1][1] + padding_y)
+    append_crop("drawing_field", (field_left, field_top, field_right, field_bottom))
+    for index, (top, bottom) in enumerate(selected, start=1):
+        band = ink[top:bottom + 1, field_left:field_right]
+        columns = np.flatnonzero(np.mean(band, axis=0) > 0.004)
+        if not len(columns):
+            return []
+        left = max(field_left, field_left + int(columns[0]) - padding_x)
+        right = min(field_right, field_left + int(columns[-1]) + padding_x + 1)
+        append_crop(
+            f"drawing_island_{index}",
+            (left, max(margin_y, top - padding_y), right, min(height - margin_y, bottom + padding_y)),
+        )
+    return output
