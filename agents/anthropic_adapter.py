@@ -24,11 +24,9 @@ from agents.prompt_loader import (
     load_detection_visual_registry_prompt,
 )
 from agents.schemas.detection_registry_schema import (
-    DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA,
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
-    validate_detection_document_measurement_context,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
 )
@@ -51,7 +49,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_role_gate_v1_temperature_0"
+    "detection_v4_visual_registry_pairwise_merge_proofs_v1_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -84,19 +82,12 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
     "commercial_role"
 )
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "role_basis"
-)
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": [
-        "document_measurement_context", "visual_groups", "objects",
-        "merge_proofs", "page_coverage",
-    ],
+    "required": ["visual_groups", "objects", "merge_proofs", "page_coverage"],
     "properties": {
-        "document_measurement_context": DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA,
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "merge_proofs": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
@@ -860,17 +851,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # inspectable decision record, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
     try:
-        if not isinstance(payload, dict) or set(payload) != {
-            "document_measurement_context", "visual_groups", "objects",
-            "merge_proofs", "page_coverage",
-        }:
-            raise ValueError(
-                "visual registry must contain only document_measurement_context, "
-                "visual_groups, objects, merge_proofs and page_coverage"
-            )
-        document_measurement_context = validate_detection_document_measurement_context(
-            payload["document_measurement_context"], page_count=len(page_images),
-        )
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "merge_proofs", "page_coverage"}:
+            raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -958,7 +940,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
             for role in ("assembly_view", "component_detail", "document_context")
         },
-        "document_measurement_context": document_measurement_context,
         "page_coverage_count": len(payload["page_coverage"]),
         "unassigned_page_count": sum(
             not entry["object_ids"] for entry in payload["page_coverage"]

@@ -2,22 +2,6 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from typing import Any
 
-DOCUMENT_MEASUREMENT_UNITS = frozenset({"mm", "cm", "m", "mixed", "unknown"})
-
-DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["unit", "evidence_pages", "basis"],
-    "properties": {
-        "unit": {"type": "string", "enum": sorted(DOCUMENT_MEASUREMENT_UNITS)},
-        "evidence_pages": {
-            "type": "array",
-            "items": {"type": "integer", "minimum": 1},
-        },
-        "basis": {"type": "string"},
-    },
-}
-
 DETECTION_REGISTRY_JSON_SCHEMA: dict[str, Any] = {"type":"object","additionalProperties":False,"required":["objects"],"properties":{"objects":{"type":"array","items":{"type":"object","additionalProperties":False,"required":["object_id","transport_label","quantity","quantity_explicit","identity_pages","estimation_evidence_pages","visual_group_ids","visual_identity","boundary_basis"],"properties":{"object_id":{"type":"string"},"transport_label":{"type":"string"},"quantity":{"type":"number","minimum":0},"quantity_explicit":{"type":"boolean"},"identity_pages":{"type":"array","items":{"type":"integer","minimum":1}},"estimation_evidence_pages":{"type":"array","items":{"type":"integer","minimum":1}},"visual_group_ids":{"type":"array","minItems":1,"items":{"type":"string"}},"visual_identity":{"type":"string"},"boundary_basis":{"type":"string"}}}}}}
 
 PAIRWISE_MERGE_EVIDENCE_TYPES = frozenset({
@@ -81,48 +65,6 @@ class DetectionRegistrySchemaError(ValueError):
     ) -> None:
         super().__init__(message)
         self.details = details or {}
-
-
-def validate_detection_document_measurement_context(
-    context: object,
-    *,
-    page_count: int,
-) -> dict[str, Any]:
-    """Validate a document-wide unit observation used only for role decisions.
-
-    This is not object dimensions and is never part of the Estimation handoff.
-    It makes a role decision such as a 345 x 268 cm shelving elevation
-    inspectable without turning Detection into a dimension extractor.
-    """
-    required = {"unit", "evidence_pages", "basis"}
-    if not isinstance(context, dict) or set(context) != required:
-        raise DetectionRegistrySchemaError(
-            "document measurement context fields do not match contract"
-        )
-    unit = context["unit"]
-    evidence_pages = context["evidence_pages"]
-    if unit not in DOCUMENT_MEASUREMENT_UNITS:
-        raise DetectionRegistrySchemaError("document measurement context unit is invalid")
-    if (
-        not isinstance(evidence_pages, list)
-        or len(evidence_pages) != len(set(evidence_pages))
-        or not all(
-            isinstance(page, int) and 1 <= page <= page_count
-            for page in evidence_pages
-        )
-    ):
-        raise DetectionRegistrySchemaError(
-            "document measurement context pages are invalid"
-        )
-    if unit != "unknown" and not evidence_pages:
-        raise DetectionRegistrySchemaError(
-            "known document measurement context requires evidence pages"
-        )
-    if not str(context["basis"]).strip():
-        raise DetectionRegistrySchemaError(
-            "document measurement context basis is required"
-        )
-    return context
 
 def validate_detection_registry(
     result: dict[str, Any],

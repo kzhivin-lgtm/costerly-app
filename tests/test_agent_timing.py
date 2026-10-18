@@ -89,22 +89,6 @@ class _FakeClient:
     messages = _FakeMessages()
 
 
-def _prepare_integrated_registry_payload(payload):
-    """Add required role-audit fixtures without hiding the asserted output."""
-    payload.setdefault("document_measurement_context", {
-        "unit": "unknown",
-        "evidence_pages": [],
-        "basis": "The fixture does not establish a document-wide unit.",
-    })
-    for group in payload.get("visual_groups", []):
-        if isinstance(group, dict) and "commercial_role" in group:
-            group.setdefault(
-                "role_basis",
-                f"Fixture role: {group['commercial_role']}.",
-            )
-    return payload
-
-
 class _TimeoutMessages:
     @staticmethod
     def _error():
@@ -536,7 +520,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         patch("agents.anthropic_adapter.get_secret", return_value="model"),
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
         patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_prepare_integrated_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -552,7 +536,6 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert usage["raw_usage"]["temperature"] == 0.0
     assert usage["raw_usage"]["output_token_ceiling"] == DETECTION_VISUAL_REGISTRY_MAX_TOKENS
     assert usage["raw_usage"]["registry_decision_audit"] == payload
-    assert usage["raw_usage"]["document_measurement_context"]["unit"] == "unknown"
 
 
 def test_integrated_visual_registry_persists_truncated_json_diagnostics():
@@ -627,7 +610,7 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_prepare_integrated_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -670,7 +653,7 @@ def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan(
             "request_started_at": "2026-10-16T00:00:00+00:00",
             "request_finished_at": "2026-10-16T00:00:01+00:00",
         })),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_prepare_integrated_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -709,7 +692,7 @@ def test_integrated_visual_registry_keeps_empty_group_object_with_evidence_as_er
             "request_started_at": "2026-10-16T00:00:00+00:00",
             "request_finished_at": "2026-10-16T00:00:01+00:00",
         })),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_prepare_integrated_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
         pytest.raises(DetectionVisualRegistryValidationError, match="registry visual groups are invalid"),
     ):
         run_anthropic_detection_visual_registry_agent(
@@ -752,7 +735,7 @@ def test_registry_uses_the_same_atomic_visual_group_contract_for_all_models():
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_prepare_integrated_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
         patch("agents.anthropic_adapter.build_detection_system_content", side_effect=fake_system_content),
     ):
         _, _, haiku_usage = run_anthropic_detection_visual_registry_agent(
@@ -802,7 +785,7 @@ def test_integrated_visual_registry_requires_page_coverage_for_every_uploaded_pa
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_prepare_integrated_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
         pytest.raises(RuntimeError, match="account for every uploaded page exactly once"),
     ):
         run_anthropic_detection_visual_registry_agent(
@@ -855,7 +838,7 @@ def test_integrated_visual_registry_reconciles_missing_object_on_only_page():
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_prepare_integrated_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
     ):
         _, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
@@ -895,7 +878,7 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_prepare_integrated_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
         pytest.raises(DetectionVisualRegistryValidationError) as raised,
     ):
         run_anthropic_detection_visual_registry_agent(
@@ -947,7 +930,7 @@ def test_integrated_visual_registry_persists_duplicate_group_ownership_details()
                 "request_finished_at": "2026-10-16T00:00:01+00:00",
             }),
         ),
-        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_prepare_integrated_registry_payload(payload))),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
         pytest.raises(DetectionVisualRegistryValidationError) as raised,
     ):
         run_anthropic_detection_visual_registry_agent(

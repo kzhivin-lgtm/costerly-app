@@ -77,10 +77,6 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "shared schedule, title block, layout or multi-object context" in prompt
     assert "groups that prove this object's commercial boundary" in prompt
     assert "exactly one `commercial_role`" in prompt
-    assert "document_measurement_context" in prompt
-    assert "role_basis" in prompt
-    assert "Exclude floor plans, reflected-ceiling plans, electrical, plumbing, HVAC/MEP and coordination plans" in prompt
-    assert "supporting evidence only" in prompt
     assert "A `component_detail` never becomes a commercial object" in prompt
     assert "A `document_context` never becomes an object" in prompt
     assert "resolve identity across all `assembly_view` groups" in prompt
@@ -92,5 +88,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Test commercial separability, not merely visual adjacency" in prompt
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_role_gate_v1_temperature_0"
+        "detection_v4_visual_registry_pairwise_merge_proofs_v1_temperature_0"
     )
