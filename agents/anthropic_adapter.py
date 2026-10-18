@@ -57,7 +57,7 @@ DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION = (
-    "detection_v4_orphan_detail_resolver_v4_temperature_0"
+    "detection_v4_orphan_detail_resolver_v4_5_temperature_0"
 )
 DETECTION_ORPHAN_DETAIL_RESOLVER_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -1072,13 +1072,72 @@ def _build_orphan_detail_context(
 def _orphan_detail_resolver_page_numbers(
     context: dict[str, Any], *, page_count: int,
 ) -> list[int]:
-    """Give the resolver candidate pages plus all locked identity evidence."""
-    page_numbers = set(context["candidate_page_numbers"])
-    for item in [*context["existing_objects"], *context["provisional_objects"]]:
-        for page_number in item.get("identity_pages") or []:
-            if isinstance(page_number, int) and 1 <= page_number <= page_count:
-                page_numbers.add(page_number)
-    return sorted(page_numbers)
+    """Give the repair stage only the unresolved physical pages.
+
+    Locked-object identity is supplied as structured comparison cards.  A
+    candidate-to-object attachment still requires a literal relation on the
+    candidate page, so rendering every locked object's pages only invites a
+    false association through drawing sequence or similar construction.
+    """
+    return sorted({
+        page_number
+        for page_number in context["candidate_page_numbers"]
+        if isinstance(page_number, int) and 1 <= page_number <= page_count
+    })
+
+
+def _orphan_detail_attachment_targets(context: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return locked objects that may legally receive this page's details.
+
+    When the unresolved page has a different literal source code, an attachment
+    to another coded object is possible only if that target's whole code also
+    appears on the candidate page.  This mirrors the runtime validation and
+    prevents the model from being offered an impossible attachment option.
+    """
+    existing_objects = context["existing_objects"]
+    candidate_text = "\n".join(
+        str(text or "")
+        for text in (context.get("candidate_page_ocr_text") or {}).values()
+    )
+    provisional_codes = {
+        str(item.get("transport_label") or "").strip()
+        for item in context.get("provisional_objects") or []
+        if _is_source_code(item.get("transport_label"))
+    }
+    if not candidate_text or not provisional_codes:
+        return copy.deepcopy(existing_objects)
+
+    targets: list[dict[str, Any]] = []
+    for item in existing_objects:
+        label = str(item.get("transport_label") or "").strip()
+        has_different_provisional_code = any(
+            code != label for code in provisional_codes
+        )
+        if (
+            not _is_source_code(label)
+            or not has_different_provisional_code
+            or _ocr_contains_exact_code(candidate_text, label)
+        ):
+            targets.append(copy.deepcopy(item))
+    return targets
+
+
+def _orphan_detail_object_card(
+    item: dict[str, Any], *, include_object_id: bool,
+) -> dict[str, Any]:
+    """Expose only identity facts needed for comparison or legal attachment."""
+    fields = (
+        "transport_label", "quantity", "quantity_explicit", "identity_pages",
+        "visual_identity", "boundary_basis",
+    )
+    card = {
+        field: copy.deepcopy(item[field])
+        for field in fields
+        if field in item
+    }
+    if include_object_id and "object_id" in item:
+        card["object_id"] = copy.deepcopy(item["object_id"])
+    return card
 
 
 def _run_anthropic_detection_orphan_detail_resolver(
@@ -1096,6 +1155,7 @@ def _run_anthropic_detection_orphan_detail_resolver(
     page_numbers = _orphan_detail_resolver_page_numbers(
         context, page_count=len(page_images),
     )
+    attachment_targets = _orphan_detail_attachment_targets(context)
     resolver_context = {
         "candidate_groups": context["candidate_groups"],
         "page_scope_groups": context["page_scope_groups"],
@@ -1118,7 +1178,17 @@ def _run_anthropic_detection_orphan_detail_resolver(
             }
             for item in context["provisional_objects"]
         ],
-        "existing_objects": context["existing_objects"],
+        # Every locked object remains visible for comparison, but its ID is
+        # withheld.  IDs appear only on targets whose literal code is present
+        # on the candidate page and therefore can pass attachment validation.
+        "known_objects_for_comparison": [
+            _orphan_detail_object_card(item, include_object_id=False)
+            for item in context["existing_objects"]
+        ],
+        "attachable_existing_objects": [
+            _orphan_detail_object_card(item, include_object_id=True)
+            for item in attachment_targets
+        ],
     }
     user_text = "\n\n".join((
         build_detection_user_text(
@@ -1235,6 +1305,10 @@ def _validate_orphan_detail_resolutions(
         str(item.get("object_id") or ""): item
         for item in context["existing_objects"]
     }
+    attachable_existing_object_ids = {
+        str(item.get("object_id") or "")
+        for item in _orphan_detail_attachment_targets(context)
+    }
     pages_by_group = {
         str(group["group_id"]): int(group["page_number"])
         for group in context["page_scope_groups"]
@@ -1285,6 +1359,10 @@ def _validate_orphan_detail_resolutions(
         if decision == "attach_to_existing_object":
             if target_object_id not in existing_object_ids:
                 raise ValueError("orphan-detail attachment target does not name a locked object")
+            if target_object_id not in attachable_existing_object_ids:
+                raise ValueError(
+                    "orphan-detail attachment has no literal target-code evidence on candidate page"
+                )
             if assembly_group_ids:
                 raise ValueError("orphan-detail attachment cannot create assembly views")
             if resolution["merge_proofs"] != []:

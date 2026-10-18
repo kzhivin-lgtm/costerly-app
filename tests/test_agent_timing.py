@@ -693,7 +693,9 @@ def test_integrated_visual_registry_resolves_only_an_unowned_component_detail_ca
     ):
         visual_map, registry, usage = run_anthropic_detection_visual_registry_agent(
             file_name="n76b.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"one", b"two"], regions=[], ocr_package=None, model="model",
+            page_images=[b"one", b"two"], regions=[], ocr_package={
+                "pages": [{"page_number": 2, "markdown": "N76B"}],
+            }, model="model",
         )
 
     assert len(requests) == 2
@@ -711,6 +713,7 @@ def test_integrated_visual_registry_resolves_only_an_unowned_component_detail_ca
     assert usage["raw_usage"]["orphan_detail_resolver"]["eligible_assembly_group_ids"] == [
         "view-002", "view-003", "view-004",
     ]
+    assert usage["_additional_usage_events"][0]["raw_usage"]["resolver_page_numbers"] == [2]
     assert usage["_additional_usage_events"][0]["prompt_version"] == (
         DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION
     )
@@ -725,6 +728,9 @@ def test_integrated_visual_registry_resolves_only_an_unowned_component_detail_ca
     )
     assert '"provisional_candidates"' in resolver_request
     assert '"provisional_objects"' not in resolver_request
+    assert '"known_objects_for_comparison"' in resolver_request
+    assert '"attachable_existing_objects":[]' in resolver_request
+    assert '"object_id":"object-001"' not in resolver_request
     assert '"object_id":"object-002"' not in resolver_request
 
 
