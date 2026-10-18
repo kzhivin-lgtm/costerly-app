@@ -56,6 +56,7 @@ DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
     "detection_v4_visual_registry_representation_packages_v6_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
+DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
@@ -875,7 +876,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         page_images=page_images, regions=regions,
     )
     response, diagnostics = create_claude_message_streamed(
-        get_anthropic_client(), model=selected_model, max_tokens=8192,
+        get_anthropic_client(), model=selected_model,
+        max_tokens=DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
         temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
         system=build_detection_system_content(prompt=prompt),
         messages=[{"role": "user", "content": content}],
@@ -883,11 +885,43 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     )
     # Keep the inference parameter on both accepted and rejected Registry
     # events. The experiment must be comparable even when validation fails.
-    diagnostics["temperature"] = DETECTION_VISUAL_REGISTRY_TEMPERATURE
+    diagnostics.update({
+        "temperature": DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+        "output_token_ceiling": DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
+    })
+    raw_text = extract_text_from_claude_response(response)
     try:
-        payload = json.loads(extract_text_from_claude_response(response))
+        payload = json.loads(raw_text)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
+        failure_diagnostics = dict(diagnostics)
+        failure_diagnostics.update({
+            "validation_error": str(exc),
+            "validation_stage": "visual_registry_json_parse",
+            "attempt_label": "visual_registry_json_parse_failed",
+            "response_stop_reason": str(getattr(response, "stop_reason", "") or "unknown"),
+            "response_character_count": len(raw_text),
+        })
+        failure_usage = build_agent_usage_event(
+            agent_name="detection",
+            operation="rfq_detection_visual_registry",
+            company_id=company_id,
+            run_id=None,
+            file_name=file_name,
+            object_id=None,
+            object_name=None,
+            model=selected_model,
+            prompt_version=prompt_version,
+            response=response,
+            started_at=diagnostics["request_started_at"],
+            finished_at=diagnostics["request_finished_at"],
+            request_diagnostics=failure_diagnostics,
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Detection visual-registry response failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
     # Preserve the model's structured boundary decision before the runtime
     # normalizes group IDs or derives evidence-page references. This is an
     # inspectable decision record, not private chain-of-thought.
