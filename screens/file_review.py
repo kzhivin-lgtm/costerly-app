@@ -170,6 +170,35 @@ def _commit_object_name(run_id: str, object_id: str, widget_key: str) -> None:
     expected_name = str(edit.get("expected_name") or previous_name)
     submitted_name = str(st.session_state.get(widget_key) or "").strip()
 
+    # Publishing deferred Naming replaces a widget value after its original
+    # browser input has already been rendered. Streamlit can subsequently send
+    # that former value as an on_change event. It is an acknowledgement of the
+    # automatic replacement, not an edit, and must never restore a placeholder.
+    stale_echoes_key = f"file_review_deferred_name_echoes.{run_id}"
+    stale_echoes = st.session_state.get(stale_echoes_key)
+    stale_echo = stale_echoes.get(object_id) if isinstance(stale_echoes, dict) else None
+    if (
+        isinstance(stale_echo, dict)
+        and submitted_name == str(stale_echo.get("stale_name") or "")
+        and expected_name == str(stale_echo.get("published_name") or "")
+    ):
+        published_name = str(stale_echo["published_name"])
+        edit["name"] = published_name
+        edit["expected_name"] = published_name
+        st.session_state[widget_key] = published_name
+        stale_echoes.pop(object_id, None)
+        if not stale_echoes:
+            st.session_state.pop(stale_echoes_key, None)
+        st.session_state.file_review_name_save_error = None
+        st.session_state.screen = "file_review"
+        return
+    if isinstance(stale_echoes, dict) and stale_echo is not None:
+        # The one protected echo has either been consumed above or the user has
+        # supplied a distinct real edit. Do not suppress later user intent.
+        stale_echoes.pop(object_id, None)
+        if not stale_echoes:
+            st.session_state.pop(stale_echoes_key, None)
+
     # A Streamlit widget can briefly report an empty value while its previous
     # screen is unmounted. Empty is never a valid user edit, so retain the
     # canonical File Review value instead of sending a destructive save.
@@ -518,6 +547,10 @@ def _publish_persisted_naming(
     if isinstance(data, dict):
         edits = st.session_state.setdefault("file_review_object_edits", {})
         initial_names = st.session_state.setdefault("file_review_initial_object_names", {})
+        stale_echoes = st.session_state.setdefault(
+            f"file_review_deferred_name_echoes.{run_id}",
+            {},
+        )
         for item in data.get("objects") or []:
             object_id = _object_id(item)
             new_name = str(names.get(object_id) or "")
@@ -530,6 +563,10 @@ def _publish_persisted_naming(
                 edit["expected_name"] = new_name
                 widget_key = f"file_review_object_edits.{object_id}.name"
                 if st.session_state.get(widget_key) == initial_name:
+                    stale_echoes[object_id] = {
+                        "stale_name": initial_name,
+                        "published_name": new_name,
+                    }
                     st.session_state[widget_key] = new_name
             item["name"] = new_name
 

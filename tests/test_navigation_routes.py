@@ -371,6 +371,9 @@ def test_file_review_publishes_persisted_naming_once_without_reloading_review():
     assert objects[0]["name"] == "Shelving unit"
     assert st.session_state.file_review_object_edits[object_id]["name"] == "Shelving unit"
     assert st.session_state[widget_key] == "Shelving unit"
+    assert st.session_state[f"file_review_deferred_name_echoes.{run_id}"] == {
+        object_id: {"stale_name": "Object 1", "published_name": "Shelving unit"},
+    }
     assert st.session_state.current_agent_timings["naming_seconds"] == 1.2
     assert "TC unavailable" in file_review._timing_html({"total_seconds": 1.2})
     assert "TC 0.024" in file_review._timing_html({"total_seconds": 1.2, "token_cost": 0.024166})
@@ -378,6 +381,44 @@ def test_file_review_publishes_persisted_naming_once_without_reloading_review():
         run_id,
         {"status": "succeeded", "names": {object_id: "Different name"}},
     ) is False
+
+
+def test_file_review_ignores_one_stale_browser_name_echo_after_deferred_naming(monkeypatch):
+    st.session_state.clear()
+    run_id = "run-1"
+    object_id = "object-3"
+    widget_key = f"file_review_object_edits.{object_id}.name"
+    objects = [{"object_id": object_id, "name": "Object 3"}]
+    st.session_state.file_review_data_cache = {run_id: {"objects": objects}}
+    file_review._sync_object_edit_state(run_id, objects)
+    st.session_state.file_review_object_edits[object_id] = {
+        "name": "Object 3",
+        "expected_name": "Object 3",
+    }
+    st.session_state[widget_key] = "Object 3"
+    file_review._publish_persisted_naming(
+        run_id,
+        {"status": "succeeded", "names": {object_id: "TV console"}},
+    )
+    saved = []
+    monkeypatch.setattr(
+        file_review,
+        "save_file_review_object_name",
+        lambda **kwargs: saved.append(kwargs),
+    )
+
+    # This is the delayed browser acknowledgement of the previously rendered
+    # placeholder. It must not become a real write.
+    st.session_state[widget_key] = "Object 3"
+    file_review._commit_object_name(run_id, object_id, widget_key)
+
+    assert saved == []
+    assert st.session_state[widget_key] == "TV console"
+    assert st.session_state.file_review_object_edits[object_id] == {
+        "name": "TV console",
+        "expected_name": "TV console",
+    }
+    assert f"file_review_deferred_name_echoes.{run_id}" not in st.session_state
 
 
 def test_file_review_persisted_naming_does_not_overwrite_a_manual_name():
