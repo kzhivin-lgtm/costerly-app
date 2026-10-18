@@ -16,6 +16,18 @@ _NON_EXPLICIT_MERGE_SUPPORT_TYPES = frozenset({
     "dimension_transform",
     "unique_geometry",
 })
+DOCUMENT_MEASUREMENT_UNITS = frozenset({"mm", "cm", "m", "mixed", "unknown"})
+
+DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["unit", "evidence_pages", "basis"],
+    "properties": {
+        "unit": {"type": "string", "enum": sorted(DOCUMENT_MEASUREMENT_UNITS)},
+        "evidence_pages": {"type": "array", "items": {"type": "integer", "minimum": 1}},
+        "basis": {"type": "string"},
+    },
+}
 
 DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
@@ -92,6 +104,33 @@ class DetectionRegistrySchemaError(ValueError):
     ) -> None:
         super().__init__(message)
         self.details = details or {}
+
+
+def validate_detection_document_measurement_context(
+    context: object,
+    *,
+    page_count: int,
+) -> dict[str, Any]:
+    """Validate run-wide dimension convention used only for visual roles.
+
+    This is not an object-dimensions payload and is never passed to Estimation.
+    It gives the visual classifier one consistent unit convention for the file.
+    """
+    required = {"unit", "evidence_pages", "basis"}
+    if not isinstance(context, dict) or set(context) != required:
+        raise DetectionRegistrySchemaError("document measurement context fields do not match contract")
+    unit = context["unit"]
+    evidence_pages = context["evidence_pages"]
+    if (
+        unit not in DOCUMENT_MEASUREMENT_UNITS
+        or not isinstance(evidence_pages, list)
+        or len(evidence_pages) != len(set(evidence_pages))
+        or not all(isinstance(page, int) and 1 <= page <= page_count for page in evidence_pages)
+        or (unit != "unknown" and not evidence_pages)
+        or not str(context["basis"] or "").strip()
+    ):
+        raise DetectionRegistrySchemaError("document measurement context is invalid")
+    return context
 
 
 def validate_detection_representation_packages(

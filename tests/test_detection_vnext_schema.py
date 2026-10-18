@@ -2,10 +2,12 @@ import pytest
 
 from agents.anthropic_adapter import discard_degenerate_evidence_regions
 from agents.schemas.detection_registry_schema import (
+    DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA,
     DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     validate_detection_pairwise_merge_proofs,
+    validate_detection_document_measurement_context,
     validate_detection_representation_packages,
     validate_detection_registry,
 )
@@ -230,6 +232,18 @@ def test_representation_package_schema_leaves_bookkeeping_ids_to_the_runtime():
     ]
     assert "package_id" not in package_schema["properties"]
     assert package_schema["properties"]["object_id"]["minLength"] == 1
+
+
+def test_document_measurement_context_is_run_wide_internal_classification_context():
+    context = {
+        "unit": "cm", "evidence_pages": [3, 11],
+        "basis": "Repeated whole-envelope dimensions follow centimetre convention.",
+    }
+
+    assert validate_detection_document_measurement_context(context, page_count=11) == context
+    assert DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA["required"] == [
+        "unit", "evidence_pages", "basis",
+    ]
 
 
 def test_representation_packages_require_every_assembly_view_once():

@@ -24,11 +24,13 @@ from agents.prompt_loader import (
     load_detection_visual_registry_prompt,
 )
 from agents.schemas.detection_registry_schema import (
+    DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA,
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     validate_detection_pairwise_merge_proofs,
+    validate_detection_document_measurement_context,
     validate_detection_representation_packages,
     validate_detection_registry,
 )
@@ -51,7 +53,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_representation_packages_v4_temperature_0"
+    "detection_v4_visual_registry_representation_packages_v5_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -94,14 +96,15 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "representation_packages", "objects", "merge_proofs",
-        "page_coverage",
+        "document_measurement_context", "visual_groups", "representation_packages",
+        "merge_proofs", "objects", "page_coverage",
     ],
     "properties": {
+        "document_measurement_context": DETECTION_DOCUMENT_MEASUREMENT_CONTEXT_JSON_SCHEMA,
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "representation_packages": DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA,
-        "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "merge_proofs": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
+        "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
             "type": "array",
             "items": {
@@ -891,14 +894,17 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     registry_decision_audit = copy.deepcopy(payload)
     try:
         required_payload_fields = {
-            "visual_groups", "representation_packages", "objects", "merge_proofs",
-            "page_coverage",
+            "document_measurement_context", "visual_groups", "representation_packages",
+            "merge_proofs", "objects", "page_coverage",
         }
         if not isinstance(payload, dict) or set(payload) != required_payload_fields:
             raise ValueError(
-                "visual registry must contain visual_groups, representation_packages, "
-                "objects, merge_proofs and page_coverage"
+                "visual registry must contain document_measurement_context, visual_groups, "
+                "representation_packages, merge_proofs, objects and page_coverage"
             )
+        document_measurement_context = validate_detection_document_measurement_context(
+            payload["document_measurement_context"], page_count=len(page_images),
+        )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
@@ -990,6 +996,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     }
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
+        "document_measurement_context": document_measurement_context,
         "representation_package_count": len(representation_packages),
         "component_only_package_placeholder_count": len(component_only_package_placeholders),
         "component_only_package_placeholders": component_only_package_placeholders,

@@ -109,6 +109,10 @@ class _TimeoutClient:
 def _with_representation_packages(payload: dict) -> dict:
     """Add the normal package bridge to compact legacy Registry fixtures."""
     enriched = payload
+    enriched.setdefault("document_measurement_context", {
+        "unit": "unknown", "evidence_pages": [],
+        "basis": "Fixture does not assert a document-wide dimension convention.",
+    })
     for group in enriched.get("visual_groups") or []:
         if isinstance(group, dict) and "commercial_role" in group:
             group.setdefault("role_basis", "Fixture-visible evidence supports this role.")
@@ -575,6 +579,10 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
 
 def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proofs():
     payload = {
+        "document_measurement_context": {
+            "unit": "unknown", "evidence_pages": [],
+            "basis": "The fixture has no document-wide dimension convention.",
+        },
         "visual_groups": [
             {
                 "group_id": "elevation", "page_number": 1, "location_hint": "left",
@@ -634,6 +642,10 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
 
 def test_integrated_visual_registry_packages_a_complete_front_elevation_with_details():
     payload = {
+        "document_measurement_context": {
+            "unit": "cm", "evidence_pages": [11],
+            "basis": "The complete N76B view uses centimetre-scale overall dimensions.",
+        },
         "visual_groups": [
             {
                 "group_id": "front", "page_number": 11, "location_hint": "centre",
