@@ -497,9 +497,8 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "visual_group_ids": ["view_a"],
+            "anchor_view_group_id": "view_a", "linked_assembly_views": [],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
-            "merge_proofs": [],
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
@@ -555,11 +554,11 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
         "objects": [{
             "object_id": "object-001", "transport_label": "D01",
             "quantity": 1, "quantity_explicit": True, "identity_pages": [1],
-            "visual_group_ids": ["elevation", "plan"],
+            "anchor_view_group_id": "elevation",
             "visual_identity": "one door system in elevation and plan",
             "boundary_basis": "matching track and three-leaf sequence",
-            "merge_proofs": [{
-                "from_group_id": "elevation", "to_group_id": "plan",
+            "linked_assembly_views": [{
+                "group_id": "plan", "linked_to_group_id": "elevation",
                 "primary_evidence_type": "matching_topology",
                 "secondary_evidence_type": "dimension_transform",
                 "evidence_pages": [1],

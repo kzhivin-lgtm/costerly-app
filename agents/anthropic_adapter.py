@@ -54,7 +54,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_object_local_merge_proofs_v3_temperature_0"
+    "detection_v4_visual_registry_anchor_views_v4_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION = (
@@ -84,24 +84,45 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
-# A merge proof belongs to the object whose views it joins.  Keeping this
-# relation local prevents a Registry response from assigning several views to
-# an object and then omitting the separate, top-level proof audit.
-DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOF_SCHEMA = copy.deepcopy(
+# The provider gives an object one anchor view and an ordered list of linked
+# views.  Runtime derives both the legacy group list and its proof tree from
+# this single representation, so they cannot disagree.
+DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA = copy.deepcopy(
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA["items"]
 )
-DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOF_SCHEMA["required"].remove(
-    "object_id"
-)
-DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOF_SCHEMA["properties"].pop(
-    "object_id"
+DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA["required"].remove("object_id")
+DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA["required"].remove("from_group_id")
+DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA["required"].remove("to_group_id")
+DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA["properties"].pop("object_id")
+DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA["properties"].pop("from_group_id")
+DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA["properties"].pop("to_group_id")
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
+    "anchor_view_group_id"
 )
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
-    "merge_proofs"
+    "linked_assembly_views"
 )
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"]["merge_proofs"] = {
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
+    "visual_group_ids"
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
+    "visual_group_ids"
+)
+DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA["required"].extend([
+    "group_id", "linked_to_group_id",
+])
+DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA["properties"]["group_id"] = {
+    "type": "string",
+}
+DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA["properties"]["linked_to_group_id"] = {
+    "type": "string",
+}
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"]["anchor_view_group_id"] = {
+    "type": "string",
+}
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"]["linked_assembly_views"] = {
     "type": "array",
-    "items": DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOF_SCHEMA,
+    "items": DETECTION_VISUAL_REGISTRY_LINKED_VIEW_SCHEMA,
 }
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
@@ -927,6 +948,55 @@ def _normalize_pairwise_merge_proof_group_ids(
     return normalized
 
 
+def _materialize_object_anchor_views(objects: object) -> tuple[object, object]:
+    """Derive object groups and a proof tree from one ordered anchor structure."""
+    if not isinstance(objects, list):
+        return objects, []
+    registry_objects: list[object] = []
+    proofs: list[object] = []
+    for item in objects:
+        if not isinstance(item, dict):
+            return objects, []
+        anchor_group_id = item.get("anchor_view_group_id")
+        linked_views = item.get("linked_assembly_views")
+        if not isinstance(anchor_group_id, str) or not anchor_group_id:
+            raise ValueError("registry object anchor view is required")
+        if not isinstance(linked_views, list):
+            raise ValueError("registry object linked assembly views must be a list")
+        registry_item = copy.deepcopy(item)
+        registry_item.pop("anchor_view_group_id")
+        registry_item.pop("linked_assembly_views")
+        object_id = registry_item.get("object_id")
+        group_ids = [anchor_group_id]
+        known_group_ids = {anchor_group_id}
+        for linked_view in linked_views:
+            if not isinstance(linked_view, dict):
+                proofs.append(linked_view)
+                continue
+            group_id = linked_view.get("group_id")
+            linked_to_group_id = linked_view.get("linked_to_group_id")
+            if not isinstance(group_id, str) or not group_id:
+                raise ValueError("registry linked assembly view group is required")
+            if linked_to_group_id not in known_group_ids:
+                raise ValueError(
+                    "registry linked assembly view must link to an earlier view"
+                )
+            proof = copy.deepcopy(linked_view)
+            proof.pop("group_id")
+            proof.pop("linked_to_group_id")
+            proofs.append({
+                "object_id": object_id,
+                "from_group_id": linked_to_group_id,
+                "to_group_id": group_id,
+                **proof,
+            })
+            group_ids.append(group_id)
+            known_group_ids.add(group_id)
+        registry_item["visual_group_ids"] = group_ids
+        registry_objects.append(registry_item)
+    return registry_objects, proofs
+
+
 def _separate_object_local_merge_proofs(
     objects: object,
 ) -> tuple[object, object]:
@@ -958,6 +1028,16 @@ def _separate_object_local_merge_proofs(
             flattened_proofs.append({"object_id": object_id, **copy.deepcopy(proof)})
         registry_objects.append(registry_item)
     return registry_objects, flattened_proofs
+
+
+def _materialize_provider_registry_objects(objects: object) -> tuple[object, object]:
+    """Accept the current anchor contract, with old payloads only for migration tests."""
+    if isinstance(objects, list) and all(
+        isinstance(item, dict) and "anchor_view_group_id" in item
+        for item in objects
+    ):
+        return _materialize_object_anchor_views(objects)
+    return _separate_object_local_merge_proofs(objects)
 
 
 def _normalize_legacy_top_level_merge_proofs(payload: object) -> object:
@@ -1737,7 +1817,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
-        provider_objects, provider_merge_proofs = _separate_object_local_merge_proofs(
+        provider_objects, provider_merge_proofs = _materialize_provider_registry_objects(
             provider_payload["objects"]
         )
         merge_proofs = _normalize_pairwise_merge_proof_group_ids(

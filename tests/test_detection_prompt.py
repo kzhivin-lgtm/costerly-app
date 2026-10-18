@@ -75,7 +75,7 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
     assert "shared schedule, title block, layout or multi-object context" in prompt
-    assert "groups that prove this object's commercial boundary" in prompt
+    assert "that proves this object's commercial boundary" in prompt
     assert "exactly one `commercial_role`" in prompt
     assert "A `component_detail` never becomes a commercial object" in prompt
     assert "A `document_context` never becomes an object" in prompt
@@ -89,7 +89,8 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert "`primary_evidence_type`" in prompt
     assert "`secondary_evidence_type`" in prompt
-    assert "`merge_proofs` belongs inside its parent object" in prompt
+    assert "`anchor_view_group_id`" in prompt
+    assert "Never create a self-link" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_object_local_merge_proofs_v3_temperature_0"
+        "detection_v4_visual_registry_anchor_views_v4_temperature_0"
     )
