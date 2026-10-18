@@ -24,10 +24,8 @@ from agents.prompt_loader import (
     load_detection_visual_registry_prompt,
 )
 from agents.schemas.detection_registry_schema import (
-    DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
-    validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
 )
 from agents.schemas.detection_visual_map_schema import (
@@ -49,7 +47,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_package_then_anchor_v2_temperature_0"
+    "detection_v4_visual_registry_primary_anchor_v1_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -76,21 +74,18 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
-DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOFS_SCHEMA = copy.deepcopy(
-    DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
+    "visual_group_ids"
 )
-DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOFS_SCHEMA["items"]["required"].remove(
-    "object_id"
-)
-DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOFS_SCHEMA["items"]["properties"].pop(
-    "object_id"
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
+    "visual_group_ids"
 )
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
-    "merge_proofs"
+    "primary_assembly_group_id"
 )
-DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"]["merge_proofs"] = (
-    DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOFS_SCHEMA
-)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"][
+    "primary_assembly_group_id"
+] = {"type": "string", "minLength": 1}
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
@@ -791,58 +786,43 @@ def _discard_trailing_orphan_registry_objects(
     return objects[:first_orphan_index], discarded_ids
 
 
-def _normalize_pairwise_merge_proof_group_ids(
-    proofs: object,
+def _normalize_primary_assembly_anchors(
+    objects: object,
     group_id_mapping: dict[str, str],
 ) -> object:
-    """Keep provider-facing proof joins aligned with canonical view IDs."""
-    if not isinstance(proofs, list):
-        return proofs
-    normalized = copy.deepcopy(proofs)
-    for proof in normalized:
-        if not isinstance(proof, dict):
-            continue
-        for field in ("from_group_id", "to_group_id"):
-            raw_group_id = str(proof.get(field) or "")
-            proof[field] = group_id_mapping.get(raw_group_id, raw_group_id)
-    return normalized
+    """Adapt one provider-selected anchor to the locked registry contract.
 
+    Registry output now owns exactly one complete assembly depiction per
+    commercial object. All alternate views and construction details remain in
+    page coverage, which is what later Estimation consumes. This removes the
+    variable multi-view proof tree from the provider response without relaxing
+    the established role and single-owner validation below.
 
-def _extract_object_merge_proofs(
-    objects: object,
-) -> tuple[object, object]:
-    """Flatten object-local proof ledgers for the existing strict validator.
-
-    A flat, document-level proof array was easy for the model to omit after it
-    had already resolved every object. Keeping the proof list inside the same
-    object package makes the required `N - 1` relationship local. Runtime
-    still validates the established flat proof contract after this lossless
-    normalization. The legacy shape is accepted only for earlier test and
-    stored-response compatibility; provider Structured Output receives the
-    object-local schema above.
+    The legacy shape is accepted only for stored-response and test
+    compatibility. Structured Output requires ``primary_assembly_group_id``.
     """
     if not isinstance(objects, list):
-        return objects, objects
+        return objects
     registry_objects: list[object] = []
-    flattened_proofs: list[object] = []
     for item in objects:
         if not isinstance(item, dict):
             registry_objects.append(item)
             continue
         registry_item = copy.deepcopy(item)
-        object_proofs = registry_item.pop("merge_proofs", None)
+        registry_item.pop("merge_proofs", None)
+        if "primary_assembly_group_id" in registry_item:
+            primary_group_id = str(
+                registry_item.pop("primary_assembly_group_id") or ""
+            ).strip()
+            if not primary_group_id:
+                raise DetectionRegistrySchemaError(
+                    "registry primary assembly anchor is invalid"
+                )
+            registry_item["visual_group_ids"] = [
+                group_id_mapping.get(primary_group_id, primary_group_id)
+            ]
         registry_objects.append(registry_item)
-        if not isinstance(object_proofs, list):
-            flattened_proofs.append(object_proofs)
-            continue
-        for proof in object_proofs:
-            if not isinstance(proof, dict):
-                flattened_proofs.append(proof)
-                continue
-            flattened = copy.deepcopy(proof)
-            flattened["object_id"] = registry_item.get("object_id")
-            flattened_proofs.append(flattened)
-    return registry_objects, flattened_proofs
+    return registry_objects
 
 
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -923,15 +903,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
-        registry_object_packages, object_merge_proofs = _extract_object_merge_proofs(
-            payload["objects"]
-        )
-        legacy_flat_merge_proofs = payload.get("merge_proofs")
-        merge_proofs = _normalize_pairwise_merge_proof_group_ids(
-            legacy_flat_merge_proofs
-            if legacy_flat_merge_proofs is not None
-            else object_merge_proofs,
-            group_id_mapping,
+        registry_object_packages = _normalize_primary_assembly_anchors(
+            payload["objects"], group_id_mapping
         )
         registry_objects_input, discarded_orphan_registry_object_ids = (
             _discard_trailing_orphan_registry_objects(
@@ -954,11 +927,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 group["group_id"]: group["commercial_role"]
                 for group in visual_map["visual_groups"]
             },
-        )
-        pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
-            merge_proofs,
-            registry=registry,
-            page_count=len(page_images),
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
@@ -1012,10 +980,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             not entry["object_ids"] for entry in payload["page_coverage"]
         ),
         "registry_decision_audit": registry_decision_audit,
-        "pairwise_merge_proofs": pairwise_merge_proofs,
-        "pairwise_merge_proof_count": len(pairwise_merge_proofs),
-        "merge_proof_layout": (
-            "legacy_flat" if "merge_proofs" in payload else "object_nested"
+        "primary_assembly_anchor_count": len(assigned_visual_group_ids),
+        "secondary_visual_group_count": (
+            len(visual_map["visual_groups"]) - len(assigned_visual_group_ids)
         ),
         "region_count": len(regions),
         "page_count": len(page_images),

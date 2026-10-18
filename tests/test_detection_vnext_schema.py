@@ -156,14 +156,17 @@ def test_registry_schema_requires_at_least_one_visual_group_per_object():
     assert visual_group_ids["minItems"] == 1
 
 
-def test_integrated_registry_keeps_merge_proofs_inside_their_object_package():
+def test_integrated_registry_requires_one_primary_assembly_anchor_per_object():
     schema = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA
     object_schema = schema["properties"]["objects"]["items"]
-    proof_schema = object_schema["properties"]["merge_proofs"]["items"]
 
     assert set(schema["required"]) == {"visual_groups", "objects", "page_coverage"}
-    assert "merge_proofs" in object_schema["required"]
-    assert "object_id" not in proof_schema["required"]
+    assert "primary_assembly_group_id" in object_schema["required"]
+    assert object_schema["properties"]["primary_assembly_group_id"] == {
+        "type": "string", "minLength": 1,
+    }
+    assert "visual_group_ids" not in object_schema["properties"]
+    assert "merge_proofs" not in object_schema["properties"]
 
 
 def test_visual_map_normalizes_provider_group_ids_before_strict_validation():

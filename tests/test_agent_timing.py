@@ -496,9 +496,8 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "visual_group_ids": ["view_a"],
+            "primary_assembly_group_id": "view_a",
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
-            "merge_proofs": [],
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
@@ -566,7 +565,7 @@ def test_integrated_visual_registry_persists_truncated_json_diagnostics():
     assert event["raw_usage"]["output_token_ceiling"] == DETECTION_VISUAL_REGISTRY_MAX_TOKENS
 
 
-def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proofs():
+def test_integrated_visual_registry_normalizes_one_primary_assembly_anchor():
     payload = {
         "visual_groups": [
             {
@@ -583,16 +582,9 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
         "objects": [{
             "object_id": "object-001", "transport_label": "D01",
             "quantity": 1, "quantity_explicit": True, "identity_pages": [1],
-            "visual_group_ids": ["elevation", "plan"],
+            "primary_assembly_group_id": "elevation",
             "visual_identity": "one door system in elevation and plan",
             "boundary_basis": "matching track and three-leaf sequence",
-            "merge_proofs": [{
-                "from_group_id": "elevation", "to_group_id": "plan",
-                "evidence_types": ["matching_topology", "dimension_transform"],
-                "evidence_pages": [1],
-                "observed_fact": "The plan track length matches the elevation after the axis change.",
-                "commercial_inseparability": "Both views show one common track and frame.",
-            }],
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
@@ -619,11 +611,49 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
     assert [group["group_id"] for group in visual_map["visual_groups"]] == [
         "view-001", "view-002",
     ]
-    assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
-    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["from_group_id"] == "view-001"
-    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["to_group_id"] == "view-002"
-    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["object_id"] == "object-001"
-    assert usage["raw_usage"]["merge_proof_layout"] == "object_nested"
+    assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
+    assert usage["raw_usage"]["primary_assembly_anchor_count"] == 1
+    assert usage["raw_usage"]["secondary_visual_group_count"] == 1
+
+
+def test_integrated_visual_registry_rejects_component_detail_as_primary_anchor():
+    payload = {
+        "visual_groups": [{
+            "group_id": "detail", "page_number": 1, "location_hint": "center",
+            "visual_description": "cabinet component", "representation_kind": "detail",
+            "commercial_role": "component_detail",
+        }],
+        "objects": [{
+            "object_id": "object-001", "transport_label": "C01",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "primary_assembly_group_id": "detail",
+            "visual_identity": "cabinet", "boundary_basis": "one cabinet",
+        }],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001"],
+            "evidence_reason": "cabinet detail",
+        }],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(_Response(), {
+                "request_started_at": "2026-10-18T00:00:00+00:00",
+                "request_finished_at": "2026-10-18T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+        pytest.raises(
+            DetectionVisualRegistryValidationError,
+            match="registry visual groups must be complete assembly views",
+        ),
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
 
 
 def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():
