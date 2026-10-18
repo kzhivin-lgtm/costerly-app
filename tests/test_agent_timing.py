@@ -13,6 +13,7 @@ from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_DETECTION_MODEL,
     DetectionVisualRegistryValidationError,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
+    DETECTION_VISUAL_REGISTRY_MAX_TOKENS,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
     apply_benchmark_run_suffix,
     build_agent_usage_event,
@@ -526,14 +527,43 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             page_images=[b"page"], regions=[], ocr_package=None, model="model",
         )
 
-    assert requested_budgets == [8192]
+    assert requested_budgets == [DETECTION_VISUAL_REGISTRY_MAX_TOKENS]
     assert requested_temperatures == [0.0]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
     assert usage["operation"] == "rfq_detection_visual_registry"
     assert usage["raw_usage"]["temperature"] == 0.0
+    assert usage["raw_usage"]["output_token_ceiling"] == DETECTION_VISUAL_REGISTRY_MAX_TOKENS
     assert usage["raw_usage"]["registry_decision_audit"] == payload
+
+
+def test_integrated_visual_registry_persists_truncated_json_diagnostics():
+    response = SimpleNamespace(usage=_Usage(), stop_reason="max_tokens")
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch(
+            "agents.anthropic_adapter.create_claude_message_streamed",
+            return_value=(response, {
+                "request_started_at": "2026-10-18T00:00:00+00:00",
+                "request_finished_at": "2026-10-18T00:00:01+00:00",
+            }),
+        ),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value='{"visual_groups":[{"role_basis":"'),
+        pytest.raises(DetectionVisualRegistryValidationError) as raised,
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+    event = raised.value.usage_event
+    assert event["status"] == "failed"
+    assert event["raw_usage"]["validation_stage"] == "visual_registry_json_parse"
+    assert event["raw_usage"]["response_stop_reason"] == "max_tokens"
+    assert event["raw_usage"]["response_character_count"] == 33
+    assert event["raw_usage"]["output_token_ceiling"] == DETECTION_VISUAL_REGISTRY_MAX_TOKENS
 
 
 def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proofs():
