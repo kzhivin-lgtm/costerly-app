@@ -535,6 +535,177 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert usage["raw_usage"]["registry_decision_audit"] == payload
 
 
+def test_boundary_review_corrects_only_an_unowned_complete_assembly_view():
+    initial_payload = {
+        "visual_groups": [
+            {
+                "group_id": "cabinet", "page_number": 1,
+                "location_hint": "left", "visual_description": "base cabinet",
+                "representation_kind": "elevation",
+                "commercial_role": "assembly_view",
+            },
+            {
+                "group_id": "mirror", "page_number": 1,
+                "location_hint": "right", "visual_description": "mirror counter",
+                "representation_kind": "elevation",
+                "commercial_role": "assembly_view",
+            },
+        ],
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "visual_group_ids": ["cabinet"], "visual_identity": "base cabinet",
+            "boundary_basis": "one finished cabinet envelope",
+        }],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001"],
+            "evidence_reason": "both finished assemblies are visible",
+        }],
+    }
+    corrected_payload = {
+        **initial_payload,
+        "objects": [
+            initial_payload["objects"][0],
+            {
+                "object_id": "object-002", "transport_label": "Object 2",
+                "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+                "visual_group_ids": ["mirror"],
+                "visual_identity": "mirror counter",
+                "boundary_basis": "separate finished mirror-counter envelope",
+            },
+        ],
+        "page_coverage": [{
+            "page_number": 1,
+            "object_ids": ["object-001", "object-002"],
+            "evidence_reason": "both separate finished assemblies are visible",
+        }],
+    }
+    request_texts: list[str] = []
+    stages: list[str] = []
+
+    def fake_create(*_args, messages, **_kwargs):
+        request_texts.append(
+            "\n".join(
+                block["text"]
+                for block in messages[0]["content"]
+                if block["type"] == "text"
+            )
+        )
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_secret", return_value="sonnet"),
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(initial_payload), json.dumps(corrected_payload)],
+        ),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="sonnet",
+            boundary_review={
+                "required": True,
+                "reasons": ["no_strong_source_object_code"],
+                "signals": {"maximum_large_drawings_on_page": 2},
+            },
+            stage_callback=stages.append,
+        )
+
+    assert [item["object_id"] for item in registry["objects"]] == [
+        "object-001", "object-002",
+    ]
+    assert len(request_texts) == 2
+    assert "BOUNDARY REVIEW MODE" in request_texts[0]
+    assert "BOUNDARY REVIEW CORRECTION" in request_texts[1]
+    assert "view-002" in request_texts[1]
+    assert stages == [
+        "Detection Boundary review correction started",
+        "Detection Boundary review correction completed",
+    ]
+    assert usage["input_tokens"] == 200
+    assert usage["output_tokens"] == 40
+    assert usage["duration_seconds"] == 2.0
+    review_audit = usage["raw_usage"]["boundary_review"]
+    assert review_audit["correction_trigger"] == "unowned_assembly_view"
+    assert review_audit["unowned_assembly_visual_group_ids"] == ["view-002"]
+    assert review_audit["attempt_count"] == 2
+    assert review_audit["initial_registry_decision_audit"] == initial_payload
+    assert review_audit["initial_attempt_usage"]["input_tokens"] == 100
+    assert review_audit["initial_attempt_usage"]["output_tokens"] == 20
+    assert review_audit["initial_attempt_usage"]["total_cost_usd"] is not None
+
+
+def test_boundary_review_stops_after_one_failed_correction_pass():
+    payload = {
+        "visual_groups": [
+            {
+                "group_id": "cabinet", "page_number": 1,
+                "location_hint": "left", "visual_description": "base cabinet",
+                "representation_kind": "elevation",
+                "commercial_role": "assembly_view",
+            },
+            {
+                "group_id": "mirror", "page_number": 1,
+                "location_hint": "right", "visual_description": "mirror counter",
+                "representation_kind": "elevation",
+                "commercial_role": "assembly_view",
+            },
+        ],
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "visual_group_ids": ["cabinet"], "visual_identity": "base cabinet",
+            "boundary_basis": "one finished cabinet envelope",
+        }],
+        "page_coverage": [{
+            "page_number": 1, "object_ids": ["object-001"],
+            "evidence_reason": "both finished assemblies are visible",
+        }],
+    }
+    requests = []
+    stages: list[str] = []
+
+    def fake_create(*_args, **_kwargs):
+        requests.append(True)
+        return _Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch(
+            "agents.anthropic_adapter.extract_text_from_claude_response",
+            side_effect=[json.dumps(payload), json.dumps(payload)],
+        ),
+        pytest.raises(DetectionVisualRegistryValidationError) as raised,
+    ):
+        run_anthropic_detection_visual_registry_agent(
+            file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="sonnet",
+            boundary_review={"required": True},
+            stage_callback=stages.append,
+        )
+
+    assert len(requests) == 2
+    assert stages == [
+        "Detection Boundary review correction started",
+        "Detection Boundary review correction failed",
+    ]
+    event = raised.value.usage_event
+    assert event["status"] == "failed"
+    assert event["raw_usage"]["boundary_review"]["attempt_count"] == 2
+    assert event["raw_usage"]["validation_details"] == {
+        "unowned_assembly_visual_group_ids": ["view-002"],
+    }
+
+
 def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():
     payload = {
         "visual_groups": [

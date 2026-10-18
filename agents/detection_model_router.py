@@ -121,6 +121,7 @@ def detection_v42_model_route(
             "reasons": ["caller_supplied_model"],
             "registry_model": explicit_model,
             "evidence_model": explicit_model,
+            "boundary_review_required": False,
             "signals": {},
         }
 
@@ -178,6 +179,10 @@ def detection_v42_model_route(
             # The second call only prepares Evidence for objects locked by the
             # Registry.  It stays on the efficient base model.
             "evidence_model": base_model,
+            # This is a review obligation, not a boundary decision. The
+            # Registry receives the concrete signals and must account for all
+            # complete assembly views before it locks objects.
+            "boundary_review_required": True,
             "signals": signals,
         }
 
@@ -187,5 +192,6 @@ def detection_v42_model_route(
         "reasons": ["risk_threshold_not_met"],
         "registry_model": base_model,
         "evidence_model": base_model,
+        "boundary_review_required": False,
         "signals": signals,
     }

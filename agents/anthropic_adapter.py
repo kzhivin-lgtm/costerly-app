@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import copy
+from decimal import Decimal, ROUND_HALF_UP
 import hashlib
 import json
 import math
@@ -47,7 +48,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_group_roles_experiment_v2_temperature_0"
+    "detection_v4_visual_registry_boundary_review_v3_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -767,101 +768,353 @@ def _discard_trailing_orphan_registry_objects(
     return objects[:first_orphan_index], discarded_ids
 
 
-def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Lock commercial objects while preserving the visual map in one full-document call."""
-    selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
-    prompt = load_detection_visual_registry_prompt()
-    prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
-    user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
-    schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
-    content = build_detection_registry_content_blocks(
-        file_name=file_name, file_bytes=file_bytes, user_text=user_text,
-        page_images=page_images, regions=regions,
+def _boundary_review_user_text(
+    user_text: str,
+    boundary_review: dict[str, Any] | None,
+) -> str:
+    """Expose deterministic boundary-risk signals to the selected Registry."""
+    if not boundary_review or not boundary_review.get("required"):
+        return user_text
+    review_context = {
+        "reasons": list(boundary_review.get("reasons") or []),
+        "signals": dict(boundary_review.get("signals") or {}),
+    }
+    return (
+        user_text
+        + "\n\nBOUNDARY REVIEW MODE\n"
+        + "A deterministic preflight found a potentially ambiguous, "
+        + "unlabelled multi-assembly document. This is not evidence for any "
+        + "merge or split. Follow the Boundary-review mode in the system "
+        + "instructions before locking the registry.\n"
+        + json.dumps(review_context, ensure_ascii=False, sort_keys=True)
     )
-    response, diagnostics = create_claude_message_streamed(
-        get_anthropic_client(), model=selected_model, max_tokens=8192,
-        temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
-        system=build_detection_system_content(prompt=prompt),
-        messages=[{"role": "user", "content": content}],
-        output_config={"format": {"type": "json_schema", "schema": schema}},
-    )
-    # Keep the inference parameter on both accepted and rejected Registry
-    # events. The experiment must be comparable even when validation fails.
-    diagnostics["temperature"] = DETECTION_VISUAL_REGISTRY_TEMPERATURE
-    try:
-        payload = json.loads(extract_text_from_claude_response(response))
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Detection visual-registry response failed validation: {exc}") from exc
-    # Preserve the model's structured boundary decision before the runtime
-    # normalizes group IDs or derives evidence-page references. This is an
-    # inspectable decision record, not private chain-of-thought.
-    registry_decision_audit = copy.deepcopy(payload)
-    try:
-        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "page_coverage"}:
-            raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
-        raw_groups = payload["visual_groups"]
-        raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
-        visual_map = validate_detection_visual_map(
-            normalize_detection_visual_map_group_ids({"visual_groups": raw_groups}),
-            require_commercial_roles=True,
+
+
+def _validate_visual_registry_payload(
+    payload: object,
+    *,
+    page_count: int,
+    require_all_assembly_owners: bool,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, list[str]]]:
+    """Normalize one Registry draft and enforce its deterministic contract."""
+    if not isinstance(payload, dict) or set(payload) != {
+        "visual_groups", "objects", "page_coverage",
+    }:
+        raise ValueError(
+            "visual registry must contain only visual_groups, objects and page_coverage"
         )
-        group_id_mapping = {
-            raw_group_id: normalized["group_id"]
-            for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
-        }
-        registry_objects_input, discarded_orphan_registry_object_ids = (
-            _discard_trailing_orphan_registry_objects(
-                payload["objects"], payload["page_coverage"], page_count=len(page_images),
+    raw_groups = payload["visual_groups"]
+    if not isinstance(raw_groups, list):
+        raise ValueError("visual_groups must be a list")
+    raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
+    visual_map = validate_detection_visual_map(
+        normalize_detection_visual_map_group_ids({"visual_groups": raw_groups}),
+        require_commercial_roles=True,
+    )
+    group_id_mapping = {
+        raw_group_id: normalized["group_id"]
+        for raw_group_id, normalized in zip(
+            raw_group_ids, visual_map["visual_groups"], strict=True
+        )
+    }
+    registry_objects_input, discarded_orphan_registry_object_ids = (
+        _discard_trailing_orphan_registry_objects(
+            payload["objects"], payload["page_coverage"], page_count=page_count,
+        )
+    )
+    registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
+        registry_objects_input, payload["page_coverage"], page_count=page_count,
+    )
+    registry_payload = {"objects": registry_objects}
+    for item in registry_payload["objects"]:
+        item["visual_group_ids"] = [
+            group_id_mapping.get(str(group_id), str(group_id))
+            for group_id in item["visual_group_ids"]
+        ]
+    registry = validate_detection_registry(
+        registry_payload,
+        visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
+        visual_group_roles={
+            group["group_id"]: group["commercial_role"]
+            for group in visual_map["visual_groups"]
+        },
+        require_all_assembly_owners=require_all_assembly_owners,
+    )
+    return visual_map, registry, {
+        "reconciled_object_ids": reconciled_object_ids,
+        "discarded_orphan_registry_object_ids": discarded_orphan_registry_object_ids,
+    }
+
+
+def _build_visual_registry_usage_event(
+    *,
+    file_name: str,
+    company_id: str,
+    selected_model: str,
+    response: Any,
+    diagnostics: dict[str, Any],
+) -> dict[str, Any]:
+    return build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection_visual_registry",
+        company_id=company_id,
+        run_id=None,
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=selected_model,
+        prompt_version=DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
+        response=response,
+        started_at=diagnostics["request_started_at"],
+        finished_at=diagnostics["request_finished_at"],
+        request_diagnostics=diagnostics,
+    )
+
+
+def _combine_boundary_review_attempt_usage(
+    usage_event: dict[str, Any],
+    *,
+    initial_usage: dict[str, Any],
+    unowned_assembly_visual_group_ids: list[str],
+    initial_registry_decision_audit: dict[str, Any],
+) -> dict[str, Any]:
+    """Show the conditional correction's complete cost and evidence in one event."""
+    for field in ("input_tokens", "output_tokens"):
+        usage_event[field] = int(usage_event.get(field) or 0) + int(
+            initial_usage.get(field) or 0
+        )
+    for field in ("input_cost_usd", "output_cost_usd", "total_cost_usd"):
+        current = usage_event.get(field)
+        initial = initial_usage.get(field)
+        if current is None and initial is None:
+            usage_event[field] = None
+            continue
+        usage_event[field] = str(
+            (
+                Decimal(str(current or 0)) + Decimal(str(initial or 0))
+            ).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+        )
+    usage_event["duration_seconds"] = round(
+        float(usage_event.get("duration_seconds") or 0)
+        + float(initial_usage.get("duration_seconds") or 0),
+        6,
+    )
+    raw_usage = dict(usage_event.get("raw_usage") or {})
+    raw_usage["boundary_review"] = {
+        "correction_trigger": "unowned_assembly_view",
+        "unowned_assembly_visual_group_ids": unowned_assembly_visual_group_ids,
+        "attempt_count": 2,
+        "initial_registry_decision_audit": initial_registry_decision_audit,
+        "initial_attempt_usage": {
+            key: initial_usage.get(key)
+            for key in (
+                "input_tokens",
+                "output_tokens",
+                "input_cost_usd",
+                "output_cost_usd",
+                "total_cost_usd",
+                "duration_seconds",
             )
+        },
+    }
+    raw_usage["input_tokens"] = usage_event["input_tokens"]
+    raw_usage["output_tokens"] = usage_event["output_tokens"]
+    raw_usage["duration_seconds"] = usage_event["duration_seconds"]
+    usage_event["raw_usage"] = raw_usage
+    return usage_event
+
+
+def run_anthropic_detection_visual_registry_agent(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    regions: list[dict[str, Any]],
+    ocr_package: dict[str, Any] | None,
+    model: str | None,
+    boundary_review: dict[str, Any] | None = None,
+    stage_callback: Callable[[str], None] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Lock commercial objects while preserving the visual map in one full-document call."""
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL
+    )
+    prompt = load_detection_visual_registry_prompt()
+    boundary_review_required = bool(
+        boundary_review and boundary_review.get("required")
+    )
+    user_text = _boundary_review_user_text(
+        build_detection_user_text(
+            file_name=file_name, company_id=company_id, ocr_package=ocr_package
+        ),
+        boundary_review,
+    )
+    schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
+
+    def request_registry(request_user_text: str) -> tuple[Any, dict[str, Any]]:
+        content = build_detection_registry_content_blocks(
+            file_name=file_name,
+            file_bytes=file_bytes,
+            user_text=request_user_text,
+            page_images=page_images,
+            regions=regions,
         )
-        registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
-            registry_objects_input, payload["page_coverage"], page_count=len(page_images),
+        response, diagnostics = create_claude_message_streamed(
+            get_anthropic_client(),
+            model=selected_model,
+            max_tokens=8192,
+            temperature=DETECTION_VISUAL_REGISTRY_TEMPERATURE,
+            system=build_detection_system_content(prompt=prompt),
+            messages=[{"role": "user", "content": content}],
+            output_config={"format": {"type": "json_schema", "schema": schema}},
         )
-        registry_payload = {"objects": registry_objects}
-        for item in registry_payload["objects"]:
-            item["visual_group_ids"] = [
-                group_id_mapping.get(str(group_id), str(group_id))
-                for group_id in item["visual_group_ids"]
-            ]
-        registry = validate_detection_registry(
-            registry_payload,
-            visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-            visual_group_roles={
-                group["group_id"]: group["commercial_role"]
-                for group in visual_map["visual_groups"]
-            },
-        )
-    except (KeyError, ValueError) as exc:
+        diagnostics["temperature"] = DETECTION_VISUAL_REGISTRY_TEMPERATURE
+        return response, diagnostics
+
+    def parse_payload(response: Any) -> dict[str, Any]:
+        try:
+            payload = json.loads(extract_text_from_claude_response(response))
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"Detection visual-registry response failed validation: {exc}"
+            ) from exc
+        if not isinstance(payload, dict):
+            raise RuntimeError("Detection visual-registry response must be a JSON object")
+        return payload
+
+    def raise_validation_failure(
+        *,
+        response: Any,
+        diagnostics: dict[str, Any],
+        registry_decision_audit: dict[str, Any],
+        error: Exception,
+        initial_usage: dict[str, Any] | None = None,
+        unowned_assembly_visual_group_ids: list[str] | None = None,
+    ) -> None:
         failure_diagnostics = dict(diagnostics)
         failure_diagnostics.update({
             "registry_decision_audit": registry_decision_audit,
-            "validation_error": str(exc),
+            "validation_error": str(error),
             "validation_stage": "visual_registry",
             "attempt_label": "visual_registry_validation_failed",
         })
-        if isinstance(exc, DetectionRegistrySchemaError) and exc.details:
-            failure_diagnostics["validation_details"] = exc.details
-        failure_usage = build_agent_usage_event(
-            agent_name="detection",
-            operation="rfq_detection_visual_registry",
-            company_id=company_id,
-            run_id=None,
+        if isinstance(error, DetectionRegistrySchemaError) and error.details:
+            failure_diagnostics["validation_details"] = error.details
+        failure_usage = _build_visual_registry_usage_event(
             file_name=file_name,
-            object_id=None,
-            object_name=None,
-            model=selected_model,
-            prompt_version=prompt_version,
+            company_id=company_id,
+            selected_model=str(selected_model),
             response=response,
-            started_at=diagnostics["request_started_at"],
-            finished_at=diagnostics["request_finished_at"],
-            request_diagnostics=failure_diagnostics,
+            diagnostics=failure_diagnostics,
         )
+        if initial_usage is not None and unowned_assembly_visual_group_ids is not None:
+            failure_usage = _combine_boundary_review_attempt_usage(
+                failure_usage,
+                initial_usage=initial_usage,
+                unowned_assembly_visual_group_ids=unowned_assembly_visual_group_ids,
+                initial_registry_decision_audit=initial_usage["raw_usage"]["registry_decision_audit"],
+            )
         failure_usage["status"] = "failed"
-        failure_usage["error_message"] = str(exc)
+        failure_usage["error_message"] = str(error)
         raise DetectionVisualRegistryValidationError(
-            f"Detection visual-registry response failed validation: {exc}",
+            f"Detection visual-registry response failed validation: {error}",
             usage_event=failure_usage,
-        ) from exc
+        ) from error
+
+    response, diagnostics = request_registry(user_text)
+    payload = parse_payload(response)
+    registry_decision_audit = copy.deepcopy(payload)
+    initial_usage: dict[str, Any] | None = None
+    correction_unowned_assembly_ids: list[str] | None = None
+    try:
+        visual_map, registry, reconciliation = _validate_visual_registry_payload(
+            payload,
+            page_count=len(page_images),
+            require_all_assembly_owners=boundary_review_required,
+        )
+    except (KeyError, ValueError) as initial_error:
+        unowned_ids = (
+            initial_error.details.get("unowned_assembly_visual_group_ids")
+            if isinstance(initial_error, DetectionRegistrySchemaError)
+            else None
+        )
+        if not boundary_review_required or not isinstance(unowned_ids, list):
+            raise_validation_failure(
+                response=response,
+                diagnostics=diagnostics,
+                registry_decision_audit=registry_decision_audit,
+                error=initial_error,
+            )
+        correction_unowned_assembly_ids = sorted(str(item) for item in unowned_ids)
+        initial_diagnostics = dict(diagnostics)
+        initial_diagnostics.update({
+            "registry_decision_audit": registry_decision_audit,
+            "validation_error": str(initial_error),
+            "validation_details": initial_error.details,
+            "attempt_label": "visual_registry_boundary_review_incomplete",
+        })
+        initial_usage = _build_visual_registry_usage_event(
+            file_name=file_name,
+            company_id=company_id,
+            selected_model=str(selected_model),
+            response=response,
+            diagnostics=initial_diagnostics,
+        )
+        initial_usage["status"] = "failed"
+        group_by_id = {
+            f"view-{index:03d}": group
+            for index, group in enumerate(payload.get("visual_groups") or [], start=1)
+            if isinstance(group, dict)
+        }
+        unresolved_views = [
+            {
+                key: group_by_id[group_id][key]
+                for key in (
+                    "group_id",
+                    "page_number",
+                    "location_hint",
+                    "visual_description",
+                    "representation_kind",
+                )
+            }
+            for group_id in correction_unowned_assembly_ids
+            if group_id in group_by_id
+        ]
+        correction_text = (
+            user_text
+            + "\n\nBOUNDARY REVIEW CORRECTION\n"
+            + "The previous draft left these complete assembly views without "
+            + "an owner. Re-read their pages and return a complete replacement "
+            + "registry. The source images, not the previous grouping, are "
+            + "authoritative. Do not assign a view arbitrarily merely to satisfy "
+            + "coverage.\n"
+            + json.dumps(unresolved_views, ensure_ascii=False, sort_keys=True)
+        )
+        if stage_callback:
+            stage_callback("Detection Boundary review correction started")
+        response, diagnostics = request_registry(correction_text)
+        payload = parse_payload(response)
+        registry_decision_audit = copy.deepcopy(payload)
+        try:
+            visual_map, registry, reconciliation = _validate_visual_registry_payload(
+                payload,
+                page_count=len(page_images),
+                require_all_assembly_owners=True,
+            )
+        except (KeyError, ValueError) as correction_error:
+            if stage_callback:
+                stage_callback("Detection Boundary review correction failed")
+            raise_validation_failure(
+                response=response,
+                diagnostics=diagnostics,
+                registry_decision_audit=registry_decision_audit,
+                error=correction_error,
+                initial_usage=initial_usage,
+                unowned_assembly_visual_group_ids=correction_unowned_assembly_ids,
+            )
+        if stage_callback:
+            stage_callback("Detection Boundary review correction completed")
     assigned_visual_group_ids = {
         group_id
         for item in registry["objects"]
@@ -883,15 +1136,37 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             not entry["object_ids"] for entry in payload["page_coverage"]
         ),
         "registry_decision_audit": registry_decision_audit,
+        "boundary_review_required": boundary_review_required,
         "region_count": len(regions),
         "page_count": len(page_images),
-        "attempt_label": "visual_registry_integrated",
+        "attempt_label": (
+            "visual_registry_boundary_review_corrected"
+            if initial_usage is not None
+            else "visual_registry_integrated"
+        ),
     })
-    if reconciled_object_ids:
-        diagnostics["single_page_coverage_reconciled_object_ids"] = reconciled_object_ids
-    if discarded_orphan_registry_object_ids:
-        diagnostics["discarded_orphan_registry_object_ids"] = discarded_orphan_registry_object_ids
-    usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
+    if reconciliation["reconciled_object_ids"]:
+        diagnostics["single_page_coverage_reconciled_object_ids"] = reconciliation[
+            "reconciled_object_ids"
+        ]
+    if reconciliation["discarded_orphan_registry_object_ids"]:
+        diagnostics["discarded_orphan_registry_object_ids"] = reconciliation[
+            "discarded_orphan_registry_object_ids"
+        ]
+    usage = _build_visual_registry_usage_event(
+        file_name=file_name,
+        company_id=company_id,
+        selected_model=str(selected_model),
+        response=response,
+        diagnostics=diagnostics,
+    )
+    if initial_usage is not None and correction_unowned_assembly_ids is not None:
+        usage = _combine_boundary_review_attempt_usage(
+            usage,
+            initial_usage=initial_usage,
+            unowned_assembly_visual_group_ids=correction_unowned_assembly_ids,
+            initial_registry_decision_audit=initial_usage["raw_usage"]["registry_decision_audit"],
+        )
     return visual_map, registry, usage
 
 

@@ -251,6 +251,20 @@ def test_v42_routes_only_adda_style_registry_to_sonnet():
         )
 
     assert registry_call["model"] == "claude-sonnet-4-6"
+    assert registry_call["boundary_review"] == {
+        "required": True,
+        "reasons": [
+            "no_strong_source_object_code",
+            "repeated_multiple_large_drawing_regions",
+        ],
+        "signals": {
+            "ocr_page_count": 2,
+            "large_drawing_count": 4,
+            "pages_with_multiple_large_drawings": 2,
+            "maximum_large_drawings_on_page": 2,
+            "strong_source_code_count": 0,
+        },
+    }
     assert evidence_call["primary_model_override"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
 
 
