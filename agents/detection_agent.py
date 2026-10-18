@@ -296,13 +296,6 @@ def run_detection_agent(
         boundary_model=str(boundary_model),
         explicit_model=model,
     )
-    boundary_review = None
-    if route.get("boundary_review_required"):
-        boundary_review = {
-            "required": True,
-            "reasons": route.get("reasons") or [],
-            "signals": route.get("signals") or {},
-        }
 
     registry_images = page_images
     if registry_images is None and file_name.lower().endswith(".pdf"):
@@ -319,8 +312,6 @@ def run_detection_agent(
             file_name=file_name, company_id=company_id, file_bytes=file_bytes,
             page_images=registry_images, regions=regions,
             ocr_package=ocr_package, model=route["registry_model"],
-            boundary_review=boundary_review,
-            stage_callback=stage_callback,
         )
     except DetectionVisualRegistryValidationError as exc:
         if stage_callback:

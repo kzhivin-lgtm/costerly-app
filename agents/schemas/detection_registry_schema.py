@@ -20,7 +20,6 @@ def validate_detection_registry(
     *,
     visual_group_ids: set[str] | None = None,
     visual_group_roles: dict[str, str] | None = None,
-    require_all_assembly_owners: bool = False,
 ) -> dict[str, Any]:
     if not isinstance(result, dict) or set(result) != {"objects"} or not isinstance(result["objects"], list):
         raise DetectionRegistrySchemaError("registry must contain only objects")
@@ -77,19 +76,4 @@ def validate_detection_registry(
             "registry visual groups must have one commercial-object owner",
             details={"duplicate_visual_group_owners": duplicate_ownership},
         )
-    if require_all_assembly_owners and visual_group_roles is not None:
-        unowned_assembly_group_ids = sorted(
-            group_id
-            for group_id, role in visual_group_roles.items()
-            if role == "assembly_view" and group_id not in assigned_visual_groups
-        )
-        if unowned_assembly_group_ids:
-            raise DetectionRegistrySchemaError(
-                "registry must account for every complete assembly view",
-                details={
-                    "unowned_assembly_visual_group_ids": (
-                        unowned_assembly_group_ids
-                    ),
-                },
-            )
     return result

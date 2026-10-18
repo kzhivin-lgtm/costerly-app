@@ -84,8 +84,6 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Secondary supporting signals only" in prompt
     assert "whole-silhouette similarity is not required" in prompt
     assert "vertical shelving unit, a track-supported door system and a long storage console" in prompt
-    assert "BOUNDARY REVIEW MODE" in prompt
-    assert "Never leave an `assembly_view` without an owner" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_boundary_review_v3_temperature_0"
+        "detection_v4_visual_registry_group_roles_experiment_v2_temperature_0"
     )

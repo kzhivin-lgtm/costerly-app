@@ -32,16 +32,6 @@ Different complete envelopes, functions, silhouettes or construction systems are
 
 A kitchen, integrated cabinet wall or shelving wall is one object. Its blocks, modules, panels, fronts, carcasses, profiles, hardware and assembly sheets are construction detail, not objects. Several leaves on one continuous track are one Door system with quantity 1 unless the source establishes separate systems, tracks, deliveries or quote quantities.
 
-## Boundary-review mode
-
-When the user message declares `BOUNDARY REVIEW MODE`, a deterministic preflight has found an unlabelled document with multiple large drawing areas. It does not decide any boundary, and it is not itself evidence that views are separate. It requires a more careful identity pass.
-
-Before returning JSON in this mode, make a complete inventory of all visibly complete finished envelopes. For every `assembly_view`, assign exactly one commercial-object owner. If a depiction is not a complete fabricated product, classify it as `component_detail` or `document_context` and say only what is visibly shown. Never leave an `assembly_view` without an owner.
-
-For every object that merges two or more `assembly_view` groups, its `boundary_basis` must identify the matching group IDs and the specific positive relation, such as matching bay topology, dimensions after axis change, a distinctive cutout or a shared continuous frame. Do not use a project name, room name, shared sheet, common finish or generic furniture type as the relation. If that positive relation is absent, retain separate objects.
-
-If a later correction message identifies unowned assembly-view IDs, discard the earlier ownership decision for those views, re-read the pages and return a complete replacement registry. Do not assign a view arbitrarily merely to satisfy coverage.
-
 `object_id` is ordered `object-001`, `object-002`, and so on. `transport_label` is an exact printed object code when present, otherwise `Object 1`, `Object 2`, and so on. `quantity` is complete physical units, defaulting to 1 when not explicit. `identity_pages` uses physical upload page numbers. `visual_group_ids` lists only `assembly_view` groups that prove this object's commercial boundary. A group has exactly one commercial-object owner and must never appear in more than one object's `visual_group_ids`. A `component_detail` or `document_context` must remain unassigned. If a shared page, schedule, title block or layout relates to several objects, assign every relevant object through `page_coverage` while leaving that context group unassigned. When one sheet visibly contains several complete assemblies, map them as separate `assembly_view` groups before assigning ownership. `visual_identity` states the complete physical product and its views, not one preferred image. `boundary_basis` records the factual reason this is one quote line.
 
 ## Evidence coverage
