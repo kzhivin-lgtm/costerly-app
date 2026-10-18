@@ -369,29 +369,8 @@ def _render_review_card(
             )
 
         st.markdown(_review_card_quality_html(run), unsafe_allow_html=True)
-        timing_slot = st.empty()
-        timing_slot.markdown(_timing_html(timings), unsafe_allow_html=True)
-        st.session_state[f"file_review_timing_slot.{run_id}"] = timing_slot
+        st.markdown(_timing_html(timings), unsafe_allow_html=True)
         st.markdown(_review_card_metadata_html(run), unsafe_allow_html=True)
-
-
-def _refresh_live_timing_row(run_id: str) -> None:
-    """Replace one timing placeholder from the existing deferred-work fragment.
-
-    The placeholder is created in the summary card outside the fragment. An
-    ``st.empty`` slot replaces its single child on every fragment refresh, so
-    the row stays in the card without accumulating elements or rerunning the
-    whole page.
-    """
-    timing_slot = st.session_state.get(f"file_review_timing_slot.{run_id}")
-    if timing_slot is None:
-        return
-    data = st.session_state.setdefault("file_review_data_cache", {}).get(run_id)
-    persisted = data.get("timings") if isinstance(data, dict) else None
-    timing_slot.markdown(
-        _timing_html(_merged_timings(st.session_state.get("current_agent_timings"), persisted)),
-        unsafe_allow_html=True,
-    )
 
 
 def _render_object_card(item: dict[str, object]) -> None:
@@ -558,6 +537,12 @@ def _publish_persisted_naming(
                 continue
             initial_name = str(initial_names.get(object_id) or item.get("name") or "")
             edit = edits.get(object_id)
+            if not isinstance(edit, dict):
+                # A terminal batch is applied at the beginning of the one
+                # parent rerun, before this run recreates its input widgets.
+                # Establish the edit row now so the former widget value can
+                # safely be replaced with the published name.
+                edit = _ensure_object_edit(object_id, item)
             if isinstance(edit, dict) and str(edit.get("name") or "") == initial_name:
                 edit["name"] = new_name
                 edit["expected_name"] = new_name
@@ -593,6 +578,11 @@ def _sync_durable_naming_once(run_id: str) -> None:
     """
     synced_key = f"file_review_naming_cache_synced.{run_id}"
     if st.session_state.get(synced_key):
+        return
+    # A newly processed run has a coordinated deferred-publication barrier.
+    # Let that barrier publish Naming and Preview together, rather than letting
+    # a first render publish just one half of the visible update.
+    if _has_deferred_work(run_id):
         return
     result = load_file_review_naming_publication(run_id)
     if str(result.get("status") or "pending") == "pending":
@@ -655,37 +645,68 @@ def _publish_persisted_preview(run_id: str, result: dict[str, object]) -> bool:
     return True
 
 
-def _publish_deferred_file_review_work(run_id: str) -> None:
-    """Persist terminal Naming and Preview work without rerunning the app."""
-    naming_result = load_file_review_naming_publication(run_id)
-    naming_done = _publish_persisted_naming(run_id, naming_result)
-    if naming_done:
+def _terminal_deferred_file_review_results(
+    run_id: str,
+) -> dict[str, dict[str, object]] | None:
+    """Return both results only after every active deferred worker is terminal."""
+    work = st.session_state.get("file_review_deferred_work")
+    if not isinstance(work, dict) or work.get("run_id") != run_id:
+        return None
+
+    results: dict[str, dict[str, object]] = {}
+    if work.get("naming"):
+        naming_result = load_file_review_naming_publication(run_id)
+        if str(naming_result.get("status") or "pending") == "pending":
+            return None
+        results["naming"] = naming_result
+    if work.get("preview"):
+        local_preview_result = _collect_completed_previews()
+        preview_result = local_preview_result or load_file_review_preview_publication(run_id)
+        if str(preview_result.get("status") or "pending") == "pending":
+            return None
+        results["preview"] = preview_result
+    return results
+
+
+def _queue_terminal_deferred_file_review_publication(run_id: str) -> bool:
+    """Stage one atomic refresh after all deferred work finishes.
+
+    This runs inside a polling fragment after parent widgets already exist, so
+    it must not mutate widget-backed state. The parent app rerun applies the
+    staged data before recreating any inputs.
+    """
+    pending_key = f"file_review_terminal_publication.{run_id}"
+    if st.session_state.get(pending_key):
+        return False
+    results = _terminal_deferred_file_review_results(run_id)
+    if results is None:
+        return False
+    st.session_state[pending_key] = results
+    return True
+
+
+def _apply_queued_deferred_file_review_publication(run_id: str) -> bool:
+    """Apply a terminal Naming and Preview batch before File Review widgets."""
+    pending_key = f"file_review_terminal_publication.{run_id}"
+    results = st.session_state.pop(pending_key, None)
+    if not isinstance(results, dict):
+        return False
+
+    naming_result = results.get("naming")
+    if isinstance(naming_result, dict):
+        _publish_persisted_naming(run_id, naming_result)
         _mark_deferred_work_complete(run_id, "naming")
-    local_preview_result = _collect_completed_previews()
-    preview_result = local_preview_result or load_file_review_preview_publication(run_id)
-    preview_done = _publish_persisted_preview(run_id, preview_result)
-    # The enclosing fragment renders from the session cache on its next poll.
-    # Do not issue an app rerun here: that briefly unmounts the global
-    # navigation rail while Streamlit reconciles File Review.
+        st.session_state[f"file_review_naming_cache_synced.{run_id}"] = True
+
+    preview_result = results.get("preview")
+    if isinstance(preview_result, dict):
+        _publish_persisted_preview(run_id, preview_result)
+        _mark_deferred_work_complete(run_id, "preview")
+    return True
 
 
-@st.fragment(run_every=2.0)
-def _render_file_review_dynamic_content(run_id: str) -> None:
-    """Refresh only object cards while deferred artifacts become available."""
-    # Naming updates a keyed text input. It must complete before this fragment
-    # creates that input, otherwise Streamlit rejects the session-state write.
-    # Preview publication also invalidates the cached object snapshot, so load
-    # the cards only after either terminal artifact is published.
-    if _has_deferred_work(run_id):
-        _publish_deferred_file_review_work(run_id)
-    _refresh_live_timing_row(run_id)
-
-    try:
-        data = _load_file_review_screen_data(run_id)
-    except Exception as exc:
-        st.error(f"Could not refresh File Review data: {exc}")
-        return
-
+def _render_file_review_content(run_id: str, data: dict[str, object]) -> None:
+    """Render stable cards outside the deferred-work polling fragment."""
     preview_terminal_status = st.session_state.get(f"file_review_preview_terminal.{run_id}")
     if preview_terminal_status:
         for item in data.get("objects") or []:
@@ -715,6 +736,15 @@ def _render_file_review_dynamic_content(run_id: str) -> None:
     for item in data["objects"]:
         _render_object_card(item)
     _render_missing_object_search()
+
+
+@st.fragment(run_every=2.0)
+def _watch_file_review_deferred_work(run_id: str) -> None:
+    """Poll only terminal status, then cause one parent File Review refresh."""
+    if not _has_deferred_work(run_id):
+        return
+    if _queue_terminal_deferred_file_review_publication(run_id):
+        st.rerun(scope="app")
 
 
 def _file_review_edits_changed(
@@ -900,6 +930,10 @@ def render_file_review_screen(
 
     _sync_run_metadata_state(run_id, data["run"])
     _sync_object_edit_state(run_id, data["objects"])
+    if _apply_queued_deferred_file_review_publication(run_id):
+        data = _load_file_review_screen_data(run_id)
+        _sync_run_metadata_state(run_id, data["run"])
+        _sync_object_edit_state(run_id, data["objects"])
     _sync_durable_naming_once(run_id)
     with st.container():
         st.markdown(
@@ -918,7 +952,9 @@ def render_file_review_screen(
         )
     install_workflow_header_alignment_guard()
 
-    _render_file_review_dynamic_content(run_id)
+    _render_file_review_content(run_id, data)
+    if _has_deferred_work(run_id):
+        _watch_file_review_deferred_work(run_id)
 
     col_back, col_next = st.columns(2, gap="small")
 

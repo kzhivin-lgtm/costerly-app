@@ -167,6 +167,7 @@ def reset_new_estimate_session(*, clear_upload_widget: bool) -> None:
             "file_review_naming_cache_synced.",
             "file_review_preview_published.",
             "file_review_preview_terminal.",
+            "file_review_terminal_publication.",
         )):
             st.session_state.pop(key, None)
     if clear_upload_widget:
