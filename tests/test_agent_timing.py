@@ -495,7 +495,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "Object 1",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "quantity": 1, "quantity_explicit": False,
             "primary_assembly_group_id": "view_a",
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
         }],
@@ -530,6 +530,7 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert requested_temperatures == [0.0]
     assert visual_map["visual_groups"][0]["group_id"] == "view-001"
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
+    assert registry["objects"][0]["identity_pages"] == [1]
     assert registry["objects"][0]["estimation_evidence_pages"] == [1]
     assert usage["operation"] == "rfq_detection_visual_registry"
     assert usage["raw_usage"]["temperature"] == 0.0
@@ -581,7 +582,7 @@ def test_integrated_visual_registry_normalizes_one_primary_assembly_anchor():
         ],
         "objects": [{
             "object_id": "object-001", "transport_label": "D01",
-            "quantity": 1, "quantity_explicit": True, "identity_pages": [1],
+            "quantity": 1, "quantity_explicit": True,
             "primary_assembly_group_id": "elevation",
             "visual_identity": "one door system in elevation and plan",
             "boundary_basis": "matching track and three-leaf sequence",
@@ -625,7 +626,7 @@ def test_integrated_visual_registry_rejects_component_detail_as_primary_anchor()
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "C01",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "quantity": 1, "quantity_explicit": False,
             "primary_assembly_group_id": "detail",
             "visual_identity": "cabinet", "boundary_basis": "one cabinet",
         }],

@@ -165,6 +165,7 @@ def test_integrated_registry_requires_one_primary_assembly_anchor_per_object():
     assert object_schema["properties"]["primary_assembly_group_id"] == {
         "type": "string", "minLength": 1,
     }
+    assert "identity_pages" not in object_schema["properties"]
     assert "visual_group_ids" not in object_schema["properties"]
     assert "merge_proofs" not in object_schema["properties"]
 

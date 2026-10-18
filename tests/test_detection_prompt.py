@@ -89,6 +89,8 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Pairwise merge-proof procedure" not in prompt
     assert "merge_proofs" not in prompt
     assert "Test commercial separability, not visual adjacency" in prompt
+    assert "Different explicit object codes are affirmative separate-object evidence" in prompt
+    assert "The runtime derives its identity page directly from this anchor" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_primary_anchor_v1_temperature_0"
+        "detection_v4_visual_registry_primary_anchor_v2_temperature_0"
     )

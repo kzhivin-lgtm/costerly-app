@@ -47,7 +47,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_primary_anchor_v1_temperature_0"
+    "detection_v4_visual_registry_primary_anchor_v2_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
@@ -73,6 +73,12 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 )
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
+    "identity_pages"
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
+    "identity_pages"
 )
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
     "visual_group_ids"
@@ -789,6 +795,7 @@ def _discard_trailing_orphan_registry_objects(
 def _normalize_primary_assembly_anchors(
     objects: object,
     group_id_mapping: dict[str, str],
+    group_page_by_id: dict[str, int],
 ) -> object:
     """Adapt one provider-selected anchor to the locked registry contract.
 
@@ -818,9 +825,19 @@ def _normalize_primary_assembly_anchors(
                 raise DetectionRegistrySchemaError(
                     "registry primary assembly anchor is invalid"
                 )
-            registry_item["visual_group_ids"] = [
-                group_id_mapping.get(primary_group_id, primary_group_id)
-            ]
+            normalized_primary_group_id = group_id_mapping.get(
+                primary_group_id, primary_group_id
+            )
+            primary_page_number = group_page_by_id.get(normalized_primary_group_id)
+            if primary_page_number is None:
+                raise DetectionRegistrySchemaError(
+                    "registry primary assembly anchor is invalid"
+                )
+            registry_item["visual_group_ids"] = [normalized_primary_group_id]
+            # The selected anchor is the sole identity anchor. Do not ask the
+            # model to repeat its physical page in a second, independently
+            # serialized field, which can drift from page coverage.
+            registry_item["identity_pages"] = [primary_page_number]
         registry_objects.append(registry_item)
     return registry_objects
 
@@ -904,7 +921,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
         registry_object_packages = _normalize_primary_assembly_anchors(
-            payload["objects"], group_id_mapping
+            payload["objects"],
+            group_id_mapping,
+            {
+                group["group_id"]: group["page_number"]
+                for group in visual_map["visual_groups"]
+            },
         )
         registry_objects_input, discarded_orphan_registry_object_ids = (
             _discard_trailing_orphan_registry_objects(
