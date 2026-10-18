@@ -23,17 +23,15 @@ DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA: dict[str, Any] = {
         "type": "object",
         "additionalProperties": False,
         "required": [
-            "package_id",
             "object_id",
             "assembly_view_group_ids",
             "supporting_component_detail_group_ids",
             "package_basis",
         ],
         "properties": {
-            "package_id": {"type": "string"},
-            # An empty string means a visually complete package is supporting
-            # document content, not a commercial quote item.
-            "object_id": {"type": "string"},
+            # Package IDs are assigned deterministically by the runtime after
+            # the model has decided package membership. They are not inference.
+            "object_id": {"type": "string", "minLength": 1},
             "assembly_view_group_ids": {
                 "type": "array", "minItems": 1,
                 "items": {"type": "string"},
@@ -158,6 +156,7 @@ def validate_detection_representation_packages(
             or len(supporting_ids) != len(set(supporting_ids))
             or not all(isinstance(group_id, str) and group_id for group_id in supporting_ids)
             or set(assembly_ids).intersection(supporting_ids)
+            or not object_id
             or not str(package["package_basis"] or "").strip()
         ):
             raise DetectionRegistrySchemaError("representation package is invalid")
@@ -179,13 +178,12 @@ def validate_detection_representation_packages(
             packaged_assembly_owners.setdefault(group_id, []).append(package_id)
         for group_id in supporting_ids:
             supporting_component_owners.setdefault(group_id, []).append(package_id)
-        if object_id:
-            commercial_package_owners.setdefault(object_id, []).append(package_id)
-            if object_groups.get(object_id) != assembly_ids:
-                raise DetectionRegistrySchemaError(
-                    "registry object must use exactly its package assembly views",
-                    details={"object_id": object_id, "package_id": package_id},
-                )
+        commercial_package_owners.setdefault(object_id, []).append(package_id)
+        if object_groups.get(object_id) != assembly_ids:
+            raise DetectionRegistrySchemaError(
+                "registry object must use exactly its package assembly views",
+                details={"object_id": object_id, "package_id": package_id},
+            )
 
     if set(packaged_assembly_owners) != assembly_group_ids:
         raise DetectionRegistrySchemaError(

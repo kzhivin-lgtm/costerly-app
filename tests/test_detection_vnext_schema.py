@@ -2,6 +2,7 @@ import pytest
 
 from agents.anthropic_adapter import discard_degenerate_evidence_regions
 from agents.schemas.detection_registry_schema import (
+    DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     validate_detection_pairwise_merge_proofs,
@@ -176,6 +177,19 @@ def test_representation_package_connects_one_complete_view_with_its_details():
     assert validate_detection_representation_packages(
         packages, visual_groups=visual_groups, registry=registry,
     ) == packages
+
+
+def test_representation_package_schema_leaves_bookkeeping_ids_to_the_runtime():
+    package_schema = DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA["items"]
+
+    assert package_schema["required"] == [
+        "object_id",
+        "assembly_view_group_ids",
+        "supporting_component_detail_group_ids",
+        "package_basis",
+    ]
+    assert "package_id" not in package_schema["properties"]
+    assert package_schema["properties"]["object_id"]["minLength"] == 1
 
 
 def test_representation_packages_require_every_assembly_view_once():

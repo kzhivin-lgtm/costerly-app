@@ -18,13 +18,13 @@ Give each group a stable ordered `group_id`, physical `page_number`, short `loca
 
 After every visual group has a role, collect related product depictions into `representation_packages`. A package is the explicit bridge between individual images and a commercial object. It is not a second provider call and it is not a visual crop.
 
-Each package has ordered `package_id`, `object_id`, `assembly_view_group_ids`, `supporting_component_detail_group_ids` and factual `package_basis`.
+Each package has `object_id`, `assembly_view_group_ids`, `supporting_component_detail_group_ids` and factual `package_basis`. The runtime assigns package IDs after the response. Do not output an ID for a package.
 
 - Every `assembly_view` belongs to exactly one package.
 - A package has at least one `assembly_view`.
-- A `component_detail` may support one package only when its relation to that package is positively established. Otherwise leave it outside packages and preserve it through page coverage.
+- A `component_detail` may support one package only when its relation to that package is positively established. Otherwise leave it outside packages and preserve it through page coverage. Never make a component-only package or a placeholder package for unattached details.
 - A `document_context` never belongs to a package.
-- Set `object_id` to the final ordered commercial object ID when the package is an independently quotable fabricated product. Use an empty string only when the package is positively non-commercial support.
+- Every package is an independently quotable fabricated product. Set its `object_id` to the final ordered commercial object ID. Do not make non-commercial packages.
 
 Build a package from the full document, not from silhouette similarity alone. Use code, callout, topology, compatible transformed dimensions, repeated unique geometry and direct construction relation. A change of projection may make one item look unlike itself. Conversely, do not merge separate finished envelopes merely because they are adjacent, share material, room, sheet or layout.
 

@@ -51,7 +51,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_representation_packages_v1_temperature_0"
+    "detection_v4_visual_registry_representation_packages_v2_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -796,25 +796,62 @@ def _normalize_pairwise_merge_proof_group_ids(
 def _normalize_representation_package_group_ids(
     packages: object,
     group_id_mapping: dict[str, str],
-) -> object:
-    """Keep the package layer aligned with canonical visual-group IDs."""
+) -> tuple[object, list[dict[str, Any]]]:
+    """Canonicalize package joins and expose, rather than package, orphan details.
+
+    Package membership is an inference. A package ID is only a local join key,
+    so the runtime assigns it by response order. A model may nevertheless use a
+    component-only placeholder to say that some details found no owner. That is
+    not a package: retain the raw entry for audit, omit it from package
+    validation, then derive its component IDs as unattached evidence below.
+    """
     if not isinstance(packages, list):
-        return packages
-    normalized = copy.deepcopy(packages)
-    for package in normalized:
+        return packages, []
+    normalized: list[Any] = []
+    component_only_placeholders: list[dict[str, Any]] = []
+    for package in packages:
         if not isinstance(package, dict):
+            normalized.append(copy.deepcopy(package))
             continue
+        raw_assembly_ids = package.get("assembly_view_group_ids")
+        if not str(package.get("object_id") or "").strip() and raw_assembly_ids == []:
+            component_only_placeholders.append(copy.deepcopy(package))
+            continue
+        normalized_package = copy.deepcopy(package)
+        # The provider must not decide a generated bookkeeping ID. Ignore a
+        # stale/provider-supplied value while preserving it in the raw audit.
+        normalized_package.pop("package_id", None)
+        normalized_package["package_id"] = f"package-{len(normalized) + 1:03d}"
         for field in (
             "assembly_view_group_ids",
             "supporting_component_detail_group_ids",
         ):
-            group_ids = package.get(field)
+            group_ids = normalized_package.get(field)
             if isinstance(group_ids, list):
-                package[field] = [
+                normalized_package[field] = [
                     group_id_mapping.get(str(group_id), str(group_id))
                     for group_id in group_ids
                 ]
-    return normalized
+        normalized.append(normalized_package)
+    return normalized, component_only_placeholders
+
+
+def _unattached_component_detail_group_ids(
+    visual_groups: list[dict[str, Any]],
+    representation_packages: list[dict[str, Any]],
+) -> list[str]:
+    """Derive component details with no evidenced commercial-package owner."""
+    component_detail_ids = {
+        str(group["group_id"])
+        for group in visual_groups
+        if group.get("commercial_role") == "component_detail"
+    }
+    attached_component_detail_ids = {
+        str(group_id)
+        for package in representation_packages
+        for group_id in package.get("supporting_component_detail_group_ids", [])
+    }
+    return sorted(component_detail_ids - attached_component_detail_ids)
 
 
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -869,8 +906,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         merge_proofs = _normalize_pairwise_merge_proof_group_ids(
             payload["merge_proofs"], group_id_mapping
         )
-        representation_packages = _normalize_representation_package_group_ids(
-            payload["representation_packages"], group_id_mapping
+        representation_packages, component_only_package_placeholders = (
+            _normalize_representation_package_group_ids(
+                payload["representation_packages"], group_id_mapping
+            )
         )
         registry_objects_input, discarded_orphan_registry_object_ids = (
             _discard_trailing_orphan_registry_objects(
@@ -898,6 +937,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             representation_packages,
             visual_groups=visual_map["visual_groups"],
             registry=registry,
+        )
+        unattached_component_detail_group_ids = _unattached_component_detail_group_ids(
+            visual_map["visual_groups"], representation_packages,
         )
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
             merge_proofs,
@@ -943,6 +985,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
         "representation_package_count": len(representation_packages),
+        "component_only_package_placeholder_count": len(component_only_package_placeholders),
+        "component_only_package_placeholders": component_only_package_placeholders,
+        "unattached_component_detail_group_ids": unattached_component_detail_group_ids,
         "registry_object_count": len(registry["objects"]),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
         "visual_group_role_counts": {

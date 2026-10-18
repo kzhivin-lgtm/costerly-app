@@ -642,12 +642,25 @@ def test_integrated_visual_registry_packages_a_complete_front_elevation_with_det
                 "visual_description": "N76B profile and plan detail",
                 "representation_kind": "plan_detail", "commercial_role": "component_detail",
             },
+            {
+                "group_id": "orphan_detail", "page_number": 11, "location_hint": "lower",
+                "visual_description": "unattached construction detail",
+                "representation_kind": "detail", "commercial_role": "component_detail",
+            },
         ],
         "representation_packages": [{
-            "package_id": "package-001", "object_id": "object-001",
+            # A stale model-supplied ID must never decide internal ordering.
+            "package_id": "pkg-041", "object_id": "object-001",
             "assembly_view_group_ids": ["front"],
             "supporting_component_detail_group_ids": ["profile"],
             "package_basis": "The N76B code and complete elevation establish a separate shelving unit.",
+        }, {
+            # This is not a commercial package. The runtime preserves it in
+            # audit and derives orphan_detail as unattached evidence instead.
+            "package_id": "pkg-042", "object_id": "",
+            "assembly_view_group_ids": [],
+            "supporting_component_detail_group_ids": ["orphan_detail"],
+            "package_basis": "The detail has no evidenced owner.",
         }],
         "objects": [{
             "object_id": "object-001", "transport_label": "N76B",
@@ -688,6 +701,8 @@ def test_integrated_visual_registry_packages_a_complete_front_elevation_with_det
     assert registry["objects"][0]["visual_group_ids"] == ["view-001"]
     assert registry["objects"][0]["estimation_evidence_pages"] == [11]
     assert usage["raw_usage"]["representation_package_count"] == 1
+    assert usage["raw_usage"]["component_only_package_placeholder_count"] == 1
+    assert usage["raw_usage"]["unattached_component_detail_group_ids"] == ["view-003"]
 
 
 def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():
