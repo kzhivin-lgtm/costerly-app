@@ -88,6 +88,10 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "inventory every distinct drawing area on every sheet" in prompt
     assert "Do not collapse a multi-view sheet into one generic detail and one schedule" in prompt
     assert "dense grid, a repeated panel array" in prompt
+    assert "location plan, a narrow plan projection, and a full frontal elevation are three distinct depictions" in prompt
+    assert "decorative lattice or room divider" in prompt
+    assert "internal topology of that physical envelope, not a schedule" in prompt
+    assert "Architectural floor, reflected-ceiling, electrical, plumbing, MEP and coordination plans" in prompt
     assert "A `document_context` never becomes an object" in prompt
     assert "resolve identity inside each package" in prompt
     assert "Dimensions that agree after a change of axes" in prompt
@@ -98,5 +102,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Test commercial separability, not merely visual adjacency" in prompt
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_representation_packages_v5_temperature_0"
+        "detection_v4_visual_registry_representation_packages_v6_temperature_0"
     )
