@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import copy
 import re
 from collections.abc import Callable
 
 from agents.anthropic_adapter import (
     DetectionVisualRegistryValidationError,
-    run_anthropic_detection_assembly_association_resolver,
     run_anthropic_detection_agent_with_fallback,
+    run_anthropic_detection_boundary_registry_resolver,
+    run_anthropic_detection_boundary_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.detection_model_router import (
@@ -21,88 +21,6 @@ from agents.prompt_loader import (
     load_detection_visual_registry_prompt,
 )
 from agents.schemas.detection_schema import validate_detection_result
-from agents.schemas.detection_registry_schema import validate_detection_registry
-
-
-def _unassigned_assembly_view_ids(visual_map: dict, registry: dict) -> list[str]:
-    assigned_group_ids = {
-        str(group_id)
-        for item in registry.get("objects") or []
-        if isinstance(item, dict)
-        for group_id in item.get("visual_group_ids") or []
-    }
-    return [
-        str(group["group_id"])
-        for group in visual_map.get("visual_groups") or []
-        if (
-            isinstance(group, dict)
-            and group.get("commercial_role") == "assembly_view"
-            and str(group.get("group_id") or "") not in assigned_group_ids
-        )
-    ]
-
-
-def _apply_assembly_association_repairs(
-    registry: dict,
-    visual_map: dict,
-    association: dict,
-) -> dict:
-    """Apply a bounded resolver patch without reopening locked objects."""
-    repaired = copy.deepcopy(registry)
-    objects = repaired.get("objects")
-    if not isinstance(objects, list):
-        raise ValueError("Detection registry objects are invalid")
-    objects_by_id = {
-        str(item.get("object_id") or ""): item
-        for item in objects
-        if isinstance(item, dict)
-    }
-    group_pages = {
-        str(group.get("group_id") or ""): int(group["page_number"])
-        for group in visual_map.get("visual_groups") or []
-        if isinstance(group, dict)
-        and isinstance(group.get("page_number"), int)
-        and int(group["page_number"]) > 0
-    }
-
-    def extend_pages(item: dict, pages: list[int]) -> None:
-        for field in ("identity_pages", "estimation_evidence_pages"):
-            existing = list(item.get(field) or [])
-            item[field] = sorted(set(existing) | set(pages))
-
-    for repair in association["attach_existing"]:
-        target = objects_by_id[repair["object_id"]]
-        group_ids = list(repair["visual_group_ids"])
-        target["visual_group_ids"] = list(target["visual_group_ids"]) + group_ids
-        pages = list(repair["evidence_page_numbers"]) + [
-            group_pages[group_id] for group_id in group_ids
-        ]
-        extend_pages(target, pages)
-        target["boundary_basis"] = (
-            f"{target['boundary_basis']}; association resolver: "
-            f"{repair['association_basis']}"
-        )
-
-    next_index = len(objects) + 1
-    for new_object in association["new_objects"]:
-        group_ids = list(new_object["visual_group_ids"])
-        identity_pages = sorted({group_pages[group_id] for group_id in group_ids})
-        evidence_pages = sorted(
-            set(identity_pages) | set(new_object["evidence_page_numbers"])
-        )
-        objects.append({
-            "object_id": f"object-{next_index:03d}",
-            "transport_label": f"Object {next_index}",
-            "quantity": new_object["quantity"],
-            "quantity_explicit": new_object["quantity_explicit"],
-            "identity_pages": identity_pages,
-            "estimation_evidence_pages": evidence_pages,
-            "visual_group_ids": group_ids,
-            "visual_identity": new_object["visual_identity"],
-            "boundary_basis": new_object["boundary_basis"],
-        })
-        next_index += 1
-    return repaired
 
 
 def _enforce_shared_track_door_system_quantity(registry: dict) -> dict:
@@ -389,30 +307,36 @@ def run_detection_agent(
     if not registry_images:
         raise ValueError("Detection registry requires rendered PDF pages.")
     regions = build_detection_registry_regions(registry_images)
-    if stage_callback:
-        stage_callback("Detection Registry started")
-    try:
-        _visual_map, registry, visual_registry_usage = run_anthropic_detection_visual_registry_agent(
-            file_name=file_name, company_id=company_id, file_bytes=file_bytes,
-            page_images=registry_images, regions=regions,
-            ocr_package=ocr_package, model=route["registry_model"],
-        )
-    except DetectionVisualRegistryValidationError as exc:
+    registry_stage_usage_events: list[object] = []
+    if route["pipeline"] == "boundary_sensitive":
         if stage_callback:
-            stage_callback("Detection Registry failed")
-        _attach_detection_model_route(exc.usage_event, route)
-        raise
-    if stage_callback:
-        stage_callback("Detection Registry completed")
-    visual_registry_usage = _attach_detection_model_route(visual_registry_usage, route)
-    association_usage = None
-    orphan_assembly_view_ids = _unassigned_assembly_view_ids(_visual_map, registry)
-    if orphan_assembly_view_ids:
-        if stage_callback:
-            stage_callback("Detection Assembly association started")
+            stage_callback("Detection Boundary visual map started")
         try:
-            association, association_usage = (
-                run_anthropic_detection_assembly_association_resolver(
+            _visual_map, visual_map_usage = (
+                run_anthropic_detection_boundary_visual_map_agent(
+                    file_name=file_name,
+                    company_id=company_id,
+                    file_bytes=file_bytes,
+                    page_images=registry_images,
+                    regions=regions,
+                    ocr_package=ocr_package,
+                    model=route["evidence_model"],
+                )
+            )
+        except DetectionVisualRegistryValidationError as exc:
+            if stage_callback:
+                stage_callback("Detection Boundary visual map failed")
+            _attach_detection_model_route(exc.usage_event, route)
+            raise
+        registry_stage_usage_events.append(
+            _attach_detection_model_route(visual_map_usage, route)
+        )
+        if stage_callback:
+            stage_callback("Detection Boundary visual map completed")
+            stage_callback("Detection Boundary resolver started")
+        try:
+            registry, boundary_registry_usage = (
+                run_anthropic_detection_boundary_registry_resolver(
                     file_name=file_name,
                     company_id=company_id,
                     file_bytes=file_bytes,
@@ -420,37 +344,45 @@ def run_detection_agent(
                     regions=regions,
                     ocr_package=ocr_package,
                     visual_map=_visual_map,
-                    registry=registry,
-                    orphan_group_ids=orphan_assembly_view_ids,
-                    model=route["evidence_model"],
+                    model=route["registry_model"],
                 )
             )
         except DetectionVisualRegistryValidationError as exc:
             if stage_callback:
-                stage_callback("Detection Assembly association failed")
+                stage_callback("Detection Boundary resolver failed")
             _attach_detection_model_route(exc.usage_event, route)
             raise
-        registry = _apply_assembly_association_repairs(
-            registry, _visual_map, association
+        registry_stage_usage_events.append(
+            _attach_detection_model_route(boundary_registry_usage, route)
         )
-        association_usage = _attach_detection_model_route(association_usage, route)
         if stage_callback:
-            stage_callback("Detection Assembly association completed")
+            stage_callback("Detection Boundary resolver completed")
+    else:
+        if stage_callback:
+            stage_callback("Detection Registry started")
+        try:
+            _visual_map, registry, visual_registry_usage = (
+                run_anthropic_detection_visual_registry_agent(
+                    file_name=file_name,
+                    company_id=company_id,
+                    file_bytes=file_bytes,
+                    page_images=registry_images,
+                    regions=regions,
+                    ocr_package=ocr_package,
+                    model=route["registry_model"],
+                )
+            )
+        except DetectionVisualRegistryValidationError as exc:
+            if stage_callback:
+                stage_callback("Detection Registry failed")
+            _attach_detection_model_route(exc.usage_event, route)
+            raise
+        registry_stage_usage_events.append(
+            _attach_detection_model_route(visual_registry_usage, route)
+        )
+        if stage_callback:
+            stage_callback("Detection Registry completed")
     registry = _enforce_shared_track_door_system_quantity(registry)
-    validate_detection_registry(
-        registry,
-        visual_group_ids={
-            str(group["group_id"])
-            for group in _visual_map.get("visual_groups") or []
-            if isinstance(group, dict)
-        },
-        visual_group_roles={
-            str(group["group_id"]): str(group["commercial_role"])
-            for group in _visual_map.get("visual_groups") or []
-            if isinstance(group, dict)
-        },
-        require_all_assembly_owners=True,
-    )
     _validate_registry_evidence_pages(registry, page_count=len(registry_images))
     evidence_page_numbers = sorted({page for item in registry["objects"] for page in item["estimation_evidence_pages"]})
     evidence_images = [registry_images[page - 1] for page in evidence_page_numbers]
@@ -483,8 +415,6 @@ def run_detection_agent(
     if stage_callback:
         stage_callback("Detection Evidence handoff completed")
     validated["_agent_usage_events"] = [
-        event
-        for event in (visual_registry_usage, association_usage, usage_event)
-        if event
+        event for event in (*registry_stage_usage_events, usage_event) if event
     ]
     return validated

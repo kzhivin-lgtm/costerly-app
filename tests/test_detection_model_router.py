@@ -21,6 +21,7 @@ def test_router_selects_sonnet_only_for_unlabelled_repeated_multi_drawing_pages(
     assert route["decision"] == "sonnet_boundary_risk"
     assert route["registry_model"] == "sonnet"
     assert route["evidence_model"] == "haiku"
+    assert route["pipeline"] == "boundary_sensitive"
     assert route["signals"]["pages_with_multiple_large_drawings"] == 2
 
 
@@ -35,6 +36,7 @@ def test_router_keeps_labelled_multi_drawing_document_on_base_model():
 
     assert route["decision"] == "haiku_default"
     assert route["registry_model"] == "haiku"
+    assert route["pipeline"] == "integrated_registry"
     assert route["signals"]["strong_source_code_count"] == 1
 
 
@@ -49,3 +51,4 @@ def test_router_preserves_explicit_model_override_for_benchmarks():
     assert route["decision"] == "explicit_model_override"
     assert route["registry_model"] == "benchmark-model"
     assert route["evidence_model"] == "benchmark-model"
+    assert route["pipeline"] == "integrated_registry"

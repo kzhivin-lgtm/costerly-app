@@ -148,36 +148,6 @@ def test_registry_allows_unassigned_navigation_only_visual_groups():
     ) == registry
 
 
-def test_final_registry_rejects_an_unassigned_complete_assembly_view():
-    registry = {
-        "objects": [{
-            "object_id": "object-001", "transport_label": "Object 1",
-            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-            "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
-            "visual_identity": "cabinet", "boundary_basis": "one complete product",
-        }],
-    }
-
-    with pytest.raises(
-        DetectionRegistrySchemaError,
-        match="must assign every complete assembly view exactly once",
-    ) as raised:
-        validate_detection_registry(
-            registry,
-            visual_group_ids={"view-001", "view-002", "view-003"},
-            visual_group_roles={
-                "view-001": "assembly_view",
-                "view-002": "assembly_view",
-                "view-003": "document_context",
-            },
-            require_all_assembly_owners=True,
-        )
-
-    assert raised.value.details == {
-        "unassigned_assembly_visual_group_ids": ["view-002"],
-    }
-
-
 def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
     visual_map = {
         "visual_groups": [

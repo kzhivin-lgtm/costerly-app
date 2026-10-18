@@ -19,7 +19,8 @@ from config import agent_cost_category, calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
-    load_detection_assembly_association_resolver_prompt,
+    load_detection_boundary_registry_resolver_prompt,
+    load_detection_boundary_visual_map_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
@@ -28,10 +29,6 @@ from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     validate_detection_registry,
-)
-from agents.schemas.detection_assembly_association_schema import (
-    DETECTION_ASSEMBLY_ASSOCIATION_JSON_SCHEMA,
-    validate_detection_assembly_association,
 )
 from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
@@ -55,14 +52,17 @@ DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
     "detection_v4_visual_registry_group_roles_experiment_v2_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
+DETECTION_BOUNDARY_VISUAL_MAP_PROMPT_VERSION = (
+    "detection_v4_boundary_visual_map_v1_temperature_0"
+)
+DETECTION_BOUNDARY_REGISTRY_RESOLVER_PROMPT_VERSION = (
+    "detection_v4_boundary_registry_resolver_v1_temperature_0"
+)
+DETECTION_BOUNDARY_PIPELINE_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
 DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE = 0.0
-DETECTION_ASSEMBLY_ASSOCIATION_PROMPT_VERSION = (
-    "detection_v4_assembly_association_resolver_v1_temperature_0"
-)
-DETECTION_ASSEMBLY_ASSOCIATION_TEMPERATURE = 0.0
 
 
 class DetectionVisualRegistryValidationError(RuntimeError):
@@ -88,6 +88,28 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
     "commercial_role"
 )
+
+DETECTION_BOUNDARY_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["objects", "page_coverage"],
+    "properties": {
+        "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
+        "page_coverage": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["page_number", "object_ids", "evidence_reason"],
+                "properties": {
+                    "page_number": {"type": "integer", "minimum": 1},
+                    "object_ids": {"type": "array", "items": {"type": "string"}},
+                    "evidence_reason": {"type": "string"},
+                },
+            },
+        },
+    },
+}
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -648,6 +670,115 @@ def run_anthropic_detection_visual_map_agent(*, file_name: str, company_id: str,
     return visual_map, usage
 
 
+def run_anthropic_detection_boundary_visual_map_agent(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    regions: list[dict[str, Any]],
+    ocr_package: dict[str, Any] | None,
+    model: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Map views before a boundary-sensitive Registry is allowed to group them."""
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL
+    )
+    prompt = load_detection_boundary_visual_map_prompt()
+    user_text = build_detection_user_text(
+        file_name=file_name, company_id=company_id, ocr_package=ocr_package
+    )
+    schema = copy.deepcopy(DETECTION_VISUAL_MAP_JSON_SCHEMA)
+    schema["properties"]["visual_groups"]["items"]["required"].append(
+        "commercial_role"
+    )
+    content = build_detection_registry_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        user_text=user_text,
+        page_images=page_images,
+        regions=regions,
+    )
+    response, diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=8192,
+        temperature=DETECTION_BOUNDARY_PIPELINE_TEMPERATURE,
+        system=build_detection_system_content(prompt=prompt),
+        messages=[{"role": "user", "content": content}],
+        output_config={
+            "format": {"type": "json_schema", "schema": strip_schema_for_claude(schema)}
+        },
+    )
+    diagnostics["temperature"] = DETECTION_BOUNDARY_PIPELINE_TEMPERATURE
+    decision_audit: dict[str, Any] | None = None
+    try:
+        decision_audit = json.loads(extract_text_from_claude_response(response))
+        visual_map = validate_detection_visual_map(
+            normalize_detection_visual_map_group_ids(decision_audit),
+            require_commercial_roles=True,
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
+        failure_diagnostics = dict(diagnostics)
+        failure_diagnostics.update({
+            "boundary_visual_map_audit": decision_audit,
+            "validation_error": str(exc),
+            "validation_stage": "boundary_visual_map",
+            "attempt_label": "boundary_visual_map_validation_failed",
+        })
+        failure_usage = build_agent_usage_event(
+            agent_name="detection",
+            operation="rfq_detection_boundary_visual_map",
+            company_id=company_id,
+            run_id=None,
+            file_name=file_name,
+            object_id=None,
+            object_name=None,
+            model=selected_model,
+            prompt_version=DETECTION_BOUNDARY_VISUAL_MAP_PROMPT_VERSION,
+            response=response,
+            started_at=diagnostics["request_started_at"],
+            finished_at=diagnostics["request_finished_at"],
+            request_diagnostics=failure_diagnostics,
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Detection boundary visual-map response failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
+    diagnostics.update({
+        "boundary_visual_map_audit": decision_audit,
+        "visual_group_count": len(visual_map["visual_groups"]),
+        "visual_group_role_counts": {
+            role: sum(
+                group["commercial_role"] == role
+                for group in visual_map["visual_groups"]
+            )
+            for role in ("assembly_view", "component_detail", "document_context")
+        },
+        "page_count": len(page_images),
+        "region_count": len(regions),
+        "attempt_label": "boundary_visual_map",
+    })
+    usage = build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection_boundary_visual_map",
+        company_id=company_id,
+        run_id=None,
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=selected_model,
+        prompt_version=DETECTION_BOUNDARY_VISUAL_MAP_PROMPT_VERSION,
+        response=response,
+        started_at=diagnostics["request_started_at"],
+        finished_at=diagnostics["request_finished_at"],
+        request_diagnostics=diagnostics,
+    )
+    return visual_map, usage
+
+
 def _apply_page_coverage_to_registry(
     objects: list[dict[str, Any]], page_coverage: object, *, page_count: int,
 ) -> tuple[list[dict[str, Any]], list[str]]:
@@ -776,6 +907,160 @@ def _discard_trailing_orphan_registry_objects(
     return objects[:first_orphan_index], discarded_ids
 
 
+def run_anthropic_detection_boundary_registry_resolver(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    regions: list[dict[str, Any]],
+    ocr_package: dict[str, Any] | None,
+    visual_map: dict[str, Any],
+    model: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Resolve visual correspondence into one auditable final Registry.
+
+    This is selected by the deterministic risk router before any commercial
+    Registry exists. It is deliberately not an orphan repair and cannot be
+    skipped because a previous owner assignment happened to be syntactically
+    complete.
+    """
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL
+    )
+    prompt = load_detection_boundary_registry_resolver_prompt()
+    user_text = build_detection_user_text(
+        file_name=file_name, company_id=company_id, ocr_package=ocr_package
+    )
+    user_text += "\n\nLOCKED VISUAL REPRESENTATION MAP:\n" + json.dumps(
+        visual_map, ensure_ascii=False
+    )
+    content = build_detection_registry_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        user_text=user_text,
+        page_images=page_images,
+        regions=regions,
+    )
+    response, diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=8192,
+        temperature=DETECTION_BOUNDARY_PIPELINE_TEMPERATURE,
+        system=build_detection_system_content(prompt=prompt),
+        messages=[{"role": "user", "content": content}],
+        output_config={
+            "format": {
+                "type": "json_schema",
+                "schema": strip_schema_for_claude(DETECTION_BOUNDARY_REGISTRY_JSON_SCHEMA),
+            }
+        },
+    )
+    diagnostics["temperature"] = DETECTION_BOUNDARY_PIPELINE_TEMPERATURE
+    decision_audit: dict[str, Any] | None = None
+    try:
+        decision_audit = json.loads(extract_text_from_claude_response(response))
+        if not isinstance(decision_audit, dict) or set(decision_audit) != {
+            "objects", "page_coverage"
+        }:
+            raise ValueError("boundary registry must contain only objects and page_coverage")
+        registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
+            decision_audit["objects"],
+            decision_audit["page_coverage"],
+            page_count=len(page_images),
+        )
+        registry = validate_detection_registry(
+            {"objects": registry_objects},
+            visual_group_ids={
+                str(group["group_id"])
+                for group in visual_map.get("visual_groups") or []
+                if isinstance(group, dict)
+            },
+            visual_group_roles={
+                str(group["group_id"]): str(group["commercial_role"])
+                for group in visual_map.get("visual_groups") or []
+                if isinstance(group, dict)
+            },
+        )
+        owned_group_ids = {
+            str(group_id)
+            for item in registry["objects"]
+            for group_id in item["visual_group_ids"]
+        }
+        unowned_assembly_ids = sorted(
+            str(group["group_id"])
+            for group in visual_map.get("visual_groups") or []
+            if (
+                isinstance(group, dict)
+                and group.get("commercial_role") == "assembly_view"
+                and str(group["group_id"]) not in owned_group_ids
+            )
+        )
+        if unowned_assembly_ids:
+            raise DetectionRegistrySchemaError(
+                "boundary registry must account for every assembly view",
+                details={"unowned_assembly_visual_group_ids": unowned_assembly_ids},
+            )
+    except (json.JSONDecodeError, ValueError) as exc:
+        failure_diagnostics = dict(diagnostics)
+        failure_diagnostics.update({
+            "boundary_registry_decision_audit": decision_audit,
+            "visual_map": visual_map,
+            "validation_error": str(exc),
+            "validation_stage": "boundary_registry_resolver",
+            "attempt_label": "boundary_registry_validation_failed",
+        })
+        if isinstance(exc, DetectionRegistrySchemaError) and exc.details:
+            failure_diagnostics["validation_details"] = exc.details
+        failure_usage = build_agent_usage_event(
+            agent_name="detection",
+            operation="rfq_detection_boundary_registry_resolver",
+            company_id=company_id,
+            run_id=None,
+            file_name=file_name,
+            object_id=None,
+            object_name=None,
+            model=selected_model,
+            prompt_version=DETECTION_BOUNDARY_REGISTRY_RESOLVER_PROMPT_VERSION,
+            response=response,
+            started_at=diagnostics["request_started_at"],
+            finished_at=diagnostics["request_finished_at"],
+            request_diagnostics=failure_diagnostics,
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Detection boundary-registry response failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
+    diagnostics.update({
+        "boundary_registry_decision_audit": decision_audit,
+        "visual_group_count": len(visual_map.get("visual_groups") or []),
+        "registry_object_count": len(registry["objects"]),
+        "page_coverage_count": len(decision_audit["page_coverage"]),
+        "reconciled_object_ids": reconciled_object_ids,
+        "page_count": len(page_images),
+        "region_count": len(regions),
+        "attempt_label": "boundary_registry_resolver",
+    })
+    usage = build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection_boundary_registry_resolver",
+        company_id=company_id,
+        run_id=None,
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=selected_model,
+        prompt_version=DETECTION_BOUNDARY_REGISTRY_RESOLVER_PROMPT_VERSION,
+        response=response,
+        started_at=diagnostics["request_started_at"],
+        finished_at=diagnostics["request_finished_at"],
+        request_diagnostics=diagnostics,
+    )
+    return registry, usage
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -902,131 +1187,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         diagnostics["discarded_orphan_registry_object_ids"] = discarded_orphan_registry_object_ids
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
-
-
-def run_anthropic_detection_assembly_association_resolver(
-    *,
-    file_name: str,
-    company_id: str,
-    file_bytes: bytes,
-    page_images: list[bytes],
-    regions: list[dict[str, Any]],
-    ocr_package: dict[str, Any] | None,
-    visual_map: dict[str, Any],
-    registry: dict[str, Any],
-    orphan_group_ids: list[str],
-    model: str | None,
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Resolve only complete assembly views omitted by the first Registry."""
-    if not orphan_group_ids:
-        raise ValueError("Assembly association resolver requires orphan assembly views")
-    selected_model = model or get_secret(
-        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL
-    )
-    prompt = load_detection_assembly_association_resolver_prompt()
-    user_text = build_detection_user_text(
-        file_name=file_name,
-        company_id=company_id,
-        ocr_package=ocr_package,
-    )
-    user_text += "\n\nTENTATIVE VISUAL MAP:\n" + json.dumps(
-        visual_map, ensure_ascii=False
-    )
-    user_text += "\n\nTENTATIVE COMMERCIAL REGISTRY:\n" + json.dumps(
-        registry, ensure_ascii=False
-    )
-    user_text += "\n\nUNASSIGNED ASSEMBLY VIEWS:\n" + json.dumps(
-        orphan_group_ids, ensure_ascii=False
-    )
-    schema = strip_schema_for_claude(DETECTION_ASSEMBLY_ASSOCIATION_JSON_SCHEMA)
-    content = build_detection_registry_content_blocks(
-        file_name=file_name,
-        file_bytes=file_bytes,
-        user_text=user_text,
-        page_images=page_images,
-        regions=regions,
-    )
-    response, diagnostics = create_claude_message_streamed(
-        get_anthropic_client(),
-        model=selected_model,
-        max_tokens=4096,
-        temperature=DETECTION_ASSEMBLY_ASSOCIATION_TEMPERATURE,
-        system=build_detection_system_content(prompt=prompt),
-        messages=[{"role": "user", "content": content}],
-        output_config={"format": {"type": "json_schema", "schema": schema}},
-    )
-    diagnostics["temperature"] = DETECTION_ASSEMBLY_ASSOCIATION_TEMPERATURE
-    decision_audit: dict[str, Any] | None = None
-    try:
-        decision_audit = json.loads(extract_text_from_claude_response(response))
-        association = validate_detection_assembly_association(
-            decision_audit,
-            orphan_group_ids=set(orphan_group_ids),
-            existing_object_ids={
-                str(item.get("object_id") or "")
-                for item in registry.get("objects") or []
-                if isinstance(item, dict)
-            },
-            page_count=len(page_images),
-        )
-    except (json.JSONDecodeError, ValueError) as exc:
-        failure_diagnostics = dict(diagnostics)
-        failure_diagnostics.update({
-            "assembly_association_decision_audit": decision_audit,
-            "orphan_assembly_visual_group_ids": orphan_group_ids,
-            "validation_error": str(exc),
-            "validation_stage": "assembly_association_resolver",
-            "attempt_label": "assembly_association_validation_failed",
-        })
-        failure_usage = build_agent_usage_event(
-            agent_name="detection",
-            operation="rfq_detection_assembly_association",
-            company_id=company_id,
-            run_id=None,
-            file_name=file_name,
-            object_id=None,
-            object_name=None,
-            model=selected_model,
-            prompt_version=DETECTION_ASSEMBLY_ASSOCIATION_PROMPT_VERSION,
-            response=response,
-            started_at=diagnostics["request_started_at"],
-            finished_at=diagnostics["request_finished_at"],
-            request_diagnostics=failure_diagnostics,
-        )
-        failure_usage["status"] = "failed"
-        failure_usage["error_message"] = str(exc)
-        raise DetectionVisualRegistryValidationError(
-            f"Detection assembly-association response failed validation: {exc}",
-            usage_event=failure_usage,
-        ) from exc
-    diagnostics.update({
-        "assembly_association_decision_audit": decision_audit,
-        "orphan_assembly_visual_group_ids": orphan_group_ids,
-        "attached_visual_group_count": sum(
-            len(item["visual_group_ids"])
-            for item in association["attach_existing"]
-        ),
-        "new_commercial_object_count": len(association["new_objects"]),
-        "page_count": len(page_images),
-        "region_count": len(regions),
-        "attempt_label": "assembly_association_resolver",
-    })
-    usage = build_agent_usage_event(
-        agent_name="detection",
-        operation="rfq_detection_assembly_association",
-        company_id=company_id,
-        run_id=None,
-        file_name=file_name,
-        object_id=None,
-        object_name=None,
-        model=selected_model,
-        prompt_version=DETECTION_ASSEMBLY_ASSOCIATION_PROMPT_VERSION,
-        response=response,
-        started_at=diagnostics["request_started_at"],
-        finished_at=diagnostics["request_finished_at"],
-        request_diagnostics=diagnostics,
-    )
-    return association, usage
 
 
 def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], visual_map: dict[str, Any], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:

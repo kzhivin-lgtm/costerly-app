@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 from agents.detection_agent import (
     DEFAULT_CLAUDE_DETECTION_V4_MODEL,
-    _apply_assembly_association_repairs,
     _enforce_shared_track_door_system_quantity,
     _merge_registry_evidence,
     _record_locked_evidence_handoff_audit,
@@ -11,13 +10,6 @@ from agents.detection_agent import (
 )
 from agents.anthropic_adapter import DetectionVisualRegistryValidationError
 from use_cases.rfq_processing import process_uploaded_rfq
-
-
-ONE_ASSEMBLY_VISUAL_MAP = {"visual_groups": [{
-    "group_id": "view-001", "page_number": 1, "location_hint": "center",
-    "visual_description": "one complete assembly", "representation_kind": "elevation",
-    "commercial_role": "assembly_view",
-}]}
 
 
 def test_registry_evidence_keeps_full_estimation_set_not_only_visual_dossier():
@@ -151,7 +143,7 @@ def test_evidence_packer_receives_every_registry_evidence_page_without_a_dossier
         patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
         patch(
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
-            return_value=(ONE_ASSEMBLY_VISUAL_MAP, registry, {"event": "visual_registry"}),
+            return_value=({"visual_groups": []}, registry, {"event": "visual_registry"}),
         ),
         patch(
             "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
@@ -186,7 +178,7 @@ def test_v42_routes_default_registry_and_evidence_packer_to_haiku():
 
     def capture_registry(**kwargs):
         registry_call.update(kwargs)
-        return ONE_ASSEMBLY_VISUAL_MAP, registry, {"event": "visual_registry"}
+        return {"visual_groups": []}, registry, {"event": "visual_registry"}
 
     def stop_after_capture(**kwargs):
         evidence_call.update(kwargs)
@@ -198,10 +190,6 @@ def test_v42_routes_default_registry_and_evidence_packer_to_haiku():
         patch(
             "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
             side_effect=capture_registry,
-        ),
-        patch(
-            "agents.detection_agent.run_anthropic_detection_assembly_association_resolver",
-            side_effect=AssertionError("resolver must not run without orphan views"),
         ),
         patch(
             "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
@@ -218,19 +206,30 @@ def test_v42_routes_default_registry_and_evidence_packer_to_haiku():
     assert evidence_call["primary_model_override"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
 
 
-def test_v42_routes_only_adda_style_registry_to_sonnet():
+def test_v42_routes_adda_style_input_to_boundary_sensitive_cycle():
     registry = {"objects": [{
         "object_id": "object-001", "transport_label": "Object 1",
         "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
         "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
         "visual_identity": "one object", "boundary_basis": "one envelope",
     }]}
-    registry_call: dict = {}
+    visual_map_call: dict = {}
+    boundary_resolver_call: dict = {}
     evidence_call: dict = {}
+    stages: list[str] = []
+    visual_map = {"visual_groups": [{
+        "group_id": "view-001", "page_number": 1,
+        "location_hint": "left", "visual_description": "one assembly",
+        "representation_kind": "elevation", "commercial_role": "assembly_view",
+    }]}
 
-    def capture_registry(**kwargs):
-        registry_call.update(kwargs)
-        return ONE_ASSEMBLY_VISUAL_MAP, registry, {"event": "visual_registry"}
+    def capture_visual_map(**kwargs):
+        visual_map_call.update(kwargs)
+        return visual_map, {"event": "boundary_visual_map"}
+
+    def capture_boundary_resolver(**kwargs):
+        boundary_resolver_call.update(kwargs)
+        return registry, {"event": "boundary_registry"}
 
     def stop_after_capture(**kwargs):
         evidence_call.update(kwargs)
@@ -247,8 +246,12 @@ def test_v42_routes_only_adda_style_registry_to_sonnet():
         patch("agents.detection_agent.get_secret", side_effect=lambda _name, default: default),
         patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
         patch(
-            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
-            side_effect=capture_registry,
+            "agents.detection_agent.run_anthropic_detection_boundary_visual_map_agent",
+            side_effect=capture_visual_map,
+        ),
+        patch(
+            "agents.detection_agent.run_anthropic_detection_boundary_registry_resolver",
+            side_effect=capture_boundary_resolver,
         ),
         patch(
             "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
@@ -260,97 +263,19 @@ def test_v42_routes_only_adda_style_registry_to_sonnet():
             file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
             page_images=[b"one", b"two"],
             ocr_package={"pages": [two_islands_page, two_islands_page]},
+            stage_callback=stages.append,
         )
 
-    assert registry_call["model"] == "claude-sonnet-4-6"
+    assert visual_map_call["model"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
+    assert boundary_resolver_call["model"] == "claude-sonnet-4-6"
+    assert boundary_resolver_call["visual_map"] == visual_map
     assert evidence_call["primary_model_override"] == DEFAULT_CLAUDE_DETECTION_V4_MODEL
-
-
-def test_assembly_association_repair_creates_a_new_commercial_object_for_orphans():
-    registry = {"objects": [{
-        "object_id": "object-001", "transport_label": "Object 1",
-        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
-        "visual_identity": "mirror console", "boundary_basis": "console envelope",
-    }]}
-    visual_map = {"visual_groups": [
-        {"group_id": "view-001", "page_number": 1, "location_hint": "left", "visual_description": "console", "representation_kind": "elevation", "commercial_role": "assembly_view"},
-        {"group_id": "view-002", "page_number": 1, "location_hint": "right", "visual_description": "display cabinet", "representation_kind": "elevation", "commercial_role": "assembly_view"},
-    ]}
-    association = {
-        "attach_existing": [],
-        "new_objects": [{
-            "visual_group_ids": ["view-002"], "visual_identity": "display cabinet",
-            "boundary_basis": "separate finished envelope and function", "quantity": 1,
-            "quantity_explicit": False, "evidence_page_numbers": [1],
-        }],
-    }
-
-    repaired = _apply_assembly_association_repairs(registry, visual_map, association)
-
-    assert [item["object_id"] for item in repaired["objects"]] == [
-        "object-001", "object-002",
-    ]
-    assert repaired["objects"][1]["visual_group_ids"] == ["view-002"]
-    assert repaired["objects"][1]["quantity"] == 1
-    assert repaired["objects"][1]["estimation_evidence_pages"] == [1]
-
-
-def test_detection_agent_runs_association_resolver_only_for_orphan_assembly_views():
-    registry = {"objects": [{
-        "object_id": "object-001", "transport_label": "Object 1",
-        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
-        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
-        "visual_identity": "mirror console", "boundary_basis": "console envelope",
-    }]}
-    visual_map = {"visual_groups": [
-        {"group_id": "view-001", "page_number": 1, "location_hint": "left", "visual_description": "console", "representation_kind": "elevation", "commercial_role": "assembly_view"},
-        {"group_id": "view-002", "page_number": 1, "location_hint": "right", "visual_description": "display cabinet", "representation_kind": "elevation", "commercial_role": "assembly_view"},
-    ]}
-    association = {
-        "attach_existing": [],
-        "new_objects": [{
-            "visual_group_ids": ["view-002"], "visual_identity": "display cabinet",
-            "boundary_basis": "separate finished envelope and function", "quantity": 1,
-            "quantity_explicit": False, "evidence_page_numbers": [1],
-        }],
-    }
-    resolver_call: dict = {}
-    evidence_call: dict = {}
-
-    def capture_resolver(**kwargs):
-        resolver_call.update(kwargs)
-        return association, {"event": "assembly_association"}
-
-    def stop_after_capture(**kwargs):
-        evidence_call.update(kwargs)
-        raise RuntimeError("captured evidence packer after association")
-
-    with (
-        patch("agents.detection_agent.build_detection_registry_regions", return_value=[]),
-        patch(
-            "agents.detection_agent.run_anthropic_detection_visual_registry_agent",
-            return_value=(visual_map, registry, {"event": "visual_registry"}),
-        ),
-        patch(
-            "agents.detection_agent.run_anthropic_detection_assembly_association_resolver",
-            side_effect=capture_resolver,
-        ),
-        patch(
-            "agents.detection_agent.run_anthropic_detection_agent_with_fallback",
-            side_effect=stop_after_capture,
-        ),
-        pytest.raises(RuntimeError, match="captured evidence packer after association"),
-    ):
-        run_detection_agent(
-            file_name="adda.pdf", company_id="001", file_bytes=b"pdf",
-            page_images=[b"page"],
-        )
-
-    assert resolver_call["orphan_group_ids"] == ["view-002"]
-    assert resolver_call["page_images"] == [b"page"]
-    assert [item["object_id"] for item in evidence_call["locked_registry"]["objects"]] == [
-        "object-001", "object-002",
+    assert stages == [
+        "Detection Boundary visual map started",
+        "Detection Boundary visual map completed",
+        "Detection Boundary resolver started",
+        "Detection Boundary resolver completed",
+        "Detection Evidence handoff started",
     ]
 
 
