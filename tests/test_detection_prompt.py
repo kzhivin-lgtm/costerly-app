@@ -89,6 +89,8 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert "explicitly code-labelled drawing sheet" in prompt
     assert "Sparse linework, a grid-like facade" in prompt
+    assert "Registry consistency gate" in prompt
+    assert "Do not return an object with an empty `visual_group_ids` list" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_pairwise_merge_proofs_v3_coded_projection_roles_temperature_0"
+        "detection_v4_visual_registry_pairwise_merge_proofs_v4_registry_consistency_gate_temperature_0"
     )
