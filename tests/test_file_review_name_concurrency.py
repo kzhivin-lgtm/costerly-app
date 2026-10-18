@@ -5,11 +5,16 @@ from use_cases.rfq_processing import FileReviewNameConflict, save_file_review_ob
 
 def test_file_review_name_save_requires_the_observed_prior_name(monkeypatch):
     updates = []
+    audits = []
     client = object()
     monkeypatch.setattr("use_cases.rfq_processing.get_supabase_client", lambda: client)
     monkeypatch.setattr(
         "use_cases.rfq_processing.update_rfq_detected_object_name_if_unchanged",
         lambda actual_client, **kwargs: updates.append((actual_client, kwargs)) or True,
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing._queue_object_name_write_audit",
+        lambda **kwargs: audits.append(kwargs),
     )
 
     saved_name = save_file_review_object_name(
@@ -29,6 +34,14 @@ def test_file_review_name_save_requires_the_observed_prior_name(monkeypatch):
             "object_name": "Reception desk",
         },
     )]
+    assert audits == [{
+        "company_id": "001",
+        "run_id": "run-001",
+        "object_id": "object-001",
+        "expected_name": "Object 1",
+        "requested_name": "Reception desk",
+        "write_source": "file_review_inline",
+    }]
 
 
 def test_file_review_name_rejects_a_stale_placeholder(monkeypatch):

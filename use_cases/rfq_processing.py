@@ -920,6 +920,38 @@ def _current_object_name(client: Any, *, run_id: str, object_id: str) -> str:
     return ""
 
 
+def _queue_object_name_write_audit(
+    *,
+    company_id: str,
+    run_id: str,
+    object_id: str,
+    expected_name: str | None,
+    requested_name: str,
+    write_source: str,
+) -> None:
+    """Durably identify a post-Detection object-name writer without blocking it."""
+    event = _runtime_event(
+        agent_name="orchestration",
+        operation="rfq_object_name_write",
+        company_id=company_id,
+        run_id=run_id,
+        file_name="",
+        model="deterministic",
+        prompt_version="object_name_write_provenance_v1",
+        started_at=datetime.now(UTC).isoformat(),
+        finished_at=datetime.now(UTC).isoformat(),
+        duration_seconds=0.0,
+        raw_usage={
+            "write_source": write_source,
+            "expected_name": expected_name,
+            "requested_name": requested_name,
+        },
+    )
+    event["object_id"] = object_id
+    event["object_name"] = requested_name
+    _DIAGNOSTICS_EXECUTOR.submit(_persist_runtime_event, event)
+
+
 def apply_file_review_edits(
     *,
     run_id: str,
@@ -948,16 +980,25 @@ def apply_file_review_edits(
         if object_name and "expected_name" not in edit:
             raise RuntimeError("File Review name edit is missing its observed value.")
         if object_name and object_name != str(edit.get("expected_name") or "").strip():
+            expected_name = str(edit.get("expected_name") or "").strip()
             if not update_rfq_detected_object_name_if_unchanged(
                 client,
                 run_id=run_id,
                 object_id=str(object_id),
-                expected_name=str(edit.get("expected_name") or "").strip(),
+                expected_name=expected_name,
                 object_name=object_name,
             ):
                 raise FileReviewNameConflict(
                     _current_object_name(client, run_id=run_id, object_id=str(object_id)),
                 )
+            _queue_object_name_write_audit(
+                company_id=str(company_id or get_company_id()),
+                run_id=run_id,
+                object_id=str(object_id),
+                expected_name=expected_name,
+                requested_name=object_name,
+                write_source="file_review_continue",
+            )
 
         values: dict[str, Any] = {}
         if quantity is not None:
@@ -1044,6 +1085,14 @@ def save_file_review_object_name(
             object_id=str(object_id),
             values={"object_name": normalized_name},
         )
+        _queue_object_name_write_audit(
+            company_id=get_company_id(),
+            run_id=str(run_id),
+            object_id=str(object_id),
+            expected_name=None,
+            requested_name=normalized_name,
+            write_source="file_review_legacy_direct",
+        )
         return normalized_name
 
     if not update_rfq_detected_object_name_if_unchanged(
@@ -1056,6 +1105,14 @@ def save_file_review_object_name(
         raise FileReviewNameConflict(
             _current_object_name(client, run_id=str(run_id), object_id=str(object_id)),
         )
+    _queue_object_name_write_audit(
+        company_id=get_company_id(),
+        run_id=str(run_id),
+        object_id=str(object_id),
+        expected_name=str(expected_name or "").strip(),
+        requested_name=normalized_name,
+        write_source="file_review_inline",
+    )
     return normalized_name
 
 

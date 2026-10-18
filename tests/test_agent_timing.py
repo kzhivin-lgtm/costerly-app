@@ -1278,6 +1278,7 @@ def test_file_review_timings_restore_deferred_naming_duration_and_cycle_tc():
 
 def test_file_review_name_is_trimmed_and_saved_immediately(monkeypatch):
     updates = []
+    audits = []
     client = object()
     monkeypatch.setattr(
         "use_cases.rfq_processing.get_supabase_client",
@@ -1286,6 +1287,10 @@ def test_file_review_name_is_trimmed_and_saved_immediately(monkeypatch):
     monkeypatch.setattr(
         "use_cases.rfq_processing.update_rfq_detected_object",
         lambda actual_client, **kwargs: updates.append((actual_client, kwargs)),
+    )
+    monkeypatch.setattr(
+        "use_cases.rfq_processing._queue_object_name_write_audit",
+        lambda **kwargs: audits.append(kwargs),
     )
 
     saved_name = save_file_review_object_name(
@@ -1305,6 +1310,14 @@ def test_file_review_name_is_trimmed_and_saved_immediately(monkeypatch):
             },
         )
     ]
+    assert audits == [{
+        "company_id": "001",
+        "run_id": "run-001",
+        "object_id": "object-001",
+        "expected_name": None,
+        "requested_name": "Reception desk",
+        "write_source": "file_review_legacy_direct",
+    }]
 
 
 def test_file_review_project_metadata_is_trimmed_and_saved_without_catalog_writes(monkeypatch):
