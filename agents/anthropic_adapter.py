@@ -32,7 +32,6 @@ from agents.schemas.detection_registry_schema import (
 )
 from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
-    derive_detection_visual_group_roles,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
@@ -50,7 +49,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_neutral_representation_graph_v1_temperature_0"
+    "detection_v4_visual_registry_pairwise_merge_proofs_v1_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -78,6 +77,9 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
 )
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
+)
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
+    "commercial_role"
 )
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
@@ -821,6 +823,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids({"visual_groups": raw_groups}),
+            require_commercial_roles=True,
         )
         group_id_mapping = {
             raw_group_id: normalized["group_id"]
@@ -846,8 +849,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry = validate_detection_registry(
             registry_payload,
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-            visual_group_scopes={
-                group["group_id"]: group["representation_scope"]
+            visual_group_roles={
+                group["group_id"]: group["commercial_role"]
                 for group in visual_map["visual_groups"]
             },
         )
@@ -892,17 +895,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         for item in registry["objects"]
         for group_id in item["visual_group_ids"]
     }
-    visual_group_roles = derive_detection_visual_group_roles(
-        visual_map,
-        assigned_visual_group_ids=assigned_visual_group_ids,
-    )
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
         "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
         "visual_group_role_counts": {
             role: sum(
-                visual_group_roles[group["group_id"]] == role
+                group["commercial_role"] == role
                 for group in visual_map["visual_groups"]
             )
             for role in ("assembly_view", "component_detail", "document_context")
