@@ -54,7 +54,7 @@ DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION = (
-    "detection_v4_orphan_detail_resolver_v1_temperature_0"
+    "detection_v4_orphan_detail_resolver_v2_temperature_0"
 )
 DETECTION_ORPHAN_DETAIL_RESOLVER_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
@@ -160,7 +160,7 @@ DETECTION_ORPHAN_DETAIL_RESOLVER_JSON_SCHEMA: dict[str, Any] = {
                     "candidate_group_ids", "decision", "target_object_id",
                     "transport_label", "quantity", "quantity_explicit",
                     "identity_pages", "visual_identity", "boundary_basis",
-                    "merge_proofs", "resolution_basis",
+                    "assembly_group_ids", "merge_proofs", "resolution_basis",
                 ],
                 "properties": {
                     "candidate_group_ids": {
@@ -185,6 +185,10 @@ DETECTION_ORPHAN_DETAIL_RESOLVER_JSON_SCHEMA: dict[str, Any] = {
                     },
                     "visual_identity": {"type": "string"},
                     "boundary_basis": {"type": "string"},
+                    "assembly_group_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
                     "merge_proofs": {
                         "type": "array",
                         "items": DETECTION_ORPHAN_DETAIL_MERGE_PROOF_JSON_SCHEMA,
@@ -951,10 +955,30 @@ def _build_orphan_detail_context(
     if len(candidate_group_ids) != len(set(candidate_group_ids)):
         return None
 
+    candidate_page_numbers = sorted({int(group["page_number"]) for group in candidate_groups})
+    page_scope_groups = [
+        copy.deepcopy(group)
+        for group in visual_map.get("visual_groups") or []
+        if group.get("page_number") in candidate_page_numbers
+    ]
+    owned_group_ids = {
+        str(group_id)
+        for item in objects
+        for group_id in item.get("visual_group_ids") or []
+        if isinstance(group_id, str)
+    }
+    eligible_assembly_group_ids = [
+        str(group["group_id"])
+        for group in page_scope_groups
+        if str(group["group_id"]) not in owned_group_ids
+    ]
     return {
         "candidate_groups": candidate_groups,
         "candidate_group_ids": candidate_group_ids,
-        "candidate_page_numbers": sorted({int(group["page_number"]) for group in candidate_groups}),
+        "candidate_page_numbers": candidate_page_numbers,
+        "page_scope_groups": page_scope_groups,
+        "page_scope_group_ids": [str(group["group_id"]) for group in page_scope_groups],
+        "eligible_assembly_group_ids": eligible_assembly_group_ids,
         "provisional_objects": [
             copy.deepcopy(item)
             for item in objects
@@ -998,6 +1022,8 @@ def _run_anthropic_detection_orphan_detail_resolver(
     )
     resolver_context = {
         "candidate_groups": context["candidate_groups"],
+        "page_scope_groups": context["page_scope_groups"],
+        "eligible_assembly_group_ids": context["eligible_assembly_group_ids"],
         "provisional_objects": context["provisional_objects"],
         "existing_objects": context["existing_objects"],
     }
@@ -1041,6 +1067,8 @@ def _run_anthropic_detection_orphan_detail_resolver(
         "temperature": DETECTION_ORPHAN_DETAIL_RESOLVER_TEMPERATURE,
         "candidate_group_ids": context["candidate_group_ids"],
         "candidate_page_numbers": context["candidate_page_numbers"],
+        "page_scope_group_ids": context["page_scope_group_ids"],
+        "eligible_assembly_group_ids": context["eligible_assembly_group_ids"],
         "resolver_page_numbers": page_numbers,
         "attempt_label": "orphan_detail_resolver",
     })
@@ -1103,13 +1131,15 @@ def _validate_orphan_detail_resolutions(
 ) -> list[dict[str, Any]]:
     """Validate the resolver patch before it can alter the primary Registry."""
     candidate_group_ids = set(context["candidate_group_ids"])
+    page_scope_group_ids = set(context["page_scope_group_ids"])
+    eligible_assembly_group_ids = set(context["eligible_assembly_group_ids"])
     existing_object_ids = {
         str(item.get("object_id") or "")
         for item in context["existing_objects"]
     }
-    candidate_pages_by_group = {
+    pages_by_group = {
         str(group["group_id"]): int(group["page_number"])
-        for group in context["candidate_groups"]
+        for group in context["page_scope_groups"]
     }
     resolutions = payload.get("resolutions")
     if not isinstance(resolutions, list) or not resolutions:
@@ -1118,7 +1148,7 @@ def _validate_orphan_detail_resolutions(
     required = {
         "candidate_group_ids", "decision", "target_object_id", "transport_label",
         "quantity", "quantity_explicit", "identity_pages", "visual_identity",
-        "boundary_basis", "merge_proofs", "resolution_basis",
+        "boundary_basis", "assembly_group_ids", "merge_proofs", "resolution_basis",
     }
     assigned_group_ids: list[str] = []
     validated: list[dict[str, Any]] = []
@@ -1126,6 +1156,7 @@ def _validate_orphan_detail_resolutions(
         if not isinstance(resolution, dict) or set(resolution) != required:
             raise ValueError("orphan-detail resolver fields do not match contract")
         group_ids = resolution["candidate_group_ids"]
+        assembly_group_ids = resolution["assembly_group_ids"]
         decision = resolution["decision"]
         if (
             not isinstance(group_ids, list)
@@ -1139,23 +1170,39 @@ def _validate_orphan_detail_resolutions(
             or not resolution["resolution_basis"].strip()
         ):
             raise ValueError("orphan-detail resolver decision is invalid")
+        if (
+            not isinstance(assembly_group_ids, list)
+            or len(assembly_group_ids) != len(set(assembly_group_ids))
+            or not all(
+                isinstance(group_id, str) and group_id in eligible_assembly_group_ids
+                for group_id in assembly_group_ids
+            )
+        ):
+            raise ValueError("orphan-detail resolver assembly groups are invalid")
         assigned_group_ids.extend(group_ids)
-        group_pages = {candidate_pages_by_group[group_id] for group_id in group_ids}
         target_object_id = resolution["target_object_id"]
         if decision == "attach_to_existing_object":
-            if target_object_id not in existing_object_ids or resolution["merge_proofs"] != []:
-                raise ValueError("orphan-detail attachment target is invalid")
+            if target_object_id not in existing_object_ids:
+                raise ValueError("orphan-detail attachment target does not name a locked object")
+            if assembly_group_ids:
+                raise ValueError("orphan-detail attachment cannot create assembly views")
+            if resolution["merge_proofs"] != []:
+                raise ValueError("orphan-detail attachment proof belongs in resolution_basis, not merge_proofs")
         elif decision == "promote_to_new_object":
             identity_pages = resolution["identity_pages"]
             if (
                 target_object_id
+                or not assembly_group_ids
+                or not set(group_ids).issubset(assembly_group_ids)
                 or not isinstance(resolution["transport_label"], str)
                 or not resolution["transport_label"].strip()
                 or not isinstance(resolution["quantity"], (int, float))
                 or resolution["quantity"] < 0
                 or not isinstance(resolution["quantity_explicit"], bool)
                 or not isinstance(identity_pages, list)
-                or not group_pages.issubset(identity_pages)
+                or not {
+                    pages_by_group[group_id] for group_id in assembly_group_ids
+                }.issubset(identity_pages)
                 or not all(isinstance(page, int) and 1 <= page <= page_count for page in identity_pages)
                 or not isinstance(resolution["visual_identity"], str)
                 or not resolution["visual_identity"].strip()
@@ -1164,8 +1211,9 @@ def _validate_orphan_detail_resolutions(
                 or not isinstance(resolution["merge_proofs"], list)
             ):
                 raise ValueError("orphan-detail promotion is invalid")
-        elif target_object_id or resolution["merge_proofs"] != []:
-            raise ValueError("orphan-detail non-commercial decision is invalid")
+        else:
+            if target_object_id or assembly_group_ids or resolution["merge_proofs"] != []:
+                raise ValueError("orphan-detail non-commercial decision is invalid")
         validated.append(copy.deepcopy(resolution))
 
     if len(assigned_group_ids) != len(set(assigned_group_ids)) or set(assigned_group_ids) != candidate_group_ids:
@@ -1201,9 +1249,9 @@ def _apply_orphan_detail_resolutions(
     if len(original_object_ids) != len(set(original_object_ids)):
         raise ValueError("orphan-detail resolver found duplicate primary object IDs")
 
-    candidate_pages_by_group = {
+    pages_by_group = {
         str(group["group_id"]): int(group["page_number"])
-        for group in context["candidate_groups"]
+        for group in context["page_scope_groups"]
     }
     promoted_object_by_resolution: dict[int, dict[str, Any]] = {}
     for index, resolution in enumerate(resolutions):
@@ -1215,7 +1263,7 @@ def _apply_orphan_detail_resolutions(
             "quantity": resolution["quantity"],
             "quantity_explicit": resolution["quantity_explicit"],
             "identity_pages": sorted(set(resolution["identity_pages"])),
-            "visual_group_ids": list(resolution["candidate_group_ids"]),
+            "visual_group_ids": list(resolution["assembly_group_ids"]),
             "visual_identity": resolution["visual_identity"].strip(),
             "boundary_basis": resolution["boundary_basis"].strip(),
         }
@@ -1242,7 +1290,7 @@ def _apply_orphan_detail_resolutions(
     for index, resolution in enumerate(resolutions):
         if resolution["decision"] != "promote_to_new_object":
             continue
-        for group_id in resolution["candidate_group_ids"]:
+        for group_id in resolution["assembly_group_ids"]:
             groups_by_id[group_id]["commercial_role"] = "assembly_view"
 
     coverage_by_page: dict[int, dict[str, Any]] = {}
@@ -1263,7 +1311,7 @@ def _apply_orphan_detail_resolutions(
     resolver_decisions_audit: list[dict[str, Any]] = []
     for index, resolution in enumerate(resolutions):
         group_pages = {
-            candidate_pages_by_group[group_id]
+            pages_by_group[group_id]
             for group_id in resolution["candidate_group_ids"]
         }
         decision = resolution["decision"]
@@ -1272,6 +1320,10 @@ def _apply_orphan_detail_resolutions(
             owner_id = old_to_final_id[resolution["target_object_id"]]
         elif decision == "promote_to_new_object":
             owner_id = promoted_final_id[index]
+            group_pages.update(
+                pages_by_group[group_id]
+                for group_id in resolution["assembly_group_ids"]
+            )
             group_pages.update(resolution["identity_pages"])
             for proof in resolution["merge_proofs"]:
                 resolver_proofs.append({"object_id": owner_id, **copy.deepcopy(proof)})
@@ -1288,6 +1340,7 @@ def _apply_orphan_detail_resolutions(
                 )
         resolver_decisions_audit.append({
             "candidate_group_ids": list(resolution["candidate_group_ids"]),
+            "assembly_group_ids": list(resolution["assembly_group_ids"]),
             "decision": decision,
             "target_object_id": owner_id,
             "resolution_basis": resolution["resolution_basis"].strip(),
@@ -1313,6 +1366,8 @@ def _apply_orphan_detail_resolutions(
             "triggered": True,
             "candidate_group_ids": context["candidate_group_ids"],
             "candidate_page_numbers": context["candidate_page_numbers"],
+            "page_scope_group_ids": context["page_scope_group_ids"],
+            "eligible_assembly_group_ids": context["eligible_assembly_group_ids"],
             "provisional_object_ids": sorted(provisional_object_ids),
             "resolutions": resolver_decisions_audit,
         },

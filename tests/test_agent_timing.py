@@ -23,6 +23,7 @@ from agents.anthropic_adapter import (
     build_uploaded_file_content_block,
     create_claude_message,
     create_claude_message_streamed,
+    _validate_orphan_detail_resolutions,
     normalize_detection_identity_fields,
     run_anthropic_detection_agent,
     run_anthropic_detection_registry_agent,
@@ -643,8 +644,8 @@ def test_integrated_visual_registry_resolves_only_an_unowned_component_detail_ca
         "visual_groups": [
             {"group_id": "cabinet", "page_number": 1, "location_hint": "left", "visual_description": "cabinet N76", "representation_kind": "elevation", "commercial_role": "assembly_view"},
             {"group_id": "n76b-plan", "page_number": 2, "location_hint": "top", "visual_description": "N76B plan", "representation_kind": "plan", "commercial_role": "component_detail"},
-            {"group_id": "n76b-profile", "page_number": 2, "location_hint": "middle", "visual_description": "N76B profile 345 x 5", "representation_kind": "profile", "commercial_role": "component_detail"},
-            {"group_id": "n76b-elevation", "page_number": 2, "location_hint": "bottom", "visual_description": "N76B panel elevation 345 x 260", "representation_kind": "elevation", "commercial_role": "component_detail"},
+            {"group_id": "n76b-profile", "page_number": 2, "location_hint": "middle", "visual_description": "N76B profile 345 x 5", "representation_kind": "profile", "commercial_role": "document_context"},
+            {"group_id": "n76b-elevation", "page_number": 2, "location_hint": "bottom", "visual_description": "N76B panel elevation 345 x 260", "representation_kind": "elevation", "commercial_role": "document_context"},
         ],
         "objects": [
             {"object_id": "object-001", "transport_label": "N76", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_group_ids": ["cabinet"], "visual_identity": "cabinet N76", "boundary_basis": "complete cabinet envelope"},
@@ -658,11 +659,12 @@ def test_integrated_visual_registry_resolves_only_an_unowned_component_detail_ca
     }
     resolver_payload = {
         "resolutions": [{
-            "candidate_group_ids": ["view-002", "view-003", "view-004"],
+            "candidate_group_ids": ["view-002"],
             "decision": "promote_to_new_object", "target_object_id": "",
             "transport_label": "N76B", "quantity": 1, "quantity_explicit": False,
             "identity_pages": [2], "visual_identity": "N76B decorative panel assembly",
             "boundary_basis": "The three N76B depictions show one coded panel assembly.",
+            "assembly_group_ids": ["view-002", "view-003", "view-004"],
             "merge_proofs": [
                 {"from_group_id": "view-002", "to_group_id": "view-003", "evidence_types": ["explicit_document_relation"], "evidence_pages": [2], "observed_fact": "Both depictions carry N76B and width 345.", "commercial_inseparability": "They are plan and profile views of one panel assembly."},
                 {"from_group_id": "view-003", "to_group_id": "view-004", "evidence_types": ["explicit_document_relation"], "evidence_pages": [2], "observed_fact": "The profile and elevation carry the same N76B code.", "commercial_inseparability": "They are complementary views of one panel assembly."},
@@ -702,11 +704,40 @@ def test_integrated_visual_registry_resolves_only_an_unowned_component_detail_ca
         for group in visual_map["visual_groups"][1:]
     )
     assert usage["raw_usage"]["orphan_detail_resolver"]["candidate_group_ids"] == [
+        "view-002",
+    ]
+    assert usage["raw_usage"]["orphan_detail_resolver"]["eligible_assembly_group_ids"] == [
         "view-002", "view-003", "view-004",
     ]
     assert usage["_additional_usage_events"][0]["prompt_version"] == (
         DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION
     )
+
+
+def test_orphan_detail_resolver_cannot_promote_a_view_already_owned_by_registry():
+    context = {
+        "candidate_group_ids": ["view-002"],
+        "page_scope_group_ids": ["view-001", "view-002", "view-003"],
+        "eligible_assembly_group_ids": ["view-002", "view-003"],
+        "page_scope_groups": [
+            {"group_id": "view-001", "page_number": 2},
+            {"group_id": "view-002", "page_number": 2},
+            {"group_id": "view-003", "page_number": 2},
+        ],
+        "existing_objects": [{"object_id": "object-001"}],
+    }
+    payload = {"resolutions": [{
+        "candidate_group_ids": ["view-002"],
+        "decision": "promote_to_new_object", "target_object_id": "",
+        "transport_label": "N76B", "quantity": 1, "quantity_explicit": False,
+        "identity_pages": [2], "visual_identity": "N76B panel",
+        "boundary_basis": "Independent dimensioned product.",
+        "assembly_group_ids": ["view-001", "view-002", "view-003"],
+        "merge_proofs": [], "resolution_basis": "Own code and dimensions.",
+    }]}
+
+    with pytest.raises(ValueError, match="assembly groups are invalid"):
+        _validate_orphan_detail_resolutions(payload, context=context, page_count=2)
 
 
 def test_integrated_visual_registry_attaches_an_unowned_detail_without_changing_owner_boundary():
@@ -726,7 +757,7 @@ def test_integrated_visual_registry_attaches_an_unowned_detail_without_changing_
         "candidate_group_ids": ["view-002"], "decision": "attach_to_existing_object",
         "target_object_id": "object-001", "transport_label": "", "quantity": 0,
         "quantity_explicit": False, "identity_pages": [], "visual_identity": "",
-        "boundary_basis": "", "merge_proofs": [],
+        "boundary_basis": "", "assembly_group_ids": [], "merge_proofs": [],
         "resolution_basis": "The hinge detail is explicitly for the N76 cabinet.",
     }]}
 
