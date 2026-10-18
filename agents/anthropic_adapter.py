@@ -19,6 +19,7 @@ from config import agent_cost_category, calculate_llm_cost_usd
 from agents.prompt_loader import (
     load_detection_agent_prompt,
     load_detection_agent_without_naming_prompt,
+    load_detection_assembly_association_resolver_prompt,
     load_detection_registry_prompt,
     load_detection_visual_map_prompt,
     load_detection_visual_registry_prompt,
@@ -27,6 +28,10 @@ from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
     validate_detection_registry,
+)
+from agents.schemas.detection_assembly_association_schema import (
+    DETECTION_ASSEMBLY_ASSOCIATION_JSON_SCHEMA,
+    validate_detection_assembly_association,
 )
 from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
@@ -54,6 +59,10 @@ DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
 DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE = 0.0
+DETECTION_ASSEMBLY_ASSOCIATION_PROMPT_VERSION = (
+    "detection_v4_assembly_association_resolver_v1_temperature_0"
+)
+DETECTION_ASSEMBLY_ASSOCIATION_TEMPERATURE = 0.0
 
 
 class DetectionVisualRegistryValidationError(RuntimeError):
@@ -893,6 +902,131 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         diagnostics["discarded_orphan_registry_object_ids"] = discarded_orphan_registry_object_ids
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
+
+
+def run_anthropic_detection_assembly_association_resolver(
+    *,
+    file_name: str,
+    company_id: str,
+    file_bytes: bytes,
+    page_images: list[bytes],
+    regions: list[dict[str, Any]],
+    ocr_package: dict[str, Any] | None,
+    visual_map: dict[str, Any],
+    registry: dict[str, Any],
+    orphan_group_ids: list[str],
+    model: str | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Resolve only complete assembly views omitted by the first Registry."""
+    if not orphan_group_ids:
+        raise ValueError("Assembly association resolver requires orphan assembly views")
+    selected_model = model or get_secret(
+        "CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL
+    )
+    prompt = load_detection_assembly_association_resolver_prompt()
+    user_text = build_detection_user_text(
+        file_name=file_name,
+        company_id=company_id,
+        ocr_package=ocr_package,
+    )
+    user_text += "\n\nTENTATIVE VISUAL MAP:\n" + json.dumps(
+        visual_map, ensure_ascii=False
+    )
+    user_text += "\n\nTENTATIVE COMMERCIAL REGISTRY:\n" + json.dumps(
+        registry, ensure_ascii=False
+    )
+    user_text += "\n\nUNASSIGNED ASSEMBLY VIEWS:\n" + json.dumps(
+        orphan_group_ids, ensure_ascii=False
+    )
+    schema = strip_schema_for_claude(DETECTION_ASSEMBLY_ASSOCIATION_JSON_SCHEMA)
+    content = build_detection_registry_content_blocks(
+        file_name=file_name,
+        file_bytes=file_bytes,
+        user_text=user_text,
+        page_images=page_images,
+        regions=regions,
+    )
+    response, diagnostics = create_claude_message_streamed(
+        get_anthropic_client(),
+        model=selected_model,
+        max_tokens=4096,
+        temperature=DETECTION_ASSEMBLY_ASSOCIATION_TEMPERATURE,
+        system=build_detection_system_content(prompt=prompt),
+        messages=[{"role": "user", "content": content}],
+        output_config={"format": {"type": "json_schema", "schema": schema}},
+    )
+    diagnostics["temperature"] = DETECTION_ASSEMBLY_ASSOCIATION_TEMPERATURE
+    decision_audit: dict[str, Any] | None = None
+    try:
+        decision_audit = json.loads(extract_text_from_claude_response(response))
+        association = validate_detection_assembly_association(
+            decision_audit,
+            orphan_group_ids=set(orphan_group_ids),
+            existing_object_ids={
+                str(item.get("object_id") or "")
+                for item in registry.get("objects") or []
+                if isinstance(item, dict)
+            },
+            page_count=len(page_images),
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
+        failure_diagnostics = dict(diagnostics)
+        failure_diagnostics.update({
+            "assembly_association_decision_audit": decision_audit,
+            "orphan_assembly_visual_group_ids": orphan_group_ids,
+            "validation_error": str(exc),
+            "validation_stage": "assembly_association_resolver",
+            "attempt_label": "assembly_association_validation_failed",
+        })
+        failure_usage = build_agent_usage_event(
+            agent_name="detection",
+            operation="rfq_detection_assembly_association",
+            company_id=company_id,
+            run_id=None,
+            file_name=file_name,
+            object_id=None,
+            object_name=None,
+            model=selected_model,
+            prompt_version=DETECTION_ASSEMBLY_ASSOCIATION_PROMPT_VERSION,
+            response=response,
+            started_at=diagnostics["request_started_at"],
+            finished_at=diagnostics["request_finished_at"],
+            request_diagnostics=failure_diagnostics,
+        )
+        failure_usage["status"] = "failed"
+        failure_usage["error_message"] = str(exc)
+        raise DetectionVisualRegistryValidationError(
+            f"Detection assembly-association response failed validation: {exc}",
+            usage_event=failure_usage,
+        ) from exc
+    diagnostics.update({
+        "assembly_association_decision_audit": decision_audit,
+        "orphan_assembly_visual_group_ids": orphan_group_ids,
+        "attached_visual_group_count": sum(
+            len(item["visual_group_ids"])
+            for item in association["attach_existing"]
+        ),
+        "new_commercial_object_count": len(association["new_objects"]),
+        "page_count": len(page_images),
+        "region_count": len(regions),
+        "attempt_label": "assembly_association_resolver",
+    })
+    usage = build_agent_usage_event(
+        agent_name="detection",
+        operation="rfq_detection_assembly_association",
+        company_id=company_id,
+        run_id=None,
+        file_name=file_name,
+        object_id=None,
+        object_name=None,
+        model=selected_model,
+        prompt_version=DETECTION_ASSEMBLY_ASSOCIATION_PROMPT_VERSION,
+        response=response,
+        started_at=diagnostics["request_started_at"],
+        finished_at=diagnostics["request_finished_at"],
+        request_diagnostics=diagnostics,
+    )
+    return association, usage
 
 
 def run_anthropic_detection_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], visual_map: dict[str, Any], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:

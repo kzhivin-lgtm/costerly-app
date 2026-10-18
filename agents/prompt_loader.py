@@ -10,6 +10,9 @@ DETECTION_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_agent_vnext_prompt.md"
 DETECTION_REGISTRY_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_registry_vnext_prompt.md"
 DETECTION_VISUAL_MAP_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_visual_map_vnext_prompt.md"
 DETECTION_VISUAL_REGISTRY_VNEXT_PROMPT_PATH = PROMPTS_DIR / "detection_visual_registry_vnext_prompt.md"
+DETECTION_ASSEMBLY_ASSOCIATION_RESOLVER_VNEXT_PROMPT_PATH = (
+    PROMPTS_DIR / "detection_assembly_association_resolver_vnext_prompt.md"
+)
 PRICE_SOURCE_PROMPT_PATH = PROMPTS_DIR / "price_source_agent_prompt.md"
 
 
@@ -45,6 +48,15 @@ def load_detection_visual_registry_prompt() -> str:
     prompt = DETECTION_VISUAL_REGISTRY_VNEXT_PROMPT_PATH.read_text(encoding="utf-8").strip()
     if not prompt:
         raise ValueError("Detection visual-registry prompt is empty")
+    return prompt
+
+
+def load_detection_assembly_association_resolver_prompt() -> str:
+    prompt = DETECTION_ASSEMBLY_ASSOCIATION_RESOLVER_VNEXT_PROMPT_PATH.read_text(
+        encoding="utf-8"
+    ).strip()
+    if not prompt:
+        raise ValueError("Detection assembly association resolver prompt is empty")
     return prompt
 
 

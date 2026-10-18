@@ -11,6 +11,7 @@ import pytest
 
 from agents.anthropic_adapter import (
     DEFAULT_CLAUDE_DETECTION_MODEL,
+    DETECTION_ASSEMBLY_ASSOCIATION_TEMPERATURE,
     DetectionVisualRegistryValidationError,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
     DETECTION_VISUAL_REGISTRY_PROMPT_VERSION,
@@ -24,6 +25,7 @@ from agents.anthropic_adapter import (
     create_claude_message_streamed,
     normalize_detection_identity_fields,
     run_anthropic_detection_agent,
+    run_anthropic_detection_assembly_association_resolver,
     run_anthropic_detection_registry_agent,
     run_anthropic_detection_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
@@ -533,6 +535,54 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
     assert usage["operation"] == "rfq_detection_visual_registry"
     assert usage["raw_usage"]["temperature"] == 0.0
     assert usage["raw_usage"]["registry_decision_audit"] == payload
+
+
+def test_assembly_association_resolver_uses_temperature_zero_and_audits_repairs():
+    visual_map = {"visual_groups": [
+        {"group_id": "view-001", "page_number": 1, "location_hint": "left", "visual_description": "console", "representation_kind": "elevation", "commercial_role": "assembly_view"},
+        {"group_id": "view-002", "page_number": 1, "location_hint": "right", "visual_description": "alternate console view", "representation_kind": "section", "commercial_role": "assembly_view"},
+    ]}
+    registry = {"objects": [{
+        "object_id": "object-001", "transport_label": "Object 1",
+        "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+        "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+        "visual_identity": "console", "boundary_basis": "complete envelope",
+    }]}
+    payload = {
+        "attach_existing": [{
+            "visual_group_ids": ["view-002"], "object_id": "object-001",
+            "association_basis": "matching cutout and panel sequence",
+            "evidence_page_numbers": [1],
+        }],
+        "new_objects": [],
+    }
+    requested_temperatures = []
+
+    def fake_create(*_args, temperature, **_kwargs):
+        requested_temperatures.append(temperature)
+        return _Response(), {
+            "request_started_at": "2026-10-18T00:00:00+00:00",
+            "request_finished_at": "2026-10-18T00:00:01+00:00",
+        }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", side_effect=fake_create),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(payload)),
+    ):
+        association, usage = run_anthropic_detection_assembly_association_resolver(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None,
+            visual_map=visual_map, registry=registry, orphan_group_ids=["view-002"],
+            model="model",
+        )
+
+    assert association == payload
+    assert requested_temperatures == [DETECTION_ASSEMBLY_ASSOCIATION_TEMPERATURE]
+    assert usage["operation"] == "rfq_detection_assembly_association"
+    assert usage["raw_usage"]["temperature"] == 0.0
+    assert usage["raw_usage"]["orphan_assembly_visual_group_ids"] == ["view-002"]
+    assert usage["raw_usage"]["assembly_association_decision_audit"] == payload
 
 
 def test_integrated_visual_registry_discards_only_trailing_zero_evidence_orphan():
