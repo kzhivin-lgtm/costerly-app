@@ -24,6 +24,6 @@ and concise, for example: `OCR Stair railing tied to OM 15-1 on p. 1; rail geome
 - Remove secondary material, location, dimension, marketing, complete, extended, compact, assembly, section, and component wording unless it is essential to distinguish the product category.
 - Never use sheet, room, package, drawing, material, component, dimension, quantity, or marketing text as a product name.
 
-Preserve author order. Source `N96, Барная стойка` becomes `N96 — Bar counter`, never `Bar counter N96`.
+Preserve author order. Source `N96, Барная стойка` becomes `N96 Bar counter`, never `Bar counter N96`. Do not add a dash or an em dash between an identifier and a category. A hyphen that is part of the source identifier itself remains unchanged.
 
 Use only the supplied locked identifiers, existing labels, source evidence pages, and local OCR snippets. Object identities and boundaries are final: do not perform object detection or estimation.

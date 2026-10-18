@@ -49,6 +49,11 @@ def load_naming_prompt() -> str:
 
 def extract_object_index(object_name: Any) -> str:
     name = str(object_name or "").strip()
+    # Transport labels identify a Registry position, never a source-authored
+    # object code. Reject the complete placeholder before looking for a code
+    # within a longer provisional display name as well.
+    if re.fullmatch(r"(?:object|item|unknown)\s*\d+(?:\s*[—-]\s*.*)?", name, re.IGNORECASE):
+        return ""
     if " — " in name:
         candidate = name.split(" — ", 1)[0].strip()
         if _is_source_identifier(candidate):
@@ -64,7 +69,7 @@ def extract_object_index(object_name: Any) -> str:
 
 
 _SOURCE_IDENTIFIER_RE = re.compile(
-    r"(?:[A-Za-zА-Яа-яЁё]{1,4}\s*[- ]?\s*\d+(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}|\d{1,3}[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3})"
+    r"(?<![A-Za-zА-Яа-яЁё0-9])(?:[A-Za-zА-Яа-яЁё]{1,4}\s*[- ]?\s*\d+(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}|\d{1,3}[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3})(?![A-Za-zА-Яа-яЁё0-9])"
 )
 
 
@@ -235,7 +240,7 @@ def compose_name_preview(
         object_id = str(item["object_id"])
         object_index = str(locked_by_id[object_id].get("object_index") or "").strip()
         name_en = str(item.get("name_en") or "").strip()
-        base = " — ".join(part for part in (object_index, name_en) if part)
+        base = " ".join(part for part in (object_index, name_en) if part)
         previews.append({"object_id": object_id, "display_name": base})
     return previews
 

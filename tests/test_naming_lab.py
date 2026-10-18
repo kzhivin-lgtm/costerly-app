@@ -65,6 +65,12 @@ def test_extracts_authoritative_leading_index_only():
     assert extract_object_index("Sliding door system") == ""
 
 
+def test_does_not_turn_transport_placeholders_into_suffix_codes():
+    assert extract_object_index("Object 3") == ""
+    assert extract_object_index("Object 3 — TV console") == ""
+    assert extract_object_index("Item 12 - Shelving unit") == ""
+
+
 def test_ocr_snippets_prefer_exact_index_and_fallback_to_evidence_page():
     ocr = {
         "evidence": {
@@ -176,7 +182,7 @@ def test_preview_is_composed_without_mutating_locked_objects():
     }
 
     assert compose_name_preview(locked, result) == [
-        {"object_id": "a", "display_name": "ОМ-2 — Railing panel"}
+        {"object_id": "a", "display_name": "ОМ-2 Railing panel"}
     ]
     assert locked[0]["current_name"] == "Old"
 
@@ -259,7 +265,7 @@ def test_invalid_row_keeps_placeholder_without_discarding_valid_names():
     apply_name_mapping(objects, locked, result)
 
     assert objects[0]["object_name"] == "CM-1"
-    assert objects[1]["object_name"] == "CM-2 — Display cabinet"
+    assert objects[1]["object_name"] == "CM-2 Display cabinet"
 
 
 def test_disambiguates_duplicate_transport_ids_without_changing_order_or_names():
