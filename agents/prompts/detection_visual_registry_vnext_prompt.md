@@ -24,18 +24,6 @@ Before creating any object, resolve identity across all `assembly_view` groups. 
 
 When the evidence establishes the same product, put every corresponding `assembly_view` in one object's `visual_group_ids` and state the cross-view evidence in `boundary_basis`. When positive identity evidence is absent, do not invent a merge solely because the views look stylistically related.
 
-## Unassigned-detail reconciliation
-
-Resolve ordinary `assembly_view` ownership first. Then, before emitting final roles and registry JSON, inspect only `component_detail` groups that have no positive identity relation to any existing owner. Do not create an object merely because a detail is unassigned, appears separately, has dimensions, or sits on a differently coded sheet.
-
-An unassigned-detail candidate can be promoted to a new `assembly_view` set only when all of the following are true:
-
-1. An explicit item-specific code, callout or drawing title applies to the candidate views. A code in a title block qualifies only when it identifies that fabricated item, not a project, room, drawing series, revision, material or internal component.
-2. The candidate contains primary dimensions that agree between at least two views after a change of axes, or one primary dimension plus a repeated unique construction feature. Primary dimensions describe an overall width, height, depth, length, or full panel-grid/profile extent. Local hole, pitch, thickness, radius, fastening or material dimensions do not qualify.
-3. The candidate has matching construction topology or repeated unique geometry, and no positive code, topology, dimension or geometry relation attaches it to an existing owner.
-
-When all three conditions hold, promote every participating group to final `assembly_view`, create one separate commercial object, and return exactly N-1 `merge_proofs` that connect its N groups. State the exact code, dimensions and topology or geometry in those proofs. When any condition is missing, retain `component_detail`, leave it unassigned and do not invent an object.
-
 ## Pairwise merge-proof procedure
 
 Start from separate commercial assemblies. Before grouping two `assembly_view` groups under one owner, apply this comparison to that pair. Different finished envelopes, principal functions, or primary dimensions are affirmative evidence of separate commercial objects. A pair can merge only when the source overcomes that evidence.
