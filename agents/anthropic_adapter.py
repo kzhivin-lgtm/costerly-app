@@ -8,6 +8,7 @@ import math
 import os
 import re
 import sys
+from collections import defaultdict
 from threading import Lock
 import time
 from datetime import UTC, datetime
@@ -53,7 +54,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_visual_registry_pairwise_merge_proofs_v2_temperature_0"
+    "detection_v4_visual_registry_object_local_merge_proofs_v3_temperature_0"
 )
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 DETECTION_ORPHAN_DETAIL_RESOLVER_PROMPT_VERSION = (
@@ -83,6 +84,25 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
+# A merge proof belongs to the object whose views it joins.  Keeping this
+# relation local prevents a Registry response from assigning several views to
+# an object and then omitting the separate, top-level proof audit.
+DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOF_SCHEMA = copy.deepcopy(
+    DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA["items"]
+)
+DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOF_SCHEMA["required"].remove(
+    "object_id"
+)
+DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOF_SCHEMA["properties"].pop(
+    "object_id"
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].append(
+    "merge_proofs"
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"]["merge_proofs"] = {
+    "type": "array",
+    "items": DETECTION_VISUAL_REGISTRY_OBJECT_MERGE_PROOF_SCHEMA,
+}
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
@@ -93,11 +113,10 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "objects", "merge_proofs", "page_coverage"],
+    "required": ["visual_groups", "objects", "page_coverage"],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
-        "merge_proofs": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "page_coverage": {
             "type": "array",
             "items": {
@@ -908,6 +927,71 @@ def _normalize_pairwise_merge_proof_group_ids(
     return normalized
 
 
+def _separate_object_local_merge_proofs(
+    objects: object,
+) -> tuple[object, object]:
+    """Flatten provider-local proof lists into the established audit shape.
+
+    The provider must decide an object's joined views and its evidence links
+    together. Downstream validation and persistence retain the pre-existing
+    flat form, with the parent object ID added deterministically here.
+    """
+    if not isinstance(objects, list):
+        return objects, []
+    registry_objects: list[object] = []
+    flattened_proofs: list[object] = []
+    for item in objects:
+        if not isinstance(item, dict):
+            return objects, []
+        if "merge_proofs" not in item:
+            raise ValueError("registry object merge proofs are required")
+        local_proofs = item["merge_proofs"]
+        if not isinstance(local_proofs, list):
+            raise ValueError("registry object merge proofs must be a list")
+        registry_item = copy.deepcopy(item)
+        registry_item.pop("merge_proofs")
+        object_id = registry_item.get("object_id")
+        for proof in local_proofs:
+            if not isinstance(proof, dict):
+                flattened_proofs.append(proof)
+                continue
+            flattened_proofs.append({"object_id": object_id, **copy.deepcopy(proof)})
+        registry_objects.append(registry_item)
+    return registry_objects, flattened_proofs
+
+
+def _normalize_legacy_top_level_merge_proofs(payload: object) -> object:
+    """Read pre-V4.3 test or retained provider payloads without weakening V4.3 output.
+
+    The registered Anthropic JSON schema exposes only object-local proofs. This
+    narrow adapter preserves deterministic validation for a legacy captured
+    payload while avoiding a data-format migration for existing test fixtures.
+    """
+    if not isinstance(payload, dict) or set(payload) != {
+        "visual_groups", "objects", "merge_proofs", "page_coverage",
+    }:
+        return payload
+    objects = payload.get("objects")
+    proofs = payload.get("merge_proofs")
+    if not isinstance(objects, list) or not isinstance(proofs, list):
+        return payload
+    normalized = copy.deepcopy(payload)
+    proofs_by_object: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for proof in proofs:
+        if not isinstance(proof, dict):
+            return payload
+        object_id = str(proof.get("object_id") or "")
+        local_proof = copy.deepcopy(proof)
+        local_proof.pop("object_id", None)
+        proofs_by_object[object_id].append(local_proof)
+    for item in normalized["objects"]:
+        if not isinstance(item, dict):
+            return payload
+        item["merge_proofs"] = proofs_by_object.get(str(item.get("object_id") or ""), [])
+    normalized.pop("merge_proofs")
+    return normalized
+
+
 class DetectionOrphanDetailResolverError(ValueError):
     """Keep a conditional resolver failure inspectable in the usage ledger."""
 
@@ -1637,12 +1721,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     # normalizes group IDs or derives evidence-page references. This is an
     # inspectable decision record, not private chain-of-thought.
     registry_decision_audit = copy.deepcopy(payload)
+    provider_payload = _normalize_legacy_top_level_merge_proofs(payload)
     orphan_detail_resolver_usage: dict[str, Any] | None = None
     orphan_detail_resolver_audit: dict[str, Any] | None = None
     try:
-        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "merge_proofs", "page_coverage"}:
-            raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
-        raw_groups = payload["visual_groups"]
+        if not isinstance(provider_payload, dict) or set(provider_payload) != {"visual_groups", "objects", "page_coverage"}:
+            raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
+        raw_groups = provider_payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids({"visual_groups": raw_groups}),
@@ -1652,11 +1737,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
-        merge_proofs = _normalize_pairwise_merge_proof_group_ids(
-            payload["merge_proofs"], group_id_mapping
+        provider_objects, provider_merge_proofs = _separate_object_local_merge_proofs(
+            provider_payload["objects"]
         )
-        working_objects: object = payload["objects"]
-        working_page_coverage: object = payload["page_coverage"]
+        merge_proofs = _normalize_pairwise_merge_proof_group_ids(
+            provider_merge_proofs, group_id_mapping
+        )
+        working_objects: object = provider_objects
+        working_page_coverage: object = provider_payload["page_coverage"]
         working_merge_proofs: object = merge_proofs
         orphan_detail_context = _build_orphan_detail_context(
             objects=working_objects,
@@ -1792,9 +1880,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
             for role in ("assembly_view", "component_detail", "document_context")
         },
-        "page_coverage_count": len(payload["page_coverage"]),
+        "page_coverage_count": len(provider_payload["page_coverage"]),
         "unassigned_page_count": sum(
-            not entry["object_ids"] for entry in payload["page_coverage"]
+            not entry["object_ids"] for entry in provider_payload["page_coverage"]
         ),
         "registry_decision_audit": registry_decision_audit,
         "pairwise_merge_proofs": pairwise_merge_proofs,

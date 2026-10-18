@@ -89,6 +89,7 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert "`primary_evidence_type`" in prompt
     assert "`secondary_evidence_type`" in prompt
+    assert "`merge_proofs` belongs inside its parent object" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_visual_registry_pairwise_merge_proofs_v2_temperature_0"
+        "detection_v4_visual_registry_object_local_merge_proofs_v3_temperature_0"
     )

@@ -499,8 +499,8 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
             "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
             "visual_group_ids": ["view_a"],
             "visual_identity": "one cabinet", "boundary_basis": "one complete product",
+            "merge_proofs": [],
         }],
-        "merge_proofs": [],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
             "evidence_reason": "cabinet view",
@@ -558,15 +558,14 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
             "visual_group_ids": ["elevation", "plan"],
             "visual_identity": "one door system in elevation and plan",
             "boundary_basis": "matching track and three-leaf sequence",
-        }],
-        "merge_proofs": [{
-            "object_id": "object-001", "from_group_id": "elevation",
-            "to_group_id": "plan",
-            "primary_evidence_type": "matching_topology",
-            "secondary_evidence_type": "dimension_transform",
-            "evidence_pages": [1],
-            "observed_fact": "The plan track length matches the elevation after the axis change.",
-            "commercial_inseparability": "Both views show one common track and frame.",
+            "merge_proofs": [{
+                "from_group_id": "elevation", "to_group_id": "plan",
+                "primary_evidence_type": "matching_topology",
+                "secondary_evidence_type": "dimension_transform",
+                "evidence_pages": [1],
+                "observed_fact": "The plan track length matches the elevation after the axis change.",
+                "commercial_inseparability": "Both views show one common track and frame.",
+            }],
         }],
         "page_coverage": [{
             "page_number": 1, "object_ids": ["object-001"],
