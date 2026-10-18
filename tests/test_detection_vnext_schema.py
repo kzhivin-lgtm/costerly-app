@@ -179,6 +179,45 @@ def test_representation_package_connects_one_complete_view_with_its_details():
     ) == packages
 
 
+def test_representation_package_keeps_a_complete_grid_elevation_as_an_assembly_view():
+    visual_groups = [
+        {
+            "group_id": "view-001", "page_number": 11,
+            "location_hint": "upper", "visual_description": "N76B plan view",
+            "representation_kind": "plan", "commercial_role": "assembly_view",
+        },
+        {
+            "group_id": "view-002", "page_number": 11,
+            "location_hint": "lower", "visual_description": "N76B complete frontal grid elevation",
+            "representation_kind": "elevation", "commercial_role": "assembly_view",
+        },
+        {
+            "group_id": "view-003", "page_number": 11,
+            "location_hint": "right", "visual_description": "N76B section detail",
+            "representation_kind": "section", "commercial_role": "component_detail",
+        },
+    ]
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "N76B",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [11],
+            "estimation_evidence_pages": [11],
+            "visual_group_ids": ["view-001", "view-002"],
+            "visual_identity": "N76B shelving unit", "boundary_basis": "coded plan and full elevation",
+        }],
+    }
+    packages = [{
+        "package_id": "package-001", "object_id": "object-001",
+        "assembly_view_group_ids": ["view-001", "view-002"],
+        "supporting_component_detail_group_ids": ["view-003"],
+        "package_basis": "The coded plan and complete grid elevation describe the same N76B unit.",
+    }]
+
+    assert validate_detection_representation_packages(
+        packages, visual_groups=visual_groups, registry=registry,
+    ) == packages
+
+
 def test_representation_package_schema_leaves_bookkeeping_ids_to_the_runtime():
     package_schema = DETECTION_REPRESENTATION_PACKAGE_JSON_SCHEMA["items"]
 
