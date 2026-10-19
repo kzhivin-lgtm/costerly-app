@@ -559,9 +559,10 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
             "object_id": "object-001", "from_group_id": "elevation",
             "to_group_id": "plan",
             "relationship": "same_object_view",
-            "evidence_types": ["matching_topology", "dimension_transform"],
-            "evidence_pages": [1],
-            "observed_fact": "The plan track length matches the elevation after the axis change.",
+            "evidence_facts": [
+                {"evidence_type": "dimension_transform", "evidence_pages": [1], "observation": "The plan track length matches the elevation after the axis change."},
+                {"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Both views show the same three-leaf track sequence."},
+            ],
             "commercial_inseparability": "Both views show one common track and frame.",
         }],
         "page_coverage": [{

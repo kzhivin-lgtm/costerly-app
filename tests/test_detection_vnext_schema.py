@@ -105,18 +105,20 @@ def test_pairwise_merge_proofs_require_two_independent_signals_and_a_minimal_tre
             "object_id": "object-001", "from_group_id": "view-001",
             "to_group_id": "view-002",
             "relationship": "same_object_view",
-            "evidence_types": ["matching_topology", "unique_geometry"],
-            "evidence_pages": [1],
-            "observed_fact": "The same three leaves and offset handle sequence recur.",
+            "evidence_facts": [
+                {"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "The same three leaves recur."},
+                {"evidence_type": "unique_geometry", "evidence_pages": [1], "observation": "The offset handle sequence recurs."},
+            ],
             "commercial_inseparability": "Both views show the same single track assembly.",
         },
         {
             "object_id": "object-001", "from_group_id": "view-002",
             "to_group_id": "view-003",
             "relationship": "same_object_view",
-            "evidence_types": ["dimension_transform", "matching_topology"],
-            "evidence_pages": [1, 2],
-            "observed_fact": "The elevation width matches the plan after the view-axis change.",
+            "evidence_facts": [
+                {"evidence_type": "dimension_transform", "evidence_pages": [1, 2], "observation": "The elevation width matches the plan after the view-axis change."},
+                {"evidence_type": "matching_topology", "evidence_pages": [1, 2], "observation": "The bay and leaf order matches in both views."},
+            ],
             "commercial_inseparability": "The leaves use one common track and frame.",
         },
     ]
@@ -139,14 +141,68 @@ def test_pairwise_merge_proof_rejects_a_lone_direct_structure_claim():
     proofs = [{
         "object_id": "object-001", "from_group_id": "view-001",
         "to_group_id": "view-002", "relationship": "same_object_view",
-        "evidence_types": ["direct_shared_structure"],
-        "evidence_pages": [1], "observed_fact": "An L-shaped junction is drawn.",
+        "evidence_facts": [{"evidence_type": "direct_shared_structure", "evidence_pages": [1], "observation": "An L-shaped junction is drawn."}],
         "commercial_inseparability": "The furniture appears connected.",
     }]
 
     with pytest.raises(
         DetectionRegistrySchemaError,
-        match="needs two independent evidence types",
+        match="needs two independent evidence facts",
+    ):
+        validate_detection_pairwise_merge_proofs(proofs, registry=registry, page_count=1)
+
+
+def test_pairwise_merge_proof_accepts_two_distinct_dimension_facts():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1, 2],
+            "estimation_evidence_pages": [1, 2],
+            "visual_group_ids": ["view-001", "view-002"],
+            "visual_identity": "one cabinet in elevation and section",
+            "boundary_basis": "two transformed dimensions agree",
+        }],
+    }
+    proofs = [{
+        "object_id": "object-001", "from_group_id": "view-001",
+        "to_group_id": "view-002", "relationship": "same_object_view",
+        "evidence_facts": [
+            {"evidence_type": "dimension_transform", "evidence_pages": [1, 2], "observation": "The 1180 mm elevation width matches the horizontal section dimension."},
+            {"evidence_type": "dimension_transform", "evidence_pages": [1, 2], "observation": "The 2450 mm elevation height matches the vertical section dimension."},
+        ],
+        "commercial_inseparability": "The two views specify one cabinet envelope.",
+    }]
+
+    assert validate_detection_pairwise_merge_proofs(
+        proofs, registry=registry, page_count=2
+    ) == proofs
+
+
+def test_pairwise_merge_proof_rejects_a_repeated_typed_fact():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "estimation_evidence_pages": [1],
+            "visual_group_ids": ["view-001", "view-002"],
+            "visual_identity": "one cabinet in two views",
+            "boundary_basis": "claimed matching width",
+        }],
+    }
+    fact = {
+        "evidence_type": "dimension_transform", "evidence_pages": [1],
+        "observation": "The 1180 mm elevation width matches the section width.",
+    }
+    proofs = [{
+        "object_id": "object-001", "from_group_id": "view-001",
+        "to_group_id": "view-002", "relationship": "same_object_view",
+        "evidence_facts": [fact, fact],
+        "commercial_inseparability": "The two views specify one cabinet envelope.",
+    }]
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="evidence facts are invalid",
     ):
         validate_detection_pairwise_merge_proofs(proofs, registry=registry, page_count=1)
 
@@ -165,8 +221,7 @@ def test_pairwise_object_detail_proof_accepts_explicit_document_relation():
     proofs = [{
         "object_id": "object-001", "from_group_id": "view-001",
         "to_group_id": "view-002", "relationship": "object_detail",
-        "evidence_types": ["explicit_document_relation"], "evidence_pages": [11],
-        "observed_fact": "The N76B code applies to the elevation and section.",
+        "evidence_facts": [{"evidence_type": "explicit_document_relation", "evidence_pages": [11], "observation": "The N76B code applies to the elevation and section."}],
         "commercial_inseparability": "The section specifies construction of the same N76B partition.",
     }]
 
@@ -188,8 +243,8 @@ def test_pairwise_merge_proof_rejects_singleton_placeholder():
     placeholder = [{
         "object_id": "object-001", "from_group_id": "view-001",
         "to_group_id": "view-001", "relationship": "same_object_view",
-        "evidence_types": ["matching_topology"], "evidence_pages": [1],
-        "observed_fact": "Single view", "commercial_inseparability": "N/A",
+        "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Single view"}],
+        "commercial_inseparability": "N/A",
     }]
 
     with pytest.raises(

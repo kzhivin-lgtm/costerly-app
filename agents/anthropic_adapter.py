@@ -49,11 +49,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_14_group_ownership_ledger_temperature_0"
+    "detection_v4_15_typed_merge_evidence_facts_temperature_0"
 )
-# V4.14 keeps the V4.13 evidence model, but makes each visual group's declared
-# owners the only source of package membership. The registry's group lists are
-# derived in code, eliminating a second, divergent model declaration.
+# V4.15 retains the V4.14 ownership ledger. It makes each merge signal a
+# separately attributed observation rather than a bare type label, so a proof
+# can be checked without weakening the independent-evidence requirement.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable

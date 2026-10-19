@@ -31,9 +31,7 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
             "from_group_id",
             "to_group_id",
             "relationship",
-            "evidence_types",
-            "evidence_pages",
-            "observed_fact",
+            "evidence_facts",
             "commercial_inseparability",
         ],
         "properties": {
@@ -44,20 +42,27 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
                 "type": "string",
                 "enum": sorted(PAIRWISE_EVIDENCE_RELATIONSHIPS),
             },
-            "evidence_types": {
+            "evidence_facts": {
                 "type": "array",
                 "minItems": 1,
                 "items": {
-                    "type": "string",
-                    "enum": sorted(PAIRWISE_MERGE_EVIDENCE_TYPES),
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["evidence_type", "evidence_pages", "observation"],
+                    "properties": {
+                        "evidence_type": {
+                            "type": "string",
+                            "enum": sorted(PAIRWISE_MERGE_EVIDENCE_TYPES),
+                        },
+                        "evidence_pages": {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {"type": "integer", "minimum": 1},
+                        },
+                        "observation": {"type": "string"},
+                    },
                 },
             },
-            "evidence_pages": {
-                "type": "array",
-                "minItems": 1,
-                "items": {"type": "integer", "minimum": 1},
-            },
-            "observed_fact": {"type": "string"},
             "commercial_inseparability": {"type": "string"},
         },
     },
@@ -169,8 +174,7 @@ def validate_detection_pairwise_merge_proofs(
     seen_edges: set[tuple[str, tuple[str, str]]] = set()
     required = {
         "object_id", "from_group_id", "to_group_id", "relationship",
-        "evidence_types", "evidence_pages", "observed_fact",
-        "commercial_inseparability",
+        "evidence_facts", "commercial_inseparability",
     }
     for proof in proofs:
         if not isinstance(proof, dict) or set(proof) != required:
@@ -191,32 +195,52 @@ def validate_detection_pairwise_merge_proofs(
             or proof["relationship"] not in PAIRWISE_EVIDENCE_RELATIONSHIPS
         ):
             raise DetectionRegistrySchemaError("pairwise merge proof relationship is invalid")
-        evidence_types = proof["evidence_types"]
+        evidence_facts = proof["evidence_facts"]
         if (
-            not isinstance(evidence_types, list)
-            or not evidence_types
-            or not all(isinstance(evidence_type, str) for evidence_type in evidence_types)
-            or len(evidence_types) != len(set(evidence_types))
-            or not set(evidence_types).issubset(PAIRWISE_MERGE_EVIDENCE_TYPES)
+            not isinstance(evidence_facts, list)
+            or not evidence_facts
         ):
-            raise DetectionRegistrySchemaError("pairwise merge proof evidence types are invalid")
+            raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
+        evidence_types: set[str] = set()
+        evidence_fact_keys: set[tuple[str, tuple[int, ...], str]] = set()
+        for evidence_fact in evidence_facts:
+            if (
+                not isinstance(evidence_fact, dict)
+                or set(evidence_fact) != {"evidence_type", "evidence_pages", "observation"}
+            ):
+                raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
+            evidence_type = evidence_fact["evidence_type"]
+            evidence_pages = evidence_fact["evidence_pages"]
+            observation = str(evidence_fact["observation"] or "").strip()
+            if (
+                not isinstance(evidence_type, str)
+                or evidence_type not in PAIRWISE_MERGE_EVIDENCE_TYPES
+                or not isinstance(evidence_pages, list)
+                or not evidence_pages
+                or len(evidence_pages) != len(set(evidence_pages))
+                or not all(
+                    isinstance(page, int) and 1 <= page <= page_count
+                    for page in evidence_pages
+                )
+                or not observation
+            ):
+                raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
+            evidence_fact_key = (evidence_type, tuple(sorted(evidence_pages)), observation)
+            if evidence_fact_key in evidence_fact_keys:
+                raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
+            evidence_fact_keys.add(evidence_fact_key)
+            evidence_types.add(evidence_type)
         if "explicit_document_relation" not in evidence_types and (
-            len(evidence_types) < 2
+            len(evidence_facts) < 2
             or not set(evidence_types).intersection(_NON_EXPLICIT_MERGE_SUPPORT_TYPES)
         ):
             raise DetectionRegistrySchemaError(
-                "pairwise merge without an explicit document relation needs two independent evidence types"
+                "pairwise merge without an explicit document relation needs two independent evidence facts"
             )
-        evidence_pages = proof["evidence_pages"]
         if (
-            not isinstance(evidence_pages, list)
-            or not evidence_pages
-            or len(evidence_pages) != len(set(evidence_pages))
-            or not all(isinstance(page, int) and 1 <= page <= page_count for page in evidence_pages)
-            or not str(proof["observed_fact"] or "").strip()
-            or not str(proof["commercial_inseparability"] or "").strip()
+            not str(proof["commercial_inseparability"] or "").strip()
         ):
-            raise DetectionRegistrySchemaError("pairwise merge proof evidence is invalid")
+            raise DetectionRegistrySchemaError("pairwise merge proof commercial basis is invalid")
         edge_key = (object_id, tuple(sorted((from_group_id, to_group_id))))
         if edge_key in seen_edges:
             raise DetectionRegistrySchemaError("pairwise merge proofs repeat a relation")
