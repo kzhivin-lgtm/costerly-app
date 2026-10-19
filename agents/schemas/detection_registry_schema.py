@@ -314,6 +314,10 @@ def validate_detection_pairwise_merge_proofs(
         has_standalone_dimension_transform = (
             "dimension_transform" in evidence_types
         )
+        if dimension_status == "confirmed_match" and not has_standalone_dimension_transform:
+            raise DetectionRegistrySchemaError(
+                "confirmed dimension match requires an exact dimension transform fact"
+            )
         if has_standalone_dimension_transform and dimension_status != "confirmed_match":
             raise DetectionRegistrySchemaError(
                 "dimension transform requires a confirmed dimension match"

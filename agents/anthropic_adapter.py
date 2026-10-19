@@ -50,10 +50,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_21_compact_dimension_conflict_guard_temperature_0"
+    "detection_v4_22_bidirectional_dimension_proof_temperature_0"
 )
-# V4.21 retains V4.20's same-scope dimension conflict guard, but uses a compact
-# enum because the existing decision reason already holds the factual why.
+# V4.22 makes the compact dimension status bidirectional with the typed proof:
+# neither a bare status nor a bare transform can assert a match alone.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable

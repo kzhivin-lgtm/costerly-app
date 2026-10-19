@@ -82,6 +82,12 @@ measurements for a conflict root. This avoids exhausting the Registry output
 budget on repeated explanation. JSON parse failures now persist a failed
 Registry usage event with response length, SHA-256, provider stop reason and
 token budget, so truncation versus malformed provider JSON is observable.
+V4.22 makes the compact `dimension_status` bidirectional with typed evidence:
+`confirmed_match` is valid only with an exact `dimension_transform` fact naming
+measurements on both groups and their transformation, and that fact requires
+`confirmed_match`. A bare status is never merge evidence. This prevents a
+model's generic claim that dimensions agree from bypassing the independent-fact
+threshold for a section or alternate view.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

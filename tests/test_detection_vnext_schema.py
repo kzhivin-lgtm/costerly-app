@@ -226,6 +226,23 @@ def test_dimension_transform_requires_a_confirmed_dimension_match():
         )
 
 
+def test_confirmed_dimension_match_requires_an_exact_dimension_transform():
+    proof = _proof(
+        "view-001",
+        "view-002",
+        [_fact("matching_topology", "Both views show the same three cabinet bays.")],
+        "confirmed_match",
+    )
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="confirmed dimension match requires an exact dimension transform fact",
+    ):
+        validate_detection_pairwise_merge_proofs(
+            [proof], visual_group_ids={"view-001", "view-002"}, page_count=1
+        )
+
+
 def test_proof_graph_rejects_repeated_facts_and_self_links():
     fact = _fact("dimension_transform", "The 1180 mm width matches.")
     repeated = _proof("view-001", "view-002", [fact, fact])

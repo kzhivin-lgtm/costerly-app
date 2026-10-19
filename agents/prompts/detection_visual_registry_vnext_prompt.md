@@ -42,7 +42,7 @@ An explicit same code, callout or view reference can prove one attachment on its
 
 Before an `attach_to_group` decision, compare every readable explicit dimension on the candidate and its proposed parent. Normalize the document's units first, then account for the stated projection and axis transformation. Set `dimension_status` to one of:
 
-1. `confirmed_match`: at least one same-scope dimension agrees after a stated unit or axis transformation. A `dimension_transform` fact requires this status.
+1. `confirmed_match`: at least one same-scope dimension agrees after a stated unit or axis transformation. It requires one exact `dimension_transform` fact that names the measurements on both groups and the transformation. The rule is bidirectional: a `dimension_transform` fact requires `confirmed_match`, and `confirmed_match` requires that fact. This status never creates evidence by itself.
 2. `not_comparable`: dimensions exist but address different axes or scopes, for example plan depth versus elevation width, a local section detail versus an overall envelope, or a repeated module versus a complete assembly.
 3. `insufficient_dimension_evidence`: one or both depictions have no readable explicit dimension for comparison.
 
