@@ -1,4 +1,4 @@
-# DETECTION V4.28 - INVENTORY, CLASSIFY, PROVE, PACKAGE
+# DETECTION V4.29 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -10,8 +10,7 @@ response. The response has a mandatory causal order:
    factual reason,
 3. after inventory and classifications exist, build the full graph of
    positive evidence-backed relations between `object_evidence` islands,
-4. treat each connected graph component as exactly one commercial-object
-   package,
+4. decide the package outcome for every commercial island from that graph,
 5. describe those finished packages and their complete page Evidence.
 
 Do not declare object owners before the graph is complete. Do not add graph
@@ -69,6 +68,12 @@ self, cyclic or transitive shortcut edge. An island with no proved merge
 relation becomes a singleton package. Do not merge on shared page, room,
 colour, material, proximity or visual impression alone.
 
+An unproved relation is not an implicit attachment. If the available facts do
+not meet the merge threshold, omit the merge edge. The island must then become
+its own standalone package. It is forbidden to treat a group as "probably part
+of" another product without either an accepted merge edge or a standalone
+package outcome. Do not invent weak evidence merely to avoid a singleton.
+
 Each edge has `same_object_view`, `object_detail`, or
 `context_reference_link`, typed `evidence_facts`, and a factual
 `commercial_inseparability` explanation. The first two answer: **why do these
@@ -111,7 +116,24 @@ merge only when they claim the same physical axis and scope after unit and
 projection normalization. Width versus depth, overall versus local dimensions,
 different scales, quantities and non-comparable projections are not conflicts.
 
-## 3. Commercial-object packages
+## 3. Package-decision ledger
+
+After the proof graph is complete, return exactly one `package_decisions` row
+for every `object_evidence` group except a `context_reference_link` source.
+This is a complete, auditable ledger, not an optional summary.
+
+- Use `part_of_proven_component` only when the group is in an accepted merge
+  component. Set `component_anchor_group_id` to that component's lowest ordered
+  group ID.
+- Use `standalone_package` when the group has no accepted merge edge. Set
+  `component_anchor_group_id` to its own group ID.
+
+Every decision has a factual `decision_reason`. There is no third outcome. A
+detail that seems related but lacks a proved merge becomes a standalone
+commercial candidate for review. A context-link source is excluded because it
+is shared page-level Evidence, not a candidate package.
+
+## 4. Commercial-object packages
 
 After the graph is complete, only merge-proof connected components are packages.
 `context_reference_link` sources are not packages. Return
@@ -131,7 +153,7 @@ the complete component is one quote line, or for a singleton, why no proved
 relation joins it to another object-evidence island. A shared sheet code never
 merges separate finished assemblies by itself.
 
-## 4. Evidence coverage
+## 5. Evidence coverage
 
 Return exactly one `page_coverage` entry for every upload page. Use component
 anchors, never object IDs. Include a component anchor whenever the page carries

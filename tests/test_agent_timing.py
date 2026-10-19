@@ -29,6 +29,10 @@ from agents.anthropic_adapter import (
     run_anthropic_detection_visual_map_agent,
     run_anthropic_detection_visual_registry_agent,
 )
+from agents.schemas.detection_registry_schema import (
+    CONTEXT_REFERENCE_RELATIONSHIP,
+    derive_detection_proof_components,
+)
 from agents.ocr_adapter import normalize_mistral_ocr_response
 from ui.processing_stage import processing_stage_html
 from ui.js_guards import (
@@ -89,6 +93,45 @@ def _visual_registry_payload(payload):
         })
     payload["classifications"] = classifications
     payload["proof_edges"] = proofs if isinstance(proofs, list) else []
+    if "package_decisions" not in payload:
+        group_ids_by_class = {
+            item["group_id"]: item["evidence_class"]
+            for item in classifications
+        }
+        context_source_group_ids = {
+            str(proof.get("from_group_id") or "")
+            for proof in payload["proof_edges"]
+            if isinstance(proof, dict)
+            and proof.get("relationship") == CONTEXT_REFERENCE_RELATIONSHIP
+        }
+        commercial_group_ids = {
+            group_id
+            for group_id, evidence_class in group_ids_by_class.items()
+            if evidence_class == "object_evidence"
+            and group_id not in context_source_group_ids
+        }
+        try:
+            components = derive_detection_proof_components(
+                payload["proof_edges"], visual_group_ids=commercial_group_ids,
+            )
+            payload["package_decisions"] = [
+                {
+                    "group_id": group_id,
+                    "package_disposition": (
+                        "part_of_proven_component"
+                        if len(component) > 1
+                        else "standalone_package"
+                    ),
+                    "component_anchor_group_id": component[0],
+                    "decision_reason": "The package outcome follows the proof graph.",
+                }
+                for component in components
+                for group_id in component
+            ]
+        except Exception:
+            # Invalid graph fixtures must reach the production graph validator,
+            # rather than fail inside the fixture normalizer.
+            payload["package_decisions"] = []
     return payload
 
 

@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.27`, experimental, built on the protected
+Current model build: `Detection V4.29`, experimental, built on the protected
 V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
 treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
@@ -142,6 +142,16 @@ code such as N57, Detection may split products only with separate product
 evidence; Naming retains N57 and adds deterministic A/B/C suffixes in product
 order. The target is N57A kitchen, N57B island and N57C cabinet, not one
 commercial N57 package.
+V4.29 is the approved follow-up experiment. It preserves V4.28's proof rules,
+context links, one Haiku call, temperature 0 and passive OCR recall aid, but
+adds an exact-once package-decision ledger after the graph. Every commercial
+visual group must resolve explicitly as `part_of_proven_component` or
+`standalone_package`; a context-link source is shared Evidence rather than a
+commercial group. A claimed but insufficient relation cannot silently suppress
+a package. Runtime verifies every decision against the accepted proof
+components and persists it with the Registry audit. Acceptance: HSL succeeds
+without an unproved merge, every eligible group is accounted for, and the
+result is then regressed against Page 23 and Adda before any checkpoint.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate
