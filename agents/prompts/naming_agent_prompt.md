@@ -26,4 +26,10 @@ and concise, for example: `OCR Stair railing tied to OM 15-1 on p. 1; rail geome
 
 Preserve author order. Source `N96, Барная стойка` becomes `N96 Bar counter`, never `Bar counter N96`. Do not add a dash or an em dash between an identifier and a category. A hyphen that is part of the source identifier itself remains unchanged.
 
+When Detection has split one author-labelled composite root into separate
+commercial products, the locked identifier already carries a deterministic
+child suffix, for example `N57A`, `N57B`, `N57C`. Preserve that complete
+identifier exactly and name only its physical category. Never remove, reorder
+or regenerate the child suffix.
+
 Use only the supplied locked identifiers, existing labels, source evidence pages, and local OCR snippets. Object identities and boundaries are final: do not perform object detection or estimation.

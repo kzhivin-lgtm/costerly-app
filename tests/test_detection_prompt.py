@@ -75,20 +75,21 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Return exactly one `page_coverage` entry for every upload page" in prompt
     assert "plan, room layout, electrical, plumbing or lighting plan" in prompt
     assert "never enter the graph or Estimation Evidence" in prompt
-    assert "no duplicate, self, cyclic or" in prompt
+    assert "no duplicate,\nself, cyclic or" in prompt
     assert "do not return owner lists or object IDs" in prompt
-    assert "connected components are the packages" in prompt
+    assert "merge-proof connected components are packages" in prompt
     assert "component_anchor_group_id" in prompt
     assert "classification_reason" in prompt
     assert "proof_edges" in prompt
     assert "why do these\ntwo islands form one quote line?" in prompt
     assert "`object_detail`" in prompt
+    assert "`context_reference_link`" in prompt
     assert "dimensions agree after a named unit or axis transformation" in prompt
     assert "One exact\ndimension transform can prove one edge on its own" in prompt
-    assert "Evaluate relations globally across the complete classified" in prompt
+    assert "Evaluate relations\nglobally across the complete classified" in prompt
     assert "can support a merge but cannot establish one alone" in prompt
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_27_inventory_classify_graph_package_temperature_0"
+        "detection_v4_28_context_reference_graph_temperature_0"
     )

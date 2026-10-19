@@ -1,4 +1,4 @@
-# DETECTION V4.27 - INVENTORY, CLASSIFY, PROVE, PACKAGE
+# DETECTION V4.28 - INVENTORY, CLASSIFY, PROVE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -63,17 +63,33 @@ return `proof_edges`. It is the complete set of positive relations between all
 `object_evidence` groups. An edge may connect any two groups, regardless of
 their output order. Never connect `document_context`.
 
-An edge says the two islands represent one independently quoted fabricated
-product. Return only the minimal spanning forest: no duplicate, self, cyclic or
-transitive shortcut edge. An island with no proved relation has no edge and
-becomes a singleton package. Do not merge on shared page, room, colour,
-material, proximity or visual impression alone.
+Merge edges say the two islands represent one independently quoted fabricated
+product. Return only the minimal spanning forest for merge edges: no duplicate,
+self, cyclic or transitive shortcut edge. An island with no proved merge
+relation becomes a singleton package. Do not merge on shared page, room,
+colour, material, proximity or visual impression alone.
 
-Each edge has `same_object_view` or `object_detail`, typed `evidence_facts`,
-and a factual `commercial_inseparability` explanation answering: **why do these
-two islands form one quote line?** Every fact names its page(s) and a concrete
-observation. Evaluate relations globally across the complete classified
-inventory, not incrementally as groups are emitted.
+Each edge has `same_object_view`, `object_detail`, or
+`context_reference_link`, typed `evidence_facts`, and a factual
+`commercial_inseparability` explanation. The first two answer: **why do these
+two islands form one quote line?** They are merge edges. A
+`context_reference_link` is directed from a composite or general view to an
+individual product view. It answers: **why does this composite depiction supply
+context to that independent product?** It never merges products, never enters
+a proof component, and its source may not have any merge edge.
+
+Use `context_reference_link` when one plan, axonometric view, arrangement or
+general elevation depicts several distinct independently quoted products. Link
+that composite source to each individual product view it visibly references.
+The source becomes shared page-level Evidence for every linked package, not a
+commercial package itself. For example, a sheet labelled N57 may show kitchen,
+island and cabinet together in two general views and separately in dedicated
+views. The general views context-link to all three dedicated products, they do
+not merge kitchen, island and cabinet into one quote line.
+
+Every fact names its page(s) and a concrete observation. Evaluate relations
+globally across the complete classified inventory, not incrementally as groups
+are emitted.
 
 Apply the evidence types in this priority order:
 
@@ -97,7 +113,8 @@ different scales, quantities and non-comparable projections are not conflicts.
 
 ## 3. Commercial-object packages
 
-After the graph is complete, its connected components are the packages. Return
+After the graph is complete, only merge-proof connected components are packages.
+`context_reference_link` sources are not packages. Return
 exactly one `objects` row per component, using any group inside it as
 `component_anchor_group_id`. Runtime derives the canonical group membership and
 ordered object ID from the graph, so do not return owner lists or object IDs.
@@ -105,7 +122,11 @@ ordered object ID from the graph, so do not return owner lists or object IDs.
 For every package provide the exact printed `transport_label` when present,
 otherwise a neutral source label, `quantity`, `quantity_explicit`,
 `identity_pages`, `visual_identity`, and factual `boundary_basis`. Quantity
-defaults to 1 when not established otherwise. `boundary_basis` must explain why
+defaults to 1 when not established otherwise. When one printed root code labels
+a composite source but the graph proves multiple independent child packages,
+return that exact same root code for every child package. Runtime preserves the
+root and appends deterministic A/B/C child suffixes in package order. Never add
+the suffix yourself. `boundary_basis` must explain why
 the complete component is one quote line, or for a singleton, why no proved
 relation joins it to another object-evidence island. A shared sheet code never
 merges separate finished assemblies by itself.

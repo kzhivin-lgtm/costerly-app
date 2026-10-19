@@ -37,6 +37,18 @@ def _proof(left, right, facts):
     }
 
 
+def _context_link(composite_view, product_view, facts):
+    return {
+        "from_group_id": composite_view,
+        "to_group_id": product_view,
+        "relationship": "context_reference_link",
+        "evidence_facts": facts,
+        "commercial_inseparability": (
+            "The composite view gives context to this independent product, not a merge."
+        ),
+    }
+
+
 def _root(reason="No positive relation to an earlier group is evidenced.", blocked_merge=None):
     root = {
         "decision": "new_object_root",
@@ -252,6 +264,28 @@ def test_singleton_visual_group_becomes_a_singleton_component_without_placeholde
     ) == []
     assert derive_detection_proof_components([], visual_group_ids=groups) == [
         ["view-001"], ["view-002"],
+    ]
+
+
+def test_context_reference_excludes_a_composite_view_without_merging_its_products():
+    groups = {"view-001", "view-002", "view-003", "view-004"}
+    proofs = [
+        _context_link("view-001", "view-002", [
+            _fact("matching_topology", "The overview visibly locates the kitchen."),
+        ]),
+        _context_link("view-001", "view-003", [
+            _fact("matching_topology", "The overview visibly locates the island."),
+        ]),
+        _context_link("view-001", "view-004", [
+            _fact("matching_topology", "The overview visibly locates the cabinet."),
+        ]),
+    ]
+
+    assert validate_detection_pairwise_merge_proofs(
+        proofs, visual_group_ids=groups, page_count=1
+    ) == proofs
+    assert derive_detection_proof_components(proofs, visual_group_ids=groups) == [
+        ["view-002"], ["view-003"], ["view-004"],
     ]
 
 

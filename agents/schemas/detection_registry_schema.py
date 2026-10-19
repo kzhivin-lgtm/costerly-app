@@ -15,7 +15,13 @@ PAIRWISE_MERGE_EVIDENCE_TYPES = frozenset({
 PAIRWISE_EVIDENCE_RELATIONSHIPS = frozenset({
     "same_object_view",
     "object_detail",
+    "context_reference_link",
 })
+MERGE_EVIDENCE_RELATIONSHIPS = frozenset({
+    "same_object_view",
+    "object_detail",
+})
+CONTEXT_REFERENCE_RELATIONSHIP = "context_reference_link"
 PROOF_PARENT_DECISIONS = frozenset({
     "new_object_root",
     "attach_to_group",
@@ -228,6 +234,9 @@ def validate_detection_pairwise_merge_proofs(
     adjacency: dict[str, set[str]] = {
         group_id: set() for group_id in visual_group_ids
     }
+    context_source_group_ids: set[str] = set()
+    context_target_group_ids: set[str] = set()
+    merge_endpoint_group_ids: set[str] = set()
     required = {
         "from_group_id", "to_group_id", "relationship",
         "evidence_facts", "commercial_inseparability",
@@ -283,10 +292,14 @@ def validate_detection_pairwise_merge_proofs(
                 raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
             evidence_fact_keys.add(evidence_fact_key)
             evidence_types.add(evidence_type)
+        relationship = proof["relationship"]
+        if relationship == CONTEXT_REFERENCE_RELATIONSHIP:
+            context_source_group_ids.add(from_group_id)
+            context_target_group_ids.add(to_group_id)
         has_standalone_dimension_transform = (
             "dimension_transform" in evidence_types
         )
-        if (
+        if relationship in MERGE_EVIDENCE_RELATIONSHIPS and (
             "explicit_document_relation" not in evidence_types
             and not has_standalone_dimension_transform
             and (
@@ -307,11 +320,22 @@ def validate_detection_pairwise_merge_proofs(
         if edge_key in seen_edges:
             raise DetectionRegistrySchemaError("pairwise merge proofs repeat a relation")
         seen_edges.add(edge_key)
-        adjacency[from_group_id].add(to_group_id)
-        adjacency[to_group_id].add(from_group_id)
+        if relationship in MERGE_EVIDENCE_RELATIONSHIPS:
+            merge_endpoint_group_ids.update({from_group_id, to_group_id})
+            adjacency[from_group_id].add(to_group_id)
+            adjacency[to_group_id].add(from_group_id)
+
+    if context_source_group_ids.intersection(context_target_group_ids):
+        raise DetectionRegistrySchemaError(
+            "context reference links cannot form a context chain"
+        )
+    if context_source_group_ids.intersection(merge_endpoint_group_ids):
+        raise DetectionRegistrySchemaError(
+            "context reference source cannot participate in a merge proof"
+        )
 
     visited: set[str] = set()
-    for group_id in sorted(visual_group_ids):
+    for group_id in sorted(visual_group_ids - context_source_group_ids):
         if group_id in visited:
             continue
         component: set[str] = set()
@@ -436,10 +460,18 @@ def derive_detection_proof_components(
     visual_group_ids: set[str],
 ) -> list[list[str]]:
     """Return canonical commercial candidates from a validated proof forest."""
+    context_source_group_ids = {
+        str(proof["from_group_id"])
+        for proof in proofs
+        if proof.get("relationship") == CONTEXT_REFERENCE_RELATIONSHIP
+    }
+    component_group_ids = visual_group_ids - context_source_group_ids
     adjacency: dict[str, set[str]] = {
-        group_id: set() for group_id in visual_group_ids
+        group_id: set() for group_id in component_group_ids
     }
     for proof in proofs:
+        if proof.get("relationship") not in MERGE_EVIDENCE_RELATIONSHIPS:
+            continue
         from_group_id = str(proof["from_group_id"])
         to_group_id = str(proof["to_group_id"])
         adjacency[from_group_id].add(to_group_id)
@@ -447,7 +479,7 @@ def derive_detection_proof_components(
 
     components: list[list[str]] = []
     visited: set[str] = set()
-    for group_id in sorted(visual_group_ids):
+    for group_id in sorted(component_group_ids):
         if group_id in visited:
             continue
         component: list[str] = []

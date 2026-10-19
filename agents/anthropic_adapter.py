@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import sys
 from threading import Lock
 import time
@@ -28,6 +29,7 @@ from agents.detection_spatial_inventory import (
     spatial_inventory_context,
 )
 from agents.schemas.detection_registry_schema import (
+    CONTEXT_REFERENCE_RELATIONSHIP,
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
@@ -54,10 +56,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_27_inventory_classify_graph_package_temperature_0"
+    "detection_v4_28_context_reference_graph_temperature_0"
 )
-# V4.27 retains V4.23's passive OCR recall aid and serializes inventory,
-# classification, graph and packages as separate phases in one response.
+# V4.28 retains V4.27's staged Registry and adds a non-merge context relation
+# for composite views that evidence multiple independently quoted products.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -858,6 +860,48 @@ def _derive_registry_from_proof_components(
     return registry_objects, anchor_to_object_id
 
 
+_SOURCE_OBJECT_CODE_RE = re.compile(
+    r"(?<![A-Za-zА-Яа-яЁё0-9])(?:[A-Za-zА-Яа-яЁё]{1,4}\s*[- ]?\s*\d+(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3}|\d{1,3}[A-ZА-ЯЁ][A-ZА-ЯЁ0-9]*(?:[-./][A-Za-zА-Яа-яЁё0-9]+){0,3})(?![A-Za-zА-Яа-яЁё0-9])"
+)
+
+
+def _apply_context_reference_root_suffixes(
+    registry_objects: list[dict[str, Any]],
+    *,
+    proof_components: list[list[str]],
+    context_reference_links: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Preserve one authored root code while naming its split child packages."""
+    object_id_by_group_id = {
+        group_id: registry_objects[index]["object_id"]
+        for index, component in enumerate(proof_components)
+        for group_id in component
+    }
+    target_object_ids = {
+        object_id_by_group_id[str(link.get("to_group_id") or "")]
+        for link in context_reference_links
+        if str(link.get("to_group_id") or "") in object_id_by_group_id
+    }
+    siblings_by_root: dict[str, list[dict[str, Any]]] = {}
+    for item in registry_objects:
+        if item["object_id"] not in target_object_ids:
+            continue
+        candidates = {
+            match.group(0).replace(" ", "").upper()
+            for match in _SOURCE_OBJECT_CODE_RE.finditer(
+                str(item.get("transport_label") or "")
+            )
+        }
+        if len(candidates) == 1:
+            siblings_by_root.setdefault(next(iter(candidates)), []).append(item)
+    for root_code, siblings in siblings_by_root.items():
+        if len(siblings) < 2 or len(siblings) > 26:
+            continue
+        for position, item in enumerate(siblings):
+            item["transport_label"] = f"{root_code}{chr(ord('A') + position)}"
+    return registry_objects
+
+
 def _resolve_component_page_coverage(
     page_coverage: object,
     *,
@@ -1161,6 +1205,17 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
         }
+        context_reference_links = [
+            proof for proof in payload["proof_edges"]
+            if proof.get("relationship") == CONTEXT_REFERENCE_RELATIONSHIP
+        ]
+        context_reference_source_group_ids = {
+            str(proof["from_group_id"])
+            for proof in context_reference_links
+        }
+        commercial_visual_group_ids = (
+            visual_group_ids - context_reference_source_group_ids
+        )
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
             payload["proof_edges"],
             page_count=len(page_images),
@@ -1172,6 +1227,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry_objects_input, anchor_to_object_id = _derive_registry_from_proof_components(
             payload["objects"], proof_components,
         )
+        registry_objects_input = _apply_context_reference_root_suffixes(
+            registry_objects_input,
+            proof_components=proof_components,
+            context_reference_links=context_reference_links,
+        )
         resolved_page_coverage = _resolve_component_page_coverage(
             payload["page_coverage"], anchor_to_object_id=anchor_to_object_id,
         )
@@ -1181,8 +1241,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry_payload = {"objects": registry_objects}
         registry = validate_detection_registry(
             registry_payload,
-            visual_group_ids=visual_group_ids,
-            object_evidence_group_ids=visual_group_ids,
+            visual_group_ids=commercial_visual_group_ids,
+            object_evidence_group_ids=commercial_visual_group_ids,
         )
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
@@ -1227,9 +1287,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
-        "unassigned_visual_group_count": len({group["group_id"] for group in visual_map["visual_groups"]} - assigned_visual_group_ids),
+        "unassigned_visual_group_count": len(commercial_visual_group_ids - assigned_visual_group_ids),
         "unassigned_object_evidence_group_count": len(
-            object_evidence_group_ids - assigned_visual_group_ids
+            commercial_visual_group_ids - assigned_visual_group_ids
         ),
         "proof_component_count": len(proof_components),
         "page_coverage_count": len(resolved_page_coverage),
@@ -1240,7 +1300,15 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "classification_decisions": classification_decisions,
         "pairwise_merge_proofs": pairwise_merge_proofs,
-        "pairwise_merge_proof_count": len(pairwise_merge_proofs),
+        "pairwise_merge_proof_count": sum(
+            proof.get("relationship") != CONTEXT_REFERENCE_RELATIONSHIP
+            for proof in pairwise_merge_proofs
+        ),
+        "context_reference_links": context_reference_links,
+        "context_reference_link_count": len(context_reference_links),
+        "context_reference_source_group_ids": sorted(
+            context_reference_source_group_ids
+        ),
         "proof_graph_components": [
             {
                 "canonical_anchor_group_id": component[0],

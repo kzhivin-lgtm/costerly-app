@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from agents.anthropic_adapter import (
+    _apply_context_reference_root_suffixes,
     DEFAULT_CLAUDE_DETECTION_MODEL,
     DetectionVisualRegistryValidationError,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
@@ -89,6 +90,28 @@ def _visual_registry_payload(payload):
     payload["classifications"] = classifications
     payload["proof_edges"] = proofs if isinstance(proofs, list) else []
     return payload
+
+
+def test_context_reference_splits_one_author_root_into_deterministic_child_codes():
+    objects = [
+        {"object_id": "object-001", "transport_label": "N57", "visual_group_ids": ["view-002"]},
+        {"object_id": "object-002", "transport_label": "Cabinet assembly N57", "visual_group_ids": ["view-003"]},
+        {"object_id": "object-003", "transport_label": "N57", "visual_group_ids": ["view-004"]},
+    ]
+
+    result = _apply_context_reference_root_suffixes(
+        objects,
+        proof_components=[["view-002"], ["view-003"], ["view-004"]],
+        context_reference_links=[
+            {"from_group_id": "view-001", "to_group_id": "view-002"},
+            {"from_group_id": "view-001", "to_group_id": "view-003"},
+            {"from_group_id": "view-001", "to_group_id": "view-004"},
+        ],
+    )
+
+    assert [item["transport_label"] for item in result] == [
+        "N57A", "N57B", "N57C",
+    ]
 
 
 class _FakeStream:
@@ -637,6 +660,54 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
         "canonical_anchor_group_id": "view-001",
         "visual_group_ids": ["view-001", "view-002"],
     }]
+
+
+def test_integrated_visual_registry_keeps_context_view_out_of_components_and_splits_root_code():
+    payload = {
+        "visual_groups": [
+            {"group_id": "overview", "page_number": 1, "location_hint": "upper", "visual_description": "kitchen, island and cabinet together", "representation_kind": "plan"},
+            {"group_id": "kitchen", "page_number": 1, "location_hint": "lower left", "visual_description": "dedicated kitchen elevation", "representation_kind": "elevation"},
+            {"group_id": "island", "page_number": 1, "location_hint": "lower center", "visual_description": "dedicated island elevation", "representation_kind": "elevation"},
+            {"group_id": "cabinet", "page_number": 1, "location_hint": "lower right", "visual_description": "dedicated cabinet elevation", "representation_kind": "elevation"},
+        ],
+        "objects": [
+            {"component_anchor_group_id": "kitchen", "transport_label": "N57", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_identity": "kitchen", "boundary_basis": "dedicated kitchen view"},
+            {"component_anchor_group_id": "island", "transport_label": "N57", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_identity": "island", "boundary_basis": "dedicated island view"},
+            {"component_anchor_group_id": "cabinet", "transport_label": "N57", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_identity": "cabinet", "boundary_basis": "dedicated cabinet view"},
+        ],
+        "proof_edges": [
+            {"from_group_id": "overview", "to_group_id": "kitchen", "relationship": "context_reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the kitchen."}], "commercial_inseparability": "Shared overview context, not a merge."},
+            {"from_group_id": "overview", "to_group_id": "island", "relationship": "context_reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the island."}], "commercial_inseparability": "Shared overview context, not a merge."},
+            {"from_group_id": "overview", "to_group_id": "cabinet", "relationship": "context_reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the cabinet."}], "commercial_inseparability": "Shared overview context, not a merge."},
+        ],
+        "page_coverage": [{
+            "page_number": 1,
+            "component_anchor_group_ids": ["kitchen", "island", "cabinet"],
+            "evidence_reason": "The composite overview and dedicated views inform all three products.",
+        }],
+    }
+
+    with (
+        patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
+        patch("agents.anthropic_adapter.create_claude_message_streamed", return_value=(_Response(), {
+            "request_started_at": "2026-10-16T00:00:00+00:00",
+            "request_finished_at": "2026-10-16T00:00:01+00:00",
+        })),
+        patch("agents.anthropic_adapter.extract_text_from_claude_response", return_value=json.dumps(_visual_registry_payload(payload))),
+    ):
+        _, registry, usage = run_anthropic_detection_visual_registry_agent(
+            file_name="drawing.pdf", company_id="001", file_bytes=b"pdf",
+            page_images=[b"page"], regions=[], ocr_package=None, model="model",
+        )
+
+    assert [item["transport_label"] for item in registry["objects"]] == [
+        "N57A", "N57B", "N57C",
+    ]
+    assert [item["visual_group_ids"] for item in registry["objects"]] == [
+        ["view-002"], ["view-003"], ["view-004"],
+    ]
+    assert usage["raw_usage"]["context_reference_link_count"] == 3
+    assert usage["raw_usage"]["unassigned_object_evidence_group_count"] == 0
 
 
 def test_integrated_visual_registry_rejects_duplicate_component_anchor():
