@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.17`, experimental, based on V4.15 and the
+Current model build: `Detection V4.18`, experimental, based on V4.15 and the
 protected checkpoint `52c314d`. Comment: V4.12 still treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
 The failure proved that assembly/component was an invalid eligibility gate, not
@@ -48,9 +48,17 @@ An unlinked group is a singleton object, a multi-group object cannot exist
 without its minimal proof tree. A physical page remains reusable Evidence for
 several components, but one visual group cannot be an owner declaration for
 several objects. No model call, router, Sonnet path, Naming or UI timing is
-added. It is not a checkpoint until HSL produces the canonical 11 packages
-with complete object-specific evidence, followed by Page 23 and Adda regression
-gates.
+added. The HSL V4.17 failure showed that an optional top-level proof array can
+still be omitted while the model returns a smaller set of object descriptors.
+V4.18 replaces that optional array in the model contract with one required
+`proof_parent` decision on every visual group: either `new_object_root` with a
+factual reason, or `attach_to_group` pointing only to an earlier group with
+typed evidence facts and a factual reason. Runtime derives the same proof
+forest and object packages exclusively from these group-level decisions, and
+persists every decision and its answer to "why" in the Registry audit. This
+adds no model call, router, Sonnet path, Naming or UI timing. It is not a
+checkpoint until HSL produces the canonical 11 packages with complete
+object-specific evidence, followed by Page 23 and Adda regression gates.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

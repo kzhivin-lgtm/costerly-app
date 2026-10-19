@@ -77,21 +77,26 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Do not create a group for the cover/title page" in prompt
     assert "generic floor plan, room layout, electrical, plumbing or lighting plan" in prompt
     assert "they are not Estimation Evidence" in prompt
-    assert "Never return a self-link, duplicate edge, placeholder or empty proof" in prompt
+    assert "without self-links, duplicate edges or cycles" in prompt
     assert "Do not assign any object IDs or owners to a group" in prompt
     assert "connected proof component as exactly one commercial object" in prompt
     assert "component_anchor_group_id" in prompt
-    assert "`object_detail` for a detail, section or module" in prompt
-    assert "Start with every visual group separate" in prompt
+    assert "proof_parent" in prompt
+    assert "new_object_root" in prompt
+    assert "attach_to_group" in prompt
+    assert "why is there no positive proof" in prompt
+    assert "why do these two depictions form one independently quoted product" in prompt
+    assert "There is no optional global merge list" in prompt
+    assert "`object_detail`" in prompt
     assert "dimensions agree after a change of axes" in prompt
     assert "Secondary signals" in prompt
     assert "whole-silhouette similarity is not required" in prompt
     assert "Different finished envelopes, principal functions or primary dimensions" in prompt
-    assert "Proof graph" in prompt
+    assert "Required proof-parent decision" in prompt
     assert "Test commercial separability, not merely visual closeness" in prompt
-    assert "It may support an edge, never establish one alone" in prompt
+    assert "It may support an attachment, never establish one alone" in prompt
     assert "evidence_facts" in prompt
     assert "`floor_plan` means generic non-object context and is discarded" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_17_proof_graph_ownership_temperature_0"
+        "detection_v4_18_required_proof_parent_temperature_0"
     )

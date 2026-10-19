@@ -1,49 +1,52 @@
-# DETECTION V4 - PROOF GRAPH REGISTRY
+# DETECTION V4 - REQUIRED PROOF-PARENT REGISTRY
 
 Build the visual representation map and commercial-object registry in one response. The output has a strict causal order:
 
 1. identify object-specific visual groups,
-2. state only evidence-backed pairwise merge proofs,
+2. for every group, state whether it starts a new proof component or attaches to one earlier group, and why,
 3. treat each connected proof component as exactly one commercial object,
 4. describe that component and its complete page Evidence.
 
-Do not declare an object owner first and add proofs afterwards. A group pair belongs to one object only when it is connected by an explicit proof edge. An unlinked group is a valid one-group commercial-object component.
+Do not declare an object owner first and add evidence afterwards. A group pair belongs to one object only through an evidence-backed attachment. Every group must contain a `proof_parent` decision. There is no optional global merge list.
 
 ## 1. Visual groups
 
 Each `visual_group` is one visibly distinct, object-specific source depiction that can help Estimation: overview, alternate perspective, elevation, object plan, section, detail, module, door leaf, panel, track, cabinet bay or assembly fragment. It is not automatically a quote line or quantity.
 
-Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, and neutral `representation_kind`. It records only one visible depiction. Do not assign any object IDs or owners to a group.
+Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, and required `proof_parent`. It records only one visible depiction. Do not assign any object IDs or owners to a group.
 
 Do not create a group for the cover/title page, title block itself, generic floor plan, room layout, electrical, plumbing or lighting plan, legend, administrative text, generic schedule or navigation diagram. Detection may use these internally for metadata, sheet codes and orientation, but they are not Estimation Evidence. Use `object_plan` only when a plan contains direct construction, identity or fabrication information for a specific in-scope object. `floor_plan` means generic non-object context and is discarded. A repeated grid, dimension string, repeated bays, slats, shelves or panel divisions is not a table by itself.
 
-## 2. Proof graph
+## 2. Required proof-parent decision, including why
 
-Start with every visual group separate. Emit a `merge_proofs` edge only when the two groups are positive evidence of the same independently quoted product, or one is a proved detail of that product. There is no edge for separate products. Do not use visual adjacency, same room, same page, colour, material, project, or an L-shaped layout as an edge.
+Process groups in the output order. For **every** group, fill its `proof_parent` with exactly one of these actions:
 
-Resolve a relation in this priority order:
+1. `new_object_root`: this depiction begins a new proof component. Set `parent_group_id` to `ROOT`, `relationship` to `new_object_root`, `evidence_facts` to `[]`, and write a concise factual `decision_reason` answering: **why is there no positive proof that this group belongs to an earlier group?**
+2. `attach_to_group`: this depiction belongs to one earlier emitted group. Set `parent_group_id` to that earlier `group_id`, use `same_object_view` or `object_detail`, provide the required typed `evidence_facts`, and write a concise factual `decision_reason` answering: **why do these two depictions form one independently quoted product?**
+
+Never omit a decision, use a later group as parent, use an empty reason, or make an attachment without positive evidence. A root does not mean that the depiction is definitely a separately priced product in the abstract. It means that, from the available document evidence, it has no proved link to an earlier depiction and therefore begins its own candidate component. Every later group that has a proved relation must attach to one earlier group. This produces a forest without self-links, duplicate edges or cycles.
+
+Resolve an attachment in this priority order:
 
 1. `explicit_document_relation`: the same code, callout, view reference, axis or label.
 2. `dimension_transform`: dimensions agree after a change of axes or describe compatible portions of one assembly.
 3. `matching_topology`: matching order and count of bays, doors, supports, carcasses, frames, appliances, joints or structural elements.
 4. `unique_geometry`: repeated cut-outs, handles, posts, appliance locations, turning parts, mounting points, panel sequence or distinctive frame geometry.
-5. `direct_shared_structure`: a visible common frame, track, carcass, joint or other physical connection. It may support an edge, never establish one alone.
+5. `direct_shared_structure`: a visible common frame, track, carcass, joint or other physical connection. It may support an attachment, never establish one alone.
 
 Secondary signals, including proximity, room name, colour, material and same-sheet location, can reinforce a proven relation but cannot create it. A change of projection can make one item look unlike itself, so whole-silhouette similarity is not required.
 
-An explicit same code, callout or view reference can prove one edge on its own. Without it, an edge needs at least two independent facts and at least one identity-level fact: `dimension_transform`, `matching_topology`, or `unique_geometry`. Two dimension facts are independent only when they cite different dimensions or axes. Every proof carries `evidence_facts`; every fact has its own pages and concrete observation. `commercial_inseparability` states the concise factual reason the linked views are one quote line.
+An explicit same code, callout or view reference can prove one attachment on its own. Without it, an attachment needs at least two independent facts and at least one identity-level fact: `dimension_transform`, `matching_topology`, or `unique_geometry`. Two dimension facts are independent only when they cite different dimensions or axes. Every fact has its own pages and concrete observation. `decision_reason` must state the factual commercial basis, not generic phrases such as "one system" or "same sheet".
 
-The graph must be a forest. For each connected component with N groups, return exactly N-1 edges. Never return a self-link, duplicate edge, placeholder or empty proof. Use `same_object_view` for two representations of the same product, `object_detail` for a detail, section or module that belongs to it. A singleton group contributes no edge.
-
-Test commercial separability, not merely visual closeness. Different finished envelopes, principal functions or primary dimensions are affirmative evidence of separate objects. A shared worktop, touching side panels or apparent continuous carcass is only a candidate connection until the source proves commercial inseparability. Adjacent furniture remains separate unless a proof edge overcomes that evidence. Conversely, a kitchen, integrated cabinet wall, shelving wall or one continuous door-track system remains one component when the source proves one integrated joinery envelope.
+Test commercial separability, not merely visual closeness. Different finished envelopes, principal functions or primary dimensions are affirmative evidence of separate components. A shared worktop, touching side panels or apparent continuous carcass is only a candidate connection until the source proves commercial inseparability. Adjacent furniture remains separate unless an attachment overcomes that evidence. Conversely, a kitchen, integrated cabinet wall, shelving wall or one continuous door-track system remains one component when the source proves one integrated joinery envelope.
 
 ## 3. Component registry
 
-After the proof graph is complete, each connected component becomes exactly one object row. Its `component_anchor_group_id` must be one group in that component and must be used consistently by the matching page coverage. Do not return `object_id` or `visual_group_ids`: runtime derives the full component from the graph, selects its canonical ordering, and assigns `object-001`, `object-002`, and so on.
+After every required proof-parent decision is complete, each connected component becomes exactly one object row. Its `component_anchor_group_id` must be one group in that component and must be used consistently by the matching page coverage. Do not return `object_id` or `visual_group_ids`: runtime derives the full component from the parent links, selects its canonical ordering, and assigns `object-001`, `object-002`, and so on.
 
-For every component, return one row with its anchor, exact printed `transport_label` when present, otherwise a neutral source label, `quantity`, `quantity_explicit`, `identity_pages`, `visual_identity`, and `boundary_basis`. Quantity defaults to 1 when the document does not establish another quantity. `visual_identity` describes the complete physical product across its views. `boundary_basis` states the factual reason that this proof component is one quote line. Do not use generic phrases such as "one system" or "same sheet".
+For every component, return one row with its anchor, exact printed `transport_label` when present, otherwise a neutral source label, `quantity`, `quantity_explicit`, `identity_pages`, `visual_identity`, and `boundary_basis`. Quantity defaults to 1 when the document does not establish another quantity. `visual_identity` describes the complete physical product across its views. `boundary_basis` states the factual reason that this proof component is one quote line.
 
-If a sheet carries one shared literal code but depicts several separate finished assemblies, they remain separate components unless proof edges establish integration. If there are no child codes, preserve the literal base only as source context. Do not merge merely because the sheet code is shared.
+If a sheet carries one shared literal code but depicts several separate finished assemblies, they remain separate components unless attachments establish integration. If there are no child codes, preserve the literal base only as source context. Do not merge merely because the sheet code is shared.
 
 ## 4. Evidence coverage
 

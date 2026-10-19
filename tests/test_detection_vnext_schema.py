@@ -7,6 +7,7 @@ from agents.anthropic_adapter import (
 from agents.schemas.detection_registry_schema import (
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
+    derive_detection_pairwise_merge_proofs_from_parent_links,
     derive_detection_proof_components,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
@@ -34,6 +35,30 @@ def _proof(left, right, facts):
         "evidence_facts": facts,
         "commercial_inseparability": "The cited construction evidence establishes one quote line.",
     }
+
+
+def _root(reason="No positive relation to an earlier group is evidenced."):
+    return {
+        "decision": "new_object_root",
+        "parent_group_id": "ROOT",
+        "relationship": "new_object_root",
+        "evidence_facts": [],
+        "decision_reason": reason,
+    }
+
+
+def _attach(parent_group_id, facts, reason="The cited evidence proves one quote line."):
+    return {
+        "decision": "attach_to_group",
+        "parent_group_id": parent_group_id,
+        "relationship": "same_object_view",
+        "evidence_facts": facts,
+        "decision_reason": reason,
+    }
+
+
+def _group(group_id, proof_parent):
+    return {"group_id": group_id, "proof_parent": proof_parent}
 
 
 def test_v4_schema_accepts_evidence_regions_and_ui_only_preview_bbox():
@@ -163,15 +188,60 @@ def test_singleton_visual_group_becomes_a_singleton_component_without_placeholde
     ]
 
 
+def test_every_visual_group_must_make_a_reasoned_root_or_parent_decision():
+    groups = [
+        _group("view-001", _root("This is the first depiction of the cabinet.")),
+        _group("view-002", _attach("view-001", [
+            _fact("dimension_transform", "The plan and elevation have matching 1200 mm width."),
+            _fact("matching_topology", "Both views show three bays and the same handle order."),
+        ], "The matching dimensions and bay sequence prove an alternate view.")),
+        _group("view-003", _root("The different enclosure and function have no proved link to the cabinet.")),
+    ]
+
+    proofs = derive_detection_pairwise_merge_proofs_from_parent_links(
+        groups, page_count=1
+    )
+
+    assert [(proof["from_group_id"], proof["to_group_id"]) for proof in proofs] == [
+        ("view-002", "view-001"),
+    ]
+    assert derive_detection_proof_components(
+        proofs, visual_group_ids={"view-001", "view-002", "view-003"}
+    ) == [["view-001", "view-002"], ["view-003"]]
+
+
+def test_parent_decision_rejects_missing_reason_and_later_parent():
+    missing_reason = [_group("view-001", {
+        **_root(), "decision_reason": "",
+    })]
+    later_parent = [
+        _group("view-001", _attach("view-002", [
+            _fact("explicit_document_relation", "D01 labels both views."),
+        ])),
+        _group("view-002", _root()),
+    ]
+
+    with pytest.raises(DetectionRegistrySchemaError, match="requires a factual reason"):
+        derive_detection_pairwise_merge_proofs_from_parent_links(
+            missing_reason, page_count=1
+        )
+    with pytest.raises(DetectionRegistrySchemaError, match="attachment proof-parent is invalid"):
+        derive_detection_pairwise_merge_proofs_from_parent_links(
+            later_parent, page_count=1
+        )
+
+
 def test_integrated_registry_schema_has_no_model_owner_or_object_id_fields():
     group_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["visual_groups"]["items"]["properties"]
     object_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["objects"]["items"]["properties"]
     coverage_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["page_coverage"]["items"]["properties"]
 
     assert "owner_object_ids" not in group_properties
+    assert "proof_parent" in group_properties
     assert "object_id" not in object_properties
     assert "component_anchor_group_id" in object_properties
     assert "component_anchor_group_ids" in coverage_properties
+    assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
 
 
 def test_final_registry_requires_every_object_evidence_group_once():

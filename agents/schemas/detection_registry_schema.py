@@ -1,4 +1,5 @@
 from __future__ import annotations
+import copy
 from collections import deque
 from typing import Any
 
@@ -14,6 +15,15 @@ PAIRWISE_MERGE_EVIDENCE_TYPES = frozenset({
 PAIRWISE_EVIDENCE_RELATIONSHIPS = frozenset({
     "same_object_view",
     "object_detail",
+})
+PROOF_PARENT_DECISIONS = frozenset({
+    "new_object_root",
+    "attach_to_group",
+})
+PROOF_PARENT_ROOT_GROUP_ID = "ROOT"
+PROOF_PARENT_RELATIONSHIPS = frozenset({
+    "new_object_root",
+    *PAIRWISE_EVIDENCE_RELATIONSHIPS,
 })
 _NON_EXPLICIT_MERGE_SUPPORT_TYPES = frozenset({
     "matching_topology",
@@ -63,6 +73,42 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
             },
             "commercial_inseparability": {"type": "string"},
         },
+    },
+}
+
+# A proof parent is emitted for every visual group.  It makes the model choose
+# between a new commercial candidate and an evidence-backed join, instead of
+# making an optional global edge list easy to omit.  Runtime turns accepted
+# attachment decisions back into the same typed proof forest used by V4.17.
+DETECTION_PROOF_PARENT_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "decision",
+        "parent_group_id",
+        "relationship",
+        "evidence_facts",
+        "decision_reason",
+    ],
+    "properties": {
+        "decision": {
+            "type": "string",
+            "enum": sorted(PROOF_PARENT_DECISIONS),
+        },
+        "parent_group_id": {"type": "string"},
+        "relationship": {
+            "type": "string",
+            "enum": sorted(PROOF_PARENT_RELATIONSHIPS),
+        },
+        "evidence_facts": {
+            "type": "array",
+            "items": copy.deepcopy(
+                DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA["items"]["properties"][
+                    "evidence_facts"
+                ]["items"]
+            ),
+        },
+        "decision_reason": {"type": "string"},
     },
 }
 
@@ -264,6 +310,78 @@ def validate_detection_pairwise_merge_proofs(
             )
 
     return proofs
+
+
+def derive_detection_pairwise_merge_proofs_from_parent_links(
+    visual_groups: object,
+    *,
+    page_count: int,
+) -> list[dict[str, Any]]:
+    """Build the proof forest from one required decision per visual group.
+
+    Every group must either begin a new component or attach to an already
+    emitted group.  Parent ordering prevents a cycle by construction.  The
+    normal pairwise validator remains authoritative for evidence strength,
+    duplicate relations, and the resulting minimal proof tree.
+    """
+    if not isinstance(visual_groups, list) or not visual_groups:
+        raise DetectionRegistrySchemaError("visual groups require proof-parent decisions")
+
+    proofs: list[dict[str, Any]] = []
+    seen_group_ids: set[str] = set()
+    required_parent_fields = {
+        "decision",
+        "parent_group_id",
+        "relationship",
+        "evidence_facts",
+        "decision_reason",
+    }
+    for group in visual_groups:
+        if not isinstance(group, dict):
+            raise DetectionRegistrySchemaError("visual group proof-parent is invalid")
+        group_id = str(group.get("group_id") or "")
+        parent = group.get("proof_parent")
+        if not group_id or not isinstance(parent, dict) or set(parent) != required_parent_fields:
+            raise DetectionRegistrySchemaError("visual group proof-parent is invalid")
+        decision = parent["decision"]
+        parent_group_id = str(parent["parent_group_id"] or "")
+        relationship = parent["relationship"]
+        evidence_facts = parent["evidence_facts"]
+        decision_reason = str(parent["decision_reason"] or "").strip()
+        if not decision_reason:
+            raise DetectionRegistrySchemaError("visual group proof-parent requires a factual reason")
+
+        if decision == "new_object_root":
+            if (
+                parent_group_id != PROOF_PARENT_ROOT_GROUP_ID
+                or relationship != "new_object_root"
+                or evidence_facts != []
+            ):
+                raise DetectionRegistrySchemaError("new-object root proof-parent is invalid")
+        elif decision == "attach_to_group":
+            if (
+                parent_group_id not in seen_group_ids
+                or relationship not in PAIRWISE_EVIDENCE_RELATIONSHIPS
+                or not isinstance(evidence_facts, list)
+                or not evidence_facts
+            ):
+                raise DetectionRegistrySchemaError("attachment proof-parent is invalid")
+            proofs.append({
+                "from_group_id": group_id,
+                "to_group_id": parent_group_id,
+                "relationship": relationship,
+                "evidence_facts": evidence_facts,
+                "commercial_inseparability": decision_reason,
+            })
+        else:
+            raise DetectionRegistrySchemaError("visual group proof-parent decision is invalid")
+        seen_group_ids.add(group_id)
+
+    return validate_detection_pairwise_merge_proofs(
+        proofs,
+        visual_group_ids=seen_group_ids,
+        page_count=page_count,
+    )
 
 
 def derive_detection_proof_components(
