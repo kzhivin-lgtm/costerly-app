@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 from agents.anthropic_adapter import (
-    _apply_context_reference_root_suffixes,
+    _apply_reference_root_suffixes,
     DEFAULT_CLAUDE_DETECTION_MODEL,
     DetectionVisualRegistryValidationError,
     DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE,
@@ -30,7 +30,7 @@ from agents.anthropic_adapter import (
     run_anthropic_detection_visual_registry_agent,
 )
 from agents.schemas.detection_registry_schema import (
-    CONTEXT_REFERENCE_RELATIONSHIP,
+    REFERENCE_RELATIONSHIP,
     derive_detection_proof_components,
 )
 from agents.ocr_adapter import normalize_mistral_ocr_response
@@ -98,22 +98,23 @@ def _visual_registry_payload(payload):
             item["group_id"]: item["evidence_class"]
             for item in classifications
         }
-        context_source_group_ids = {
-            str(proof.get("from_group_id") or "")
-            for proof in payload["proof_edges"]
-            if isinstance(proof, dict)
-            and proof.get("relationship") == CONTEXT_REFERENCE_RELATIONSHIP
-        }
+        shared_reference_group_ids = set(
+            payload.setdefault("shared_reference_group_ids", [])
+        )
         commercial_group_ids = {
             group_id
             for group_id, evidence_class in group_ids_by_class.items()
             if evidence_class == "object_evidence"
-            and group_id not in context_source_group_ids
+            and group_id not in shared_reference_group_ids
         }
         try:
             components = derive_detection_proof_components(
-                payload["proof_edges"], visual_group_ids=commercial_group_ids,
+                payload["proof_edges"], visual_group_ids=group_ids_by_class.keys(),
             )
+            components = [
+                component for component in components
+                if component[0] not in shared_reference_group_ids
+            ]
             payload["standalone_package_group_ids"] = sorted(
                 component[0] for component in components if len(component) == 1
             )
@@ -124,21 +125,22 @@ def _visual_registry_payload(payload):
     return payload
 
 
-def test_context_reference_splits_one_author_root_into_deterministic_child_codes():
+def test_shared_reference_splits_one_author_root_into_deterministic_child_codes():
     objects = [
         {"object_id": "object-001", "transport_label": "N57", "visual_group_ids": ["view-002"]},
         {"object_id": "object-002", "transport_label": "Cabinet assembly N57", "visual_group_ids": ["view-003"]},
         {"object_id": "object-003", "transport_label": "N57", "visual_group_ids": ["view-004"]},
     ]
 
-    result = _apply_context_reference_root_suffixes(
+    result = _apply_reference_root_suffixes(
         objects,
         proof_components=[["view-002"], ["view-003"], ["view-004"]],
-        context_reference_links=[
-            {"from_group_id": "view-001", "to_group_id": "view-002"},
-            {"from_group_id": "view-001", "to_group_id": "view-003"},
-            {"from_group_id": "view-001", "to_group_id": "view-004"},
+        reference_links=[
+            {"group_id_a": "view-001", "group_id_b": "view-002"},
+            {"group_id_a": "view-001", "group_id_b": "view-003"},
+            {"group_id_a": "view-001", "group_id_b": "view-004"},
         ],
+        shared_reference_group_ids={"view-001"},
     )
 
     assert [item["transport_label"] for item in result] == [
@@ -652,7 +654,7 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
             "boundary_basis": "matching track and three-leaf sequence",
         }],
         "merge_proofs": [{
-            "from_group_id": "elevation", "to_group_id": "plan",
+            "group_id_a": "elevation", "group_id_b": "plan",
             "relationship": "same_object_view",
             "evidence_facts": [
                 {"evidence_type": "dimension_transform", "evidence_pages": [1], "observation": "The plan track length matches the elevation after the axis change."},
@@ -686,8 +688,8 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
         "view-001", "view-002",
     ]
     assert registry["objects"][0]["visual_group_ids"] == ["view-001", "view-002"]
-    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["from_group_id"] == "view-001"
-    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["to_group_id"] == "view-002"
+    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["group_id_a"] == "view-001"
+    assert usage["raw_usage"]["pairwise_merge_proofs"][0]["group_id_b"] == "view-002"
     assert usage["raw_usage"]["proof_graph_components"] == [{
         "canonical_anchor_group_id": "view-001",
         "visual_group_ids": ["view-001", "view-002"],
@@ -708,10 +710,11 @@ def test_integrated_visual_registry_keeps_context_view_out_of_components_and_spl
             {"component_anchor_group_id": "cabinet", "transport_label": "N57", "quantity": 1, "quantity_explicit": False, "identity_pages": [1], "visual_identity": "cabinet", "boundary_basis": "dedicated cabinet view"},
         ],
         "proof_edges": [
-            {"from_group_id": "overview", "to_group_id": "kitchen", "relationship": "context_reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the kitchen."}], "commercial_inseparability": "Shared overview context, not a merge."},
-            {"from_group_id": "overview", "to_group_id": "island", "relationship": "context_reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the island."}], "commercial_inseparability": "Shared overview context, not a merge."},
-            {"from_group_id": "overview", "to_group_id": "cabinet", "relationship": "context_reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the cabinet."}], "commercial_inseparability": "Shared overview context, not a merge."},
+            {"group_id_a": "kitchen", "group_id_b": "overview", "relationship": "reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the kitchen."}], "commercial_inseparability": "Shared overview reference, not a merge."},
+            {"group_id_a": "island", "group_id_b": "overview", "relationship": "reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the island."}], "commercial_inseparability": "Shared overview reference, not a merge."},
+            {"group_id_a": "cabinet", "group_id_b": "overview", "relationship": "reference_link", "evidence_facts": [{"evidence_type": "matching_topology", "evidence_pages": [1], "observation": "Overview visibly locates the cabinet."}], "commercial_inseparability": "Shared overview reference, not a merge."},
         ],
+        "shared_reference_group_ids": ["overview"],
         "page_coverage": [{
             "page_number": 1,
             "component_anchor_group_ids": ["kitchen", "island", "cabinet"],
@@ -738,7 +741,7 @@ def test_integrated_visual_registry_keeps_context_view_out_of_components_and_spl
     assert [item["visual_group_ids"] for item in registry["objects"]] == [
         ["view-002"], ["view-003"], ["view-004"],
     ]
-    assert usage["raw_usage"]["context_reference_link_count"] == 3
+    assert usage["raw_usage"]["reference_link_count"] == 3
     assert usage["raw_usage"]["unassigned_object_evidence_group_count"] == 0
 
 
@@ -966,7 +969,7 @@ def test_integrated_visual_registry_rejects_document_context_in_proof_graph():
             "visual_identity": "one cabinet", "boundary_basis": "one finished cabinet",
         }],
         "merge_proofs": [{
-            "from_group_id": "generic-plan", "to_group_id": "cabinet-elevation",
+            "group_id_a": "cabinet-elevation", "group_id_b": "generic-plan",
             "relationship": "same_object_view",
             "evidence_facts": [{
                 "evidence_type": "explicit_document_relation", "evidence_pages": [1, 2],

@@ -1,4 +1,4 @@
-# DETECTION V4.33 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
+# DETECTION V4.34 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -77,23 +77,26 @@ its own standalone package. It is forbidden to treat a group as "probably part
 of" another product without either an accepted merge edge or a standalone
 package outcome. Do not invent weak evidence merely to avoid a singleton.
 
-Each edge has `same_object_view`, `object_detail`, or
-`context_reference_link`, typed `evidence_facts`, and a factual
+Every edge is undirected: write its lexicographically ordered endpoints as
+`group_id_a` and `group_id_b`. It has `same_object_view`, `object_detail`, or
+`reference_link`, typed `evidence_facts`, and a factual
 `commercial_inseparability` explanation. The first two answer: **why do these
 two islands form one quote line?** They are merge edges. A
-`context_reference_link` is directed from a composite or general view to an
-individual product view. It answers: **why does this composite depiction supply
-context to that independent product?** It never merges products, never enters
-a proof component, and its source may not have any merge edge.
+`reference_link` answers: **why are these depictions related without forming
+one quote line?** It never merges products or enters a proof component. It has
+no source, target, direction or information-transfer meaning. Reference links
+may form chains.
 
-Use `context_reference_link` when one plan, axonometric view, arrangement or
-general elevation depicts several distinct independently quoted products. Link
-that composite source to each individual product view it visibly references.
-The source becomes shared page-level Evidence for every linked package, not a
-commercial package itself. For example, a sheet labelled N57 may show kitchen,
-island and cabinet together in two general views and separately in dedicated
-views. The general views context-link to all three dedicated products, they do
-not merge kitchen, island and cabinet into one quote line.
+Use `reference_link` when one plan, axonometric view, arrangement or general
+elevation relates several distinct independently quoted products. For every
+such non-commercial general view, list its ID in
+`shared_reference_group_ids`, not `standalone_package_group_ids`. It becomes
+shared page-level Evidence for every linked package, not a commercial package
+itself. A group in `shared_reference_group_ids` must have at least two
+reference links and no merge edge. For example, a sheet labelled N57 may show
+kitchen, island and cabinet together in two general views and separately in
+dedicated views. The general views reference-link to all three dedicated
+products, they do not merge kitchen, island and cabinet into one quote line.
 
 Every fact names its page(s) and a concrete observation. Evaluate relations
 globally across the complete classified inventory, not incrementally as groups
@@ -134,17 +137,17 @@ scales, quantities and non-comparable projections are not conflicts.
 
 Before writing `standalone_package_group_ids`, perform one final singleton audit
 inside this same response. For every `object_evidence` group with no merge edge
-that is not a `context_reference_link` source, compare it again with every
-other `object_evidence` group. If accepted evidence proves a relation to a
-different group, add that edge to the graph. Otherwise declare the group
-standalone. Do not emit an edge merely to avoid a singleton. This audit adds no
-new output field.
+that is not in `shared_reference_group_ids`, compare it again with every other
+`object_evidence` group. If accepted evidence proves a relation to a different
+group, add that edge to the graph. Otherwise declare the group standalone. Do
+not emit an edge merely to avoid a singleton. This audit uses the existing
+package-outcome fields.
 
 After that audit, return `standalone_package_group_ids`: the complete sorted
 list of singleton component anchors. Every `object_evidence` group not on this
-list must belong to an accepted non-singleton merge component. A
-`context_reference_link` source is excluded because it is shared page-level
-Evidence, not a candidate package.
+list must belong to an accepted non-singleton merge component or be in
+`shared_reference_group_ids`. Shared reference evidence is not a candidate
+package.
 
 There is no third outcome. A detail that seems related but lacks a proved merge
 is listed as a standalone commercial candidate for review. The runtime derives
@@ -154,7 +157,7 @@ that ledger in the response.
 ## 4. Commercial-object packages
 
 After the graph is complete, only merge-proof connected components are packages.
-`context_reference_link` sources are not packages. Return
+Groups in `shared_reference_group_ids` are not packages. Return
 exactly one `objects` row per component, using any group inside it as
 `component_anchor_group_id`. Runtime derives the canonical group membership and
 ordered object ID from the graph, so do not return owner lists or object IDs.

@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.33`, experimental, built on the protected
+Current model build: `Detection V4.34`, experimental, built on the protected
 V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
 treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
@@ -192,6 +192,16 @@ router, Sonnet path, output field, token budget or validation relaxation.
 Acceptance: HSL must retain its visual-group inventory, emit the common N56
 dimensions as typed facts, form only valid proof edges, then regress Page 23
 and Adda before any checkpoint.
+V4.34 replaces directional `context_reference_link` with an undirected
+`reference_link` using lexically ordered `group_id_a` and `group_id_b`.
+`shared_reference_group_ids` records a general view that relates two or more
+independently quoted packages. It is shared Estimation Evidence, not a package
+or a commercial owner. Reference links never merge components, and every other
+object-evidence group remains either a proven merge component or an explicit
+standalone package. This removes the artificial context-chain rejection without
+relaxing merge proof or ownership validation. It adds no provider call, router
+or Sonnet path. Acceptance: valid HSL graph with N76B, then regress Page 23
+and Adda.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only

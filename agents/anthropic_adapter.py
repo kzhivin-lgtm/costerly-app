@@ -29,15 +29,17 @@ from agents.detection_spatial_inventory import (
     spatial_inventory_context,
 )
 from agents.schemas.detection_registry_schema import (
-    CONTEXT_REFERENCE_RELATIONSHIP,
+    REFERENCE_RELATIONSHIP,
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
+    DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA,
     DETECTION_STANDALONE_PACKAGE_GROUP_IDS_JSON_SCHEMA,
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
+    validate_detection_shared_reference_group_ids,
     validate_detection_standalone_package_group_ids,
 )
 from agents.schemas.detection_visual_map_schema import (
@@ -59,11 +61,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_33_dimension_equality_full_six_factor_graph_temperature_0"
+    "detection_v4_34_undirected_reference_graph_shared_evidence_temperature_0"
 )
-# V4.33 adds explicit equal-dimension facts to the complete pairwise evidence
-# assessment. The Registry still serializes only positive facts and derives the
-# compact package audit in runtime.
+# V4.34 makes every graph edge undirected. Reference links preserve shared
+# Evidence without forming commercial components or directional data flow.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -143,6 +144,7 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "additionalProperties": False,
     "required": [
         "visual_groups", "classifications", "proof_edges", "standalone_package_group_ids",
+        "shared_reference_group_ids",
         "objects", "page_coverage",
     ],
     "properties": {
@@ -150,6 +152,7 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
         "proof_edges": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "standalone_package_group_ids": DETECTION_STANDALONE_PACKAGE_GROUP_IDS_JSON_SCHEMA,
+        "shared_reference_group_ids": DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
             "type": "array",
@@ -795,6 +798,12 @@ def _normalize_component_anchor_group_ids(
             group_id_mapping.get(str(group_id), str(group_id))
             for group_id in standalone_package_group_ids
         )
+    shared_reference_group_ids = normalized.get("shared_reference_group_ids")
+    if isinstance(shared_reference_group_ids, list):
+        normalized["shared_reference_group_ids"] = sorted(
+            group_id_mapping.get(str(group_id), str(group_id))
+            for group_id in shared_reference_group_ids
+        )
     page_coverage = normalized.get("page_coverage")
     if isinstance(page_coverage, list):
         for entry in page_coverage:
@@ -878,11 +887,12 @@ _SOURCE_OBJECT_CODE_RE = re.compile(
 )
 
 
-def _apply_context_reference_root_suffixes(
+def _apply_reference_root_suffixes(
     registry_objects: list[dict[str, Any]],
     *,
     proof_components: list[list[str]],
-    context_reference_links: list[dict[str, Any]],
+    reference_links: list[dict[str, Any]],
+    shared_reference_group_ids: set[str],
 ) -> list[dict[str, Any]]:
     """Preserve one authored root code while naming its split child packages."""
     object_id_by_group_id = {
@@ -890,14 +900,21 @@ def _apply_context_reference_root_suffixes(
         for index, component in enumerate(proof_components)
         for group_id in component
     }
-    target_object_ids = {
-        object_id_by_group_id[str(link.get("to_group_id") or "")]
-        for link in context_reference_links
-        if str(link.get("to_group_id") or "") in object_id_by_group_id
+    linked_object_ids = {
+        object_id_by_group_id[other_group_id]
+        for link in reference_links
+        for group_id_a, group_id_b in [
+            (str(link.get("group_id_a") or ""), str(link.get("group_id_b") or ""))
+        ]
+        for shared_group_id, other_group_id in (
+            (group_id_a, group_id_b), (group_id_b, group_id_a)
+        )
+        if shared_group_id in shared_reference_group_ids
+        and other_group_id in object_id_by_group_id
     }
     siblings_by_root: dict[str, list[dict[str, Any]]] = {}
     for item in registry_objects:
-        if item["object_id"] not in target_object_ids:
+        if item["object_id"] not in linked_object_ids:
             continue
         candidates = {
             match.group(0).replace(" ", "").upper()
@@ -959,14 +976,12 @@ def _normalize_pairwise_merge_proof_group_ids(
     for edge in proof_edges:
         if not isinstance(edge, dict):
             continue
-        raw_from_group_id = str(edge.get("from_group_id") or "")
-        raw_to_group_id = str(edge.get("to_group_id") or "")
-        edge["from_group_id"] = group_id_mapping.get(
-            raw_from_group_id, raw_from_group_id
-        )
-        edge["to_group_id"] = group_id_mapping.get(
-            raw_to_group_id, raw_to_group_id
-        )
+        raw_group_id_a = str(edge.get("group_id_a") or "")
+        raw_group_id_b = str(edge.get("group_id_b") or "")
+        edge["group_id_a"], edge["group_id_b"] = sorted((
+            group_id_mapping.get(raw_group_id_a, raw_group_id_a),
+            group_id_mapping.get(raw_group_id_b, raw_group_id_b),
+        ))
     return normalized
 
 
@@ -1109,6 +1124,12 @@ def _discard_non_object_visual_registry_groups(
     if isinstance(standalone_package_group_ids, list):
         effective["standalone_package_group_ids"] = [
             group_id for group_id in standalone_package_group_ids
+            if str(group_id) not in discarded_group_ids
+        ]
+    shared_reference_group_ids = effective.get("shared_reference_group_ids")
+    if isinstance(shared_reference_group_ids, list):
+        effective["shared_reference_group_ids"] = [
+            group_id for group_id in shared_reference_group_ids
             if str(group_id) not in discarded_group_ids
         ]
     return effective, discarded_groups
@@ -1320,10 +1341,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             )
         if not isinstance(payload, dict) or set(payload) != {
             "visual_groups", "classifications", "proof_edges", "standalone_package_group_ids",
-            "objects", "page_coverage",
+            "shared_reference_group_ids", "objects", "page_coverage",
         }:
             raise ValueError(
-                "visual registry must contain only visual_groups, classifications, proof_edges, standalone_package_group_ids, objects and page_coverage"
+                "visual registry must contain only visual_groups, classifications, proof_edges, standalone_package_group_ids, shared_reference_group_ids, objects and page_coverage"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -1343,40 +1364,47 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
         }
-        context_reference_links = [
+        reference_links = [
             proof for proof in payload["proof_edges"]
-            if proof.get("relationship") == CONTEXT_REFERENCE_RELATIONSHIP
+            if proof.get("relationship") == REFERENCE_RELATIONSHIP
         ]
-        context_reference_source_group_ids = {
-            str(proof["from_group_id"])
-            for proof in context_reference_links
-        }
-        commercial_visual_group_ids = (
-            visual_group_ids - context_reference_source_group_ids
-        )
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
             payload["proof_edges"],
             page_count=len(page_images),
             visual_group_ids=visual_group_ids,
         )
+        shared_reference_group_ids = validate_detection_shared_reference_group_ids(
+            payload["shared_reference_group_ids"],
+            proofs=pairwise_merge_proofs,
+            visual_group_ids=visual_group_ids,
+        )
+        commercial_visual_group_ids = (
+            visual_group_ids - set(shared_reference_group_ids)
+        )
         proof_components = derive_detection_proof_components(
             pairwise_merge_proofs, visual_group_ids=visual_group_ids,
         )
+        proof_components = [
+            component for component in proof_components
+            if component[0] not in shared_reference_group_ids
+        ]
         standalone_package_group_ids = validate_detection_standalone_package_group_ids(
             payload["standalone_package_group_ids"],
             components=proof_components,
             commercial_visual_group_ids=commercial_visual_group_ids,
         )
         package_decisions = derive_detection_package_decision_audit(
-            proof_components
+            proof_components,
+            shared_reference_group_ids=shared_reference_group_ids,
         )
         registry_objects_input, anchor_to_object_id = _derive_registry_from_proof_components(
             payload["objects"], proof_components,
         )
-        registry_objects_input = _apply_context_reference_root_suffixes(
+        registry_objects_input = _apply_reference_root_suffixes(
             registry_objects_input,
             proof_components=proof_components,
-            context_reference_links=context_reference_links,
+            reference_links=reference_links,
+            shared_reference_group_ids=set(shared_reference_group_ids),
         )
         resolved_page_coverage = _resolve_component_page_coverage(
             payload["page_coverage"], anchor_to_object_id=anchor_to_object_id,
@@ -1447,14 +1475,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "classification_decisions": classification_decisions,
         "pairwise_merge_proofs": pairwise_merge_proofs,
         "pairwise_merge_proof_count": sum(
-            proof.get("relationship") != CONTEXT_REFERENCE_RELATIONSHIP
+            proof.get("relationship") != REFERENCE_RELATIONSHIP
             for proof in pairwise_merge_proofs
         ),
-        "context_reference_links": context_reference_links,
-        "context_reference_link_count": len(context_reference_links),
-        "context_reference_source_group_ids": sorted(
-            context_reference_source_group_ids
-        ),
+        "reference_links": reference_links,
+        "reference_link_count": len(reference_links),
+        "shared_reference_group_ids": shared_reference_group_ids,
         "package_decisions": package_decisions,
         "standalone_package_group_ids": standalone_package_group_ids,
         "proof_graph_components": [

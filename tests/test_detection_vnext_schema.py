@@ -12,6 +12,7 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_proof_components,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
+    validate_detection_shared_reference_group_ids,
     validate_detection_standalone_package_group_ids,
 )
 from agents.schemas.detection_schema import validate_detection_result
@@ -31,22 +32,22 @@ def _fact(evidence_type, observation, pages=(1,)):
 
 def _proof(left, right, facts):
     return {
-        "from_group_id": left,
-        "to_group_id": right,
+        "group_id_a": min(left, right),
+        "group_id_b": max(left, right),
         "relationship": "same_object_view",
         "evidence_facts": facts,
         "commercial_inseparability": "The cited construction evidence establishes one quote line.",
     }
 
 
-def _context_link(composite_view, product_view, facts):
+def _reference_link(first_group, second_group, facts):
     return {
-        "from_group_id": composite_view,
-        "to_group_id": product_view,
-        "relationship": "context_reference_link",
+        "group_id_a": min(first_group, second_group),
+        "group_id_b": max(first_group, second_group),
+        "relationship": "reference_link",
         "evidence_facts": facts,
         "commercial_inseparability": (
-            "The composite view gives context to this independent product, not a merge."
+            "The general and product views are related, but not a merge."
         ),
     }
 
@@ -137,6 +138,65 @@ def test_proof_graph_derives_one_component_from_two_evidence_backed_edges():
     assert derive_detection_proof_components(proofs, visual_group_ids=groups) == [
         ["view-001", "view-002", "view-003"],
     ]
+
+
+def test_shared_reference_evidence_is_undirected_and_not_a_package_component():
+    groups = {"overview", "view-001", "view-002"}
+    proofs = [
+        _reference_link("overview", "view-001", [
+            _fact("explicit_document_relation", "The plan locates object N57."),
+        ]),
+        _reference_link("view-002", "overview", [
+            _fact("explicit_document_relation", "The plan locates object N58."),
+        ]),
+    ]
+
+    validated = validate_detection_pairwise_merge_proofs(
+        proofs, visual_group_ids=groups, page_count=1
+    )
+    assert validate_detection_shared_reference_group_ids(
+        ["overview"], proofs=validated, visual_group_ids=groups
+    ) == ["overview"]
+    assert derive_detection_proof_components(
+        validated, visual_group_ids=groups
+    ) == [["overview"], ["view-001"], ["view-002"]]
+
+
+def test_shared_reference_evidence_needs_multiple_reference_links_and_no_merge():
+    groups = {"overview", "view-001", "view-002", "view-003"}
+    one_link = validate_detection_pairwise_merge_proofs([
+        _reference_link("overview", "view-001", [
+            _fact("explicit_document_relation", "The plan locates object N57."),
+        ]),
+    ], visual_group_ids=groups, page_count=1)
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="shared reference evidence must connect multiple packages without a merge",
+    ):
+        validate_detection_shared_reference_group_ids(
+            ["overview"], proofs=one_link, visual_group_ids=groups
+        )
+
+    merge_and_references = validate_detection_pairwise_merge_proofs([
+        _reference_link("overview", "view-001", [
+            _fact("explicit_document_relation", "The plan locates object N57."),
+        ]),
+        _reference_link("overview", "view-002", [
+            _fact("explicit_document_relation", "The plan locates object N58."),
+        ]),
+        _proof("overview", "view-003", [
+            _fact("explicit_document_relation", "A leader explicitly ties the view to N57."),
+        ]),
+    ], visual_group_ids=groups, page_count=1)
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="shared reference evidence must connect multiple packages without a merge",
+    ):
+        validate_detection_shared_reference_group_ids(
+            ["overview"], proofs=merge_and_references, visual_group_ids=groups
+        )
 
 
 def test_proof_graph_rejects_a_lone_direct_structure_claim():
@@ -363,16 +423,16 @@ def test_every_commercial_visual_group_is_proven_component_or_declared_standalon
         )
 
 
-def test_context_reference_excludes_a_composite_view_without_merging_its_products():
+def test_reference_links_do_not_merge_products_or_create_directional_chains():
     groups = {"view-001", "view-002", "view-003", "view-004"}
     proofs = [
-        _context_link("view-001", "view-002", [
+        _reference_link("view-001", "view-002", [
             _fact("matching_topology", "The overview visibly locates the kitchen."),
         ]),
-        _context_link("view-001", "view-003", [
+        _reference_link("view-001", "view-003", [
             _fact("matching_topology", "The overview visibly locates the island."),
         ]),
-        _context_link("view-001", "view-004", [
+        _reference_link("view-001", "view-004", [
             _fact("matching_topology", "The overview visibly locates the cabinet."),
         ]),
     ]
@@ -381,7 +441,7 @@ def test_context_reference_excludes_a_composite_view_without_merging_its_product
         proofs, visual_group_ids=groups, page_count=1
     ) == proofs
     assert derive_detection_proof_components(proofs, visual_group_ids=groups) == [
-        ["view-002"], ["view-003"], ["view-004"],
+        ["view-001"], ["view-002"], ["view-003"], ["view-004"],
     ]
 
 def test_document_only_upload_needs_no_proof_graph_or_object_package():
@@ -405,8 +465,8 @@ def test_every_visual_group_must_make_a_reasoned_root_or_parent_decision():
         groups, page_count=1
     )
 
-    assert [(proof["from_group_id"], proof["to_group_id"]) for proof in proofs] == [
-        ("view-002", "view-001"),
+    assert [(proof["group_id_a"], proof["group_id_b"]) for proof in proofs] == [
+        ("view-001", "view-002"),
     ]
     assert derive_detection_proof_components(
         proofs, visual_group_ids={"view-001", "view-002", "view-003"}

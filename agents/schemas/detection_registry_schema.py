@@ -16,13 +16,13 @@ PAIRWISE_MERGE_EVIDENCE_TYPES = frozenset({
 PAIRWISE_EVIDENCE_RELATIONSHIPS = frozenset({
     "same_object_view",
     "object_detail",
-    "context_reference_link",
+    "reference_link",
 })
 MERGE_EVIDENCE_RELATIONSHIPS = frozenset({
     "same_object_view",
     "object_detail",
 })
-CONTEXT_REFERENCE_RELATIONSHIP = "context_reference_link"
+REFERENCE_RELATIONSHIP = "reference_link"
 PROOF_PARENT_DECISIONS = frozenset({
     "new_object_root",
     "attach_to_group",
@@ -45,15 +45,15 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
         "type": "object",
         "additionalProperties": False,
         "required": [
-            "from_group_id",
-            "to_group_id",
+            "group_id_a",
+            "group_id_b",
             "relationship",
             "evidence_facts",
             "commercial_inseparability",
         ],
         "properties": {
-            "from_group_id": {"type": "string"},
-            "to_group_id": {"type": "string"},
+            "group_id_a": {"type": "string"},
+            "group_id_b": {"type": "string"},
             "relationship": {
                 "type": "string",
                 "enum": sorted(PAIRWISE_EVIDENCE_RELATIONSHIPS),
@@ -85,6 +85,11 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
 }
 
 DETECTION_STANDALONE_PACKAGE_GROUP_IDS_JSON_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "items": {"type": "string"},
+}
+
+DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
     "items": {"type": "string"},
 }
@@ -241,22 +246,19 @@ def validate_detection_pairwise_merge_proofs(
     adjacency: dict[str, set[str]] = {
         group_id: set() for group_id in visual_group_ids
     }
-    context_source_group_ids: set[str] = set()
-    context_target_group_ids: set[str] = set()
-    merge_endpoint_group_ids: set[str] = set()
     required = {
-        "from_group_id", "to_group_id", "relationship",
+        "group_id_a", "group_id_b", "relationship",
         "evidence_facts", "commercial_inseparability",
     }
     for proof in proofs:
         if not isinstance(proof, dict) or set(proof) != required:
             raise DetectionRegistrySchemaError("pairwise merge proof fields do not match contract")
-        from_group_id = str(proof["from_group_id"] or "")
-        to_group_id = str(proof["to_group_id"] or "")
+        group_id_a = str(proof["group_id_a"] or "")
+        group_id_b = str(proof["group_id_b"] or "")
         if (
-            from_group_id == to_group_id
-            or from_group_id not in visual_group_ids
-            or to_group_id not in visual_group_ids
+            group_id_a >= group_id_b
+            or group_id_a not in visual_group_ids
+            or group_id_b not in visual_group_ids
         ):
             raise DetectionRegistrySchemaError("pairwise merge proof groups are invalid")
         if (
@@ -300,9 +302,6 @@ def validate_detection_pairwise_merge_proofs(
             evidence_fact_keys.add(evidence_fact_key)
             evidence_types.add(evidence_type)
         relationship = proof["relationship"]
-        if relationship == CONTEXT_REFERENCE_RELATIONSHIP:
-            context_source_group_ids.add(from_group_id)
-            context_target_group_ids.add(to_group_id)
         has_standalone_dimension_transform = (
             "dimension_transform" in evidence_types
         )
@@ -323,26 +322,16 @@ def validate_detection_pairwise_merge_proofs(
             not str(proof["commercial_inseparability"] or "").strip()
         ):
             raise DetectionRegistrySchemaError("pairwise merge proof commercial basis is invalid")
-        edge_key = tuple(sorted((from_group_id, to_group_id)))
+        edge_key = (group_id_a, group_id_b)
         if edge_key in seen_edges:
             raise DetectionRegistrySchemaError("pairwise merge proofs repeat a relation")
         seen_edges.add(edge_key)
         if relationship in MERGE_EVIDENCE_RELATIONSHIPS:
-            merge_endpoint_group_ids.update({from_group_id, to_group_id})
-            adjacency[from_group_id].add(to_group_id)
-            adjacency[to_group_id].add(from_group_id)
-
-    if context_source_group_ids.intersection(context_target_group_ids):
-        raise DetectionRegistrySchemaError(
-            "context reference links cannot form a context chain"
-        )
-    if context_source_group_ids.intersection(merge_endpoint_group_ids):
-        raise DetectionRegistrySchemaError(
-            "context reference source cannot participate in a merge proof"
-        )
+            adjacency[group_id_a].add(group_id_b)
+            adjacency[group_id_b].add(group_id_a)
 
     visited: set[str] = set()
-    for group_id in sorted(visual_group_ids - context_source_group_ids):
+    for group_id in sorted(visual_group_ids):
         if group_id in visited:
             continue
         component: set[str] = set()
@@ -444,8 +433,8 @@ def derive_detection_pairwise_merge_proofs_from_parent_links(
             ):
                 raise DetectionRegistrySchemaError("attachment proof-parent is invalid")
             proofs.append({
-                "from_group_id": group_id,
-                "to_group_id": parent_group_id,
+                "group_id_a": min(group_id, parent_group_id),
+                "group_id_b": max(group_id, parent_group_id),
                 "relationship": relationship,
                 "evidence_facts": evidence_facts,
                 "commercial_inseparability": decision_reason,
@@ -467,22 +456,17 @@ def derive_detection_proof_components(
     visual_group_ids: set[str],
 ) -> list[list[str]]:
     """Return canonical commercial candidates from a validated proof forest."""
-    context_source_group_ids = {
-        str(proof["from_group_id"])
-        for proof in proofs
-        if proof.get("relationship") == CONTEXT_REFERENCE_RELATIONSHIP
-    }
-    component_group_ids = visual_group_ids - context_source_group_ids
+    component_group_ids = visual_group_ids
     adjacency: dict[str, set[str]] = {
         group_id: set() for group_id in component_group_ids
     }
     for proof in proofs:
         if proof.get("relationship") not in MERGE_EVIDENCE_RELATIONSHIPS:
             continue
-        from_group_id = str(proof["from_group_id"])
-        to_group_id = str(proof["to_group_id"])
-        adjacency[from_group_id].add(to_group_id)
-        adjacency[to_group_id].add(from_group_id)
+        group_id_a = str(proof["group_id_a"])
+        group_id_b = str(proof["group_id_b"])
+        adjacency[group_id_a].add(group_id_b)
+        adjacency[group_id_b].add(group_id_a)
 
     components: list[list[str]] = []
     visited: set[str] = set()
@@ -500,6 +484,44 @@ def derive_detection_proof_components(
             queue.extend(sorted(adjacency[current] - visited))
         components.append(sorted(component))
     return components
+
+
+def validate_detection_shared_reference_group_ids(
+    group_ids: object,
+    *,
+    proofs: list[dict[str, Any]],
+    visual_group_ids: set[str],
+) -> list[str]:
+    """Validate non-commercial shared Evidence without oriented graph roles."""
+    if (
+        not isinstance(group_ids, list)
+        or not all(isinstance(group_id, str) and group_id for group_id in group_ids)
+        or group_ids != sorted(group_ids)
+        or len(group_ids) != len(set(group_ids))
+        or not set(group_ids).issubset(visual_group_ids)
+    ):
+        raise DetectionRegistrySchemaError("registry shared reference groups are invalid")
+    shared_group_ids = set(group_ids)
+    reference_degree = {group_id: 0 for group_id in shared_group_ids}
+    merge_endpoint_group_ids: set[str] = set()
+    for proof in proofs:
+        group_id_a = str(proof["group_id_a"])
+        group_id_b = str(proof["group_id_b"])
+        if proof.get("relationship") == REFERENCE_RELATIONSHIP:
+            if group_id_a in reference_degree:
+                reference_degree[group_id_a] += 1
+            if group_id_b in reference_degree:
+                reference_degree[group_id_b] += 1
+        elif proof.get("relationship") in MERGE_EVIDENCE_RELATIONSHIPS:
+            merge_endpoint_group_ids.update({group_id_a, group_id_b})
+    if (
+        shared_group_ids.intersection(merge_endpoint_group_ids)
+        or any(degree < 2 for degree in reference_degree.values())
+    ):
+        raise DetectionRegistrySchemaError(
+            "shared reference evidence must connect multiple packages without a merge"
+        )
+    return group_ids
 
 
 def validate_detection_standalone_package_group_ids(
@@ -544,9 +566,11 @@ def validate_detection_standalone_package_group_ids(
 
 def derive_detection_package_decision_audit(
     components: list[list[str]],
+    *,
+    shared_reference_group_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Persist the complete package outcome deterministically from the graph."""
-    return [
+    decisions = [
         {
             "group_id": group_id,
             "package_disposition": (
@@ -559,3 +583,12 @@ def derive_detection_package_decision_audit(
         for component in components
         for group_id in component
     ]
+    decisions.extend(
+        {
+            "group_id": group_id,
+            "package_disposition": "shared_reference_evidence",
+            "component_anchor_group_id": None,
+        }
+        for group_id in sorted(shared_reference_group_ids or [])
+    )
+    return decisions

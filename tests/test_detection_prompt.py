@@ -78,7 +78,7 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "no duplicate,\nself, cyclic or" in prompt
     assert "A proof edge must name two different\n`group_id` values" in prompt
     assert "perform one final singleton audit\ninside this same response" in prompt
-    assert "Do not emit an edge merely to avoid a singleton" in prompt
+    assert "not emit an edge merely to avoid a singleton" in prompt
     assert "assess all\nsix evidence types below" in prompt
     assert "`dimension_equality`" in prompt
     assert "Two\nindependent `dimension_equality` facts are sufficient" in prompt
@@ -89,7 +89,9 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "proof_edges" in prompt
     assert "why do these\ntwo islands form one quote line?" in prompt
     assert "`object_detail`" in prompt
-    assert "`context_reference_link`" in prompt
+    assert "`reference_link`" in prompt
+    assert "Every edge is undirected" in prompt
+    assert "`shared_reference_group_ids`" in prompt
     assert "dimensions agree after a named unit or axis transformation" in prompt
     assert "One exact\ndimension transform can prove one edge on its own" in prompt
     assert "Evaluate relations\nglobally across the complete classified" in prompt
@@ -99,5 +101,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_33_dimension_equality_full_six_factor_graph_temperature_0"
+        "detection_v4_34_undirected_reference_graph_shared_evidence_temperature_0"
     )
