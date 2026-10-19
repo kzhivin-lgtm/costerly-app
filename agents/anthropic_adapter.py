@@ -54,11 +54,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_26_classify_graph_package_temperature_0"
+    "detection_v4_27_inventory_classify_graph_package_temperature_0"
 )
-# V4.26 retains V4.23's passive OCR recall aid but makes the Registry response
-# causal: complete island inventory, explicit classification, full proof graph,
-# then packages. An exact dimension_transform remains a sufficient edge fact.
+# V4.27 retains V4.23's passive OCR recall aid and serializes inventory,
+# classification, graph and packages as separate phases in one response.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -122,24 +121,25 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"].pop(
-    "owner_object_ids"
-)
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
     "evidence_class"
 )
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"][
-    "classification_reason"
-] = {"type": "string"}
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "classification_reason"
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"].pop(
+    "owner_object_ids"
 )
+DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA: dict[str, Any] = {
+    "type": "array", "items": {"type": "object", "additionalProperties": False,
+        "required": ["group_id", "evidence_class", "classification_reason"],
+        "properties": {"group_id": {"type": "string"},
+            "evidence_class": {"type": "string", "enum": ["document_context", "object_evidence"]},
+            "classification_reason": {"type": "string"}}}}
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["visual_groups", "proof_edges", "objects", "page_coverage"],
+    "required": ["visual_groups", "classifications", "proof_edges", "objects", "page_coverage"],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
+        "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
         "proof_edges": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
@@ -914,14 +914,13 @@ def _normalize_pairwise_merge_proof_group_ids(
 
 
 def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
-    """Drop Registry-only classification reasoning before map validation."""
+    """Drop Registry-only fields before validating the visual inventory."""
     required_visual_fields = (
         "group_id",
         "page_number",
         "location_hint",
         "visual_description",
         "representation_kind",
-        "evidence_class",
     )
     if not isinstance(groups, list):
         return {"visual_groups": groups}
@@ -935,41 +934,46 @@ def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
     }
 
 
-def _classification_decision_audit(groups: object) -> list[dict[str, Any]]:
-    """Persist the factual answer to why every island is in its class."""
-    if not isinstance(groups, list):
-        return []
-    decisions: list[dict[str, Any]] = []
-    for group in groups:
-        if not isinstance(group, dict):
-            continue
-        decisions.append({
-            "group_id": group.get("group_id"),
-            "page_number": group.get("page_number"),
-            "evidence_class": group.get("evidence_class"),
-            "representation_kind": group.get("representation_kind"),
-            "classification_reason": group.get("classification_reason"),
-        })
-    return decisions
-
-
-def _validate_visual_registry_classifications(groups: object) -> None:
-    """Require an auditable class and reason before context can be discarded."""
-    validate_detection_visual_map(
-        normalize_detection_visual_map_group_ids(
-            _visual_map_from_registry_groups(groups)
-        ),
-        require_evidence_class=True,
-    )
-    if (
-        not isinstance(groups, list)
-        or any(
-            not isinstance(group, dict)
-            or not str(group.get("classification_reason") or "").strip()
-            for group in groups
-        )
-    ):
-        raise ValueError("visual groups require classification reasoning")
+def _validate_and_apply_visual_registry_classifications(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Validate complete phase-two classifications, then attach them in code."""
+    groups = payload.get("visual_groups")
+    classifications = payload.get("classifications")
+    if not isinstance(groups, list) or not isinstance(classifications, list):
+        raise ValueError("visual registry classifications are invalid")
+    raw_group_ids = [str(group.get("group_id") or "") for group in groups if isinstance(group, dict)]
+    if len(raw_group_ids) != len(groups) or len(raw_group_ids) != len(set(raw_group_ids)):
+        raise ValueError("visual registry classifications are invalid")
+    expected = set(raw_group_ids)
+    by_group_id: dict[str, dict[str, Any]] = {}
+    for item in classifications:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"group_id", "evidence_class", "classification_reason"}
+            or not isinstance(item.get("group_id"), str)
+            or item["group_id"] not in expected
+            or item["group_id"] in by_group_id
+            or item.get("evidence_class") not in {"object_evidence", "document_context"}
+            or not str(item.get("classification_reason") or "").strip()
+        ):
+            raise ValueError("visual registry classifications are invalid")
+        by_group_id[item["group_id"]] = item
+    if set(by_group_id) != expected:
+        raise ValueError("visual registry must classify every visual group exactly once")
+    enriched = copy.deepcopy(payload)
+    for group in enriched["visual_groups"]:
+        decision = by_group_id[group["group_id"]]
+        group["evidence_class"] = decision["evidence_class"]
+        group["classification_reason"] = decision["classification_reason"]
+    audit = [
+        {"group_id": group["group_id"], "page_number": group["page_number"],
+         "representation_kind": group["representation_kind"],
+         "evidence_class": by_group_id[group["group_id"]]["evidence_class"],
+         "classification_reason": by_group_id[group["group_id"]]["classification_reason"]}
+        for group in groups
+    ]
+    return enriched, audit
 
 
 def _discard_non_object_visual_registry_groups(
@@ -1125,28 +1129,26 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     registry_decision_audit = copy.deepcopy(payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
     classification_decisions: list[dict[str, Any]] = []
-    if isinstance(payload, dict):
-        classification_decisions = _classification_decision_audit(
-            payload.get("visual_groups")
-        )
     try:
         if isinstance(payload, dict):
-            _validate_visual_registry_classifications(payload.get("visual_groups"))
+            payload, classification_decisions = (
+                _validate_and_apply_visual_registry_classifications(payload)
+            )
             payload, discarded_non_object_groups = (
                 _discard_non_object_visual_registry_groups(payload)
             )
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "proof_edges", "objects", "page_coverage",
+            "visual_groups", "classifications", "proof_edges", "objects", "page_coverage",
         }:
             raise ValueError(
-                "visual registry must contain only visual_groups, proof_edges, objects and page_coverage"
+                "visual registry must contain only visual_groups, classifications, proof_edges, objects and page_coverage"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids(
                 _visual_map_from_registry_groups(raw_groups)
-            ), require_evidence_class=True,
+            ), require_evidence_class=False,
         )
         group_id_mapping = {
             raw_group_id: normalized["group_id"]

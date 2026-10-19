@@ -1,12 +1,14 @@
-# DETECTION V4.26 - CLASSIFY, PROVE, PACKAGE
+# DETECTION V4.27 - INVENTORY, CLASSIFY, PROVE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
 
-1. identify every visually distinct source island from the rendered pages,
-2. classify every island as `object_evidence` or `document_context`, with a
+1. identify every visually distinct source island from the rendered pages in
+   `visual_groups`, without assigning a class,
+2. after the complete inventory exists, classify every group in the separate
+   `classifications` array as `object_evidence` or `document_context`, with a
    factual reason,
-3. after the complete classified inventory exists, build the full graph of
+3. after inventory and classifications exist, build the full graph of
    positive evidence-backed relations between `object_evidence` islands,
 4. treat each connected graph component as exactly one commercial-object
    package,
@@ -32,9 +34,18 @@ Visual islands without a matching OCR region remain valid. OCR IDs are never
 returned and never enter classification, graph, quantity or Evidence.
 
 Give every group a stable ordered `group_id`, physical `page_number`, short
-`location_hint`, literal `visual_description`, neutral `representation_kind`,
-`evidence_class`, and concise factual `classification_reason` answering:
-**why is this object-specific Evidence or document context?**
+`location_hint`, literal `visual_description`, and neutral `representation_kind`.
+One group records exactly one visibly distinct depiction. Never combine two
+side-by-side elevations, several views, or a dimension annotation and a facade
+into one group merely because they occupy one visual block.
+
+## 1a. Classification
+
+After the complete `visual_groups` array, return exactly one `classifications`
+row for every `group_id`. Each row gives `object_evidence` or `document_context`
+and a concise factual `classification_reason` answering: **why is this
+object-specific Evidence or document context?** Do not revise, merge or split
+the visual inventory during classification.
 
 Use `document_context` for a cover or title page, title block, generic floor
 plan, room layout, electrical, plumbing or lighting plan, legend,
@@ -47,8 +58,8 @@ string, bays, slats, shelves or panel divisions is not a table by itself.
 
 ## 2. Full proof graph
 
-Only after returning the complete classified `visual_groups` array, return
-`proof_edges`. It is the complete set of positive relations between all
+Only after returning complete `visual_groups` and `classifications` arrays,
+return `proof_edges`. It is the complete set of positive relations between all
 `object_evidence` groups. An edge may connect any two groups, regardless of
 their output order. Never connect `document_context`.
 

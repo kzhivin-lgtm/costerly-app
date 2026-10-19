@@ -67,20 +67,26 @@ def _visual_registry_payload(payload):
     non_object_kinds = {
         "floor_plan", "title_block", "title_page", "cover", "cover_page", "legend",
     }
+    classifications = []
     for group in groups:
         if not isinstance(group, dict):
             continue
         is_document_context = group.get("representation_kind") in non_object_kinds
-        group.setdefault(
+        evidence_class = group.pop(
             "evidence_class",
             "document_context" if is_document_context else "object_evidence",
         )
-        group.setdefault(
+        classification_reason = group.pop(
             "classification_reason",
             "Generic page context is not object-specific Evidence."
             if is_document_context
             else "The depiction directly shows a fabricated object or its construction.",
         )
+        classifications.append({
+            "group_id": group["group_id"], "evidence_class": evidence_class,
+            "classification_reason": classification_reason,
+        })
+    payload["classifications"] = classifications
     payload["proof_edges"] = proofs if isinstance(proofs, list) else []
     return payload
 

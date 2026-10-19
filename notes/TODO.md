@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.26`, experimental, built on the protected
+Current model build: `Detection V4.27`, experimental, built on the protected
 V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
 treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
@@ -124,6 +124,16 @@ context may not enter the proof graph. The audit persists classification reasons
 every graph observation and each package's boundary/Evidence reasons on success
 and validation failure. Acceptance requires successful V4.26 runs with this
 audit, then Page 23 and Adda regressions before HSL package quality is judged.
+V4.27 keeps the one Haiku call, temperature 0, passive OCR recall aid and the
+same proof/package rules, but serializes the response into five non-overlapping
+phases: visual-island inventory, exact-once classification, global proof graph,
+component packages, then page coverage. Inventory cannot carry a class; each
+group receives exactly one later factual classification without changing the
+inventory. The prompt also prohibits coalescing separate side-by-side views,
+facades or dimension depictions into one island. Classification, graph and
+package reasoning remain persisted on both success and validation failure.
+Acceptance: recover V4.23-level island recall on HSL, then evaluate HSL
+packages, Page 23 and Adda against the protected checkpoint.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

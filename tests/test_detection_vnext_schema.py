@@ -311,12 +311,13 @@ def test_integrated_registry_schema_has_no_model_owner_or_object_id_fields():
     coverage_properties = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]["page_coverage"]["items"]["properties"]
 
     assert "owner_object_ids" not in group_properties
-    assert "evidence_class" in group_properties
-    assert "classification_reason" in group_properties
+    assert "evidence_class" not in group_properties
+    assert "classification_reason" not in group_properties
     assert "object_id" not in object_properties
     assert "component_anchor_group_id" in object_properties
     assert "component_anchor_group_ids" in coverage_properties
     assert "proof_edges" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "classifications" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
 
 

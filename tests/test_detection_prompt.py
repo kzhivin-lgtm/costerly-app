@@ -90,5 +90,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_26_classify_graph_package_temperature_0"
+        "detection_v4_27_inventory_classify_graph_package_temperature_0"
     )
