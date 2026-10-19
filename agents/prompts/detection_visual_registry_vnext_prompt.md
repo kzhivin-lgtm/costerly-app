@@ -1,4 +1,4 @@
-# DETECTION V4.30 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
+# DETECTION V4.32 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -64,9 +64,12 @@ their output order. Never connect `document_context`.
 
 Merge edges say the two islands represent one independently quoted fabricated
 product. Return only the minimal spanning forest for merge edges: no duplicate,
-self, cyclic or transitive shortcut edge. An island with no proved merge
-relation becomes a singleton package. Do not merge on shared page, room,
-colour, material, proximity or visual impression alone.
+self, cyclic or transitive shortcut edge. A proof edge must name two different
+`group_id` values. A self-edge is not evidence and is never a placeholder for
+an unresolved target. If you cannot name a different target with accepted
+evidence, omit the edge. An island with no proved merge relation becomes a
+singleton package. Do not merge on shared page, room, colour, material,
+proximity or visual impression alone.
 
 An unproved relation is not an implicit attachment. If the available facts do
 not meet the merge threshold, omit the merge edge. The island must then become
@@ -118,11 +121,19 @@ different scales, quantities and non-comparable projections are not conflicts.
 
 ## 3. Standalone-package declaration
 
-After the proof graph is complete, return `standalone_package_group_ids`: the
-complete sorted list of singleton component anchors. Every
-`object_evidence` group not on this list must belong to an accepted non-singleton
-merge component. A `context_reference_link` source is excluded because it is
-shared page-level Evidence, not a candidate package.
+Before writing `standalone_package_group_ids`, perform one final singleton audit
+inside this same response. For every `object_evidence` group with no merge edge
+that is not a `context_reference_link` source, compare it again with every
+other `object_evidence` group. If accepted evidence proves a relation to a
+different group, add that edge to the graph. Otherwise declare the group
+standalone. Do not emit an edge merely to avoid a singleton. This audit adds no
+new output field.
+
+After that audit, return `standalone_package_group_ids`: the complete sorted
+list of singleton component anchors. Every `object_evidence` group not on this
+list must belong to an accepted non-singleton merge component. A
+`context_reference_link` source is excluded because it is shared page-level
+Evidence, not a candidate package.
 
 There is no third outcome. A detail that seems related but lacks a proved merge
 is listed as a standalone commercial candidate for review. The runtime derives

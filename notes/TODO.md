@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.30`, experimental, built on the protected
+Current model build: `Detection V4.32`, experimental, built on the protected
 V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
 treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
@@ -169,6 +169,17 @@ terminal property key and depth, per-section observed character counts, JSON
 error position, open-string state and output-budget utilisation. Its next run
 must identify which contract section exhausted the budget before a new boundary
 or output change is considered.
+V4.32 is the approved one-call repair for the observed HSL self-edge failure,
+where the model attempted `G4 -> G4` instead of relating the N56 plan to a
+different N56 view or declaring it standalone. A proof edge now explicitly
+requires two different group IDs. Before the existing compact singleton-ID
+declaration, the same Registry response performs one final audit of every
+unconnected object-evidence group against all other object-evidence groups:
+add an accepted edge to a different group, otherwise declare the group
+standalone. It adds no provider call, response field, token budget, router,
+Sonnet path, or validation relaxation. The self-edge remains a hard runtime
+rejection. Acceptance: valid HSL graph without a self-edge, then Page 23 and
+Adda regressions before any checkpoint.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only
