@@ -19,8 +19,9 @@ COMMERCIAL_ROLE_BASIS_TYPES = {
     "explicit_section_or_detail",
     "fragment_without_finished_envelope",
     "explicit_parent_relation",
-    "administrative_or_navigation_context",
-    "schedule_legend_or_table",
+    "administrative_context",
+    "navigation_only_plan",
+    "table_with_semantic_headers",
 }
 
 _ROLE_REQUIRED_BASIS_TYPES = {
@@ -36,8 +37,9 @@ _ROLE_REQUIRED_BASIS_TYPES = {
         "explicit_parent_relation",
     },
     "document_context": {
-        "administrative_or_navigation_context",
-        "schedule_legend_or_table",
+        "administrative_context",
+        "navigation_only_plan",
+        "table_with_semantic_headers",
     },
 }
 

@@ -49,11 +49,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_10_visual_registry_role_basis_temperature_0"
+    "detection_v4_11_visual_registry_role_basis_and_owner_temperature_0"
 )
-# V4.10 makes role classification recall-first for product graphics. The
-# Registry records controlled observable role evidence, while package identity
-# remains governed by the existing pairwise merge-proof contract.
+# V4.11 makes role classification recall-first for product graphics, and makes
+# every assembly-view owner explicit. The Registry records controlled observable
+# role evidence, while package identity remains under pairwise merge proofs.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -858,6 +858,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             visual_group_roles={
                 group["group_id"]: group["commercial_role"]
                 for group in visual_map["visual_groups"]
+            },
+            required_assembly_group_ids={
+                group["group_id"]
+                for group in visual_map["visual_groups"]
+                if group["commercial_role"] == "assembly_view"
             },
         )
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(

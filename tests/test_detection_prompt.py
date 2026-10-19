@@ -75,6 +75,8 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
     assert "textual note, schedule, legend or navigation-only layout" in prompt
+    assert "semantically labelled columns, rows, or record cells" in prompt
+    assert "Never create a placeholder, self-link, empty proof" in prompt
     assert "groups that prove this object's commercial boundary" in prompt
     assert "exactly one `commercial_role`" in prompt
     assert "`role_basis`" in prompt
@@ -90,5 +92,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Test commercial separability, not merely visual adjacency" in prompt
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_10_visual_registry_role_basis_temperature_0"
+        "detection_v4_11_visual_registry_role_basis_and_owner_temperature_0"
     )

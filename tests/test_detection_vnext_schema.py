@@ -148,6 +148,32 @@ def test_pairwise_merge_proof_rejects_a_lone_direct_structure_claim():
         validate_detection_pairwise_merge_proofs(proofs, registry=registry, page_count=1)
 
 
+def test_pairwise_merge_proof_rejects_singleton_placeholder():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "N76",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+            "visual_identity": "one cabinet elevation",
+            "boundary_basis": "one complete dimensioned cabinet",
+        }],
+    }
+    placeholder = [{
+        "object_id": "object-001", "from_group_id": "view-001",
+        "to_group_id": "view-001",
+        "evidence_types": ["matching_topology"], "evidence_pages": [1],
+        "observed_fact": "Single view", "commercial_inseparability": "N/A",
+    }]
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="pairwise merge proof groups are invalid",
+    ):
+        validate_detection_pairwise_merge_proofs(
+            placeholder, registry=registry, page_count=1
+        )
+
+
 def test_registry_schema_requires_at_least_one_visual_group_per_object():
     visual_group_ids = (
         DETECTION_REGISTRY_JSON_SCHEMA["properties"]["objects"]
@@ -212,6 +238,33 @@ def test_registry_allows_unassigned_navigation_only_visual_groups():
     ) == registry
 
 
+def test_registry_requires_every_typed_assembly_view_to_have_an_owner():
+    registry = {
+        "objects": [{
+            "object_id": "object-001", "transport_label": "Object 1",
+            "quantity": 1, "quantity_explicit": False, "identity_pages": [1],
+            "estimation_evidence_pages": [1], "visual_group_ids": ["view-001"],
+            "visual_identity": "cabinet", "boundary_basis": "one complete product",
+        }],
+    }
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="must account for every complete assembly view",
+    ) as raised:
+        validate_detection_registry(
+            registry,
+            visual_group_ids={"view-001", "view-002"},
+            visual_group_roles={
+                "view-001": "assembly_view",
+                "view-002": "assembly_view",
+            },
+            required_assembly_group_ids={"view-001", "view-002"},
+        )
+
+    assert raised.value.details == {"unowned_assembly_group_ids": ["view-002"]}
+
+
 def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
     visual_map = {
         "visual_groups": [
@@ -225,7 +278,7 @@ def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
                 "group_id": "view-002", "page_number": 1,
                 "location_hint": "title block", "visual_description": "sheet metadata",
                 "representation_kind": "title_block", "commercial_role": "document_context",
-                "role_basis": ["administrative_or_navigation_context"],
+                "role_basis": ["administrative_context"],
             },
         ],
     }
