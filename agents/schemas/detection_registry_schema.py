@@ -266,12 +266,21 @@ def validate_detection_pairwise_merge_proofs(
                 raise DetectionRegistrySchemaError("pairwise merge proof evidence facts are invalid")
             evidence_fact_keys.add(evidence_fact_key)
             evidence_types.add(evidence_type)
-        if "explicit_document_relation" not in evidence_types and (
-            len(evidence_facts) < 2
-            or not set(evidence_types).intersection(_NON_EXPLICIT_MERGE_SUPPORT_TYPES)
+        has_standalone_dimension_transform = (
+            "dimension_transform" in evidence_types
+        )
+        if (
+            "explicit_document_relation" not in evidence_types
+            and not has_standalone_dimension_transform
+            and (
+                len(evidence_facts) < 2
+                or not set(evidence_types).intersection(
+                    _NON_EXPLICIT_MERGE_SUPPORT_TYPES
+                )
+            )
         ):
             raise DetectionRegistrySchemaError(
-                "pairwise merge without an explicit document relation needs two independent evidence facts"
+                "pairwise merge needs an explicit document relation, a dimension transform, or two independent evidence facts"
             )
         if (
             not str(proof["commercial_inseparability"] or "").strip()

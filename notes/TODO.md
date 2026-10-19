@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.18`, experimental, based on V4.15 and the
+Current model build: `Detection V4.19`, experimental, based on V4.15 and the
 protected checkpoint `52c314d`. Comment: V4.12 still treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
 The failure proved that assembly/component was an invalid eligibility gate, not
@@ -32,8 +32,9 @@ coverage. Detection may still use them for metadata, sheet codes or navigation.
 V4.15 preserves that ledger and replaces loose merge-proof type labels with
 typed, page-attributed visual facts. The evidence order is explicit document
 relation, dimension transform, matching topology, unique geometry, then direct
-shared structure. A non-explicit merge still needs two independent facts and
-at least one identity-level fact; direct shared structure alone cannot merge.
+shared structure. At that stage, a non-explicit merge needed two independent
+facts and at least one identity-level fact; direct shared structure alone
+cannot merge.
 V4.16 discards generic floor plans, title pages and title blocks from the
 effective visual-group payload before ownership, proof construction, identity
 pages and Estimation Evidence. An object-specific plan remains eligible only
@@ -59,6 +60,10 @@ persists every decision and its answer to "why" in the Registry audit. This
 adds no model call, router, Sonnet path, Naming or UI timing. It is not a
 checkpoint until HSL produces the canonical 11 packages with complete
 object-specific evidence, followed by Page 23 and Adda regression gates.
+V4.19 permits one exact `dimension_transform` as a sufficient attachment fact:
+it must name measurements on both views and their axis or unit transformation.
+"Compatible" dimensions, similar scale or one repeated number are not enough.
+All other non-explicit attachments still require two independent typed facts.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

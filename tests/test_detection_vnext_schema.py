@@ -129,7 +129,7 @@ def test_proof_graph_rejects_a_lone_direct_structure_claim():
 
     with pytest.raises(
         DetectionRegistrySchemaError,
-        match="needs two independent evidence facts",
+        match="needs an explicit document relation, a dimension transform, or two independent evidence facts",
     ):
         validate_detection_pairwise_merge_proofs(
             [proof], visual_group_ids={"view-001", "view-002"}, page_count=1
@@ -140,6 +140,20 @@ def test_proof_graph_accepts_two_distinct_dimension_facts():
     proof = _proof("view-001", "view-002", [
         _fact("dimension_transform", "The 1180 mm elevation width matches the section width.", (1, 2)),
         _fact("dimension_transform", "The 2450 mm elevation height matches the section height.", (1, 2)),
+    ])
+
+    assert validate_detection_pairwise_merge_proofs(
+        [proof], visual_group_ids={"view-001", "view-002"}, page_count=2
+    ) == [proof]
+
+
+def test_proof_graph_accepts_one_exact_dimension_transform():
+    proof = _proof("view-001", "view-002", [
+        _fact(
+            "dimension_transform",
+            "The 1180 mm elevation width on page 1 equals the 1180 mm plan depth on page 2 after the axis change.",
+            (1, 2),
+        ),
     ])
 
     assert validate_detection_pairwise_merge_proofs(
