@@ -309,12 +309,13 @@ def test_integrated_visual_map_requires_an_evidence_class_for_each_group():
     ) == visual_map
 
 
-def test_integrated_registry_structured_output_requires_evidence_class():
+def test_integrated_registry_structured_output_requires_group_owners_only():
     group_schema = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"][
         "visual_groups"
     ]["items"]
 
-    assert "evidence_class" in group_schema["required"]
+    assert "owner_object_ids" in group_schema["required"]
+    assert "evidence_class" not in group_schema["properties"]
     assert "depiction_scope" not in group_schema["required"]
     assert "scope_basis" not in group_schema["required"]
     assert "commercial_role" not in group_schema["properties"]

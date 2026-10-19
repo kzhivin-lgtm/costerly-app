@@ -35,6 +35,11 @@ DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
                         "type": "string",
                         "enum": sorted(VISUAL_EVIDENCE_CLASSES),
                     },
+                    "owner_object_ids": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {"type": "string"},
+                    },
                 },
             },
         },
@@ -80,6 +85,7 @@ def validate_detection_visual_map(
     result: dict[str, Any],
     *,
     require_evidence_class: bool = False,
+    require_owner_object_ids: bool = False,
 ) -> dict[str, Any]:
     if not isinstance(result, dict) or set(result) != {"visual_groups"}:
         raise DetectionVisualMapSchemaError("visual map must contain only visual_groups")
@@ -95,6 +101,8 @@ def validate_detection_visual_map(
         }
         if require_evidence_class:
             required.add("evidence_class")
+        if require_owner_object_ids:
+            required.add("owner_object_ids")
         if not isinstance(group, dict) or set(group) != required:
             raise DetectionVisualMapSchemaError("visual group fields do not match contract")
         expected_id = f"view-{index:03d}"
@@ -109,6 +117,19 @@ def validate_detection_visual_map(
             or (
                 require_evidence_class
                 and group["evidence_class"] not in VISUAL_EVIDENCE_CLASSES
+            )
+            or (
+                require_owner_object_ids
+                and (
+                    not isinstance(group["owner_object_ids"], list)
+                    or not group["owner_object_ids"]
+                    or len(group["owner_object_ids"])
+                    != len(set(group["owner_object_ids"]))
+                    or not all(
+                        isinstance(object_id, str) and object_id.strip()
+                        for object_id in group["owner_object_ids"]
+                    )
+                )
             )
         ):
             raise DetectionVisualMapSchemaError("visual group is invalid")

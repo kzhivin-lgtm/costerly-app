@@ -49,11 +49,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_13_object_evidence_links_temperature_0"
+    "detection_v4_14_group_ownership_ledger_temperature_0"
 )
-# V4.13 eliminates the brittle assembly/detail gate. The provider classifies
-# visual groups only as object evidence or document context, then preserves
-# proof-backed links between every object-evidence group in an object package.
+# V4.14 keeps the V4.13 evidence model, but makes each visual group's declared
+# owners the only source of package membership. The registry's group lists are
+# derived in code, eliminating a second, divergent model declaration.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -78,10 +78,19 @@ DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
 DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
     "estimation_evidence_pages"
 )
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["required"].remove(
+    "visual_group_ids"
+)
+DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA["items"]["properties"].pop(
+    "visual_group_ids"
+)
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
+    "owner_object_ids"
+)
+DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"].pop(
     "evidence_class"
 )
 
@@ -705,72 +714,48 @@ def _apply_page_coverage_to_registry(
     return enriched, reconciled_object_ids
 
 
-def _discard_trailing_orphan_registry_objects(
+def _derive_registry_visual_group_ids(
     objects: object,
-    page_coverage: object,
-    *,
-    page_count: int,
-) -> tuple[object, list[str]]:
-    """Remove only a terminal Registry row with no structural object evidence.
+    visual_map: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Build package membership from the per-group ownership ledger.
 
-    A commercial object must have both an assembly-view owner and a page-level
-    Evidence reference.  Occasionally the model's written audit reaches that
-    conclusion but serializes a final, component-detail row anyway.  We may
-    remove it only when the complete page-coverage contract is otherwise
-    valid, the row has exactly an empty group list, is absent from all page
-    coverage, and it is terminal.  Any conflicting or partial object remains
-    a validation error rather than being silently repaired.
+    A provider used to state the same ownership twice: once by classifying a
+    visual group and again by selecting groups inside every object. V4.14 keeps
+    the local group-to-owner decision and derives the inverse relation here.
+    A missing, duplicate, unordered, or unknown owner remains a visible
+    validation failure rather than being repaired from page coverage.
     """
     if not isinstance(objects, list) or not all(isinstance(item, dict) for item in objects):
-        return objects, []
-    if not isinstance(page_coverage, list):
-        return objects, []
+        raise ValueError("registry objects must be a list")
+    groups = visual_map.get("visual_groups")
+    if not isinstance(groups, list):
+        raise ValueError("visual groups must be a list")
 
-    object_ids = [item.get("object_id") for item in objects]
-    if any(not isinstance(object_id, str) or object_id != f"object-{index:03d}"
-           for index, object_id in enumerate(object_ids, start=1)):
-        return objects, []
-
-    coverage_by_page: dict[int, list[str]] = {}
-    for entry in page_coverage:
-        if not isinstance(entry, dict) or set(entry) != {
-            "page_number", "object_ids", "evidence_reason",
-        }:
-            return objects, []
-        page_number = entry["page_number"]
-        covered_ids = entry["object_ids"]
+    object_ids = [str(item.get("object_id") or "") for item in objects]
+    known_object_ids = set(object_ids)
+    ownership: dict[str, list[str]] = {object_id: [] for object_id in object_ids}
+    for group in groups:
+        group_id = str(group.get("group_id") or "")
+        owner_object_ids = group.get("owner_object_ids")
         if (
-            not isinstance(page_number, int)
-            or not 1 <= page_number <= page_count
-            or page_number in coverage_by_page
-            or not isinstance(covered_ids, list)
-            or len(covered_ids) != len(set(covered_ids))
-            or not all(isinstance(object_id, str) and object_id in object_ids for object_id in covered_ids)
-            or not isinstance(entry["evidence_reason"], str)
-            or not entry["evidence_reason"].strip()
+            not isinstance(owner_object_ids, list)
+            or not owner_object_ids
+            or owner_object_ids != sorted(owner_object_ids)
+            or len(owner_object_ids) != len(set(owner_object_ids))
+            or not all(owner_object_id in known_object_ids for owner_object_id in owner_object_ids)
         ):
-            return objects, []
-        coverage_by_page[page_number] = covered_ids
-    if set(coverage_by_page) != set(range(1, page_count + 1)):
-        return objects, []
+            raise DetectionRegistrySchemaError(
+                "visual group ownership is invalid",
+                details={"group_id": group_id, "owner_object_ids": owner_object_ids},
+            )
+        for owner_object_id in owner_object_ids:
+            ownership[owner_object_id].append(group_id)
 
-    covered_object_ids = {
-        object_id
-        for covered_ids in coverage_by_page.values()
-        for object_id in covered_ids
-    }
-    first_orphan_index = len(objects)
-    while first_orphan_index:
-        item = objects[first_orphan_index - 1]
-        object_id = item["object_id"]
-        if item.get("visual_group_ids") != [] or object_id in covered_object_ids:
-            break
-        first_orphan_index -= 1
-    if first_orphan_index == len(objects):
-        return objects, []
-
-    discarded_ids = [item["object_id"] for item in objects[first_orphan_index:]]
-    return objects[:first_orphan_index], discarded_ids
+    derived = copy.deepcopy(objects)
+    for item in derived:
+        item["visual_group_ids"] = ownership[str(item.get("object_id") or "")]
+    return derived
 
 
 def _normalize_pairwise_merge_proof_group_ids(
@@ -826,7 +811,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids({"visual_groups": raw_groups}),
-            require_evidence_class=True,
+            require_owner_object_ids=True,
         )
         group_id_mapping = {
             raw_group_id: normalized["group_id"]
@@ -835,10 +820,8 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         merge_proofs = _normalize_pairwise_merge_proof_group_ids(
             payload["merge_proofs"], group_id_mapping
         )
-        registry_objects_input, discarded_orphan_registry_object_ids = (
-            _discard_trailing_orphan_registry_objects(
-                payload["objects"], payload["page_coverage"], page_count=len(page_images),
-            )
+        registry_objects_input = _derive_registry_visual_group_ids(
+            payload["objects"], visual_map,
         )
         registry_objects, reconciled_object_ids = _apply_page_coverage_to_registry(
             registry_objects_input, payload["page_coverage"], page_count=len(page_images),
@@ -852,11 +835,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         registry = validate_detection_registry(
             registry_payload,
             visual_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
-            object_evidence_group_ids={
-                group["group_id"]
-                for group in visual_map["visual_groups"]
-                if group["evidence_class"] == "object_evidence"
-            },
+            object_evidence_group_ids={group["group_id"] for group in visual_map["visual_groups"]},
         )
         pairwise_merge_proofs = validate_detection_pairwise_merge_proofs(
             merge_proofs,
@@ -899,11 +878,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         for item in registry["objects"]
         for group_id in item["visual_group_ids"]
     }
-    object_evidence_group_ids = {
-        group["group_id"]
-        for group in visual_map["visual_groups"]
-        if group["evidence_class"] == "object_evidence"
-    }
+    object_evidence_group_ids = {group["group_id"] for group in visual_map["visual_groups"]}
     diagnostics.update({
         "visual_group_count": len(visual_map["visual_groups"]),
         "registry_object_count": len(registry["objects"]),
@@ -911,13 +886,10 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "unassigned_object_evidence_group_count": len(
             object_evidence_group_ids - assigned_visual_group_ids
         ),
-        "visual_group_class_counts": {
-            evidence_class: sum(
-                group["evidence_class"] == evidence_class
-                for group in visual_map["visual_groups"]
-            )
-            for evidence_class in ("object_evidence", "document_context")
-        },
+        "visual_group_owner_count": sum(
+            len(group["owner_object_ids"])
+            for group in visual_map["visual_groups"]
+        ),
         "page_coverage_count": len(payload["page_coverage"]),
         "unassigned_page_count": sum(
             not entry["object_ids"] for entry in payload["page_coverage"]
@@ -931,8 +903,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     })
     if reconciled_object_ids:
         diagnostics["single_page_coverage_reconciled_object_ids"] = reconciled_object_ids
-    if discarded_orphan_registry_object_ids:
-        diagnostics["discarded_orphan_registry_object_ids"] = discarded_orphan_registry_object_ids
     usage = build_agent_usage_event(agent_name="detection",operation="rfq_detection_visual_registry",company_id=company_id,run_id=None,file_name=file_name,object_id=None,object_name=None,model=selected_model,prompt_version=prompt_version,response=response,started_at=diagnostics["request_started_at"],finished_at=diagnostics["request_finished_at"],request_diagnostics=diagnostics)
     return visual_map, registry, usage
 

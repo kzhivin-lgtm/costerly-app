@@ -16,18 +16,24 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.13`, experimental, based on V4.12 and the
+Current model build: `Detection V4.14`, experimental, based on V4.13 and the
 protected checkpoint `52c314d`. Comment: V4.12 still treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
 The failure proved that assembly/component was an invalid eligibility gate, not
-that their source Evidence was wrong. V4.13 has only `object_evidence` and
-`document_context`. Full views and details may both support an object. The
-proof tree remains strict and now declares whether an edge is another view or
-an object detail. Object Evidence must be linked to at least one commercial
-object, but may be shared where its visible content supports several objects.
-This adds no model call, router, Sonnet path, Naming, Evidence scope or UI
-timing. It is not a checkpoint until HSL passes, followed by Page 23 and Adda
-regression gates.
+that their source Evidence was wrong. V4.13 allowed any full view or detail to
+support an object, but still let the model declare membership twice: a group
+could be object evidence yet be omitted from the object's group list. V4.14
+removes that duplicate ownership declaration. Every visual group is
+object-specific Estimation Evidence and names one or more owners locally; code
+derives each object's group package from that ledger. Cover/title pages,
+generic floor plans, room layouts, electrical, plumbing, lighting, legends and
+other non-object-specific pages make no visual group and have empty Evidence
+coverage. Detection may still use them for metadata, sheet codes or navigation.
+The proof tree remains strict. This adds no model call, router, Sonnet path,
+Naming or UI timing. It is not a checkpoint until HSL first produces nine
+valid object packages with complete object-specific evidence, followed by Page
+23 and Adda regression gates. The HSL 11-object boundary split remains a later
+separate gate.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

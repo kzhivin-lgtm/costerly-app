@@ -74,15 +74,15 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "There is no arbitrary page-count cap" in prompt
     assert "For every physical upload page, return exactly one `page_coverage` entry" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
-    assert "title block, pure administrative text, legend, schedule, navigation-only floor plan" in prompt
-    assert "semantically headed table" in prompt
+    assert "Do not create a `visual_group` for non-object source material" in prompt
+    assert "generic floor plan, room layout, electrical, plumbing or lighting plan" in prompt
+    assert "not Evidence and must not enter an object package or the Estimation handoff" in prompt
     assert "Never create a placeholder, self-link, empty proof" in prompt
-    assert "exactly one `evidence_class`" in prompt
-    assert "There are only two classes" in prompt
-    assert "`object_evidence` is any graphical depiction" in prompt
+    assert "ordered non-empty `owner_object_ids`" in prompt
+    assert "sole ownership declaration" in prompt
+    assert "Do not repeat group membership inside an object row" in prompt
     assert "`object_detail` for a section, node, module or detail" in prompt
-    assert "A `document_context` never becomes an object" in prompt
-    assert "resolve identity across all relevant object evidence" in prompt
+    assert "resolve identity across all visual groups" in prompt
     assert "Dimensions that agree after a change of axes" in prompt
     assert "Secondary supporting signals only" in prompt
     assert "whole-silhouette similarity is not required" in prompt
@@ -91,5 +91,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Test commercial separability, not merely visual adjacency" in prompt
     assert "Direct shared structure may support a merge but cannot be its only evidence" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_13_object_evidence_links_temperature_0"
+        "detection_v4_14_group_ownership_ledger_temperature_0"
     )
