@@ -50,11 +50,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_19_dimension_transform_single_fact_temperature_0"
+    "detection_v4_20_dimension_conflict_blocks_merge_temperature_0"
 )
-# V4.19 retains V4.18's mandatory root-or-parent proof graph. An exact
-# dimension transform is now a sufficient direct link when no literal relation
-# exists, while weaker signals still require two independent facts.
+# V4.20 retains V4.18's mandatory root-or-parent proof graph. An exact
+# dimension transform remains a sufficient direct link, but an explicit
+# same-scope dimension conflict is a structural no-merge condition.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -940,6 +940,7 @@ def _proof_parent_decision_audit(groups: object) -> list[dict[str, Any]]:
             "relationship": parent.get("relationship"),
             "decision_reason": parent.get("decision_reason"),
             "evidence_facts": copy.deepcopy(parent.get("evidence_facts")),
+            "dimension_assessment": copy.deepcopy(parent.get("dimension_assessment")),
         })
     return decisions
 

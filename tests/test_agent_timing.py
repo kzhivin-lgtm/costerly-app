@@ -80,6 +80,10 @@ def _visual_registry_payload(payload):
             "parent_group_id": "ROOT",
             "relationship": "new_object_root",
             "evidence_facts": [],
+            "dimension_assessment": {
+                "status": "not_applicable",
+                "observation": "A root has no proposed parent for dimension comparison.",
+            },
             "decision_reason": "No positive relation to an earlier object depiction is evidenced.",
         }
     for proof in proofs if isinstance(proofs, list) else []:
@@ -95,11 +99,26 @@ def _visual_registry_payload(payload):
         ):
             continue
         parent_id, child_id = sorted((left, right), key=group_order.__getitem__)
+        dimension_assessment = proof.get("dimension_assessment")
+        if not isinstance(dimension_assessment, dict):
+            dimension_assessment = {
+                "status": (
+                    "confirmed_match"
+                    if any(
+                        fact.get("evidence_type") == "dimension_transform"
+                        for fact in proof.get("evidence_facts", [])
+                        if isinstance(fact, dict)
+                    )
+                    else "insufficient_dimension_evidence"
+                ),
+                "observation": "Legacy fixture provides no separate dimension comparison.",
+            }
         groups_by_id[child_id]["proof_parent"] = {
             "decision": "attach_to_group",
             "parent_group_id": parent_id,
             "relationship": proof["relationship"],
             "evidence_facts": proof["evidence_facts"],
+            "dimension_assessment": dimension_assessment,
             "decision_reason": proof["commercial_inseparability"],
         }
     return payload
@@ -589,6 +608,10 @@ def test_integrated_visual_registry_returns_map_and_locked_objects_in_one_call()
         "relationship": "new_object_root",
         "decision_reason": "No positive relation to an earlier object depiction is evidenced.",
         "evidence_facts": [],
+        "dimension_assessment": {
+            "status": "not_applicable",
+            "observation": "A root has no proposed parent for dimension comparison.",
+        },
     }]
 
 

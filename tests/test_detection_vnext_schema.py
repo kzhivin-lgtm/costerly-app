@@ -27,12 +27,23 @@ def _fact(evidence_type, observation, pages=(1,)):
     }
 
 
-def _proof(left, right, facts):
+def _dimension_assessment(status, observation="No comparable explicit dimensions are available."):
+    return {"status": status, "observation": observation}
+
+
+def _proof(left, right, facts, dimension_assessment=None):
+    if dimension_assessment is None:
+        dimension_assessment = _dimension_assessment(
+            "confirmed_match"
+            if any(fact["evidence_type"] == "dimension_transform" for fact in facts)
+            else "insufficient_dimension_evidence"
+        )
     return {
         "from_group_id": left,
         "to_group_id": right,
         "relationship": "same_object_view",
         "evidence_facts": facts,
+        "dimension_assessment": dimension_assessment,
         "commercial_inseparability": "The cited construction evidence establishes one quote line.",
     }
 
@@ -43,16 +54,26 @@ def _root(reason="No positive relation to an earlier group is evidenced."):
         "parent_group_id": "ROOT",
         "relationship": "new_object_root",
         "evidence_facts": [],
+        "dimension_assessment": _dimension_assessment(
+            "not_applicable", "A root has no proposed parent for dimension comparison."
+        ),
         "decision_reason": reason,
     }
 
 
-def _attach(parent_group_id, facts, reason="The cited evidence proves one quote line."):
+def _attach(parent_group_id, facts, reason="The cited evidence proves one quote line.", dimension_assessment=None):
+    if dimension_assessment is None:
+        dimension_assessment = _dimension_assessment(
+            "confirmed_match"
+            if any(fact["evidence_type"] == "dimension_transform" for fact in facts)
+            else "insufficient_dimension_evidence"
+        )
     return {
         "decision": "attach_to_group",
         "parent_group_id": parent_group_id,
         "relationship": "same_object_view",
         "evidence_facts": facts,
+        "dimension_assessment": dimension_assessment,
         "decision_reason": reason,
     }
 
@@ -159,6 +180,65 @@ def test_proof_graph_accepts_one_exact_dimension_transform():
     assert validate_detection_pairwise_merge_proofs(
         [proof], visual_group_ids={"view-001", "view-002"}, page_count=2
     ) == [proof]
+
+
+def test_proof_graph_rejects_a_confirmed_dimension_conflict():
+    proof = _proof(
+        "view-001",
+        "view-002",
+        [_fact("explicit_document_relation", "N76B appears near both depictions.")],
+        _dimension_assessment(
+            "confirmed_conflict",
+            "Both drawings claim the overall elevation width is 1180 mm and 1450 mm.",
+        ),
+    )
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="confirmed dimension conflict blocks attachment",
+    ):
+        validate_detection_pairwise_merge_proofs(
+            [proof], visual_group_ids={"view-001", "view-002"}, page_count=1
+        )
+
+
+def test_root_can_record_a_dimension_conflict_that_prevents_a_merge():
+    groups = [
+        _group("view-001", _root("First complete cabinet elevation.")),
+        _group("view-002", {
+            **_root(
+                "view-001 states overall width 1180 mm; this elevation states 1450 mm."
+            ),
+            "dimension_assessment": _dimension_assessment(
+                "confirmed_conflict",
+                "Overall elevation widths conflict: 1180 mm on view-001, 1450 mm here.",
+            ),
+        }),
+    ]
+
+    assert derive_detection_pairwise_merge_proofs_from_parent_links(
+        groups, page_count=1
+    ) == []
+
+
+def test_dimension_transform_requires_a_confirmed_dimension_match():
+    proof = _proof(
+        "view-001",
+        "view-002",
+        [_fact("dimension_transform", "The elevation width is said to match the plan depth.")],
+        _dimension_assessment(
+            "not_comparable",
+            "The available values describe different scopes.",
+        ),
+    )
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="dimension transform requires a confirmed dimension match",
+    ):
+        validate_detection_pairwise_merge_proofs(
+            [proof], visual_group_ids={"view-001", "view-002"}, page_count=1
+        )
 
 
 def test_proof_graph_rejects_repeated_facts_and_self_links():

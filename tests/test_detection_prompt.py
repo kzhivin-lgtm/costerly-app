@@ -90,6 +90,8 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "`object_detail`" in prompt
     assert "dimensions agree after a change of axes" in prompt
     assert "One exact `dimension_transform` can also prove an attachment on its own" in prompt
+    assert "Mandatory dimension comparison before every attachment" in prompt
+    assert "`confirmed_conflict` is a critical no-merge finding" in prompt
     assert "Secondary signals" in prompt
     assert "whole-silhouette similarity is not required" in prompt
     assert "Different finished envelopes, principal functions or primary dimensions" in prompt
@@ -99,5 +101,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "evidence_facts" in prompt
     assert "`floor_plan` means generic non-object context and is discarded" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_19_dimension_transform_single_fact_temperature_0"
+        "detection_v4_20_dimension_conflict_blocks_merge_temperature_0"
     )

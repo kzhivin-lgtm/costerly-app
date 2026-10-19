@@ -64,6 +64,17 @@ V4.19 permits one exact `dimension_transform` as a sufficient attachment fact:
 it must name measurements on both views and their axis or unit transformation.
 "Compatible" dimensions, similar scale or one repeated number are not enough.
 All other non-explicit attachments still require two independent typed facts.
+V4.20 requires a persisted `dimension_assessment` for every root-or-parent
+decision. Before an attachment, Detection compares readable dimensions after
+document-wide unit normalization and projection/axis transformation. A
+confirmed match can support the existing `dimension_transform` fact. A
+confirmed conflict in the same physical axis and scope is a structural no-merge
+condition, including when a shared code or sheet might otherwise suggest a
+relation. It must become a root with the rejected group's ID and conflicting
+measurements in the persisted factual reasoning. Different axes, whole-object
+versus local-detail measurements, quantities, scale or missing readable values
+are explicitly recorded as not comparable or insufficient, never treated as a
+conflict. No model call, router, Sonnet path, Naming or UI timing is added.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate
