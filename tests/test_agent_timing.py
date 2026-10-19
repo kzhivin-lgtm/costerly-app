@@ -697,7 +697,7 @@ def test_integrated_visual_registry_normalizes_and_persists_pairwise_merge_proof
 def test_integrated_visual_registry_keeps_context_view_out_of_components_and_splits_root_code():
     payload = {
         "visual_groups": [
-            {"group_id": "overview", "page_number": 1, "location_hint": "upper", "visual_description": "kitchen, island and cabinet together", "representation_kind": "floor_plan", "evidence_class": "object_evidence", "classification_reason": "The plan visibly locates the three fabricated products."},
+            {"group_id": "overview", "page_number": 1, "location_hint": "upper", "visual_description": "kitchen, island and cabinet together", "representation_kind": "plan"},
             {"group_id": "kitchen", "page_number": 1, "location_hint": "lower left", "visual_description": "dedicated kitchen elevation", "representation_kind": "elevation"},
             {"group_id": "island", "page_number": 1, "location_hint": "lower center", "visual_description": "dedicated island elevation", "representation_kind": "elevation"},
             {"group_id": "cabinet", "page_number": 1, "location_hint": "lower right", "visual_description": "dedicated cabinet elevation", "representation_kind": "elevation"},
@@ -1148,7 +1148,10 @@ def test_integrated_visual_registry_validation_failure_carries_structured_audit(
 
 
 def test_integrated_visual_registry_json_failure_carries_transport_diagnostics():
-    raw_text = '{"visual_groups": ['
+    raw_text = (
+        '{"visual_groups":[{"group_id":"G01"}],'
+        '"classifications":[{"group_id":"G01","classification_reason":"'
+    )
 
     with (
         patch("agents.anthropic_adapter.get_anthropic_client", return_value=object()),
@@ -1173,6 +1176,14 @@ def test_integrated_visual_registry_json_failure_carries_transport_diagnostics()
     assert event["raw_usage"]["response_character_count"] == len(raw_text)
     assert event["raw_usage"]["response_text_sha256"]
     assert event["raw_usage"]["max_tokens"] == 8192
+    assert event["raw_usage"]["raw_response_persisted"] is False
+    assert event["raw_usage"]["top_level_sections_started"] == [
+        "visual_groups", "classifications",
+    ]
+    assert event["raw_usage"]["terminal_top_level_section"] == "classifications"
+    assert event["raw_usage"]["terminal_json_property_key"] == "classification_reason"
+    assert event["raw_usage"]["terminal_response_ends_inside_string"] is True
+    assert event["raw_usage"]["output_token_budget_utilization_percent"] > 0
 
 
 def test_integrated_visual_registry_allows_one_physical_page_for_multiple_components():

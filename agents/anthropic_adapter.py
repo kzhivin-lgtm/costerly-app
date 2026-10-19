@@ -59,16 +59,32 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_31_object_plan_context_links_temperature_0"
+    "detection_v4_30_compact_standalone_packages_temperature_0"
 )
-# V4.31 retains V4.30's compact package outcome. A plan that is object-specific
-# remains graph-eligible regardless of its neutral representation kind; it can
-# enrich one or several packages through an evidence-backed context link.
+# V4.30 retains V4.28's context relation and V4.29's binary package outcome,
+# while serializing only singleton IDs and deriving the complete audit in code.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
 # contract as well.
 DETECTION_LOCKED_EVIDENCE_HANDOFF_TEMPERATURE = 0.0
+
+_NON_OBJECT_VISUAL_REPRESENTATION_KINDS = frozenset({
+    "cover",
+    "cover_page",
+    "title_page",
+    "title_block",
+    "generic_floor_plan",
+    "floor_plan",
+    "room_layout",
+    "electrical_plan",
+    "plumbing_plan",
+    "lighting_plan",
+    "legend",
+    "administrative_text",
+    "generic_schedule",
+    "navigation_diagram",
+})
 
 class DetectionVisualRegistryValidationError(RuntimeError):
     """Expose a DB-ready audit event when Registry output fails validation."""
@@ -1019,13 +1035,12 @@ def _validate_and_apply_visual_registry_classifications(
 def _discard_non_object_visual_registry_groups(
     payload: dict[str, Any],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Remove only model-classified non-object material before ownership.
+    """Remove title and generic-plan material before it can claim ownership.
 
-    A neutral representation kind such as ``floor_plan`` does not decide
-    commercial eligibility. An object-specific plan may locate one or several
-    commercial objects and must remain available to the proof graph and its
-    ``context_reference_link``. The model's exact classification remains in
-    the decision audit.
+    These pages may help Detection orient itself, but are never object Evidence.
+    The model's original output remains in the decision audit. The effective
+    payload cannot pass a generic plan into the proof graph, candidate objects,
+    identity pages, or Estimation page coverage.
     """
     groups = payload.get("visual_groups")
     if not isinstance(groups, list):
@@ -1033,7 +1048,11 @@ def _discard_non_object_visual_registry_groups(
     discarded_groups = [
         group for group in groups
         if isinstance(group, dict)
-        and group.get("evidence_class") == "document_context"
+        and (
+            group.get("evidence_class") == "document_context"
+            or str(group.get("representation_kind") or "").strip().lower()
+            in _NON_OBJECT_VISUAL_REPRESENTATION_KINDS
+        )
     ]
     if not discarded_groups:
         return payload, []
@@ -1094,6 +1113,121 @@ def _discard_non_object_visual_registry_groups(
     return effective, discarded_groups
 
 
+def _scan_json_object_properties(
+    value: str,
+) -> tuple[list[tuple[str, int, int]], int | None]:
+    """Return completed JSON object keys and an unterminated-string offset.
+
+    The scanner intentionally records structure only. It never persists model
+    text, document content, or the values attached to a key.
+    """
+    properties: list[tuple[str, int, int]] = []
+    depth = 0
+    index = 0
+    length = len(value)
+
+    while index < length:
+        character = value[index]
+        if character in "{[":
+            depth += 1
+            index += 1
+            continue
+        if character in "}]":
+            depth = max(0, depth - 1)
+            index += 1
+            continue
+        if character != '"':
+            index += 1
+            continue
+
+        string_start = index
+        index += 1
+        while index < length:
+            if value[index] == "\\":
+                index += 2
+                continue
+            if value[index] == '"':
+                break
+            index += 1
+        if index >= length:
+            return properties, string_start
+
+        string_end = index
+        probe = string_end + 1
+        while probe < length and value[probe].isspace():
+            probe += 1
+        if probe < length and value[probe] == ":":
+            try:
+                key = json.loads(value[string_start:string_end + 1])
+            except json.JSONDecodeError:
+                key = None
+            if isinstance(key, str):
+                properties.append((key, string_start, depth))
+        index = string_end + 1
+
+    return properties, None
+
+
+def _summarize_incomplete_visual_registry_json(
+    raw_text: str,
+    error: json.JSONDecodeError,
+    response: Any,
+    *,
+    max_tokens: int,
+) -> dict[str, Any]:
+    """Persist a privacy-safe structural trace for a truncated Registry JSON."""
+    properties, open_string_start = _scan_json_object_properties(raw_text)
+    top_level_sections = [
+        (key, offset)
+        for key, offset, depth in properties
+        if depth == 1
+    ]
+    section_character_counts = []
+    for index, (section, offset) in enumerate(top_level_sections):
+        next_offset = (
+            top_level_sections[index + 1][1]
+            if index + 1 < len(top_level_sections)
+            else len(raw_text)
+        )
+        section_character_counts.append({
+            "section": section,
+            "characters_observed": max(0, next_offset - offset),
+        })
+
+    usage = getattr(response, "usage", None)
+    output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+    terminal_property = properties[-1] if properties else None
+    return {
+        "registry_json_failure_observer_version": "v1",
+        "raw_response_persisted": False,
+        "json_error_character_offset": error.pos,
+        "json_error_line": error.lineno,
+        "json_error_column": error.colno,
+        "top_level_sections_started": [section for section, _ in top_level_sections],
+        "top_level_sections_before_terminal": [
+            section for section, _ in top_level_sections[:-1]
+        ],
+        "terminal_top_level_section": (
+            top_level_sections[-1][0] if top_level_sections else None
+        ),
+        "top_level_section_characters_observed": section_character_counts,
+        "terminal_json_property_key": (
+            terminal_property[0] if terminal_property else None
+        ),
+        "terminal_json_property_depth": (
+            terminal_property[2] if terminal_property else None
+        ),
+        "terminal_response_ends_inside_string": open_string_start is not None,
+        "terminal_open_string_start_character": open_string_start,
+        "output_token_budget_utilization_percent": round(
+            100 * output_tokens / max_tokens, 3
+        ) if max_tokens else None,
+        "response_characters_per_output_token": round(
+            len(raw_text) / output_tokens, 3
+        ) if output_tokens else None,
+    }
+
+
 def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Lock commercial objects while preserving the visual map in one full-document call."""
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
@@ -1136,6 +1270,9 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         failure_diagnostics = dict(diagnostics)
         failure_diagnostics.update({
             **spatial_audit,
+            **_summarize_incomplete_visual_registry_json(
+                raw_text, exc, response, max_tokens=8192,
+            ),
             "validation_error": str(exc),
             "validation_stage": "visual_registry_json",
             "attempt_label": "visual_registry_json_parse_failed",
