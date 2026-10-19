@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.32`, experimental, built on the protected
+Current model build: `Detection V4.33`, experimental, built on the protected
 V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
 treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
@@ -180,6 +180,18 @@ standalone. It adds no provider call, response field, token budget, router,
 Sonnet path, or validation relaxation. The self-edge remains a hard runtime
 rejection. Acceptance: valid HSL graph without a self-edge, then Page 23 and
 Adda regressions before any checkpoint.
+V4.33 adds the sixth typed graph fact, `dimension_equality`. It is distinct
+from `dimension_transform`: it records the same readable physical dimension,
+unit and scope on both groups without conversion or axis remapping. One equality
+is strong support but cannot merge alone; two independent equalities are
+sufficient dimension proof and further equalities reinforce that proof. Before
+deciding every candidate relationship, the single Registry call now assesses all
+six typed facts. It serializes every positive fact on accepted merge edges but
+not a quadratic ledger of negative comparisons. This adds no provider call,
+router, Sonnet path, output field, token budget or validation relaxation.
+Acceptance: HSL must retain its visual-group inventory, emit the common N56
+dimensions as typed facts, form only valid proof edges, then regress Page 23
+and Adda before any checkpoint.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only

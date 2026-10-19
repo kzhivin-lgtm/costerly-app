@@ -79,6 +79,9 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "A proof edge must name two different\n`group_id` values" in prompt
     assert "perform one final singleton audit\ninside this same response" in prompt
     assert "Do not emit an edge merely to avoid a singleton" in prompt
+    assert "assess all\nsix evidence types below" in prompt
+    assert "`dimension_equality`" in prompt
+    assert "Two\nindependent `dimension_equality` facts are sufficient" in prompt
     assert "do not return owner lists or object IDs" in prompt
     assert "merge-proof connected components are packages" in prompt
     assert "component_anchor_group_id" in prompt
@@ -96,5 +99,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_32_distinct_edges_singleton_audit_temperature_0"
+        "detection_v4_33_dimension_equality_full_six_factor_graph_temperature_0"
     )

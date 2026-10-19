@@ -164,6 +164,60 @@ def test_proof_graph_accepts_two_distinct_dimension_facts():
     ) == [proof]
 
 
+def test_proof_graph_accepts_two_independent_equal_dimensions():
+    proof = _proof("view-001", "view-002", [
+        _fact(
+            "dimension_equality",
+            "The overall width is 358 cm on both groups.",
+            (1, 2),
+        ),
+        _fact(
+            "dimension_equality",
+            "The overall height is 260 cm on both groups.",
+            (1, 2),
+        ),
+    ])
+
+    assert validate_detection_pairwise_merge_proofs(
+        [proof], visual_group_ids={"view-001", "view-002"}, page_count=2
+    ) == [proof]
+
+
+def test_one_equal_dimension_needs_an_independent_supporting_fact():
+    proof = _proof("view-001", "view-002", [
+        _fact(
+            "dimension_equality",
+            "The overall width is 358 cm on both groups.",
+            (1, 2),
+        ),
+        _fact(
+            "direct_shared_structure",
+            "Both depictions show the same continuous carcass.",
+            (1, 2),
+        ),
+    ])
+
+    assert validate_detection_pairwise_merge_proofs(
+        [proof], visual_group_ids={"view-001", "view-002"}, page_count=2
+    ) == [proof]
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="needs an explicit document relation, a dimension transform, or two independent evidence facts",
+    ):
+        validate_detection_pairwise_merge_proofs(
+            [_proof("view-001", "view-002", [
+                _fact(
+                    "dimension_equality",
+                    "The overall width is 358 cm on both groups.",
+                    (1, 2),
+                ),
+            ])],
+            visual_group_ids={"view-001", "view-002"},
+            page_count=2,
+        )
+
+
 def test_proof_graph_accepts_one_exact_dimension_transform():
     proof = _proof("view-001", "view-002", [
         _fact(

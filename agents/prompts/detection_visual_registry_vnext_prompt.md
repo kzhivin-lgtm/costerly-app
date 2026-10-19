@@ -1,4 +1,4 @@
-# DETECTION V4.32 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
+# DETECTION V4.33 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -97,27 +97,38 @@ not merge kitchen, island and cabinet into one quote line.
 
 Every fact names its page(s) and a concrete observation. Evaluate relations
 globally across the complete classified inventory, not incrementally as groups
-are emitted.
+are emitted. For every candidate pair of `object_evidence` groups, assess all
+six evidence types below before deciding merge, context link or no relation.
+Do not stop at a first positive fact. The response remains compact: do not
+serialize negative checks. But an accepted merge edge must serialize every
+positive supporting fact found for that pair. `commercial_inseparability` prose
+never substitutes for a typed evidence fact.
 
 Apply the evidence types in this priority order:
 
 1. `explicit_document_relation`: same code, callout, view reference, axis or label.
-2. `dimension_transform`: dimensions agree after a named unit or axis transformation.
-3. `matching_topology`: matching bays, doors, supports, carcasses, frames,
+2. `dimension_equality`: the same readable physical dimension and scope are
+   explicitly equal on both groups without a unit or axis transformation. Name
+   both values, unit and scope.
+3. `dimension_transform`: dimensions agree after a named unit or axis transformation.
+4. `matching_topology`: matching bays, doors, supports, carcasses, frames,
    appliances, joints or structural elements.
-4. `unique_geometry`: repeated cut-outs, handles, posts, appliance locations,
+5. `unique_geometry`: repeated cut-outs, handles, posts, appliance locations,
    turning parts, mounting points, panel sequence or distinctive frame geometry.
-5. `direct_shared_structure`: visible common frame, track, carcass, joint or
+6. `direct_shared_structure`: visible common frame, track, carcass, joint or
    physical connection. It can support a merge but cannot establish one alone.
 
 An explicit document relation can prove one edge on its own. One exact
 dimension transform can prove one edge on its own only when the observation
 names both measurements and the precise unit or axis transformation. Otherwise
 an edge needs at least two independent facts and at least one identity-level
-fact, `matching_topology` or `unique_geometry`. Different dimensions prohibit a
-merge only when they claim the same physical axis and scope after unit and
-projection normalization. Width versus depth, overall versus local dimensions,
-different scales, quantities and non-comparable projections are not conflicts.
+fact, `dimension_equality`, `matching_topology` or `unique_geometry`. One
+`dimension_equality` is a strong positive fact but does not merge alone. Two
+independent `dimension_equality` facts are sufficient dimension proof; three or
+more increase its strength. Different dimensions prohibit a merge only when
+they claim the same physical axis and scope after unit and projection
+normalization. Width versus depth, overall versus local dimensions, different
+scales, quantities and non-comparable projections are not conflicts.
 
 ## 3. Standalone-package declaration
 

@@ -7,6 +7,7 @@ DETECTION_REGISTRY_JSON_SCHEMA: dict[str, Any] = {"type":"object","additionalPro
 
 PAIRWISE_MERGE_EVIDENCE_TYPES = frozenset({
     "explicit_document_relation",
+    "dimension_equality",
     "matching_topology",
     "dimension_transform",
     "unique_geometry",
@@ -32,6 +33,7 @@ PROOF_PARENT_RELATIONSHIPS = frozenset({
     *PAIRWISE_EVIDENCE_RELATIONSHIPS,
 })
 _NON_EXPLICIT_MERGE_SUPPORT_TYPES = frozenset({
+    "dimension_equality",
     "matching_topology",
     "dimension_transform",
     "unique_geometry",

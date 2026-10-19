@@ -59,11 +59,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_32_distinct_edges_singleton_audit_temperature_0"
+    "detection_v4_33_dimension_equality_full_six_factor_graph_temperature_0"
 )
-# V4.32 retains V4.30's compact binary package outcome. Before declaring those
-# singleton IDs, the Registry rechecks every unconnected group and may only
-# prove it to a distinct group. Runtime still derives the complete audit.
+# V4.33 adds explicit equal-dimension facts to the complete pairwise evidence
+# assessment. The Registry still serializes only positive facts and derives the
+# compact package audit in runtime.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
