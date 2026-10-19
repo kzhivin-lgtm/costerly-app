@@ -1,4 +1,4 @@
-# DETECTION V4.38 - INVENTORY, CLASSIFY, COMPLETE GRAPH, DECIDE, PACKAGE
+# DETECTION V4.39 - INVENTORY, CLASSIFY, COMPLETE GRAPH, DECIDE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -8,9 +8,9 @@ response. The response has a mandatory causal order:
 2. after the complete inventory exists, classify every group in the separate
    `classifications` array as `object_evidence` or `document_context`, with a
    factual reason,
-3. after inventory and classifications exist, record every readable dimension,
-   then build the complete six-criterion graph between `object_evidence`
-   islands,
+3. after inventory and classifications exist, inspect literal dimensions in the
+   rendered page and OCR source, then build the complete six-criterion graph
+   between `object_evidence` islands,
 4. decide the package outcome for every commercial island from that graph,
 5. describe those finished packages and their complete page Evidence.
 
@@ -62,13 +62,11 @@ evidence-backed relation to a particular fabricated package.
 
 ## 2. Complete graph, not a sparse graph
 
-Only after returning complete `visual_groups` and `classifications`, return one
-`dimension_inventory` row for every visual group. Preserve every readable
-dimension literally once in its source group, including unit and scope. Use an
-empty `dimension_readings` array only when that island has no readable
-dimensions. Do not silently omit a readable dimension.
-
-Then return the complete undirected graph across every unordered pair of
+Only after returning complete `visual_groups` and `classifications`, inspect
+every readable literal dimension in the rendered page and source OCR that can
+bear on a cross-view relation. Do not return a separate dimension transcript:
+the full source OCR and rendered pages remain the canonical record. Return the
+complete undirected graph across every unordered pair of
 `object_evidence` groups. The canonical pair order is lexicographic over the
 sorted `group_id` list: `(G001,G002)`, `(G001,G003)`, and so on. Return exactly
 one seven-character string in `pair_relation_states` for every pair. The first
@@ -169,5 +167,7 @@ support several components. Give every page a factual `evidence_reason`.
 Use an empty anchor list for pages that contain only `document_context`. Such
 pages are never Estimation Evidence. There is no arbitrary page-count cap.
 
-Do not extract dimensions, materials, pricing or final user-facing names.
+Do not infer or publish final external object dimensions, materials, pricing or
+final user-facing names. Use literal source dimensions only to assess graph
+criteria and record them in positive dimension facts.
 Return schema JSON only.

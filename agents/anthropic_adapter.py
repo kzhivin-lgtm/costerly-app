@@ -30,7 +30,6 @@ from agents.detection_spatial_inventory import (
 )
 from agents.schemas.detection_registry_schema import (
     REFERENCE_RELATIONSHIP,
-    DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
     DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA,
     DETECTION_PAIR_RELATION_STATES_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
@@ -39,7 +38,6 @@ from agents.schemas.detection_registry_schema import (
     derive_detection_package_decision_audit,
     derive_detection_proof_components,
     derive_detection_standalone_package_group_ids,
-    validate_detection_dimension_inventory,
     validate_detection_pair_relation_ledger,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
@@ -64,13 +62,16 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_38_complete_pair_ledger_dimension_inventory_temperature_0"
+    "detection_v4_39_complete_pair_ledger_source_ocr_dimensions_temperature_0"
 )
-# V4.38 keeps one Haiku call and V4.37's graph-derived package membership, but
-# adds a complete compact six-criterion ledger for every object-evidence pair.
+# V4.39 keeps one Haiku call and V4.37's graph-derived package membership. It
+# retains the complete six-criterion ledger, but relies on source OCR pages for
+# literal dimension evidence instead of asking the model to duplicate every
+# dimension in a separate response inventory.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
-# The compact V4.38 ledger makes every object-evidence pair explicit.  12,288
-# gives HSL-size drawings room for the added matrix without a second request.
+# The compact V4.39 ledger makes every object-evidence pair explicit without a
+# duplicated per-group dimension transcript. Keep the established cap so the
+# experiment measures the contract reduction, not a larger response allowance.
 DETECTION_VISUAL_REGISTRY_MAX_TOKENS = 12_288
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -149,7 +150,7 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications", "dimension_inventory",
+        "visual_groups", "classifications",
         "pair_relation_states", "pair_relation_facts",
         "shared_reference_group_ids",
         "page_coverage",
@@ -157,7 +158,6 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
-        "dimension_inventory": DETECTION_DIMENSION_INVENTORY_JSON_SCHEMA,
         "pair_relation_states": DETECTION_PAIR_RELATION_STATES_JSON_SCHEMA,
         "pair_relation_facts": DETECTION_PAIR_RELATION_FACTS_JSON_SCHEMA,
         "shared_reference_group_ids": DETECTION_SHARED_REFERENCE_GROUP_IDS_JSON_SCHEMA,
@@ -1049,22 +1049,6 @@ def _resolve_component_page_coverage(
     return resolved, graph_page_coverage_supplements
 
 
-def _normalize_pair_relation_inventory_group_ids(
-    payload: dict[str, Any], group_id_mapping: dict[str, str],
-) -> dict[str, Any]:
-    """Keep dimension inventory IDs aligned with canonical visual-group IDs."""
-    normalized = copy.deepcopy(payload)
-    dimension_inventory = normalized.get("dimension_inventory")
-    if not isinstance(dimension_inventory, list):
-        return normalized
-    for row in dimension_inventory:
-        if not isinstance(row, dict):
-            continue
-        raw_group_id = str(row.get("group_id") or "")
-        row["group_id"] = group_id_mapping.get(raw_group_id, raw_group_id)
-    return normalized
-
-
 def _normalize_pair_relation_ledger_group_ids(
     payload: dict[str, Any],
     *,
@@ -1292,13 +1276,6 @@ def _discard_non_object_visual_registry_groups(
     if isinstance(classifications, list):
         effective["classifications"] = [
             row for row in classifications
-            if not isinstance(row, dict)
-            or str(row.get("group_id") or "") not in discarded_group_ids
-        ]
-    dimension_inventory = effective.get("dimension_inventory")
-    if isinstance(dimension_inventory, list):
-        effective["dimension_inventory"] = [
-            row for row in dimension_inventory
             if not isinstance(row, dict)
             or str(row.get("group_id") or "") not in discarded_group_ids
         ]
@@ -1543,7 +1520,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     registry_decision_audit = copy.deepcopy(payload)
     discarded_non_object_groups: list[dict[str, Any]] = []
     classification_decisions: list[dict[str, Any]] = []
-    dimension_inventory: list[dict[str, Any]] = []
     pair_relation_ledger: list[dict[str, Any]] = []
     provisional_package_decisions: list[dict[str, Any]] = []
     fallback_registry_object_ids: list[str] = []
@@ -1560,12 +1536,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             # remains complete even when the model leaves them out.
             payload.setdefault("objects", [])
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications", "dimension_inventory",
+            "visual_groups", "classifications",
             "pair_relation_states", "pair_relation_facts",
             "shared_reference_group_ids", "objects", "page_coverage",
         }:
             raise ValueError(
-                "visual registry must contain only visual_groups, classifications, dimension_inventory, pair_relation_states, pair_relation_facts, shared_reference_group_ids, objects and page_coverage"
+                "visual registry must contain only visual_groups, classifications, pair_relation_states, pair_relation_facts, shared_reference_group_ids, objects and page_coverage"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -1580,9 +1556,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)
         }
         payload = _normalize_component_anchor_group_ids(payload, group_id_mapping)
-        payload = _normalize_pair_relation_inventory_group_ids(
-            payload, group_id_mapping
-        )
         payload = _normalize_pair_relation_ledger_group_ids(
             payload,
             group_id_mapping=group_id_mapping,
@@ -1591,9 +1564,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         visual_group_ids = {
             group["group_id"] for group in visual_map["visual_groups"]
         }
-        dimension_inventory = validate_detection_dimension_inventory(
-            payload["dimension_inventory"], visual_group_ids=visual_group_ids,
-        )
         raw_pairwise_merge_proofs, pair_relation_ledger = (
             validate_detection_pair_relation_ledger(
                 payload["pair_relation_states"],
@@ -1692,7 +1662,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "classification_decisions": classification_decisions,
-            "dimension_inventory": dimension_inventory,
             "pair_relation_ledger": pair_relation_ledger,
             "provisional_package_decisions": provisional_package_decisions,
             "validation_error": str(exc),
@@ -1743,7 +1712,6 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         "registry_decision_audit": registry_decision_audit,
         "discarded_non_object_visual_groups": discarded_non_object_groups,
         "classification_decisions": classification_decisions,
-        "dimension_inventory": dimension_inventory,
         "pair_relation_ledger": pair_relation_ledger,
         "pair_relation_count": len(pair_relation_ledger),
         "pair_relation_positive_criterion_count": sum(

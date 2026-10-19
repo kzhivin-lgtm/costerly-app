@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.38`, experimental, built on the protected
+Current model build: `Detection V4.39`, experimental, built on the protected
 V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
 treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
@@ -235,7 +235,15 @@ the semantic proof threshold. This keeps one Haiku call and temperature zero,
 but raises the Registry output ceiling from 8,192 to 12,288 tokens to preserve
 the complete compact ledger. Acceptance: HSL must return a complete pair ledger
 without truncation, preserve every positive dimension fact in its merge graph,
-and then pass Page 23 and Adda regressions.
+and then pass Page 23 and Adda regressions. V4.39 retains every six-criterion
+pair state and positive, page-cited dimension fact, but removes the duplicated
+per-group `dimension_inventory` transcript from the model response. Full OCR
+and rendered pages remain the literal source record for Estimation and graph
+inspection. This corrects the contradictory instruction to both return and not
+extract dimensions, while preserving the rule that Detection never infers or
+publishes final external object dimensions. It keeps the 12,288-token ceiling
+and one Haiku call. Acceptance: HSL returns valid JSON and its full graph,
+then Page 23 and Adda retain their protected outcomes.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only

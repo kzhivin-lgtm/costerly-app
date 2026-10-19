@@ -591,7 +591,7 @@ def test_integrated_registry_schema_has_no_model_owner_or_object_id_fields():
     assert "objects" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["required"]
     assert "pair_relation_states" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "pair_relation_facts" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
-    assert "dimension_inventory" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
+    assert "dimension_inventory" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "classifications" in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "proof_edges" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]
     assert "merge_proofs" not in DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"]

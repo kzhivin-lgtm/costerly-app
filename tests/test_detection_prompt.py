@@ -78,7 +78,9 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Complete graph, not a sparse graph" in prompt
     assert "pair_relation_states" in prompt
     assert "pair_relation_facts" in prompt
-    assert "dimension_inventory" in prompt
+    assert "Do not return a separate dimension transcript" in prompt
+    assert "Do not extract dimensions" not in prompt
+    assert "literal source dimensions only to assess graph" in prompt
     assert "checked-negative" in prompt
     assert "Perform one final singleton audit" in prompt
     assert "edge merely to avoid a singleton" in prompt
@@ -105,5 +107,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_38_complete_pair_ledger_dimension_inventory_temperature_0"
+        "detection_v4_39_complete_pair_ledger_source_ocr_dimensions_temperature_0"
     )

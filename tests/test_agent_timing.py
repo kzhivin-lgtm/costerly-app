@@ -61,7 +61,7 @@ class _Response:
 
 
 def _visual_registry_payload(payload):
-    """Upgrade legacy Registry fixtures to the V4.38 staged contract."""
+    """Upgrade legacy Registry fixtures to the V4.39 staged contract."""
     if not isinstance(payload, dict) or not {
         "visual_groups", "objects", "page_coverage",
     }.issubset(payload):
@@ -135,10 +135,6 @@ def _visual_registry_payload(payload):
                 "evidence_facts": facts,
                 "commercial_inseparability": proof.get("commercial_inseparability", ""),
             })
-    payload["dimension_inventory"] = [
-        {"group_id": group["group_id"], "dimension_readings": []}
-        for group in groups if isinstance(group, dict)
-    ]
     payload["pair_relation_states"] = pair_relation_states
     payload["pair_relation_facts"] = pair_relation_facts
     payload.pop("standalone_package_group_ids", None)
