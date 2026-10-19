@@ -108,8 +108,12 @@ coordinate. OCR can neither create, split, merge nor invalidate an object, and
 no response field or validation requires equal counts. Runtime persists raw
 OCR-region and Visual-Group counts by page on successful and failed Registry
 events. No model call, router, Sonnet path, Naming or UI timing is added.
-Current gate: fresh HSL run must show the passive audit and recover Visual
-Groups before object merging is evaluated.
+Visual Group discovery gate is provisionally met: the HSL audit found all
+three N56 depictions despite only two OCR regions, and four different
+subsequent files preserved or exceeded their OCR depiction count. Checkpoint:
+`notes/DETECTION_V4_23_PASSIVE_OCR_VISUAL_DISCOVERY_CHECKPOINT_2026_10_19.md`.
+Next gate: diagnose and repair HSL pairwise merge proof failures without
+changing this protected visual-discovery contract.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

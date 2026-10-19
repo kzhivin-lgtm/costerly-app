@@ -1,5 +1,18 @@
 # Done Log
 
+Detection V4.23 passive OCR Visual Group discovery checkpoint `5306fff`:
+restored the protected V4.23 Registry structure after rejected V4.24/V4.25 OCR
+coverage experiments. OCR graphic-region coordinates now act only as a passive
+post-visual cross-check and are persisted with per-page Visual Group counts on
+both accepted and failed Registry events. The HSL audit found all three N56
+depictions despite only two OCR graphic regions, found seven page-4 groups,
+and excluded the page-2 floor plan from object proof. Four further file runs
+confirmed the intended non-equality of OCR regions and visual depictions. This
+is a provisional Visual Group discovery checkpoint only, not an acceptance of
+HSL object boundaries or pairwise merge proofs. Full evidence:
+`notes/DETECTION_V4_23_PASSIVE_OCR_VISUAL_DISCOVERY_CHECKPOINT_2026_10_19.md`,
+завершена 19.10
+
 Detection V4 Naming and File Review checkpoint `52c314d`: retains the
 owner-accepted Detection V4 pairwise-merge-proof baseline `2718498` and the
 accepted Naming, File Review, and diagnostic commits `bf1fc6a`, `48acde4`,
