@@ -93,7 +93,7 @@ def _visual_registry_payload(payload):
         })
     payload["classifications"] = classifications
     payload["proof_edges"] = proofs if isinstance(proofs, list) else []
-    if "package_decisions" not in payload:
+    if "standalone_package_group_ids" not in payload:
         group_ids_by_class = {
             item["group_id"]: item["evidence_class"]
             for item in classifications
@@ -114,24 +114,13 @@ def _visual_registry_payload(payload):
             components = derive_detection_proof_components(
                 payload["proof_edges"], visual_group_ids=commercial_group_ids,
             )
-            payload["package_decisions"] = [
-                {
-                    "group_id": group_id,
-                    "package_disposition": (
-                        "part_of_proven_component"
-                        if len(component) > 1
-                        else "standalone_package"
-                    ),
-                    "component_anchor_group_id": component[0],
-                    "decision_reason": "The package outcome follows the proof graph.",
-                }
-                for component in components
-                for group_id in component
-            ]
+            payload["standalone_package_group_ids"] = sorted(
+                component[0] for component in components if len(component) == 1
+            )
         except Exception:
             # Invalid graph fixtures must reach the production graph validator,
             # rather than fail inside the fixture normalizer.
-            payload["package_decisions"] = []
+            payload["standalone_package_group_ids"] = []
     return payload
 
 

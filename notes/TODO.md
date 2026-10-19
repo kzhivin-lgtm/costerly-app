@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.29`, experimental, built on the protected
+Current model build: `Detection V4.30`, experimental, built on the protected
 V4.23 passive OCR cross-check and checkpoint `52c314d`. Comment: V4.12 still
 treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
@@ -152,6 +152,14 @@ a package. Runtime verifies every decision against the accepted proof
 components and persists it with the Registry audit. Acceptance: HSL succeeds
 without an unproved merge, every eligible group is accounted for, and the
 result is then regressed against Page 23 and Adda before any checkpoint.
+V4.29 is rejected by its first HSL run, not for an inference defect: the
+full 31-row ledger exhausted Anthropic's 8,192 output-token limit and truncated
+JSON (`stop_reason=max_tokens`). V4.30 retains the binary outcome but transmits
+only the sorted `standalone_package_group_ids`; graph connectivity deterministically
+establishes the complementary proven-component outcome and runtime persists the
+complete per-group ledger. This removes duplicate output without raising the
+model budget, adding a call, or relaxing proof validation. The same HSL, Page
+23 and Adda acceptance gates apply.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

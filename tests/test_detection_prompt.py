@@ -89,9 +89,9 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "Evaluate relations\nglobally across the complete classified" in prompt
     assert "can support a merge but cannot establish one alone" in prompt
     assert "There is no third outcome" in prompt
-    assert "package_decisions" in prompt
+    assert "standalone_package_group_ids" in prompt
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_29_complete_package_decisions_temperature_0"
+        "detection_v4_30_compact_standalone_packages_temperature_0"
     )

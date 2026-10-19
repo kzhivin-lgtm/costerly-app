@@ -1,4 +1,4 @@
-# DETECTION V4.29 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
+# DETECTION V4.30 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -116,22 +116,18 @@ merge only when they claim the same physical axis and scope after unit and
 projection normalization. Width versus depth, overall versus local dimensions,
 different scales, quantities and non-comparable projections are not conflicts.
 
-## 3. Package-decision ledger
+## 3. Standalone-package declaration
 
-After the proof graph is complete, return exactly one `package_decisions` row
-for every `object_evidence` group except a `context_reference_link` source.
-This is a complete, auditable ledger, not an optional summary.
+After the proof graph is complete, return `standalone_package_group_ids`: the
+complete sorted list of singleton component anchors. Every
+`object_evidence` group not on this list must belong to an accepted non-singleton
+merge component. A `context_reference_link` source is excluded because it is
+shared page-level Evidence, not a candidate package.
 
-- Use `part_of_proven_component` only when the group is in an accepted merge
-  component. Set `component_anchor_group_id` to that component's lowest ordered
-  group ID.
-- Use `standalone_package` when the group has no accepted merge edge. Set
-  `component_anchor_group_id` to its own group ID.
-
-Every decision has a factual `decision_reason`. There is no third outcome. A
-detail that seems related but lacks a proved merge becomes a standalone
-commercial candidate for review. A context-link source is excluded because it
-is shared page-level Evidence, not a candidate package.
+There is no third outcome. A detail that seems related but lacks a proved merge
+is listed as a standalone commercial candidate for review. The runtime derives
+and persists the full per-group package ledger from the graph, so do not repeat
+that ledger in the response.
 
 ## 4. Commercial-object packages
 

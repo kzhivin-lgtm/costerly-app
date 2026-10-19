@@ -30,14 +30,15 @@ from agents.detection_spatial_inventory import (
 )
 from agents.schemas.detection_registry_schema import (
     CONTEXT_REFERENCE_RELATIONSHIP,
-    DETECTION_PACKAGE_DECISION_JSON_SCHEMA,
     DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
     DETECTION_REGISTRY_JSON_SCHEMA,
     DetectionRegistrySchemaError,
+    DETECTION_STANDALONE_PACKAGE_GROUP_IDS_JSON_SCHEMA,
+    derive_detection_package_decision_audit,
     derive_detection_proof_components,
-    validate_detection_package_decisions,
     validate_detection_pairwise_merge_proofs,
     validate_detection_registry,
+    validate_detection_standalone_package_group_ids,
 )
 from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
@@ -58,10 +59,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_29_complete_package_decisions_temperature_0"
+    "detection_v4_30_compact_standalone_packages_temperature_0"
 )
-# V4.29 retains V4.28's context relation and requires every commercial visual
-# group to resolve explicitly to either a proven component or a singleton.
+# V4.30 retains V4.28's context relation and V4.29's binary package outcome,
+# while serializing only singleton IDs and deriving the complete audit in code.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -141,14 +142,14 @@ DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [
-        "visual_groups", "classifications", "proof_edges", "package_decisions",
+        "visual_groups", "classifications", "proof_edges", "standalone_package_group_ids",
         "objects", "page_coverage",
     ],
     "properties": {
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "classifications": DETECTION_VISUAL_CLASSIFICATIONS_SCHEMA,
         "proof_edges": DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA,
-        "package_decisions": DETECTION_PACKAGE_DECISION_JSON_SCHEMA,
+        "standalone_package_group_ids": DETECTION_STANDALONE_PACKAGE_GROUP_IDS_JSON_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
             "type": "array",
@@ -788,16 +789,12 @@ def _normalize_component_anchor_group_ids(
                 item["component_anchor_group_id"] = group_id_mapping.get(
                     raw_group_id, raw_group_id
                 )
-    package_decisions = normalized.get("package_decisions")
-    if isinstance(package_decisions, list):
-        for item in package_decisions:
-            if isinstance(item, dict):
-                raw_group_id = str(item.get("group_id") or "")
-                raw_anchor_group_id = str(item.get("component_anchor_group_id") or "")
-                item["group_id"] = group_id_mapping.get(raw_group_id, raw_group_id)
-                item["component_anchor_group_id"] = group_id_mapping.get(
-                    raw_anchor_group_id, raw_anchor_group_id
-                )
+    standalone_package_group_ids = normalized.get("standalone_package_group_ids")
+    if isinstance(standalone_package_group_ids, list):
+        normalized["standalone_package_group_ids"] = sorted(
+            group_id_mapping.get(str(group_id), str(group_id))
+            for group_id in standalone_package_group_ids
+        )
     page_coverage = normalized.get("page_coverage")
     if isinstance(page_coverage, list):
         for entry in page_coverage:
@@ -1108,12 +1105,11 @@ def _discard_non_object_visual_registry_groups(
                     or page_number in retained_group_pages
                 )
             ]
-    package_decisions = effective.get("package_decisions")
-    if isinstance(package_decisions, list):
-        effective["package_decisions"] = [
-            item for item in package_decisions
-            if not isinstance(item, dict)
-            or str(item.get("group_id") or "") not in discarded_group_ids
+    standalone_package_group_ids = effective.get("standalone_package_group_ids")
+    if isinstance(standalone_package_group_ids, list):
+        effective["standalone_package_group_ids"] = [
+            group_id for group_id in standalone_package_group_ids
+            if str(group_id) not in discarded_group_ids
         ]
     return effective, discarded_groups
 
@@ -1205,11 +1201,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
                 _discard_non_object_visual_registry_groups(payload)
             )
         if not isinstance(payload, dict) or set(payload) != {
-            "visual_groups", "classifications", "proof_edges", "package_decisions",
+            "visual_groups", "classifications", "proof_edges", "standalone_package_group_ids",
             "objects", "page_coverage",
         }:
             raise ValueError(
-                "visual registry must contain only visual_groups, classifications, proof_edges, package_decisions, objects and page_coverage"
+                "visual registry must contain only visual_groups, classifications, proof_edges, standalone_package_group_ids, objects and page_coverage"
             )
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
@@ -1248,10 +1244,13 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
         proof_components = derive_detection_proof_components(
             pairwise_merge_proofs, visual_group_ids=visual_group_ids,
         )
-        package_decisions = validate_detection_package_decisions(
-            payload["package_decisions"],
+        standalone_package_group_ids = validate_detection_standalone_package_group_ids(
+            payload["standalone_package_group_ids"],
             components=proof_components,
             commercial_visual_group_ids=commercial_visual_group_ids,
+        )
+        package_decisions = derive_detection_package_decision_audit(
+            proof_components
         )
         registry_objects_input, anchor_to_object_id = _derive_registry_from_proof_components(
             payload["objects"], proof_components,
@@ -1339,11 +1338,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             context_reference_source_group_ids
         ),
         "package_decisions": package_decisions,
-        "standalone_package_group_ids": sorted(
-            item["group_id"]
-            for item in package_decisions
-            if item["package_disposition"] == "standalone_package"
-        ),
+        "standalone_package_group_ids": standalone_package_group_ids,
         "proof_graph_components": [
             {
                 "canonical_anchor_group_id": component[0],

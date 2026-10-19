@@ -22,10 +22,6 @@ MERGE_EVIDENCE_RELATIONSHIPS = frozenset({
     "object_detail",
 })
 CONTEXT_REFERENCE_RELATIONSHIP = "context_reference_link"
-PACKAGE_DECISION_DISPOSITIONS = frozenset({
-    "part_of_proven_component",
-    "standalone_package",
-})
 PROOF_PARENT_DECISIONS = frozenset({
     "new_object_root",
     "attach_to_group",
@@ -86,27 +82,9 @@ DETECTION_PAIRWISE_MERGE_PROOF_JSON_SCHEMA: dict[str, Any] = {
     },
 }
 
-DETECTION_PACKAGE_DECISION_JSON_SCHEMA: dict[str, Any] = {
+DETECTION_STANDALONE_PACKAGE_GROUP_IDS_JSON_SCHEMA: dict[str, Any] = {
     "type": "array",
-    "items": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "group_id",
-            "package_disposition",
-            "component_anchor_group_id",
-            "decision_reason",
-        ],
-        "properties": {
-            "group_id": {"type": "string"},
-            "package_disposition": {
-                "type": "string",
-                "enum": sorted(PACKAGE_DECISION_DISPOSITIONS),
-            },
-            "component_anchor_group_id": {"type": "string"},
-            "decision_reason": {"type": "string"},
-        },
-    },
+    "items": {"type": "string"},
 }
 
 DETECTION_BLOCKED_MERGE_JSON_SCHEMA: dict[str, Any] = {
@@ -522,78 +500,60 @@ def derive_detection_proof_components(
     return components
 
 
-def validate_detection_package_decisions(
-    decisions: object,
+def validate_detection_standalone_package_group_ids(
+    group_ids: object,
     *,
     components: list[list[str]],
     commercial_visual_group_ids: set[str],
-) -> list[dict[str, Any]]:
-    """Require an explicit, proof-consistent package outcome for every group.
+) -> list[str]:
+    """Require the compact explicit declaration of every singleton package.
 
-    A classified commercial island has only two outcomes after graph validation:
-    it belongs to a proven merge component or it is a singleton commercial
-    package. Context-reference sources are deliberately outside this ledger,
-    because they are shared Evidence rather than a commercial candidate.
+    Graph connectivity already proves the complementary outcome: every
+    commercial group not named here is part of a non-singleton proven component.
+    The runtime derives and persists the full per-group ledger from that graph,
+    avoiding a redundant model row for every member of a merged component.
     """
-    required = {
-        "group_id",
-        "package_disposition",
-        "component_anchor_group_id",
-        "decision_reason",
+    component_group_ids = {
+        group_id for component in components for group_id in component
     }
-    if not isinstance(decisions, list) or not all(
-        isinstance(item, dict) and set(item) == required for item in decisions
-    ):
-        raise DetectionRegistrySchemaError(
-            "registry package decision fields do not match contract"
-        )
-
-    component_by_group_id = {
-        group_id: component
-        for component in components
-        for group_id in component
-    }
-    if set(component_by_group_id) != commercial_visual_group_ids:
+    if component_group_ids != commercial_visual_group_ids:
         raise DetectionRegistrySchemaError(
             "registry proof components do not cover commercial visual groups"
         )
-
-    decisions_by_group_id: dict[str, dict[str, Any]] = {}
-    for item in decisions:
-        group_id = str(item["group_id"] or "")
-        component = component_by_group_id.get(group_id)
-        if group_id in decisions_by_group_id or component is None:
-            raise DetectionRegistrySchemaError("registry package decision group is invalid")
-        expected_disposition = (
-            "part_of_proven_component"
-            if len(component) > 1
-            else "standalone_package"
-        )
-        if (
-            item["package_disposition"] != expected_disposition
-            or str(item["component_anchor_group_id"] or "") != component[0]
-            or not str(item["decision_reason"] or "").strip()
-        ):
-            raise DetectionRegistrySchemaError(
-                "registry package decision conflicts with proof graph",
-                details={
-                    "group_id": group_id,
-                    "expected_disposition": expected_disposition,
-                    "expected_component_anchor_group_id": component[0],
-                },
-            )
-        decisions_by_group_id[group_id] = item
-
-    if set(decisions_by_group_id) != commercial_visual_group_ids:
+    expected_group_ids = sorted(
+        component[0] for component in components if len(component) == 1
+    )
+    if (
+        not isinstance(group_ids, list)
+        or not all(isinstance(group_id, str) and group_id for group_id in group_ids)
+        or group_ids != sorted(group_ids)
+        or len(group_ids) != len(set(group_ids))
+        or group_ids != expected_group_ids
+    ):
         raise DetectionRegistrySchemaError(
-            "registry must decide every commercial visual group as component or standalone package",
+            "registry standalone package groups do not match proof graph",
             details={
-                "missing_package_decision_group_ids": sorted(
-                    commercial_visual_group_ids - set(decisions_by_group_id)
-                ),
-                "unexpected_package_decision_group_ids": sorted(
-                    set(decisions_by_group_id) - commercial_visual_group_ids
-                ),
+                "expected_standalone_package_group_ids": expected_group_ids,
+                "received_standalone_package_group_ids": group_ids,
             },
         )
-    return decisions
+    return group_ids
+
+
+def derive_detection_package_decision_audit(
+    components: list[list[str]],
+) -> list[dict[str, Any]]:
+    """Persist the complete package outcome deterministically from the graph."""
+    return [
+        {
+            "group_id": group_id,
+            "package_disposition": (
+                "part_of_proven_component"
+                if len(component) > 1
+                else "standalone_package"
+            ),
+            "component_anchor_group_id": component[0],
+        }
+        for component in components
+        for group_id in component
+    ]
