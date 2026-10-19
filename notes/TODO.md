@@ -88,6 +88,15 @@ measurements on both groups and their transformation, and that fact requires
 `confirmed_match`. A bare status is never merge evidence. This prevents a
 model's generic claim that dimensions agree from bypassing the independent-fact
 threshold for a section or alternate view.
+V4.23 removes that duplicated positive representation: an exact
+`dimension_transform` is now the sole source of a positive dimension match.
+When a same-scope dimension conflict rejects one plausible earlier group,
+Detection must search every other earlier object-specific group before it
+creates a root. It may attach only to an evidence-backed non-conflicting group;
+otherwise the root persists a typed `blocked_merge` naming the rejected group
+and both incompatible measurements. This preserves the critical no-merge rule
+without forcing the model to serialize the same conclusion twice. It adds no
+model call, router, Sonnet path, Naming or UI timing.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

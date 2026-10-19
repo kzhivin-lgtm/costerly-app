@@ -50,10 +50,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_22_bidirectional_dimension_proof_temperature_0"
+    "detection_v4_23_dimension_conflict_search_temperature_0"
 )
-# V4.22 makes the compact dimension status bidirectional with the typed proof:
-# neither a bare status nor a bare transform can assert a match alone.
+# V4.23 uses an exact dimension_transform as the sole positive dimension-match
+# fact. A rejected candidate is recorded only on a new root as blocked_merge.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -896,6 +896,14 @@ def _normalize_visual_group_proof_parent_ids(
         parent["parent_group_id"] = group_id_mapping.get(
             raw_parent_group_id, raw_parent_group_id
         )
+        blocked_merge = parent.get("blocked_merge")
+        if isinstance(blocked_merge, dict):
+            raw_candidate_group_id = str(
+                blocked_merge.get("candidate_parent_group_id") or ""
+            )
+            blocked_merge["candidate_parent_group_id"] = group_id_mapping.get(
+                raw_candidate_group_id, raw_candidate_group_id
+            )
     return normalized
 
 
@@ -931,7 +939,7 @@ def _proof_parent_decision_audit(groups: object) -> list[dict[str, Any]]:
         parent = group.get("proof_parent")
         if not isinstance(parent, dict):
             continue
-        decisions.append({
+        decision = {
             "group_id": group.get("group_id"),
             "page_number": group.get("page_number"),
             "decision": parent.get("decision"),
@@ -939,8 +947,10 @@ def _proof_parent_decision_audit(groups: object) -> list[dict[str, Any]]:
             "relationship": parent.get("relationship"),
             "decision_reason": parent.get("decision_reason"),
             "evidence_facts": copy.deepcopy(parent.get("evidence_facts")),
-            "dimension_status": parent.get("dimension_status"),
-        })
+        }
+        if "blocked_merge" in parent:
+            decision["blocked_merge"] = copy.deepcopy(parent["blocked_merge"])
+        decisions.append(decision)
     return decisions
 
 
