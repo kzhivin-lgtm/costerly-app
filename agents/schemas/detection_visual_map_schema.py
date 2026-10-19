@@ -152,10 +152,6 @@ def validate_detection_visual_map(
                         and region_pages[region_id] == group["page_number"]
                         for region_id in group["source_region_ids"]
                     )
-                    or (
-                        any(page == group["page_number"] for page in region_pages.values())
-                        and not group["source_region_ids"]
-                    )
                 )
             )
         ):

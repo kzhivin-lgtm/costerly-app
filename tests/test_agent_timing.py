@@ -64,7 +64,6 @@ def _visual_registry_payload(payload):
         return payload
     proofs = payload.pop("merge_proofs", [])
     groups = payload["visual_groups"]
-    payload.setdefault("spatial_region_context", [])
     group_order = {
         str(group.get("group_id")): index
         for index, group in enumerate(groups)
@@ -75,8 +74,23 @@ def _visual_registry_payload(payload):
         for group in groups
         if isinstance(group, dict)
     }
-    for group in groups_by_id.values():
+    spatial_islands = []
+    for index, group in enumerate(groups_by_id.values(), start=1):
         group["source_region_ids"] = []
+        group["source_island_id"] = f"island-{index:03d}"
+        representation_kind = str(group.get("representation_kind") or "")
+        spatial_islands.append({
+            "island_id": group["source_island_id"],
+            "page_number": group["page_number"],
+            "location_hint": group["location_hint"],
+            "visual_description": group["visual_description"],
+            "classification": (
+                "non_object_context" if representation_kind == "floor_plan"
+                else "object_candidate"
+            ),
+            "observation_basis": "vision_only",
+            "source_region_ids": [],
+        })
         group["proof_parent"] = {
             "decision": "new_object_root",
             "parent_group_id": "ROOT",
@@ -84,6 +98,7 @@ def _visual_registry_payload(payload):
             "evidence_facts": [],
             "decision_reason": "No positive relation to an earlier object depiction is evidenced.",
         }
+    payload.setdefault("spatial_islands", spatial_islands)
     for proof in proofs if isinstance(proofs, list) else []:
         if not isinstance(proof, dict):
             continue

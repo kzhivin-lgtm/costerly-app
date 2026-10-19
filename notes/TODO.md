@@ -16,7 +16,7 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.24`, experimental, based on V4.15 and the
+Current model build: `Detection V4.25`, experimental, based on V4.15 and the
 protected checkpoint `52c314d`. Comment: V4.12 still treated every N76B page-11
 depiction as a partial component, then attempted to attach all three to N76B.
 The failure proved that assembly/component was an invalid eligibility gate, not
@@ -106,10 +106,17 @@ existing proof-parent graph. Sidebars, text and tables do not enter this object
 inventory, but remain complete page-level Evidence in the Estimation input
 whenever the physical page is assigned to an object. Mistral supplies graphic
 region boxes, not vector-line primitives, so a future local line extractor is
-separate work if a visible island is not emitted as an OCR image region. No
-model call, router, Sonnet path, Naming or UI timing is added. Next gate is a
-fresh HSL run: the audit must account for every OCR graphic region, produce 11
-commercial packages, then regress Page 23 and Adda.
+separate work if a visible island is not emitted as an OCR image region.
+V4.25 corrects the direction of that inspection: before any proof decision the
+same Registry call must independently enumerate every bounded page
+`spatial_island`, including generic plans and framed text, then reconcile that
+visual search against OCR. An island may be `vision_only` if OCR did not emit a
+region. Every island is classified `object_candidate` or
+`non_object_context`; only the former maps one-to-one to a Visual Group and
+enters the existing proof graph. The audit persists counts by page and class.
+No model call, router, Sonnet path, Naming or UI timing is added. Current gate:
+fresh HSL run must first return the expected page-level island inventory,
+including all three N56 depictions, before object merging is evaluated.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate
