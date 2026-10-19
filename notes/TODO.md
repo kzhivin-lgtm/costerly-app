@@ -16,15 +16,16 @@ This adds no model call, router, Sonnet route, or file-specific override.
 Preserve object-ID locking, full object evidence, UI-only previews, deferred
 Naming, File Review timing, and TC. Next gate: fresh HSL run must produce the
 11 packages with complete page-4 Evidence, then regress Page 23 and Adda.
-Current model build: `Detection V4.11`, experimental, based on V4.10 and the
-protected checkpoint `52c314d`. Comment: the failed V4.10 HSL audit produced
-placeholder self-proofs for singleton objects and left assembly views unowned.
-V4.11 keeps both conditions as hard failures, makes `merge_proofs` an
-edge-only list, and makes the document-context basis specific enough to
-distinguish a navigation plan or semantically headed table from a dimensioned
-product elevation. This build changes no model count, router, Sonnet path,
-Naming, Evidence scope or UI timing. It is not a checkpoint until HSL role
-recall and the Page 23/Adda regression gate are accepted.
+Current model build: `Detection V4.12`, experimental, based on V4.11 and the
+protected checkpoint `52c314d`. Comment: V4.11 correctly stopped HSL when the
+provider called page-11 N76B a component but used it as a commercial boundary.
+V4.12 removes that contradictory provider-owned role: the provider classifies
+each depiction's observable scope, then runtime code deterministically maps it
+to `assembly_view`, `component_detail`, or `document_context`. A partial scope
+now requires an explicit cut, open boundary, or parent reference. This adds no
+model call, router, Sonnet path, Naming, Evidence scope or UI timing. It is not
+a checkpoint until HSL role recall and the Page 23/Adda regression gate are
+accepted.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate

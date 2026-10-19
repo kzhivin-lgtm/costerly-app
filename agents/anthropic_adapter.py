@@ -32,6 +32,7 @@ from agents.schemas.detection_registry_schema import (
 )
 from agents.schemas.detection_visual_map_schema import (
     DETECTION_VISUAL_MAP_JSON_SCHEMA,
+    derive_detection_visual_map_commercial_roles,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
@@ -49,11 +50,11 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_11_visual_registry_role_basis_and_owner_temperature_0"
+    "detection_v4_12_visual_registry_scope_first_temperature_0"
 )
-# V4.11 makes role classification recall-first for product graphics, and makes
-# every assembly-view owner explicit. The Registry records controlled observable
-# role evidence, while package identity remains under pairwise merge proofs.
+# V4.12 makes the provider classify each depiction's visible scope first. The
+# runtime, not the provider, derives the commercial role used for ownership and
+# package validation. Pairwise merge proofs remain the identity contract.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -82,10 +83,10 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA = copy.deepcopy(
     DETECTION_VISUAL_MAP_JSON_SCHEMA["properties"]["visual_groups"]
 )
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "commercial_role"
+    "depiction_scope"
 )
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "role_basis"
+    "scope_basis"
 )
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
@@ -827,10 +828,11 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             raise ValueError("visual registry must contain only visual_groups, objects, merge_proofs and page_coverage")
         raw_groups = payload["visual_groups"]
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
-        visual_map = validate_detection_visual_map(
+        scoped_visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids({"visual_groups": raw_groups}),
-            require_commercial_roles=True,
+            require_depiction_scope=True,
         )
+        visual_map = derive_detection_visual_map_commercial_roles(scoped_visual_map)
         group_id_mapping = {
             raw_group_id: normalized["group_id"]
             for raw_group_id, normalized in zip(raw_group_ids, visual_map["visual_groups"], strict=True)

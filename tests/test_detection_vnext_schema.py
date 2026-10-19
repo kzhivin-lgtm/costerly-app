@@ -13,6 +13,7 @@ from agents.schemas.detection_registry_schema import (
 from agents.schemas.detection_schema import validate_detection_result
 from agents.schemas.detection_visual_map_schema import (
     DetectionVisualMapSchemaError,
+    derive_detection_visual_map_commercial_roles,
     normalize_detection_visual_map_group_ids,
     validate_detection_visual_map,
 )
@@ -265,51 +266,98 @@ def test_registry_requires_every_typed_assembly_view_to_have_an_owner():
     assert raised.value.details == {"unowned_assembly_group_ids": ["view-002"]}
 
 
-def test_integrated_visual_map_requires_a_commercial_role_for_each_group():
+def test_integrated_visual_map_requires_a_depiction_scope_for_each_group():
     visual_map = {
         "visual_groups": [
             {
                 "group_id": "view-001", "page_number": 1,
                 "location_hint": "left", "visual_description": "cabinet",
-                "representation_kind": "elevation", "commercial_role": "assembly_view",
-                "role_basis": ["finished_envelope"],
+                "representation_kind": "elevation",
+                "depiction_scope": "complete_product_representation",
+                "scope_basis": ["complete_outer_envelope"],
             },
             {
                 "group_id": "view-002", "page_number": 1,
                 "location_hint": "title block", "visual_description": "sheet metadata",
-                "representation_kind": "title_block", "commercial_role": "document_context",
-                "role_basis": ["administrative_context"],
+                "representation_kind": "title_block",
+                "depiction_scope": "document_context",
+                "scope_basis": ["administrative_context"],
             },
         ],
     }
 
     assert validate_detection_visual_map(
         visual_map,
-        require_commercial_roles=True,
+        require_depiction_scope=True,
     ) == visual_map
 
 
-def test_integrated_registry_structured_output_requires_role_basis():
+def test_integrated_registry_structured_output_requires_depiction_scope():
     group_schema = DETECTION_VISUAL_REGISTRY_JSON_SCHEMA["properties"][
         "visual_groups"
     ]["items"]
 
-    assert "commercial_role" in group_schema["required"]
-    assert "role_basis" in group_schema["required"]
+    assert "depiction_scope" in group_schema["required"]
+    assert "scope_basis" in group_schema["required"]
+    assert "commercial_role" not in group_schema["required"]
+    assert "role_basis" not in group_schema["required"]
+    assert "commercial_role" not in group_schema["properties"]
+    assert "role_basis" not in group_schema["properties"]
 
 
-def test_visual_map_rejects_component_role_without_positive_detail_basis():
+def test_visual_map_rejects_partial_scope_without_positive_fragment_basis():
     visual_map = {
         "visual_groups": [{
             "group_id": "view-001", "page_number": 1,
             "location_hint": "center", "visual_description": "cabinet elevation",
-            "representation_kind": "elevation", "commercial_role": "component_detail",
-            "role_basis": ["identifiable_product_graphic"],
+            "representation_kind": "elevation",
+            "depiction_scope": "partial_component_representation",
+            "scope_basis": ["complete_outer_envelope"],
         }],
     }
 
     with pytest.raises(DetectionVisualMapSchemaError, match="visual group is invalid"):
-        validate_detection_visual_map(visual_map, require_commercial_roles=True)
+        validate_detection_visual_map(visual_map, require_depiction_scope=True)
+
+
+def test_scope_first_map_derives_runtime_commercial_roles():
+    scoped_visual_map = {
+        "visual_groups": [
+            {
+                "group_id": "view-001", "page_number": 1,
+                "location_hint": "front", "visual_description": "cabinet elevation",
+                "representation_kind": "elevation",
+                "depiction_scope": "complete_product_representation",
+                "scope_basis": ["complete_outer_envelope", "overall_product_dimensions"],
+            },
+            {
+                "group_id": "view-002", "page_number": 1,
+                "location_hint": "cut", "visual_description": "panel section",
+                "representation_kind": "section",
+                "depiction_scope": "partial_component_representation",
+                "scope_basis": ["explicit_section_cut"],
+            },
+        ],
+    }
+
+    visual_map = derive_detection_visual_map_commercial_roles(
+        validate_detection_visual_map(scoped_visual_map, require_depiction_scope=True)
+    )
+
+    assert visual_map["visual_groups"] == [
+        {
+            "group_id": "view-001", "page_number": 1,
+            "location_hint": "front", "visual_description": "cabinet elevation",
+            "representation_kind": "elevation", "commercial_role": "assembly_view",
+            "role_basis": ["finished_envelope", "overall_product_dimensions"],
+        },
+        {
+            "group_id": "view-002", "page_number": 1,
+            "location_hint": "cut", "visual_description": "panel section",
+            "representation_kind": "section", "commercial_role": "component_detail",
+            "role_basis": ["explicit_section_or_detail"],
+        },
+    ]
 
 
 def test_registry_rejects_component_detail_as_commercial_boundary_support():

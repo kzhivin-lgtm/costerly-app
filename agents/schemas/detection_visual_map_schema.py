@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+
 from typing import Any
 
 COMMERCIAL_VISUAL_GROUP_ROLES = {
@@ -8,39 +10,70 @@ COMMERCIAL_VISUAL_GROUP_ROLES = {
     "document_context",
 }
 
+# V4.12 separates a provider's observable depiction classification from the
+# runtime's commercial role.  This prevents one response from labelling a
+# group a component and then using it as an object's complete representation.
+DEPICTION_SCOPES = {
+    "complete_product_representation",
+    "partial_component_representation",
+    "document_context",
+}
+
 # These are observable reasons, not private chain-of-thought.  Persisting them
-# makes a role decision reviewable without asking the model to restate its full
-# reasoning after an object-boundary failure.
-COMMERCIAL_ROLE_BASIS_TYPES = {
-    "finished_envelope",
+# makes the scope decision reviewable without asking the model to restate its
+# full reasoning after an object-boundary failure.
+DEPICTION_SCOPE_BASIS_TYPES = {
+    "complete_outer_envelope",
     "overall_product_dimensions",
-    "identifiable_product_graphic",
+    "product_specific_geometry",
     "alternate_product_view",
-    "explicit_section_or_detail",
-    "fragment_without_finished_envelope",
-    "explicit_parent_relation",
+    "explicit_section_cut",
+    "cropped_or_open_boundary",
+    "explicit_parent_reference",
     "administrative_context",
     "navigation_only_plan",
     "table_with_semantic_headers",
 }
 
-_ROLE_REQUIRED_BASIS_TYPES = {
-    "assembly_view": {
-        "finished_envelope",
+_SCOPE_ALLOWED_BASIS_TYPES = {
+    "complete_product_representation": {
+        "complete_outer_envelope",
         "overall_product_dimensions",
-        "identifiable_product_graphic",
+        "product_specific_geometry",
         "alternate_product_view",
     },
-    "component_detail": {
-        "explicit_section_or_detail",
-        "fragment_without_finished_envelope",
-        "explicit_parent_relation",
+    "partial_component_representation": {
+        "explicit_section_cut",
+        "cropped_or_open_boundary",
+        "explicit_parent_reference",
     },
     "document_context": {
         "administrative_context",
         "navigation_only_plan",
         "table_with_semantic_headers",
     },
+}
+
+DEPICTION_SCOPE_TO_COMMERCIAL_ROLE = {
+    "complete_product_representation": "assembly_view",
+    "partial_component_representation": "component_detail",
+    "document_context": "document_context",
+}
+
+# The returned visual-map shape stays compatible with the established Registry
+# and Evidence code.  Scope and its raw basis remain in the provider audit;
+# derived role fields are internal runtime facts, never accepted from Claude.
+_SCOPE_BASIS_TO_ROLE_BASIS = {
+    "complete_outer_envelope": "finished_envelope",
+    "overall_product_dimensions": "overall_product_dimensions",
+    "product_specific_geometry": "identifiable_product_graphic",
+    "alternate_product_view": "alternate_product_view",
+    "explicit_section_cut": "explicit_section_or_detail",
+    "cropped_or_open_boundary": "fragment_without_finished_envelope",
+    "explicit_parent_reference": "explicit_parent_relation",
+    "administrative_context": "administrative_context",
+    "navigation_only_plan": "navigation_only_plan",
+    "table_with_semantic_headers": "table_with_semantic_headers",
 }
 
 
@@ -67,16 +100,16 @@ DETECTION_VISUAL_MAP_JSON_SCHEMA: dict[str, Any] = {
                     "location_hint": {"type": "string"},
                     "visual_description": {"type": "string"},
                     "representation_kind": {"type": "string"},
-                    "commercial_role": {
+                    "depiction_scope": {
                         "type": "string",
-                        "enum": sorted(COMMERCIAL_VISUAL_GROUP_ROLES),
+                        "enum": sorted(DEPICTION_SCOPES),
                     },
-                    "role_basis": {
+                    "scope_basis": {
                         "type": "array",
                         "minItems": 1,
                         "items": {
                             "type": "string",
-                            "enum": sorted(COMMERCIAL_ROLE_BASIS_TYPES),
+                            "enum": sorted(DEPICTION_SCOPE_BASIS_TYPES),
                         },
                     },
                 },
@@ -123,7 +156,7 @@ def normalize_detection_visual_map_group_ids(result: dict[str, Any]) -> dict[str
 def validate_detection_visual_map(
     result: dict[str, Any],
     *,
-    require_commercial_roles: bool = False,
+    require_depiction_scope: bool = False,
 ) -> dict[str, Any]:
     if not isinstance(result, dict) or set(result) != {"visual_groups"}:
         raise DetectionVisualMapSchemaError("visual map must contain only visual_groups")
@@ -137,8 +170,8 @@ def validate_detection_visual_map(
             "group_id", "page_number", "location_hint", "visual_description",
             "representation_kind",
         }
-        if require_commercial_roles:
-            required.update({"commercial_role", "role_basis"})
+        if require_depiction_scope:
+            required.update({"depiction_scope", "scope_basis"})
         if not isinstance(group, dict) or set(group) != required:
             raise DetectionVisualMapSchemaError("visual group fields do not match contract")
         expected_id = f"view-{index:03d}"
@@ -151,18 +184,15 @@ def validate_detection_visual_map(
                 "location_hint", "visual_description", "representation_kind",
             ))
             or (
-                require_commercial_roles
+                require_depiction_scope
                 and (
-                    group["commercial_role"] not in COMMERCIAL_VISUAL_GROUP_ROLES
-                    or not isinstance(group["role_basis"], list)
-                    or not group["role_basis"]
-                    or not all(isinstance(basis, str) for basis in group["role_basis"])
-                    or len(group["role_basis"]) != len(set(group["role_basis"]))
-                    or not set(group["role_basis"]).issubset(
-                        COMMERCIAL_ROLE_BASIS_TYPES
-                    )
-                    or not set(group["role_basis"]).intersection(
-                        _ROLE_REQUIRED_BASIS_TYPES[group["commercial_role"]]
+                    group["depiction_scope"] not in DEPICTION_SCOPES
+                    or not isinstance(group["scope_basis"], list)
+                    or not group["scope_basis"]
+                    or not all(isinstance(basis, str) for basis in group["scope_basis"])
+                    or len(group["scope_basis"]) != len(set(group["scope_basis"]))
+                    or not set(group["scope_basis"]).issubset(
+                        _SCOPE_ALLOWED_BASIS_TYPES[group["depiction_scope"]]
                     )
                 )
             )
@@ -170,3 +200,30 @@ def validate_detection_visual_map(
             raise DetectionVisualMapSchemaError("visual group is invalid")
         group_ids.add(expected_id)
     return result
+
+
+def derive_detection_visual_map_commercial_roles(
+    scoped_visual_map: dict[str, Any],
+) -> dict[str, Any]:
+    """Map validated depiction scopes to the Registry's internal role contract."""
+    derived_groups: list[dict[str, Any]] = []
+    for group in scoped_visual_map["visual_groups"]:
+        derived_group = {
+            key: copy.deepcopy(group[key])
+            for key in (
+                "group_id",
+                "page_number",
+                "location_hint",
+                "visual_description",
+                "representation_kind",
+            )
+        }
+        derived_group["commercial_role"] = DEPICTION_SCOPE_TO_COMMERCIAL_ROLE[
+            group["depiction_scope"]
+        ]
+        derived_group["role_basis"] = [
+            _SCOPE_BASIS_TO_ROLE_BASIS[basis]
+            for basis in group["scope_basis"]
+        ]
+        derived_groups.append(derived_group)
+    return {"visual_groups": derived_groups}
