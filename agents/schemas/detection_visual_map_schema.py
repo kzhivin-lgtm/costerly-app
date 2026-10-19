@@ -86,8 +86,6 @@ def validate_detection_visual_map(
     *,
     require_evidence_class: bool = False,
     require_owner_object_ids: bool = False,
-    require_source_region_ids: bool = False,
-    spatial_regions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(result, dict) or set(result) != {"visual_groups"}:
         raise DetectionVisualMapSchemaError("visual map must contain only visual_groups")
@@ -96,11 +94,6 @@ def validate_detection_visual_map(
         raise DetectionVisualMapSchemaError("visual_groups must be a list")
 
     group_ids: set[str] = set()
-    region_pages = {
-        str(region.get("region_id")): region.get("page_number")
-        for region in spatial_regions or []
-        if isinstance(region, dict)
-    }
     for index, group in enumerate(groups, start=1):
         required = {
             "group_id", "page_number", "location_hint", "visual_description",
@@ -110,8 +103,6 @@ def validate_detection_visual_map(
             required.add("evidence_class")
         if require_owner_object_ids:
             required.add("owner_object_ids")
-        if require_source_region_ids:
-            required.add("source_region_ids")
         if not isinstance(group, dict) or set(group) != required:
             raise DetectionVisualMapSchemaError("visual group fields do not match contract")
         expected_id = f"view-{index:03d}"
@@ -137,20 +128,6 @@ def validate_detection_visual_map(
                     or not all(
                         isinstance(object_id, str) and object_id.strip()
                         for object_id in group["owner_object_ids"]
-                    )
-                )
-            )
-            or (
-                require_source_region_ids
-                and (
-                    not isinstance(group["source_region_ids"], list)
-                    or len(group["source_region_ids"])
-                    != len(set(group["source_region_ids"]))
-                    or not all(
-                        isinstance(region_id, str)
-                        and region_id in region_pages
-                        and region_pages[region_id] == group["page_number"]
-                        for region_id in group["source_region_ids"]
                     )
                 )
             )

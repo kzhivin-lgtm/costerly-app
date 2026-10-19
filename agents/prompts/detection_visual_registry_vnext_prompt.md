@@ -2,33 +2,23 @@
 
 Build the visual representation map and commercial-object registry in one response. The output has a strict causal order:
 
-1. independently search the rendered pages for every bounded visual island,
-2. reconcile that search with the OCR graphic-region inventory,
-3. select object-specific islands as visual groups and, for every group, state whether it starts a new proof component or attaches to one earlier group, and why,
+1. identify object-specific visual groups directly from the rendered pages,
+2. only after that independent visual search, use the OCR graphic-region inventory as a cross-check and re-inspect a named coordinate if it may contain an omitted depiction,
+3. for every group, state whether it starts a new proof component or attaches to one earlier group, and why,
 4. treat each connected proof component as exactly one commercial object,
 5. describe that component and its complete page Evidence.
 
 Do not declare an object owner first and add evidence afterwards. A group pair belongs to one object only through an evidence-backed attachment. Every group must contain a `proof_parent` decision. There is no optional global merge list.
 
-## 1. Spatial islands, then visual groups
-
-First return `spatial_islands`: every visibly bounded graphical or boxed source area found from the rendered page, before deciding whether it is commercially relevant. This includes an object drawing, generic floor plan, legend, title block, closed textual plaque, schedule, or navigation diagram. Give every island ordered `island_id`, physical `page_number`, `location_hint`, literal `visual_description`, `classification` and `observation_basis`.
-
-`classification` is exactly `object_candidate` or `non_object_context`. `observation_basis` is `ocr_supported` when the island cites one or more OCR inventory IDs, or `vision_only` when the rendered page contains a bounded island OCR did not emit. A `vision_only` island has an empty `source_region_ids`. Do not use OCR absence as a reason to omit a visible island.
-
-The OCR inventory is a recall check, not a boundary oracle. Search the page visually first, then reconcile: every listed OCR graphic region must be cited by at least one spatial island, but one broad OCR region may support several islands. A visual island can exist with no OCR region. A generic floor plan and a framed text plate therefore remain islands at this stage, then receive `non_object_context` and do not enter the object proof graph.
-
-After this inventory is complete, create `visual_groups` only for `object_candidate` islands. Do not create a visual group for a `non_object_context` island. Every object-candidate island maps to exactly one visual group through its `source_island_id`, and every visual group maps to exactly one object-candidate island.
+## 1. Visual groups
 
 Each `visual_group` is one visibly distinct, object-specific source depiction that can help Estimation: overview, alternate perspective, elevation, object plan, section, detail, module, door leaf, panel, track, cabinet bay or assembly fragment. It is not automatically a quote line or quantity.
 
-For every visual group, provide its `source_island_id` and copy the source OCR IDs of that spatial island into `source_region_ids`. A visual group derived from a `vision_only` island has an empty `source_region_ids`.
+`OCR GRAPHIC REGION INVENTORY` is a passive recall aid, not an object map or response contract. First enumerate visual groups from the rendered pages. Then compare them with the inventory. If a listed region appears to contain a distinct object-specific depiction that your visual search missed, re-inspect that exact page location and add a group only when the page itself confirms it. If it is a generic floor plan, title block, legend, framed text, or merely overlaps a broader drawing, leave it without a group. Do not invent, split, merge, delete, or fail an object merely to make counts equal. A visually established group without a matching OCR region remains valid. OCR inventory IDs are never returned in the schema and never enter proof, ownership, quantity, or Estimation Evidence.
 
-OCR text, dimensions, captions, table content and the page sidebar are not graphical-region candidates. They remain literal page-level Evidence. When a page belongs to an object, its full page artifact and complete page OCR, including the sidebar, are handed to Estimation. Do not create a commercial object merely from a sidebar, caption or text block.
+Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, and required `proof_parent`. It records only one visible depiction. Do not assign any object IDs or owners to a group.
 
-Give each group a stable ordered `group_id`, physical `page_number`, short `location_hint`, literal visual `visual_description`, neutral `representation_kind`, `source_region_ids`, and required `proof_parent`. It records only one visible depiction. Do not assign any object IDs or owners to a group.
-
-Do not create a visual group for the cover/title page, title block itself, generic floor plan, room layout, electrical, plumbing or lighting plan, legend, administrative text, generic schedule or navigation diagram. They must still appear as `non_object_context` spatial islands. Detection may use these internally for metadata, sheet codes and orientation, but they are not Estimation Evidence. Use `object_plan` only when a plan contains direct construction, identity or fabrication information for a specific in-scope object. `floor_plan` means generic non-object context and is discarded. A repeated grid, dimension string, repeated bays, slats, shelves or panel divisions is not a table by itself.
+Do not create a group for the cover/title page, title block itself, generic floor plan, room layout, electrical, plumbing or lighting plan, legend, administrative text, generic schedule or navigation diagram. Detection may use these internally for metadata, sheet codes and orientation, but they are not Estimation Evidence. Use `object_plan` only when a plan contains direct construction, identity or fabrication information for a specific in-scope object. `floor_plan` means generic non-object context and is discarded. A repeated grid, dimension string, repeated bays, slats, shelves or panel divisions is not a table by itself.
 
 ## 2. Required proof-parent decision, including why
 

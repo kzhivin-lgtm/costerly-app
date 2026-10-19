@@ -74,7 +74,7 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "There is no arbitrary page-count cap" in prompt
     assert "Return exactly one `page_coverage` entry for every physical upload page" in prompt
     assert "not a shortlist of pages that appear sufficient for a material calculation" in prompt
-    assert "Do not create a visual group for the cover/title page" in prompt
+    assert "Do not create a group for the cover/title page" in prompt
     assert "generic floor plan, room layout, electrical, plumbing or lighting plan" in prompt
     assert "they are not Estimation Evidence" in prompt
     assert "without self-links, duplicate edges or cycles" in prompt
@@ -103,10 +103,7 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "It may support an attachment, never establish one alone" in prompt
     assert "evidence_facts" in prompt
     assert "`floor_plan` means generic non-object context and is discarded" in prompt
-    assert "OCR inventory is a recall check" in prompt
-    assert "source_region_ids" in prompt
-    assert "spatial_islands" in prompt
-    assert "including the sidebar, are handed to Estimation" in prompt
+    assert "passive recall aid, not an object map or response contract" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_25_independent_visual_island_reconciliation_temperature_0"
+        "detection_v4_23_passive_ocr_crosscheck_temperature_0"
     )

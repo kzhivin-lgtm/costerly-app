@@ -26,7 +26,6 @@ from agents.prompt_loader import (
 from agents.detection_spatial_inventory import (
     build_detection_spatial_inventory,
     spatial_inventory_context,
-    validate_detection_spatial_islands,
 )
 from agents.schemas.detection_registry_schema import (
     DETECTION_PROOF_PARENT_JSON_SCHEMA,
@@ -55,7 +54,7 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_25_independent_visual_island_reconciliation_temperature_0"
+    "detection_v4_23_passive_ocr_crosscheck_temperature_0"
 )
 # V4.23 uses an exact dimension_transform as the sole positive dimension-match
 # fact. A rejected candidate is recorded only on a new root as blocked_merge.
@@ -133,53 +132,12 @@ DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
 DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"][
     "proof_parent"
 ] = DETECTION_PROOF_PARENT_JSON_SCHEMA
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "source_region_ids"
-)
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"][
-    "source_region_ids"
-] = {"type": "array", "items": {"type": "string"}}
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["required"].append(
-    "source_island_id"
-)
-DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA["items"]["properties"][
-    "source_island_id"
-] = {"type": "string"}
-
-DETECTION_SPATIAL_ISLANDS_SCHEMA: dict[str, Any] = {
-    "type": "array",
-    "items": {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "island_id", "page_number", "location_hint", "visual_description",
-            "classification", "observation_basis", "source_region_ids",
-        ],
-        "properties": {
-            "island_id": {"type": "string"},
-            "page_number": {"type": "integer", "minimum": 1},
-            "location_hint": {"type": "string"},
-            "visual_description": {"type": "string"},
-            "classification": {
-                "type": "string",
-                "enum": ["object_candidate", "non_object_context"],
-            },
-            "observation_basis": {
-                "type": "string", "enum": ["ocr_supported", "vision_only"],
-            },
-            "source_region_ids": {"type": "array", "items": {"type": "string"}},
-        },
-    },
-}
 
 DETECTION_VISUAL_REGISTRY_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": [
-        "spatial_islands", "visual_groups", "objects", "page_coverage",
-    ],
+    "required": ["visual_groups", "objects", "page_coverage"],
     "properties": {
-        "spatial_islands": DETECTION_SPATIAL_ISLANDS_SCHEMA,
         "visual_groups": DETECTION_VISUAL_REGISTRY_VISUAL_GROUPS_SCHEMA,
         "objects": DETECTION_VISUAL_REGISTRY_OBJECTS_SCHEMA,
         "page_coverage": {
@@ -538,9 +496,10 @@ def build_detection_user_text(
 ) -> str:
     ocr_context = build_detection_ocr_context(ocr_package)
     spatial_context = (
-        "\n\n" + spatial_inventory_context(build_detection_spatial_inventory(ocr_package))
-        if include_spatial_inventory
-        else ""
+        "\n\n" + spatial_inventory_context(
+            build_detection_spatial_inventory(ocr_package)
+        )
+        if include_spatial_inventory else ""
     )
 
     return f"""
@@ -705,9 +664,7 @@ def append_detection_focus_regions(blocks: list[dict[str, Any]], regions: list[d
 def run_anthropic_detection_visual_map_agent(*, file_name: str, company_id: str, file_bytes: bytes, page_images: list[bytes], regions: list[dict[str, Any]], ocr_package: dict[str, Any] | None, model: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
     selected_model = model or get_secret("CLAUDE_DETECTION_MODEL", DEFAULT_CLAUDE_DETECTION_MODEL)
     prompt = load_detection_visual_map_prompt()
-    user_text = build_detection_user_text(
-        file_name=file_name, company_id=company_id, ocr_package=ocr_package,
-    )
+    user_text = build_detection_user_text(file_name=file_name, company_id=company_id, ocr_package=ocr_package)
     schema = strip_schema_for_claude(DETECTION_VISUAL_MAP_JSON_SCHEMA)
     content = build_detection_registry_content_blocks(
         file_name=file_name, file_bytes=file_bytes, user_text=user_text,
@@ -971,7 +928,6 @@ def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
         "location_hint",
         "visual_description",
         "representation_kind",
-        "source_region_ids",
     )
     if not isinstance(groups, list):
         return {"visual_groups": groups}
@@ -983,36 +939,6 @@ def _visual_map_from_registry_groups(groups: object) -> dict[str, Any]:
             for group in groups
         ]
     }
-
-
-def _validate_visual_groups_against_spatial_islands(
-    groups: object, islands: list[dict[str, Any]],
-) -> None:
-    """Make the object-proof graph a strict subset of the island inventory."""
-    if not isinstance(groups, list):
-        raise ValueError("visual groups are invalid")
-    candidate_islands = {
-        str(island["island_id"]): island
-        for island in islands
-        if island["classification"] == "object_candidate"
-    }
-    source_island_ids: list[str] = []
-    for group in groups:
-        if not isinstance(group, dict):
-            raise ValueError("visual groups are invalid")
-        source_island_id = str(group.get("source_island_id") or "")
-        island = candidate_islands.get(source_island_id)
-        if island is None:
-            raise ValueError("visual group must map to an object-candidate island")
-        if group.get("page_number") != island["page_number"]:
-            raise ValueError("visual group and source island page differ")
-        if group.get("source_region_ids") != island["source_region_ids"]:
-            raise ValueError("visual group source regions must match its source island")
-        source_island_ids.append(source_island_id)
-    if len(source_island_ids) != len(set(source_island_ids)):
-        raise ValueError("each object-candidate island must have one visual group")
-    if set(source_island_ids) != set(candidate_islands):
-        raise ValueError("each object-candidate island must have one visual group")
 
 
 def _proof_parent_decision_audit(groups: object) -> list[dict[str, Any]]:
@@ -1119,10 +1045,18 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     prompt = load_detection_visual_registry_prompt()
     prompt_version = DETECTION_VISUAL_REGISTRY_PROMPT_VERSION
     spatial_regions = build_detection_spatial_inventory(ocr_package)
+    spatial_audit = {
+        "ocr_graphic_region_count": len(spatial_regions),
+        "ocr_graphic_regions": spatial_regions,
+        "ocr_graphic_region_counts_by_page": {
+            str(page_number): sum(
+                region["page_number"] == page_number for region in spatial_regions
+            )
+            for page_number in range(1, len(page_images) + 1)
+        },
+    }
     user_text = build_detection_user_text(
-        file_name=file_name,
-        company_id=company_id,
-        ocr_package=ocr_package,
+        file_name=file_name, company_id=company_id, ocr_package=ocr_package,
         include_spatial_inventory=True,
     )
     schema = strip_schema_for_claude(DETECTION_VISUAL_REGISTRY_JSON_SCHEMA)
@@ -1146,6 +1080,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     except json.JSONDecodeError as exc:
         failure_diagnostics = dict(diagnostics)
         failure_diagnostics.update({
+            **spatial_audit,
             "validation_error": str(exc),
             "validation_stage": "visual_registry_json",
             "attempt_label": "visual_registry_json_parse_failed",
@@ -1187,23 +1122,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             payload
         )
     try:
-        if not isinstance(payload, dict) or set(payload) != {
-            "spatial_islands", "visual_groups", "objects", "page_coverage",
-        }:
-            raise ValueError("visual registry must contain spatial_islands, visual_groups, objects and page_coverage")
-        spatial_islands = validate_detection_spatial_islands(
-            payload["spatial_islands"], spatial_regions=spatial_regions,
-            page_count=len(page_images),
-        )
+        if not isinstance(payload, dict) or set(payload) != {"visual_groups", "objects", "page_coverage"}:
+            raise ValueError("visual registry must contain only visual_groups, objects and page_coverage")
         raw_groups = payload["visual_groups"]
-        _validate_visual_groups_against_spatial_islands(raw_groups, spatial_islands)
         raw_group_ids = [str(group.get("group_id") or "") for group in raw_groups]
         visual_map = validate_detection_visual_map(
             normalize_detection_visual_map_group_ids(
                 _visual_map_from_registry_groups(raw_groups)
             ),
-            require_source_region_ids=True,
-            spatial_regions=spatial_regions,
         )
         group_id_mapping = {
             raw_group_id: normalized["group_id"]
@@ -1244,6 +1170,7 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
     except (KeyError, ValueError) as exc:
         failure_diagnostics = dict(diagnostics)
         failure_diagnostics.update({
+            **spatial_audit,
             "registry_decision_audit": registry_decision_audit,
             "discarded_non_object_visual_groups": discarded_non_object_groups,
             "proof_parent_decisions": proof_parent_decisions,
@@ -1305,22 +1232,14 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             for component in proof_components
         ],
         "region_count": len(regions),
-        "ocr_graphic_region_count": len(spatial_regions),
-        "ocr_graphic_regions": spatial_regions,
-        "spatial_island_count": len(spatial_islands),
-        "spatial_island_counts_by_page": {
+        **spatial_audit,
+        "visual_group_counts_by_page": {
             str(page_number): sum(
-                island["page_number"] == page_number for island in spatial_islands
+                group["page_number"] == page_number
+                for group in visual_map["visual_groups"]
             )
             for page_number in range(1, len(page_images) + 1)
         },
-        "spatial_island_classification_counts": {
-            classification: sum(
-                island["classification"] == classification for island in spatial_islands
-            )
-            for classification in ("object_candidate", "non_object_context")
-        },
-        "spatial_islands": spatial_islands,
         "page_count": len(page_images),
         "attempt_label": "visual_registry_integrated",
     })
