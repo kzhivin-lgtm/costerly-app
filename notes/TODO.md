@@ -160,6 +160,17 @@ establishes the complementary proven-component outcome and runtime persists the
 complete per-group ledger. This removes duplicate output without raising the
 model budget, adding a call, or relaxing proof validation. The same HSL, Page
 23 and Adda acceptance gates apply.
+PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
+after the commercial-boundary experiment reaches a valid HSL graph, remove only
+proven duplicated model output while preserving all inspectable typed facts and
+the complete Estimation Evidence handoff. Prioritise code-derived explanations
+from proof facts, deterministic page coverage from accepted groups and context
+links, and compact typed classification bases. Do not shorten visual-island
+descriptions or proof observations merely to reduce tokens. Measure input and
+output tokens, first-token and total generation time, price and HSL/Page 23/Adda
+regression behaviour before accepting it. Output reduction is a latency goal as
+well as a cost goal; it must not add a model call or weaken validation.
+
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate
