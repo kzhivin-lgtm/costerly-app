@@ -1,5 +1,15 @@
 # Done Log
 
+Detection V4.27 phased Registry intermediate checkpoint `99a9fa1`: preserves
+one temperature-zero Haiku call and the passive OCR recall aid, while making
+the response causal: island inventory, exact-once classification, proof graph,
+packages and coverage. Contract and Detection suites passed 74 and 47 tests.
+The first HSL audit found 35 islands and correctly exposed, rather than lost,
+three graph components without package descriptors. This is a protected
+diagnostic checkpoint, not HSL boundary acceptance. The next V4.28 experiment
+adds a non-merge Context Reference Link for composite N57 views and preserves
+root-code naming when products split into N57A/N57B/N57C, завершена 19.10
+
 Detection V4.23 passive OCR Visual Group discovery checkpoint `5306fff`:
 restored the protected V4.23 Registry structure after rejected V4.24/V4.25 OCR
 coverage experiments. OCR graphic-region coordinates now act only as a passive

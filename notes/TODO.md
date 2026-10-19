@@ -134,6 +134,14 @@ facades or dimension depictions into one island. Classification, graph and
 package reasoning remain persisted on both success and validation failure.
 Acceptance: recover V4.23-level island recall on HSL, then evaluate HSL
 packages, Page 23 and Adda against the protected checkpoint.
+V4.28 is approved after intermediate checkpoint `99a9fa1`. It adds the sixth
+typed graph relation, `context_reference_link`: a composite view may reference
+multiple independently quoted products, but this relation is excluded from
+proof components and can never merge them. For an authored sheet-level root
+code such as N57, Detection may split products only with separate product
+evidence; Naming retains N57 and adds deterministic A/B/C suffixes in product
+order. The target is N57A kitchen, N57B island and N57C cabinet, not one
+commercial N57 package.
 
 PENDING, P1, USER OBSERVATION, stale Processing cycle after New Estimate:
 investigate the authenticated-browser sequence in which a prior saved estimate
