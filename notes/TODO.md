@@ -202,6 +202,15 @@ standalone package. This removes the artificial context-chain rejection without
 relaxing merge proof or ownership validation. It adds no provider call, router
 or Sonnet path. Acceptance: valid HSL graph with N76B, then regress Page 23
 and Adda.
+V4.35 keeps that undirected graph but validates `shared_reference_group_ids`
+only after merge components and declared standalone packages are proven. A
+shared composite view must directly reference at least two distinct commercial
+package anchors, not merely two visual groups or two views of one package. A
+generic floor plan or room layout remains `document_context`, even if it shows
+placements, and can never become shared Evidence. This adds no model call,
+router or Sonnet path. Acceptance: HSL must not classify G002 as commercial or
+use G031-G033 as shared Evidence; N76B must instead be proven as its own
+package, followed by Page 23 and Adda regression.
 
 PENDING, P1, USER REQUEST, Detection Registry output and latency optimisation:
 after the commercial-boundary experiment reaches a valid HSL graph, remove only

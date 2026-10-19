@@ -61,10 +61,10 @@ DETECTION_NO_NAMING_PROMPT_VERSION = DETECTION_PROMPT_VERSION
 DETECTION_VISUAL_MAP_PROMPT_VERSION = "detection_v4_visual_representation_map_v1"
 DETECTION_REGISTRY_PROMPT_VERSION = "detection_v4_commercial_registry_from_visual_map_v2"
 DETECTION_VISUAL_REGISTRY_PROMPT_VERSION = (
-    "detection_v4_34_undirected_reference_graph_shared_evidence_temperature_0"
+    "detection_v4_35_shared_evidence_proven_package_gate_temperature_0"
 )
-# V4.34 makes every graph edge undirected. Reference links preserve shared
-# Evidence without forming commercial components or directional data flow.
+# V4.35 admits shared Evidence only after the response has proved the distinct
+# commercial packages it directly references.
 DETECTION_VISUAL_REGISTRY_TEMPERATURE = 0.0
 # Registry has already locked object identity, quantity and ordering before this
 # call. Keep the evidence-packaging pass deterministic under that immutable
@@ -1392,6 +1392,12 @@ def run_anthropic_detection_visual_registry_agent(*, file_name: str, company_id:
             payload["standalone_package_group_ids"],
             components=proof_components,
             commercial_visual_group_ids=commercial_visual_group_ids,
+        )
+        shared_reference_group_ids = validate_detection_shared_reference_group_ids(
+            shared_reference_group_ids,
+            proofs=pairwise_merge_proofs,
+            visual_group_ids=visual_group_ids,
+            commercial_components=proof_components,
         )
         package_decisions = derive_detection_package_decision_audit(
             proof_components,

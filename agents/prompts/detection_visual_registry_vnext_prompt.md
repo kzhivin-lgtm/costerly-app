@@ -1,4 +1,4 @@
-# DETECTION V4.34 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
+# DETECTION V4.35 - INVENTORY, CLASSIFY, PROVE, DECIDE, PACKAGE
 
 Build the visual representation inventory and commercial-object registry in one
 response. The response has a mandatory causal order:
@@ -54,6 +54,10 @@ Detection but never enter the graph or Estimation Evidence. Use
 specifies or shows a particular fabricated object, even when it is a section,
 detail, alternate view or object-specific plan. A repeated grid, dimension
 string, bays, slats, shelves or panel divisions is not a table by itself.
+A generic floor plan or room layout remains `document_context` even when it
+shows placements. It cannot be `reference_link` or shared Evidence. An
+object-specific plan needs a concrete product identity, construction detail, or
+evidence-backed relation to a particular fabricated package.
 
 ## 2. Full proof graph
 
@@ -87,13 +91,17 @@ one quote line?** It never merges products or enters a proof component. It has
 no source, target, direction or information-transfer meaning. Reference links
 may form chains.
 
-Use `reference_link` when one plan, axonometric view, arrangement or general
-elevation relates several distinct independently quoted products. For every
-such non-commercial general view, list its ID in
+Use `reference_link` only when one object-specific composite view visibly
+relates several distinct independently quoted products. For every such
+non-commercial composite view, list its ID in
 `shared_reference_group_ids`, not `standalone_package_group_ids`. It becomes
 shared page-level Evidence for every linked package, not a commercial package
-itself. A group in `shared_reference_group_ids` must have at least two
-reference links and no merge edge. For example, a sheet labelled N57 may show
+itself. A group in `shared_reference_group_ids` must have no merge edge and
+must directly reference at least two distinct proven commercial packages. A
+generic floor plan, a room layout, a dimension string, a local construction
+detail or a panel grid cannot be shared Evidence merely because it relates to
+another depiction. It must instead enter a proved merge component or become a
+standalone package. For example, a sheet labelled N57 may show
 kitchen, island and cabinet together in two general views and separately in
 dedicated views. The general views reference-link to all three dedicated
 products, they do not merge kitchen, island and cabinet into one quote line.

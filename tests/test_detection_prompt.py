@@ -92,6 +92,8 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "`reference_link`" in prompt
     assert "Every edge is undirected" in prompt
     assert "`shared_reference_group_ids`" in prompt
+    assert "at least two distinct proven commercial packages" in prompt
+    assert "generic floor plan or room layout remains `document_context`" in prompt
     assert "dimensions agree after a named unit or axis transformation" in prompt
     assert "One exact\ndimension transform can prove one edge on its own" in prompt
     assert "Evaluate relations\nglobally across the complete classified" in prompt
@@ -101,5 +103,5 @@ def test_integrated_visual_registry_keeps_visual_representations_and_commercial_
     assert "evidence_facts" in prompt
     assert "passive recall aid" in prompt
     assert DETECTION_VISUAL_REGISTRY_PROMPT_VERSION == (
-        "detection_v4_34_undirected_reference_graph_shared_evidence_temperature_0"
+        "detection_v4_35_shared_evidence_proven_package_gate_temperature_0"
     )

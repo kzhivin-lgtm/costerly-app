@@ -491,8 +491,15 @@ def validate_detection_shared_reference_group_ids(
     *,
     proofs: list[dict[str, Any]],
     visual_group_ids: set[str],
+    commercial_components: list[list[str]] | None = None,
 ) -> list[str]:
-    """Validate non-commercial shared Evidence without oriented graph roles."""
+    """Validate shared Evidence against completed commercial packages.
+
+    The first pass checks only the serialized IDs so the runtime can derive the
+    commercial components. The final pass receives those components after the
+    standalone-package audit and proves that a shared view reaches at least two
+    distinct commercial packages, never merely two related visual groups.
+    """
     if (
         not isinstance(group_ids, list)
         or not all(isinstance(group_id, str) and group_id for group_id in group_ids)
@@ -502,24 +509,54 @@ def validate_detection_shared_reference_group_ids(
     ):
         raise DetectionRegistrySchemaError("registry shared reference groups are invalid")
     shared_group_ids = set(group_ids)
-    reference_degree = {group_id: 0 for group_id in shared_group_ids}
-    merge_endpoint_group_ids: set[str] = set()
+    merge_endpoint_group_ids = {
+        group_id
+        for proof in proofs
+        if proof.get("relationship") in MERGE_EVIDENCE_RELATIONSHIPS
+        for group_id in (str(proof["group_id_a"]), str(proof["group_id_b"]))
+    }
+    if shared_group_ids.intersection(merge_endpoint_group_ids):
+        raise DetectionRegistrySchemaError(
+            "shared reference evidence cannot participate in a merge proof",
+            details={
+                "shared_reference_merge_group_ids": sorted(
+                    shared_group_ids.intersection(merge_endpoint_group_ids)
+                ),
+            },
+        )
+    if commercial_components is None:
+        return group_ids
+
+    package_anchor_by_group_id = {
+        group_id: component[0]
+        for component in commercial_components
+        for group_id in component
+    }
+    linked_package_anchors = {group_id: set() for group_id in shared_group_ids}
     for proof in proofs:
         group_id_a = str(proof["group_id_a"])
         group_id_b = str(proof["group_id_b"])
         if proof.get("relationship") == REFERENCE_RELATIONSHIP:
-            if group_id_a in reference_degree:
-                reference_degree[group_id_a] += 1
-            if group_id_b in reference_degree:
-                reference_degree[group_id_b] += 1
-        elif proof.get("relationship") in MERGE_EVIDENCE_RELATIONSHIPS:
-            merge_endpoint_group_ids.update({group_id_a, group_id_b})
-    if (
-        shared_group_ids.intersection(merge_endpoint_group_ids)
-        or any(degree < 2 for degree in reference_degree.values())
+            for shared_group_id, other_group_id in (
+                (group_id_a, group_id_b),
+                (group_id_b, group_id_a),
+            ):
+                if shared_group_id in linked_package_anchors:
+                    package_anchor = package_anchor_by_group_id.get(other_group_id)
+                    if package_anchor:
+                        linked_package_anchors[shared_group_id].add(package_anchor)
+    if any(
+            len(package_anchors) < 2
+            for package_anchors in linked_package_anchors.values()
     ):
         raise DetectionRegistrySchemaError(
-            "shared reference evidence must connect multiple packages without a merge"
+            "shared reference evidence must connect at least two distinct proven packages without a merge",
+            details={
+                "shared_reference_package_anchors": {
+                    group_id: sorted(package_anchors)
+                    for group_id, package_anchors in linked_package_anchors.items()
+                },
+            },
         )
     return group_ids
 

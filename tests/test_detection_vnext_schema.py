@@ -155,7 +155,10 @@ def test_shared_reference_evidence_is_undirected_and_not_a_package_component():
         proofs, visual_group_ids=groups, page_count=1
     )
     assert validate_detection_shared_reference_group_ids(
-        ["overview"], proofs=validated, visual_group_ids=groups
+        ["overview"],
+        proofs=validated,
+        visual_group_ids=groups,
+        commercial_components=[["view-001"], ["view-002"]],
     ) == ["overview"]
     assert derive_detection_proof_components(
         validated, visual_group_ids=groups
@@ -172,10 +175,13 @@ def test_shared_reference_evidence_needs_multiple_reference_links_and_no_merge()
 
     with pytest.raises(
         DetectionRegistrySchemaError,
-        match="shared reference evidence must connect multiple packages without a merge",
+        match="shared reference evidence must connect at least two distinct proven packages without a merge",
     ):
         validate_detection_shared_reference_group_ids(
-            ["overview"], proofs=one_link, visual_group_ids=groups
+            ["overview"],
+            proofs=one_link,
+            visual_group_ids=groups,
+            commercial_components=[["view-001"], ["view-002"], ["view-003"]],
         )
 
     merge_and_references = validate_detection_pairwise_merge_proofs([
@@ -192,10 +198,39 @@ def test_shared_reference_evidence_needs_multiple_reference_links_and_no_merge()
 
     with pytest.raises(
         DetectionRegistrySchemaError,
-        match="shared reference evidence must connect multiple packages without a merge",
+        match="shared reference evidence cannot participate in a merge proof",
     ):
         validate_detection_shared_reference_group_ids(
-            ["overview"], proofs=merge_and_references, visual_group_ids=groups
+            ["overview"],
+            proofs=merge_and_references,
+            visual_group_ids=groups,
+            commercial_components=[["view-001"], ["view-002"], ["view-003"]],
+        )
+
+
+def test_shared_reference_evidence_cannot_link_two_views_of_one_package():
+    groups = {"overview", "view-001", "view-002"}
+    proofs = validate_detection_pairwise_merge_proofs([
+        _proof("view-001", "view-002", [
+            _fact("explicit_document_relation", "N76B labels both object views."),
+        ]),
+        _reference_link("overview", "view-001", [
+            _fact("explicit_document_relation", "The overview shows N76B."),
+        ]),
+        _reference_link("overview", "view-002", [
+            _fact("explicit_document_relation", "The overview shows N76B."),
+        ]),
+    ], visual_group_ids=groups, page_count=1)
+
+    with pytest.raises(
+        DetectionRegistrySchemaError,
+        match="shared reference evidence must connect at least two distinct proven packages without a merge",
+    ):
+        validate_detection_shared_reference_group_ids(
+            ["overview"],
+            proofs=proofs,
+            visual_group_ids=groups,
+            commercial_components=[["view-001", "view-002"]],
         )
 
 
